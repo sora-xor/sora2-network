@@ -320,6 +320,9 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type MulticollateralBondingCurvePool = MockMCBCPool;
     type XSTPool = MockXSTPool;
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = (); // todo
 }
 
 impl trading_pair::Config for Runtime {
@@ -367,6 +370,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type GetFee = GetXykFee;
     type WeightInfo = ();
+    type XSTMarketInfo = ();
 }
 
 impl pallet_timestamp::Config for Runtime {

@@ -32,14 +32,19 @@
 
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
+use common::prelude::{QuoteAmount, SwapOutcome};
 use common::test_utils::assert_last_event;
-use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, PriceVariant, VAL, XOR};
+use common::{
+    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId, LiquiditySource,
+    PriceVariant, VAL, XOR, XSTUSD,
+};
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
-    self, Config, CurrencyLocker, CurrencyUnlocker, ExpirationScheduler, LimitOrder, OrderBookId,
+    self, Config, CurrencyLocker, CurrencyUnlocker, ExpirationScheduler, LimitOrder, OrderBook,
+    OrderBookId, OrderBookStatus,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 
@@ -815,4 +820,633 @@ fn should_emit_event_on_expiration_failure() {
             .into(),
         );
     })
+}
+
+fn should_assemble_order_book_id() {
+    ext().execute_with(|| {
+        let polkaswap_order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let polkaswap_xstusd_order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XSTUSD.into(),
+        };
+
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &XOR, &VAL).unwrap(),
+            polkaswap_order_book_id
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &VAL, &XOR).unwrap(),
+            polkaswap_order_book_id
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::PolkaswapXSTUSD.into(), &XSTUSD, &VAL)
+                .unwrap(),
+            polkaswap_xstusd_order_book_id
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::PolkaswapXSTUSD.into(), &VAL, &XSTUSD)
+                .unwrap(),
+            polkaswap_xstusd_order_book_id
+        );
+    });
+}
+
+#[test]
+fn should_not_assemble_order_book_id_without_dex_base() {
+    ext().execute_with(|| {
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &XSTUSD, &VAL),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &VAL, &XSTUSD),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &XSTUSD, &XSTUSD),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &XOR, &XOR),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::PolkaswapXSTUSD.into(), &XOR, &VAL),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::PolkaswapXSTUSD.into(), &VAL, &XOR),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(&DEXId::PolkaswapXSTUSD.into(), &XOR, &XOR),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(
+                &DEXId::PolkaswapXSTUSD.into(),
+                &XSTUSD,
+                &XSTUSD
+            ),
+            None
+        );
+    });
+}
+
+#[test]
+fn can_exchange() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_empty_order_book(order_book_id);
+
+        assert!(OrderBookPallet::can_exchange(&DEX.into(), &XOR, &VAL));
+        assert!(OrderBookPallet::can_exchange(&DEX.into(), &VAL, &XOR));
+    });
+}
+
+#[test]
+fn cannot_exchange_with_non_existed_order_book() {
+    ext().execute_with(|| {
+        assert!(!OrderBookPallet::can_exchange(&DEX.into(), &XOR, &VAL));
+        assert!(!OrderBookPallet::can_exchange(&DEX.into(), &VAL, &XOR));
+    });
+}
+
+#[test]
+fn cannot_exchange_with_not_trade_status() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let mut order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
+
+        order_book.status = OrderBookStatus::PlaceAndCancel;
+        order_book::OrderBooks::<Runtime>::insert(order_book_id, order_book.clone());
+        assert!(!OrderBookPallet::can_exchange(&DEX.into(), &XOR, &VAL));
+        assert!(!OrderBookPallet::can_exchange(&DEX.into(), &VAL, &XOR));
+
+        order_book.status = OrderBookStatus::OnlyCancel;
+        order_book::OrderBooks::<Runtime>::insert(order_book_id, order_book.clone());
+        assert!(!OrderBookPallet::can_exchange(&DEX.into(), &XOR, &VAL));
+        assert!(!OrderBookPallet::can_exchange(&DEX.into(), &VAL, &XOR));
+
+        order_book.status = OrderBookStatus::Stop;
+        order_book::OrderBooks::<Runtime>::insert(order_book_id, order_book.clone());
+        assert!(!OrderBookPallet::can_exchange(&DEX.into(), &XOR, &VAL));
+        assert!(!OrderBookPallet::can_exchange(&DEX.into(), &VAL, &XOR));
+
+        // success for Trade status
+        order_book.status = OrderBookStatus::Trade;
+        order_book::OrderBooks::<Runtime>::insert(order_book_id, order_book.clone());
+        assert!(OrderBookPallet::can_exchange(&DEX.into(), &XOR, &VAL));
+        assert!(OrderBookPallet::can_exchange(&DEX.into(), &VAL, &XOR));
+    });
+}
+
+#[test]
+fn should_quote() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_and_fill_order_book(order_book_id);
+
+        // without fee
+        assert_eq!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(3000)),
+                false
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(271.00535), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                false
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(2204.74), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(200)),
+                false
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(1993.7), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2500)),
+                false
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(251.66326), 0)
+        );
+
+        // todo (m.tagirov) remake when fee introduced
+        // with fee
+        assert_eq!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(3000)),
+                true
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(271.00535), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                true
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(2204.74), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(200)),
+                true
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(1993.7), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2500)),
+                true
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(251.66326), 0)
+        );
+    });
+}
+
+#[test]
+fn should_not_quote_with_non_existed_order_book() {
+    ext().execute_with(|| {
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                true
+            ),
+            E::UnknownOrderBook
+        );
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2500)),
+                true
+            ),
+            E::UnknownOrderBook
+        );
+    });
+}
+
+#[test]
+fn should_not_quote_with_empty_side() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_empty_order_book(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                true
+            ),
+            E::NotEnoughLiquidity
+        );
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2500)),
+                true
+            ),
+            E::NotEnoughLiquidity
+        );
+    });
+}
+
+#[test]
+fn should_not_quote_with_small_amount() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_and_fill_order_book(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(0.000001)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(0)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(0.000001)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(0)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+    });
+}
+
+#[test]
+fn should_not_quote_if_amount_is_greater_than_liquidity() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_and_fill_order_book(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(1000)),
+                true
+            ),
+            E::NotEnoughLiquidity
+        );
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(10000)),
+                true
+            ),
+            E::NotEnoughLiquidity
+        );
+    });
+}
+
+#[test]
+fn should_quote_without_impact() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_and_fill_order_book(order_book_id);
+
+        // without fee
+        assert_eq!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(3000)),
+                false
+            )
+            .unwrap(),
+            SwapOutcome::new(balance!(272.72727), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                false
+            )
+            .unwrap(),
+            SwapOutcome::new(balance!(2200), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(200)),
+                false
+            )
+            .unwrap(),
+            SwapOutcome::new(balance!(2000), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2500)),
+                false
+            )
+            .unwrap(),
+            SwapOutcome::new(balance!(250), 0)
+        );
+
+        // todo (m.tagirov) remake when fee introduced
+        // with fee
+        assert_eq!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(3000)),
+                true
+            )
+            .unwrap(),
+            SwapOutcome::new(balance!(272.72727), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                true
+            )
+            .unwrap(),
+            SwapOutcome::new(balance!(2200), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(200)),
+                true
+            )
+            .unwrap(),
+            SwapOutcome::new(balance!(2000), 0)
+        );
+
+        assert_eq!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2500)),
+                true
+            )
+            .unwrap(),
+            SwapOutcome::new(balance!(250), 0)
+        );
+    });
+}
+
+#[test]
+fn should_not_quote_without_impact_with_non_existed_order_book() {
+    ext().execute_with(|| {
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                true
+            ),
+            E::UnknownOrderBook
+        );
+
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2500)),
+                true
+            ),
+            E::UnknownOrderBook
+        );
+    });
+}
+
+#[test]
+fn should_not_quote_without_impact_with_empty_side() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_empty_order_book(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                true
+            ),
+            E::NotEnoughLiquidity
+        );
+
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2500)),
+                true
+            ),
+            E::NotEnoughLiquidity
+        );
+    });
+}
+
+#[test]
+fn should_not_quote_without_impact_with_small_amount() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_and_fill_order_book(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(0.000001)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(0)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(0.000001)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(0)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+    });
 }

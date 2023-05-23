@@ -269,6 +269,9 @@ impl dex_api::Config for Runtime {
     type XYKPool = MockLiquiditySource;
     type XSTPool = XSTPool;
     type MulticollateralBondingCurvePool = ();
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = ();
 }
 
 impl permissions::Config for Runtime {
@@ -335,6 +338,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = ();
 }
 
 impl pallet_timestamp::Config for Runtime {

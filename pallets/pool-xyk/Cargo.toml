@@ -51,6 +51,7 @@ technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
 liquidity-proxy = { path = "../liquidity-proxy" }
+xst = { path = "../xst" }
 
 [features]
 default = ['std']

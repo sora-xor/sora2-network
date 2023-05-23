@@ -1469,6 +1469,9 @@ fn testnet_genesis(
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
                 LiquiditySourceType::XSTPool,
+
+                #[cfg(feature = "wip")] // order-book
+                LiquiditySourceType::OrderBook,
             ]
             .into(),
         },
@@ -2267,6 +2270,9 @@ fn mainnet_genesis(
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
+
+                #[cfg(feature = "wip")] // order-book
+                LiquiditySourceType::OrderBook,
             ]
             .into(),
         },
