@@ -504,8 +504,8 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
             let order_id = order_book.next_order_id();
-            let time = T::Time::now();
-            let now = frame_system::Pallet::<T>::block_number();
+            let now_time = T::Time::now();
+            let now_block = frame_system::Pallet::<T>::block_number();
             let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFETIME);
             let order = LimitOrder::<T>::new(
                 order_id,
@@ -513,9 +513,9 @@ pub mod pallet {
                 side,
                 price,
                 amount,
-                time,
+                now_time,
                 lifespan,
-                now,
+                now_block,
             );
             let expires_at = order.expires_at;
 
@@ -674,34 +674,6 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, ScheduleError, 
     ) -> Result<(), UnscheduleError>;
 }
 
-/// Expiration schedule for this block is full
-#[derive(Debug)]
-pub enum ScheduleError {
-    BlockScheduleFull,
-}
-
-impl<T: Config> Into<Error<T>> for ScheduleError {
-    fn into(self) -> Error<T> {
-        match self {
-            ScheduleError::BlockScheduleFull => Error::<T>::BlockScheduleFull,
-        }
-    }
-}
-
-/// Could not find expiration in given block schedule
-#[derive(Debug)]
-pub enum UnscheduleError {
-    ExpirationNotFound,
-}
-
-impl<T: Config> Into<Error<T>> for UnscheduleError {
-    fn into(self) -> Error<T> {
-        match self {
-            UnscheduleError::ExpirationNotFound => Error::<T>::ExpirationNotFound,
-        }
-    }
-}
-
 impl<T: Config> Pallet<T> {
     fn service_single_expiration(
         data_layer: &mut CacheDataLayer<T>,
@@ -790,6 +762,34 @@ impl<T: Config> Pallet<T> {
             <ExpirationsAgenda<T>>::insert(block, expirations);
         }
         postponed == 0
+    }
+}
+
+#[derive(Debug)]
+pub enum ScheduleError {
+    /// Expiration schedule for this block is full
+    BlockScheduleFull,
+}
+
+impl<T: Config> Into<Error<T>> for ScheduleError {
+    fn into(self) -> Error<T> {
+        match self {
+            ScheduleError::BlockScheduleFull => Error::<T>::BlockScheduleFull,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum UnscheduleError {
+    /// Could not find expiration in given block schedule
+    ExpirationNotFound,
+}
+
+impl<T: Config> Into<Error<T>> for UnscheduleError {
+    fn into(self) -> Error<T> {
+        match self {
+            UnscheduleError::ExpirationNotFound => Error::<T>::ExpirationNotFound,
+        }
     }
 }
 

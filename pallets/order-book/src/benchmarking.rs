@@ -392,14 +392,6 @@ benchmarks! {
             PriceVariant::Buy,
             Some(lifespan)
         ).unwrap();
-        OrderBookPallet::<T>::place_limit_order(
-            RawOrigin::Signed(caller.clone()).into(),
-            order_book_id,
-            price,
-            amount,
-            PriceVariant::Buy,
-            Some(lifespan)
-        ).unwrap();
     }
     verify {
         let order_id = get_last_order_id::<T>(order_book_id).unwrap();
