@@ -141,7 +141,7 @@ pub struct DealInfo<AssetId> {
     pub side: PriceVariant,
 }
 
-impl<AssetId: std::cmp::PartialEq> DealInfo<AssetId> {
+impl<AssetId: PartialEq> DealInfo<AssetId> {
     pub fn is_valid(&self) -> bool {
         self.input_asset_id != self.output_asset_id
             && !(self.input_amount.is_base() && self.output_amount.is_base())
