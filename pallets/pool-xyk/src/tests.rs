@@ -2307,14 +2307,11 @@ fn initialize_pool_with_synthetics() {
             ),
             crate::Error::<Runtime>::UnableToCreatePoolWithSyntheticAssets
         );
-        assert_noop!(
-            PoolXYK::initialize_pool(
-                RuntimeOrigin::signed(ALICE()),
-                DEX_C_ID,
-                Mango.into(),
-                GoldenTicket.into()
-            ),
-            crate::Error::<Runtime>::UnableToCreatePoolWithSyntheticAssets
-        );
+        assert_ok!(PoolXYK::initialize_pool(
+            RuntimeOrigin::signed(ALICE()),
+            DEX_C_ID,
+            Mango.into(),
+            GoldenTicket.into()
+        ));
     });
 }

@@ -808,7 +808,11 @@ pub mod pallet {
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
                 );
 
-                let synthetic_assets = T::XSTMarketInfo::enabled_target_assets();
+                let mut synthetic_assets = T::XSTMarketInfo::enabled_target_assets();
+                // in case if XSTUSD is the base asset, we might want to create a pool anyways
+                // TODO: #392 use DexInfoProvider instead of dex-manager pallet
+                synthetic_assets
+                    .remove(&dex_manager::Pallet::<T>::get_dex_info(&dex_id)?.base_asset_id);
                 ensure!(
                     !synthetic_assets.contains(&asset_a) && !synthetic_assets.contains(&asset_b),
                     Error::<T>::UnableToCreatePoolWithSyntheticAssets
