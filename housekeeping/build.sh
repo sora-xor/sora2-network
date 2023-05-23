@@ -39,13 +39,6 @@ if [[ ${TAG_NAME} != '' ]]; then
     wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
     subwasm --json info framenode_runtime.compact.wasm > $wasmReportFile
     subwasm metadata framenode_runtime.compact.wasm > $palletListFile
-    # Debug
-    printf "palleListFile is %s\n" "$palletListFile"
-    printf "wasmreport is %s\n" "$wasmReportFile"
-    cat $palletListFile
-    cat $wasmReportFile
-    ls -la
-    ##
     set +e
     subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
     echo $?
