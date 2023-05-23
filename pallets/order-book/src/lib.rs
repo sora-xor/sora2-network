@@ -231,6 +231,9 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Earliest block with incomplete expirations;
+    /// Weight limit might not allow to finish all expirations for a block, so
+    /// they might be operated later.
     #[pallet::storage]
     #[pallet::getter(fn incomplete_expirations_since)]
     pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, T::BlockNumber>;
@@ -354,7 +357,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        /// Execute the scheduled calls
+        /// Perform scheduled expirations
         fn on_initialize(now: T::BlockNumber) -> Weight {
             let mut weight_counter = WeightMeter::from_limit(T::MaxExpirationWeightPerBlock::get());
             Self::service(now, &mut weight_counter);
@@ -708,10 +711,12 @@ impl<T: Config> Pallet<T> {
         let order = match data_layer.get_limit_order(order_book_id, order_id) {
             Ok(o) => o,
             Err(error) => {
+                // in `debug` environment will panic
                 debug_assert!(
                     false,
                     "apparently removal of order book or order did not cleanup expiration schedule"
                 );
+                // in `release` will emit event
                 Self::deposit_event(Event::<T>::ExpirationFailure {
                     order_book_id: order_book_id.clone(),
                     order_id: order_id.clone(),
@@ -749,7 +754,7 @@ impl<T: Config> Pallet<T> {
     /// it doesn't accidentally spend weight of the entire block (or even more).
     ///
     /// Returns `true` if all expirations were processed and `false` if some expirations
-    /// need to be retried with more available weight.
+    /// need to be retried when more weight is available.
     fn service_block(
         data_layer: &mut CacheDataLayer<T>,
         block: T::BlockNumber,
