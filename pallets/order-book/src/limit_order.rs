@@ -108,8 +108,8 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
     /// Returns appropriate deal amount of asset.
     /// Used to get total amount of associated asset if order is executed.
     ///
-    /// If `base_amount_limit` defined, it is used as `base` asset amount involved in the deal, otherwise the limit order `amount` is fully involved in the deal.
-    /// `base_amount_limit` cannot be greater then limit order `amount`.
+    /// If `base_amount_to_take` defined, it is used as `base` asset amount involved in the deal, otherwise the limit order `amount` is fully involved in the deal.
+    /// `base_amount_to_take` cannot be greater then limit order `amount`.
     ///
     /// If limit order is Buy - it means maker wants to buy and taker wants to sell `amount` of `base` asset for `quote` asset at the `price`
     /// In this case if order is executed, maker receives appropriate amount of `base` asset and taker receives appropriate amount of `quote` asset.
@@ -119,33 +119,26 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
     pub fn deal_amount(
         &self,
         role: MarketRole,
-        base_amount_limit: Option<OrderVolume>,
+        base_amount_to_take: Option<OrderVolume>,
     ) -> Result<OrderAmount, DispatchError> {
-        let base_amount = if let Some(base_amount) = base_amount_limit {
+        let base_amount = if let Some(base_amount) = base_amount_to_take {
             ensure!(base_amount <= self.amount, Error::<T>::InvalidOrderAmount);
             base_amount
         } else {
             self.amount
         };
 
-        let deal_amount = match role {
-            MarketRole::Maker => match self.side {
-                PriceVariant::Buy => OrderAmount::Base(base_amount),
-                PriceVariant::Sell => OrderAmount::Quote(
+        let deal_amount =
+            match (role, self.side) {
+                (MarketRole::Maker, PriceVariant::Buy)
+                | (MarketRole::Taker, PriceVariant::Sell) => OrderAmount::Base(base_amount),
+                (MarketRole::Maker, PriceVariant::Sell)
+                | (MarketRole::Taker, PriceVariant::Buy) => OrderAmount::Quote(
                     (FixedWrapper::from(self.price) * FixedWrapper::from(base_amount))
                         .try_into_balance()
                         .map_err(|_| Error::<T>::AmountCalculationFailed)?,
                 ),
-            },
-            MarketRole::Taker => match self.side {
-                PriceVariant::Buy => OrderAmount::Quote(
-                    (FixedWrapper::from(self.price) * FixedWrapper::from(base_amount))
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::AmountCalculationFailed)?,
-                ),
-                PriceVariant::Sell => OrderAmount::Base(base_amount),
-            },
-        };
+            };
 
         Ok(deal_amount)
     }
