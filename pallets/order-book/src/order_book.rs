@@ -199,7 +199,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::CancellationOfLimitOrdersIsForbidden
         );
 
-        self.cancel_limit_order_unchecked::<Unlocker, Scheduler>(order, data)
+        self.cancel_limit_order_unchecked::<Unlocker, Scheduler>(order, data, false)
     }
 
     pub fn cancel_all_limit_orders<Unlocker, Scheduler>(
@@ -215,7 +215,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let count = orders.len();
 
         for order in orders {
-            self.cancel_limit_order_unchecked::<Unlocker, Scheduler>(order, data)?;
+            self.cancel_limit_order_unchecked::<Unlocker, Scheduler>(order, data, false)?;
         }
 
         Ok(count)
@@ -368,10 +368,17 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         aligned
     }
 
+    /// ### `ignore_unschedule_error`
+    /// We might ignore error from `unschedule()` with `ignore_unschedule_error = true`.
+    ///
+    /// This is useful for expiration of orders where we want to use the universal interface
+    /// to remove an order. In such case the schedule already does not have the order, because
+    /// it is removed more efficiently than in `unschedule()`
     pub(crate) fn cancel_limit_order_unchecked<Unlocker, Scheduler>(
         &self,
         order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
+        ignore_unschedule_error: bool,
     ) -> Result<(), DispatchError>
     where
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
@@ -387,12 +394,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             lock_asset,
             lock_amount,
         )?;
+        let unschedule_result =
+            Scheduler::unschedule(order.expires_at, self.order_book_id, order.id);
+        if !ignore_unschedule_error {
+            unschedule_result?;
+        }
 
         data.delete_limit_order(&self.order_book_id, order.id)?;
 
-        // Unschedule should happen last because we expect it to fail
-        // when expiring orders
-        Scheduler::unschedule(order.expires_at, self.order_book_id, order.id)?;
         Ok(())
     }
 
