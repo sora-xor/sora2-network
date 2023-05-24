@@ -380,7 +380,7 @@ benchmarks! {
         let amount = balance!(100);
         let lifespan: MomentOf<T> = 10000u32.into();
         let now = <<T as Config>::Time as Time>::now();
-        let now_block = frame_system::Pallet::<T>::block_number();
+        let current_block = frame_system::Pallet::<T>::block_number();
 
         create_and_fill_order_book::<T>(order_book_id);
     }: {
@@ -414,7 +414,7 @@ benchmarks! {
             amount,
             now,
             lifespan,
-            now_block
+            current_block
         );
 
         assert_eq!(

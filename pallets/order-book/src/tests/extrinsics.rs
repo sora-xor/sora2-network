@@ -563,7 +563,7 @@ fn should_place_limit_order() {
         let amount = balance!(100);
         let lifespan = 10000;
         let now = 1234;
-        let now_block = frame_system::Pallet::<Runtime>::block_number();
+        let current_block = frame_system::Pallet::<Runtime>::block_number();
 
         Timestamp::set_timestamp(now);
 
@@ -597,7 +597,7 @@ fn should_place_limit_order() {
             amount,
             now,
             lifespan,
-            now_block,
+            current_block,
         );
 
         let appropriate_amount = expected_order.appropriate_amount().unwrap();
@@ -684,7 +684,7 @@ fn should_place_limit_order_with_nft() {
         let amount = balance!(1);
         let lifespan = 10000;
         let now = 1234;
-        let now_block = frame_system::Pallet::<Runtime>::block_number();
+        let current_block = frame_system::Pallet::<Runtime>::block_number();
 
         Timestamp::set_timestamp(now);
 
@@ -708,7 +708,7 @@ fn should_place_limit_order_with_nft() {
             amount,
             now,
             lifespan,
-            now_block,
+            current_block,
         );
 
         assert_eq!(

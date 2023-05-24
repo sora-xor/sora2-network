@@ -491,11 +491,11 @@ fn should_expire_order() {
         let amount = balance!(100);
         let lifespan = 10000;
         let now = 1234;
-        let now_block = frame_system::Pallet::<Runtime>::block_number();
+        let current_block = frame_system::Pallet::<Runtime>::block_number();
         // the lifespan of 10000 ms corresponds to at least
         // ceil(10000 / 6000) = 2 blocks of the order lifespan;
         // at this block the order should still be available
-        let end_of_lifespan_block = now_block + 2;
+        let end_of_lifespan_block = current_block + 2;
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
 
@@ -521,7 +521,7 @@ fn should_expire_order() {
             amount,
             now,
             lifespan,
-            now_block,
+            current_block,
         );
 
         assert_eq!(
@@ -562,11 +562,11 @@ fn should_cleanup_on_expiring() {
         let amount = balance!(100);
         let lifespan = 10000;
         let now = 1234;
-        let now_block = frame_system::Pallet::<Runtime>::block_number();
+        let current_block = frame_system::Pallet::<Runtime>::block_number();
         // the lifespan of 10000 ms corresponds to at least
         // ceil(10000 / 6000) = 2 blocks of the order lifespan;
         // at this block the order should still be available
-        let end_of_lifespan_block = now_block + 2;
+        let end_of_lifespan_block = current_block + 2;
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
 
@@ -602,7 +602,7 @@ fn should_cleanup_on_expiring() {
             amount,
             now,
             lifespan,
-            now_block,
+            current_block,
         );
 
         let appropriate_amount = expected_order.appropriate_amount().unwrap();
@@ -708,11 +708,11 @@ fn should_enforce_expiration_and_weight_limits() {
         let amount = balance!(100);
         let lifespan = 10000;
         let now = 1234;
-        let now_block = frame_system::Pallet::<Runtime>::block_number();
+        let current_block = frame_system::Pallet::<Runtime>::block_number();
         // the lifespan of 10000 ms corresponds to at least
         // ceil(10000 / 6000) = 2 blocks of the order lifespan;
         // at this block the order should still be available
-        let end_of_lifespan_block = now_block + 2;
+        let end_of_lifespan_block = current_block + 2;
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
 

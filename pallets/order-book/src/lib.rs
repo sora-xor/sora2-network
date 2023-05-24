@@ -358,9 +358,9 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Perform scheduled expirations
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(current_block: T::BlockNumber) -> Weight {
             let mut weight_counter = WeightMeter::from_limit(T::MaxExpirationWeightPerBlock::get());
-            Self::service(now, &mut weight_counter);
+            Self::service(current_block, &mut weight_counter);
             weight_counter.consumed
         }
     }
@@ -504,8 +504,8 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
             let order_id = order_book.next_order_id();
-            let now_time = T::Time::now();
-            let now_block = frame_system::Pallet::<T>::block_number();
+            let now = T::Time::now();
+            let current_block = frame_system::Pallet::<T>::block_number();
             let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFETIME);
             let order = LimitOrder::<T>::new(
                 order_id,
@@ -513,9 +513,9 @@ pub mod pallet {
                 side,
                 price,
                 amount,
-                now_time,
+                now,
                 lifespan,
-                now_block,
+                current_block,
             );
 
             let mut data = CacheDataLayer::<T>::new();

@@ -74,9 +74,9 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         amount: OrderVolume,
         time: MomentOf<T>,
         lifespan: MomentOf<T>,
-        now: BlockNumberFor<T>,
+        current_block: BlockNumberFor<T>,
     ) -> Self {
-        let expires_at = Self::resolve_lifespan(now, lifespan);
+        let expires_at = Self::resolve_lifespan(current_block, lifespan);
         Self {
             id: id,
             owner: owner,
@@ -92,7 +92,10 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
 
     /// Returns block number at which to expire the order.
     /// Aims to expire no earlier than provided lifespan (in ms)
-    fn resolve_lifespan(now: BlockNumberFor<T>, lifespan: MomentOf<T>) -> BlockNumberFor<T> {
+    fn resolve_lifespan(
+        current_block: BlockNumberFor<T>,
+        lifespan: MomentOf<T>,
+    ) -> BlockNumberFor<T> {
         let lifespan = lifespan.saturated_into::<u64>();
         let millis_per_block: u64 = T::MILLISECS_PER_BLOCK.saturated_into::<u64>();
         // ceil (a/b) = (a + b - 1) / b
@@ -107,7 +110,7 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         // the order at the second block, we need to expire it at the initialization of block 3.
         lifespan_blocks += 1;
         let lifespan = lifespan_blocks.saturated_into::<BlockNumberFor<T>>();
-        now.saturating_add(lifespan)
+        current_block.saturating_add(lifespan)
     }
 
     pub fn ensure_valid(&self) -> Result<(), DispatchError> {

@@ -144,24 +144,24 @@ impl<T: Config>
     ExpirationScheduler<T::BlockNumber, OrderBookId<AssetIdOf<T>>, T::OrderId, DispatchError>
     for Pallet<T>
 {
-    fn service(now: T::BlockNumber, weight: &mut WeightMeter) {
+    fn service(current_block: T::BlockNumber, weight: &mut WeightMeter) {
         if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
             return;
         }
 
-        let mut incomplete_since = now + One::one();
-        let mut when = IncompleteExpirationsSince::<T>::take().unwrap_or(now);
+        let mut incomplete_since = current_block + One::one();
+        let mut when = IncompleteExpirationsSince::<T>::take().unwrap_or(current_block);
 
         let service_block_base_weight = <T as Config>::WeightInfo::service_block_base();
         let mut data_layer = CacheDataLayer::<T>::new();
-        while when <= now && weight.can_accrue(service_block_base_weight) {
+        while when <= current_block && weight.can_accrue(service_block_base_weight) {
             if !Self::service_block(&mut data_layer, when, weight) {
                 incomplete_since = incomplete_since.min(when);
             }
             when.saturating_inc();
         }
         incomplete_since = incomplete_since.min(when);
-        if incomplete_since <= now {
+        if incomplete_since <= current_block {
             IncompleteExpirationsSince::<T>::put(incomplete_since);
         }
         data_layer.commit();
