@@ -39,7 +39,7 @@ pub mod pallet {
     use crate::events::BatchDispatched;
     use bridge_types::traits::{AppRegistry, GasTracker, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::MessageStatus;
-    use bridge_types::{GenericNetworkId, Log, H256};
+    use bridge_types::{GenericNetworkId, GenericTimepoint, Log, H256};
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -270,7 +270,7 @@ pub mod pallet {
                     network_id,
                     message_id,
                     message_status,
-                    None,
+                    GenericTimepoint::Unknown,
                 );
             }
 

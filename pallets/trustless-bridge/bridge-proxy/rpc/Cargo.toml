@@ -1,5 +1,5 @@
 [package]
-name = "evm-bridge-proxy-rpc"
+name = "bridge-proxy-rpc"
 version = "0.1.0"
 edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
@@ -21,6 +21,6 @@ sp-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
-evm-bridge-proxy-runtime-api = { path = "../runtime-api" }
+bridge-proxy-runtime-api = { path = "../runtime-api" }
 common = { path = "../../../../common" }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }

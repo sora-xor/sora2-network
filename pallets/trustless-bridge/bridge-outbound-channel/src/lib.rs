@@ -72,6 +72,7 @@ pub mod pallet {
     use bridge_types::types::MessageId;
     use bridge_types::types::MessageStatus;
     use bridge_types::GenericNetworkId;
+    use bridge_types::GenericTimepoint;
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -255,7 +256,7 @@ pub mod pallet {
                             GenericNetworkId::EVM(network_id),
                             Self::make_message_id(batch_nonce, i as u64),
                             MessageStatus::Committed,
-                            None,
+                            GenericTimepoint::Pending,
                         );
                     }
 

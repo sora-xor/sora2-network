@@ -30,7 +30,7 @@
 
 use bridge_types::{
     types::{BridgeAppInfo, BridgeAssetInfo},
-    EVMChainId, U256,
+    GenericNetworkId,
 };
 use codec::{Codec, Decode, Encode};
 
@@ -47,79 +47,38 @@ use sp_runtime::traits::Block as BlockT;
 
 use std::sync::Arc;
 
-pub use evm_bridge_proxy_runtime_api::EvmBridgeProxyAPI as EvmBridgeProxyRuntimeAPI;
+pub use bridge_proxy_runtime_api::BridgeProxyAPI as BridgeProxyRuntimeAPI;
 
 #[derive(Eq, PartialEq, Encode, Decode, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-pub struct AppsWithSupportedAssets<AssetId> {
+pub struct AppsWithSupportedAssets {
     apps: Vec<BridgeAppInfo>,
-    assets: Vec<BridgeAssetInfo<AssetId>>,
-}
-
-#[derive(Eq, PartialEq, Encode, Decode, Debug)]
-pub struct NetworkIdWrapper(pub EVMChainId);
-
-impl<'de> Deserialize<'de> for NetworkIdWrapper {
-    fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let network_id = String::deserialize(deserializer)?;
-        if network_id.starts_with("0x") {
-            let network_id =
-                U256::from_str_radix(&network_id[2..], 16).map_err(serde::de::Error::custom)?;
-            Ok(NetworkIdWrapper(network_id))
-        } else {
-            let network_id =
-                U256::from_str_radix(&network_id, 10).map_err(serde::de::Error::custom)?;
-            Ok(NetworkIdWrapper(network_id))
-        }
-    }
-}
-
-impl Serialize for NetworkIdWrapper {
-    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        self.0.serialize(serializer)
-    }
+    assets: Vec<BridgeAssetInfo>,
 }
 
 #[rpc(server, client)]
-pub trait EvmBridgeProxyAPI<BlockHash, AssetId>
+pub trait BridgeProxyAPI<BlockHash, AssetId>
 where
     BlockHash: Codec,
     AssetId: Codec + Serialize,
 {
-    #[method(name = "evmBridgeProxy_listApps")]
-    fn list_apps(
-        &self,
-        network_id: NetworkIdWrapper,
-        at: Option<BlockHash>,
-    ) -> Result<Vec<BridgeAppInfo>>;
+    #[method(name = "bridgeProxy_listApps")]
+    fn list_apps(&self, at: Option<BlockHash>) -> Result<Vec<BridgeAppInfo>>;
 
-    #[method(name = "evmBridgeProxy_listAssets")]
+    #[method(name = "bridgeProxy_listAssets")]
     fn list_supported_assets(
         &self,
-        network_id: NetworkIdWrapper,
+        network_id: GenericNetworkId,
         at: Option<BlockHash>,
-    ) -> Result<Vec<BridgeAssetInfo<AssetId>>>;
-
-    #[method(name = "evmBridgeProxy_listAppsWithSupportedAssets")]
-    fn list_apps_with_supported_assets(
-        &self,
-        network_id: NetworkIdWrapper,
-        at: Option<BlockHash>,
-    ) -> Result<AppsWithSupportedAssets<AssetId>>;
+    ) -> Result<Vec<BridgeAssetInfo>>;
 }
 
-pub struct EvmBridgeProxyClient<C, B> {
+pub struct BridgeProxyClient<C, B> {
     client: Arc<C>,
     _marker: std::marker::PhantomData<B>,
 }
 
-impl<C, B> EvmBridgeProxyClient<C, B> {
+impl<C, B> BridgeProxyClient<C, B> {
     /// Construct default `Template`.
     pub fn new(client: Arc<C>) -> Self {
         Self {
@@ -129,50 +88,30 @@ impl<C, B> EvmBridgeProxyClient<C, B> {
     }
 }
 
-impl<C, Block, AssetId> EvmBridgeProxyAPIServer<<Block as BlockT>::Hash, AssetId>
-    for EvmBridgeProxyClient<C, Block>
+impl<C, Block, AssetId> BridgeProxyAPIServer<<Block as BlockT>::Hash, AssetId>
+    for BridgeProxyClient<C, Block>
 where
     Block: BlockT,
     AssetId: Codec + Serialize + Clone,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: EvmBridgeProxyRuntimeAPI<Block, AssetId>,
+    C::Api: BridgeProxyRuntimeAPI<Block, AssetId>,
 {
-    fn list_apps(
-        &self,
-        network_id: NetworkIdWrapper,
-        at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<BridgeAppInfo>> {
+    fn list_apps(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<BridgeAppInfo>> {
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let api = self.client.runtime_api();
-        api.list_apps(&at, network_id.0)
+        api.list_apps(&at)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn list_supported_assets(
         &self,
-        network_id: NetworkIdWrapper,
+        network_id: GenericNetworkId,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<BridgeAssetInfo<AssetId>>> {
+    ) -> Result<Vec<BridgeAssetInfo>> {
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let api = self.client.runtime_api();
-        api.list_supported_assets(&at, network_id.0)
+        api.list_supported_assets(&at, network_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
-    }
-
-    fn list_apps_with_supported_assets(
-        &self,
-        network_id: NetworkIdWrapper,
-        at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<AppsWithSupportedAssets<AssetId>> {
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        let api = self.client.runtime_api();
-        let assets = api
-            .list_supported_assets(&at, network_id.0)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?;
-        let apps = api
-            .list_apps(&at, network_id.0)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?;
-        Ok(AppsWithSupportedAssets { apps, assets })
     }
 }

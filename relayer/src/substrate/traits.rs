@@ -196,6 +196,7 @@ impl SenderConfig for ParachainConfig {
             GenericNetworkId::EVM(_chain_id) => {
                 unimplemented!("Bridge from parachain to EVM network is supported")
             }
+            GenericNetworkId::EVMLegacy(_) => unimplemented!(),
         }
     }
 
@@ -266,6 +267,7 @@ impl SenderConfig for MainnetConfig {
             GenericNetworkId::EVM(chain_id) => mainnet_runtime::storage()
                 .bridge_outbound_channel()
                 .channel_nonces(chain_id),
+            GenericNetworkId::EVMLegacy(_) => unimplemented!(),
         }
     }
 

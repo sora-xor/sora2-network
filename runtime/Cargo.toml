@@ -43,8 +43,8 @@ migration-app = { path = "../pallets/trustless-bridge/migration-app", default-fe
 erc20-app = { path = "../pallets/trustless-bridge/erc20-app", default-features = false, optional = true }
 leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-evm-bridge-proxy = { path = "../pallets/trustless-bridge/evm-bridge-proxy", default-features = false, optional = true }
-evm-bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/evm-bridge-proxy/runtime-api", default-features = false, optional = true }
+bridge-proxy = { path = "../pallets/trustless-bridge/bridge-proxy", default-features = false, optional = true }
+bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/bridge-proxy/runtime-api", default-features = false, optional = true }
 substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
@@ -208,8 +208,8 @@ std = [
     "erc20-app/std",
     "leaf-provider/std",
     "leaf-provider-runtime-api/std",
-    "evm-bridge-proxy/std",
-    "evm-bridge-proxy-runtime-api/std",
+    "bridge-proxy/std",
+    "bridge-proxy-runtime-api/std",
     "substrate-bridge-app/std",
     "substrate-bridge-channel/std",
     "bridge-data-signer/std",
@@ -314,8 +314,8 @@ wip = [
     "erc20-app",
     "leaf-provider",
     "leaf-provider-runtime-api",
-    "evm-bridge-proxy",
-    "evm-bridge-proxy-runtime-api",
+    "bridge-proxy",
+    "bridge-proxy-runtime-api",
     "substrate-bridge-app",
     "substrate-bridge-channel",
     "pallet-beefy",
@@ -349,7 +349,7 @@ runtime-benchmarks = [
     "migration-app/runtime-benchmarks",
     "erc20-app/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
-    "evm-bridge-proxy/runtime-benchmarks",
+    "bridge-proxy/runtime-benchmarks",
     "substrate-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
     "farming/runtime-benchmarks",
@@ -415,7 +415,7 @@ try-runtime = [
     "migration-app/try-runtime",
     "erc20-app/try-runtime",
     "leaf-provider/try-runtime",
-    "evm-bridge-proxy/try-runtime",
+    "bridge-proxy/try-runtime",
     "substrate-bridge-app/try-runtime",
     "substrate-bridge-channel/try-runtime",
     "bridge-types/try-runtime",
