@@ -344,10 +344,7 @@ pub mod pallet {
                 Error::<T>::OrderBookAlreadyExists
             );
 
-            let order_book = if T::AssetInfoProvider::get_asset_info(&order_book_id.base).2 != 0 {
-                // regular asset
-                OrderBook::<T>::default(order_book_id, dex_id)
-            } else {
+            let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
                 // nft
                 // ensure the user has nft
                 ensure!(
@@ -356,6 +353,9 @@ pub mod pallet {
                     Error::<T>::UserHasNoNft
                 );
                 OrderBook::<T>::default_nft(order_book_id, dex_id)
+            } else {
+                // regular asset
+                OrderBook::<T>::default(order_book_id, dex_id)
             };
 
             #[cfg(feature = "wip")] // order-book

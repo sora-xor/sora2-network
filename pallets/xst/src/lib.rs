@@ -173,7 +173,7 @@ pub mod pallet {
 
             Assets::<T>::ensure_asset_exists(&reference_asset_id)?;
             ensure!(
-                Assets::<T>::get_asset_info(&reference_asset_id).2 != 0,
+                !Assets::<T>::is_non_divisible(&reference_asset_id),
                 Error::<T>::IndivisibleReferenceAsset
             );
 

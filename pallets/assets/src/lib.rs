@@ -1003,6 +1003,10 @@ impl<T: Config>
         )
     }
 
+    fn is_non_divisible(asset_id: &T::AssetId) -> bool {
+        AssetInfos::<T>::get(asset_id).2 == 0
+    }
+
     fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {
         AssetInfos::<T>::get(asset_id).4
     }

@@ -890,6 +890,8 @@ pub trait AssetInfoProvider<
         Option<Description>,
     );
 
+    fn is_non_divisible(asset_id: &AssetId) -> bool;
+
     fn get_asset_content_src(asset_id: &AssetId) -> Option<ContentSource>;
 
     fn get_asset_description(asset_id: &AssetId) -> Option<Description>;
@@ -934,6 +936,10 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
         Option<ContentSource>,
         Option<Description>,
     ) {
+        unimplemented!()
+    }
+
+    fn is_non_divisible(_asset_id: &AssetId) -> bool {
         unimplemented!()
     }
 
