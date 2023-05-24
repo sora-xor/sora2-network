@@ -35,7 +35,6 @@ use assets::AssetIdOf;
 use common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
-use common::weights::check_accrue_n;
 #[cfg(feature = "wip")] // order-book
 use common::LiquiditySourceType;
 use common::{
@@ -49,8 +48,8 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, One, Zero};
-use sp_runtime::{BoundedVec, Perbill, Saturating};
+use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
+use sp_runtime::{BoundedVec, Perbill};
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -65,6 +64,7 @@ pub mod cache_data_layer;
 mod limit_order;
 mod market_order;
 mod order_book;
+mod scheduler;
 pub mod storage_data_layer;
 pub mod traits;
 pub mod types;
@@ -73,7 +73,7 @@ pub use crate::order_book::{OrderBook, OrderBookStatus};
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
-pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer};
+pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer, ExpirationScheduler};
 pub use types::{
     DealInfo, MarketSide, OrderAmount, OrderBookId, OrderPrice, OrderVolume, PriceOrders,
     UserOrders,
@@ -524,8 +524,7 @@ pub mod pallet {
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
-            Self::schedule(expires_at, order_book_id, order_id)
-                .map_err(|e| <ScheduleError as Into<Error<T>>>::into(e))?;
+            Self::schedule(expires_at, order_book_id, order_id)?;
             Self::deposit_event(Event::<T>::OrderPlaced {
                 order_book_id,
                 dex_id,
@@ -554,8 +553,7 @@ pub mod pallet {
             let dex_id = order_book.dex_id;
 
             order_book.cancel_limit_order::<Self>(order, &mut data)?;
-            Self::unschedule(expires_at, order_book_id, order_id)
-                .map_err(|e| <UnscheduleError as Into<Error<T>>>::into(e))?;
+            Self::unschedule(expires_at, order_book_id, order_id)?;
             data.commit();
             Self::deposit_event(Event::<T>::OrderCanceled {
                 order_book_id,
@@ -657,198 +655,6 @@ impl<T: Config> Pallet<T> {
         };
 
         Some(order_book_id)
-    }
-}
-
-pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, ScheduleError, UnscheduleError> {
-    fn service(now: BlockNumber, weight: &mut WeightMeter);
-    fn schedule(
-        when: BlockNumber,
-        order_book_id: OrderBookId,
-        order_id: OrderId,
-    ) -> Result<(), ScheduleError>;
-    fn unschedule(
-        when: BlockNumber,
-        order_book_id: OrderBookId,
-        order_id: OrderId,
-    ) -> Result<(), UnscheduleError>;
-}
-
-impl<T: Config> Pallet<T> {
-    fn service_single_expiration(
-        data_layer: &mut CacheDataLayer<T>,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order_id: &T::OrderId,
-    ) {
-        let order = match data_layer.get_limit_order(order_book_id, order_id) {
-            Ok(o) => o,
-            Err(error) => {
-                // in `debug` environment will panic
-                debug_assert!(
-                    false,
-                    "apparently removal of order book or order did not cleanup expiration schedule"
-                );
-                // in `release` will emit event
-                Self::deposit_event(Event::<T>::ExpirationFailure {
-                    order_book_id: order_book_id.clone(),
-                    order_id: order_id.clone(),
-                    error,
-                });
-                return;
-            }
-        };
-        let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
-            debug_assert!(false, "apparently removal of order book did not cleanup expiration schedule");
-            Self::deposit_event(Event::<T>::ExpirationFailure {
-                order_book_id: order_book_id.clone(),
-                order_id: order_id.clone(),
-                error: Error::<T>::UnknownOrderBook.into(),
-            });
-            return;
-        };
-
-        if let Err(error) = order_book.cancel_limit_order_unchecked::<Self>(order, data_layer) {
-            debug_assert!(
-                false,
-                "expiration resulted in error, this must not happen: {:?}",
-                error
-            );
-            Self::deposit_event(Event::<T>::ExpirationFailure {
-                order_book_id: order_book_id.clone(),
-                order_id: order_id.clone(),
-                error,
-            });
-        }
-    }
-
-    /// Expire orders that are scheduled to expire at `block`.
-    /// `weight` is used to track weight spent on the expirations, so that
-    /// it doesn't accidentally spend weight of the entire block (or even more).
-    ///
-    /// Returns `true` if all expirations were processed and `false` if some expirations
-    /// need to be retried when more weight is available.
-    fn service_block(
-        data_layer: &mut CacheDataLayer<T>,
-        block: T::BlockNumber,
-        weight: &mut WeightMeter,
-    ) -> bool {
-        if !weight.check_accrue(<T as Config>::WeightInfo::service_block_base()) {
-            return false;
-        }
-
-        let mut expirations = <ExpirationsAgenda<T>>::take(block);
-        if expirations.is_empty() {
-            return true;
-        }
-        // how many we can service with remaining weight;
-        // the weight is consumed right away
-        let to_service = check_accrue_n(
-            weight,
-            <T as Config>::WeightInfo::service_single_expiration(),
-            expirations.len() as u64,
-        );
-        let postponed = expirations.len() as u64 - to_service;
-        let mut serviced = 0;
-        while let Some((order_book_id, order_id)) = expirations.last() {
-            if serviced >= to_service {
-                break;
-            }
-            Self::service_single_expiration(data_layer, order_book_id, order_id);
-            serviced += 1;
-            expirations.pop();
-        }
-        if postponed != 0 {
-            // Will later continue from this block
-            <ExpirationsAgenda<T>>::insert(block, expirations);
-        }
-        postponed == 0
-    }
-}
-
-#[derive(Debug)]
-pub enum ScheduleError {
-    /// Expiration schedule for this block is full
-    BlockScheduleFull,
-}
-
-impl<T: Config> Into<Error<T>> for ScheduleError {
-    fn into(self) -> Error<T> {
-        match self {
-            ScheduleError::BlockScheduleFull => Error::<T>::BlockScheduleFull,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum UnscheduleError {
-    /// Could not find expiration in given block schedule
-    ExpirationNotFound,
-}
-
-impl<T: Config> Into<Error<T>> for UnscheduleError {
-    fn into(self) -> Error<T> {
-        match self {
-            UnscheduleError::ExpirationNotFound => Error::<T>::ExpirationNotFound,
-        }
-    }
-}
-
-impl<T: Config>
-    ExpirationScheduler<
-        T::BlockNumber,
-        OrderBookId<AssetIdOf<T>>,
-        T::OrderId,
-        ScheduleError,
-        UnscheduleError,
-    > for Pallet<T>
-{
-    fn service(now: T::BlockNumber, weight: &mut WeightMeter) {
-        if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
-            return;
-        }
-
-        let mut incomplete_since = now + One::one();
-        let mut when = IncompleteExpirationsSince::<T>::take().unwrap_or(now);
-
-        let service_block_base_weight = <T as Config>::WeightInfo::service_block_base();
-        let mut data_layer = CacheDataLayer::<T>::new();
-        while when <= now && weight.can_accrue(service_block_base_weight) {
-            if !Self::service_block(&mut data_layer, when, weight) {
-                incomplete_since = incomplete_since.min(when);
-            }
-            when.saturating_inc();
-        }
-        incomplete_since = incomplete_since.min(when);
-        if incomplete_since <= now {
-            IncompleteExpirationsSince::<T>::put(incomplete_since);
-        }
-        data_layer.commit();
-    }
-
-    fn schedule(
-        when: T::BlockNumber,
-        order_book_id: OrderBookId<AssetIdOf<T>>,
-        order_id: T::OrderId,
-    ) -> Result<(), ScheduleError> {
-        <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
-            block_expirations
-                .try_push((order_book_id, order_id))
-                .map_err(|_| ScheduleError::BlockScheduleFull)
-        })
-    }
-
-    fn unschedule(
-        when: T::BlockNumber,
-        order_book_id: OrderBookId<AssetIdOf<T>>,
-        order_id: T::OrderId,
-    ) -> Result<(), UnscheduleError> {
-        <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
-            let Some(remove_index) = block_expirations.iter().position(|next| next == &(order_book_id, order_id)) else {
-                return Err(UnscheduleError::ExpirationNotFound);
-            };
-            block_expirations.remove(remove_index);
-            Ok(())
-        })
     }
 }
 

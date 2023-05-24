@@ -32,7 +32,7 @@ use crate::{
     Config, LimitOrder, MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders,
 };
 use assets::AssetIdOf;
-use frame_support::sp_runtime::DispatchError;
+use frame_support::{sp_runtime::DispatchError, weights::WeightMeter};
 use sp_std::vec::Vec;
 
 /// This trait is used by Order Book as a storage to get limit orders and their derived data and to change them
@@ -137,5 +137,19 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
         order_book_id: OrderBookId<AssetId>,
         asset_id: &AssetId,
         amount: OrderVolume,
+    ) -> Result<(), Error>;
+}
+
+pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
+    fn service(now: BlockNumber, weight: &mut WeightMeter);
+    fn schedule(
+        when: BlockNumber,
+        order_book_id: OrderBookId,
+        order_id: OrderId,
+    ) -> Result<(), Error>;
+    fn unschedule(
+        when: BlockNumber,
+        order_book_id: OrderBookId,
+        order_id: OrderId,
     ) -> Result<(), Error>;
 }

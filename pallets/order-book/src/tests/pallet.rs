@@ -484,11 +484,7 @@ fn should_expire_order() {
             quote: XOR.into(),
         };
 
-        assert_ok!(OrderBookPallet::create_orderbook(
-            RawOrigin::Signed(bob()).into(),
-            DEX.into(),
-            order_book_id
-        ));
+        create_empty_order_book(order_book_id);
         fill_balance(caller.clone(), order_book_id);
 
         let price = balance!(10);
@@ -559,11 +555,7 @@ fn should_cleanup_on_expiring() {
             quote: XOR.into(),
         };
 
-        assert_ok!(OrderBookPallet::create_orderbook(
-            RawOrigin::Signed(bob()).into(),
-            DEX.into(),
-            order_book_id
-        ));
+        create_empty_order_book(order_book_id);
         fill_balance(caller.clone(), order_book_id);
 
         let price = balance!(10);
@@ -710,11 +702,7 @@ fn should_enforce_expiration_and_weight_limits() {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        assert_ok!(OrderBookPallet::create_orderbook(
-            RawOrigin::Signed(bob()).into(),
-            DEX.into(),
-            order_book_id
-        ));
+        create_empty_order_book(order_book_id);
 
         let price = balance!(10);
         let amount = balance!(100);
