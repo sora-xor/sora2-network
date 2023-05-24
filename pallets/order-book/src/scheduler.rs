@@ -58,7 +58,8 @@ impl<T: Config> Pallet<T> {
                 // in `debug` environment will panic
                 debug_assert!(
                     false,
-                    "apparently removal of order book or order did not cleanup expiration schedule"
+                    "apparently removal of order book or order did not cleanup expiration schedule; \
+                    order {:?} is set to expire but we cannot retrieve it: {:?}", order_id, error
                 );
                 // in `release` will emit event
                 Self::deposit_event(Event::<T>::ExpirationFailure {
@@ -70,7 +71,8 @@ impl<T: Config> Pallet<T> {
             }
         };
         let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
-            debug_assert!(false, "apparently removal of order book did not cleanup expiration schedule");
+            debug_assert!(false, "apparently removal of order book did not cleanup expiration schedule; \
+                order {:?} is set to expire but corresponding order book {:?} is not found", order_id, order_book_id);
             Self::deposit_event(Event::<T>::ExpirationFailure {
                 order_book_id: order_book_id.clone(),
                 order_id: order_id.clone(),
@@ -85,8 +87,8 @@ impl<T: Config> Pallet<T> {
         {
             debug_assert!(
                 false,
-                "expiration resulted in error, this must not happen: {:?}",
-                error
+                "expiration of order {:?} resulted in error: {:?}",
+                order_id, error
             );
             Self::deposit_event(Event::<T>::ExpirationFailure {
                 order_book_id: order_book_id.clone(),

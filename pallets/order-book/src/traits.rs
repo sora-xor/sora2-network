@@ -114,7 +114,6 @@ where
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>>;
 }
 
-// todo: make pub(tests) (k.ivanov)
 pub trait CurrencyLocker<AccountId, AssetId, DEXId, Error> {
     /// Lock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
@@ -127,7 +126,6 @@ pub trait CurrencyLocker<AccountId, AssetId, DEXId, Error> {
     ) -> Result<(), Error>;
 }
 
-// todo: make pub(tests) (k.ivanov)
 pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
     /// Unlock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.

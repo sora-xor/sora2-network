@@ -30,6 +30,8 @@
 
 #![cfg(feature = "wip")] // order-book
 
+use core::cmp::min;
+
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, SwapOutcome};
@@ -44,9 +46,10 @@ use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
     self, Config, CurrencyLocker, CurrencyUnlocker, ExpirationScheduler, LimitOrder, OrderBook,
-    OrderBookId, OrderBookStatus,
+    OrderBookId, OrderBookStatus, WeightInfo,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
+use sp_runtime::traits::UniqueSaturatedInto;
 
 #[test]
 fn should_register_technical_account() {
@@ -702,7 +705,7 @@ fn should_enforce_expiration_and_weight_limits() {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book(order_book_id);
 
         let price = balance!(10);
         let amount = balance!(100);
@@ -722,6 +725,8 @@ fn should_enforce_expiration_and_weight_limits() {
         for i in 0..max_orders_expire_at_block {
             // in order to avoid cap on orders from single account
             let caller = generate_account(i);
+            // in order to avoid cap on orders for a single price
+            let price = price + order_book.tick_size * i as u128;
             fill_balance(caller.clone(), order_book_id);
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
@@ -752,9 +757,15 @@ fn should_enforce_expiration_and_weight_limits() {
             assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_some());
         }
 
+        let weight_left_for_single_expiration = <Runtime as Config>::MaxExpirationWeightPerBlock::get() - <Runtime as Config>::WeightInfo::service_base() - <Runtime as Config>::WeightInfo::service_block_base();
+        let max_expired_per_block: u64 = min(
+            weight_left_for_single_expiration.ref_time() / <Runtime as Config>::WeightInfo::service_single_expiration().ref_time(),
+            weight_left_for_single_expiration.proof_size() / <Runtime as Config>::WeightInfo::service_single_expiration().proof_size()
+        );
         // Check a bit after the expected expiration because it's ok to remove
-        // it a few blocks later (e.g. in case weight limit is reached, for example)
-        for i in 0..=10 {
+        // it a few blocks later (due to rounding up)
+        let blocks_needed: u32 = (placed_orders.len() as u64 / max_expired_per_block + 2).unique_saturated_into();
+        for i in 0..=blocks_needed {
             // Weight spent must not exceed the limit
             let init_weight_consumed = run_to_block(end_of_lifespan_block + i);
             // Weight does not have partial ordering, so we check for overflow this way:
