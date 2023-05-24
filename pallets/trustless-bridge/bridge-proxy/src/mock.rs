@@ -31,7 +31,7 @@
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
-use bridge_types::traits::AppRegistry;
+use bridge_types::traits::{AppRegistry, TimepointProvider};
 use bridge_types::types::{AdditionalEVMInboundData, AssetKind, CallOriginOutput, MessageId};
 use bridge_types::H160;
 use bridge_types::H256;
@@ -317,10 +317,21 @@ impl erc20_app::Config for Test {
     type WeightInfo = ();
 }
 
+pub struct GenericTimepointProvider;
+
+impl TimepointProvider for GenericTimepointProvider {
+    fn get_timepoint() -> bridge_types::GenericTimepoint {
+        bridge_types::GenericTimepoint::Sora(System::block_number() as u32)
+    }
+}
+
 impl proxy::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type EthApp = EthApp;
     type ERC20App = ERC20App;
+    type SubstrateApp = ();
+    type HashiBridge = ();
+    type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
 
