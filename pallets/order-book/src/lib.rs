@@ -232,6 +232,13 @@ pub mod pallet {
             count_of_canceled_orders: u32,
         },
 
+        /// Order book status is changed
+        OrderBookStatusChanged {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            new_status: OrderBookStatus,
+        },
+
         /// Order book attributes are updated by Council
         OrderBookUpdated {
             order_book_id: OrderBookId<AssetIdOf<T>>,
@@ -429,12 +436,21 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::change_orderbook_status())]
         pub fn change_orderbook_status(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<AssetIdOf<T>>,
-            _status: OrderBookStatus,
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            status: OrderBookStatus,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            // todo (m.tagirov)
-            todo!()
+            let mut order_book =
+                <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+            let dex_id = order_book.dex_id;
+            order_book.status = status;
+            <OrderBooks<T>>::set(order_book_id, Some(order_book));
+            Self::deposit_event(Event::<T>::OrderBookStatusChanged {
+                order_book_id,
+                dex_id,
+                new_status: status,
+            });
+            Ok(().into())
         }
 
         #[pallet::call_index(4)]
