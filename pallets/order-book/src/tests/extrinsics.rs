@@ -40,7 +40,7 @@ use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{Config, LimitOrder, OrderBook, OrderBookId};
+use framenode_runtime::order_book::{Config, LimitOrder, OrderBook, OrderBookId, OrderBookStatus};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use hex_literal::hex;
 use sp_core::Get;
@@ -522,6 +522,105 @@ fn should_delete_order_book_with_a_lot_of_orders() {
             RuntimeOrigin::root(),
             order_book_id
         ));
+    });
+}
+
+#[test]
+fn should_not_change_order_book_status_by_not_root_origin() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        assert_err!(
+            OrderBookPallet::change_orderbook_status(
+                RawOrigin::Signed(alice()).into(),
+                order_book_id,
+                OrderBookStatus::Trade
+            ),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn should_not_change_status_of_unknown_order_book() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        assert_err!(
+            OrderBookPallet::change_orderbook_status(
+                RuntimeOrigin::root(),
+                order_book_id,
+                OrderBookStatus::Trade
+            ),
+            E::UnknownOrderBook
+        );
+    });
+}
+
+#[test]
+fn should_change_order_book_status() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(order_book_id);
+
+        assert_eq!(
+            OrderBookPallet::order_books(order_book_id).unwrap().status,
+            OrderBookStatus::Trade
+        );
+
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RuntimeOrigin::root(),
+            order_book_id,
+            OrderBookStatus::Stop
+        ));
+
+        assert_eq!(
+            OrderBookPallet::order_books(order_book_id).unwrap().status,
+            OrderBookStatus::Stop
+        );
+
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RuntimeOrigin::root(),
+            order_book_id,
+            OrderBookStatus::OnlyCancel
+        ));
+
+        assert_eq!(
+            OrderBookPallet::order_books(order_book_id).unwrap().status,
+            OrderBookStatus::OnlyCancel
+        );
+
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RuntimeOrigin::root(),
+            order_book_id,
+            OrderBookStatus::PlaceAndCancel
+        ));
+
+        assert_eq!(
+            OrderBookPallet::order_books(order_book_id).unwrap().status,
+            OrderBookStatus::PlaceAndCancel
+        );
+
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RuntimeOrigin::root(),
+            order_book_id,
+            OrderBookStatus::Trade
+        ));
+
+        assert_eq!(
+            OrderBookPallet::order_books(order_book_id).unwrap().status,
+            OrderBookStatus::Trade
+        );
     });
 }
 

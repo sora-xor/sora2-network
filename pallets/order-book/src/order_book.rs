@@ -30,7 +30,7 @@
 
 use crate::{
     CurrencyLocker, CurrencyUnlocker, DataLayer, DealInfo, Error, LimitOrder, OrderAmount,
-    OrderBookId, OrderPrice, OrderVolume,
+    OrderBookId, OrderBookStatus, OrderPrice, OrderVolume,
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -42,23 +42,6 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
 use sp_runtime::traits::{One, Zero};
 use sp_std::ops::Add;
-
-#[derive(
-    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
-)]
-pub enum OrderBookStatus {
-    /// All operations are allowed.
-    Trade,
-
-    /// Users can place and cancel limit order, but trading is forbidden.
-    PlaceAndCancel,
-
-    /// Users can only cancel their limit orders. Placement and trading are forbidden.
-    OnlyCancel,
-
-    /// All operations with order book are forbidden. Current limit orders are frozen and users cannot cancel them.
-    Stop,
-}
 
 #[derive(Encode, Decode, PartialEq, Eq, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]

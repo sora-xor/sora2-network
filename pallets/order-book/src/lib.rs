@@ -67,14 +67,14 @@ pub mod storage_data_layer;
 pub mod traits;
 pub mod types;
 
-pub use crate::order_book::{OrderBook, OrderBookStatus};
+pub use crate::order_book::OrderBook;
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer};
 pub use types::{
-    DealInfo, MarketSide, OrderAmount, OrderBookId, OrderPrice, OrderVolume, PriceOrders,
-    UserOrders,
+    DealInfo, MarketSide, OrderAmount, OrderBookId, OrderBookStatus, OrderPrice, OrderVolume,
+    PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
