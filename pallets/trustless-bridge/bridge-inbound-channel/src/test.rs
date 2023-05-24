@@ -16,7 +16,7 @@ use sp_std::marker::PhantomData;
 
 use bridge_types::traits::{AppRegistry, MessageDispatch, OutboundChannel};
 use bridge_types::types::Proof;
-use bridge_types::{GenericNetworkId, Log, H160, H256, U256};
+use bridge_types::{GenericNetworkId, GenericTimepoint, Log, H160, H256, U256};
 
 use common::mock::ExistentialDeposits;
 use common::{
@@ -184,7 +184,14 @@ pub struct MockMessageDispatch;
 impl MessageDispatch<Test, EVMChainId, MessageId, AdditionalEVMInboundData>
     for MockMessageDispatch
 {
-    fn dispatch(_: EVMChainId, _: MessageId, _: u64, _: &[u8], _: AdditionalEVMInboundData) {}
+    fn dispatch(
+        _: EVMChainId,
+        _: MessageId,
+        _: GenericTimepoint,
+        _: &[u8],
+        _: AdditionalEVMInboundData,
+    ) {
+    }
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(

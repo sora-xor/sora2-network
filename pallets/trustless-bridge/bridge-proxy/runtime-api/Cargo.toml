@@ -1,5 +1,5 @@
 [package]
-name = "evm-bridge-proxy-runtime-api"
+name = "bridge-proxy-runtime-api"
 version = "0.1.0"
 edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
