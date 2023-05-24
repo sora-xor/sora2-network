@@ -36,6 +36,7 @@ use crate::mock::{
 };
 use crate::{BridgeRequest, Transactions};
 use bridge_types::traits::MessageDispatch;
+use bridge_types::GenericTimepoint;
 use bridge_types::H160;
 use bridge_types::{GenericAccount, GenericNetworkId};
 use codec::Encode;
@@ -79,8 +80,8 @@ fn burn_successfull() {
         let message_id = BridgeOutboundChannel::make_message_id(1);
         assert_eq!(
             Transactions::<Test>::get(
-                &caller,
-                (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), message_id)
+                (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), &caller),
+                message_id,
             ),
             Some(BridgeRequest {
                 source: GenericAccount::Sora(caller.clone()),
@@ -88,8 +89,8 @@ fn burn_successfull() {
                 asset_id: XOR,
                 amount: 1000,
                 status: MessageStatus::InQueue,
-                start_timestamp: 0,
-                end_timestamp: None,
+                start_timepoint: GenericTimepoint::Sora(1),
+                end_timepoint: GenericTimepoint::Pending,
                 direction: MessageDirection::Outbound,
             })
         );
@@ -100,8 +101,8 @@ fn burn_successfull() {
         );
         assert_eq!(
             Transactions::<Test>::get(
-                &caller,
-                (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), message_id)
+                (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), &caller),
+                &message_id,
             ),
             Some(BridgeRequest {
                 source: GenericAccount::Sora(caller.clone()),
@@ -109,8 +110,8 @@ fn burn_successfull() {
                 asset_id: XOR,
                 amount: 1000,
                 status: MessageStatus::Committed,
-                start_timestamp: 0,
-                end_timestamp: None,
+                start_timepoint: GenericTimepoint::Sora(1),
+                end_timepoint: GenericTimepoint::Pending,
                 direction: MessageDirection::Outbound,
             })
         );
@@ -145,7 +146,7 @@ fn mint_successfull() {
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
             MessageId::inbound(0),
-            0,
+            GenericTimepoint::Parachain(1),
             &RuntimeCall::ERC20App(erc20_app::Call::mint {
                 token,
                 sender: Default::default(),
@@ -159,8 +160,8 @@ fn mint_successfull() {
             MessageId::inbound(0).using_encoded(<Test as dispatch::Config>::Hashing::hash);
         assert_eq!(
             Transactions::<Test>::get(
-                &recipient,
-                (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), message_id)
+                (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), &recipient),
+                message_id
             ),
             Some(BridgeRequest {
                 source: GenericAccount::EVM(H160::default()),
@@ -168,8 +169,8 @@ fn mint_successfull() {
                 asset_id: DAI,
                 amount: 1000,
                 status: MessageStatus::Done,
-                start_timestamp: 0,
-                end_timestamp: Some(0),
+                start_timepoint: GenericTimepoint::Parachain(1),
+                end_timepoint: GenericTimepoint::Sora(1),
                 direction: MessageDirection::Inbound,
             })
         );
@@ -186,7 +187,7 @@ fn mint_failed() {
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
             MessageId::inbound(0),
-            0,
+            Default::default(),
             &RuntimeCall::ERC20App(erc20_app::Call::mint {
                 token,
                 sender: Default::default(),
