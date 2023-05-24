@@ -2012,6 +2012,8 @@ fn mainnet_genesis(
     }));
     GenesisConfig {
         #[cfg(feature = "wip")] // Substrate bridge
+        multisig_verifier: Default::default(),
+        #[cfg(feature = "wip")] // Substrate bridge
         beefy_light_client: Default::default(),
         #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_app: Default::default(),

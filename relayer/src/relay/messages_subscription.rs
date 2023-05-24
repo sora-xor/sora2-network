@@ -47,6 +47,7 @@ pub async fn load_commitment<S: SenderConfig>(
             .substrate_bridge_commitments(commitment_hash)
             .await?
             .into(),
+        GenericNetworkId::EVMLegacy(_) => unimplemented!(),
     };
     Ok(commitment)
 }

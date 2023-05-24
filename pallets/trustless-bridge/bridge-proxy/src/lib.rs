@@ -11,16 +11,15 @@ mod benchmarking;
 pub mod weights;
 
 use bridge_types::{
-    traits::MessageStatusNotifier,
+    traits::{MessageStatusNotifier, TimepointProvider},
     types::{MessageDirection, MessageStatus},
-    EVMChainId, GenericAccount, GenericNetworkId, H160, H256,
+    GenericAccount, GenericNetworkId, GenericTimepoint, H160, H256,
 };
 use codec::{Decode, Encode};
 use common::Balance;
 use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::log;
 use scale_info::TypeInfo;
-use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 
 pub use weights::WeightInfo;
@@ -33,8 +32,8 @@ pub struct BridgeRequest<AccountId, AssetId> {
     asset_id: AssetId,
     amount: Balance,
     status: MessageStatus,
-    start_timestamp: u64,
-    end_timestamp: Option<u64>,
+    start_timepoint: GenericTimepoint,
+    end_timepoint: GenericTimepoint,
     direction: MessageDirection,
 }
 
@@ -44,6 +43,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use bridge_types::{
+        substrate::ParachainAccountId,
         traits::BridgeApp,
         types::{BridgeAppInfo, BridgeAssetInfo},
     };
@@ -58,9 +58,15 @@ pub mod pallet {
     pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        type EthApp: BridgeApp<EVMChainId, Self::AccountId, H160, Self::AssetId, Balance>;
+        type EthApp: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
-        type ERC20App: BridgeApp<EVMChainId, Self::AccountId, H160, Self::AssetId, Balance>;
+        type ERC20App: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+
+        type SubstrateApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
+
+        type HashiBridge: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+
+        type TimepointProvider: TimepointProvider;
 
         type WeightInfo: WeightInfo;
     }
@@ -70,9 +76,9 @@ pub mod pallet {
     pub(super) type Transactions<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        T::AccountId,
+        (GenericNetworkId, T::AccountId),
         Blake2_128Concat,
-        (GenericNetworkId, H256),
+        H256,
         BridgeRequest<T::AccountId, T::AssetId>,
         OptionQuery,
     >;
@@ -125,38 +131,45 @@ pub mod pallet {
             asset_id: T::AssetId,
             recipient: GenericAccount<T::AccountId>,
             amount: BalanceOf<T>,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
-            match network_id {
-                GenericNetworkId::EVM(network_id) => {
-                    let recipient = match recipient {
-                        GenericAccount::EVM(address) => address,
-                        _ => return Err(Error::<T>::WrongAccountKind.into()),
-                    };
-                    if T::EthApp::is_asset_supported(network_id, asset_id) {
+            match recipient {
+                GenericAccount::EVM(recipient) => {
+                    if T::HashiBridge::is_asset_supported(network_id, asset_id) {
+                        T::HashiBridge::transfer(network_id, asset_id, sender, recipient, amount)?;
+                    } else if T::EthApp::is_asset_supported(network_id, asset_id) {
                         T::EthApp::transfer(network_id, asset_id, sender, recipient, amount)?;
                     } else {
                         T::ERC20App::transfer(network_id, asset_id, sender, recipient, amount)?;
                     }
                 }
-                _ => return Err(Error::<T>::PathIsNotAvailable.into()),
+                GenericAccount::Parachain(recipient) => {
+                    T::SubstrateApp::transfer(network_id, asset_id, sender, recipient, amount)?;
+                }
+                GenericAccount::Sora(_) | GenericAccount::Unknown | GenericAccount::Root => {
+                    return Err(Error::<T>::WrongAccountKind.into())
+                }
             }
-            Ok(())
+            Ok(().into())
         }
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn list_apps(network_id: EVMChainId) -> Vec<BridgeAppInfo> {
+        pub fn list_apps() -> Vec<BridgeAppInfo> {
             let mut res = vec![];
-            res.extend(T::EthApp::list_apps(network_id));
-            res.extend(T::ERC20App::list_apps(network_id));
+            res.extend(T::EthApp::list_apps());
+            res.extend(T::ERC20App::list_apps());
+            res.extend(T::HashiBridge::list_apps());
+            res.extend(T::SubstrateApp::list_apps());
             res
         }
 
-        pub fn list_supported_assets(network_id: EVMChainId) -> Vec<BridgeAssetInfo<T::AssetId>> {
+        pub fn list_supported_assets(network_id: GenericNetworkId) -> Vec<BridgeAssetInfo> {
             let mut res = vec![];
             res.extend(T::EthApp::list_supported_assets(network_id));
             res.extend(T::ERC20App::list_supported_assets(network_id));
+            res.extend(T::HashiBridge::list_supported_assets(network_id));
+            res.extend(T::SubstrateApp::list_supported_assets(network_id));
             res
         }
 
@@ -167,20 +180,19 @@ pub mod pallet {
             asset_id: T::AssetId,
             amount: Balance,
         ) -> DispatchResult {
-            let beneficiary = match beneficiary {
-                GenericAccount::Sora(account) => account,
-                _ => return Err(Error::<T>::WrongAccountKind.into()),
+            let GenericAccount::Sora(beneficiary) = beneficiary else {
+                return Err(Error::<T>::WrongAccountKind.into());
             };
-            match network_id {
-                GenericNetworkId::EVM(chain_id) => {
-                    if T::EthApp::is_asset_supported(chain_id, asset_id) {
-                        T::EthApp::refund(chain_id, message_id, beneficiary, asset_id, amount)
-                    } else {
-                        T::ERC20App::refund(chain_id, message_id, beneficiary, asset_id, amount)
-                    }
-                }
-                GenericNetworkId::Sub(_) => Err(Error::<T>::PathIsNotAvailable.into()),
+            if T::HashiBridge::is_asset_supported(network_id, asset_id) {
+                T::HashiBridge::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else if T::SubstrateApp::is_asset_supported(network_id, asset_id) {
+                T::SubstrateApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else if T::EthApp::is_asset_supported(network_id, asset_id) {
+                T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else {
+                T::ERC20App::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             }
+            Ok(())
         }
     }
 }
@@ -190,7 +202,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
         network_id: GenericNetworkId,
         message_id: H256,
         mut new_status: MessageStatus,
-        new_end_timestamp: Option<u64>,
+        end_timepoint: GenericTimepoint,
     ) {
         let sender = match Senders::<T>::get(network_id, message_id) {
             Some(sender) => sender,
@@ -203,7 +215,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
                 return;
             }
         };
-        Transactions::<T>::mutate(sender, (network_id, message_id), |req| {
+        Transactions::<T>::mutate((network_id, sender), message_id, |req| {
             if let Some(req) = req {
                 if new_status == MessageStatus::Failed
                     && req.direction == MessageDirection::Outbound
@@ -224,10 +236,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
                     }
                 }
                 req.status = new_status;
-
-                if let Some(timestamp) = new_end_timestamp {
-                    req.end_timestamp = Some(timestamp);
-                }
+                req.end_timepoint = end_timepoint;
 
                 Self::deposit_event(Event::RequestStatusUpdate(message_id, new_status));
             }
@@ -241,22 +250,22 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
         dest: T::AccountId,
         asset_id: T::AssetId,
         amount: Balance,
-        start_timestamp: u64,
+        start_timepoint: GenericTimepoint,
+        status: MessageStatus,
     ) {
-        Self::deposit_event(Event::RequestStatusUpdate(message_id, MessageStatus::Done));
+        Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
         Senders::<T>::insert(&network_id, &message_id, &dest);
-        let timestamp = pallet_timestamp::Pallet::<T>::now();
         Transactions::<T>::insert(
-            &dest,
-            (&network_id, &message_id),
+            (&network_id, &dest),
+            &message_id,
             BridgeRequest {
                 source,
                 dest: GenericAccount::Sora(dest.clone()),
                 asset_id,
                 amount,
-                status: MessageStatus::Done,
-                start_timestamp,
-                end_timestamp: Some(timestamp.unique_saturated_into()),
+                status,
+                start_timepoint,
+                end_timepoint: T::TimepointProvider::get_timepoint(),
                 direction: MessageDirection::Inbound,
             },
         );
@@ -269,24 +278,21 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
         dest: GenericAccount<T::AccountId>,
         asset_id: T::AssetId,
         amount: Balance,
+        status: MessageStatus,
     ) {
-        Self::deposit_event(Event::RequestStatusUpdate(
-            message_id,
-            MessageStatus::InQueue,
-        ));
+        Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
         Senders::<T>::insert(&network_id, &message_id, &source);
-        let timestamp = pallet_timestamp::Pallet::<T>::now();
         Transactions::<T>::insert(
-            &source,
-            (&network_id, &message_id),
+            (&network_id, &source),
+            &message_id,
             BridgeRequest {
                 source: GenericAccount::Sora(source.clone()),
                 dest,
                 asset_id,
                 amount,
-                status: MessageStatus::InQueue,
-                start_timestamp: timestamp.unique_saturated_into(),
-                end_timestamp: None,
+                status,
+                start_timepoint: T::TimepointProvider::get_timepoint(),
+                end_timepoint: GenericTimepoint::Pending,
                 direction: MessageDirection::Outbound,
             },
         );
