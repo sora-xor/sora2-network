@@ -1543,7 +1543,10 @@ impl eth_bridge::Config for Runtime {
     type GetEthNetworkId = GetEthNetworkId;
     type WeightInfo = eth_bridge::weights::SubstrateWeight<Runtime>;
     type WeightToFee = XorFee;
+    #[cfg(feature = "pready-to-test")]
     type MessageStatusNotifier = BridgeProxy;
+    #[cfg(not(feature = "pready-to-test"))]
+    type MessageStatusNotifier = ();
 }
 
 #[cfg(feature = "private-net")]
