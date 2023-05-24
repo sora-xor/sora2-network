@@ -195,6 +195,20 @@ pipeline {
                 }
             }
         }
+        stage('Benchmarking') {
+          when {
+            expression { return (env.GIT_BRANCH == "benchmarking*" || env.TAG_NAME) }
+          }
+          steps {
+            script {
+              docker.image(appImageName + ":" + env.TAG_NAME).inside() {
+                  sh """
+                    misc/run_all_pallet_benches.sh
+                  """
+              }
+            }
+          }
+        }
         stage('Build docs & publish') {
             when {
                 expression { return (env.GIT_BRANCH == "master" || env.TAG_NAME) }
