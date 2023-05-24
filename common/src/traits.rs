@@ -896,6 +896,8 @@ pub trait AssetInfoProvider<
 
     fn get_asset_description(asset_id: &AssetId) -> Option<Description>;
 
+    fn total_issuance(asset_id: &AssetId) -> Result<Balance, DispatchError>;
+
     fn total_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError>;
 
     fn free_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError>;
@@ -952,6 +954,10 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
     }
 
     fn total_balance(_asset_id: &AssetId, _who: &AccountId) -> Result<Balance, DispatchError> {
+        unimplemented!()
+    }
+
+    fn total_issuance(_asset_id: &AssetId) -> Result<Balance, DispatchError> {
         unimplemented!()
     }
 
