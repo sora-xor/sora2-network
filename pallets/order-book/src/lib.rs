@@ -444,7 +444,7 @@ pub mod pallet {
 
             let mut data = CacheDataLayer::<T>::new();
             let count_of_canceled_orders =
-                order_book.cancel_all_limit_orders::<Self>(&mut data)? as u32;
+                order_book.cancel_all_limit_orders::<Self, Self>(&mut data)? as u32;
 
             data.commit();
             <OrderBooks<T>>::remove(order_book_id);
@@ -517,14 +517,12 @@ pub mod pallet {
                 lifespan,
                 now_block,
             );
-            let expires_at = order.expires_at;
 
             let mut data = CacheDataLayer::<T>::new();
-            order_book.place_limit_order::<Self>(order, &mut data)?;
+            order_book.place_limit_order::<Self, Self>(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
-            Self::schedule(expires_at, order_book_id, order_id)?;
             Self::deposit_event(Event::<T>::OrderPlaced {
                 order_book_id,
                 dex_id,
@@ -544,7 +542,6 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             let mut data = CacheDataLayer::<T>::new();
             let order = data.get_limit_order(&order_book_id, &order_id)?;
-            let expires_at = order.expires_at;
 
             ensure!(order.owner == who, Error::<T>::Unauthorized);
 
@@ -552,8 +549,7 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
 
-            order_book.cancel_limit_order::<Self>(order, &mut data)?;
-            Self::unschedule(expires_at, order_book_id, order_id)?;
+            order_book.cancel_limit_order::<Self, Self>(order, &mut data)?;
             data.commit();
             Self::deposit_event(Event::<T>::OrderCanceled {
                 order_book_id,

@@ -79,7 +79,10 @@ impl<T: Config> Pallet<T> {
             return;
         };
 
-        if let Err(error) = order_book.cancel_limit_order_unchecked::<Self>(order, data_layer) {
+        // It's fine to try and unschedule again since the queue is taken
+        // from the storage before this method
+        if let Err(error) = order_book.cancel_limit_order_unchecked::<Self, Self>(order, data_layer)
+        {
             debug_assert!(
                 false,
                 "expiration resulted in error, this must not happen: {:?}",
