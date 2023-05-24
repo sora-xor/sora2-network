@@ -30,8 +30,8 @@
 
 use super::*;
 
-use bridge_types::types::MessageDirection;
 use bridge_types::GenericAccount;
+use bridge_types::{types::MessageDirection, EVMChainId, GenericTimepoint};
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
@@ -59,7 +59,7 @@ benchmarks! {
     }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, XOR.into(), GenericAccount::EVM(H160::default()), 1000)
     verify {
         let (message_id, _) = Senders::<T>::iter_prefix(BASE_NETWORK_ID).next().unwrap();
-        let req = Transactions::<T>::get(&caller, (BASE_NETWORK_ID, message_id)).unwrap();
+        let req = Transactions::<T>::get((BASE_NETWORK_ID, &caller), message_id).unwrap();
         assert!(
             req == BridgeRequest {
                 source: GenericAccount::Sora(caller.clone()),
@@ -67,8 +67,8 @@ benchmarks! {
                 asset_id: XOR.into(),
                 amount: 1000,
                 status: MessageStatus::InQueue,
-                start_timestamp: 0u32.into(),
-                end_timestamp: None,
+                start_timepoint: GenericTimepoint::Sora(1),
+                end_timepoint: GenericTimepoint::Pending,
                 direction: MessageDirection::Outbound,
             }
         );
