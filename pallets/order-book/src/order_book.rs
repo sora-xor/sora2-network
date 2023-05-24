@@ -388,9 +388,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             lock_amount,
         )?;
 
-        Scheduler::unschedule(order.expires_at, self.order_book_id, order.id)?;
-
         data.delete_limit_order(&self.order_book_id, order.id)?;
+
+        // Unschedule should happen last because we expect it to fail
+        // when expiring orders
+        Scheduler::unschedule(order.expires_at, self.order_book_id, order.id)?;
         Ok(())
     }
 

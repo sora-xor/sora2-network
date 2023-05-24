@@ -85,6 +85,12 @@ impl<T: Config> Pallet<T> {
         // from the storage before this method
         if let Err(error) = order_book.cancel_limit_order_unchecked::<Self, Self>(order, data_layer)
         {
+            if error == Error::<T>::ExpirationNotFound.into() {
+                // we've already removed it from the schedule;
+                // the order should be cancelled if `cancel_limit_order_unchecked`
+                // is handling it correctly
+                return;
+            }
             debug_assert!(
                 false,
                 "expiration of order {:?} resulted in error: {:?}",
