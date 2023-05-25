@@ -139,12 +139,19 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
 }
 
 pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
-    fn service(now: BlockNumber, weight: &mut WeightMeter);
+    /// Execute scheduled expirations considering this block to be `current_block`
+    /// and weight limit to be set by `weight`.
+    ///
+    /// If the weight limit is reached, it should continue where it's left at the
+    /// next block.
+    fn service(current_block: BlockNumber, weight: &mut WeightMeter);
+    /// Schedule the order for expiration at block `when`.
     fn schedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
         order_id: OrderId,
     ) -> Result<(), Error>;
+    /// Remove the order from expiration schedule for block `when`.
     fn unschedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
