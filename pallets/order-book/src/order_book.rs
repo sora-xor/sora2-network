@@ -40,6 +40,7 @@ use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{One, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::Add;
@@ -230,7 +231,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     }
 
     /// Executes market order and returns input & output amounts
-    pub fn execute_market_order<Locker, Unlocker>(
+    pub fn execute_market_order<Locker, Unlocker, Scheduler>(
         &self,
         order: MarketOrder<T>,
         data: &mut impl DataLayer<T>,
@@ -238,6 +239,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     where
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
+        Scheduler:
+            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
     {
         ensure!(
             self.status == OrderBookStatus::Trade,
@@ -290,8 +293,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             market_change.makers_output,
         )?;
 
-        for delete_id in market_change.to_delete {
+        for (delete_id, expires_at) in market_change.to_delete {
             data.delete_limit_order(&self.order_book_id, delete_id)?;
+            Scheduler::unschedule(expires_at, self.order_book_id, delete_id)?;
         }
 
         for update_limit_order in market_change.to_update {
@@ -312,7 +316,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         taker_base_amount: OrderVolume,
         market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
         data: &mut impl DataLayer<T>,
-    ) -> Result<MarketChange<T::AccountId, T::OrderId, LimitOrder<T>>, DispatchError> {
+    ) -> Result<
+        MarketChange<T::AccountId, T::OrderId, LimitOrder<T>, BlockNumberFor<T>>,
+        DispatchError,
+    > {
         let mut remaining_amount = taker_base_amount;
         let mut taker_amount = OrderVolume::zero();
         let mut maker_amount = OrderVolume::zero();
@@ -337,7 +344,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         .entry(limit_order.owner)
                         .and_modify(|payment| *payment += maker_payment)
                         .or_insert(maker_payment);
-                    limit_order_ids_to_delete.push(limit_order.id);
+                    limit_order_ids_to_delete.push((limit_order.id, limit_order.expires_at));
 
                     if remaining_amount.is_zero() {
                         break;

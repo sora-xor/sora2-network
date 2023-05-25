@@ -1545,22 +1545,28 @@ fn should_not_execute_market_order_with_non_trade_status() {
 
         order_book.status = OrderBookStatus::PlaceAndCancel;
         assert_err!(
-            order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(order.clone(), &mut data),
+            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order.clone(),
+                &mut data
+            ),
             E::TradingIsForbidden
         );
 
         order_book.status = OrderBookStatus::OnlyCancel;
         assert_err!(
-            order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(order.clone(), &mut data),
+            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order.clone(),
+                &mut data
+            ),
             E::TradingIsForbidden
         );
 
         order_book.status = OrderBookStatus::Stop;
         assert_err!(
-            order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(order.clone(), &mut data),
+            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order.clone(),
+                &mut data
+            ),
             E::TradingIsForbidden
         );
     });
@@ -1583,7 +1589,9 @@ fn should_not_execute_market_order_with_empty_amount() {
             MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, wrong_amount);
 
         assert_err!(
-            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet>(order, &mut data),
+            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order, &mut data
+            ),
             E::InvalidOrderAmount
         );
     });
@@ -1614,7 +1622,9 @@ fn should_not_execute_market_order_with_invalid_order_book_id() {
         );
 
         assert_err!(
-            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet>(order, &mut data),
+            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order, &mut data
+            ),
             E::InvalidOrderBookId
         );
     });
@@ -1637,7 +1647,9 @@ fn should_not_execute_market_order_with_invalid_amount() {
             MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, wrong_amount);
 
         assert_err!(
-            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet>(order, &mut data),
+            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order, &mut data
+            ),
             E::InvalidOrderAmount
         );
     });
@@ -1691,7 +1703,7 @@ fn should_execute_market_order() {
         // 1st buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     buy_order.clone(),
                     &mut data
                 )
@@ -1751,7 +1763,7 @@ fn should_execute_market_order() {
         // 2nd buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     buy_order.clone(),
                     &mut data
                 )
@@ -1810,7 +1822,7 @@ fn should_execute_market_order() {
         // 3rd buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     buy_order.clone(),
                     &mut data
                 )
@@ -1866,7 +1878,7 @@ fn should_execute_market_order() {
         // 1st sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     sell_order.clone(),
                     &mut data
                 )
@@ -1925,7 +1937,7 @@ fn should_execute_market_order() {
         // 2nd sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     sell_order.clone(),
                     &mut data
                 )
@@ -1983,7 +1995,7 @@ fn should_execute_market_order() {
         // 3rd sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     sell_order.clone(),
                     &mut data
                 )
@@ -2041,7 +2053,7 @@ fn should_execute_market_order() {
 
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     buy_order.clone(),
                     &mut data
                 )
@@ -2053,7 +2065,7 @@ fn should_execute_market_order() {
         );
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     sell_order.clone(),
                     &mut data
                 )
@@ -2169,6 +2181,7 @@ fn should_calculate_market_impact() {
         };
 
         let order_book = create_and_fill_order_book(order_book_id);
+        let expiration_block = 3;
 
         let market_for_buy = data.get_aggregated_asks(&order_book_id);
         let market_for_sell = data.get_aggregated_bids(&order_book_id);
@@ -2213,7 +2226,7 @@ fn should_calculate_market_impact() {
             MarketChange {
                 market_input: OrderAmount::Quote(balance!(3324.74)),
                 market_output: OrderAmount::Base(buy_amount2),
-                to_delete: vec![7, 8],
+                to_delete: vec![(7, expiration_block), (8, expiration_block)],
                 to_update: vec![limit_order9],
                 makers_output: BTreeMap::from([
                     (bob(), balance!(2368.26)),
@@ -2236,7 +2249,13 @@ fn should_calculate_market_impact() {
             MarketChange {
                 market_input: OrderAmount::Quote(balance!(6758.27)),
                 market_output: OrderAmount::Base(buy_amount3),
-                to_delete: vec![7, 8, 9, 10, 11],
+                to_delete: vec![
+                    (7, expiration_block),
+                    (8, expiration_block),
+                    (9, expiration_block),
+                    (10, expiration_block),
+                    (11, expiration_block)
+                ],
                 to_update: vec![limit_order12],
                 makers_output: BTreeMap::from([
                     (bob(), balance!(5346.39)),
@@ -2257,7 +2276,12 @@ fn should_calculate_market_impact() {
             MarketChange {
                 market_input: OrderAmount::Quote(balance!(4360.52)),
                 market_output: OrderAmount::Base(buy_amount4),
-                to_delete: vec![7, 8, 9, 10],
+                to_delete: vec![
+                    (7, expiration_block),
+                    (8, expiration_block),
+                    (9, expiration_block),
+                    (10, expiration_block)
+                ],
                 to_update: vec![],
                 makers_output: BTreeMap::from([
                     (bob(), balance!(2983.14)),
@@ -2278,7 +2302,14 @@ fn should_calculate_market_impact() {
             MarketChange {
                 market_input: OrderAmount::Quote(balance!(6881.32)),
                 market_output: OrderAmount::Base(buy_amount5),
-                to_delete: vec![7, 8, 9, 10, 11, 12],
+                to_delete: vec![
+                    (7, expiration_block),
+                    (8, expiration_block),
+                    (9, expiration_block),
+                    (10, expiration_block),
+                    (11, expiration_block),
+                    (12, expiration_block)
+                ],
                 to_update: vec![],
                 makers_output: BTreeMap::from([
                     (bob(), balance!(5346.39)),
@@ -2327,7 +2358,7 @@ fn should_calculate_market_impact() {
             MarketChange {
                 market_input: OrderAmount::Base(sell_amount2),
                 market_output: OrderAmount::Quote(balance!(2679.7)),
-                to_delete: vec![1, 2],
+                to_delete: vec![(1, expiration_block), (2, expiration_block)],
                 to_update: vec![limit_order3],
                 makers_output: BTreeMap::from([
                     (bob(), balance!(174.8)),
@@ -2350,7 +2381,12 @@ fn should_calculate_market_impact() {
             MarketChange {
                 market_input: OrderAmount::Base(sell_amount3),
                 market_output: OrderAmount::Quote(balance!(3926.22)),
-                to_delete: vec![1, 2, 3, 4],
+                to_delete: vec![
+                    (1, expiration_block),
+                    (2, expiration_block),
+                    (3, expiration_block),
+                    (4, expiration_block)
+                ],
                 to_update: vec![limit_order5],
                 makers_output: BTreeMap::from([
                     (bob(), balance!(248.4)),
@@ -2371,7 +2407,12 @@ fn should_calculate_market_impact() {
             MarketChange {
                 market_input: OrderAmount::Base(sell_amount4),
                 market_output: OrderAmount::Quote(balance!(3591.82)),
-                to_delete: vec![1, 2, 3, 4],
+                to_delete: vec![
+                    (1, expiration_block),
+                    (2, expiration_block),
+                    (3, expiration_block),
+                    (4, expiration_block)
+                ],
                 to_update: vec![],
                 makers_output: BTreeMap::from([
                     (bob(), balance!(213.2)),
@@ -2392,7 +2433,14 @@ fn should_calculate_market_impact() {
             MarketChange {
                 market_input: OrderAmount::Base(sell_amount5),
                 market_output: OrderAmount::Quote(balance!(5538.37)),
-                to_delete: vec![1, 2, 3, 4, 5, 6],
+                to_delete: vec![
+                    (1, expiration_block),
+                    (2, expiration_block),
+                    (3, expiration_block),
+                    (4, expiration_block),
+                    (5, expiration_block),
+                    (6, expiration_block)
+                ],
                 to_update: vec![],
                 makers_output: BTreeMap::from([
                     (bob(), balance!(303.1)),
