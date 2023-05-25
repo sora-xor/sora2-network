@@ -90,7 +90,7 @@ fn should_work_as_cache() {
 
         assert_ok!(data.insert_limit_order(&order_book_id, order.clone()));
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_id).unwrap(),
+            data.get_limit_order(&order_book_id, order_id).unwrap(),
             order
         );
         assert_eq!(
@@ -180,7 +180,7 @@ fn should_work_as_storage() {
 
         assert_ok!(data.insert_limit_order(&order_book_id, order.clone()));
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_id).unwrap(),
+            data.get_limit_order(&order_book_id, order_id).unwrap(),
             order
         );
         assert_eq!(
@@ -381,7 +381,7 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         assert_ok!(data.insert_limit_order(&order_book_id, order_buy.clone()));
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_buy_id).unwrap(),
+            data.get_limit_order(&order_book_id, order_buy_id).unwrap(),
             order_buy
         );
         assert_eq!(
@@ -426,8 +426,7 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         assert_ok!(data.insert_limit_order(&order_book_id, order_sell.clone()));
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_sell_id)
-                .unwrap(),
+            data.get_limit_order(&order_book_id, order_sell_id).unwrap(),
             order_sell
         );
         assert_eq!(
@@ -622,27 +621,25 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         // check they added
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_buy_id1)
-                .unwrap(),
+            data.get_limit_order(&order_book_id, order_buy_id1).unwrap(),
             order_buy1
         );
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_buy_id2)
-                .unwrap(),
+            data.get_limit_order(&order_book_id, order_buy_id2).unwrap(),
             order_buy2
         );
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_sell_id1)
+            data.get_limit_order(&order_book_id, order_sell_id1)
                 .unwrap(),
             order_sell1
         );
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_sell_id2)
+            data.get_limit_order(&order_book_id, order_sell_id2)
                 .unwrap(),
             order_sell2
         );
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_sell_id3)
+            data.get_limit_order(&order_book_id, order_sell_id3)
                 .unwrap(),
             order_sell3
         );
@@ -734,7 +731,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         // delete order sell 1
         assert_ok!(data.delete_limit_order(&order_book_id, order_sell_id1));
         assert_err!(
-            data.get_limit_order(&order_book_id, &order_sell_id1),
+            data.get_limit_order(&order_book_id, order_sell_id1),
             E::UnknownLimitOrder
         );
         assert_eq!(
@@ -797,7 +794,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         assert_ok!(data.delete_limit_order(&order_book_id, order_buy_id1));
 
         assert_err!(
-            data.get_limit_order(&order_book_id, &order_buy_id1),
+            data.get_limit_order(&order_book_id, order_buy_id1),
             E::UnknownLimitOrder
         );
         assert_eq!(
@@ -860,7 +857,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         assert_ok!(data.delete_limit_order(&order_book_id, order_buy_id2));
 
         assert_err!(
-            data.get_limit_order(&order_book_id, &order_buy_id2),
+            data.get_limit_order(&order_book_id, order_buy_id2),
             E::UnknownLimitOrder
         );
         assert_eq!(data.get_bids(&order_book_id, &price1), None);
@@ -914,7 +911,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         assert_ok!(data.delete_limit_order(&order_book_id, order_sell_id3));
 
         assert_err!(
-            data.get_limit_order(&order_book_id, &order_sell_id3),
+            data.get_limit_order(&order_book_id, order_sell_id3),
             E::UnknownLimitOrder
         );
         assert_eq!(data.get_bids(&order_book_id, &price1), None);
@@ -962,7 +959,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         assert_ok!(data.delete_limit_order(&order_book_id, order_sell_id2));
 
         assert_err!(
-            data.get_limit_order(&order_book_id, &order_sell_id2),
+            data.get_limit_order(&order_book_id, order_sell_id2),
             E::UnknownLimitOrder
         );
         assert_eq!(data.get_bids(&order_book_id, &price1), None);
@@ -1063,7 +1060,7 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         // insert order
         assert_ok!(data.insert_limit_order(&order_book_id, order.clone()));
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_id).unwrap(),
+            data.get_limit_order(&order_book_id, order_id).unwrap(),
             order
         );
         assert_eq!(
@@ -1111,7 +1108,7 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         order.amount = new_amount;
 
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_id).unwrap(),
+            data.get_limit_order(&order_book_id, order_id).unwrap(),
             order
         );
         assert_eq!(
@@ -1195,7 +1192,7 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
         // insert order
         assert_ok!(data.insert_limit_order(&order_book_id, order.clone()));
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_id).unwrap(),
+            data.get_limit_order(&order_book_id, order_id).unwrap(),
             order
         );
         assert_eq!(
@@ -1242,7 +1239,7 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
         assert_ok!(data.update_limit_order_amount(&order_book_id, order_id, new_amount));
 
         assert_err!(
-            data.get_limit_order(&order_book_id, &order_id),
+            data.get_limit_order(&order_book_id, order_id),
             E::UnknownLimitOrder
         );
         assert_eq!(data.get_bids(&order_book_id, &price), None);
@@ -1340,7 +1337,7 @@ fn should_not_update_equal_limit_order(data: &mut impl DataLayer<Runtime>) {
         assert_ok!(data.update_limit_order_amount(&order_book_id, order_id, amount));
 
         assert_eq!(
-            data.get_limit_order(&order_book_id, &order_id).unwrap(),
+            data.get_limit_order(&order_book_id, order_id).unwrap(),
             order
         );
     });

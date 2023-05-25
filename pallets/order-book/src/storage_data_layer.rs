@@ -162,7 +162,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
     fn get_limit_order(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order_id: &T::OrderId,
+        order_id: T::OrderId,
     ) -> Result<LimitOrder<T>, DispatchError> {
         if let Some(order) = <LimitOrders<T>>::get(order_book_id, order_id) {
             Ok(order)

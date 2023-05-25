@@ -52,7 +52,7 @@ impl<T: Config> Pallet<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         order_id: &T::OrderId,
     ) {
-        let order = match data_layer.get_limit_order(order_book_id, order_id) {
+        let order = match data_layer.get_limit_order(order_book_id, *order_id) {
             Ok(o) => o,
             Err(error) => {
                 // in `debug` environment will panic

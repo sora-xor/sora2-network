@@ -541,7 +541,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let mut data = CacheDataLayer::<T>::new();
-            let order = data.get_limit_order(&order_book_id, &order_id)?;
+            let order = data.get_limit_order(&order_book_id, order_id)?;
 
             ensure!(order.owner == who, Error::<T>::Unauthorized);
 

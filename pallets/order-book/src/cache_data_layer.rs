@@ -270,9 +270,9 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
     fn get_limit_order(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order_id: &T::OrderId,
+        order_id: T::OrderId,
     ) -> Result<LimitOrder<T>, DispatchError> {
-        if let Some(order) = self.limit_orders.get(order_book_id, order_id) {
+        if let Some(order) = self.limit_orders.get(order_book_id, &order_id) {
             Ok(order.clone())
         } else {
             Err(Error::<T>::UnknownLimitOrder.into())

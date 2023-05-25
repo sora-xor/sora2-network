@@ -824,7 +824,7 @@ fn should_cancel_limit_order() {
 
         let order_book = create_and_fill_order_book(order_book_id);
 
-        let order = data.get_limit_order(&order_book_id, &5).unwrap();
+        let order = data.get_limit_order(&order_book_id, 5).unwrap();
 
         // fix state before
         let bids_before = data
@@ -924,9 +924,9 @@ fn should_not_cancel_limit_order_when_status_doesnt_allow() {
 
         let mut order_book = create_and_fill_order_book(order_book_id);
 
-        let order1 = data.get_limit_order(&order_book_id, &1).unwrap();
-        let order2 = data.get_limit_order(&order_book_id, &2).unwrap();
-        let order3 = data.get_limit_order(&order_book_id, &3).unwrap();
+        let order1 = data.get_limit_order(&order_book_id, 1).unwrap();
+        let order2 = data.get_limit_order(&order_book_id, 2).unwrap();
+        let order3 = data.get_limit_order(&order_book_id, 3).unwrap();
 
         order_book.status = OrderBookStatus::Stop;
         assert_err!(
