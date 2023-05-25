@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
 use common::prelude::Balance;
 use common::{
     balance, fixed, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
@@ -45,7 +45,6 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{AccountId32, Perbill, Percent};
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use sp_std::vec;
 
 use crate::Config;
@@ -117,7 +116,6 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
     pub const MinimumPeriod: u64 = 5;
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 construct_runtime! {

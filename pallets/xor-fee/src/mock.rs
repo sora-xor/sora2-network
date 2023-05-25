@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
 use common::prelude::{Balance, BlockLength, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
@@ -53,7 +53,6 @@ use sp_core::H256;
 use sp_runtime::testing::{Header, TestXt, UintAuthorityId};
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Verify};
 use sp_runtime::{DispatchError, Perbill, Percent};
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use std::cmp::Ordering;
 
 pub use crate::{self as xor_fee, Config, Pallet};
@@ -130,7 +129,6 @@ parameter_types! {
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
     pub const ReferralsReservesAcc: AccountId = 22;
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 sp_runtime::impl_opaque_keys! {

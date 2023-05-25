@@ -31,7 +31,7 @@
 #![cfg(test)]
 
 use crate::{Config, *};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
 use common::prelude::{Balance, QuoteAmount};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, AssetName, AssetSymbol,
@@ -53,7 +53,6 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, DispatchError, DispatchResult, Percent};
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 pub type DEXId = u32;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -103,7 +102,6 @@ parameter_types! {
     pub GetADARAccountId: AccountId = AccountId32::from([14; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 construct_runtime! {

@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as farming, Config};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
 use common::prelude::Balance;
 use common::{
     balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT,
@@ -49,7 +49,6 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
 use sp_std::cmp::Ordering;
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use sp_std::marker::PhantomData;
 
 pub use common::mock::*;
@@ -125,7 +124,6 @@ parameter_types! {
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([15; 32]);
     pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
     pub const MinimumPeriod: u64 = 5;
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 construct_runtime! {

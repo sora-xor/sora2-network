@@ -1,5 +1,5 @@
-use common::mock::ExistentialDeposits;
 pub use common::mock::*;
+use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
@@ -19,7 +19,6 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::AccountId32;
 use sp_runtime::{Perbill, Percent};
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 pub type BlockNumber = u64;
 pub type AccountId = AccountId32;
@@ -78,7 +77,6 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::new([104u8; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::new([105u8; 32]);
     pub const MinimumPeriod: u64 = 5;
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 impl frame_system::Config for Runtime {

@@ -1,5 +1,5 @@
 use crate::{self as ceres_token_locker};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
 use common::prelude::Balance;
 use common::{
     balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
@@ -15,7 +15,6 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{Perbill, Percent};
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
@@ -68,7 +67,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = 100;
     pub GetPswapDistributionAccountId: AccountId = 101;
     pub const MinimumPeriod: u64 = 5;
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 impl frame_system::Config for Runtime {

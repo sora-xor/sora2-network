@@ -45,7 +45,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
+use sp_std::collections::btree_set::BTreeSet;
 
 pub use common::mock::ComicAssetId::*;
 pub use common::mock::*;
@@ -277,23 +277,6 @@ parameter_types! {
         tech_account_id
     };
     pub GetSyntheticBaseAssetId: AssetId = BatteryForMusicPlayer.into();
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::from([
-        (
-            DEX_A_ID,
-            Box::new(
-                || <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
-            ) as Box<dyn Fn() -> BTreeSet<AssetId>>
-        ),
-        (
-            DEX_C_ID,
-            Box::new(|| {
-                let mut synthetics = <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets();
-                synthetics.insert(GoldenTicket.into());
-                synthetics.insert(BatteryForMusicPlayer.into());
-                synthetics
-            }) as Box<dyn Fn() -> BTreeSet<AssetId>>
-        ),
-    ]);
     pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
 }
 
@@ -322,6 +305,27 @@ impl xst::Config for Runtime {
     type WeightInfo = ();
     type Oracle = OracleProxy;
     type Symbol = SymbolName;
+}
+
+pub type BoxedAssetSetGetter = Box<dyn Fn() -> BTreeSet<AssetId>>;
+
+parameter_type_with_key! {
+    pub GetRestrictedTargetAssets: |dex_id: DEXId| -> BoxedAssetSetGetter {
+        match dex_id {
+            &DEX_A_ID => Box::new(
+                || <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
+            ) as BoxedAssetSetGetter,
+            &DEX_C_ID => Box::new(|| {
+                let mut synthetics = <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets();
+                synthetics.insert(GoldenTicket.into());
+                synthetics.insert(BatteryForMusicPlayer.into());
+                synthetics
+            }) as BoxedAssetSetGetter,
+            _ => Box::new(
+                || BTreeSet::<AssetId>::new()
+            ) as BoxedAssetSetGetter,
+        }
+    };
 }
 
 impl Config for Runtime {

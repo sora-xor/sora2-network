@@ -40,7 +40,6 @@ use frame_support::assert_ok;
 
 use crate::mock::*;
 use crate::{PoolProviders, TotalIssuances};
-
 use sp_std::rc::Rc;
 
 type PresetFunction<'a> = Rc<

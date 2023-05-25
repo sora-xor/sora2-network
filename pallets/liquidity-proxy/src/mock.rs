@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as liquidity_proxy, Config, LiquidityProxyBuyBackHandler};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
@@ -52,9 +52,8 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, DispatchError, Perbill, Percent};
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use sp_std::str::FromStr;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -130,7 +129,6 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetADARAccountId: AccountId = AccountId32::from([14; 32]);
     pub const MinimumPeriod: u64 = 5;
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 construct_runtime! {

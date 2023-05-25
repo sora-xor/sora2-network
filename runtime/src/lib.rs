@@ -111,7 +111,7 @@ use sp_runtime::{
     FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::cmp::Ordering;
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
+use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
 #[cfg(feature = "std")]
@@ -954,23 +954,27 @@ impl technical::Config for Runtime {
 
 parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::from([
-        (
-            0u32,
-            Box::new(
+}
+
+pub type BoxedAssetSetGetter = Box<dyn Fn() -> BTreeSet<AssetId>>;
+
+parameter_type_with_key! {
+    pub GetRestrictedTargetAssets: |dex_id: DEXId| -> BoxedAssetSetGetter {
+        match dex_id {
+            0u32 => Box::new(
                 || <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
-            ) as Box<dyn Fn() -> BTreeSet<AssetId>>
-        ),
-        (
-            1u32,
-            Box::new(|| {
+            ) as BoxedAssetSetGetter,
+            1u32 => Box::new(|| {
                 let mut synthetics = <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets();
                 synthetics.insert(XOR.into());
                 synthetics.insert(XST.into());
                 synthetics
-            }) as Box<dyn Fn() -> BTreeSet<AssetId>>
-        ),
-    ]);
+            }) as BoxedAssetSetGetter,
+            _ => Box::new(
+                || BTreeSet::<AssetId>::new()
+            ) as BoxedAssetSetGetter,
+        }
+    };
 }
 
 impl pool_xyk::Config for Runtime {

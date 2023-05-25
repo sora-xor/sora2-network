@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as multicollateral_bonding_curve_pool, Config, Rewards, TotalRewards};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
 use common::prelude::{
     AssetInfoProvider, Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount,
     SwapOutcome,
@@ -54,7 +54,6 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{DispatchError, DispatchResult, Perbill, Percent};
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use std::collections::HashMap;
 
 pub type AccountId = AccountId32;
@@ -125,7 +124,6 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
     pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 construct_runtime! {

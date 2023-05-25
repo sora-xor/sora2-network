@@ -2,7 +2,7 @@
 
 use crate::{Config, *};
 #[cfg(test)]
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
 use common::{fixed, hash, Amount, DEXInfo, Fixed, PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;
 
@@ -17,7 +17,6 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, Percent};
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 pub type DEXId = u32;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
@@ -47,7 +46,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 construct_runtime! {

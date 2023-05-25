@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::traits::Get;
 use frame_support::{ensure, fail};
+use orml_traits::GetByKey;
 
 use common::prelude::{Balance, SwapAmount};
 use common::{
@@ -120,15 +120,10 @@ impl<T: Config> Pallet<T> {
         dex_id: &T::DEXId,
         target_asset: &T::AssetId,
     ) -> Result<(), DispatchError> {
-        match T::GetRestrictedTargetAssets::get().get(dex_id) {
-            Some(func) => {
-                if func().contains(target_asset) {
-                    Err(Error::<T>::TargetAssetIsRestricted.into())
-                } else {
-                    Ok(())
-                }
-            }
-            _ => Ok(()),
+        if T::GetRestrictedTargetAssets::get(dex_id)().contains(target_asset) {
+            Err(Error::<T>::TargetAssetIsRestricted.into())
+        } else {
+            Ok(())
         }
     }
 

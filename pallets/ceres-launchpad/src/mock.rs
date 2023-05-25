@@ -1,6 +1,6 @@
 use crate::{self as ceres_launchpad};
-use common::mock::ExistentialDeposits;
 pub use common::mock::*;
+use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
 use common::prelude::Balance;
 use common::AssetSymbol;
 use common::BalancePrecision;
@@ -21,7 +21,6 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
@@ -84,7 +83,6 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = 104;
     pub GetCrowdloanRewardsAccountId: AccountId = 105;
     pub const MinimumPeriod: u64 = 5;
-    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 impl frame_system::Config for Runtime {
