@@ -1562,12 +1562,11 @@ impl eth_bridge::Config for Runtime {
     type NetworkId = NetworkId;
     type GetEthNetworkId = GetEthNetworkId;
     type WeightInfo = eth_bridge::weights::SubstrateWeight<Runtime>;
-    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
-    type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
-    type SchedulerOriginCaller = OriginCaller;
-    type Scheduler = Scheduler;
     type WeightToFee = XorFee;
+    #[cfg(feature = "pready-to-test")]
+    type MessageStatusNotifier = BridgeProxy;
+    #[cfg(not(feature = "pready-to-test"))]
+    type MessageStatusNotifier = ();
 }
 
 #[cfg(feature = "private-net")]
@@ -2078,7 +2077,7 @@ impl bridge_inbound_channel::Config for Runtime {
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = Dispatch;
     type Hashing = Keccak256;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type FeeConverter = FeeConverter;
     type WeightInfo = ();
     type FeeAssetId = FeeCurrency;
@@ -2097,7 +2096,7 @@ impl bridge_outbound_channel::Config for Runtime {
     type MaxTotalGasLimit = BridgeMaxTotalGasLimit;
     type FeeCurrency = FeeCurrency;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type AuxiliaryDigestHandler = LeafProvider;
     type WeightInfo = ();
 }
@@ -2135,7 +2134,7 @@ impl eth_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2150,7 +2149,7 @@ impl erc20_app::Config for Runtime {
     >;
     type AppRegistry = BridgeInboundChannel;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2162,10 +2161,13 @@ impl migration_app::Config for Runtime {
 }
 
 #[cfg(feature = "wip")] // Bridges
-impl evm_bridge_proxy::Config for Runtime {
+impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ERC20App = ERC20App;
     type EthApp = EthApp;
+    type HashiBridge = EthBridge;
+    type SubstrateApp = SubstrateBridgeApp;
+    type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
 
@@ -2227,6 +2229,16 @@ impl Verifier for MultiVerifier {
     }
 }
 
+#[cfg(feature = "wip")] // Bridge
+pub struct GenericTimepointProvider;
+
+#[cfg(feature = "wip")] // Bridge
+impl bridge_types::traits::TimepointProvider for GenericTimepointProvider {
+    fn get_timepoint() -> bridge_types::GenericTimepoint {
+        bridge_types::GenericTimepoint::Sora(System::block_number())
+    }
+}
+
 #[cfg(feature = "wip")] // Substrate bridge
 impl substrate_bridge_channel::outbound::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
@@ -2234,12 +2246,13 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type Hashing = Keccak256;
     type FeeCurrency = FeeCurrency;
     type FeeAccountId = GetTrustlessBridgeFeesAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type AuxiliaryDigestHandler = LeafProvider;
     type BalanceConverter = sp_runtime::traits::Identity;
     type Currency = Currencies;
+    type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
 
@@ -2262,7 +2275,7 @@ impl substrate_bridge_app::Config for Runtime {
         (),
         bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
     >;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type BridgeAccountId = GetTrustlessBridgeAccountId;
     type Currency = Currencies;
     type AssetRegistry = BridgeAssetRegistryImpl;
@@ -2394,7 +2407,7 @@ construct_runtime! {
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         // TODO: rename to BridgeProxy
         #[cfg(feature = "wip")] // Bridges
-        EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
+        BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         // Trustless EVM bridge
         #[cfg(feature = "wip")] // EVM bridge
@@ -3128,13 +3141,13 @@ impl_runtime_apis! {
     }
 
     #[cfg(feature = "wip")] // Bridges
-    impl evm_bridge_proxy_runtime_api::EvmBridgeProxyAPI<Block, AssetId> for Runtime {
-        fn list_apps(network_id: bridge_types::EVMChainId) -> Vec<bridge_types::types::BridgeAppInfo> {
-            EvmBridgeProxy::list_apps(network_id)
+    impl bridge_proxy_runtime_api::BridgeProxyAPI<Block, AssetId> for Runtime {
+        fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+            BridgeProxy::list_apps()
         }
 
-        fn list_supported_assets(network_id: bridge_types::EVMChainId) -> Vec<bridge_types::types::BridgeAssetInfo<AssetId>> {
-            EvmBridgeProxy::list_supported_assets(network_id)
+        fn list_supported_assets(network_id: bridge_types::GenericNetworkId) -> Vec<bridge_types::types::BridgeAssetInfo> {
+            BridgeProxy::list_supported_assets(network_id)
         }
     }
 
@@ -3200,7 +3213,7 @@ impl_runtime_apis! {
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, migration_app, MigrationApp);
             #[cfg(feature = "wip")] // Bridges
-            list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
+            list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3287,7 +3300,7 @@ impl_runtime_apis! {
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, migration_app, MigrationApp);
             #[cfg(feature = "wip")] // Bridges
-            add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
+            add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

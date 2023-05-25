@@ -39,7 +39,7 @@ pub mod pallet {
     use crate::events::MessageDispatched;
     use bridge_types::traits::{AppRegistry, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::MessageStatus;
-    use bridge_types::{GenericNetworkId, Log, H256};
+    use bridge_types::{GenericNetworkId, GenericTimepoint, Log, H256};
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -245,7 +245,7 @@ pub mod pallet {
                 } else {
                     MessageStatus::Failed
                 },
-                None,
+                GenericTimepoint::Unknown,
             );
 
             Ok(().into())

@@ -66,6 +66,7 @@ COPY common /app/common
 COPY utils /app/utils
 COPY node /app/node
 COPY .hooks /app/.hooks
+COPY .cargo /app/.cargo
 RUN cargo build --release --features private-net,wip,ready-to-test
 
 # runtime

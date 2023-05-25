@@ -290,12 +290,8 @@ impl eth_bridge::Config for Runtime {
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = ();
-    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
-    type RemovePeerAccountIds = RemoveTemporaryPeerAccountId;
-    type SchedulerOriginCaller = OriginCaller;
-    type Scheduler = Scheduler;
     type WeightToFee = XorFee;
+    type MessageStatusNotifier = ();
 }
 
 impl bridge_multisig::Config for Runtime {
