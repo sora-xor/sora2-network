@@ -176,9 +176,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             lock_asset,
             lock_amount,
         )?;
-        Scheduler::schedule(order.expires_at, self.order_book_id, order.id)?;
+
+        let order_id = order.id;
+        let expires_at = order.expires_at;
 
         data.insert_limit_order(&self.order_book_id, order)?;
+
+        Scheduler::schedule(expires_at, self.order_book_id, order_id)?;
         Ok(())
     }
 
@@ -394,13 +398,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             lock_asset,
             lock_amount,
         )?;
+
+        data.delete_limit_order(&self.order_book_id, order.id)?;
+
         let unschedule_result =
             Scheduler::unschedule(order.expires_at, self.order_book_id, order.id);
         if !ignore_unschedule_error {
             unschedule_result?;
         }
-
-        data.delete_limit_order(&self.order_book_id, order.id)?;
 
         Ok(())
     }
