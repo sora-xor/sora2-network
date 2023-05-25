@@ -70,6 +70,7 @@ impl<T: Config> Pallet<T> {
                 return;
             }
         };
+        let order_owner = order.owner.clone();
         let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
             debug_assert!(false, "apparently removal of order book did not cleanup expiration schedule; \
                 order {:?} is set to expire but corresponding order book {:?} is not found", order_id, order_book_id);
@@ -81,21 +82,30 @@ impl<T: Config> Pallet<T> {
             return;
         };
 
-        // It's fine to try and unschedule again since the queue is taken
-        // from the storage before this method
-        if let Err(error) =
-            order_book.cancel_limit_order_unchecked::<Self, Self>(order, data_layer, true)
-        {
-            debug_assert!(
-                false,
-                "expiration of order {:?} resulted in error: {:?}",
-                order_id, error
-            );
-            Self::deposit_event(Event::<T>::ExpirationFailure {
-                order_book_id: order_book_id.clone(),
-                order_id: order_id.clone(),
-                error,
-            });
+        // It's fine to try and unschedule again inside this method
+        // since the queue is taken from the storage before this method.
+        // (thus `ignore_unschedule_error` is `true`)
+        match order_book.cancel_limit_order_unchecked::<Self, Self>(order, data_layer, true) {
+            Ok(_) => {
+                Self::deposit_event(Event::<T>::OrderExpired {
+                    order_book_id: *order_book_id,
+                    dex_id: order_book.dex_id,
+                    order_id: *order_id,
+                    owner_id: order_owner,
+                });
+            }
+            Err(error) => {
+                debug_assert!(
+                    false,
+                    "expiration of order {:?} resulted in error: {:?}",
+                    order_id, error
+                );
+                Self::deposit_event(Event::<T>::ExpirationFailure {
+                    order_book_id: order_book_id.clone(),
+                    order_id: order_id.clone(),
+                    error,
+                });
+            }
         }
     }
 
