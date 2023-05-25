@@ -47,8 +47,8 @@ use sp_runtime::traits::One;
 use sp_runtime::{DispatchError, Saturating};
 
 impl<T: Config> Pallet<T> {
-    pub fn service_single_expiration<TDataLayer: DataLayer<T>>(
-        data_layer: &mut TDataLayer,
+    pub fn service_single_expiration(
+        data_layer: &mut impl DataLayer<T>,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         order_id: &T::OrderId,
     ) {
@@ -115,8 +115,8 @@ impl<T: Config> Pallet<T> {
     ///
     /// Returns `true` if all expirations were processed and `false` if some expirations
     /// need to be retried when more weight is available.
-    pub fn service_block<TDataLayer: DataLayer<T>>(
-        data_layer: &mut TDataLayer,
+    pub fn service_block(
+        data_layer: &mut impl DataLayer<T>,
         block: T::BlockNumber,
         weight: &mut WeightMeter,
     ) -> bool {
