@@ -573,8 +573,14 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
 
             buy_order.id += 1;
             buy_order.owner = account.clone();
+            // should ideally be set through `LimitOrder::new`
+            // but let's do it in a hacky way for simplicity
+            buy_order.expires_at += 1;
             sell_order.id += 1;
             sell_order.owner = account;
+            // should ideally be set through `LimitOrder::new`
+            // but let's do it in a hacky way for simplicity
+            sell_order.expires_at += 1;
 
             assert_ok!(
                 order_book.place_limit_order::<OrderBookPallet, OrderBookPallet>(
