@@ -487,6 +487,426 @@ fn should_delete_order_book_with_a_lot_of_orders() {
 }
 
 #[test]
+fn should_not_update_order_book_by_not_root_origin() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RawOrigin::Signed(alice()).into(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1),
+                balance!(10000)
+            ),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn should_not_update_unknown_order_book() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1),
+                balance!(10000)
+            ),
+            E::UnknownOrderBook
+        );
+    });
+}
+
+#[test]
+fn should_not_update_order_book_with_zero_attributes() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(order_book_id);
+
+        let tick_size = balance!(0.01);
+        let step_lot_size = balance!(0.001);
+        let min_lot_size = balance!(1);
+        let max_lot_size = balance!(10000);
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0),
+                step_lot_size,
+                min_lot_size,
+                max_lot_size
+            ),
+            E::InvalidTickSize
+        );
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                tick_size,
+                balance!(0),
+                min_lot_size,
+                max_lot_size
+            ),
+            E::InvalidStepLotSize
+        );
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                tick_size,
+                step_lot_size,
+                balance!(0),
+                max_lot_size
+            ),
+            E::InvalidMinLotSize
+        );
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                tick_size,
+                step_lot_size,
+                min_lot_size,
+                balance!(0)
+            ),
+            E::InvalidMaxLotSize
+        );
+    });
+}
+
+#[test]
+fn should_not_update_order_book_with_simple_mistakes() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(order_book_id);
+
+        // min > max
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(100),
+                balance!(10)
+            ),
+            E::InvalidMaxLotSize
+        );
+
+        // min & max couldn't be less then `step_lot_size`
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(0.0001),
+                balance!(10000)
+            ),
+            E::InvalidMinLotSize
+        );
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1),
+                balance!(0.0001)
+            ),
+            E::InvalidMaxLotSize
+        );
+
+        // min & max must be a multiple of `step_lot_size`
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1.0001),
+                balance!(10000)
+            ),
+            E::InvalidMinLotSize
+        );
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1),
+                balance!(10000.00001)
+            ),
+            E::InvalidMaxLotSize
+        );
+    });
+}
+
+#[test]
+fn should_not_update_order_book_with_wrong_min_deal_amount() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(1000000000000),
+                balance!(1000000000000),
+                balance!(10000000000000),
+                balance!(100000000000000)
+            ),
+            E::TickSizeAndStepLotSizeAreTooBig
+        );
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.0000000001),
+                balance!(0.0000000001),
+                balance!(1),
+                balance!(10000)
+            ),
+            E::TickSizeAndStepLotSizeAreTooSmall
+        );
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.000000000000000001),
+                balance!(0.1),
+                balance!(1),
+                balance!(10000)
+            ),
+            E::TickSizeAndStepLotSizeAreTooSmall
+        );
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.1),
+                balance!(0.000000000000000001),
+                balance!(1),
+                balance!(10000)
+            ),
+            E::TickSizeAndStepLotSizeAreTooSmall
+        );
+    });
+}
+
+#[test]
+fn should_not_update_order_book_when_atributes_exceed_total_supply() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1),
+                balance!(10000000000)
+            ),
+            E::MaxLotSizeIsMoreThanTotalSupply
+        );
+    });
+}
+
+#[test]
+fn should_not_update_order_book_with_nft_bounds() {
+    ext().execute_with(|| {
+        FrameSystem::inc_providers(&alice());
+
+        let nft = Assets::register_from(
+            &alice(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(100),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: nft,
+            quote: XOR.into(),
+        };
+
+        assert_ok!(TradingPair::register(
+            RawOrigin::Signed(alice()).into(),
+            DEX.into(),
+            order_book_id.quote,
+            order_book_id.base
+        ));
+
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(alice()).into(),
+            DEX.into(),
+            order_book_id
+        ));
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.5),
+                balance!(1),
+                balance!(10)
+            ),
+            E::InvalidStepLotSize
+        );
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(1.1),
+                balance!(1),
+                balance!(10)
+            ),
+            E::InvalidStepLotSize
+        );
+    });
+}
+
+#[test]
+fn should_update_order_book_with_regular_asset() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(order_book_id);
+
+        let tick_size = balance!(0.01);
+        let step_lot_size = balance!(0.001);
+        let min_lot_size = balance!(1);
+        let max_lot_size = balance!(10000);
+
+        assert_ok!(OrderBookPallet::update_orderbook(
+            RuntimeOrigin::root(),
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size
+        ));
+
+        let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
+
+        assert_eq!(order_book.tick_size, tick_size);
+        assert_eq!(order_book.step_lot_size, step_lot_size);
+        assert_eq!(order_book.min_lot_size, min_lot_size);
+        assert_eq!(order_book.max_lot_size, max_lot_size);
+    });
+}
+
+#[test]
+fn should_update_order_book_with_nft() {
+    ext().execute_with(|| {
+        FrameSystem::inc_providers(&alice());
+
+        let nft = Assets::register_from(
+            &alice(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(100),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: nft,
+            quote: XOR.into(),
+        };
+
+        assert_ok!(TradingPair::register(
+            RawOrigin::Signed(alice()).into(),
+            DEX.into(),
+            order_book_id.quote,
+            order_book_id.base
+        ));
+
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(alice()).into(),
+            DEX.into(),
+            order_book_id
+        ));
+
+        let tick_size = balance!(0.01);
+        let step_lot_size = balance!(2);
+        let min_lot_size = balance!(4);
+        let max_lot_size = balance!(100);
+
+        assert_ok!(OrderBookPallet::update_orderbook(
+            RuntimeOrigin::root(),
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size
+        ));
+
+        let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
+
+        assert_eq!(order_book.tick_size, tick_size);
+        assert_eq!(order_book.step_lot_size, step_lot_size);
+        assert_eq!(order_book.min_lot_size, min_lot_size);
+        assert_eq!(order_book.max_lot_size, max_lot_size);
+    });
+}
+
+#[test]
 fn should_not_place_limit_order_in_unknown_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {

@@ -466,6 +466,10 @@ pub mod pallet {
                 );
             }
 
+            // min & max couldn't be less then `step_lot_size`
+            ensure!(min_lot_size >= step_lot_size, Error::<T>::InvalidMinLotSize);
+            ensure!(max_lot_size >= step_lot_size, Error::<T>::InvalidMaxLotSize);
+
             // min & max must be a multiple of `step_lot_size`
             ensure!(
                 min_lot_size % step_lot_size == 0,
@@ -475,10 +479,6 @@ pub mod pallet {
                 max_lot_size % step_lot_size == 0,
                 Error::<T>::InvalidMaxLotSize
             );
-
-            // min & max couldn't be less then `step_lot_size`
-            ensure!(min_lot_size >= step_lot_size, Error::<T>::InvalidMinLotSize);
-            ensure!(max_lot_size >= step_lot_size, Error::<T>::InvalidMaxLotSize);
 
             // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
             // The min possible deal amount = `tick_size` * `step_lot_size`.
