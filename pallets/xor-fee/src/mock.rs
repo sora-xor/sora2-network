@@ -53,6 +53,7 @@ use sp_core::H256;
 use sp_runtime::testing::{Header, TestXt, UintAuthorityId};
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Verify};
 use sp_runtime::{DispatchError, Perbill, Percent};
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use std::cmp::Ordering;
 
 pub use crate::{self as xor_fee, Config, Pallet};
@@ -129,6 +130,7 @@ parameter_types! {
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
     pub const ReferralsReservesAcc: AccountId = 22;
+    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 sp_runtime::impl_opaque_keys! {
@@ -513,8 +515,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = ();
+    type GetRestrictedTargetAssets = GetRestrictedTargetAssets;
 }
-
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;

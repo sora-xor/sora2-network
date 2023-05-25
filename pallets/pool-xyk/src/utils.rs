@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 
 use common::prelude::{Balance, SwapAmount};
@@ -103,6 +104,7 @@ impl<T: Config> Pallet<T> {
         } else {
             Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
         };
+        Self::ensure_target_asset_is_not_restricted(&dex_id, &ta)?;
         let tpair = common::TradingPair::<T::AssetId> {
             base_asset_id: ba,
             target_asset_id: ta,
@@ -112,6 +114,22 @@ impl<T: Config> Pallet<T> {
             tpair,
             TechAccountIdOf::<T>::to_xyk_tech_unit_from_dex_and_trading_pair(dex_id, tpair),
         ))
+    }
+
+    pub fn ensure_target_asset_is_not_restricted(
+        dex_id: &T::DEXId,
+        target_asset: &T::AssetId,
+    ) -> Result<(), DispatchError> {
+        match T::GetRestrictedTargetAssets::get().get(dex_id) {
+            Some(func) => {
+                if func().contains(target_asset) {
+                    Err(Error::<T>::TargetAssetIsRestricted.into())
+                } else {
+                    Ok(())
+                }
+            }
+            _ => Ok(()),
+        }
     }
 
     pub fn get_bounds_from_swap_amount(

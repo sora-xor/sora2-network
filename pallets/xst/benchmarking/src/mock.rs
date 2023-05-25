@@ -47,6 +47,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{Perbill, Percent};
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -108,6 +109,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 construct_runtime! {
@@ -339,8 +341,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = ();
+    type GetRestrictedTargetAssets = GetRestrictedTargetAssets;
 }
-
 impl pallet_timestamp::Config for Runtime {
     type Moment = Moment;
     type OnTimestampSet = ();

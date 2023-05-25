@@ -15,6 +15,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{Perbill, Percent};
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
@@ -67,6 +68,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = 100;
     pub GetPswapDistributionAccountId: AccountId = 101;
     pub const MinimumPeriod: u64 = 5;
+    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 impl frame_system::Config for Runtime {
@@ -172,8 +174,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = ();
+    type GetRestrictedTargetAssets = GetRestrictedTargetAssets;
 }
-
 impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);

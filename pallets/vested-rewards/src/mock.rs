@@ -49,6 +49,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{DispatchError, Perbill, Percent};
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -149,6 +150,7 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
     pub const CrowdloanVestingPeriod: u64 = 14400;
+    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 impl frame_system::Config for Runtime {
@@ -303,8 +305,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = ();
+    type GetRestrictedTargetAssets = GetRestrictedTargetAssets;
 }
-
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = MockLiquidityProxy;

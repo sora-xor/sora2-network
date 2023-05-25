@@ -14,6 +14,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 
 pub use common::mock::*;
 pub use common::TechAssetId as Tas;
@@ -53,6 +54,7 @@ parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
+    pub GetRestrictedTargetAssets: BTreeMap<DEXId, Box<dyn Fn() -> BTreeSet<AssetId>>> = BTreeMap::new();
 }
 
 parameter_type_with_key! {
@@ -226,8 +228,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = ();
+    type GetRestrictedTargetAssets = GetRestrictedTargetAssets;
 }
-
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;

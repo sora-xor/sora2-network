@@ -28,10 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use core::str::FromStr;
+
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
-    LiquiditySourceType, ToFeeAccount, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
+    balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
+    LiquiditySourceType, Oracle, ToFeeAccount, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::assert_noop;
 use frame_support::assert_ok;
@@ -2285,6 +2287,17 @@ fn initialize_pool_with_synthetics() {
             None,
             None,
         ));
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+            ALICE(),
+            Apple.into(),
+            AssetSymbol(b"AP".to_vec()),
+            AssetName(b"Apple".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(balance!(10)),
+            true,
+            None,
+            None,
+        ));
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
             RuntimeOrigin::signed(BOB()),
             DEX_A_ID,
@@ -2297,6 +2310,32 @@ fn initialize_pool_with_synthetics() {
             Mango.into(),
             GoldenTicket.into(),
         ));
+        assert_ok!(trading_pair::Pallet::<Runtime>::register(
+            RuntimeOrigin::signed(BOB()),
+            DEX_C_ID,
+            Mango.into(),
+            BatteryForMusicPlayer.into(),
+        ));
+
+        let euro =
+            common::SymbolName::from_str("EUR").expect("Failed to parse `EURO` as a symbol name");
+        OracleProxy::enable_oracle(RuntimeOrigin::root(), Oracle::BandChainFeed)
+            .expect("Failed to enable `Band` oracle");
+        Band::add_relayers(RuntimeOrigin::root(), vec![ALICE()]).expect("Failed to add relayers");
+        Band::relay(
+            RuntimeOrigin::signed(ALICE()),
+            vec![(euro.clone(), 1)],
+            0,
+            0,
+        )
+        .expect("Failed to relay");
+
+        assert_ok!(xst::Pallet::<Runtime>::enable_synthetic_asset(
+            RuntimeOrigin::root(),
+            Apple.into(),
+            euro.clone(),
+            fixed!(0)
+        ));
 
         assert_noop!(
             PoolXYK::initialize_pool(
@@ -2305,13 +2344,34 @@ fn initialize_pool_with_synthetics() {
                 GoldenTicket.into(),
                 Mango.into()
             ),
-            crate::Error::<Runtime>::UnableToCreatePoolWithSyntheticAssets
+            crate::Error::<Runtime>::TargetAssetIsRestricted
         );
-        assert_ok!(PoolXYK::initialize_pool(
-            RuntimeOrigin::signed(ALICE()),
-            DEX_C_ID,
-            Mango.into(),
-            GoldenTicket.into()
-        ));
+        assert_noop!(
+            PoolXYK::initialize_pool(
+                RuntimeOrigin::signed(ALICE()),
+                DEX_C_ID,
+                Mango.into(),
+                GoldenTicket.into()
+            ),
+            crate::Error::<Runtime>::TargetAssetIsRestricted
+        );
+        assert_noop!(
+            PoolXYK::initialize_pool(
+                RuntimeOrigin::signed(ALICE()),
+                DEX_C_ID,
+                Mango.into(),
+                BatteryForMusicPlayer.into()
+            ),
+            crate::Error::<Runtime>::TargetAssetIsRestricted
+        );
+        assert_noop!(
+            PoolXYK::initialize_pool(
+                RuntimeOrigin::signed(ALICE()),
+                DEX_C_ID,
+                Mango.into(),
+                Apple.into(),
+            ),
+            crate::Error::<Runtime>::TargetAssetIsRestricted
+        );
     });
 }

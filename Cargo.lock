@@ -8945,6 +8945,7 @@ name = "pool-xyk"
 version = "1.2.0"
 dependencies = [
  "assets",
+ "band",
  "ceres-liquidity-locker",
  "common",
  "demeter-farming-platform",
@@ -8954,6 +8955,7 @@ dependencies = [
  "hex-literal",
  "liquidity-proxy",
  "num-traits",
+ "oracle-proxy",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
