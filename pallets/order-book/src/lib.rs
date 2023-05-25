@@ -314,7 +314,7 @@ pub mod pallet {
         Unauthorized,
         /// Invalid asset
         InvalidAsset,
-        /// Indicated limits for slippage has not been met during transaction execution.
+        /// Indicated limit for slippage has not been met during transaction execution.
         SlippageLimitExceeded,
     }
 
