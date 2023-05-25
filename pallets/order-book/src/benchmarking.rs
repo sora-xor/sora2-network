@@ -38,10 +38,10 @@
 #![cfg(not(test))]
 
 #[cfg(not(test))]
-use crate::{Config, Event, LimitOrder, MomentOf, OrderBook, OrderBookId, Pallet};
+use crate::{Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, Pallet};
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    Config, Event, LimitOrder, MomentOf, OrderBook, OrderBookId, Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, Pallet,
 };
 
 use assets::AssetIdOf;
@@ -418,10 +418,10 @@ benchmarks! {
             expected_order
         );
 
-        let appropriate_amount = expected_order.appropriate_amount().unwrap();
+        let deal_amount = *expected_order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
-        let expected_balance = balance_before - appropriate_amount;
+        let expected_balance = balance_before - deal_amount;
         assert_eq!(balance, expected_balance);
     }
 
@@ -457,10 +457,10 @@ benchmarks! {
             .into(),
         );
 
-        let appropriate_amount = order.appropriate_amount().unwrap();
+        let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
-        let expected_balance = balance_before + appropriate_amount;
+        let expected_balance = balance_before + deal_amount;
         assert_eq!(balance, expected_balance);
     }
 

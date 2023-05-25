@@ -31,6 +31,8 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{Balance, PriceVariant, TradingPair};
 use frame_support::{BoundedBTreeMap, BoundedVec, RuntimeDebug};
+use sp_std::collections::btree_map::BTreeMap;
+use sp_std::vec::Vec;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -47,6 +49,31 @@ pub type UserOrders<OrderId, MaxOpenedLimitOrdersPerUser> =
 pub enum OrderAmount {
     Base(OrderVolume),
     Quote(OrderVolume),
+}
+
+impl OrderAmount {
+    pub fn value(&self) -> &OrderVolume {
+        match self {
+            OrderAmount::Base(value) => value,
+            OrderAmount::Quote(value) => value,
+        }
+    }
+
+    pub fn associated_asset<'a, AssetId>(
+        &'a self,
+        order_book_id: &'a OrderBookId<AssetId>,
+    ) -> &AssetId {
+        match self {
+            OrderAmount::Base(..) => &order_book_id.base,
+            OrderAmount::Quote(..) => &order_book_id.quote,
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Copy, RuntimeDebug)]
+pub enum MarketRole {
+    Maker,
+    Taker,
 }
 
 #[derive(
@@ -97,4 +124,13 @@ pub struct DealInfo<AssetId> {
     pub output_amount: OrderVolume,
     pub average_price: OrderPrice,
     pub side: PriceVariant,
+}
+
+#[derive(Eq, PartialEq, Clone, RuntimeDebug)]
+pub struct MarketChange<AccountId, OrderId, LimitOrder> {
+    pub market_input: OrderAmount,
+    pub market_output: OrderAmount,
+    pub to_delete: Vec<OrderId>,
+    pub to_update: Vec<LimitOrder>,
+    pub makers_output: BTreeMap<AccountId, OrderVolume>,
 }

@@ -49,6 +49,7 @@ use frame_support::traits::{Get, Time};
 use frame_support::weights::Weight;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
 use sp_runtime::Perbill;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -73,8 +74,8 @@ pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer};
 pub use types::{
-    DealInfo, MarketSide, OrderAmount, OrderBookId, OrderPrice, OrderVolume, PriceOrders,
-    UserOrders,
+    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderPrice,
+    OrderVolume, PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -259,6 +260,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// Order book does not exist for this trading pair
         UnknownOrderBook,
+        /// Invalid order book id
+        InvalidOrderBookId,
         /// Order book already exists for this trading pair
         OrderBookAlreadyExists,
         /// Limit order does not exist for this trading pair and order id
@@ -619,6 +622,19 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(dex_id, order_book_id);
         technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, amount.into())
+    }
+
+    fn unlock_liquidity_batch(
+        dex_id: T::DEXId,
+        order_book_id: OrderBookId<T::AssetId>,
+        asset_id: &T::AssetId,
+        receivers: BTreeMap<T::AccountId, OrderVolume>,
+    ) -> Result<(), DispatchError> {
+        let tech_account = Self::tech_account_for_order_book(dex_id, order_book_id);
+        for (account, amount) in receivers.iter() {
+            technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, *amount)?;
+        }
+        Ok(())
     }
 }
 

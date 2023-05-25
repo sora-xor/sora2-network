@@ -32,7 +32,9 @@ use crate::{
     Config, LimitOrder, MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders,
 };
 use assets::AssetIdOf;
+use common::PriceVariant;
 use frame_support::sp_runtime::DispatchError;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
 /// This trait is used by Order Book as a storage to get limit orders and their derived data and to change them
@@ -79,6 +81,19 @@ where
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError>;
+
+    /// Returns order ids of orders inside the bid or ask price
+    fn get_limit_orders_by_price(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        side: PriceVariant,
+        price: &OrderPrice,
+    ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
+        match side {
+            PriceVariant::Buy => self.get_bids(order_book_id, price),
+            PriceVariant::Sell => self.get_asks(order_book_id, price),
+        }
+    }
 
     /// Returns order ids of orders inside the bid price
     fn get_bids(
@@ -137,5 +152,12 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId> {
         order_book_id: OrderBookId<AssetId>,
         asset_id: &AssetId,
         amount: OrderVolume,
+    ) -> Result<(), DispatchError>;
+
+    fn unlock_liquidity_batch(
+        dex_id: DEXId,
+        order_book_id: OrderBookId<AssetId>,
+        asset_id: &AssetId,
+        receivers: BTreeMap<AccountId, OrderVolume>,
     ) -> Result<(), DispatchError>;
 }
