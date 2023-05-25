@@ -1385,3 +1385,36 @@ fn should_not_update_limit_order_with_bigger_amount(data: &mut impl DataLayer<Ru
         );
     });
 }
+
+#[test]
+fn cache_should_get_limit_orders_by_price() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    get_limit_orders_by_price(&mut cache);
+}
+
+#[test]
+fn storag_should_get_limit_orders_by_price() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    get_limit_orders_by_price(&mut storage);
+}
+
+fn get_limit_orders_by_price(data: &mut impl DataLayer<Runtime>) {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let buy_price = balance!(10);
+        let sell_price = balance!(11);
+
+        assert_eq!(
+            data.get_bids(&order_book_id, &buy_price),
+            data.get_limit_orders_by_price(&order_book_id, PriceVariant::Buy, &buy_price)
+        );
+        assert_eq!(
+            data.get_asks(&order_book_id, &sell_price),
+            data.get_limit_orders_by_price(&order_book_id, PriceVariant::Sell, &sell_price)
+        );
+    });
+}

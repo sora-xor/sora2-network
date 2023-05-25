@@ -31,7 +31,7 @@
 #![cfg(feature = "wip")] // order-book
 
 use assets::AssetIdOf;
-use common::{balance, Balance, DEXId, PriceVariant};
+use common::{balance, AssetInfoProvider, Balance, DEXId, PriceVariant};
 use frame_support::assert_ok;
 use frame_support::traits::Hooks;
 use frame_support::weights::Weight;
@@ -54,6 +54,10 @@ pub fn bob() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
 }
 
+pub fn charlie() -> <Runtime as frame_system::Config>::AccountId {
+    <Runtime as frame_system::Config>::AccountId::new([3u8; 32])
+}
+
 pub fn generate_account(seed: u32) -> <Runtime as frame_system::Config>::AccountId {
     let mut adr = [0u8; 32];
 
@@ -66,6 +70,13 @@ pub fn generate_account(seed: u32) -> <Runtime as frame_system::Config>::Account
     }
 
     <Runtime as frame_system::Config>::AccountId::new(adr)
+}
+
+pub fn free_balance(
+    asset: &AssetIdOf<Runtime>,
+    account: &<Runtime as frame_system::Config>::AccountId,
+) -> Balance {
+    <Runtime as Config>::AssetInfoProvider::free_balance(asset, account).expect("Asset must exist")
 }
 
 pub fn fill_balance(
@@ -120,6 +131,7 @@ pub fn create_and_fill_order_book(
     ));
 
     fill_balance(bob(), order_book_id);
+    fill_balance(charlie(), order_book_id);
 
     let lifespan = Some(10000);
 
@@ -156,7 +168,7 @@ pub fn create_and_fill_order_book(
         lifespan
     ));
     assert_ok!(OrderBookPallet::place_limit_order(
-        RawOrigin::Signed(bob()).into(),
+        RawOrigin::Signed(charlie()).into(),
         order_book_id,
         bp2,
         amount2,
@@ -172,7 +184,7 @@ pub fn create_and_fill_order_book(
         lifespan
     ));
     assert_ok!(OrderBookPallet::place_limit_order(
-        RawOrigin::Signed(bob()).into(),
+        RawOrigin::Signed(charlie()).into(),
         order_book_id,
         bp3,
         amount4,
@@ -188,7 +200,7 @@ pub fn create_and_fill_order_book(
         lifespan
     ));
     assert_ok!(OrderBookPallet::place_limit_order(
-        RawOrigin::Signed(bob()).into(),
+        RawOrigin::Signed(charlie()).into(),
         order_book_id,
         bp3,
         amount6,
@@ -205,7 +217,7 @@ pub fn create_and_fill_order_book(
         lifespan
     ));
     assert_ok!(OrderBookPallet::place_limit_order(
-        RawOrigin::Signed(bob()).into(),
+        RawOrigin::Signed(charlie()).into(),
         order_book_id,
         sp2,
         amount8,
@@ -221,7 +233,7 @@ pub fn create_and_fill_order_book(
         lifespan
     ));
     assert_ok!(OrderBookPallet::place_limit_order(
-        RawOrigin::Signed(bob()).into(),
+        RawOrigin::Signed(charlie()).into(),
         order_book_id,
         sp3,
         amount10,
@@ -237,7 +249,7 @@ pub fn create_and_fill_order_book(
         lifespan
     ));
     assert_ok!(OrderBookPallet::place_limit_order(
-        RawOrigin::Signed(bob()).into(),
+        RawOrigin::Signed(charlie()).into(),
         order_book_id,
         sp3,
         amount12,

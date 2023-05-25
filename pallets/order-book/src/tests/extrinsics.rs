@@ -33,14 +33,13 @@
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::{
-    balance, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, PriceVariant,
-    DEFAULT_BALANCE_PRECISION, VAL, XOR,
+    balance, AssetId32, AssetName, AssetSymbol, PriceVariant, DEFAULT_BALANCE_PRECISION, VAL, XOR,
 };
 use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{Config, LimitOrder, OrderBook, OrderBookId};
+use framenode_runtime::order_book::{Config, LimitOrder, MarketRole, OrderBook, OrderBookId};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use hex_literal::hex;
 use sp_core::Get;
@@ -392,34 +391,12 @@ fn should_delete_order_book() {
             .is_empty());
 
         // some balance is locked in limit orders
-        assert_ne!(
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &owner)
-                .unwrap(),
-            INIT_BALANCE
-        );
-        assert_ne!(
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &owner)
-                .unwrap(),
-            INIT_BALANCE
-        );
+        assert_ne!(free_balance(&order_book_id.base, &owner), INIT_BALANCE);
+        assert_ne!(free_balance(&order_book_id.quote, &owner), INIT_BALANCE);
 
         // tech account keeps the locked assets
-        assert!(
-            <Runtime as Config>::AssetInfoProvider::free_balance(
-                &order_book_id.base,
-                &tech_account
-            )
-            .unwrap()
-                > balance!(0)
-        );
-        assert!(
-            <Runtime as Config>::AssetInfoProvider::free_balance(
-                &order_book_id.quote,
-                &tech_account
-            )
-            .unwrap()
-                > balance!(0)
-        );
+        assert!(free_balance(&order_book_id.base, &tech_account) > balance!(0));
+        assert!(free_balance(&order_book_id.quote, &tech_account) > balance!(0));
 
         // delete the order book
         assert_ok!(OrderBookPallet::delete_orderbook(
@@ -436,32 +413,16 @@ fn should_delete_order_book() {
         );
 
         // locked balance is unlocked
-        assert_eq!(
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &owner)
-                .unwrap(),
-            INIT_BALANCE
-        );
-        assert_eq!(
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &owner)
-                .unwrap(),
-            INIT_BALANCE
-        );
+        assert_eq!(free_balance(&order_book_id.base, &owner), INIT_BALANCE);
+        assert_eq!(free_balance(&order_book_id.quote, &owner), INIT_BALANCE);
 
         // tech account balance is empty after canceling of all limit orders
         assert_eq!(
-            <Runtime as Config>::AssetInfoProvider::free_balance(
-                &order_book_id.base,
-                &tech_account
-            )
-            .unwrap(),
+            free_balance(&order_book_id.base, &tech_account),
             balance!(0)
         );
         assert_eq!(
-            <Runtime as Config>::AssetInfoProvider::free_balance(
-                &order_book_id.quote,
-                &tech_account
-            )
-            .unwrap(),
+            free_balance(&order_book_id.quote, &tech_account),
             balance!(0)
         );
     });
@@ -573,9 +534,7 @@ fn should_place_limit_order() {
         let price_volume_before = agg_bids_before.get(&price).cloned().unwrap_or_default();
         let user_orders_before =
             OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap_or_default();
-        let balance_before =
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                .unwrap();
+        let balance_before = free_balance(&order_book_id.quote, &caller);
 
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
@@ -600,7 +559,10 @@ fn should_place_limit_order() {
             current_block,
         );
 
-        let appropriate_amount = expected_order.appropriate_amount().unwrap();
+        let deal_amount = *expected_order
+            .deal_amount(MarketRole::Taker, None)
+            .unwrap()
+            .value();
 
         assert_eq!(
             OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
@@ -629,10 +591,8 @@ fn should_place_limit_order() {
             expected_user_orders
         );
 
-        let balance =
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                .unwrap();
-        let expected_balance = balance_before - appropriate_amount;
+        let balance = free_balance(&order_book_id.quote, &caller);
+        let expected_balance = balance_before - deal_amount;
         assert_eq!(balance, expected_balance);
     });
 }
@@ -729,9 +689,7 @@ fn should_place_limit_order_with_nft() {
             vec![order_id]
         );
 
-        let balance =
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
-                .unwrap();
+        let balance = free_balance(&order_book_id.base, &caller);
         assert_eq!(balance, balance!(0));
     });
 }
@@ -859,11 +817,7 @@ fn should_cancel_limit_order() {
             .unwrap_or_default();
         let user_orders_before =
             OrderBookPallet::user_limit_orders(&order.owner, &order_book_id).unwrap_or_default();
-        let balance_before = <Runtime as Config>::AssetInfoProvider::free_balance(
-            &order_book_id.quote,
-            &order.owner,
-        )
-        .unwrap();
+        let balance_before = free_balance(&order_book_id.quote, &order.owner);
 
         // cancel the limit order
         assert_ok!(OrderBookPallet::cancel_limit_order(
@@ -872,7 +826,7 @@ fn should_cancel_limit_order() {
             order_id
         ));
 
-        let appropriate_amount = order.appropriate_amount().unwrap();
+        let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // check
         let mut expected_bids = bids_before.clone();
@@ -897,12 +851,8 @@ fn should_cancel_limit_order() {
             expected_user_orders
         );
 
-        let balance = <Runtime as Config>::AssetInfoProvider::free_balance(
-            &order_book_id.quote,
-            &order.owner,
-        )
-        .unwrap();
-        let expected_balance = balance_before + appropriate_amount;
+        let balance = free_balance(&order_book_id.quote, &order.owner);
+        let expected_balance = balance_before + deal_amount;
         assert_eq!(balance, expected_balance);
     });
 }
