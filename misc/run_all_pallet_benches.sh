@@ -4,8 +4,12 @@
 # Should be run on a reference machine to gain accurate benchmarks
 # current reference machine: https://github.com/paritytech/substrate/pull/5848
 
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
+if ! which rustup >/dev/null 2>&1; then
+	curl https://sh.rustup.rs -sSf | sh -- -y
+	source ~/.cargo/env
+else
+	rustup update
+fi
 
 echo "[+] Compiling benchmarks..."
 cargo build --release --locked --features runtime-benchmarks,private-net --bin framenode
