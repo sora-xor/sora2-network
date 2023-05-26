@@ -180,4 +180,10 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
         order_book_id: OrderBookId,
         order_id: OrderId,
     ) -> Result<(), Error>;
+
+    /// Remove multiple orders from expiration schedule for corresponding
+    /// specified block.
+    fn unschedule_batch(
+        receivers: impl Iterator<Item = (BlockNumber, OrderBookId, OrderId)>,
+    ) -> Result<(), Error>;
 }
