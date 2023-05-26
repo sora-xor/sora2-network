@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as farming, Config};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT,
@@ -291,8 +291,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = ();
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
-
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;

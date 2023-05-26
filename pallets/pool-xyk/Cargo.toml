@@ -52,6 +52,8 @@ trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
 liquidity-proxy = { path = "../liquidity-proxy" }
 xst = { path = "../xst" }
+oracle-proxy = { path = "../oracle-proxy" }
+band = { path = "../band" }
 
 [features]
 default = ['std']

@@ -164,6 +164,13 @@ parameter_type_with_key! {
         0
     };
 }
+pub struct GetTradingPairRestrictedFlag;
+
+impl<T> orml_traits::get_by_key::GetByKey<T, bool> for GetTradingPairRestrictedFlag {
+    fn get(_key: &T) -> bool {
+        false
+    }
+}
 
 pub fn alice() -> AccountId32 {
     AccountId32::from([1; 32])
