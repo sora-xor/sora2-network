@@ -41,7 +41,7 @@ use sp_runtime::traits::Keccak256;
 
 pub struct RelayBuilder<S: SenderConfig, R: ReceiverConfig> {
     sender: Option<SubUnsignedClient<S>>,
-    receiver: Option<SubSignedClient<R>>,
+    receiver: Option<SubUnsignedClient<R>>,
     signer: Option<ecdsa::Pair>,
 }
 
@@ -69,7 +69,7 @@ where
         self
     }
 
-    pub fn with_receiver_client(mut self, receiver: SubSignedClient<R>) -> Self {
+    pub fn with_receiver_client(mut self, receiver: SubUnsignedClient<R>) -> Self {
         self.receiver = Some(receiver);
         self
     }
@@ -102,7 +102,7 @@ where
 #[derive(Clone)]
 pub struct Relay<S: SenderConfig, R: ReceiverConfig> {
     sender: SubUnsignedClient<S>,
-    receiver: SubSignedClient<R>,
+    receiver: SubUnsignedClient<R>,
     signer: ecdsa::Pair,
     receiver_network_id: SubNetworkId,
     sender_network_id: SubNetworkId,
@@ -217,7 +217,7 @@ where
                 commitment.messages,
                 R::multisig_proof(digest, approvals),
             );
-            if let Err(err) = self.receiver.submit_extrinsic(&call).await {
+            if let Err(err) = self.receiver.submit_unsigned_extrinsic(&call).await {
                 error!("Failed to submit messages, probably another relayer already submitted it: {:?}", err);
             }
         }

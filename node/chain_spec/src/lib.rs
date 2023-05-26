@@ -1157,8 +1157,6 @@ fn testnet_genesis(
         #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_app: Default::default(),
         #[cfg(feature = "wip")] // Substrate bridge
-        substrate_bridge_inbound_channel: Default::default(),
-        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         migration_app: Default::default(),
