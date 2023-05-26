@@ -5,7 +5,7 @@
 # current reference machine: https://github.com/paritytech/substrate/pull/5848
 
 if ! which rustup >/dev/null 2>&1; then
-	curl https://sh.rustup.rs -sSf | sh -- -y
+	curl https://sh.rustup.rs -sSf | sh -s -- -y
 	source ~/.cargo/env
 else
 	rustup update
