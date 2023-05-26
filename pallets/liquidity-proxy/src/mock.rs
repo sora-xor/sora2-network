@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as liquidity_proxy, Config, LiquidityProxyBuyBackHandler};
-use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
@@ -371,7 +371,7 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type WeightInfo = ();
     type XSTMarketInfo = ();
-    type GetRestrictedTargetAssets = GetRestrictedTargetAssets;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;

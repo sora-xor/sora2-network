@@ -1,5 +1,5 @@
 use crate::{self as ceres_token_locker};
-use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
@@ -172,7 +172,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = ();
-    type GetRestrictedTargetAssets = GetRestrictedTargetAssets;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

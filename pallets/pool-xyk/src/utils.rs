@@ -104,11 +104,11 @@ impl<T: Config> Pallet<T> {
         } else {
             Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
         };
-        Self::ensure_target_asset_is_not_restricted(&dex_id, &ta)?;
         let tpair = common::TradingPair::<T::AssetId> {
             base_asset_id: ba,
             target_asset_id: ta,
         };
+        Self::ensure_trading_pair_is_not_restricted(&tpair)?;
         let tpair: common::TradingPair<TechAssetIdOf<T>> = tpair.map(|a| a.into());
         Ok((
             tpair,
@@ -116,11 +116,10 @@ impl<T: Config> Pallet<T> {
         ))
     }
 
-    pub fn ensure_target_asset_is_not_restricted(
-        dex_id: &T::DEXId,
-        target_asset: &T::AssetId,
+    pub fn ensure_trading_pair_is_not_restricted(
+        tpair: &common::TradingPair<T::AssetId>,
     ) -> Result<(), DispatchError> {
-        if T::GetRestrictedTargetAssets::get(dex_id)().contains(target_asset) {
+        if T::GetTradingPairRestrictedFlag::get(tpair) {
             Err(Error::<T>::TargetAssetIsRestricted.into())
         } else {
             Ok(())

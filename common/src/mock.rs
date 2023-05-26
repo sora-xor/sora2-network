@@ -40,7 +40,6 @@ use serde::{Deserialize, Serialize};
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 use sp_runtime::AccountId32;
-use sp_std::collections::btree_set::BTreeSet;
 use sp_std::convert::TryFrom;
 
 #[derive(
@@ -165,15 +164,11 @@ parameter_type_with_key! {
         0
     };
 }
+pub struct GetTradingPairRestrictedFlag;
 
-pub type BoxedAssetSetGetter = Box<dyn Fn() -> BTreeSet<AssetId32<PredefinedAssetId>>>;
-pub struct GetRestrictedTargetAssets;
-
-impl<T> orml_traits::get_by_key::GetByKey<T, BoxedAssetSetGetter> for GetRestrictedTargetAssets {
-    fn get(_dex_id: &T) -> BoxedAssetSetGetter {
-        {
-            Box::new(|| BTreeSet::<AssetId32<PredefinedAssetId>>::new()) as BoxedAssetSetGetter
-        }
+impl<T> orml_traits::get_by_key::GetByKey<T, bool> for GetTradingPairRestrictedFlag {
+    fn get(_key: &T) -> bool {
+        false
     }
 }
 

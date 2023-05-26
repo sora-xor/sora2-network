@@ -2,7 +2,7 @@
 
 use crate::{Config, *};
 #[cfg(test)]
-use common::mock::{ExistentialDeposits, GetRestrictedTargetAssets};
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{fixed, hash, Amount, DEXInfo, Fixed, PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;
 
@@ -221,7 +221,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = ();
-    type GetRestrictedTargetAssets = GetRestrictedTargetAssets;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 
 impl pswap_distribution::Config for Runtime {

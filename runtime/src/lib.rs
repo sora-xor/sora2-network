@@ -66,7 +66,7 @@ use common::prelude::QuoteAmount;
 #[cfg(feature = "wip")]
 use common::{AssetId32, PredefinedAssetId};
 use common::{Description, GetMarketInfo};
-use common::{XOR, XST};
+use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::weights::ConstantMultiplier;
@@ -111,7 +111,6 @@ use sp_runtime::{
     FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::cmp::Ordering;
-use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
 #[cfg(feature = "std")]
@@ -956,24 +955,16 @@ parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
 }
 
-pub type BoxedAssetSetGetter = Box<dyn Fn() -> BTreeSet<AssetId>>;
-
 parameter_type_with_key! {
-    pub GetRestrictedTargetAssets: |dex_id: DEXId| -> BoxedAssetSetGetter {
-        match dex_id {
-            0u32 => Box::new(
-                || <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
-            ) as BoxedAssetSetGetter,
-            1u32 => Box::new(|| {
-                let mut synthetics = <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets();
-                synthetics.insert(XOR.into());
-                synthetics.insert(XST.into());
-                synthetics
-            }) as BoxedAssetSetGetter,
-            _ => Box::new(
-                || BTreeSet::<AssetId>::new()
-            ) as BoxedAssetSetGetter,
-        }
+    pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
+        let common::TradingPair {
+            base_asset_id,
+            target_asset_id
+        } = trading_pair;
+        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
+            .contains(target_asset_id) ||
+            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into()) ||
+            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XST.into())
     };
 }
 
@@ -992,7 +983,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = PriceTools;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
-    type GetRestrictedTargetAssets = GetRestrictedTargetAssets;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 
 parameter_types! {

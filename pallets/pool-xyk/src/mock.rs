@@ -45,7 +45,6 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
-use sp_std::collections::btree_set::BTreeSet;
 
 pub use common::mock::ComicAssetId::*;
 pub use common::mock::*;
@@ -307,24 +306,16 @@ impl xst::Config for Runtime {
     type Symbol = SymbolName;
 }
 
-pub type BoxedAssetSetGetter = Box<dyn Fn() -> BTreeSet<AssetId>>;
-
 parameter_type_with_key! {
-    pub GetRestrictedTargetAssets: |dex_id: DEXId| -> BoxedAssetSetGetter {
-        match dex_id {
-            &DEX_A_ID => Box::new(
-                || <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
-            ) as BoxedAssetSetGetter,
-            &DEX_C_ID => Box::new(|| {
-                let mut synthetics = <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets();
-                synthetics.insert(GoldenTicket.into());
-                synthetics.insert(BatteryForMusicPlayer.into());
-                synthetics
-            }) as BoxedAssetSetGetter,
-            _ => Box::new(
-                || BTreeSet::<AssetId>::new()
-            ) as BoxedAssetSetGetter,
-        }
+    pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
+        let common::TradingPair {
+            base_asset_id,
+            target_asset_id
+        } = trading_pair;
+        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
+            .contains(target_asset_id) ||
+            (base_asset_id, target_asset_id) == (&Mango.into(), &GoldenTicket.into()) ||
+            (base_asset_id, target_asset_id) == (&Mango.into(), &BatteryForMusicPlayer.into())
     };
 }
 
@@ -342,7 +333,7 @@ impl Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = xst::Pallet<Runtime>;
-    type GetRestrictedTargetAssets = GetRestrictedTargetAssets;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 
 #[allow(non_snake_case)]

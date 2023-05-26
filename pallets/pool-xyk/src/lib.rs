@@ -645,7 +645,6 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use orml_traits::GetByKey;
-    use sp_std::boxed::Box;
 
     // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
@@ -683,10 +682,7 @@ pub mod pallet {
         type OnPoolReservesChanged: OnPoolReservesChanged<Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
-        type GetRestrictedTargetAssets: GetByKey<
-            Self::DEXId,
-            Box<dyn Fn() -> BTreeSet<AssetIdOf<Self>>>,
-        >;
+        type GetTradingPairRestrictedFlag: GetByKey<TradingPair<Self::AssetId>, bool>;
     }
 
     /// The current storage version.
