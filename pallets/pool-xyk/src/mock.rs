@@ -30,6 +30,7 @@
 
 use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
+use common::GetMarketInfo;
 use common::{balance, fixed, hash, DEXInfo, PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -58,6 +59,7 @@ pub type Amount = i128;
 pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type Moment = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -104,6 +106,8 @@ construct_runtime! {
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
         XSTPools: xst::{Pallet, Call, Storage, Event<T>},
+        Band: band::{Pallet, Call, Storage, Event<T>},
+        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -241,7 +245,7 @@ impl pswap_distribution::Config for Runtime {
 }
 
 impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
+    type Moment = Moment;
     type OnTimestampSet = ();
     type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
@@ -272,6 +276,23 @@ parameter_types! {
         tech_account_id
     };
     pub GetSyntheticBaseAssetId: AssetId = BatteryForMusicPlayer.into();
+    pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+}
+
+impl band::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Symbol = common::SymbolName;
+    type WeightInfo = ();
+    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
+    type Time = Timestamp;
+}
+
+impl oracle_proxy::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = ();
+    type Symbol = <Runtime as band::Config>::Symbol;
+    type BandChainOracle = band::Pallet<Runtime>;
 }
 
 impl xst::Config for Runtime {
@@ -281,8 +302,21 @@ impl xst::Config for Runtime {
     type EnsureDEXManager = DexManager;
     type PriceToolsPallet = ();
     type WeightInfo = ();
-    type Oracle = ();
+    type Oracle = OracleProxy;
     type Symbol = SymbolName;
+}
+
+parameter_type_with_key! {
+    pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
+        let common::TradingPair {
+            base_asset_id,
+            target_asset_id
+        } = trading_pair;
+        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
+            .contains(target_asset_id) ||
+            (base_asset_id, target_asset_id) == (&Mango.into(), &GoldenTicket.into()) ||
+            (base_asset_id, target_asset_id) == (&Mango.into(), &BatteryForMusicPlayer.into())
+    };
 }
 
 impl Config for Runtime {
@@ -299,6 +333,7 @@ impl Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = xst::Pallet<Runtime>;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 
 #[allow(non_snake_case)]
@@ -319,8 +354,8 @@ pub fn CHARLIE() -> AccountId {
 pub const DEX_A_ID: DEXId = 220;
 pub const DEX_B_ID: DEXId = 221;
 pub const DEX_C_ID: DEXId = 222;
-// XSTPool uses hardcoded DEXId (DEXId::Polkaswap), so this is
-// introduced just to make things work
+// XSTPool uses hardcoded DEXId (DEXId::Polkaswap), without this
+// DEX XSTPool initializes with error
 pub const DEX_D_ID: DEXId = 0;
 
 pub struct ExtBuilder {
