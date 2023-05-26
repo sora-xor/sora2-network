@@ -39,7 +39,7 @@ use futures::StreamExt;
 
 pub struct RelayBuilder<S: SenderConfig, R: ReceiverConfig> {
     sender: Option<SubUnsignedClient<S>>,
-    receiver: Option<SubSignedClient<R>>,
+    receiver: Option<SubUnsignedClient<R>>,
     syncer: Option<BeefySyncer>,
 }
 
@@ -67,7 +67,7 @@ where
         self
     }
 
-    pub fn with_receiver_client(mut self, receiver: SubSignedClient<R>) -> Self {
+    pub fn with_receiver_client(mut self, receiver: SubUnsignedClient<R>) -> Self {
         self.receiver = Some(receiver);
         self
     }
@@ -101,7 +101,7 @@ where
 #[derive(Clone)]
 pub struct Relay<S: SenderConfig, R: ReceiverConfig> {
     sender: SubUnsignedClient<S>,
-    receiver: SubSignedClient<R>,
+    receiver: SubUnsignedClient<R>,
     commitment_queue: VecDeque<(BlockNumber<S>, H256)>,
     syncer: BeefySyncer,
     receiver_network_id: SubNetworkId,
@@ -153,7 +153,7 @@ where
         );
 
         info!("Sending channel commitment");
-        self.receiver.submit_extrinsic(&payload).await?;
+        self.receiver.submit_unsigned_extrinsic(&payload).await?;
         Ok(())
     }
 

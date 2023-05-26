@@ -55,7 +55,7 @@ impl Command {
             .context("build sora to sora relay")?;
         let messages_relay = crate::relay::parachain_messages::RelayBuilder::new()
             .with_sender_client(sender)
-            .with_receiver_client(receiver)
+            .with_receiver_client(receiver.unsigned())
             .with_syncer(syncer)
             .build()
             .await
