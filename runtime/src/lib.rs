@@ -63,9 +63,10 @@ use bridge_types::{
 };
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::Description;
 #[cfg(feature = "wip")]
-use common::{AssetId32, PredefinedAssetId, XOR};
+use common::{AssetId32, PredefinedAssetId};
+use common::{Description, GetMarketInfo};
+use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::weights::ConstantMultiplier;
@@ -954,6 +955,19 @@ parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
 }
 
+parameter_type_with_key! {
+    pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
+        let common::TradingPair {
+            base_asset_id,
+            target_asset_id
+        } = trading_pair;
+        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
+            .contains(target_asset_id) ||
+            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into()) ||
+            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XST.into())
+    };
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -969,6 +983,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = PriceTools;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 
 parameter_types! {
