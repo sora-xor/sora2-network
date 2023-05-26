@@ -34,8 +34,6 @@
 // Copyright (C) Parity Technologies (UK) Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::collections::HashMap;
-
 use crate::weights::WeightInfo;
 use crate::ExpirationsAgenda;
 use crate::{
@@ -47,7 +45,6 @@ use common::weights::check_accrue_n;
 use frame_support::weights::WeightMeter;
 use sp_runtime::traits::One;
 use sp_runtime::{DispatchError, Saturating};
-use sp_std::collections::btree_set::BTreeSet;
 
 impl<T: Config> Pallet<T> {
     pub fn service_single_expiration(
@@ -207,31 +204,5 @@ impl<T: Config>
             block_expirations.remove(remove_index);
             Ok(())
         })
-    }
-
-    fn unschedule_batch(
-        orders: impl Iterator<Item = (T::BlockNumber, OrderBookId<AssetIdOf<T>>, T::OrderId)>,
-    ) -> Result<(), DispatchError> {
-        let mut expirations_by_block = HashMap::<_, BTreeSet<_>>::new();
-        for (when, order_book_id, order_id) in orders {
-            expirations_by_block
-                .entry(when)
-                .or_default()
-                .insert((order_book_id, order_id));
-        }
-        for (when, mut to_unshedule) in expirations_by_block {
-            <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
-                block_expirations.retain(|entry| {
-                    // retain elements not present in `to_unshedule`
-                    !to_unshedule.remove(entry)
-                });
-                if to_unshedule.is_empty() {
-                    Ok(())
-                } else {
-                    Err(Error::<T>::ExpirationNotFound)
-                }
-            })?;
-        }
-        Ok(())
     }
 }
