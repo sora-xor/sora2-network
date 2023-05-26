@@ -4,12 +4,9 @@
 # Should be run on a reference machine to gain accurate benchmarks
 # current reference machine: https://github.com/paritytech/substrate/pull/5848
 
-RUSTUP_HOME="/opt/rust"
-CARGO_HOME="/opt/rust"
-PATH="$PATH:$RUSTUP_HOME/bin"
-RUST_VERSION=nightly-2023-03-08
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain $RUST_VERSION
+
 echo "[+] Compiling benchmarks..."
 cargo build --release --locked --features runtime-benchmarks,private-net --bin framenode
 
