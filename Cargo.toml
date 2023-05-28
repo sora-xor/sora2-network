@@ -209,20 +209,51 @@ try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = 
 pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
 [patch."https://github.com/sora-xor/sora2-common.git"]
-beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-dispatch = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
-multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.3" }
+# beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }
+# beefy-light-client-rpc = { path = "../sora2-common"  }
+# beefy-light-client-runtime-api = { path = "../sora2-common"  }
+# leaf-provider = { path = "../sora2-common"  }
+# leaf-provider-rpc = { path = "../sora2-common"  }
+# leaf-provider-runtime-api = { path = "../sora2-common"  }
+# bridge-common = { path = "../sora2-common"  }
+# dispatch = { path = "../sora2-common"  }
+# substrate-bridge-app = { path = "../sora2-common"  }
+# substrate-bridge-channel = { path = "../sora2-common"  }
+# substrate-bridge-channel-rpc = { path = "../sora2-common"  }
+# bridge-types = { path = "../sora2-common"  }
+# bridge-data-signer = { path = "../sora2-common"  }
+# multisig-verifier = { path = "../sora2-common"  }
+
+beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+dispatch = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", branch = "limit_substrate_bridge_deposit" }
+
+# [patch."https://github.com/sora-xor/sora2-common.git"]
+# beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# dispatch = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
+# multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.2" }
 
 # [patch."https://github.com/sora-xor/sora2-common.git"]
 # beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }

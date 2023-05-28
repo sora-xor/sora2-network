@@ -44,6 +44,8 @@ use frame_support::{
     traits::Contains,
     RuntimeDebug,
 };
+#[cfg(feature = "wip")]
+use substrate_bridge_app::BridgeTransferLimiter;
 
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 #[cfg(feature = "wip")]
@@ -297,6 +299,24 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     }
 }
 
+#[cfg(feature = "wip")]
+pub struct SubstrateBridgeTransferLimiter;
+
+#[cfg(feature = "wip")]
+const BRIDGE_AMOUNT_LIMIT_NO_DECIMALS: crate::Balance = 1_000;
+
+#[cfg(feature = "wip")]
+impl BridgeTransferLimiter<crate::AssetId, crate::Balance> for SubstrateBridgeTransferLimiter {
+    fn is_transfer_under_limit(asset: crate::AssetId, amount: crate::Balance) -> bool {
+        let asset_info = crate::Assets::asset_infos(asset);
+        let decimals = asset_info.2;
+        if decimals != 0 {
+            amount.saturating_div(decimals as u128) < BRIDGE_AMOUNT_LIMIT_NO_DECIMALS
+        } else {
+            amount < BRIDGE_AMOUNT_LIMIT_NO_DECIMALS
+        }
+    }
+}
 #[cfg(feature = "wip")] // Bridges
 pub struct BridgeAssetRegistryImpl;
 

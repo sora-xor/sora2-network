@@ -54,7 +54,7 @@ use crate::impls::PreimageWeightInfo;
 #[cfg(feature = "wip")]
 use crate::impls::{
     BridgeAssetRegistryImpl, DispatchableSubstrateBridgeCall, EVMBridgeCallFilter,
-    SubstrateBridgeCallFilter,
+    SubstrateBridgeCallFilter, SubstrateBridgeTransferLimiter,
 };
 #[cfg(feature = "wip")]
 use bridge_types::{
@@ -2273,6 +2273,7 @@ impl substrate_bridge_app::Config for Runtime {
     type AssetIdConverter = AssetIdConverter;
     type BalanceConverter = sp_runtime::traits::Identity;
     type WeightInfo = ();
+    type BridgeTransferLimiter = SubstrateBridgeTransferLimiter;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
