@@ -302,6 +302,7 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
 #[cfg(feature = "wip")]
 pub struct SubstrateBridgeTransferLimiter;
 
+// THE NUMBER OF TOKENS WITHOUT PRECISION
 #[cfg(feature = "wip")]
 const BRIDGE_AMOUNT_LIMIT_NO_DECIMALS: crate::Balance = 1_000;
 
@@ -311,7 +312,7 @@ impl BridgeTransferLimiter<crate::AssetId, crate::Balance> for SubstrateBridgeTr
         let asset_info = crate::Assets::asset_infos(asset);
         let decimals = asset_info.2;
         if decimals != 0 {
-            amount.saturating_div(decimals as u128) < BRIDGE_AMOUNT_LIMIT_NO_DECIMALS
+            amount.saturating_div(10_u128.pow(decimals as u32)) < BRIDGE_AMOUNT_LIMIT_NO_DECIMALS
         } else {
             amount < BRIDGE_AMOUNT_LIMIT_NO_DECIMALS
         }
