@@ -16,17 +16,47 @@
       {
         "indexed": false,
         "internalType": "uint64",
-        "name": "nonce",
+        "name": "batch_nonce",
         "type": "uint64"
       },
       {
         "indexed": false,
-        "internalType": "bool",
-        "name": "result",
-        "type": "bool"
+        "internalType": "address",
+        "name": "relayer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "results",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "results_length",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "gas_spent",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "base_fee",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "gas_proof",
+        "type": "bytes32"
       }
     ],
-    "name": "MessageDispatched",
+    "name": "BatchDispatched",
     "type": "event"
   },
   {
@@ -164,12 +194,44 @@
   },
   {
     "inputs": [],
+    "name": "batch_nonce",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "beefyLightClient",
     "outputs": [
       {
         "internalType": "contract BeefyLightClient",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "name": "gas_proofs",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",
@@ -251,19 +313,6 @@
   },
   {
     "inputs": [],
-    "name": "nonce",
-    "outputs": [
-      {
-        "internalType": "uint64",
-        "name": "",
-        "type": "uint64"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "owner",
     "outputs": [
       {
@@ -331,6 +380,11 @@
         "components": [
           {
             "internalType": "uint256",
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
             "name": "total_max_gas",
             "type": "uint256"
           },
@@ -340,11 +394,6 @@
                 "internalType": "address",
                 "name": "target",
                 "type": "address"
-              },
-              {
-                "internalType": "uint64",
-                "name": "nonce",
-                "type": "uint64"
               },
               {
                 "internalType": "uint256",

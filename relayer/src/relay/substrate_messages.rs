@@ -178,7 +178,6 @@ where
                 target: message.target,
                 nonce: message.nonce,
                 payload: message.payload.into(),
-                fee: message.fee,
                 max_gas: message.max_gas,
             });
         }

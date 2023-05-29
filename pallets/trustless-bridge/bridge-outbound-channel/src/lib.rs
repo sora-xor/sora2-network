@@ -36,8 +36,6 @@ pub struct Message {
     pub target: H160,
     /// A nonce for replay protection and ordering.
     pub nonce: u64,
-    /// Fee for accepting message on this channel.
-    pub fee: U256,
     /// Maximum gas this message can use on the Ethereum.
     pub max_gas: U256,
     /// Payload for target application.
@@ -214,8 +212,6 @@ pub mod pallet {
         QueueSizeLimitReached,
         /// Maximum gas for queued batch exceeds limit.
         MaxGasTooBig,
-        /// Cannot pay the fee to submit a message.
-        NoFunds,
         /// Cannot increment nonce
         Overflow,
         /// This channel already exists
@@ -232,6 +228,7 @@ pub mod pallet {
             Ok(().into())
         }
     }
+
     impl<T: Config> Pallet<T> {
         pub fn make_message_id(nonce: u64) -> H256 {
             MessageId::outbound(nonce).using_encoded(|v| <T as Config>::Hashing::hash(v))
@@ -284,7 +281,6 @@ pub mod pallet {
                     Token::Tuple(vec![
                         Token::Address(message.target),
                         Token::Uint(message.nonce.into()),
-                        Token::Uint(message.fee.into()),
                         Token::Uint(message.max_gas.into()),
                         Token::Bytes(message.payload.clone()),
                     ])
@@ -368,6 +364,7 @@ pub mod pallet {
                     return Err(Error::<T>::Overflow.into());
                 }
 
+                // TODO compute fee and charge
                 // Attempt to charge a fee for message submission
                 let fee = match who {
                     RawOrigin::Signed(who) => {
@@ -389,7 +386,6 @@ pub mod pallet {
                         network_id: network_id,
                         target,
                         nonce: *nonce,
-                        fee: fee.into(),
                         max_gas,
                         payload: payload.to_vec(),
                     },
