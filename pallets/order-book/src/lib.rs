@@ -443,11 +443,11 @@ pub mod pallet {
             status: OrderBookStatus,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            let mut order_book =
-                <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
-            let dex_id = order_book.dex_id;
-            order_book.status = status;
-            <OrderBooks<T>>::set(order_book_id, Some(order_book));
+            let dex_id = <OrderBooks<T>>::mutate(order_book_id, |order_book| {
+                let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
+                order_book.status = status;
+                Ok::<_, Error<T>>(order_book.dex_id)
+            })?;
             Self::deposit_event(Event::<T>::OrderBookStatusChanged {
                 order_book_id,
                 dex_id,
