@@ -63,9 +63,10 @@ use bridge_types::{
 };
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::Description;
 #[cfg(feature = "wip")]
-use common::{AssetId32, PredefinedAssetId, XOR};
+use common::{AssetId32, PredefinedAssetId};
+use common::{Description, GetMarketInfo};
+use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::weights::ConstantMultiplier;
@@ -954,6 +955,19 @@ parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
 }
 
+parameter_type_with_key! {
+    pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
+        let common::TradingPair {
+            base_asset_id,
+            target_asset_id
+        } = trading_pair;
+        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
+            .contains(target_asset_id) ||
+            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into()) ||
+            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XST.into())
+    };
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -969,6 +983,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = PriceTools;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 
 parameter_types! {
@@ -2183,12 +2198,9 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MultiVerifier;
     type MessageDispatch = SubstrateDispatch;
+    type UnsignedPriority = DataSignerPriority;
+    type UnsignedLongevity = DataSignerLongevity;
     type WeightInfo = ();
-    type FeeAssetId = FeeCurrency;
-    type FeeAccountId = GetTrustlessBridgeFeesAccountId;
-    type TreasuryAccountId = GetTreasuryAccountId;
-    type FeeConverter = FeeConverter;
-    type Currency = Currencies;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
@@ -2232,14 +2244,12 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
-    type FeeCurrency = FeeCurrency;
-    type FeeAccountId = GetTrustlessBridgeFeesAccountId;
     type MessageStatusNotifier = BridgeProxy;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type AuxiliaryDigestHandler = LeafProvider;
-    type BalanceConverter = sp_runtime::traits::Identity;
-    type Currency = Currencies;
+    type AssetId = AssetId;
+    type Balance = Balance;
     type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
@@ -2417,7 +2427,7 @@ construct_runtime! {
         #[cfg(feature = "wip")] // Substrate bridge
         BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
         #[cfg(feature = "wip")] // Substrate bridge
-        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 106,
+        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 106,
         #[cfg(feature = "wip")] // Substrate bridge
         SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
         #[cfg(feature = "wip")] // Substrate bridge

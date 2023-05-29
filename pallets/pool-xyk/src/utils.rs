@@ -30,6 +30,7 @@
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{ensure, fail};
+use orml_traits::GetByKey;
 
 use common::prelude::{Balance, SwapAmount};
 use common::{
@@ -107,11 +108,22 @@ impl<T: Config> Pallet<T> {
             base_asset_id: ba,
             target_asset_id: ta,
         };
+        Self::ensure_trading_pair_is_not_restricted(&tpair)?;
         let tpair: common::TradingPair<TechAssetIdOf<T>> = tpair.map(|a| a.into());
         Ok((
             tpair,
             TechAccountIdOf::<T>::to_xyk_tech_unit_from_dex_and_trading_pair(dex_id, tpair),
         ))
+    }
+
+    pub fn ensure_trading_pair_is_not_restricted(
+        tpair: &common::TradingPair<T::AssetId>,
+    ) -> Result<(), DispatchError> {
+        if T::GetTradingPairRestrictedFlag::get(tpair) {
+            Err(Error::<T>::TargetAssetIsRestricted.into())
+        } else {
+            Ok(())
+        }
     }
 
     pub fn get_bounds_from_swap_amount(
