@@ -1152,25 +1152,37 @@ fn should_sum_market_with_zero_limit() {
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(0))))
                 .unwrap(),
-            (balance!(0), balance!(0))
+            (
+                OrderAmount::Base(balance!(0)),
+                OrderAmount::Quote(balance!(0))
+            )
         );
         assert_eq!(
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Quote(balance!(0))))
                 .unwrap(),
-            (balance!(0), balance!(0))
+            (
+                OrderAmount::Base(balance!(0)),
+                OrderAmount::Quote(balance!(0))
+            )
         );
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Base(balance!(0))))
                 .unwrap(),
-            (balance!(0), balance!(0))
+            (
+                OrderAmount::Base(balance!(0)),
+                OrderAmount::Quote(balance!(0))
+            )
         );
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Quote(balance!(0))))
                 .unwrap(),
-            (balance!(0), balance!(0))
+            (
+                OrderAmount::Base(balance!(0)),
+                OrderAmount::Quote(balance!(0))
+            )
         );
     });
 }
@@ -1195,21 +1207,30 @@ fn should_sum_market() {
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(100))))
                 .unwrap(),
-            (balance!(100), balance!(1100))
+            (
+                OrderAmount::Base(balance!(100)),
+                OrderAmount::Quote(balance!(1100))
+            )
         );
         // impacts 2 prices
         assert_eq!(
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(200))))
                 .unwrap(),
-            (balance!(200), balance!(2204.74))
+            (
+                OrderAmount::Base(balance!(200)),
+                OrderAmount::Quote(balance!(2204.74))
+            )
         );
         // impacts 3 prices
         assert_eq!(
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(400))))
                 .unwrap(),
-            (balance!(400), balance!(4458.27))
+            (
+                OrderAmount::Base(balance!(400)),
+                OrderAmount::Quote(balance!(4458.27))
+            )
         );
 
         // impacts 1 price
@@ -1217,21 +1238,30 @@ fn should_sum_market() {
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Quote(balance!(1000))))
                 .unwrap(),
-            (balance!(90.90909), balance!(999.99999))
+            (
+                OrderAmount::Base(balance!(90.90909)),
+                OrderAmount::Quote(balance!(999.99999))
+            )
         );
         // impacts 2 prices
         assert_eq!(
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Quote(balance!(3000))))
                 .unwrap(),
-            (balance!(271.00535), balance!(2999.99992))
+            (
+                OrderAmount::Base(balance!(271.00535)),
+                OrderAmount::Quote(balance!(2999.99992))
+            )
         );
         // impacts 3 prices
         assert_eq!(
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Quote(balance!(5000))))
                 .unwrap(),
-            (balance!(447.10695), balance!(4999.999925))
+            (
+                OrderAmount::Base(balance!(447.10695)),
+                OrderAmount::Quote(balance!(4999.999925))
+            )
         );
 
         // impacts 1 price
@@ -1239,21 +1269,30 @@ fn should_sum_market() {
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Base(balance!(100))))
                 .unwrap(),
-            (balance!(100), balance!(1000))
+            (
+                OrderAmount::Base(balance!(100)),
+                OrderAmount::Quote(balance!(1000))
+            )
         );
         // impacts 2 prices
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Base(balance!(200))))
                 .unwrap(),
-            (balance!(200), balance!(1993.7))
+            (
+                OrderAmount::Base(balance!(200)),
+                OrderAmount::Quote(balance!(1993.7))
+            )
         );
         // impacts 3 prices
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Base(balance!(400))))
                 .unwrap(),
-            (balance!(400), balance!(3926.22))
+            (
+                OrderAmount::Base(balance!(400)),
+                OrderAmount::Quote(balance!(3926.22))
+            )
         );
 
         // impacts 1 price
@@ -1261,31 +1300,46 @@ fn should_sum_market() {
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Quote(balance!(1000))))
                 .unwrap(),
-            (balance!(100), balance!(1000))
+            (
+                OrderAmount::Base(balance!(100)),
+                OrderAmount::Quote(balance!(1000))
+            )
         );
         // impacts 2 prices
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Quote(balance!(2500))))
                 .unwrap(),
-            (balance!(251.66326), balance!(2499.999948))
+            (
+                OrderAmount::Base(balance!(251.66326)),
+                OrderAmount::Quote(balance!(2499.999948))
+            )
         );
         // impacts 3 prices
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Quote(balance!(4500))))
                 .unwrap(),
-            (balance!(460.39789), balance!(4499.999955))
+            (
+                OrderAmount::Base(balance!(460.39789)),
+                OrderAmount::Quote(balance!(4499.999955))
+            )
         );
 
         // without depth limit
         assert_eq!(
             order_book.sum_market(asks.iter(), None).unwrap(),
-            (balance!(610.7), balance!(6881.32))
+            (
+                OrderAmount::Base(balance!(610.7)),
+                OrderAmount::Quote(balance!(6881.32))
+            )
         );
         assert_eq!(
             order_book.sum_market(bids.iter().rev(), None).unwrap(),
-            (balance!(569.7), balance!(5538.37))
+            (
+                OrderAmount::Base(balance!(569.7)),
+                OrderAmount::Quote(balance!(5538.37))
+            )
         );
 
         // base is aligned
@@ -1296,7 +1350,10 @@ fn should_sum_market() {
                     Some(OrderAmount::Base(balance!(200.123456789)))
                 )
                 .unwrap(),
-            (balance!(200.12345), balance!(2206.12264))
+            (
+                OrderAmount::Base(balance!(200.12345)),
+                OrderAmount::Quote(balance!(2206.12264))
+            )
         );
 
         assert_eq!(
@@ -1306,7 +1363,10 @@ fn should_sum_market() {
                     Some(OrderAmount::Base(balance!(200.00000123)))
                 )
                 .unwrap(),
-            (balance!(200), balance!(1993.7))
+            (
+                OrderAmount::Base(balance!(200)),
+                OrderAmount::Quote(balance!(1993.7))
+            )
         );
     });
 }
@@ -1385,9 +1445,9 @@ fn should_calculate_deal() {
                 .unwrap(),
             DealInfo::<AssetIdOf<Runtime>> {
                 input_asset_id: XOR,
-                input_amount: balance!(2999.99992),
+                input_amount: OrderAmount::Quote(balance!(2999.99992)),
                 output_asset_id: VAL,
-                output_amount: balance!(271.00535),
+                output_amount: OrderAmount::Base(balance!(271.00535)),
                 average_price: balance!(11.069891867448373251),
                 side: PriceVariant::Buy
             }
@@ -1403,9 +1463,9 @@ fn should_calculate_deal() {
                 .unwrap(),
             DealInfo::<AssetIdOf<Runtime>> {
                 input_asset_id: XOR,
-                input_amount: balance!(2204.74),
+                input_amount: OrderAmount::Quote(balance!(2204.74)),
                 output_asset_id: VAL,
-                output_amount: balance!(200),
+                output_amount: OrderAmount::Base(balance!(200)),
                 average_price: balance!(11.0237),
                 side: PriceVariant::Buy
             }
@@ -1421,9 +1481,9 @@ fn should_calculate_deal() {
                 .unwrap(),
             DealInfo::<AssetIdOf<Runtime>> {
                 input_asset_id: VAL,
-                input_amount: balance!(200),
+                input_amount: OrderAmount::Base(balance!(200)),
                 output_asset_id: XOR,
-                output_amount: balance!(1993.7),
+                output_amount: OrderAmount::Quote(balance!(1993.7)),
                 average_price: balance!(9.9685),
                 side: PriceVariant::Sell
             }
@@ -1439,9 +1499,9 @@ fn should_calculate_deal() {
                 .unwrap(),
             DealInfo::<AssetIdOf<Runtime>> {
                 input_asset_id: VAL,
-                input_amount: balance!(251.66326),
+                input_amount: OrderAmount::Base(balance!(251.66326)),
                 output_asset_id: XOR,
-                output_amount: balance!(2499.999948),
+                output_amount: OrderAmount::Quote(balance!(2499.999948)),
                 average_price: balance!(9.933909097418510751),
                 side: PriceVariant::Sell
             }
@@ -1461,8 +1521,13 @@ fn should_not_execute_market_order_with_non_trade_status() {
 
         let mut order_book = create_and_fill_order_book(order_book_id);
 
-        let order =
-            MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, balance!(10));
+        let order = MarketOrder::<Runtime>::new(
+            alice(),
+            PriceVariant::Buy,
+            order_book_id,
+            balance!(10),
+            None,
+        );
 
         order_book.status = OrderBookStatus::PlaceAndCancel;
         assert_err!(
@@ -1500,8 +1565,13 @@ fn should_not_execute_market_order_with_empty_amount() {
         let order_book = create_and_fill_order_book(order_book_id);
 
         let wrong_amount = balance!(0);
-        let order =
-            MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, wrong_amount);
+        let order = MarketOrder::<Runtime>::new(
+            alice(),
+            PriceVariant::Buy,
+            order_book_id,
+            wrong_amount,
+            None,
+        );
 
         assert_err!(
             order_book.execute_market_order::<OrderBookPallet, OrderBookPallet>(order, &mut data),
@@ -1532,6 +1602,7 @@ fn should_not_execute_market_order_with_invalid_order_book_id() {
             PriceVariant::Buy,
             wrong_order_book_id,
             balance!(100),
+            None,
         );
 
         assert_err!(
@@ -1554,8 +1625,13 @@ fn should_not_execute_market_order_with_invalid_amount() {
         let order_book = create_and_fill_order_book(order_book_id);
 
         let wrong_amount = balance!(1.123456);
-        let order =
-            MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, wrong_amount);
+        let order = MarketOrder::<Runtime>::new(
+            alice(),
+            PriceVariant::Buy,
+            order_book_id,
+            wrong_amount,
+            None,
+        );
 
         assert_err!(
             order_book.execute_market_order::<OrderBookPallet, OrderBookPallet>(order, &mut data),
@@ -1565,7 +1641,7 @@ fn should_not_execute_market_order_with_invalid_amount() {
 }
 
 #[test]
-fn should_execute_market_order() {
+fn should_execute_market_order_and_transfer_to_owner() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -1587,10 +1663,20 @@ fn should_execute_market_order() {
         let mut charlie_base_balance = free_balance(&order_book_id.base, &charlie());
         let mut charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
 
-        let mut buy_order =
-            MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, balance!(150));
-        let mut sell_order =
-            MarketOrder::<Runtime>::new(alice(), PriceVariant::Sell, order_book_id, balance!(150));
+        let mut buy_order = MarketOrder::<Runtime>::new(
+            alice(),
+            PriceVariant::Buy,
+            order_book_id,
+            balance!(150),
+            None,
+        );
+        let mut sell_order = MarketOrder::<Runtime>::new(
+            alice(),
+            PriceVariant::Sell,
+            order_book_id,
+            balance!(150),
+            None,
+        );
 
         assert_eq!(
             data.get_aggregated_asks(&order_book_id),
@@ -2007,6 +2093,543 @@ fn should_execute_market_order() {
         assert_eq!(
             free_balance(&order_book_id.quote, &charlie()),
             charlie_quote_balance + balance!(157.55)
+        );
+        assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_bids(&order_book_id), BTreeMap::from([]));
+    });
+}
+
+#[test]
+// In this test `Alice` spends assets on market orders, but `Dave` receives the deal result amounts
+fn should_execute_market_order_and_transfer_to_another_account() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
+        fill_balance(alice(), order_book_id);
+
+        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
+        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        let mut bob_base_balance = free_balance(&order_book_id.base, &bob());
+        let mut bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        let mut charlie_base_balance = free_balance(&order_book_id.base, &charlie());
+        let mut charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+
+        let mut dave_base_balance = free_balance(&order_book_id.base, &dave());
+        let mut dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        let mut buy_order = MarketOrder::<Runtime>::new(
+            alice(),
+            PriceVariant::Buy,
+            order_book_id,
+            balance!(150),
+            Some(dave()),
+        );
+        let mut sell_order = MarketOrder::<Runtime>::new(
+            alice(),
+            PriceVariant::Sell,
+            order_book_id,
+            balance!(150),
+            Some(dave()),
+        );
+
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([
+                (balance!(11), balance!(176.3)),
+                (balance!(11.2), balance!(178.6)),
+                (balance!(11.5), balance!(255.8))
+            ])
+        );
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (balance!(9.5), balance!(261.3)),
+                (balance!(9.8), balance!(139.9)),
+                (balance!(10), balance!(168.5))
+            ])
+        );
+
+        // 1st buy order
+        assert_eq!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                    buy_order.clone(),
+                    &mut data
+                )
+                .unwrap(),
+            (
+                OrderAmount::Quote(balance!(1650)),
+                OrderAmount::Base(balance!(150))
+            )
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance - balance!(1650)
+        );
+        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance + balance!(1650)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &charlie()),
+            charlie_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &charlie()),
+            charlie_quote_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance + balance!(150)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([
+                (balance!(11), balance!(26.3)),
+                (balance!(11.2), balance!(178.6)),
+                (balance!(11.5), balance!(255.8))
+            ])
+        );
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (balance!(9.5), balance!(261.3)),
+                (balance!(9.8), balance!(139.9)),
+                (balance!(10), balance!(168.5))
+            ])
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        bob_base_balance = free_balance(&order_book_id.base, &bob());
+        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
+        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+
+        dave_base_balance = free_balance(&order_book_id.base, &dave());
+        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // 2nd buy order
+        assert_eq!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                    buy_order.clone(),
+                    &mut data
+                )
+                .unwrap(),
+            (
+                OrderAmount::Quote(balance!(1674.74)),
+                OrderAmount::Base(balance!(150))
+            )
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance - balance!(1674.74)
+        );
+        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance + balance!(718.26)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &charlie()),
+            charlie_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &charlie()),
+            charlie_quote_balance + balance!(956.48)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance + balance!(150)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([
+                (balance!(11.2), balance!(54.9)),
+                (balance!(11.5), balance!(255.8))
+            ])
+        );
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (balance!(9.5), balance!(261.3)),
+                (balance!(9.8), balance!(139.9)),
+                (balance!(10), balance!(168.5))
+            ])
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        bob_base_balance = free_balance(&order_book_id.base, &bob());
+        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
+        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+
+        dave_base_balance = free_balance(&order_book_id.base, &dave());
+        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // 3rd buy order
+        assert_eq!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                    buy_order.clone(),
+                    &mut data
+                )
+                .unwrap(),
+            (
+                OrderAmount::Quote(balance!(1708.53)),
+                OrderAmount::Base(balance!(150))
+            )
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance - balance!(1708.53)
+        );
+        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance + balance!(1287.63)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &charlie()),
+            charlie_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &charlie()),
+            charlie_quote_balance + balance!(420.9)
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([(balance!(11.5), balance!(160.7))])
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance + balance!(150)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance
+        );
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (balance!(9.5), balance!(261.3)),
+                (balance!(9.8), balance!(139.9)),
+                (balance!(10), balance!(168.5))
+            ])
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        bob_base_balance = free_balance(&order_book_id.base, &bob());
+        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
+        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+
+        dave_base_balance = free_balance(&order_book_id.base, &dave());
+        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // 1st sell order
+        assert_eq!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                    sell_order.clone(),
+                    &mut data
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(150)),
+                OrderAmount::Quote(balance!(1500))
+            )
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance - balance!(150)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &bob()),
+            bob_base_balance + balance!(150)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &charlie()),
+            charlie_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &charlie()),
+            charlie_quote_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance + balance!(1500)
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([(balance!(11.5), balance!(160.7))])
+        );
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (balance!(9.5), balance!(261.3)),
+                (balance!(9.8), balance!(139.9)),
+                (balance!(10), balance!(18.5))
+            ])
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        bob_base_balance = free_balance(&order_book_id.base, &bob());
+        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
+        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+
+        dave_base_balance = free_balance(&order_book_id.base, &dave());
+        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // 2nd sell order
+        assert_eq!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                    sell_order.clone(),
+                    &mut data
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(150)),
+                OrderAmount::Quote(balance!(1473.7))
+            )
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance - balance!(150)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &bob()),
+            bob_base_balance + balance!(54.8)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &charlie()),
+            charlie_base_balance + balance!(95.2)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &charlie()),
+            charlie_quote_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance + balance!(1473.7)
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([(balance!(11.5), balance!(160.7))])
+        );
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (balance!(9.5), balance!(261.3)),
+                (balance!(9.8), balance!(8.4)),
+            ])
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        bob_base_balance = free_balance(&order_book_id.base, &bob());
+        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
+        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+
+        dave_base_balance = free_balance(&order_book_id.base, &dave());
+        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // 3rd sell order
+        assert_eq!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                    sell_order.clone(),
+                    &mut data
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(150)),
+                OrderAmount::Quote(balance!(1427.52))
+            )
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance - balance!(150)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &bob()),
+            bob_base_balance + balance!(93.6)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &charlie()),
+            charlie_base_balance + balance!(56.4)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &charlie()),
+            charlie_quote_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance + balance!(1427.52)
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([(balance!(11.5), balance!(160.7))])
+        );
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([(balance!(9.5), balance!(119.7)),])
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        bob_base_balance = free_balance(&order_book_id.base, &bob());
+        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
+        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+
+        dave_base_balance = free_balance(&order_book_id.base, &dave());
+        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // buy & sell remaining amounts
+        buy_order.amount = balance!(160.7);
+        sell_order.amount = balance!(119.7);
+
+        assert_eq!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                    buy_order.clone(),
+                    &mut data
+                )
+                .unwrap(),
+            (
+                OrderAmount::Quote(balance!(1848.05)),
+                OrderAmount::Base(balance!(160.7))
+            )
+        );
+        assert_eq!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                    sell_order.clone(),
+                    &mut data
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(119.7)),
+                OrderAmount::Quote(balance!(1137.15))
+            )
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance - balance!(119.7)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance - balance!(1848.05)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &bob()),
+            bob_base_balance + balance!(4.7)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance + balance!(1690.5)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &charlie()),
+            charlie_base_balance + balance!(115)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &charlie()),
+            charlie_quote_balance + balance!(157.55)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance + balance!(160.7)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance + balance!(1137.15)
         );
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
         assert_eq!(data.get_aggregated_bids(&order_book_id), BTreeMap::from([]));

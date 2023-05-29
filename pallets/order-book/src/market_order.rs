@@ -48,6 +48,10 @@ where
 
     /// Amount of OrderBookId `base` asset
     pub amount: OrderVolume,
+
+    /// If defined the deal amount is transferred to `to` account,
+    /// otherwise the `owner` receives deal amount
+    pub to: Option<T::AccountId>,
 }
 
 impl<T: crate::Config> MarketOrder<T> {
@@ -56,12 +60,14 @@ impl<T: crate::Config> MarketOrder<T> {
         side: PriceVariant,
         order_book_id: OrderBookId<AssetIdOf<T>>,
         amount: OrderVolume,
+        to: Option<T::AccountId>,
     ) -> Self {
         Self {
             owner,
             side,
             order_book_id,
             amount,
+            to,
         }
     }
 
