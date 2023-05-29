@@ -68,14 +68,14 @@ pub mod storage_data_layer;
 pub mod traits;
 pub mod types;
 
-pub use crate::order_book::{OrderBook, OrderBookStatus};
+pub use crate::order_book::OrderBook;
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer};
 pub use types::{
-    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderPrice,
-    OrderVolume, PriceOrders, UserOrders,
+    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderBookStatus,
+    OrderPrice, OrderVolume, PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -231,6 +231,13 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             count_of_canceled_orders: u32,
+        },
+
+        /// Order book status is changed
+        OrderBookStatusChanged {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            new_status: OrderBookStatus,
         },
 
         /// Order book attributes are updated by Council
@@ -445,12 +452,21 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::change_orderbook_status())]
         pub fn change_orderbook_status(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<AssetIdOf<T>>,
-            _status: OrderBookStatus,
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            status: OrderBookStatus,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            // todo (m.tagirov)
-            todo!()
+            let dex_id = <OrderBooks<T>>::mutate(order_book_id, |order_book| {
+                let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
+                order_book.status = status;
+                Ok::<_, Error<T>>(order_book.dex_id)
+            })?;
+            Self::deposit_event(Event::<T>::OrderBookStatusChanged {
+                order_book_id,
+                dex_id,
+                new_status: status,
+            });
+            Ok(().into())
         }
 
         #[pallet::call_index(4)]
