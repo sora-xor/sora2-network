@@ -49,7 +49,7 @@ pub mod pallet {
 
     /// Since gas from event is measured before tx is ended, extra gas should be added.
     /// 20000 for storage gas_proof in map + ~10000 for emit BatchDispatched
-    const GAS_EXTRA: u64 = 30000;
+    const GAS_EXTRA: u64 = 60000;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {

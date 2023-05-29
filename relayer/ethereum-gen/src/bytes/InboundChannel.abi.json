@@ -48,12 +48,6 @@
         "internalType": "uint256",
         "name": "base_fee",
         "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "gas_proof",
-        "type": "bytes32"
       }
     ],
     "name": "BatchDispatched",

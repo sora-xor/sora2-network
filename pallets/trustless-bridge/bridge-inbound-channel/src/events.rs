@@ -141,11 +141,6 @@ fn batch_dispatched_event_abi() -> Box<Event> {
                 name: "base_fee".into(),
                 indexed: false,
             },
-            EventParam {
-                kind: ParamType::FixedBytes(32),
-                name: "gas_proof".into(),
-                indexed: false,
-            },
         ],
         anonymous: false,
     })
@@ -168,8 +163,6 @@ pub struct BatchDispatched {
     pub gas_spent: u64,
     /// Base fee in the block.
     pub base_fee: u64,
-    /// Keccak of gas used and base fee for the batch submission
-    pub gas_proof: Vec<u8>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
@@ -186,7 +179,6 @@ impl TryFrom<Log> for BatchDispatched {
         let mut results_length = None;
         let mut gas_spent = None;
         let mut base_fee = None;
-        let mut gas_proof = None;
 
         let log = get_batch_dispatched_event_abi()
             .parse_log((log.topics, log.data).into())
@@ -200,7 +192,6 @@ impl TryFrom<Log> for BatchDispatched {
                 "results_length" => results_length = param.value.into_uint().map(|x| x.low_u64()),
                 "gas_spent" => gas_spent = param.value.into_uint().map(|x| x.low_u64()),
                 "base_fee" => base_fee = param.value.into_uint().map(|x| x.low_u64()),
-                "gas_proof" => gas_proof = param.value.into_fixed_bytes(),
                 _ => return Err(BatchDispatchedEventDecodeError),
             }
         }
@@ -213,7 +204,6 @@ impl TryFrom<Log> for BatchDispatched {
             results_length: results_length.ok_or(BatchDispatchedEventDecodeError)?,
             gas_spent: gas_spent.ok_or(BatchDispatchedEventDecodeError)?,
             base_fee: base_fee.ok_or(BatchDispatchedEventDecodeError)?,
-            gas_proof: gas_proof.ok_or(BatchDispatchedEventDecodeError)?,
         })
     }
 }
