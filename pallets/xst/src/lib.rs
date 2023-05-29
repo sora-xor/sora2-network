@@ -978,7 +978,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             fail!(Error::<T>::CantExchange);
         }
 
-        let outcome: Result<SwapOutcome<u128>, DispatchError> = Self::swap_mint_burn_assets(
+        let outcome = Self::swap_mint_burn_assets(
             dex_id,
             input_asset_id,
             output_asset_id,
@@ -986,7 +986,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             sender,
             receiver,
         );
-        outcome.and_then(|mut res: SwapOutcome<u128>| {
+        outcome.and_then(|mut res| {
             let fee = Self::convert_fee(res.fee)?;
             res.fee = fee;
             Ok((res, Self::exchange_weight()))
