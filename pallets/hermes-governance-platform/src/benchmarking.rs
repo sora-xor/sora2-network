@@ -43,7 +43,7 @@ benchmarks! {
         let hermes_amount = balance!(1000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
-        let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
+        let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
@@ -83,7 +83,7 @@ benchmarks! {
         let title = "Title".to_string();
         let descripton = "Description".to_string();
         let poll_start_timestamp = Timestamp::<T>::get();
-        let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
+        let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
         let hermes_amount = balance!(100000);
         let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
 
@@ -115,7 +115,7 @@ benchmarks! {
         let number_of_hermes = balance!(1000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
-        let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
+        let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
         let current_timestamp = Timestamp::<T>::get();
         let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
@@ -148,7 +148,7 @@ benchmarks! {
         );
 
         let hermes_voting_info = pallet::HermesVotings::<T>::get(&poll_id, &caller).unwrap();
-        pallet_timestamp::Now::<T>::put(current_timestamp + (172801*1000u32).into());
+        pallet_timestamp::Now::<T>::put(current_timestamp + (14401*1000u32).into());
     }: {
         let _ = HermesGovernancePlatform::<T>::withdraw_funds_voter(
             RawOrigin::Signed(caller.clone()).into(),
@@ -167,7 +167,7 @@ benchmarks! {
         let number_of_hermes = balance!(200000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
-        let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
+        let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
         let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
@@ -200,7 +200,7 @@ benchmarks! {
             hermes_locked,
         ));
 
-        pallet_timestamp::Now::<T>::put(poll_start_timestamp + (172801*1000u32).into());
+        pallet_timestamp::Now::<T>::put(poll_start_timestamp + (14401*1000u32).into());
 
     }: {
         let _ = HermesGovernancePlatform::<T>::withdraw_funds_creator(

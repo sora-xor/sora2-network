@@ -17,17 +17,11 @@ use common::Balance;
 use frame_support::RuntimeDebug;
 pub use weights::WeightInfo;
 
-#[derive(Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Clone, Copy)]
-pub enum VotingOption {
-    Yes,
-    No,
-}
-
 #[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct HermesVotingInfo {
     /// Voting option
-    voting_option: VotingOption,
+    voting_option: String,
     /// Number of hermes
     number_of_hermes: Balance,
     /// Hermes withdrawn
@@ -51,13 +45,15 @@ pub struct HermesPollInfo<AccountId, Moment> {
     pub description: String,
     /// Creator Hermes withdrawn
     pub creator_hermes_withdrawn: bool,
+    /// Options
+    pub options: Vec<String>,
 }
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{HermesPollInfo, HermesVotingInfo, VotingOption, WeightInfo};
+    use crate::{HermesPollInfo, HermesVotingInfo, WeightInfo};
     use alloc::string::String;
     use common::prelude::Balance;
     use common::{balance, AssetInfoProvider};
@@ -158,7 +154,7 @@ pub mod pallet {
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Voting [who, poll, option]
-        Voted(AccountIdOf<T>, H256, VotingOption),
+        Voted(AccountIdOf<T>, H256, String),
         /// Create poll [who, title, start_timestamp, end_timestamp]
         Created(AccountIdOf<T>, String, T::Moment, T::Moment),
         /// Voter Funds Withdrawn [who, balance]
@@ -201,8 +197,14 @@ pub mod pallet {
         InvalidMinimumDurationOfPoll,
         /// Invalid Maximum Duration Of Poll
         InvalidMaximumDurationOfPoll,
-        /// NotVoted
+        /// Not Voted
         NotVoted,
+        /// Invalid Voting Options
+        InvalidVotingOptions,
+        /// Too Many Voting Options
+        TooManyVotingOptions,
+        /// InvalidOption
+        InvalidOption,
     }
 
     #[pallet::call]
@@ -214,7 +216,7 @@ pub mod pallet {
         pub fn vote(
             origin: OriginFor<T>,
             poll_id: H256,
-            voting_option: VotingOption,
+            voting_option: String,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -233,6 +235,11 @@ pub mod pallet {
             );
 
             ensure!(
+                hermes_poll_info.options.contains(&voting_option),
+                Error::<T>::InvalidOption
+            );
+
+            ensure!(
                 MinimumHermesVotingAmount::<T>::get()
                     <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
                         .unwrap_or(0),
@@ -245,7 +252,7 @@ pub mod pallet {
             );
 
             let hermes_voting_info = HermesVotingInfo {
-                voting_option,
+                voting_option: voting_option.clone(),
                 number_of_hermes: MinimumHermesVotingAmount::<T>::get(),
                 hermes_withdrawn: false,
             };
@@ -278,6 +285,7 @@ pub mod pallet {
             poll_end_timestamp: T::Moment,
             title: String,
             description: String,
+            options: Vec<String>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
             let current_timestamp = Timestamp::<T>::get();
@@ -313,6 +321,9 @@ pub mod pallet {
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
 
+            ensure!(options.len() >= 2, Error::<T>::InvalidVotingOptions);
+            ensure!(options.len() <= 5, Error::<T>::TooManyVotingOptions);
+
             let hermes_poll_info = HermesPollInfo {
                 creator: user.clone(),
                 hermes_locked: MinimumHermesAmountForCreatingPoll::<T>::get(),
@@ -321,6 +332,7 @@ pub mod pallet {
                 title: title.clone(),
                 description,
                 creator_hermes_withdrawn: false,
+                options,
             };
 
             // Transfer Hermes to pallet

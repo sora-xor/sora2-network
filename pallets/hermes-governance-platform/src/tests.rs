@@ -1,5 +1,5 @@
 use crate::mock::*;
-use crate::{pallet, Error, HermesPollInfo, VotingOption};
+use crate::{pallet, Error, HermesPollInfo};
 use codec::Encode;
 use common::{balance, AssetInfoProvider, HERMES_ASSET_ID};
 use frame_support::PalletId;
@@ -15,6 +15,11 @@ fn create_poll_invalid_start_timestamp() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title: String = "Title".to_string();
         let description: String = "Description".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+        ];
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 1);
 
@@ -25,6 +30,7 @@ fn create_poll_invalid_start_timestamp() {
                 current_timestamp + 10,
                 title,
                 description,
+                options
             ),
             Error::<Runtime>::InvalidStartTimestamp
         );
@@ -38,6 +44,11 @@ fn create_poll_invalid_end_timestamp() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title: String = "Title".to_string();
         let description: String = "Description".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+        ];
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
@@ -46,6 +57,7 @@ fn create_poll_invalid_end_timestamp() {
                 current_timestamp,
                 title,
                 description,
+                options
             ),
             Error::<Runtime>::InvalidEndTimestamp
         );
@@ -59,6 +71,7 @@ fn create_poll_invalid_minimum_duration_of_poll() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title: String = "Title".to_string();
         let description: String = "Description".to_string();
+        let options = vec!["Option 1".to_string(), "Option 2".to_string()];
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
@@ -67,6 +80,7 @@ fn create_poll_invalid_minimum_duration_of_poll() {
                 current_timestamp + 15,
                 title,
                 description,
+                options
             ),
             Error::<Runtime>::InvalidMinimumDurationOfPoll
         );
@@ -80,6 +94,7 @@ fn create_poll_invalid_maximum_duration_of_poll() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title: String = "Title".to_string();
         let description: String = "Description".to_string();
+        let options = vec!["Option 1".to_string(), "Option 2".to_string()];
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
@@ -88,6 +103,7 @@ fn create_poll_invalid_maximum_duration_of_poll() {
                 current_timestamp + 604800001,
                 title,
                 description,
+                options
             ),
             Error::<Runtime>::InvalidMaximumDurationOfPoll
         );
@@ -101,16 +117,76 @@ fn create_poll_not_enough_hermes_for_creating_poll() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title: String = "Title".to_string();
         let description: String = "Description".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+            "Option 4".to_string(),
+        ];
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
                 RuntimeOrigin::signed(BOB),
                 current_timestamp,
-                current_timestamp + 172800000,
+                current_timestamp + 14_400_000,
                 title,
                 description,
+                options
             ),
             Error::<Runtime>::NotEnoughHermesForCreatingPoll
+        );
+    });
+}
+
+#[test]
+fn create_poll_invalid_voting_options() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let title: String = "Title".to_string();
+        let description: String = "Description".to_string();
+        let options = vec!["Option1".to_string()];
+
+        assert_err!(
+            HermesGovernancePlatform::create_poll(
+                RuntimeOrigin::signed(ALICE),
+                current_timestamp,
+                current_timestamp + 14_400_000,
+                title,
+                description,
+                options
+            ),
+            Error::<Runtime>::InvalidVotingOptions
+        );
+    });
+}
+
+#[test]
+fn create_poll_too_many_voting_options() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let title: String = "Title".to_string();
+        let description: String = "Description".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+            "Option 4".to_string(),
+            "Option 5".to_string(),
+            "Option 6".to_string(),
+        ];
+
+        assert_err!(
+            HermesGovernancePlatform::create_poll(
+                RuntimeOrigin::signed(ALICE),
+                current_timestamp,
+                current_timestamp + 14_400_000,
+                title,
+                description,
+                options
+            ),
+            Error::<Runtime>::TooManyVotingOptions
         );
     });
 }
@@ -120,11 +196,18 @@ fn create_poll_ok() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
-        let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 172800000;
+        let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 14_400_000;
         let user = RuntimeOrigin::signed(ALICE);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
         let title = "Title".to_string();
         let description = "Description".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+            "Option 4".to_string(),
+            "Option 5".to_string(),
+        ];
 
         assert_ok!(HermesGovernancePlatform::create_poll(
             user,
@@ -132,6 +215,7 @@ fn create_poll_ok() {
             poll_end_timestamp,
             title,
             description,
+            options
         ));
 
         for (_, p_info) in pallet::HermesPollData::<Runtime>::iter() {
@@ -162,7 +246,7 @@ fn vote_poll_does_not_exist() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let user = ALICE;
-        let voting_option = VotingOption::Yes;
+        let voting_option = "Option 1".to_string();
 
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
@@ -180,13 +264,20 @@ fn vote_poll_is_not_started() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 1;
-        let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 172800000;
+        let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 14_400_000;
         let user = ALICE;
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let voting_option = VotingOption::Yes;
+        let voting_option = "Option 1".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+            "Option 4".to_string(),
+            "Option 5".to_string(),
+        ];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -196,6 +287,7 @@ fn vote_poll_is_not_started() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -219,7 +311,12 @@ fn vote_poll_is_finished() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let voting_option = VotingOption::Yes;
+        let voting_option = "Option 1".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+        ];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -229,6 +326,7 @@ fn vote_poll_is_finished() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -237,6 +335,44 @@ fn vote_poll_is_finished() {
         assert_err!(
             HermesGovernancePlatform::vote(RuntimeOrigin::signed(ALICE), poll_id, voting_option,),
             Error::<Runtime>::PollIsFinished
+        );
+    });
+}
+
+#[test]
+fn vote_invalid_option() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
+        let user = ALICE;
+        let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 5".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+        ];
+
+        let hermes_poll_info = HermesPollInfo {
+            creator: user,
+            hermes_locked,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title: "Title".to_string(),
+            description: "Description".to_string(),
+            creator_hermes_withdrawn: false,
+            options,
+        };
+
+        pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
+
+        assert_err!(
+            HermesGovernancePlatform::vote(RuntimeOrigin::signed(ALICE), poll_id, voting_option,),
+            Error::<Runtime>::InvalidOption
         );
     });
 }
@@ -252,7 +388,8 @@ fn vote_not_enough_hermes_for_voting() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let voting_option = VotingOption::Yes;
+        let voting_option = "Option 1".to_string();
+        let options = vec!["Option 1".to_string(), "Option 2".to_string()];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -262,6 +399,7 @@ fn vote_not_enough_hermes_for_voting() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -284,7 +422,12 @@ fn vote_already_voted() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let voting_option = VotingOption::Yes;
+        let voting_option = "Option 1".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+        ];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -294,6 +437,7 @@ fn vote_already_voted() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -301,14 +445,14 @@ fn vote_already_voted() {
         assert_ok!(HermesGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
             poll_id.clone(),
-            voting_option,
+            voting_option.clone(),
         ));
 
         assert_err!(
             HermesGovernancePlatform::vote(
                 RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
-                voting_option
+                voting_option.clone()
             ),
             Error::<Runtime>::AlreadyVoted
         );
@@ -322,12 +466,18 @@ fn vote_ok() {
         let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
         let user = ALICE;
-        let voting_option = VotingOption::No;
         let number_of_hermes = pallet::MinimumHermesVotingAmount::<Runtime>::get();
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let voting_option = "Option 1".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+            "Option 4".to_string(),
+        ];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -337,6 +487,7 @@ fn vote_ok() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -344,7 +495,7 @@ fn vote_ok() {
         assert_ok!(HermesGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
             poll_id.clone(),
-            voting_option,
+            voting_option.clone(),
         ));
 
         let hermes_voting_info = pallet::HermesVotings::<Runtime>::get(&poll_id, &ALICE).unwrap();
@@ -392,11 +543,16 @@ fn withdraw_funds_voter_poll_is_not_finished() {
         let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
         let user = ALICE;
-        let voting_option = VotingOption::Yes;
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let voting_option = "Option 1".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+        ];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -406,6 +562,7 @@ fn withdraw_funds_voter_poll_is_not_finished() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -435,6 +592,11 @@ fn withdraw_funds_voter_not_voted() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+        ];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -444,6 +606,7 @@ fn withdraw_funds_voter_not_voted() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -464,12 +627,13 @@ fn withdraw_funds_voter_funds_already_withdrawn() {
         let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
         let user = ALICE;
-        let voting_option = VotingOption::Yes;
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let voting_option = "Option 1".to_string();
+        let options = vec!["Option 1".to_string(), "Option 2".to_string()];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -479,6 +643,7 @@ fn withdraw_funds_voter_funds_already_withdrawn() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -513,13 +678,18 @@ fn withdraw_funds_voter_ok() {
         let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
         let user = ALICE;
-        let voting_option = VotingOption::Yes;
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
         let number_of_hermes = pallet::MinimumHermesVotingAmount::<Runtime>::get();
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let voting_option = "Option 1".to_string();
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+        ];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -529,6 +699,7 @@ fn withdraw_funds_voter_ok() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -536,7 +707,7 @@ fn withdraw_funds_voter_ok() {
         assert_ok!(HermesGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
             poll_id.clone(),
-            voting_option,
+            voting_option.clone(),
         ));
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604900000);
@@ -596,6 +767,7 @@ fn withdraw_funds_creator_you_are_not_creator() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let options = vec!["Option 1".to_string(), "Option 2".to_string()];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -605,6 +777,7 @@ fn withdraw_funds_creator_you_are_not_creator() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -632,6 +805,11 @@ fn withdraw_funds_creator_poll_is_not_finished() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+        ];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -641,6 +819,7 @@ fn withdraw_funds_creator_poll_is_not_finished() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -667,6 +846,12 @@ fn withdraw_funds_creator_funds_already_withdrawn() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+            "Option 4".to_string(),
+        ];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -676,6 +861,7 @@ fn withdraw_funds_creator_funds_already_withdrawn() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
@@ -717,6 +903,11 @@ fn withdraw_funds_creator_ok() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let options = vec![
+            "Option 1".to_string(),
+            "Option 2".to_string(),
+            "Option 3".to_string(),
+        ];
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -726,6 +917,7 @@ fn withdraw_funds_creator_ok() {
             title: "Title".to_string(),
             description: "Description".to_string(),
             creator_hermes_withdrawn: false,
+            options,
         };
 
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);

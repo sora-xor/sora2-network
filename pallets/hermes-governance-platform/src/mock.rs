@@ -102,7 +102,7 @@ parameter_types! {
 }
 
 impl crate::Config for Runtime {
-    const MIN_DURATION_OF_POLL: Self::Moment = 172_800_000;
+    const MIN_DURATION_OF_POLL: Self::Moment = 14_400_000;
     const MAX_DURATION_OF_POLL: Self::Moment = 604_800_000;
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
