@@ -491,7 +491,7 @@ pub mod pallet {
             .try_into_balance()
             .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
 
-            // 1 is a min non-zera possible value. balance!(0.000000000000000001) == 1
+            // 1 is a min non-zero possible value. balance!(0.000000000000000001) == 1
             // If `tick_size` * `step_lot_size` result goes out of 18 digits precision, the min possible deal amount == 0,
             // because FixedWrapper::try_into_balance() returns 0 for such cases.
             ensure!(
@@ -513,7 +513,7 @@ pub mod pallet {
 
             // Note:
             // Already existed limit orders are not changed even if they don't meet the requirements of new attributes.
-            // They stay in order book until be executed, canceled or expired.
+            // They stay in order book until they are executed, canceled or expired.
             // All new limit orders must meet the requirements of new attributes.
 
             <OrderBooks<T>>::set(order_book_id, Some(order_book));
