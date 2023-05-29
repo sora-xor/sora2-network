@@ -32,7 +32,7 @@
 
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
-use common::prelude::{QuoteAmount, SwapOutcome};
+use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{balance, AssetName, AssetSymbol, Balance, DEXId, LiquiditySource, VAL, XOR, XSTUSD};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
@@ -1188,6 +1188,386 @@ fn should_not_quote_without_impact_with_small_amount() {
                 true
             ),
             E::InvalidOrderAmount
+        );
+    });
+}
+
+#[test]
+fn should_exchange_and_transfer_to_owner() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_and_fill_order_book(order_book_id);
+        fill_balance(alice(), order_book_id);
+
+        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
+        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        // buy with desired output
+        assert_eq!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &alice(),
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_output(balance!(200), balance!(2500)),
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(2204.74), 0)
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance + balance!(200)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance - balance!(2204.74)
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        // buy with desired input
+        assert_eq!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &alice(),
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_input(balance!(2000), balance!(150)),
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(177.95391), 0)
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance + balance!(177.95391)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance - balance!(1999.999965)
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        // sell with desired output
+        assert_eq!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &alice(),
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_output(balance!(2000), balance!(210)),
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(200.64285), 0)
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance - balance!(200.64285)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance + balance!(1999.99993)
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        // sell with desired input
+        assert_eq!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &alice(),
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(200), balance!(210)),
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(1932.327145), 0)
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance - balance!(200)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance + balance!(1932.327145)
+        );
+    });
+}
+
+#[test]
+fn should_exchange_and_transfer_to_another_account() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_and_fill_order_book(order_book_id);
+        fill_balance(alice(), order_book_id);
+
+        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
+        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        let mut dave_base_balance = free_balance(&order_book_id.base, &dave());
+        let mut dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // buy with desired output
+        assert_eq!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &dave(),
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_output(balance!(200), balance!(2500)),
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(2204.74), 0)
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance - balance!(2204.74)
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance + balance!(200)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        dave_base_balance = free_balance(&order_book_id.base, &dave());
+        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // buy with desired input
+        assert_eq!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &dave(),
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_input(balance!(2000), balance!(150)),
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(177.95391), 0)
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance - balance!(1999.999965)
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance + balance!(177.95391)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        dave_base_balance = free_balance(&order_book_id.base, &dave());
+        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // sell with desired output
+        assert_eq!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &dave(),
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_output(balance!(2000), balance!(210)),
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(200.64285), 0)
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance - balance!(200.64285)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance + balance!(1999.99993)
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        dave_base_balance = free_balance(&order_book_id.base, &dave());
+        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // sell with desired input
+        assert_eq!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &dave(),
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(200), balance!(210)),
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(balance!(1932.327145), 0)
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance - balance!(200)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance
+        );
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &dave()),
+            dave_base_balance
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &dave()),
+            dave_quote_balance + balance!(1932.327145)
+        );
+    });
+}
+
+#[test]
+fn should_not_exchange_with_non_existed_order_book() {
+    ext().execute_with(|| {
+        assert_err!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &alice(),
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_output(balance!(200), balance!(1800)),
+            ),
+            E::UnknownOrderBook
+        );
+
+        assert_err!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &alice(),
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_output(balance!(2500), balance!(200)),
+            ),
+            E::UnknownOrderBook
+        );
+    });
+}
+
+#[test]
+fn should_not_exchange_with_invalid_slippage() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let _ = create_and_fill_order_book(order_book_id);
+        fill_balance(alice(), order_book_id);
+
+        assert_err!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &alice(),
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_output(balance!(200), balance!(1800)),
+            ),
+            E::SlippageLimitExceeded
+        );
+
+        assert_err!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &alice(),
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_input(balance!(2000), balance!(210)),
+            ),
+            E::SlippageLimitExceeded
+        );
+
+        assert_err!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &alice(),
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_output(balance!(2000), balance!(180)),
+            ),
+            E::SlippageLimitExceeded
+        );
+
+        assert_err!(
+            OrderBookPallet::exchange(
+                &alice(),
+                &alice(),
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(200), balance!(2100)),
+            ),
+            E::SlippageLimitExceeded
         );
     });
 }
