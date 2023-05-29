@@ -38,10 +38,14 @@
 #![cfg(not(test))]
 
 #[cfg(not(test))]
-use crate::{Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, Pallet};
+use crate::{
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, OrderBookStatus,
+    Pallet,
+};
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, OrderBookStatus,
+    Pallet,
 };
 
 use assets::AssetIdOf;
@@ -351,10 +355,30 @@ benchmarks! {
     }
 
     change_orderbook_status {
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
     }: {
-        // todo (m.tagirov)
+        OrderBookPallet::<T>::change_orderbook_status(
+            RawOrigin::Root.into(),
+            order_book_id,
+            OrderBookStatus::Stop
+        ).unwrap();
     }
     verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookStatusChanged {
+                order_book_id,
+                dex_id: DEX.into(),
+                new_status: OrderBookStatus::Stop,
+            }
+            .into(),
+        );
+
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id).unwrap().status, OrderBookStatus::Stop);
     }
 
     place_limit_order {
