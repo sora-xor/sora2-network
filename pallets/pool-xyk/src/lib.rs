@@ -644,6 +644,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use orml_traits::GetByKey;
 
     // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
@@ -681,6 +682,7 @@ pub mod pallet {
         type OnPoolReservesChanged: OnPoolReservesChanged<Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        type GetTradingPairRestrictedFlag: GetByKey<TradingPair<Self::AssetId>, bool>;
     }
 
     /// The current storage version.
@@ -806,12 +808,6 @@ pub mod pallet {
                     assets::AssetInfos::<T>::get(asset_a).2 != 0
                         && assets::AssetInfos::<T>::get(asset_b).2 != 0,
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
-                );
-
-                let synthetic_assets = T::XSTMarketInfo::enabled_target_assets();
-                ensure!(
-                    !synthetic_assets.contains(&asset_a) && !synthetic_assets.contains(&asset_b),
-                    Error::<T>::UnableToCreatePoolWithSyntheticAssets
                 );
 
                 let (_, tech_account_id, fees_account_id) = Pallet::<T>::initialize_pool_unchecked(
@@ -974,8 +970,8 @@ pub mod pallet {
         UnableToOperateWithIndivisibleAssets,
         /// Not enough liquidity out of farming to withdraw
         NotEnoughLiquidityOutOfFarming,
-        /// Cannot create a pool with synthetic assets
-        UnableToCreatePoolWithSyntheticAssets,
+        /// Cannot create a pool with restricted target asset
+        TargetAssetIsRestricted,
     }
 
     /// Updated after last liquidity change operation.
