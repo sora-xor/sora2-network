@@ -835,7 +835,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "beefy-merkle-tree",
  "bridge-common",
@@ -856,7 +856,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee",
@@ -873,7 +873,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -1118,7 +1118,7 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "bitvec 1.0.1",
  "bridge-types",
@@ -1137,7 +1137,7 @@ dependencies = [
 [[package]]
 name = "bridge-data-signer"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "bridge-types",
  "frame-support",
@@ -1279,7 +1279,7 @@ dependencies = [
 [[package]]
 name = "bridge-types"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "enum-iterator",
  "ethabi 17.2.0",
@@ -2874,7 +2874,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "bridge-types",
  "frame-benchmarking",
@@ -5953,7 +5953,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "leaf-provider"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "beefy-merkle-tree",
  "bridge-types",
@@ -5976,7 +5976,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "jsonrpsee",
  "leaf-provider-runtime-api",
@@ -5994,7 +5994,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -7235,7 +7235,7 @@ checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 [[package]]
 name = "multisig-verifier"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "bridge-common",
  "bridge-types",
@@ -12836,7 +12836,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
@@ -12859,7 +12859,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
@@ -12883,7 +12883,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#2f8186d75c7df2996ca54a33a450c69aee51bb27"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=limit_substrate_bridge_deposit#78270327c30ca81dcbfaaddb3885e67dd207b76c"
 dependencies = [
  "anyhow",
  "bridge-types",
@@ -13627,7 +13627,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.11.2",
+ "parking_lot 0.8.0",
  "regex",
  "serde",
  "serde_json",
@@ -13870,9 +13870,9 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand 0.4.6",
  "static_assertions",
 ]
 
