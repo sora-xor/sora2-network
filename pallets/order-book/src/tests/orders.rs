@@ -89,8 +89,13 @@ fn should_return_error_for_invalid_market_order_amount() {
     };
 
     let wrong_amount = balance!(0);
-    let order =
-        MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, wrong_amount);
+    let order = MarketOrder::<Runtime>::new(
+        alice(),
+        PriceVariant::Buy,
+        order_book_id,
+        wrong_amount,
+        None,
+    );
     assert_err!(order.ensure_valid(), E::InvalidOrderAmount);
 }
 
@@ -143,7 +148,8 @@ fn should_pass_valid_market_order() {
     };
 
     let amount = balance!(10);
-    let order = MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, amount);
+    let order =
+        MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, amount, None);
     assert_ok!(order.ensure_valid());
 }
 
