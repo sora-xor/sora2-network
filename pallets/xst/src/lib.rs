@@ -320,24 +320,10 @@ pub mod pallet {
     pub enum Error<T> {
         /// An error occurred while calculating the price.
         PriceCalculationFailed,
-        /// Failure while calculating price ignoring non-linearity of liquidity source.
-        FailedToCalculatePriceWithoutImpact,
-        /// The pool can't perform exchange on itself.
-        CannotExchangeWithSelf,
-        /// Attempt to initialize pool for pair that already exists.
-        PoolAlreadyInitializedForPair,
-        /// Attempt to get info for uninitialized pool.
-        PoolNotInitialized,
         /// Indicated limits for slippage has not been met during transaction execution.
         SlippageLimitExceeded,
-        /// Indicated collateral asset is not enabled for pool.
-        UnsupportedCollateralAssetId,
-        /// Could not calculate fee.
-        FeeCalculationFailed,
         /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
         CantExchange,
-        /// Increment account reference error.
-        IncRefError,
         /// Synthetic asset does not exist.
         SyntheticDoesNotExist,
         /// Attempt to enable synthetic asset with inexistent symbol.
