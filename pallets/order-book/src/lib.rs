@@ -400,9 +400,20 @@ pub mod pallet {
                 order_book.cancel_all_limit_orders::<Self>(&mut data)? as u32;
 
             data.commit();
-            <OrderBooks<T>>::remove(order_book_id);
+
+            #[cfg(feature = "wip")] // order-book
+            {
+                T::TradingPairSourceManager::disable_source_for_trading_pair(
+                    &dex_id,
+                    &order_book_id.quote,
+                    &order_book_id.base,
+                    LiquiditySourceType::OrderBook,
+                )?;
+            }
 
             Self::deregister_tech_account(order_book.dex_id, order_book_id)?;
+            <OrderBooks<T>>::remove(order_book_id);
+
             Self::deposit_event(Event::<T>::OrderBookDeleted {
                 order_book_id,
                 dex_id,
