@@ -113,6 +113,13 @@ pub trait TradingPairSourceManager<DEXId, AssetId> {
         target_asset_id: &AssetId,
         source_type: LiquiditySourceType,
     ) -> DispatchResult;
+
+    fn disable_source_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult;
 }
 
 impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
@@ -134,6 +141,15 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
     }
 
     fn enable_source_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn disable_source_for_trading_pair(
         _dex_id: &DEXId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
