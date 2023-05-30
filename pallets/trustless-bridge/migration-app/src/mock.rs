@@ -232,6 +232,7 @@ impl eth_app::Config for Test {
     type Currency = Currencies;
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
     type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type WeightInfo = ();
 }
 
