@@ -63,9 +63,10 @@ use bridge_types::{
 };
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::Description;
 #[cfg(feature = "wip")]
-use common::{AssetId32, PredefinedAssetId, XOR};
+use common::{AssetId32, PredefinedAssetId};
+use common::{Description, GetMarketInfo};
+use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::weights::ConstantMultiplier;
@@ -127,7 +128,7 @@ pub use common::{
     balance, fixed, fixed_from_basis_points, AssetInfoProvider, AssetName, AssetSymbol,
     BalancePrecision, BasisPoints, ContentSource, CrowdloanTag, DexInfoProvider, FilterMode, Fixed,
     FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned, OnValBurned,
+    LiquiditySourceType, OnPswapBurned, OnValBurned, TradingPairSourceManager,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::EthereumHeader;
@@ -954,6 +955,19 @@ parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
 }
 
+parameter_type_with_key! {
+    pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
+        let common::TradingPair {
+            base_asset_id,
+            target_asset_id
+        } = trading_pair;
+        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
+            .contains(target_asset_id) ||
+            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into()) ||
+            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XST.into())
+    };
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -969,6 +983,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = PriceTools;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 
 parameter_types! {
@@ -1055,6 +1070,9 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = order_book::Pallet<Runtime>;
 }
 
 impl pallet_multisig::Config for Runtime {
@@ -1539,12 +1557,11 @@ impl eth_bridge::Config for Runtime {
     type NetworkId = NetworkId;
     type GetEthNetworkId = GetEthNetworkId;
     type WeightInfo = eth_bridge::weights::SubstrateWeight<Runtime>;
-    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
-    type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
-    type SchedulerOriginCaller = OriginCaller;
-    type Scheduler = Scheduler;
     type WeightToFee = XorFee;
+    #[cfg(feature = "pready-to-test")]
+    type MessageStatusNotifier = BridgeProxy;
+    #[cfg(not(feature = "pready-to-test"))]
+    type MessageStatusNotifier = ();
 }
 
 #[cfg(feature = "private-net")]
@@ -1988,6 +2005,7 @@ impl order_book::Config for Runtime {
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<100000>; // TODO: order-book clarify
     type EnsureTradingPairExists = TradingPair;
+    type TradingPairSourceManager = TradingPair;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
@@ -2054,7 +2072,7 @@ impl bridge_inbound_channel::Config for Runtime {
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = Dispatch;
     type Hashing = Keccak256;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type FeeConverter = FeeConverter;
     type WeightInfo = ();
     type FeeAssetId = FeeCurrency;
@@ -2073,7 +2091,7 @@ impl bridge_outbound_channel::Config for Runtime {
     type MaxTotalGasLimit = BridgeMaxTotalGasLimit;
     type FeeCurrency = FeeCurrency;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type AuxiliaryDigestHandler = LeafProvider;
     type WeightInfo = ();
 }
@@ -2111,7 +2129,7 @@ impl eth_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2126,7 +2144,7 @@ impl erc20_app::Config for Runtime {
     >;
     type AppRegistry = BridgeInboundChannel;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2138,10 +2156,13 @@ impl migration_app::Config for Runtime {
 }
 
 #[cfg(feature = "wip")] // Bridges
-impl evm_bridge_proxy::Config for Runtime {
+impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ERC20App = ERC20App;
     type EthApp = EthApp;
+    type HashiBridge = EthBridge;
+    type SubstrateApp = SubstrateBridgeApp;
+    type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
 
@@ -2169,12 +2190,9 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MultiVerifier;
     type MessageDispatch = SubstrateDispatch;
+    type UnsignedPriority = DataSignerPriority;
+    type UnsignedLongevity = DataSignerLongevity;
     type WeightInfo = ();
-    type FeeAssetId = FeeCurrency;
-    type FeeAccountId = GetTrustlessBridgeFeesAccountId;
-    type TreasuryAccountId = GetTreasuryAccountId;
-    type FeeConverter = FeeConverter;
-    type Currency = Currencies;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
@@ -2203,19 +2221,28 @@ impl Verifier for MultiVerifier {
     }
 }
 
+#[cfg(feature = "wip")] // Bridge
+pub struct GenericTimepointProvider;
+
+#[cfg(feature = "wip")] // Bridge
+impl bridge_types::traits::TimepointProvider for GenericTimepointProvider {
+    fn get_timepoint() -> bridge_types::GenericTimepoint {
+        bridge_types::GenericTimepoint::Sora(System::block_number())
+    }
+}
+
 #[cfg(feature = "wip")] // Substrate bridge
 impl substrate_bridge_channel::outbound::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
-    type FeeCurrency = FeeCurrency;
-    type FeeAccountId = GetTrustlessBridgeFeesAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type AuxiliaryDigestHandler = LeafProvider;
-    type BalanceConverter = sp_runtime::traits::Identity;
-    type Currency = Currencies;
+    type AssetId = AssetId;
+    type Balance = Balance;
+    type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
 
@@ -2238,7 +2265,7 @@ impl substrate_bridge_app::Config for Runtime {
         (),
         bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
     >;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type BridgeAccountId = GetTrustlessBridgeAccountId;
     type Currency = Currencies;
     type AssetRegistry = BridgeAssetRegistryImpl;
@@ -2370,7 +2397,7 @@ construct_runtime! {
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         // TODO: rename to BridgeProxy
         #[cfg(feature = "wip")] // Bridges
-        EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
+        BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         // Trustless EVM bridge
         #[cfg(feature = "wip")] // EVM bridge
@@ -2392,7 +2419,7 @@ construct_runtime! {
         #[cfg(feature = "wip")] // Substrate bridge
         BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
         #[cfg(feature = "wip")] // Substrate bridge
-        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 106,
+        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 106,
         #[cfg(feature = "wip")] // Substrate bridge
         SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
         #[cfg(feature = "wip")] // Substrate bridge
@@ -3104,13 +3131,13 @@ impl_runtime_apis! {
     }
 
     #[cfg(feature = "wip")] // Bridges
-    impl evm_bridge_proxy_runtime_api::EvmBridgeProxyAPI<Block, AssetId> for Runtime {
-        fn list_apps(network_id: bridge_types::EVMChainId) -> Vec<bridge_types::types::BridgeAppInfo> {
-            EvmBridgeProxy::list_apps(network_id)
+    impl bridge_proxy_runtime_api::BridgeProxyAPI<Block, AssetId> for Runtime {
+        fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+            BridgeProxy::list_apps()
         }
 
-        fn list_supported_assets(network_id: bridge_types::EVMChainId) -> Vec<bridge_types::types::BridgeAssetInfo<AssetId>> {
-            EvmBridgeProxy::list_supported_assets(network_id)
+        fn list_supported_assets(network_id: bridge_types::GenericNetworkId) -> Vec<bridge_types::types::BridgeAssetInfo> {
+            BridgeProxy::list_supported_assets(network_id)
         }
     }
 
@@ -3176,7 +3203,7 @@ impl_runtime_apis! {
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, migration_app, MigrationApp);
             #[cfg(feature = "wip")] // Bridges
-            list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
+            list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3263,7 +3290,7 @@ impl_runtime_apis! {
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, migration_app, MigrationApp);
             #[cfg(feature = "wip")] // Bridges
-            add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
+            add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

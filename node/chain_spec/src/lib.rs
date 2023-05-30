@@ -1157,8 +1157,6 @@ fn testnet_genesis(
         #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_app: Default::default(),
         #[cfg(feature = "wip")] // Substrate bridge
-        substrate_bridge_inbound_channel: Default::default(),
-        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         migration_app: Default::default(),
@@ -1469,6 +1467,9 @@ fn testnet_genesis(
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
                 LiquiditySourceType::XSTPool,
+
+                #[cfg(feature = "wip")] // order-book
+                LiquiditySourceType::OrderBook,
             ]
             .into(),
         },
@@ -2011,11 +2012,11 @@ fn mainnet_genesis(
     }));
     GenesisConfig {
         #[cfg(feature = "wip")] // Substrate bridge
+        multisig_verifier: Default::default(),
+        #[cfg(feature = "wip")] // Substrate bridge
         beefy_light_client: Default::default(),
         #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_app: Default::default(),
-        #[cfg(feature = "wip")] // Substrate bridge
-        substrate_bridge_inbound_channel: Default::default(),
         #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
@@ -2265,6 +2266,9 @@ fn mainnet_genesis(
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
+
+                #[cfg(feature = "wip")] // order-book
+                LiquiditySourceType::OrderBook,
             ]
             .into(),
         },

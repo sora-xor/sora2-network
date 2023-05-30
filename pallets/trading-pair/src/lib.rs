@@ -36,7 +36,7 @@ extern crate alloc;
 
 use common::{
     AssetInfoProvider, DexInfoProvider, EnsureDEXManager, EnsureTradingPairExists,
-    LiquiditySourceType, ManagementMode,
+    LiquiditySourceType, ManagementMode, TradingPairSourceManager,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -70,6 +70,77 @@ impl<T: Config> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for
             Self::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)?,
             Error::<T>::TradingPairDoesntExist
         );
+        Ok(())
+    }
+}
+
+impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
+    fn list_enabled_sources_for_trading_pair(
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+    ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
+        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        let mut sources =
+            Self::enabled_sources(dex_id, &pair).ok_or(Error::<T>::TradingPairDoesntExist)?;
+        let locked = LockedLiquiditySources::<T>::get();
+        for locked_source in &locked {
+            sources.remove(&locked_source);
+        }
+        Ok(sources)
+    }
+
+    fn is_source_enabled_for_trading_pair(
+        dex_id: &T::DEXId,
+        base_asset_id: &T::AssetId,
+        target_asset_id: &T::AssetId,
+        source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError> {
+        Ok(
+            Self::list_enabled_sources_for_trading_pair(dex_id, base_asset_id, target_asset_id)?
+                .contains(&source_type),
+        )
+    }
+
+    fn enable_source_for_trading_pair(
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Self::ensure_trading_pair_exists(dex_id, &base_asset_id, &target_asset_id)?;
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        // This logic considers Ok if source is already enabled.
+        // unwrap() is safe, check done in `ensure_trading_pair_exists`.
+        EnabledSources::<T>::mutate(dex_id, &pair, |opt_set| {
+            opt_set.as_mut().unwrap().insert(source_type)
+        });
+        Ok(())
+    }
+
+    fn disable_source_for_trading_pair(
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Self::ensure_trading_pair_exists(dex_id, &base_asset_id, &target_asset_id)?;
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        // This logic considers Ok if source is already enabled.
+        // unwrap() is safe, check done in `ensure_trading_pair_exists`.
+        EnabledSources::<T>::mutate(dex_id, &pair, |opt_set| {
+            opt_set.as_mut().unwrap().remove(&source_type)
+        });
         Ok(())
     }
 }
@@ -129,56 +200,6 @@ impl<T: Config> Pallet<T> {
             target_asset_id,
         };
         Ok(Self::enabled_sources(dex_id, &pair).is_some())
-    }
-
-    pub fn list_enabled_sources_for_trading_pair(
-        dex_id: &T::DEXId,
-        &base_asset_id: &T::AssetId,
-        &target_asset_id: &T::AssetId,
-    ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
-        DEXManager::<T>::ensure_dex_exists(dex_id)?;
-        let pair = TradingPair::<T> {
-            base_asset_id,
-            target_asset_id,
-        };
-        let mut sources =
-            Self::enabled_sources(dex_id, &pair).ok_or(Error::<T>::TradingPairDoesntExist)?;
-        let locked = LockedLiquiditySources::<T>::get();
-        for locked_source in &locked {
-            sources.remove(&locked_source);
-        }
-        Ok(sources)
-    }
-
-    pub fn is_source_enabled_for_trading_pair(
-        dex_id: &T::DEXId,
-        base_asset_id: &T::AssetId,
-        target_asset_id: &T::AssetId,
-        source_type: LiquiditySourceType,
-    ) -> Result<bool, DispatchError> {
-        Ok(
-            Self::list_enabled_sources_for_trading_pair(dex_id, base_asset_id, target_asset_id)?
-                .contains(&source_type),
-        )
-    }
-
-    pub fn enable_source_for_trading_pair(
-        dex_id: &T::DEXId,
-        &base_asset_id: &T::AssetId,
-        &target_asset_id: &T::AssetId,
-        source_type: LiquiditySourceType,
-    ) -> DispatchResult {
-        Self::ensure_trading_pair_exists(dex_id, &base_asset_id, &target_asset_id)?;
-        let pair = TradingPair::<T> {
-            base_asset_id,
-            target_asset_id,
-        };
-        // This logic considers Ok if source is already enabled.
-        // unwrap() is safe, check done in `ensure_trading_pair_exists`.
-        EnabledSources::<T>::mutate(dex_id, &pair, |opt_set| {
-            opt_set.as_mut().unwrap().insert(source_type)
-        });
-        Ok(())
     }
 }
 

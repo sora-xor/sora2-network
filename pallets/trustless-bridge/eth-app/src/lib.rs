@@ -52,12 +52,12 @@ pub mod pallet {
     use assets::AssetIdOf;
     use bridge_types::traits::{BridgeApp, MessageStatusNotifier};
     use bridge_types::types::{
-        AdditionalEVMInboundData, AdditionalEVMOutboundData, AppKind, BridgeAppInfo,
-        BridgeAssetInfo, CallOriginOutput,
+        AdditionalEVMInboundData, AdditionalEVMOutboundData, BridgeAppInfo, BridgeAssetInfo,
+        CallOriginOutput, EVMAppInfo, EVMAppKind, EVMAssetInfo, MessageStatus,
     };
     use bridge_types::{GenericAccount, GenericNetworkId, H256};
     use bridge_types::{H160, U256};
-    use common::{AssetName, AssetSymbol, Balance};
+    use common::{AssetInfoProvider, AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_support::transactional;
@@ -172,7 +172,7 @@ pub mod pallet {
             let CallOriginOutput {
                 network_id,
                 message_id,
-                timestamp,
+                timepoint,
                 additional,
             } = T::CallOrigin::ensure_origin(origin)?;
             let (registered_contract, asset_id) =
@@ -193,7 +193,8 @@ pub mod pallet {
                 recipient.clone(),
                 asset_id,
                 amount,
-                timestamp,
+                timepoint,
+                MessageStatus::Done,
             );
             Self::deposit_event(Event::Minted(network_id, sender, recipient.clone(), amount));
 
@@ -317,6 +318,7 @@ pub mod pallet {
                 GenericAccount::EVM(recipient),
                 asset_id,
                 amount,
+                MessageStatus::InQueue,
             );
             Self::deposit_event(Event::Burned(network_id, who, recipient, amount.into()));
 
@@ -366,21 +368,25 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> BridgeApp<EVMChainId, T::AccountId, H160, T::AssetId, Balance> for Pallet<T> {
-        fn is_asset_supported(network_id: EVMChainId, asset_id: T::AssetId) -> bool {
+    impl<T: Config> BridgeApp<T::AccountId, H160, T::AssetId, Balance> for Pallet<T> {
+        fn is_asset_supported(network_id: GenericNetworkId, asset_id: T::AssetId) -> bool {
+            let GenericNetworkId::EVM(network_id) = network_id else {
+                return false;
+            };
             Addresses::<T>::get(network_id)
                 .map(|(_contract, native_asset_id)| native_asset_id == asset_id)
                 .unwrap_or(false)
         }
 
         fn transfer(
-            network_id: EVMChainId,
+            network_id: GenericNetworkId,
             asset_id: T::AssetId,
             sender: T::AccountId,
             recipient: H160,
             amount: Balance,
         ) -> Result<H256, DispatchError> {
             if Self::is_asset_supported(network_id, asset_id) {
+                let network_id = network_id.evm().ok_or(Error::<T>::AppIsNotRegistered)?;
                 Pallet::<T>::burn_inner(sender, network_id, recipient, amount)
             } else {
                 Err(Error::<T>::AppIsNotRegistered.into())
@@ -388,36 +394,45 @@ pub mod pallet {
         }
 
         fn refund(
-            network_id: EVMChainId,
+            network_id: GenericNetworkId,
             _message_id: H256,
             recipient: T::AccountId,
             asset_id: AssetIdOf<T>,
             amount: Balance,
         ) -> DispatchResult {
+            let network_id = network_id.evm().ok_or(Error::<T>::AppIsNotRegistered)?;
             Pallet::<T>::refund_inner(network_id, recipient, asset_id, amount)
         }
 
-        fn list_supported_assets(network_id: EVMChainId) -> Vec<BridgeAssetInfo<T::AssetId>> {
+        fn list_supported_assets(network_id: GenericNetworkId) -> Vec<BridgeAssetInfo> {
+            let GenericNetworkId::EVM(network_id) = network_id else {
+                return vec![];
+            };
             Addresses::<T>::get(network_id)
-                .map(|(_app_address, asset_id)| {
-                    vec![BridgeAssetInfo {
-                        app_kind: AppKind::EthApp,
-                        asset_id,
-                        evm_address: None,
-                    }]
+                .map(|(app_address, asset_id)| {
+                    let precision = assets::Pallet::<T>::get_asset_info(&asset_id).2;
+                    vec![BridgeAssetInfo::EVM(EVMAssetInfo {
+                        app_kind: EVMAppKind::EthApp,
+                        asset_id: asset_id.into(),
+                        evm_address: app_address,
+                        precision,
+                    })]
                 })
                 .unwrap_or_default()
         }
 
-        fn list_apps(network_id: EVMChainId) -> Vec<BridgeAppInfo> {
-            Addresses::<T>::get(network_id)
-                .map(|(evm_address, _asset_id)| {
-                    vec![BridgeAppInfo {
-                        app_kind: AppKind::EthApp,
-                        evm_address,
-                    }]
+        fn list_apps() -> Vec<BridgeAppInfo> {
+            Addresses::<T>::iter()
+                .map(|(network_id, (evm_address, _asset_id))| {
+                    BridgeAppInfo::EVM(
+                        network_id.into(),
+                        EVMAppInfo {
+                            app_kind: EVMAppKind::EthApp,
+                            evm_address,
+                        },
+                    )
                 })
-                .unwrap_or_default()
+                .collect()
         }
     }
 }

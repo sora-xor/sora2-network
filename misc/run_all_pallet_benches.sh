@@ -19,7 +19,7 @@ declare -A PATH_OVERRIDES=(
     [erc20_app]=./pallets/trustless-bridge/erc20-app
     [eth_app]=./pallets/trustless-bridge/eth-app
     [ethereum_light_client]=./pallets/trustless-bridge/ethereum-light-client
-    [evm_bridge_proxy]=./pallets/trustless-bridge/evm-bridge-proxy
+    [evm_bridge_proxy]=./pallets/trustless-bridge/bridge-proxy
     [migration_app]=./pallets/trustless-bridge/migration-app
 )
 

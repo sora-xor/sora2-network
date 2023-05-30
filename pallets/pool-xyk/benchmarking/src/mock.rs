@@ -31,7 +31,7 @@
 #![cfg(test)]
 
 use crate::{Config, *};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{fixed, hash, Amount, DEXInfo, Fixed, PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;
 
@@ -214,6 +214,9 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = ();
 }
 
 impl technical::Config for Runtime {
@@ -247,8 +250,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = ();
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
-
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;

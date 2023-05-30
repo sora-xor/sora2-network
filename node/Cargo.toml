@@ -57,7 +57,7 @@ framenode-runtime = { path = "../runtime" }
 
 # Substrate dependencies
 
-evm-bridge-proxy-rpc = { path = "../pallets/trustless-bridge/evm-bridge-proxy/rpc", optional = true }
+bridge-proxy-rpc = { path = "../pallets/trustless-bridge/bridge-proxy/rpc", optional = true }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
@@ -133,10 +133,13 @@ private-net = [
 wip = [
     "framenode-chain-spec/wip",
     "framenode-runtime/wip",
+    "common/wip",
+    "dex-api-rpc/wip",
+    "liquidity-proxy-rpc/wip",
     "beefy-light-client",
     "beefy-light-client-rpc",
     "substrate-bridge-channel-rpc",
-    "evm-bridge-proxy-rpc",
+    "bridge-proxy-rpc",
     "leaf-provider-rpc",
     "bridge-channel-rpc",
 ]

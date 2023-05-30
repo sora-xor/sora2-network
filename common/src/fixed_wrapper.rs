@@ -42,7 +42,7 @@ use crate::{fixed, pow, Balance, Fixed, FixedInner, FIXED_PRECISION};
 
 /// A convenient wrapper around `Fixed` type for safe math.
 ///
-/// Supported operations: `+`, '-', '/', '*', 'sqrt'.
+/// Supported operations: `+`, `+=`, `-`, `-=`, `/`, `/=`, `*`, `*=`, `sqrt`.
 #[derive(Clone, RuntimeDebug)]
 pub struct FixedWrapper {
     inner: Result<Fixed, ArithmeticError>,
@@ -194,6 +194,25 @@ macro_rules! impl_op_for_fixed_wrapper {
 impl_op_for_fixed_wrapper!(Add, add, cadd);
 impl_op_for_fixed_wrapper!(Sub, sub, csub);
 
+macro_rules! impl_assign_op_for_fixed_wrapper {
+    (
+        $op:ty,
+        $op_fn:ident,
+        $checked_op_fn:ident
+    ) => {
+        impl $op for FixedWrapper {
+            fn $op_fn(&mut self, rhs: Self) {
+                *self = zip(&self.inner, &rhs.inner)
+                    .and_then(|(lhs, &rhs)| lhs.$checked_op_fn(rhs))
+                    .into();
+            }
+        }
+    };
+}
+
+impl_assign_op_for_fixed_wrapper!(AddAssign, add_assign, cadd);
+impl_assign_op_for_fixed_wrapper!(SubAssign, sub_assign, csub);
+
 macro_rules! impl_floor_op_for_fixed_wrapper {
     (
         $op:ty,
@@ -214,6 +233,25 @@ macro_rules! impl_floor_op_for_fixed_wrapper {
 
 impl_floor_op_for_fixed_wrapper!(Mul, mul, rmul);
 impl_floor_op_for_fixed_wrapper!(Div, div, rdiv);
+
+macro_rules! impl_assign_floor_op_for_fixed_wrapper {
+    (
+        $op:ty,
+        $op_fn:ident,
+        $checked_op_fn:ident
+    ) => {
+        impl $op for FixedWrapper {
+            fn $op_fn(&mut self, rhs: Self) {
+                *self = zip(&self.inner, &rhs.inner)
+                    .and_then(|(lhs, &rhs)| lhs.$checked_op_fn(rhs, Floor))
+                    .into();
+            }
+        }
+    };
+}
+
+impl_assign_floor_op_for_fixed_wrapper!(MulAssign, mul_assign, rmul);
+impl_assign_floor_op_for_fixed_wrapper!(DivAssign, div_assign, rdiv);
 
 impl PartialEq for FixedWrapper {
     fn eq(&self, other: &Self) -> bool {

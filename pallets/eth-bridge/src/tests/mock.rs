@@ -474,12 +474,8 @@ impl crate::Config for Runtime {
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = ();
     type Mock = State;
-    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
-    type RemovePeerAccountIds = RemoveTemporaryPeerAccountId;
-    type SchedulerOriginCaller = OriginCaller;
-    type Scheduler = Scheduler;
     type WeightToFee = WeightToFixedFee;
+    type MessageStatusNotifier = ();
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {

@@ -38,6 +38,9 @@ use crate::{
     WeightInfo,
 };
 use alloc::collections::BTreeSet;
+use bridge_types::traits::MessageStatusNotifier;
+use bridge_types::types::MessageStatus;
+use bridge_types::{GenericAccount, GenericNetworkId, GenericTimepoint};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
@@ -47,6 +50,7 @@ use common::{AssetName, AssetSymbol, BalancePrecision};
 use frame_support::debug;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::app_crypto::sp_core;
+use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;
 use frame_support::weights::WeightToFee;
 use frame_support::{ensure, RuntimeDebug};
@@ -345,6 +349,16 @@ impl<T: Config> IncomingTransfer<T> {
         } else {
             Assets::<T>::mint_to(&self.asset_id, &bridge_account_id, &self.to, amount)?;
         }
+        T::MessageStatusNotifier::inbound_request(
+            GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into()),
+            self.tx_hash,
+            GenericAccount::EVM(self.from),
+            self.to.clone(),
+            self.asset_id,
+            self.amount,
+            GenericTimepoint::EVM(self.at_height),
+            MessageStatus::Done,
+        );
         Ok(self.tx_hash)
     }
 

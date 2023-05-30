@@ -32,18 +32,24 @@
 #![allow(dead_code)] // todo (m.tagirov) remove
 
 use assets::AssetIdOf;
-use common::prelude::{EnsureTradingPairExists, QuoteAmount, SwapAmount, SwapOutcome, TradingPair};
+use common::prelude::{
+    EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
+};
+#[cfg(feature = "wip")] // order-book
+use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
-    ToOrderTechUnitFromDEXAndTradingPair,
+    ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 use core::fmt::Debug;
+use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::Weight;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
 use sp_runtime::Perbill;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -62,12 +68,15 @@ pub mod storage_data_layer;
 pub mod traits;
 pub mod types;
 
-pub use crate::order_book::{OrderBook, OrderBookStatus};
+pub use crate::order_book::OrderBook;
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer};
-pub use types::{MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders};
+pub use types::{
+    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderBookStatus,
+    OrderPrice, OrderVolume, PriceOrders, UserOrders,
+};
 pub use weights::WeightInfo;
 
 pub use pallet::*;
@@ -119,6 +128,7 @@ pub mod pallet {
             Self::AssetId,
             DispatchError,
         >;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
@@ -223,6 +233,13 @@ pub mod pallet {
             count_of_canceled_orders: u32,
         },
 
+        /// Order book status is changed
+        OrderBookStatusChanged {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            new_status: OrderBookStatus,
+        },
+
         /// Order book attributes are updated by Council
         OrderBookUpdated {
             order_book_id: OrderBookId<AssetIdOf<T>>,
@@ -250,6 +267,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// Order book does not exist for this trading pair
         UnknownOrderBook,
+        /// Invalid order book id
+        InvalidOrderBookId,
         /// Order book already exists for this trading pair
         OrderBookAlreadyExists,
         /// Limit order does not exist for this trading pair and order id
@@ -296,8 +315,14 @@ pub mod pallet {
         OrderBookReachedMaxCountOfPricesForSide,
         /// An error occurred while calculating the amount
         AmountCalculationFailed,
+        /// An error occurred while calculating the price
+        PriceCalculationFailed,
         /// Unauthorized action
         Unauthorized,
+        /// Invalid asset
+        InvalidAsset,
+        /// Indicated limit for slippage has not been met during transaction execution.
+        SlippageLimitExceeded,
     }
 
     #[pallet::call]
@@ -345,6 +370,16 @@ pub mod pallet {
                 OrderBook::<T>::default_nft(order_book_id, dex_id)
             };
 
+            #[cfg(feature = "wip")] // order-book
+            {
+                T::TradingPairSourceManager::enable_source_for_trading_pair(
+                    &dex_id,
+                    &order_book_id.quote,
+                    &order_book_id.base,
+                    LiquiditySourceType::OrderBook,
+                )?;
+            }
+
             <OrderBooks<T>>::insert(order_book_id, order_book);
             Self::register_tech_account(dex_id, order_book_id)?;
 
@@ -372,9 +407,20 @@ pub mod pallet {
                 order_book.cancel_all_limit_orders::<Self>(&mut data)? as u32;
 
             data.commit();
-            <OrderBooks<T>>::remove(order_book_id);
+
+            #[cfg(feature = "wip")] // order-book
+            {
+                T::TradingPairSourceManager::disable_source_for_trading_pair(
+                    &dex_id,
+                    &order_book_id.quote,
+                    &order_book_id.base,
+                    LiquiditySourceType::OrderBook,
+                )?;
+            }
 
             Self::deregister_tech_account(order_book.dex_id, order_book_id)?;
+            <OrderBooks<T>>::remove(order_book_id);
+
             Self::deposit_event(Event::<T>::OrderBookDeleted {
                 order_book_id,
                 dex_id,
@@ -406,12 +452,21 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::change_orderbook_status())]
         pub fn change_orderbook_status(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<AssetIdOf<T>>,
-            _status: OrderBookStatus,
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            status: OrderBookStatus,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            // todo (m.tagirov)
-            todo!()
+            let dex_id = <OrderBooks<T>>::mutate(order_book_id, |order_book| {
+                let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
+                order_book.status = status;
+                Ok::<_, Error<T>>(order_book.dex_id)
+            })?;
+            Self::deposit_event(Event::<T>::OrderBookStatusChanged {
+                order_book_id,
+                dex_id,
+                new_status: status,
+            });
+            Ok(().into())
         }
 
         #[pallet::call_index(4)]
@@ -501,6 +556,19 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<
         let tech_account = Self::tech_account_for_order_book(dex_id, order_book_id);
         technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, amount.into())
     }
+
+    fn unlock_liquidity_batch(
+        dex_id: T::DEXId,
+        order_book_id: OrderBookId<T::AssetId>,
+        asset_id: &T::AssetId,
+        receivers: BTreeMap<T::AccountId, OrderVolume>,
+    ) -> Result<(), DispatchError> {
+        let tech_account = Self::tech_account_for_order_book(dex_id, order_book_id);
+        for (account, amount) in receivers.iter() {
+            technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, *amount)?;
+        }
+        Ok(())
+    }
 }
 
 impl<T: Config> Pallet<T> {
@@ -537,41 +605,168 @@ impl<T: Config> Pallet<T> {
         let tech_account = Self::tech_account_for_order_book(dex_id, order_book_id);
         technical::Pallet::<T>::deregister_tech_account_id(tech_account)
     }
+
+    pub fn assemble_order_book_id(
+        dex_id: &T::DEXId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
+    ) -> Option<OrderBookId<AssetIdOf<T>>> {
+        if input_asset_id == output_asset_id {
+            return None;
+        }
+
+        let Ok(dex_info) = T::DexInfoProvider::get_dex_info(&dex_id) else {
+            return None;
+        };
+
+        let order_book_id = match dex_info.base_asset_id {
+            input if input == *input_asset_id => OrderBookId::<T::AssetId> {
+                base: *output_asset_id,
+                quote: input,
+            },
+            output if output == *output_asset_id => OrderBookId::<T::AssetId> {
+                base: *input_asset_id,
+                quote: output,
+            },
+            _ => {
+                return None;
+            }
+        };
+
+        Some(order_book_id)
+    }
 }
 
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
     for Pallet<T>
 {
     fn can_exchange(
-        _dex_id: &T::DEXId,
-        _input_asset_id: &T::AssetId,
-        _output_asset_id: &T::AssetId,
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
     ) -> bool {
-        // todo (m.tagirov)
-        todo!()
+        let Some(order_book_id) = Self::assemble_order_book_id(dex_id, input_asset_id, output_asset_id) else {
+            return false;
+        };
+
+        let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
+            return false;
+        };
+
+        order_book.status == OrderBookStatus::Trade
     }
 
     fn quote(
-        _dex_id: &T::DEXId,
-        _input_asset_id: &T::AssetId,
-        _output_asset_id: &T::AssetId,
-        _amount: QuoteAmount<Balance>,
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
-        // todo (m.tagirov)
-        todo!()
+        let Some(order_book_id) = Self::assemble_order_book_id(dex_id, input_asset_id, output_asset_id) else {
+            return Err(Error::<T>::UnknownOrderBook.into());
+        };
+
+        let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+        let mut data = CacheDataLayer::<T>::new();
+
+        let deal_info =
+            order_book.calculate_deal(input_asset_id, output_asset_id, amount, &mut data)?;
+
+        ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
+
+        let fee = 0; // todo (m.tagirov)
+
+        match amount {
+            QuoteAmount::WithDesiredInput { .. } => Ok((
+                SwapOutcome::new(*deal_info.output_amount.value(), fee),
+                Self::quote_weight(),
+            )),
+            QuoteAmount::WithDesiredOutput { .. } => Ok((
+                SwapOutcome::new(*deal_info.input_amount.value(), fee),
+                Self::quote_weight(),
+            )),
+        }
     }
 
     fn exchange(
-        _sender: &T::AccountId,
-        _receiver: &T::AccountId,
-        _dex_id: &T::DEXId,
-        _input_asset_id: &T::AssetId,
-        _output_asset_id: &T::AssetId,
-        _desired_amount: SwapAmount<Balance>,
+        sender: &T::AccountId,
+        receiver: &T::AccountId,
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        desired_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
-        // todo (m.tagirov)
-        todo!()
+        let Some(order_book_id) = Self::assemble_order_book_id(dex_id, input_asset_id, output_asset_id) else {
+            return Err(Error::<T>::UnknownOrderBook.into());
+        };
+
+        let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+        let mut data = CacheDataLayer::<T>::new();
+
+        let deal_info = order_book.calculate_deal(
+            input_asset_id,
+            output_asset_id,
+            desired_amount.into(),
+            &mut data,
+        )?;
+
+        ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
+
+        match desired_amount {
+            SwapAmount::WithDesiredInput { min_amount_out, .. } => {
+                ensure!(
+                    *deal_info.output_amount.value() >= min_amount_out,
+                    Error::<T>::SlippageLimitExceeded
+                );
+            }
+            SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
+                ensure!(
+                    *deal_info.input_amount.value() <= max_amount_in,
+                    Error::<T>::SlippageLimitExceeded
+                );
+            }
+        }
+
+        let to = if sender == receiver {
+            None
+        } else {
+            Some(receiver.clone())
+        };
+
+        let order = MarketOrder::<T>::new(
+            sender.clone(),
+            deal_info.side,
+            order_book_id,
+            deal_info.base_amount(),
+            to,
+        );
+
+        let (input_amount, output_amount) =
+            order_book.execute_market_order::<Self, Self>(order, &mut data)?;
+
+        let fee = 0; // todo (m.tagirov)
+
+        let result = match desired_amount {
+            SwapAmount::WithDesiredInput { min_amount_out, .. } => {
+                ensure!(
+                    *output_amount.value() >= min_amount_out,
+                    Error::<T>::SlippageLimitExceeded
+                );
+                SwapOutcome::new(*output_amount.value(), fee)
+            }
+            SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
+                ensure!(
+                    *input_amount.value() <= max_amount_in,
+                    Error::<T>::SlippageLimitExceeded
+                );
+                SwapOutcome::new(*input_amount.value(), fee)
+            }
+        };
+
+        data.commit();
+
+        Ok((result, Self::exchange_weight()))
     }
 
     fn check_rewards(
@@ -585,14 +780,79 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn quote_without_impact(
-        _dex_id: &T::DEXId,
-        _input_asset_id: &T::AssetId,
-        _output_asset_id: &T::AssetId,
-        _amount: QuoteAmount<Balance>,
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        // todo (m.tagirov)
-        todo!()
+        let Some(order_book_id) = Self::assemble_order_book_id(dex_id, input_asset_id, output_asset_id) else {
+            return Err(Error::<T>::UnknownOrderBook.into());
+        };
+
+        let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+        let mut data = CacheDataLayer::<T>::new();
+
+        let side = order_book.get_side(input_asset_id, output_asset_id)?;
+
+        let Some((price, _)) = (match side {
+            PriceVariant::Buy => order_book.best_ask(&mut data),
+            PriceVariant::Sell => order_book.best_bid(&mut data),
+        }) else {
+            return Err(Error::<T>::NotEnoughLiquidity.into());
+        };
+
+        let target_amount = match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => match side {
+                // User wants to swap a known amount of the `quote` asset for the `base` asset.
+                // Necessary to return `base` amount.
+                // Divide the `quote` amount by the price and align the `base` amount.
+                PriceVariant::Buy => order_book.align_amount(
+                    (FixedWrapper::from(desired_amount_in) / FixedWrapper::from(price))
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                ),
+
+                // User wants to swap a known amount of the `base` asset for the `quote` asset.
+                // Necessary to return `quote` amount.
+                // Align the `base` amount and then multiply by the price.
+                PriceVariant::Sell => {
+                    (FixedWrapper::from(order_book.align_amount(desired_amount_in))
+                        * FixedWrapper::from(price))
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::AmountCalculationFailed)?
+                }
+            },
+
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => match side {
+                // User wants to swap the `quote` asset for a known amount of the `base` asset.
+                // Necessary to return `quote` amount.
+                // Align the `base` amount and then multiply by the price.
+                PriceVariant::Buy => {
+                    (FixedWrapper::from(order_book.align_amount(desired_amount_out))
+                        * FixedWrapper::from(price))
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::AmountCalculationFailed)?
+                }
+
+                // User wants to swap the `base` asset for a known amount of the `quote` asset.
+                // Necessary to return `base` amount.
+                PriceVariant::Sell => order_book.align_amount(
+                    (FixedWrapper::from(desired_amount_out) / FixedWrapper::from(price))
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                ),
+            },
+        };
+
+        ensure!(
+            target_amount > OrderVolume::zero(),
+            Error::<T>::InvalidOrderAmount
+        );
+
+        let fee = 0; // todo (m.tagirov)
+
+        Ok(SwapOutcome::new(target_amount, fee))
     }
 
     fn quote_weight() -> Weight {
