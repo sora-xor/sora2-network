@@ -69,7 +69,7 @@ use common::{Description, GetMarketInfo};
 use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
-use frame_support::weights::ConstantMultiplier;
+use frame_support::{traits::EitherOf, weights::ConstantMultiplier};
 
 // Make the WASM binary available.
 #[cfg(all(feature = "std", feature = "build-wasm-binary"))]
@@ -81,7 +81,7 @@ use extensions::ChargeTransactionPayment;
 use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
-use frame_system::EnsureRoot;
+use frame_system::{EnsureRoot, EnsureSigned};
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -2009,6 +2009,21 @@ impl order_book::Config for Runtime {
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
+    type ParameterUpdateOrigin = EitherOfDiverse<
+        EnsureSigned<AccountId>,
+        EitherOf<
+            pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+            EnsureRoot<AccountId>,
+        >,
+    >;
+    type StatusUpdateOrigin = EitherOf<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+        EnsureRoot<AccountId>,
+    >;
+    type RemovalOrigin = EitherOf<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+        EnsureRoot<AccountId>,
+    >;
     type WeightInfo = order_book::weights::SubstrateWeight<Runtime>;
 }
 
