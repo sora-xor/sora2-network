@@ -48,6 +48,7 @@ use frame_support::{
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 #[cfg(feature = "wip")]
 use scale_info::TypeInfo;
+use sp_core::U256;
 #[cfg(feature = "wip")]
 use sp_runtime::DispatchError;
 
@@ -304,17 +305,127 @@ pub struct BridgeAssetRegistryImpl;
 impl BridgeAssetRegistry<crate::AccountId, crate::AssetId> for BridgeAssetRegistryImpl {
     type AssetName = crate::AssetName;
     type AssetSymbol = crate::AssetSymbol;
-    type Decimals = u8;
 
     fn register_asset(
         owner: crate::AccountId,
         name: Self::AssetName,
         symbol: Self::AssetSymbol,
-        decimals: Self::Decimals,
     ) -> Result<crate::AssetId, DispatchError> {
-        let asset_id =
-            crate::Assets::register_from(&owner, symbol, name, decimals, 0, true, None, None)?;
+        let asset_id = crate::Assets::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
         Ok(asset_id)
+    }
+
+    fn manage_asset(
+        manager: crate::AccountId,
+        asset_id: crate::AssetId,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        let scope = permissions::Scope::Limited(common::hash(&asset_id));
+        for permission_id in [permissions::BURN, permissions::MINT] {
+            if permissions::Pallet::<crate::Runtime>::check_permission_with_scope(
+                manager.clone(),
+                permission_id,
+                &scope,
+            )
+            .is_err()
+            {
+                permissions::Pallet::<crate::Runtime>::assign_permission(
+                    manager.clone(),
+                    &manager,
+                    permission_id,
+                    scope,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    fn get_raw_info(asset_id: crate::AssetId) -> bridge_types::types::RawAssetInfo {
+        let (asset_symbol, asset_name, precision, ..) = crate::Assets::asset_infos(asset_id);
+        bridge_types::types::RawAssetInfo {
+            name: asset_name.0,
+            symbol: asset_symbol.0,
+            precision,
+        }
+    }
+}
+
+pub struct BalancePrecisionConverter;
+
+impl BalancePrecisionConverter {
+    fn convert_precision(
+        precision_from: u8,
+        precision_to: u8,
+        amount: crate::Balance,
+    ) -> Option<crate::Balance> {
+        if precision_from == precision_to {
+            return Some(amount);
+        }
+        if precision_from < precision_to {
+            let exp = (precision_to - precision_from) as u32;
+            let coeff = 10_u128.checked_pow(exp)?;
+            let coerced_amount = amount.saturating_mul(coeff);
+            if coerced_amount / coeff != amount {
+                return None;
+            }
+            Some(coerced_amount)
+        } else {
+            let exp = (precision_from - precision_to) as u32;
+            let coeff = 10_u128.checked_pow(exp)?;
+            let coerced_amount = amount / coeff;
+            if coerced_amount * coeff != amount {
+                return None;
+            }
+            Some(coerced_amount)
+        }
+    }
+}
+
+impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, crate::Balance>
+    for BalancePrecisionConverter
+{
+    fn from_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<crate::Balance> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        Self::convert_precision(sidechain_precision, thischain_precision, amount)
+    }
+
+    fn to_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<crate::Balance> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        Self::convert_precision(thischain_precision, sidechain_precision, amount)
+    }
+}
+
+impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, U256>
+    for BalancePrecisionConverter
+{
+    fn from_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: U256,
+    ) -> Option<crate::Balance> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        let res = Self::convert_precision(
+            sidechain_precision,
+            thischain_precision,
+            amount.try_into().ok()?,
+        )?;
+        Some(res)
+    }
+
+    fn to_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<U256> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        Self::convert_precision(thischain_precision, sidechain_precision, amount).map(Into::into)
     }
 }
 
