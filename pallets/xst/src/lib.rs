@@ -320,24 +320,10 @@ pub mod pallet {
     pub enum Error<T> {
         /// An error occurred while calculating the price.
         PriceCalculationFailed,
-        /// Failure while calculating price ignoring non-linearity of liquidity source.
-        FailedToCalculatePriceWithoutImpact,
-        /// The pool can't perform exchange on itself.
-        CannotExchangeWithSelf,
-        /// Attempt to initialize pool for pair that already exists.
-        PoolAlreadyInitializedForPair,
-        /// Attempt to get info for uninitialized pool.
-        PoolNotInitialized,
         /// Indicated limits for slippage has not been met during transaction execution.
         SlippageLimitExceeded,
-        /// Indicated collateral asset is not enabled for pool.
-        UnsupportedCollateralAssetId,
-        /// Could not calculate fee.
-        FeeCalculationFailed,
         /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
         CantExchange,
-        /// Increment account reference error.
-        IncRefError,
         /// Synthetic asset does not exist.
         SyntheticDoesNotExist,
         /// Attempt to enable synthetic asset with inexistent symbol.
@@ -824,6 +810,24 @@ impl<T: Config> Pallet<T> {
         })
     }
 
+    /// Used for converting XST fee to XOR
+    fn convert_fee(fee_amount: Balance) -> Result<Balance, DispatchError> {
+        let output_to_base: FixedWrapper =
+            <T as pallet::Config>::PriceToolsPallet::get_average_price(
+                &T::GetSyntheticBaseAssetId::get(),
+                &T::GetBaseAssetId::get(),
+                // Since `Sell` is more expensive in case if we are selling XST
+                // (x XST -> y XOR; y XOR -> x' XST, x' < x),
+                // it seems logical to show this amount in order
+                // to not accidentally lie about the price.
+                PriceVariant::Sell,
+            )?
+            .into();
+        Ok((fee_amount * output_to_base)
+            .try_into_balance()
+            .map_err(|_| Error::<T>::PriceCalculationFailed)?)
+    }
+
     /// This function is used to determine particular synthetic asset price in terms of a reference asset.
     /// The price for synthetics is calculated only for synthetic main asset. For other synthetics it is either
     /// hardcoded or fetched via OracleProxy.
@@ -946,23 +950,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
         };
         let fee_amount = if deduce_fee {
-            // `fee_amount` is always computed to be in `main_asset_id`, which is
-            // `SyntheticBaseAssetId` (e.g. XST), but `SwapOutcome` assumes XOR
-            // (`BaseAssetId`), so we convert.
-            let output_to_base: FixedWrapper =
-                <T as pallet::Config>::PriceToolsPallet::get_average_price(
-                    synthetic_base_asset_id,
-                    &T::GetBaseAssetId::get(),
-                    // Since `Sell` is more expensive in case if we are selling XST
-                    // (x XST -> y XOR; y XOR -> x' XST, x' < x),
-                    // it seems logical to show this amount in order
-                    // to not accidentally lie about the price.
-                    PriceVariant::Sell,
-                )?
-                .into();
-            (fee_amount * output_to_base)
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?
+            Self::convert_fee(fee_amount)?
         } else {
             fee_amount
         };
@@ -998,7 +986,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             sender,
             receiver,
         );
-        outcome.map(|res| (res, Self::exchange_weight()))
+        outcome.and_then(|mut res| {
+            let fee = Self::convert_fee(res.fee)?;
+            res.fee = fee;
+            Ok((res, Self::exchange_weight()))
+        })
     }
 
     fn check_rewards(
