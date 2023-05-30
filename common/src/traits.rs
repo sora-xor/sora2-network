@@ -906,9 +906,13 @@ pub trait AssetInfoProvider<
         Option<Description>,
     );
 
+    fn is_non_divisible(asset_id: &AssetId) -> bool;
+
     fn get_asset_content_src(asset_id: &AssetId) -> Option<ContentSource>;
 
     fn get_asset_description(asset_id: &AssetId) -> Option<Description>;
+
+    fn total_issuance(asset_id: &AssetId) -> Result<Balance, DispatchError>;
 
     fn total_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError>;
 
@@ -953,6 +957,10 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
         unimplemented!()
     }
 
+    fn is_non_divisible(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
     fn get_asset_content_src(_asset_id: &AssetId) -> Option<ContentSource> {
         unimplemented!()
     }
@@ -962,6 +970,10 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
     }
 
     fn total_balance(_asset_id: &AssetId, _who: &AccountId) -> Result<Balance, DispatchError> {
+        unimplemented!()
+    }
+
+    fn total_issuance(_asset_id: &AssetId) -> Result<Balance, DispatchError> {
         unimplemented!()
     }
 

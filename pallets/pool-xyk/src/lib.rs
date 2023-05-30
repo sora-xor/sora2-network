@@ -724,8 +724,8 @@ pub mod pallet {
 
             // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
-                assets::AssetInfos::<T>::get(input_asset_a).2 != 0
-                    && assets::AssetInfos::<T>::get(input_asset_b).2 != 0,
+                !assets::Pallet::<T>::is_non_divisible(&input_asset_a)
+                    && !assets::Pallet::<T>::is_non_divisible(&input_asset_b),
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
             ensure!(
@@ -768,8 +768,8 @@ pub mod pallet {
 
             // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
-                assets::AssetInfos::<T>::get(output_asset_a).2 != 0
-                    && assets::AssetInfos::<T>::get(output_asset_b).2 != 0,
+                !assets::Pallet::<T>::is_non_divisible(&output_asset_a)
+                    && !assets::Pallet::<T>::is_non_divisible(&output_asset_b),
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
             ensure!(
@@ -810,8 +810,8 @@ pub mod pallet {
 
                 // TODO: #395 use AssetInfoProvider instead of assets pallet
                 ensure!(
-                    assets::AssetInfos::<T>::get(asset_a).2 != 0
-                        && assets::AssetInfos::<T>::get(asset_b).2 != 0,
+                    !assets::Pallet::<T>::is_non_divisible(&asset_a)
+                        && !assets::Pallet::<T>::is_non_divisible(&asset_b),
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
                 );
 
