@@ -1014,7 +1014,7 @@ pub mod pallet {
             );
 
             // TODO: #395 use AssetInfoProvider instead of assets pallet
-            let (_, _, precision, ..) = assets::AssetInfos::<T>::get(&asset_id);
+            let (_, _, precision, ..) = assets::Pallet::<T>::get_asset_info(&asset_id);
             RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
             RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
             RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
