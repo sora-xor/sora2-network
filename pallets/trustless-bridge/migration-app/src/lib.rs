@@ -60,7 +60,6 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use assets::AssetIdOf;
     use bridge_types::types::{AdditionalEVMOutboundData, AssetKind};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -136,7 +135,7 @@ pub mod pallet {
         pub fn migrate_erc20(
             origin: OriginFor<T>,
             network_id: EVMChainId,
-            erc20_assets: Vec<(AssetIdOf<T>, H160)>,
+            erc20_assets: Vec<(erc20_app::AssetIdOf<T>, H160, u8)>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             let target = Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
@@ -145,7 +144,7 @@ pub mod pallet {
                     .ok_or(Error::<T>::AppIsNotRegistered)?;
 
             let mut erc20_tokens = vec![];
-            for (asset_id, address) in erc20_assets {
+            for (asset_id, address, precision) in erc20_assets {
                 erc20_tokens.push(address);
                 if let Some(registered_token) =
                     erc20_app::Pallet::<T>::token_address(network_id, asset_id)
@@ -159,6 +158,7 @@ pub mod pallet {
                         asset_id,
                         address,
                         AssetKind::Sidechain,
+                        precision,
                     )?;
                 }
             }
@@ -188,7 +188,7 @@ pub mod pallet {
         pub fn migrate_sidechain(
             origin: OriginFor<T>,
             network_id: EVMChainId,
-            sidechain_assets: Vec<(AssetIdOf<T>, H160)>,
+            sidechain_assets: Vec<(erc20_app::AssetIdOf<T>, H160, u8)>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             let target = Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
@@ -197,7 +197,7 @@ pub mod pallet {
                     .ok_or(Error::<T>::AppIsNotRegistered)?;
 
             let mut sidechain_tokens = vec![];
-            for (asset_id, address) in sidechain_assets {
+            for (asset_id, address, precision) in sidechain_assets {
                 sidechain_tokens.push(address);
                 if let Some(_) = erc20_app::Pallet::<T>::token_address(network_id, asset_id) {
                     return Err(Error::<T>::TokenRegisteredWithAnotherAddress.into());
@@ -207,6 +207,7 @@ pub mod pallet {
                         asset_id,
                         address,
                         AssetKind::Thischain,
+                        precision,
                     )?;
                 }
             }
@@ -236,7 +237,7 @@ pub mod pallet {
         pub fn migrate_eth(origin: OriginFor<T>, network_id: EVMChainId) -> DispatchResult {
             ensure_root(origin)?;
             let target = Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
-            let (contract_address, _) = eth_app::Pallet::<T>::address_and_asset(network_id)
+            let (contract_address, _, _) = eth_app::Pallet::<T>::address_and_asset(network_id)
                 .ok_or(Error::<T>::AppIsNotRegistered)?;
 
             let message = payload::MigrateEthPayload { contract_address };
