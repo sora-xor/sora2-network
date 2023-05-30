@@ -233,6 +233,11 @@ impl<T: Config> Pallet<T> {
     > {
         let (trading_pair, tech_acc_id) =
             Pallet::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
+
+        Pallet::<T>::ensure_trading_pair_is_not_restricted(
+            &trading_pair.clone().map(|a| Into::<T::AssetId>::into(a)),
+        )?;
+
         let fee_acc_id = tech_acc_id.to_fee_account().unwrap();
         // Function initialize_pools is usually called once, just quick check if tech
         // account is not registered is enough to do the job.
