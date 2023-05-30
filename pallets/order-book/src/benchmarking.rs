@@ -348,10 +348,41 @@ benchmarks! {
     }
 
     update_orderbook {
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
+
+        let tick_size = balance!(0.01);
+        let step_lot_size = balance!(0.001);
+        let min_lot_size = balance!(1);
+        let max_lot_size = balance!(10000);
     }: {
-        // todo (m.tagirov)
+        OrderBookPallet::<T>::update_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size
+        ).unwrap();
     }
     verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookUpdated {
+                order_book_id,
+                dex_id: DEX.into(),
+            }
+            .into(),
+        );
+
+        let order_book = OrderBookPallet::<T>::order_books(order_book_id).unwrap();
+        assert_eq!(order_book.tick_size, tick_size);
+        assert_eq!(order_book.step_lot_size, step_lot_size);
+        assert_eq!(order_book.min_lot_size, min_lot_size);
+        assert_eq!(order_book.max_lot_size, max_lot_size);
     }
 
     change_orderbook_status {
