@@ -51,6 +51,10 @@ type Assets = framenode_runtime::assets::Pallet<Runtime>;
 type TradingPair = framenode_runtime::trading_pair::Pallet<Runtime>;
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
 type Timestamp = pallet_timestamp::Pallet<Runtime>;
+type TechnicalRawOrigin = pallet_collective::RawOrigin<
+    <Runtime as frame_system::Config>::AccountId,
+    framenode_runtime::TechnicalCollective,
+>;
 
 #[test]
 fn should_not_create_order_book_with_same_assets() {
@@ -340,17 +344,58 @@ fn should_create_order_book_for_nft() {
 }
 
 #[test]
-fn should_not_delete_order_book_by_not_root_origin() {
+fn should_check_permissions_for_delete_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base: VAL.into(),
             quote: XOR.into(),
         };
 
+        create_empty_order_book(order_book_id);
         assert_err!(
             OrderBookPallet::delete_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             BadOrigin
         );
+
+        // Root should be allowed
+
+        assert_ok!(OrderBookPallet::delete_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id
+        ),);
+
+        // Only more than half approvals from technical commitee are accepted
+
+        create_empty_order_book(order_book_id);
+        if pallet_collective::Pallet::<Runtime, framenode_runtime::TechnicalCollective>::members()
+            .len()
+            > 1
+        {
+            assert_err!(
+                OrderBookPallet::delete_orderbook(
+                    TechnicalRawOrigin::Member(alice()).into(),
+                    order_book_id
+                ),
+                BadOrigin,
+            );
+        } else {
+            assert_ok!(OrderBookPallet::delete_orderbook(
+                TechnicalRawOrigin::Member(alice()).into(),
+                order_book_id
+            ),);
+            create_empty_order_book(order_book_id);
+        }
+        assert_err!(
+            OrderBookPallet::delete_orderbook(
+                TechnicalRawOrigin::Members(3, 6).into(),
+                order_book_id
+            ),
+            BadOrigin
+        );
+        assert_ok!(OrderBookPallet::delete_orderbook(
+            TechnicalRawOrigin::Members(4, 6).into(),
+            order_book_id
+        ));
     });
 }
 
@@ -489,7 +534,7 @@ fn should_delete_order_book_with_a_lot_of_orders() {
 }
 
 #[test]
-fn should_not_update_order_book_by_not_root_origin() {
+fn should_check_permissions_for_update_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base: VAL.into(),
@@ -509,6 +554,66 @@ fn should_not_update_order_book_by_not_root_origin() {
             ),
             BadOrigin
         );
+
+        // Root should be allowed
+
+        assert_ok!(OrderBookPallet::update_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id,
+            balance!(0.01),
+            balance!(0.001),
+            balance!(1),
+            balance!(10000)
+        ),);
+
+        // Only more than half approvals from technical commitee are accepted
+
+        if pallet_collective::Pallet::<Runtime, framenode_runtime::TechnicalCollective>::members()
+            .len()
+            > 1
+        {
+            assert_err!(
+                OrderBookPallet::update_orderbook(
+                    TechnicalRawOrigin::Member(alice()).into(),
+                    order_book_id,
+                    balance!(0.01),
+                    balance!(0.001),
+                    balance!(1),
+                    balance!(10000)
+                ),
+                BadOrigin,
+            );
+        } else {
+            assert_ok!(OrderBookPallet::update_orderbook(
+                TechnicalRawOrigin::Member(alice()).into(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1),
+                balance!(10000)
+            ),);
+            create_empty_order_book(order_book_id);
+        }
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                TechnicalRawOrigin::Members(3, 6).into(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1),
+                balance!(10000)
+            ),
+            BadOrigin
+        );
+        assert_ok!(OrderBookPallet::update_orderbook(
+            TechnicalRawOrigin::Members(4, 6).into(),
+            order_book_id,
+            balance!(0.01),
+            balance!(0.001),
+            balance!(1),
+            balance!(10000)
+        ),);
+        // todo + asset owner
     });
 }
 
@@ -909,13 +1014,14 @@ fn should_update_order_book_with_nft() {
 }
 
 #[test]
-fn should_not_change_order_book_status_by_not_root_origin() {
+fn should_check_permissions_for_change_order_book_status() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base: VAL.into(),
             quote: XOR.into(),
         };
 
+        create_empty_order_book(order_book_id);
         assert_err!(
             OrderBookPallet::change_orderbook_status(
                 RawOrigin::Signed(alice()).into(),
@@ -924,6 +1030,49 @@ fn should_not_change_order_book_status_by_not_root_origin() {
             ),
             BadOrigin
         );
+
+        // Root should be allowed
+
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RawOrigin::Root.into(),
+            order_book_id,
+            OrderBookStatus::Trade
+        ),);
+
+        // Only more than half approvals from technical commitee are accepted
+
+        if pallet_collective::Pallet::<Runtime, framenode_runtime::TechnicalCollective>::members()
+            .len()
+            > 1
+        {
+            assert_err!(
+                OrderBookPallet::change_orderbook_status(
+                    TechnicalRawOrigin::Member(alice()).into(),
+                    order_book_id,
+                    OrderBookStatus::Trade
+                ),
+                BadOrigin,
+            );
+        } else {
+            assert_ok!(OrderBookPallet::change_orderbook_status(
+                TechnicalRawOrigin::Member(alice()).into(),
+                order_book_id,
+                OrderBookStatus::Trade
+            ),);
+        }
+        assert_err!(
+            OrderBookPallet::change_orderbook_status(
+                TechnicalRawOrigin::Members(3, 6).into(),
+                order_book_id,
+                OrderBookStatus::Trade
+            ),
+            BadOrigin
+        );
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            TechnicalRawOrigin::Members(4, 6).into(),
+            order_book_id,
+            OrderBookStatus::Trade
+        ),);
     });
 }
 

@@ -196,8 +196,8 @@ pub type Moment = u64;
 
 pub type PeriodicSessions = pallet_session::PeriodicSessions<SessionPeriod, SessionOffset>;
 
-type CouncilCollective = pallet_collective::Instance1;
-type TechnicalCollective = pallet_collective::Instance2;
+pub type CouncilCollective = pallet_collective::Instance1;
+pub type TechnicalCollective = pallet_collective::Instance2;
 
 type MoreThanHalfCouncil = EitherOfDiverse<
     EnsureRoot<AccountId>,
