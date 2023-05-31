@@ -810,12 +810,18 @@ pub mod pallet {
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
                 );
 
-                let (_, tech_account_id, fees_account_id) = Pallet::<T>::initialize_pool_unchecked(
-                    source.clone(),
-                    dex_id,
-                    asset_a,
-                    asset_b,
+                let (trading_pair, tech_account_id, fees_account_id) =
+                    Pallet::<T>::initialize_pool_unchecked(
+                        source.clone(),
+                        dex_id,
+                        asset_a,
+                        asset_b,
+                    )?;
+
+                Pallet::<T>::ensure_trading_pair_is_not_restricted(
+                    &trading_pair.map(|a| Into::<T::AssetId>::into(a)),
                 )?;
+
                 let ta_repr =
                     technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account_id)?;
                 let fees_ta_repr =
