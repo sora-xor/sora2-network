@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["ChangeAssetMapping","ChangeMultilocationMapping","DeleteMapping","FakeTransfer","RegisterAsset","RegisterMapping","TestXcmTransfer","TransactionApi","Transfer"]};

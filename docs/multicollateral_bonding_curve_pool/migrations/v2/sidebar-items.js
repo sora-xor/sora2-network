@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["SORAMITSU_PAYMENT_ACCOUNT"],"struct":["InitializeTBCD"]};

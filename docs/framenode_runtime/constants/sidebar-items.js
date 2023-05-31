@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["BABE_GENESIS_EPOCH_CONFIG","PRIMARY_PROBABILITY"],"mod":["currency","rewards","time"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_default_for_authority_account","__type_value_for_rewards_remaining_default"],"struct":["DefaultForAuthorityAccount","Pallet","RewardsRemainingDefault"],"trait":["Config"],"type":["AuthorityAccount","Module"]};

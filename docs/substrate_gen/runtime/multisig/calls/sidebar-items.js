@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["ApproveAsMulti","AsMulti","AsMultiThreshold1","CancelAsMulti","TransactionApi"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["DisableLiquiditySource","EnableLiquiditySource","Swap","SwapTransfer","SwapTransferBatch","TransactionApi"]};

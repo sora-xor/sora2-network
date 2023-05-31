@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["cli","command","eth_bridge_metrics","rpc","service"]};

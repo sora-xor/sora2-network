@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["Pallet"],"trait":["Config"],"type":["AggregatedAsks","AggregatedBids","Asks","Bids","LimitOrders","Module","OrderBookId","OrderBooks","OrderPrice","OrderVolume","UserLimitOrders"]};

@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"framenode_runtime":[["impl CallerTrait&lt;&lt;<a class=\"struct\" href=\"framenode_runtime/struct.Runtime.html\" title=\"struct framenode_runtime::Runtime\">Runtime</a> as Config&gt;::AccountId&gt; for <a class=\"enum\" href=\"framenode_runtime/enum.OriginCaller.html\" title=\"enum framenode_runtime::OriginCaller\">OriginCaller</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

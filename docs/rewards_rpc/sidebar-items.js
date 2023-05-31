@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["BalanceInfo","RewardsClient"],"trait":["RewardsAPIClient","RewardsAPIServer","RewardsRuntimeAPI"]};

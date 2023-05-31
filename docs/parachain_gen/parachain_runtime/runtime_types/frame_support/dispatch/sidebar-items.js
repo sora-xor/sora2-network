@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["DispatchClass","Pays"],"struct":["DispatchInfo","PerDispatchClass"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["TECH_ACCOUNT_PERMISSIONED","TECH_ACCOUNT_PREFIX"],"enum":["DistributionAccount"],"mod":["pallet","weights"],"struct":["DistributionAccountData"]};

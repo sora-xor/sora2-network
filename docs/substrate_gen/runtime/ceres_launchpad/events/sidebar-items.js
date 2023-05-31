@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["Claimed","ClaimedLP","ClaimedPSWAP","Contributed","EmergencyWithdrawn","FeeChanged","ILOCreated","ILOFinished","RemovedWhitelistedContributor","RemovedWhitelistedIloOrganizer","WhitelistedContributor","WhitelistedIloOrganizer"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["BurnRateChanged","FeesExchangeFailed","FeesExchanged","IncentiveDistributed","IncentiveDistributionFailed","IncentivesBurnedAfterExchange","NothingToDistribute","NothingToExchange"]};

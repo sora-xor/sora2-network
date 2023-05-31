@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["CallUnavailable","Canceled","Dispatched","PeriodicFailed","PermanentlyOverweight","Scheduled"]};

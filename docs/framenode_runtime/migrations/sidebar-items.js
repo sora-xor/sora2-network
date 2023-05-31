@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["EmptyAccountList","StakingMigrationV11OldPallet"],"type":["Migrations"]};

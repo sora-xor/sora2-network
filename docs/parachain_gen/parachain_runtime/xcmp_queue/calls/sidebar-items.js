@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["ResumeXcmExecution","ServiceOverweight","SuspendXcmExecution","TransactionApi","UpdateDropThreshold","UpdateResumeThreshold","UpdateSuspendThreshold","UpdateThresholdWeight","UpdateWeightRestrictDecay","UpdateXcmpMaxIndividualWeight"]};

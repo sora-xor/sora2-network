@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["LeaveIntent","RegisterAsCandidate","SetCandidacyBond","SetDesiredCandidates","SetInvulnerables","TransactionApi"]};

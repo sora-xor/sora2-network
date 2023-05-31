@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["ON_INITIALIZE_RATIO"],"fn":["err_pays_no","pays_no","pays_no_with_maybe_weight"],"mod":["constants"],"struct":["BlockLength","BlockWeights","PresetWeightInfo","TransactionByteFee"]};

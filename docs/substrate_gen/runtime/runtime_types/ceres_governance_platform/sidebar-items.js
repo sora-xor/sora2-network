@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["StorageVersion"],"mod":["pallet"],"struct":["PollInfo","VotingInfo"]};

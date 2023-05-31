@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["OldRequestStatus"],"fn":["migrate","migrate_error"]};

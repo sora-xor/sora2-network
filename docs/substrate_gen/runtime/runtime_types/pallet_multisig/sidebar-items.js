@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["MultiChainHeight"],"mod":["pallet"],"struct":["BridgeTimepoint","Multisig","MultisigAccount","Timepoint"]};

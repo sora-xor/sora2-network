@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["RATE_MULTIPLIER"],"mod":["pallet","weights"],"struct":["BandRate"]};

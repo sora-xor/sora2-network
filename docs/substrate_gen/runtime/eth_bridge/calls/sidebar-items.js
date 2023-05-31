@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["AbortRequest","AddAsset","AddPeer","AddSidechainToken","ApproveRequest","FinalizeIncomingRequest","ForceAddPeer","ImportIncomingRequest","Migrate","PrepareForMigration","RegisterBridge","RegisterExistingSidechainAsset","RegisterIncomingRequest","RemovePeer","RemoveSidechainAsset","RequestFromSidechain","TransactionApi","TransferToSidechain"]};

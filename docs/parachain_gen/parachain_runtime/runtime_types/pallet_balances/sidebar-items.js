@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Reasons"],"mod":["pallet"],"struct":["AccountData","BalanceLock","ReserveData"]};

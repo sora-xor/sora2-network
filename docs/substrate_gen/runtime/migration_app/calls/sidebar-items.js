@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["MigrateErc20","MigrateEth","MigrateSidechain","RegisterNetwork","TransactionApi"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["migrations","pallet","rpc"],"struct":["PoolFarmer"],"trait":["WeightInfo"],"type":["WeightInfoOf"]};

@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"demeter_farming_platform":[["impl&lt;T: <a class=\"trait\" href=\"demeter_farming_platform/pallet/trait.Config.html\" title=\"trait demeter_farming_platform::pallet::Config\">Config</a>&gt; DemeterFarmingPallet&lt;&lt;T as Config&gt;::AccountId, &lt;T as Config&gt;::AssetId&gt; for <a class=\"struct\" href=\"demeter_farming_platform/pallet/struct.Pallet.html\" title=\"struct demeter_farming_platform::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

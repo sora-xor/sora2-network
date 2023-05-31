@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["NotePreimage","RequestPreimage","TransactionApi","UnnotePreimage","UnrequestPreimage"]};

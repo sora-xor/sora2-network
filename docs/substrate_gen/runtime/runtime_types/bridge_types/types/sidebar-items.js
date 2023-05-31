@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["AssetKind","AuxiliaryDigestItem","MessageDirection","MessageStatus"],"struct":["AdditionalEVMInboundData","AuxiliaryDigest","CallOriginOutput","LeafExtraData","Message","MessageId","ParachainMessage","Proof"]};

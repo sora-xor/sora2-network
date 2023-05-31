@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["XcmpMessageFormat"],"struct":["HeadData","Id"]};
