@@ -58,7 +58,7 @@ impl Command {
             let eth_app = sub
                 .storage_fetch(&runtime::storage().eth_app().addresses(&network_id), ())
                 .await?;
-            if let Some((eth_app, _)) = eth_app {
+            if let Some((eth_app, _, _)) = eth_app {
                 break eth_app;
             }
             debug!("Waiting for bridge to be available");
