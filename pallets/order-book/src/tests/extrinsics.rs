@@ -613,7 +613,25 @@ fn should_check_permissions_for_update_order_book() {
             balance!(1),
             balance!(10000)
         ),);
-        // todo + asset owner
+
+        let asset_owner_base = Assets::asset_owner(&order_book_id.base).unwrap();
+        let asset_owner_quote = Assets::asset_owner(&order_book_id.quote).unwrap();
+        assert_ok!(OrderBookPallet::update_orderbook(
+            RawOrigin::Signed(asset_owner_base).into(),
+            order_book_id,
+            balance!(0.01),
+            balance!(0.001),
+            balance!(1),
+            balance!(10000)
+        ),);
+        assert_ok!(OrderBookPallet::update_orderbook(
+            RawOrigin::Signed(asset_owner_quote).into(),
+            order_book_id,
+            balance!(0.01),
+            balance!(0.001),
+            balance!(1),
+            balance!(10000)
+        ),);
     });
 }
 
