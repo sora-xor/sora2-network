@@ -33,18 +33,20 @@
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
-use common::{balance, AssetName, AssetSymbol, PriceVariant, DOT, KSM, VAL, XOR};
+use common::{balance, AccountIdOf, AssetName, AssetSymbol, PriceVariant, DOT, KSM, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
     Config, DataLayer, DealInfo, LimitOrder, MarketChange, MarketOrder, MarketRole, OrderAmount,
-    OrderBook, OrderBookId, OrderBookStatus,
+    OrderBook, OrderBookId, OrderBookStatus, Payment,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_core::Get;
 use sp_std::collections::btree_map::BTreeMap;
+
+type DEXId = <Runtime as common::Config>::DEXId;
 
 #[test]
 fn should_create_new() {
@@ -2651,6 +2653,8 @@ fn should_not_calculate_market_impact_with_empty_side() {
         assert_err!(
             order_book.calculate_market_impact(
                 PriceVariant::Buy,
+                alice(),
+                alice(),
                 balance!(1),
                 data.get_aggregated_asks(&order_book_id).iter(),
                 &mut data
@@ -2660,6 +2664,8 @@ fn should_not_calculate_market_impact_with_empty_side() {
         assert_err!(
             order_book.calculate_market_impact(
                 PriceVariant::Sell,
+                alice(),
+                alice(),
                 balance!(1),
                 data.get_aggregated_bids(&order_book_id).iter().rev(),
                 &mut data
@@ -2684,6 +2690,8 @@ fn should_not_calculate_market_impact_if_liquidity_is_not_enough() {
         assert_err!(
             order_book.calculate_market_impact(
                 PriceVariant::Buy,
+                alice(),
+                alice(),
                 balance!(1000),
                 data.get_aggregated_asks(&order_book_id).iter(),
                 &mut data
@@ -2693,6 +2701,8 @@ fn should_not_calculate_market_impact_if_liquidity_is_not_enough() {
         assert_err!(
             order_book.calculate_market_impact(
                 PriceVariant::Sell,
+                alice(),
+                alice(),
                 balance!(1000),
                 data.get_aggregated_bids(&order_book_id).iter().rev(),
                 &mut data
@@ -2712,6 +2722,7 @@ fn should_calculate_market_impact() {
             quote: XOR.into(),
         };
 
+        let dex_id = DEX.into();
         let order_book = create_and_fill_order_book(order_book_id);
 
         let market_for_buy = data.get_aggregated_asks(&order_book_id);
@@ -2729,6 +2740,8 @@ fn should_calculate_market_impact() {
             order_book
                 .calculate_market_impact(
                     PriceVariant::Buy,
+                    alice(),
+                    alice(),
                     buy_amount1,
                     market_for_buy.iter(),
                     &mut data
@@ -2739,7 +2752,21 @@ fn should_calculate_market_impact() {
                 market_output: OrderAmount::Base(buy_amount1),
                 to_delete: vec![],
                 to_update: vec![limit_order7],
-                makers_output: BTreeMap::from([(bob(), balance!(1100))])
+                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(1100))])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (order_book_id.base, BTreeMap::from([(alice(), buy_amount1)])),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(bob(), balance!(1100))])
+                        )
+                    ]),
+                }
             }
         );
 
@@ -2749,6 +2776,8 @@ fn should_calculate_market_impact() {
             order_book
                 .calculate_market_impact(
                     PriceVariant::Buy,
+                    alice(),
+                    dave(),
                     buy_amount2,
                     market_for_buy.iter(),
                     &mut data
@@ -2759,10 +2788,24 @@ fn should_calculate_market_impact() {
                 market_output: OrderAmount::Base(buy_amount2),
                 to_delete: vec![7, 8],
                 to_update: vec![limit_order9],
-                makers_output: BTreeMap::from([
-                    (bob(), balance!(2368.26)),
-                    (charlie(), balance!(956.48))
-                ])
+                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(3324.74))])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (order_book_id.base, BTreeMap::from([(dave(), buy_amount2)])),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([
+                                (bob(), balance!(2368.26)),
+                                (charlie(), balance!(956.48))
+                            ])
+                        )
+                    ]),
+                }
             }
         );
 
@@ -2772,6 +2815,8 @@ fn should_calculate_market_impact() {
             order_book
                 .calculate_market_impact(
                     PriceVariant::Buy,
+                    alice(),
+                    alice(),
                     buy_amount3,
                     market_for_buy.iter(),
                     &mut data
@@ -2782,10 +2827,24 @@ fn should_calculate_market_impact() {
                 market_output: OrderAmount::Base(buy_amount3),
                 to_delete: vec![7, 8, 9, 10, 11],
                 to_update: vec![limit_order12],
-                makers_output: BTreeMap::from([
-                    (bob(), balance!(5346.39)),
-                    (charlie(), balance!(1411.88))
-                ])
+                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(6758.27))])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (order_book_id.base, BTreeMap::from([(alice(), buy_amount3)])),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([
+                                (bob(), balance!(5346.39)),
+                                (charlie(), balance!(1411.88))
+                            ])
+                        )
+                    ]),
+                }
             }
         );
 
@@ -2793,6 +2852,8 @@ fn should_calculate_market_impact() {
             order_book
                 .calculate_market_impact(
                     PriceVariant::Buy,
+                    alice(),
+                    dave(),
                     buy_amount4,
                     market_for_buy.iter(),
                     &mut data
@@ -2803,10 +2864,24 @@ fn should_calculate_market_impact() {
                 market_output: OrderAmount::Base(buy_amount4),
                 to_delete: vec![7, 8, 9, 10],
                 to_update: vec![],
-                makers_output: BTreeMap::from([
-                    (bob(), balance!(2983.14)),
-                    (charlie(), balance!(1377.38))
-                ])
+                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(4360.52))])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (order_book_id.base, BTreeMap::from([(dave(), buy_amount4)])),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([
+                                (bob(), balance!(2983.14)),
+                                (charlie(), balance!(1377.38))
+                            ])
+                        )
+                    ]),
+                }
             }
         );
 
@@ -2814,6 +2889,8 @@ fn should_calculate_market_impact() {
             order_book
                 .calculate_market_impact(
                     PriceVariant::Buy,
+                    alice(),
+                    alice(),
                     buy_amount5,
                     market_for_buy.iter(),
                     &mut data
@@ -2824,10 +2901,24 @@ fn should_calculate_market_impact() {
                 market_output: OrderAmount::Base(buy_amount5),
                 to_delete: vec![7, 8, 9, 10, 11, 12],
                 to_update: vec![],
-                makers_output: BTreeMap::from([
-                    (bob(), balance!(5346.39)),
-                    (charlie(), balance!(1534.93))
-                ])
+                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(6881.32))])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (order_book_id.base, BTreeMap::from([(alice(), buy_amount5)])),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([
+                                (bob(), balance!(5346.39)),
+                                (charlie(), balance!(1534.93))
+                            ])
+                        )
+                    ]),
+                }
             }
         );
 
@@ -2843,6 +2934,8 @@ fn should_calculate_market_impact() {
             order_book
                 .calculate_market_impact(
                     PriceVariant::Sell,
+                    alice(),
+                    alice(),
                     sell_amount1,
                     market_for_sell.iter().rev(),
                     &mut data
@@ -2853,7 +2946,21 @@ fn should_calculate_market_impact() {
                 market_output: OrderAmount::Quote(balance!(1000)),
                 to_delete: vec![],
                 to_update: vec![limit_order1],
-                makers_output: BTreeMap::from([(bob(), sell_amount1)])
+                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), sell_amount1)])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(alice(), balance!(1000))])
+                        ),
+                        (order_book_id.base, BTreeMap::from([(bob(), sell_amount1)]))
+                    ]),
+                }
             }
         );
 
@@ -2863,6 +2970,8 @@ fn should_calculate_market_impact() {
             order_book
                 .calculate_market_impact(
                     PriceVariant::Sell,
+                    alice(),
+                    dave(),
                     sell_amount2,
                     market_for_sell.iter().rev(),
                     &mut data
@@ -2873,10 +2982,24 @@ fn should_calculate_market_impact() {
                 market_output: OrderAmount::Quote(balance!(2679.7)),
                 to_delete: vec![1, 2],
                 to_update: vec![limit_order3],
-                makers_output: BTreeMap::from([
-                    (bob(), balance!(174.8)),
-                    (charlie(), balance!(95.2))
-                ])
+                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), sell_amount2)])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(dave(), balance!(2679.7))])
+                        ),
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(bob(), balance!(174.8)), (charlie(), balance!(95.2))])
+                        )
+                    ]),
+                }
             }
         );
 
@@ -2886,6 +3009,8 @@ fn should_calculate_market_impact() {
             order_book
                 .calculate_market_impact(
                     PriceVariant::Sell,
+                    alice(),
+                    alice(),
                     sell_amount3,
                     market_for_sell.iter().rev(),
                     &mut data
@@ -2896,10 +3021,27 @@ fn should_calculate_market_impact() {
                 market_output: OrderAmount::Quote(balance!(3926.22)),
                 to_delete: vec![1, 2, 3, 4],
                 to_update: vec![limit_order5],
-                makers_output: BTreeMap::from([
-                    (bob(), balance!(248.4)),
-                    (charlie(), balance!(151.6))
-                ])
+                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), sell_amount3)])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(alice(), balance!(3926.22))])
+                        ),
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([
+                                (bob(), balance!(248.4)),
+                                (charlie(), balance!(151.6))
+                            ])
+                        )
+                    ]),
+                }
             }
         );
 
@@ -2907,6 +3049,8 @@ fn should_calculate_market_impact() {
             order_book
                 .calculate_market_impact(
                     PriceVariant::Sell,
+                    alice(),
+                    dave(),
                     sell_amount4,
                     market_for_sell.iter().rev(),
                     &mut data
@@ -2917,10 +3061,27 @@ fn should_calculate_market_impact() {
                 market_output: OrderAmount::Quote(balance!(3591.82)),
                 to_delete: vec![1, 2, 3, 4],
                 to_update: vec![],
-                makers_output: BTreeMap::from([
-                    (bob(), balance!(213.2)),
-                    (charlie(), balance!(151.6))
-                ])
+                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), sell_amount4)])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(dave(), balance!(3591.82))])
+                        ),
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([
+                                (bob(), balance!(213.2)),
+                                (charlie(), balance!(151.6))
+                            ])
+                        )
+                    ]),
+                }
             }
         );
 
@@ -2928,6 +3089,8 @@ fn should_calculate_market_impact() {
             order_book
                 .calculate_market_impact(
                     PriceVariant::Sell,
+                    alice(),
+                    alice(),
                     sell_amount5,
                     market_for_sell.iter().rev(),
                     &mut data
@@ -2938,10 +3101,27 @@ fn should_calculate_market_impact() {
                 market_output: OrderAmount::Quote(balance!(5538.37)),
                 to_delete: vec![1, 2, 3, 4, 5, 6],
                 to_update: vec![],
-                makers_output: BTreeMap::from([
-                    (bob(), balance!(303.1)),
-                    (charlie(), balance!(266.6))
-                ])
+                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), sell_amount5)])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(alice(), balance!(5538.37))])
+                        ),
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([
+                                (bob(), balance!(303.1)),
+                                (charlie(), balance!(266.6))
+                            ])
+                        )
+                    ]),
+                }
             }
         );
     });

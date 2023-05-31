@@ -206,7 +206,7 @@ fn test_lock_unlock_other_accounts(
         dex_id.into(),
         order_book_id,
         asset_id,
-        unlocks
+        &unlocks
     ));
 
     let unlock_account_balance_after_unlock1 = free_balance(asset_id, unlock_account1);

@@ -75,7 +75,7 @@ pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer};
 pub use types::{
     DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderBookStatus,
-    OrderPrice, OrderVolume, PriceOrders, UserOrders,
+    OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -657,7 +657,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<
         dex_id: T::DEXId,
         order_book_id: OrderBookId<T::AssetId>,
         asset_id: &T::AssetId,
-        receivers: BTreeMap<T::AccountId, OrderVolume>,
+        receivers: &BTreeMap<T::AccountId, OrderVolume>,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(dex_id, order_book_id);
         for (account, amount) in receivers.iter() {

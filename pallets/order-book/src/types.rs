@@ -28,8 +28,10 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::traits::{CurrencyLocker, CurrencyUnlocker};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{Balance, PriceVariant, TradingPair};
+use frame_support::sp_runtime::DispatchError;
 use frame_support::{BoundedBTreeMap, BoundedVec, RuntimeDebug};
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
@@ -186,10 +188,73 @@ impl<AssetId: PartialEq> DealInfo<AssetId> {
 }
 
 #[derive(Eq, PartialEq, Clone, RuntimeDebug)]
-pub struct MarketChange<AccountId, OrderId, LimitOrder> {
+pub struct Payment<AssetId, AccountId, DEXId> {
+    pub dex_id: DEXId,
+    pub order_book_id: OrderBookId<AssetId>,
+    pub to_lock: BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
+    pub to_unlock: BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
+}
+
+impl<AssetId, AccountId, DEXId> Payment<AssetId, AccountId, DEXId>
+where
+    DEXId: Copy,
+    AssetId: Copy,
+{
+    pub fn new(dex_id: DEXId, order_book_id: OrderBookId<AssetId>) -> Self {
+        Self {
+            dex_id,
+            order_book_id,
+            to_lock: BTreeMap::new(),
+            to_unlock: BTreeMap::new(),
+        }
+    }
+
+    pub fn lock<Locker>(&self) -> Result<(), DispatchError>
+    where
+        Locker: CurrencyLocker<AccountId, AssetId, DEXId>,
+    {
+        for (asset_id, from_whom) in self.to_lock.iter() {
+            for (account, amount) in from_whom.iter() {
+                Locker::lock_liquidity(
+                    self.dex_id,
+                    account,
+                    self.order_book_id,
+                    asset_id,
+                    *amount,
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn unlock<Unlocker>(&self) -> Result<(), DispatchError>
+    where
+        Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId>,
+    {
+        for (asset_id, to_whom) in self.to_unlock.iter() {
+            Unlocker::unlock_liquidity_batch(self.dex_id, self.order_book_id, asset_id, to_whom)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn execute_all<Locker, Unlocker>(&self) -> Result<(), DispatchError>
+    where
+        Locker: CurrencyLocker<AccountId, AssetId, DEXId>,
+        Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId>,
+    {
+        self.lock::<Locker>()?;
+        self.unlock::<Unlocker>()?;
+        Ok(())
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, RuntimeDebug)]
+pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
     pub market_input: OrderAmount,
     pub market_output: OrderAmount,
     pub to_delete: Vec<OrderId>,
     pub to_update: Vec<LimitOrder>,
-    pub makers_output: BTreeMap<AccountId, OrderVolume>,
+    pub payment: Payment<AssetId, AccountId, DEXId>,
 }

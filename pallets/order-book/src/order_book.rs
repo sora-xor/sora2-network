@@ -31,6 +31,7 @@
 use crate::{
     CurrencyLocker, CurrencyUnlocker, DataLayer, DealInfo, Error, LimitOrder, MarketChange,
     MarketOrder, MarketRole, OrderAmount, OrderBookId, OrderBookStatus, OrderPrice, OrderVolume,
+    Payment,
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -41,7 +42,6 @@ use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
 use sp_runtime::traits::{One, Zero};
-use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::Add;
 use sp_std::vec::Vec;
 
@@ -218,51 +218,28 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         self.ensure_market_order_valid(&order)?;
 
+        let receiver = order.to.unwrap_or(order.owner.clone());
+
         let market_change = match order.side {
             PriceVariant::Buy => self.calculate_market_impact(
                 order.side,
+                order.owner,
+                receiver,
                 order.amount,
                 data.get_aggregated_asks(&self.order_book_id).iter(),
                 data,
             )?,
             PriceVariant::Sell => self.calculate_market_impact(
                 order.side,
+                order.owner,
+                receiver,
                 order.amount,
                 data.get_aggregated_bids(&self.order_book_id).iter().rev(),
                 data,
             )?,
         };
 
-        let taker_lock_asset = market_change
-            .market_input
-            .associated_asset(&self.order_book_id);
-        Locker::lock_liquidity(
-            self.dex_id,
-            &order.owner,
-            self.order_book_id,
-            taker_lock_asset,
-            *market_change.market_input.value(),
-        )?;
-
-        let receiver = order.to.unwrap_or(order.owner);
-
-        let taker_unlock_asset = market_change
-            .market_output
-            .associated_asset(&self.order_book_id);
-        Unlocker::unlock_liquidity(
-            self.dex_id,
-            &receiver,
-            self.order_book_id,
-            taker_unlock_asset,
-            *market_change.market_output.value(),
-        )?;
-
-        Unlocker::unlock_liquidity_batch(
-            self.dex_id,
-            self.order_book_id,
-            taker_lock_asset,
-            market_change.makers_output,
-        )?;
+        market_change.payment.execute_all::<Locker, Unlocker>()?;
 
         for delete_id in market_change.to_delete {
             data.delete_limit_order(&self.order_book_id, delete_id)?;
@@ -283,16 +260,26 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     pub fn calculate_market_impact<'a>(
         &self,
         side: PriceVariant,
+        taker: T::AccountId,
+        receiver: T::AccountId,
         taker_base_amount: OrderVolume,
         market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
         data: &mut impl DataLayer<T>,
-    ) -> Result<MarketChange<T::AccountId, T::OrderId, LimitOrder<T>>, DispatchError> {
+    ) -> Result<
+        MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
+        DispatchError,
+    > {
         let mut remaining_amount = taker_base_amount;
         let mut taker_amount = OrderVolume::zero();
         let mut maker_amount = OrderVolume::zero();
         let mut limit_order_ids_to_delete = Vec::new();
         let mut limit_orders_to_update = Vec::new();
-        let mut makers_output = BTreeMap::new();
+        let mut payment = Payment::new(self.dex_id, self.order_book_id);
+
+        let (maker_out_asset, taker_out_asset) = match side {
+            PriceVariant::Buy => (self.order_book_id.quote, self.order_book_id.base),
+            PriceVariant::Sell => (self.order_book_id.base, self.order_book_id.quote),
+        };
 
         for (price, _) in market_data {
             let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, side.switch(), price) else {
@@ -307,8 +294,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     taker_amount += limit_order.deal_amount(MarketRole::Taker, None)?.value();
                     let maker_payment = *limit_order.deal_amount(MarketRole::Maker, None)?.value();
                     maker_amount += maker_payment;
-                    makers_output
-                        .entry(limit_order.owner)
+                    payment
+                        .to_unlock
+                        .entry(maker_out_asset)
+                        .or_default()
+                        .entry(limit_order.owner.clone())
                         .and_modify(|payment| *payment += maker_payment)
                         .or_insert(maker_payment);
                     limit_order_ids_to_delete.push(limit_order.id);
@@ -324,7 +314,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         .deal_amount(MarketRole::Maker, Some(remaining_amount))?
                         .value();
                     maker_amount += maker_payment;
-                    makers_output
+                    payment
+                        .to_unlock
+                        .entry(maker_out_asset)
+                        .or_default()
                         .entry(limit_order.owner.clone())
                         .and_modify(|payment| *payment += maker_payment)
                         .or_insert(maker_payment);
@@ -342,6 +335,22 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         ensure!(remaining_amount.is_zero(), Error::<T>::NotEnoughLiquidity);
 
+        payment
+            .to_lock
+            .entry(maker_out_asset)
+            .or_default()
+            .entry(taker)
+            .and_modify(|lock_amount| *lock_amount += maker_amount)
+            .or_insert(maker_amount);
+
+        payment
+            .to_unlock
+            .entry(taker_out_asset)
+            .or_default()
+            .entry(receiver)
+            .and_modify(|unlock_amount| *unlock_amount += taker_amount)
+            .or_insert(taker_amount);
+
         let (market_input, market_output) = match side {
             PriceVariant::Buy => (
                 OrderAmount::Quote(maker_amount),
@@ -358,7 +367,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             market_output,
             to_delete: limit_order_ids_to_delete,
             to_update: limit_orders_to_update,
-            makers_output,
+            payment,
         })
     }
 
