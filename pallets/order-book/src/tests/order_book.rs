@@ -2748,10 +2748,13 @@ fn should_calculate_market_impact() {
                 )
                 .unwrap(),
             MarketChange {
-                market_input: OrderAmount::Quote(balance!(1100)),
-                market_output: OrderAmount::Base(buy_amount1),
-                to_delete: vec![],
+                deal_input: Some(OrderAmount::Quote(balance!(1100))),
+                deal_output: Some(OrderAmount::Base(buy_amount1)),
+                market_input: None,
+                market_output: Some(OrderAmount::Base(buy_amount1)),
+                to_add: vec![],
                 to_update: vec![limit_order7],
+                to_delete: vec![],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
                     order_book_id,
@@ -2784,10 +2787,13 @@ fn should_calculate_market_impact() {
                 )
                 .unwrap(),
             MarketChange {
-                market_input: OrderAmount::Quote(balance!(3324.74)),
-                market_output: OrderAmount::Base(buy_amount2),
-                to_delete: vec![7, 8],
+                deal_input: Some(OrderAmount::Quote(balance!(3324.74))),
+                deal_output: Some(OrderAmount::Base(buy_amount2)),
+                market_input: None,
+                market_output: Some(OrderAmount::Base(buy_amount2)),
+                to_add: vec![],
                 to_update: vec![limit_order9],
+                to_delete: vec![7, 8],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
                     order_book_id,
@@ -2823,10 +2829,13 @@ fn should_calculate_market_impact() {
                 )
                 .unwrap(),
             MarketChange {
-                market_input: OrderAmount::Quote(balance!(6758.27)),
-                market_output: OrderAmount::Base(buy_amount3),
-                to_delete: vec![7, 8, 9, 10, 11],
+                deal_input: Some(OrderAmount::Quote(balance!(6758.27))),
+                deal_output: Some(OrderAmount::Base(buy_amount3)),
+                market_input: None,
+                market_output: Some(OrderAmount::Base(buy_amount3)),
+                to_add: vec![],
                 to_update: vec![limit_order12],
+                to_delete: vec![7, 8, 9, 10, 11],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
                     order_book_id,
@@ -2860,10 +2869,13 @@ fn should_calculate_market_impact() {
                 )
                 .unwrap(),
             MarketChange {
-                market_input: OrderAmount::Quote(balance!(4360.52)),
-                market_output: OrderAmount::Base(buy_amount4),
-                to_delete: vec![7, 8, 9, 10],
+                deal_input: Some(OrderAmount::Quote(balance!(4360.52))),
+                deal_output: Some(OrderAmount::Base(buy_amount4)),
+                market_input: None,
+                market_output: Some(OrderAmount::Base(buy_amount4)),
+                to_add: vec![],
                 to_update: vec![],
+                to_delete: vec![7, 8, 9, 10],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
                     order_book_id,
@@ -2897,10 +2909,13 @@ fn should_calculate_market_impact() {
                 )
                 .unwrap(),
             MarketChange {
-                market_input: OrderAmount::Quote(balance!(6881.32)),
-                market_output: OrderAmount::Base(buy_amount5),
-                to_delete: vec![7, 8, 9, 10, 11, 12],
+                deal_input: Some(OrderAmount::Quote(balance!(6881.32))),
+                deal_output: Some(OrderAmount::Base(buy_amount5)),
+                market_input: None,
+                market_output: Some(OrderAmount::Base(buy_amount5)),
+                to_add: vec![],
                 to_update: vec![],
+                to_delete: vec![7, 8, 9, 10, 11, 12],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
                     order_book_id,
@@ -2942,10 +2957,13 @@ fn should_calculate_market_impact() {
                 )
                 .unwrap(),
             MarketChange {
-                market_input: OrderAmount::Base(sell_amount1),
-                market_output: OrderAmount::Quote(balance!(1000)),
-                to_delete: vec![],
+                deal_input: Some(OrderAmount::Base(sell_amount1)),
+                deal_output: Some(OrderAmount::Quote(balance!(1000))),
+                market_input: None,
+                market_output: Some(OrderAmount::Quote(balance!(1000))),
+                to_add: vec![],
                 to_update: vec![limit_order1],
+                to_delete: vec![],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
                     order_book_id,
@@ -2978,10 +2996,13 @@ fn should_calculate_market_impact() {
                 )
                 .unwrap(),
             MarketChange {
-                market_input: OrderAmount::Base(sell_amount2),
-                market_output: OrderAmount::Quote(balance!(2679.7)),
-                to_delete: vec![1, 2],
+                deal_input: Some(OrderAmount::Base(sell_amount2)),
+                deal_output: Some(OrderAmount::Quote(balance!(2679.7))),
+                market_input: None,
+                market_output: Some(OrderAmount::Quote(balance!(2679.7))),
+                to_add: vec![],
                 to_update: vec![limit_order3],
+                to_delete: vec![1, 2],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
                     order_book_id,
@@ -3017,10 +3038,13 @@ fn should_calculate_market_impact() {
                 )
                 .unwrap(),
             MarketChange {
-                market_input: OrderAmount::Base(sell_amount3),
-                market_output: OrderAmount::Quote(balance!(3926.22)),
-                to_delete: vec![1, 2, 3, 4],
+                deal_input: Some(OrderAmount::Base(sell_amount3)),
+                deal_output: Some(OrderAmount::Quote(balance!(3926.22))),
+                market_input: None,
+                market_output: Some(OrderAmount::Quote(balance!(3926.22))),
+                to_add: vec![],
                 to_update: vec![limit_order5],
+                to_delete: vec![1, 2, 3, 4],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
                     order_book_id,
@@ -3057,10 +3081,13 @@ fn should_calculate_market_impact() {
                 )
                 .unwrap(),
             MarketChange {
-                market_input: OrderAmount::Base(sell_amount4),
-                market_output: OrderAmount::Quote(balance!(3591.82)),
-                to_delete: vec![1, 2, 3, 4],
+                deal_input: Some(OrderAmount::Base(sell_amount4)),
+                deal_output: Some(OrderAmount::Quote(balance!(3591.82))),
+                market_input: None,
+                market_output: Some(OrderAmount::Quote(balance!(3591.82))),
+                to_add: vec![],
                 to_update: vec![],
+                to_delete: vec![1, 2, 3, 4],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
                     order_book_id,
@@ -3097,10 +3124,13 @@ fn should_calculate_market_impact() {
                 )
                 .unwrap(),
             MarketChange {
-                market_input: OrderAmount::Base(sell_amount5),
-                market_output: OrderAmount::Quote(balance!(5538.37)),
-                to_delete: vec![1, 2, 3, 4, 5, 6],
+                deal_input: Some(OrderAmount::Base(sell_amount5)),
+                deal_output: Some(OrderAmount::Quote(balance!(5538.37))),
+                market_input: None,
+                market_output: Some(OrderAmount::Quote(balance!(5538.37))),
+                to_add: vec![],
                 to_update: vec![],
+                to_delete: vec![1, 2, 3, 4, 5, 6],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
                     order_book_id,

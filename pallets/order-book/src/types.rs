@@ -252,9 +252,15 @@ where
 
 #[derive(Eq, PartialEq, Clone, RuntimeDebug)]
 pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
-    pub market_input: OrderAmount,
-    pub market_output: OrderAmount,
-    pub to_delete: Vec<OrderId>,
+    // Info fields
+    pub deal_input: Option<OrderAmount>,
+    pub deal_output: Option<OrderAmount>,
+    pub market_input: Option<OrderAmount>,
+    pub market_output: Option<OrderAmount>,
+
+    // Fields to apply
+    pub to_add: Vec<LimitOrder>,
     pub to_update: Vec<LimitOrder>,
+    pub to_delete: Vec<OrderId>,
     pub payment: Payment<AssetId, AccountId, DEXId>,
 }
