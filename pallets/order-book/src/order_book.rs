@@ -109,13 +109,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.last_order_id
     }
 
-    pub fn place_limit_order<Locker>(
+    pub fn place_limit_order<Locker, Unlocker>(
         &self,
         order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<(), DispatchError>
     where
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId>,
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
     {
         ensure!(
             self.status == OrderBookStatus::Trade || self.status == OrderBookStatus::PlaceAndCancel,
@@ -142,27 +143,41 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
         };
 
-        if cross_spread {
+        let market_change = if cross_spread {
             if self.status == OrderBookStatus::Trade {
-                self.cross_spread();
+                self.cross_spread(order)?
             } else {
                 return Err(Error::<T>::InvalidLimitOrderPrice.into());
             }
-        }
+        } else {
+            let mut payment = Payment::new(self.dex_id, self.order_book_id);
 
-        // necessary to lock the liquidity that taker should receive if execute the limit order
-        let lock_amount = order.deal_amount(MarketRole::Taker, None)?;
-        let lock_asset = lock_amount.associated_asset(&self.order_book_id);
+            // necessary to lock the liquidity that taker should receive if execute the limit order
+            let lock_amount = order.deal_amount(MarketRole::Taker, None)?;
+            let lock_asset = lock_amount.associated_asset(&self.order_book_id);
 
-        Locker::lock_liquidity(
-            self.dex_id,
-            &order.owner,
-            self.order_book_id,
-            lock_asset,
-            *lock_amount.value(),
-        )?;
+            payment
+                .to_lock
+                .entry(*lock_asset)
+                .or_default()
+                .entry(order.owner.clone())
+                .and_modify(|amount| *amount += *lock_amount.value())
+                .or_insert(*lock_amount.value());
 
-        data.insert_limit_order(&self.order_book_id, order)?;
+            MarketChange {
+                deal_input: None,
+                deal_output: None,
+                market_input: Some(lock_amount),
+                market_output: None,
+                to_add: vec![order],
+                to_update: Vec::new(),
+                to_delete: Vec::new(),
+                payment,
+            }
+        };
+
+        self.apply_market_change::<Locker, Unlocker>(market_change, data)?;
+
         Ok(())
     }
 
@@ -692,7 +707,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         volume
     }
 
-    fn cross_spread(&self) {
+    fn cross_spread(
+        &self,
+        order: LimitOrder<T>,
+    ) -> Result<
+        MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
+        DispatchError,
+    > {
         // todo (m.tagirov)
         todo!()
     }

@@ -585,7 +585,7 @@ pub mod pallet {
                 LimitOrder::<T>::new(order_id, who.clone(), side, price, amount, now, lifespan);
 
             let mut data = CacheDataLayer::<T>::new();
-            order_book.place_limit_order::<Self>(order, &mut data)?;
+            order_book.place_limit_order::<Self, Self>(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
