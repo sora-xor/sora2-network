@@ -21,7 +21,7 @@ if [[ ${TAG_NAME} != '' ]]; then
     elif [[ ${TAG_NAME} =~ 'test*'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
-    elif [[ -n ${TAG_NAME} ]]; then
+    elif [[ -v ${TAG_NAME} ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
