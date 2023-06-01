@@ -2258,7 +2258,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 1st buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     buy_order.clone(),
                     &mut data
                 )
@@ -2329,7 +2329,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 2nd buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     buy_order.clone(),
                     &mut data
                 )
@@ -2399,7 +2399,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 3rd buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     buy_order.clone(),
                     &mut data
                 )
@@ -2466,7 +2466,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 1st sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     sell_order.clone(),
                     &mut data
                 )
@@ -2536,7 +2536,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 2nd sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     sell_order.clone(),
                     &mut data
                 )
@@ -2605,7 +2605,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 3rd sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     sell_order.clone(),
                     &mut data
                 )
@@ -2674,7 +2674,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
 
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     buy_order.clone(),
                     &mut data
                 )
@@ -2686,7 +2686,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         );
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet>(
+                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
                     sell_order.clone(),
                     &mut data
                 )
