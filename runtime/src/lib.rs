@@ -69,7 +69,9 @@ use common::{Description, GetMarketInfo};
 use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
-use frame_support::{traits::EitherOf, weights::ConstantMultiplier};
+#[cfg(feature = "wip")]
+use frame_support::traits::EitherOf;
+use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
 #[cfg(all(feature = "std", feature = "build-wasm-binary"))]
@@ -81,7 +83,9 @@ use extensions::ChargeTransactionPayment;
 use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
-use frame_system::{EnsureRoot, EnsureSigned};
+use frame_system::EnsureRoot;
+#[cfg(feature = "wip")]
+use frame_system::EnsureSigned;
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
