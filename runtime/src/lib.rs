@@ -2012,6 +2012,25 @@ impl order_book::Config for Runtime {
     type WeightInfo = order_book::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+
+    pub const ConfigDepositBase: Balance = balance!(5);
+    pub const FriendDepositFactor: Balance = balance!(3);
+    pub const MaxFriends: u16 = 10;
+    pub const RecoveryDeposit: Balance = balance!(5);
+}
+
+impl pallet_recovery::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = pallet_recovery::weights::SubstrateWeight<Runtime>;
+    type RuntimeCall = RuntimeCall;
+    type Currency = Balances;
+    type ConfigDepositBase = ConfigDepositBase;
+    type FriendDepositFactor = FriendDepositFactor;
+    type MaxFriends = MaxFriends;
+    type RecoveryDeposit = RecoveryDeposit;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
@@ -2393,6 +2412,8 @@ construct_runtime! {
 
         #[cfg(feature = "wip")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
+
+        Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 58,
 
         // Trustless bridges
         #[cfg(feature = "wip")] // Bridges
