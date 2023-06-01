@@ -44,7 +44,8 @@ use common::{
     balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, RewardReason, TradingPair, VestedRewardsPallet, XSTUSD,
+    LiquiditySourceType, RewardReason, TradingPair, TradingPairSourceManager, VestedRewardsPallet,
+    XSTUSD,
 };
 use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
@@ -250,17 +251,33 @@ impl<T: Config> Pallet<T> {
         filter_mode: &FilterMode,
     ) -> bool {
         let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
+
+        #[allow(unused_mut)] // order-book
+        #[allow(unused_assignments)] // order-book
+        // TODO remake
+        let mut is_order_book = match filter_mode {
+            FilterMode::ForbidSelected => true,
+            _ => false,
+        };
+
+        #[cfg(feature = "wip")] // order-book
+        {
+            is_order_book = selected_source_types.contains(&LiquiditySourceType::OrderBook);
+        }
+
         // check if user has selected only xyk either explicitly or by excluding other types
         // FIXME: such detection approach is unreliable, come up with better way
         let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
             && !selected_source_types
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
             && !selected_source_types.contains(&LiquiditySourceType::XSTPool)
+            && !is_order_book
             && filter_mode == &FilterMode::AllowSelected
             || selected_source_types
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
                 && selected_source_types.contains(&LiquiditySourceType::XSTPool)
                 && !selected_source_types.contains(&LiquiditySourceType::XYKPool)
+                && is_order_book
                 && filter_mode == &FilterMode::ForbidSelected;
         // check if either of tbc reserve assets is present
         let reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)
@@ -275,8 +292,8 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
     ) -> Result<(), DispatchError> {
         ensure!(
-            assets::AssetInfos::<T>::get(input_asset_id).2 != 0
-                && assets::AssetInfos::<T>::get(output_asset_id).2 != 0,
+            !assets::Pallet::<T>::is_non_divisible(input_asset_id)
+                && !assets::Pallet::<T>::is_non_divisible(output_asset_id),
             Error::<T>::UnableToSwapIndivisibleAssets
         );
         Ok(())
@@ -1082,6 +1099,8 @@ impl<T: Config> Pallet<T> {
             .tuple_windows()
             .filter_map(|(from, to)| {
                 let pair = Self::weak_sort_pair(&dex_info, *from, *to);
+
+                // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
                 trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
                     dex_id,
                     &pair.base_asset_id,
@@ -1101,6 +1120,8 @@ impl<T: Config> Pallet<T> {
         let sources_set = fallible_iterator::convert(path.to_vec().iter().tuple_windows().map(
             |(from, to)| -> Result<_, DispatchError> {
                 let pair = Self::weak_sort_pair(&dex_info, *from, *to);
+
+                // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
                 let sources = trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
                     &dex_id,
                     &pair.base_asset_id,
@@ -2121,6 +2142,7 @@ pub mod pallet {
 
     // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
+    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + common::Config + assets::Config + trading_pair::Config

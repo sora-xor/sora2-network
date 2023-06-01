@@ -28,10 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{OrderPrice, OrderVolume};
+use crate::{Error, MarketRole, MomentOf, OrderAmount, OrderPrice, OrderVolume};
 use codec::{Decode, Encode, MaxEncodedLen};
+use common::prelude::FixedWrapper;
 use common::PriceVariant;
 use core::fmt::Debug;
+use frame_support::ensure;
+use frame_support::sp_runtime::DispatchError;
+use frame_support::traits::Time;
+use sp_runtime::traits::Zero;
 
 /// GTC Limit Order
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen)]
@@ -43,9 +48,98 @@ where
     pub id: T::OrderId,
     pub owner: T::AccountId,
     pub side: PriceVariant,
+
+    /// Price is specified in OrderBookId `quote` asset.
+    /// It should be a base asset of DEX.
     pub price: OrderPrice,
+
     pub original_amount: OrderVolume,
+
+    /// Amount of OrderBookId `base` asset
     pub amount: OrderVolume,
-    pub time: T::Moment,
-    pub lifespan: T::Moment,
+
+    pub time: MomentOf<T>,
+    pub lifespan: MomentOf<T>,
+}
+
+impl<T: crate::Config + Sized> LimitOrder<T> {
+    pub fn new(
+        id: T::OrderId,
+        owner: T::AccountId,
+        side: PriceVariant,
+        price: OrderPrice,
+        amount: OrderVolume,
+        time: MomentOf<T>,
+        lifespan: MomentOf<T>,
+    ) -> Self {
+        Self {
+            id,
+            owner,
+            side,
+            price,
+            original_amount: amount,
+            amount,
+            time,
+            lifespan,
+        }
+    }
+
+    pub fn ensure_valid(&self) -> Result<(), DispatchError> {
+        ensure!(
+            T::MIN_ORDER_LIFETIME <= self.lifespan && self.lifespan <= T::MAX_ORDER_LIFETIME,
+            Error::<T>::InvalidLifespan
+        );
+        ensure!(
+            !self.original_amount.is_zero(),
+            Error::<T>::InvalidOrderAmount
+        );
+        ensure!(!self.price.is_zero(), Error::<T>::InvalidLimitOrderPrice);
+        Ok(())
+    }
+
+    pub fn is_expired(&self) -> bool {
+        T::Time::now() > self.time + self.lifespan
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.amount.is_zero()
+    }
+
+    /// Returns appropriate deal amount of asset.
+    /// Used to get total amount of associated asset if order is executed.
+    ///
+    /// If `base_amount_to_take` defined, it is used as `base` asset amount involved in the deal, otherwise the limit order `amount` is fully involved in the deal.
+    /// `base_amount_to_take` cannot be greater then limit order `amount`.
+    ///
+    /// If limit order is Buy - it means maker wants to buy and taker wants to sell `amount` of `base` asset for `quote` asset at the `price`
+    /// In this case if order is executed, maker receives appropriate amount of `base` asset and taker receives appropriate amount of `quote` asset.
+    ///
+    /// If limit order is Sell - it means maker wants to sell and taker wants to buy `amount` of `base` asset that they have for `quote` asset at the `price`
+    /// In this case if order is executed, maker receives appropriate amount of `quote` asset and taker receives appropriate amount of `base` asset.
+    pub fn deal_amount(
+        &self,
+        role: MarketRole,
+        base_amount_to_take: Option<OrderVolume>,
+    ) -> Result<OrderAmount, DispatchError> {
+        let base_amount = if let Some(base_amount) = base_amount_to_take {
+            ensure!(base_amount <= self.amount, Error::<T>::InvalidOrderAmount);
+            base_amount
+        } else {
+            self.amount
+        };
+
+        let deal_amount =
+            match (role, self.side) {
+                (MarketRole::Maker, PriceVariant::Buy)
+                | (MarketRole::Taker, PriceVariant::Sell) => OrderAmount::Base(base_amount),
+                (MarketRole::Maker, PriceVariant::Sell)
+                | (MarketRole::Taker, PriceVariant::Buy) => OrderAmount::Quote(
+                    (FixedWrapper::from(self.price) * FixedWrapper::from(base_amount))
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                ),
+            };
+
+        Ok(deal_amount)
+    }
 }

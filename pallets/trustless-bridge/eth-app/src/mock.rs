@@ -1,5 +1,7 @@
+use bridge_types::traits::{BalancePrecisionConverter, BridgeAssetRegistry};
 use bridge_types::types::{AdditionalEVMInboundData, AdditionalEVMOutboundData, CallOriginOutput};
 use currencies::BasicCurrencyAdapter;
+use sp_core::U256;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
@@ -222,6 +224,74 @@ parameter_types! {
     };
 }
 
+pub struct BridgeAssetRegistryImpl;
+
+impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
+    type AssetName = common::AssetName;
+    type AssetSymbol = common::AssetSymbol;
+
+    fn register_asset(
+        owner: AccountId,
+        name: Self::AssetName,
+        symbol: Self::AssetSymbol,
+    ) -> Result<AssetId, DispatchError> {
+        let asset_id = Assets::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
+        Ok(asset_id)
+    }
+
+    fn manage_asset(
+        manager: AccountId,
+        asset_id: AssetId,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        let scope = permissions::Scope::Limited(common::hash(&asset_id));
+        for permission_id in [permissions::BURN, permissions::MINT] {
+            if permissions::Pallet::<Test>::check_permission_with_scope(
+                manager.clone(),
+                permission_id,
+                &scope,
+            )
+            .is_err()
+            {
+                permissions::Pallet::<Test>::assign_permission(
+                    manager.clone(),
+                    &manager,
+                    permission_id,
+                    scope,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    fn get_raw_info(_asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
+        bridge_types::types::RawAssetInfo {
+            name: Default::default(),
+            symbol: Default::default(),
+            precision: 18,
+        }
+    }
+}
+
+pub struct BalancePrecisionConverterImpl;
+
+impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConverterImpl {
+    fn from_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: U256,
+    ) -> Option<Balance> {
+        amount.try_into().ok()
+    }
+
+    fn to_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<U256> {
+        Some(amount.into())
+    }
+}
+
 impl eth_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = MockOutboundChannel<Self::AccountId>;
@@ -230,8 +300,12 @@ impl eth_app::Config for Test {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = ();
+    type Currency = Currencies;
+    type BalancePrecisionConverter = BalancePrecisionConverterImpl;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type WeightInfo = ();
 }
 
@@ -251,7 +325,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     GenesisBuild::<Test>::assimilate_storage(
         &eth_app::GenesisConfig {
-            networks: vec![(BASE_NETWORK_ID, Default::default(), XOR)],
+            networks: vec![(BASE_NETWORK_ID, Default::default(), XOR, 18)],
         },
         &mut storage,
     )

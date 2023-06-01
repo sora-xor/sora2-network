@@ -44,7 +44,7 @@ use common::prelude::{
 use common::{
     fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
     LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
-    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
 };
 
 mod aliases;
@@ -177,6 +177,8 @@ impl<T: Config> Pallet<T> {
                 common::sort_with_hash_key(hash_key, (asset_a, &()), (asset_b, &()));
             (asset_a_pair.0, asset_b_pair.0)
         };
+
+        // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
         trading_pair::Pallet::<T>::enable_source_for_trading_pair(
             dex_id,
             sorted_asset_a,
@@ -338,10 +340,9 @@ impl<T: Config> Pallet<T> {
     ) -> Result<TradingPair<T::AssetId>, DispatchError> {
         let tech_acc = technical::Pallet::<T>::lookup_tech_account_id(pool_account)?;
         match tech_acc.into() {
-            TechAccountId::Pure(_, TechPurpose::LiquidityKeeper(trading_pair)) => Ok(TradingPair {
-                base_asset_id: trading_pair.base_asset_id.into(),
-                target_asset_id: trading_pair.target_asset_id.into(),
-            }),
+            TechAccountId::Pure(_, TechPurpose::XykLiquidityKeeper(trading_pair)) => {
+                Ok(trading_pair.map(|a| a.into()))
+            }
             _ => Err(Error::<T>::PoolIsInvalid.into()),
         }
     }
@@ -639,13 +640,15 @@ use sp_runtime::traits::Zero;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, Fixed, OnPoolCreated};
+    use common::{AccountIdOf, Fixed, GetMarketInfo, OnPoolCreated};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use orml_traits::GetByKey;
 
     // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
+    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -673,11 +676,13 @@ pub mod pallet {
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type XSTMarketInfo: GetMarketInfo<Self::AssetId>;
         type GetFee: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
         type OnPoolReservesChanged: OnPoolReservesChanged<Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        type GetTradingPairRestrictedFlag: GetByKey<TradingPair<Self::AssetId>, bool>;
     }
 
     /// The current storage version.
@@ -714,8 +719,8 @@ pub mod pallet {
 
             // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
-                assets::AssetInfos::<T>::get(input_asset_a).2 != 0
-                    && assets::AssetInfos::<T>::get(input_asset_b).2 != 0,
+                !assets::Pallet::<T>::is_non_divisible(&input_asset_a)
+                    && !assets::Pallet::<T>::is_non_divisible(&input_asset_b),
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
             ensure!(
@@ -758,8 +763,8 @@ pub mod pallet {
 
             // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
-                assets::AssetInfos::<T>::get(output_asset_a).2 != 0
-                    && assets::AssetInfos::<T>::get(output_asset_b).2 != 0,
+                !assets::Pallet::<T>::is_non_divisible(&output_asset_a)
+                    && !assets::Pallet::<T>::is_non_divisible(&output_asset_b),
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
             ensure!(
@@ -800,16 +805,23 @@ pub mod pallet {
 
                 // TODO: #395 use AssetInfoProvider instead of assets pallet
                 ensure!(
-                    assets::AssetInfos::<T>::get(asset_a).2 != 0
-                        && assets::AssetInfos::<T>::get(asset_b).2 != 0,
+                    !assets::Pallet::<T>::is_non_divisible(&asset_a)
+                        && !assets::Pallet::<T>::is_non_divisible(&asset_b),
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
                 );
-                let (_, tech_account_id, fees_account_id) = Pallet::<T>::initialize_pool_unchecked(
-                    source.clone(),
-                    dex_id,
-                    asset_a,
-                    asset_b,
+
+                let (trading_pair, tech_account_id, fees_account_id) =
+                    Pallet::<T>::initialize_pool_unchecked(
+                        source.clone(),
+                        dex_id,
+                        asset_a,
+                        asset_b,
+                    )?;
+
+                Pallet::<T>::ensure_trading_pair_is_not_restricted(
+                    &trading_pair.map(|a| Into::<T::AssetId>::into(a)),
                 )?;
+
                 let ta_repr =
                     technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account_id)?;
                 let fees_ta_repr =
@@ -964,6 +976,8 @@ pub mod pallet {
         UnableToOperateWithIndivisibleAssets,
         /// Not enough liquidity out of farming to withdraw
         NotEnoughLiquidityOutOfFarming,
+        /// Cannot create a pool with restricted target asset
+        TargetAssetIsRestricted,
     }
 
     /// Updated after last liquidity change operation.

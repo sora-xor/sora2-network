@@ -28,10 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::OrderVolume;
+use crate::{Error, OrderBookId, OrderVolume};
+use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::PriceVariant;
 use core::fmt::Debug;
+use frame_support::ensure;
+use frame_support::sp_runtime::DispatchError;
+use sp_runtime::traits::Zero;
 
 #[derive(Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Clone, Debug)]
 pub struct MarketOrder<T>
@@ -40,5 +44,35 @@ where
 {
     pub owner: T::AccountId,
     pub side: PriceVariant,
+    pub order_book_id: OrderBookId<AssetIdOf<T>>,
+
+    /// Amount of OrderBookId `base` asset
     pub amount: OrderVolume,
+
+    /// If defined the deal amount is transferred to `to` account,
+    /// otherwise the `owner` receives deal amount
+    pub to: Option<T::AccountId>,
+}
+
+impl<T: crate::Config> MarketOrder<T> {
+    pub fn new(
+        owner: T::AccountId,
+        side: PriceVariant,
+        order_book_id: OrderBookId<AssetIdOf<T>>,
+        amount: OrderVolume,
+        to: Option<T::AccountId>,
+    ) -> Self {
+        Self {
+            owner,
+            side,
+            order_book_id,
+            amount,
+            to,
+        }
+    }
+
+    pub fn ensure_valid(&self) -> Result<(), DispatchError> {
+        ensure!(!self.amount.is_zero(), Error::<T>::InvalidOrderAmount);
+        Ok(())
+    }
 }

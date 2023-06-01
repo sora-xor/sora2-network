@@ -73,6 +73,8 @@ extern crate jsonrpc_core as jsonrpc;
 use crate::offchain::SignatureParams;
 use crate::util::majority;
 use alloc::string::String;
+use bridge_types::traits::BridgeApp;
+use bridge_types::GenericNetworkId;
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
@@ -85,7 +87,7 @@ use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::offchain::storage_lock::{StorageLock, Time};
 use frame_support::sp_runtime::traits::{
-    AtLeast32Bit, BlockNumberProvider, MaybeSerializeDeserialize, Member, One,
+    AtLeast32Bit, BlockNumberProvider, MaybeSerializeDeserialize, Member, One, UniqueSaturatedInto,
 };
 use frame_support::sp_runtime::KeyTypeId;
 use frame_support::traits::Get;
@@ -324,12 +326,12 @@ pub mod pallet {
     use super::*;
     use crate::offchain::SignatureParams;
     use crate::util::get_bridge_account;
+    use bridge_types::traits::MessageStatusNotifier;
     use codec::Codec;
     use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
     use frame_support::log;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::schedule::Anon;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
     use frame_support::transactional;
     use frame_support::weights::WeightToFeePolynomial;
@@ -370,21 +372,7 @@ pub mod pallet {
         #[cfg(test)]
         type Mock: tests::mock::Mock;
 
-        #[pallet::constant]
-        type RemovePendingOutgoingRequestsAfter: Get<Self::BlockNumber>;
-
-        #[pallet::constant]
-        type TrackPendingIncomingRequestsAfter: Get<(Self::BlockNumber, u64)>;
-
-        #[pallet::constant]
-        type RemovePeerAccountIds: Get<Vec<(Self::AccountId, H160)>>;
-
-        type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
-        type Scheduler: Anon<
-            Self::BlockNumber,
-            <Self as Config>::RuntimeCall,
-            Self::SchedulerOriginCaller,
-        >;
+        type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId, Balance>;
 
         type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
     }
@@ -1026,7 +1014,7 @@ pub mod pallet {
             );
 
             // TODO: #395 use AssetInfoProvider instead of assets pallet
-            let (_, _, precision, ..) = assets::AssetInfos::<T>::get(&asset_id);
+            let (_, _, precision, ..) = assets::Pallet::<T>::get_asset_info(&asset_id);
             RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
             RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
             RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
@@ -1788,7 +1776,7 @@ impl<T: Config> Pallet<T> {
         approvals.insert(signature_params);
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
         if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
-            if let Err(err) = request.finalize() {
+            if let Err(err) = request.finalize(hash) {
                 error!("Outgoing request finalization failed: {:?}", err);
                 RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
                 Self::deposit_event(Event::RequestFinalizationFailed(hash));
@@ -1811,5 +1799,132 @@ impl<T: Config> Pallet<T> {
                 &request,
                 OutgoingRequest::AddPeer(..) | OutgoingRequest::AddPeerCompat(..)
             )
+    }
+
+    fn ensure_generic_network(
+        generic_network_id: GenericNetworkId,
+    ) -> Result<T::NetworkId, DispatchError> {
+        let network_id = T::GetEthNetworkId::get();
+        if generic_network_id != GenericNetworkId::EVMLegacy(network_id.unique_saturated_into()) {
+            return Err(Error::<T>::UnknownNetwork.into());
+        }
+        Ok(network_id)
+    }
+}
+
+impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pallet<T> {
+    fn is_asset_supported(network_id: GenericNetworkId, asset_id: T::AssetId) -> bool {
+        let Ok(network_id) = Self::ensure_generic_network(network_id) else {
+            return false;
+        };
+        RegisteredAsset::<T>::contains_key(network_id, &asset_id)
+    }
+
+    fn transfer(
+        network_id: GenericNetworkId,
+        asset_id: T::AssetId,
+        sender: T::AccountId,
+        recipient: EthAddress,
+        amount: Balance,
+    ) -> Result<H256, DispatchError> {
+        debug!("called BridgeApp::transfer");
+        let network_id = Self::ensure_generic_network(network_id)?;
+        let nonce = frame_system::Pallet::<T>::account_nonce(&sender);
+        let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
+        let request = OffchainRequest::outgoing(OutgoingRequest::Transfer(OutgoingTransfer {
+            from: sender.clone(),
+            to: recipient,
+            asset_id,
+            amount,
+            nonce,
+            network_id,
+            timepoint,
+        }));
+        let tx_hash = request.hash();
+        Self::add_request(&request)?;
+        frame_system::Pallet::<T>::inc_account_nonce(&sender);
+        Ok(tx_hash)
+    }
+
+    fn refund(
+        _network_id: GenericNetworkId,
+        _message_id: H256,
+        _recipient: T::AccountId,
+        _asset_id: T::AssetId,
+        _amount: Balance,
+    ) -> DispatchResult {
+        Err(Error::<T>::Unavailable.into())
+    }
+
+    fn list_supported_assets(
+        network_id: GenericNetworkId,
+    ) -> Vec<bridge_types::types::BridgeAssetInfo> {
+        use bridge_types::types::{BridgeAssetInfo, EVMAppKind, EVMLegacyAssetInfo};
+        let Ok(network_id) = Self::ensure_generic_network(network_id) else {
+            return vec![];
+        };
+        RegisteredAsset::<T>::iter_prefix(network_id)
+            .map(|(asset_id, _kind)| {
+                let evm_address =
+                    RegisteredSidechainToken::<T>::get(network_id, &asset_id).map(|x| H160(x.0));
+                let precision = evm_address.map(|_address| {
+                    let precision = SidechainAssetPrecision::<T>::get(network_id, &asset_id);
+                    precision
+                });
+
+                let app_kind = if asset_id == common::XOR.into() {
+                    EVMAppKind::XorMaster
+                } else if asset_id == common::VAL.into() {
+                    EVMAppKind::ValMaster
+                } else {
+                    EVMAppKind::HashiBridge
+                };
+
+                BridgeAssetInfo::EVMLegacy(EVMLegacyAssetInfo {
+                    asset_id: asset_id.into(),
+                    app_kind,
+                    evm_address,
+                    precision,
+                })
+            })
+            .collect()
+    }
+
+    fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+        use bridge_types::types::{BridgeAppInfo, EVMAppInfo, EVMAppKind};
+        let mut apps = vec![];
+        let network_id = T::GetEthNetworkId::get();
+        let generic_network_id = GenericNetworkId::EVMLegacy(network_id.unique_saturated_into());
+        if let Ok(bridge_address) = BridgeContractAddress::<T>::try_get(network_id) {
+            let app = BridgeAppInfo::EVM(
+                generic_network_id,
+                EVMAppInfo {
+                    evm_address: bridge_address,
+                    app_kind: EVMAppKind::HashiBridge,
+                },
+            );
+            apps.push(app);
+        }
+        if let Ok(xor_master) = XorMasterContractAddress::<T>::try_get() {
+            let app = BridgeAppInfo::EVM(
+                generic_network_id,
+                EVMAppInfo {
+                    evm_address: xor_master,
+                    app_kind: EVMAppKind::XorMaster,
+                },
+            );
+            apps.push(app);
+        }
+        if let Ok(val_master) = ValMasterContractAddress::<T>::try_get() {
+            let app = BridgeAppInfo::EVM(
+                generic_network_id,
+                EVMAppInfo {
+                    evm_address: val_master,
+                    app_kind: EVMAppKind::ValMaster,
+                },
+            );
+            apps.push(app);
+        }
+        apps
     }
 }

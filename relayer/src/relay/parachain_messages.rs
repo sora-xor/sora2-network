@@ -33,14 +33,13 @@ use std::collections::VecDeque;
 use super::beefy_syncer::BeefySyncer;
 use crate::prelude::*;
 use crate::substrate::{BlockNumber, OtherParams};
-use beefy_light_client::ProvedSubstrateBridgeMessage;
 use bridge_types::{SubNetworkId, H256};
 use futures::FutureExt;
 use futures::StreamExt;
 
 pub struct RelayBuilder<S: SenderConfig, R: ReceiverConfig> {
     sender: Option<SubUnsignedClient<S>>,
-    receiver: Option<SubSignedClient<R>>,
+    receiver: Option<SubUnsignedClient<R>>,
     syncer: Option<BeefySyncer>,
 }
 
@@ -68,7 +67,7 @@ where
         self
     }
 
-    pub fn with_receiver_client(mut self, receiver: SubSignedClient<R>) -> Self {
+    pub fn with_receiver_client(mut self, receiver: SubUnsignedClient<R>) -> Self {
         self.receiver = Some(receiver);
         self
     }
@@ -102,7 +101,7 @@ where
 #[derive(Clone)]
 pub struct Relay<S: SenderConfig, R: ReceiverConfig> {
     sender: SubUnsignedClient<S>,
-    receiver: SubSignedClient<R>,
+    receiver: SubUnsignedClient<R>,
     commitment_queue: VecDeque<(BlockNumber<S>, H256)>,
     syncer: BeefySyncer,
     receiver_network_id: SubNetworkId,
@@ -145,16 +144,16 @@ where
 
         let payload = R::submit_messages_commitment(
             self.sender_network_id,
-            ProvedSubstrateBridgeMessage {
-                message: commitment_inner.messages,
+            commitment_inner.messages,
+            R::beefy_proof(beefy_light_client::SubstrateBridgeMessageProof {
                 proof: commitment.proof,
                 leaf: commitment.leaf,
                 digest: commitment.digest,
-            },
+            }),
         );
 
         info!("Sending channel commitment");
-        self.receiver.submit_extrinsic(&payload).await?;
+        self.receiver.submit_unsigned_extrinsic(&payload).await?;
         Ok(())
     }
 
