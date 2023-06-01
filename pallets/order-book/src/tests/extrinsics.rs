@@ -614,24 +614,64 @@ fn should_check_permissions_for_update_order_book() {
             balance!(10000)
         ),);
 
+        // nft to have custom owner of quote asset
+        FrameSystem::inc_providers(&bob());
+
+        let nft = Assets::register_from(
+            &bob(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(100),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: nft,
+            quote: XOR.into(),
+        };
+        assert_ok!(TradingPair::register(
+            RawOrigin::Signed(bob()).into(),
+            DEX.into(),
+            order_book_id.quote,
+            order_book_id.base
+        ));
+        create_empty_order_book(order_book_id);
+
         let asset_owner_base = Assets::asset_owner(&order_book_id.base).unwrap();
         let asset_owner_quote = Assets::asset_owner(&order_book_id.quote).unwrap();
         assert_ok!(OrderBookPallet::update_orderbook(
             RawOrigin::Signed(asset_owner_base).into(),
             order_book_id,
             balance!(0.01),
-            balance!(0.001),
-            balance!(1),
-            balance!(10000)
+            balance!(2),
+            balance!(4),
+            balance!(100),
         ),);
-        assert_ok!(OrderBookPallet::update_orderbook(
-            RawOrigin::Signed(asset_owner_quote).into(),
-            order_book_id,
-            balance!(0.01),
-            balance!(0.001),
-            balance!(1),
-            balance!(10000)
-        ),);
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RawOrigin::Signed(asset_owner_quote).into(),
+                order_book_id,
+                balance!(0.01),
+                balance!(2),
+                balance!(4),
+                balance!(100),
+            ),
+            BadOrigin
+        );
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RawOrigin::Signed(alice()).into(),
+                order_book_id,
+                balance!(0.01),
+                balance!(2),
+                balance!(4),
+                balance!(100),
+            ),
+            BadOrigin
+        );
     });
 }
 

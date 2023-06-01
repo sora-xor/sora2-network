@@ -296,7 +296,7 @@ pub mod pallet {
         NotEnoughLiquidity,
         /// Cannot create order book with equal base and target assets
         ForbiddenToCreateOrderBookWithSameAssets,
-        /// The asset is not allowed to be base. Only dex base asset can be a base asset for order book
+        /// The asset is not allowed to be base. Only dex base asset can be a quote asset for order book
         NotAllowedBaseAsset,
         /// User cannot create an order book with NFT if they don't have NFT
         UserHasNoNft,
@@ -418,7 +418,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>>,
         ) -> DispatchResult {
-            let () = T::RemovalOrigin::ensure_origin(origin)?;
+            T::RemovalOrigin::ensure_origin(origin)?;
             let order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
@@ -464,8 +464,7 @@ pub mod pallet {
             match origin_check_result {
                 Either::Left(who) => {
                     ensure!(
-                        T::AssetInfoProvider::is_asset_owner(&order_book_id.base, &who)
-                            || T::AssetInfoProvider::is_asset_owner(&order_book_id.quote, &who),
+                        T::AssetInfoProvider::is_asset_owner(&order_book_id.base, &who),
                         DispatchError::BadOrigin
                     );
                 }
@@ -568,7 +567,7 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             status: OrderBookStatus,
         ) -> DispatchResult {
-            let () = T::StatusUpdateOrigin::ensure_origin(origin)?;
+            T::StatusUpdateOrigin::ensure_origin(origin)?;
             let dex_id = <OrderBooks<T>>::mutate(order_book_id, |order_book| {
                 let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
                 order_book.status = status;
