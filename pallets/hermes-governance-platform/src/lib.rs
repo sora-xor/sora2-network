@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod benchmarking;
+pub mod migrations;
 pub mod weights;
 
 #[cfg(test)]
@@ -14,7 +15,7 @@ extern crate alloc;
 use alloc::string::String;
 use codec::{Decode, Encode};
 use common::Balance;
-use frame_support::RuntimeDebug;
+use alloc::vec::Vec;
 pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
@@ -49,11 +50,20 @@ pub struct HermesPollInfo<AccountId, Moment> {
     pub options: Vec<String>,
 }
 
+/// Storage version.
+#[derive(Encode, Decode, Eq, PartialEq, scale_info::TypeInfo)]
+pub enum StorageVersion {
+    /// Initial version
+    V1,
+    /// After migrating 'voting_option' to String, and new 'options' field in HermesPollInfo
+    V2,
+}
+
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{HermesPollInfo, HermesVotingInfo, WeightInfo};
+    use crate::{HermesPollInfo, HermesVotingInfo, WeightInfo, migrations, StorageVersion};
     use alloc::string::String;
     use common::prelude::Balance;
     use common::{balance, AssetInfoProvider};
@@ -67,6 +77,8 @@ pub mod pallet {
     use pallet_timestamp as timestamp;
     use sp_core::H256;
     use sp_io::hashing::blake2_256;
+    use alloc::vec::Vec;
+
 
     const PALLET_ID: PalletId = PalletId(*b"hermsgov");
 
@@ -149,6 +161,17 @@ pub mod pallet {
     #[pallet::getter(fn authority_account)]
     pub type AuthorityAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
+
+    #[pallet::type_value]
+    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
+        StorageVersion::V1
+    }
+
+    /// Pallet storage version
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub type PalletStorageVersion<T: Config> =
+    StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
@@ -321,8 +344,12 @@ pub mod pallet {
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
 
-            ensure!(options.len() >= 2, Error::<T>::InvalidVotingOptions);
-            ensure!(options.len() <= 5, Error::<T>::TooManyVotingOptions);
+            if options.len() < 2 {
+               return Err(Error::<T>::InvalidVotingOptions.into())
+            }
+            if options.len() > 5 {
+                return Err(Error::<T>::TooManyVotingOptions.into())
+            }
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user.clone(),
@@ -500,7 +527,17 @@ pub mod pallet {
     }
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            if Self::pallet_storage_version() == StorageVersion::V1 {
+                let weight = migrations::migrate::<T>();
+                PalletStorageVersion::<T>::put(StorageVersion::V2);
+                weight
+            } else {
+                Weight::zero()
+            }
+        }
+    }
 
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
