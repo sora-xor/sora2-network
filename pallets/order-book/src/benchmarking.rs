@@ -38,16 +38,20 @@
 #![cfg(not(test))]
 
 #[cfg(not(test))]
-use crate::{Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, Pallet};
+use crate::{
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, OrderBookStatus,
+    Pallet,
+};
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, OrderBookStatus,
+    Pallet,
 };
 
 use crate::{CacheDataLayer, ExpirationScheduler};
 use assets::AssetIdOf;
 use codec::Decode;
-use common::prelude::QuoteAmount;
+use common::prelude::{QuoteAmount, SwapAmount};
 use common::{
     balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource, PriceVariant, VAL,
     XOR,
@@ -346,17 +350,68 @@ benchmarks! {
     }
 
     update_orderbook {
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
+
+        let tick_size = balance!(0.01);
+        let step_lot_size = balance!(0.001);
+        let min_lot_size = balance!(1);
+        let max_lot_size = balance!(10000);
     }: {
-        // todo (m.tagirov)
+        OrderBookPallet::<T>::update_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size
+        ).unwrap();
     }
     verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookUpdated {
+                order_book_id,
+                dex_id: DEX.into(),
+            }
+            .into(),
+        );
+
+        let order_book = OrderBookPallet::<T>::order_books(order_book_id).unwrap();
+        assert_eq!(order_book.tick_size, tick_size);
+        assert_eq!(order_book.step_lot_size, step_lot_size);
+        assert_eq!(order_book.min_lot_size, min_lot_size);
+        assert_eq!(order_book.max_lot_size, max_lot_size);
     }
 
     change_orderbook_status {
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
     }: {
-        // todo (m.tagirov)
+        OrderBookPallet::<T>::change_orderbook_status(
+            RawOrigin::Root.into(),
+            order_book_id,
+            OrderBookStatus::Stop
+        ).unwrap();
     }
     verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookStatusChanged {
+                order_book_id,
+                dex_id: DEX.into(),
+                new_status: OrderBookStatus::Stop,
+            }
+            .into(),
+        );
+
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id).unwrap().status, OrderBookStatus::Stop);
     }
 
     place_limit_order {
@@ -490,10 +545,44 @@ benchmarks! {
     }
 
     exchange {
+        let caller = alice::<T>();
+
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
+
+        Assets::<T>::update_balance(
+            RawOrigin::Root.into(),
+            caller.clone(),
+            order_book_id.base,
+            balance!(1000000).try_into().unwrap()
+        ).unwrap();
+
+        let caller_base_balance = <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap();
+        let caller_quote_balance = <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
     }: {
-        // todo (m.tagirov)
+        OrderBookPallet::<T>::exchange(
+            &caller,
+            &caller,
+            &DEX.into(),
+            &VAL.into(),
+            &XOR.into(),
+            SwapAmount::with_desired_output(balance!(3500), balance!(360)),
+        )
+        .unwrap();
     }
     verify {
+        assert_eq!(
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
+            caller_base_balance - balance!(355.13473)
+        );
+        assert_eq!(
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
+            caller_quote_balance + balance!(3499.999935)
+        );
     }
 
     service_base {

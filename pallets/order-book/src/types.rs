@@ -31,6 +31,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{Balance, PriceVariant, TradingPair};
 use frame_support::{BoundedBTreeMap, BoundedVec, RuntimeDebug};
+use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
@@ -45,6 +46,23 @@ pub type MarketSide<MaxSidePriceCount> =
 pub type UserOrders<OrderId, MaxOpenedLimitOrdersPerUser> =
     BoundedVec<OrderId, MaxOpenedLimitOrdersPerUser>;
 
+#[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
+pub enum OrderBookStatus {
+    /// All operations are allowed.
+    Trade,
+
+    /// Users can place and cancel limit order, but trading is forbidden.
+    PlaceAndCancel,
+
+    /// Users can only cancel their limit orders. Placement and trading are forbidden.
+    OnlyCancel,
+
+    /// All operations with order book are forbidden. Current limit orders are frozen and users cannot cancel them.
+    Stop,
+}
+
 #[derive(Eq, PartialEq, Clone, Copy, RuntimeDebug)]
 pub enum OrderAmount {
     Base(OrderVolume),
@@ -56,6 +74,20 @@ impl OrderAmount {
         match self {
             OrderAmount::Base(value) => value,
             OrderAmount::Quote(value) => value,
+        }
+    }
+
+    pub fn is_base(&self) -> bool {
+        match self {
+            OrderAmount::Base(..) => true,
+            OrderAmount::Quote(..) => false,
+        }
+    }
+
+    pub fn is_quote(&self) -> bool {
+        match self {
+            OrderAmount::Base(..) => false,
+            OrderAmount::Quote(..) => true,
         }
     }
 
@@ -119,11 +151,38 @@ impl<AssetId> From<OrderBookId<AssetId>> for TradingPair<AssetId> {
 #[derive(Eq, PartialEq, Clone, RuntimeDebug)]
 pub struct DealInfo<AssetId> {
     pub input_asset_id: AssetId,
-    pub input_amount: OrderVolume,
+    pub input_amount: OrderAmount,
     pub output_asset_id: AssetId,
-    pub output_amount: OrderVolume,
+    pub output_amount: OrderAmount,
     pub average_price: OrderPrice,
     pub side: PriceVariant,
+}
+
+impl<AssetId: PartialEq> DealInfo<AssetId> {
+    pub fn is_valid(&self) -> bool {
+        self.input_asset_id != self.output_asset_id
+            && !(self.input_amount.is_base() && self.output_amount.is_base())
+            && !(self.input_amount.is_quote() && self.output_amount.is_quote())
+            && !self.input_amount.value().is_zero()
+            && !self.output_amount.value().is_zero()
+            && !self.average_price.is_zero()
+    }
+
+    pub fn base_amount(&self) -> OrderVolume {
+        if self.input_amount.is_base() {
+            *self.input_amount.value()
+        } else {
+            *self.output_amount.value()
+        }
+    }
+
+    pub fn quote_amount(&self) -> OrderVolume {
+        if self.input_amount.is_quote() {
+            *self.input_amount.value()
+        } else {
+            *self.output_amount.value()
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Clone, RuntimeDebug)]
