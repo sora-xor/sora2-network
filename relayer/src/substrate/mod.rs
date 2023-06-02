@@ -55,8 +55,9 @@ use subxt::storage::StorageAddress;
 use subxt::tx::Signer;
 pub use types::*;
 
-// Find first occurence of value in storage with increasing values
-pub async fn binary_search_first_occurence<N: AtLeast32BitUnsigned, T: PartialOrd, F, Fut>(
+/// Finds the first occurrence of an element 'e' so that 'f(e)' is greater or equal 'value' in
+/// storage with ascending values. Returns the index of 'e'.
+pub async fn binary_search_first_occurrence<N: AtLeast32BitUnsigned, T: PartialOrd, F, Fut>(
     low: N,
     high: N,
     value: T,
