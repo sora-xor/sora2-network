@@ -292,8 +292,8 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
     ) -> Result<(), DispatchError> {
         ensure!(
-            assets::AssetInfos::<T>::get(input_asset_id).2 != 0
-                && assets::AssetInfos::<T>::get(output_asset_id).2 != 0,
+            !assets::Pallet::<T>::is_non_divisible(input_asset_id)
+                && !assets::Pallet::<T>::is_non_divisible(output_asset_id),
             Error::<T>::UnableToSwapIndivisibleAssets
         );
         Ok(())

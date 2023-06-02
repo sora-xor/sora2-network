@@ -2129,8 +2129,12 @@ impl eth_app::Config for Runtime {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = BridgeProxy;
+    type Currency = Currencies;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
+    type AssetIdConverter = AssetIdConverter;
     type WeightInfo = ();
 }
 
@@ -2144,8 +2148,12 @@ impl erc20_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = BridgeProxy;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
+    type AssetIdConverter = AssetIdConverter;
+    type Currency = Currencies;
     type WeightInfo = ();
 }
 
@@ -2272,7 +2280,7 @@ impl substrate_bridge_app::Config for Runtime {
     type AssetRegistry = BridgeAssetRegistryImpl;
     type AccountIdConverter = sp_runtime::traits::Identity;
     type AssetIdConverter = AssetIdConverter;
-    type BalanceConverter = sp_runtime::traits::Identity;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type WeightInfo = ();
 }
 

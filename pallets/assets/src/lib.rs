@@ -777,14 +777,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn total_issuance(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
-        let r = T::Currency::total_issuance(asset_id.clone());
-        if r == Default::default() {
-            Self::ensure_asset_exists(asset_id)?;
-        }
-        Ok(r)
-    }
-
     pub fn transfer_from(
         asset_id: &T::AssetId,
         from: &T::AccountId,
@@ -1003,12 +995,24 @@ impl<T: Config>
         )
     }
 
+    fn is_non_divisible(asset_id: &T::AssetId) -> bool {
+        AssetInfos::<T>::get(asset_id).2 == 0
+    }
+
     fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {
         AssetInfos::<T>::get(asset_id).4
     }
 
     fn get_asset_description(asset_id: &T::AssetId) -> Option<Description> {
         AssetInfos::<T>::get(asset_id).5
+    }
+
+    fn total_issuance(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+        let r = T::Currency::total_issuance(asset_id.clone());
+        if r == Default::default() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        Ok(r)
     }
 
     fn total_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError> {
