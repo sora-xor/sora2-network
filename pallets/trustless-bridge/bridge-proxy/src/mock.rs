@@ -218,7 +218,7 @@ impl dispatch::Config for Test {
 
 parameter_types! {
     pub const MaxMessagePayloadSize: u64 = 2048;
-    pub const MaxMessagesPerCommit: u64 = 3;
+    pub const MaxMessagesPerCommit: u8 = 3;
     pub const Decimals: u32 = 12;
 }
 pub struct FeeConverter;
