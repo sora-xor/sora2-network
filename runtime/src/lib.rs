@@ -69,7 +69,7 @@ use common::{Description, GetMarketInfo};
 use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
-#[cfg(feature = "wip")]
+#[cfg(feature = "wip")] // order-book
 use frame_support::traits::EitherOf;
 use frame_support::weights::ConstantMultiplier;
 
@@ -84,7 +84,7 @@ use frame_election_provider_support::{generate_solution_type, onchain, Sequentia
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
-#[cfg(feature = "wip")]
+#[cfg(feature = "wip")] // order-book
 use frame_system::EnsureSigned;
 use hex_literal::hex;
 use pallet_grandpa::{
