@@ -40,7 +40,6 @@ use sp_runtime::RuntimeDebug;
 
 use common::TECH_ACCOUNT_MAGIC_PREFIX;
 use sp_core::H256;
-use sp_std::convert::TryFrom;
 
 #[cfg(test)]
 mod mock;
@@ -157,25 +156,35 @@ impl<T: Config> Pallet<T> {
         Self::ensure_account_registered(&account_id).map(|_| ())
     }
 
-    /// Register `TechAccountId` in storate map.
+    /// Register `TechAccountId` in storage map.
     pub fn register_tech_account_id(tech_account_id: T::TechAccountId) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(&tech_account_id)?;
-        frame_system::Pallet::<T>::inc_providers(&account_id);
+        if let Err(_) = Self::lookup_tech_account_id(&account_id) {
+            frame_system::Pallet::<T>::inc_providers(&account_id);
+        }
         TechAccounts::<T>::insert(account_id, tech_account_id);
         Ok(())
     }
 
-    /// Register `TechAccountId` in storate map if it not exist.
+    /// Register `TechAccountId` in storage map if it not exist.
     pub fn register_tech_account_id_if_not_exist(
         tech_account_id: &T::TechAccountId,
     ) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(tech_account_id)?;
-        frame_system::Pallet::<T>::inc_providers(&account_id);
-        match Self::lookup_tech_account_id(&account_id) {
-            Err(_) => {
-                TechAccounts::<T>::insert(account_id, tech_account_id.clone());
-            }
-            _ => (),
+        if let Err(_) = Self::lookup_tech_account_id(&account_id) {
+            frame_system::Pallet::<T>::inc_providers(&account_id);
+            TechAccounts::<T>::insert(account_id, tech_account_id.clone());
+        }
+        Ok(())
+    }
+
+    // todo: make pub(tests) (k.ivanov)
+    /// Deregister `TechAccountId` in storage map.
+    pub fn deregister_tech_account_id(tech_account_id: T::TechAccountId) -> DispatchResult {
+        let account_id = Self::tech_account_id_to_account_id(&tech_account_id)?;
+        if let Ok(_) = Self::lookup_tech_account_id(&account_id) {
+            frame_system::Pallet::<T>::dec_providers(&account_id)?;
+            TechAccounts::<T>::remove(account_id);
         }
         Ok(())
     }
@@ -263,7 +272,7 @@ pub mod pallet {
             + Member
             + Parameter
             + Into<AssetIdOf<Self>>
-            + TryFrom<AssetIdOf<Self>>;
+            + From<AssetIdOf<Self>>;
 
         /// Like AccountId but controlled by consensus, not signing by user.
         /// This extra traits exist here bacause no way to do it by constraints, problem exist with
@@ -275,9 +284,12 @@ pub mod pallet {
             + FromGenericPair
             + MaybeSerializeDeserialize
             + common::ToFeeAccount
-            + common::ToTechUnitFromDEXAndTradingPair<
+            + common::ToXykTechUnitFromDEXAndTradingPair<
                 DEXIdOf<Self>,
-                common::TradingPair<TechAssetIdOf<Self>>,
+                common::TradingPair<Self::TechAssetId>,
+            > + common::ToOrderTechUnitFromDEXAndTradingPair<
+                DEXIdOf<Self>,
+                common::TradingPair<Self::TechAssetId>,
             > + Into<common::TechAccountId<Self::AccountId, Self::TechAssetId, Self::DEXId>>;
 
         /// Trigger for auto claim.

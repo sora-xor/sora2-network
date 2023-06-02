@@ -1,6 +1,6 @@
 use crate::{self as ceres_launchpad};
-use common::mock::ExistentialDeposits;
 pub use common::mock::*;
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::AssetSymbol;
 use common::BalancePrecision;
@@ -184,6 +184,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = ();
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {

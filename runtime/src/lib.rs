@@ -34,6 +34,8 @@
 
 extern crate alloc;
 use alloc::string::String;
+#[cfg(feature = "ready-to-test")] // Substrate bridge
+use bridge_types::traits::Verifier;
 
 mod bags_thresholds;
 /// Constant values used within the runtime.
@@ -56,14 +58,16 @@ use crate::impls::{
 };
 #[cfg(feature = "ready-to-test")]
 use bridge_types::{
-    types::{AdditionalEVMInboundData, LeafExtraData, ParachainMessage},
+    types::{AdditionalEVMInboundData, LeafExtraData},
     U256,
 };
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::Description;
+use common::GetMarketInfo;
 #[cfg(feature = "ready-to-test")]
-use common::{AssetId32, PredefinedAssetId, XOR};
+use common::{AssetId32, PredefinedAssetId};
+use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::weights::ConstantMultiplier;
@@ -125,7 +129,7 @@ pub use common::{
     balance, fixed, fixed_from_basis_points, AssetInfoProvider, AssetName, AssetSymbol,
     BalancePrecision, BasisPoints, ContentSource, CrowdloanTag, DexInfoProvider, FilterMode, Fixed,
     FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned, OnValBurned,
+    LiquiditySourceType, OnPswapBurned, OnValBurned, TradingPairSourceManager,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::EthereumHeader;
@@ -250,10 +254,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 53,
+    spec_version: 54,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 53,
+    transaction_version: 54,
     state_version: 0,
 };
 
@@ -952,6 +956,19 @@ parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
 }
 
+parameter_type_with_key! {
+    pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
+        let common::TradingPair {
+            base_asset_id,
+            target_asset_id
+        } = trading_pair;
+        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
+            .contains(target_asset_id) ||
+            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into()) ||
+            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XST.into())
+    };
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -966,6 +983,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
+    type XSTMarketInfo = XSTPool;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 
 parameter_types! {
@@ -1052,6 +1071,9 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = order_book::Pallet<Runtime>;
 }
 
 impl pallet_multisig::Config for Runtime {
@@ -1536,12 +1558,11 @@ impl eth_bridge::Config for Runtime {
     type NetworkId = NetworkId;
     type GetEthNetworkId = GetEthNetworkId;
     type WeightInfo = eth_bridge::weights::SubstrateWeight<Runtime>;
-    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
-    type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
-    type SchedulerOriginCaller = OriginCaller;
-    type Scheduler = Scheduler;
     type WeightToFee = XorFee;
+    #[cfg(feature = "pready-to-test")]
+    type MessageStatusNotifier = BridgeProxy;
+    #[cfg(not(feature = "pready-to-test"))]
+    type MessageStatusNotifier = ();
 }
 
 #[cfg(feature = "private-net")]
@@ -1779,11 +1800,12 @@ parameter_types! {
 impl xst::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type GetSyntheticBaseAssetId = GetXstPoolConversionAssetId;
-    type LiquidityProxy = LiquidityProxy;
+    type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
     type EnsureDEXManager = DEXManager;
-    type EnsureTradingPairExists = TradingPair;
     type PriceToolsPallet = PriceTools;
     type WeightInfo = xst::weights::SubstrateWeight<Runtime>;
+    type Oracle = OracleProxy;
+    type Symbol = <Runtime as band::Config>::Symbol;
 }
 
 parameter_types! {
@@ -1948,11 +1970,17 @@ impl oracle_proxy::Config for Runtime {
     type BandChainOracle = band::Pallet<Runtime>;
 }
 
+parameter_types! {
+    pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+}
+
 impl band::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Symbol = Symbol;
     type WeightInfo = band::weights::SubstrateWeight<Runtime>;
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+    type Time = Timestamp;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
 }
 
 parameter_types! {
@@ -1970,15 +1998,18 @@ impl hermes_governance_platform::Config for Runtime {
 #[cfg(feature = "wip")] // order-book
 impl order_book::Config for Runtime {
     const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
-    const MAX_OPENED_LIMIT_ORDERS_COUNT: u32 = 100;
+    const MIN_ORDER_LIFETIME: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
+    const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50); // TODO: order-book clarify
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
-    type MaxOpenedLimitOrdersForAllOrderBooksPerUser = ConstU32<10000>; // TODO: order-book clarify
+    type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
-    type MaxSidePrices = ConstU32<100000>; // TODO: order-book clarify
+    type MaxSidePriceCount = ConstU32<100000>; // TODO: order-book clarify
     type EnsureTradingPairExists = TradingPair;
+    type TradingPairSourceManager = TradingPair;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;
+    type Time = Timestamp;
     type WeightInfo = order_book::weights::SubstrateWeight<Runtime>;
 }
 
@@ -2042,7 +2073,7 @@ impl bridge_inbound_channel::Config for Runtime {
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = Dispatch;
     type Hashing = Keccak256;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type FeeConverter = FeeConverter;
     type WeightInfo = ();
     type FeeAssetId = FeeCurrency;
@@ -2061,7 +2092,7 @@ impl bridge_outbound_channel::Config for Runtime {
     type MaxTotalGasLimit = BridgeMaxTotalGasLimit;
     type FeeCurrency = FeeCurrency;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type AuxiliaryDigestHandler = LeafProvider;
     type WeightInfo = ();
 }
@@ -2098,8 +2129,12 @@ impl eth_app::Config for Runtime {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
+    type MessageStatusNotifier = BridgeProxy;
+    type Currency = Currencies;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type WeightInfo = ();
 }
 
@@ -2113,8 +2148,12 @@ impl erc20_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
+    type MessageStatusNotifier = BridgeProxy;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type Currency = Currencies;
     type WeightInfo = ();
 }
 
@@ -2126,17 +2165,19 @@ impl migration_app::Config for Runtime {
 }
 
 #[cfg(feature = "ready-to-test")] // Bridges
-impl evm_bridge_proxy::Config for Runtime {
+impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ERC20App = ERC20App;
     type EthApp = EthApp;
+    type HashiBridge = EthBridge;
+    type SubstrateApp = SubstrateBridgeApp;
+    type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl beefy_light_client::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type Message = Vec<ParachainMessage<Balance>>;
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
 }
 
@@ -2156,16 +2197,47 @@ impl dispatch::Config<dispatch::Instance2> for Runtime {
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl substrate_bridge_channel::inbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type Verifier = BeefyLightClient;
-    type ProvedMessage =
-        beefy_light_client::ProvedSubstrateBridgeMessage<Vec<ParachainMessage<Balance>>>;
+    type Verifier = MultiVerifier;
     type MessageDispatch = SubstrateDispatch;
+    type UnsignedPriority = DataSignerPriority;
+    type UnsignedLongevity = DataSignerLongevity;
     type WeightInfo = ();
-    type FeeAssetId = FeeCurrency;
-    type FeeAccountId = GetTrustlessBridgeFeesAccountId;
-    type TreasuryAccountId = GetTreasuryAccountId;
-    type FeeConverter = FeeConverter;
-    type Currency = Currencies;
+}
+
+#[cfg(feature = "ready-to-test")] // Substrate bridge
+pub struct MultiVerifier;
+
+#[derive(Clone, Debug, PartialEq, codec::Encode, codec::Decode, scale_info::TypeInfo)]
+#[cfg(feature = "ready-to-test")] // Substrate bridge
+pub enum MultiProof {
+    Beefy(<BeefyLightClient as Verifier>::Proof),
+    Multisig(<MultisigVerifier as Verifier>::Proof),
+}
+
+#[cfg(feature = "ready-to-test")] // Substrate bridge
+impl Verifier for MultiVerifier {
+    type Proof = MultiProof;
+
+    fn verify(
+        network_id: bridge_types::GenericNetworkId,
+        message: H256,
+        proof: &Self::Proof,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        match proof {
+            MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
+            MultiProof::Multisig(proof) => MultisigVerifier::verify(network_id, message, proof),
+        }
+    }
+}
+
+#[cfg(feature = "ready-to-test")] // Bridge
+pub struct GenericTimepointProvider;
+
+#[cfg(feature = "ready-to-test")] // Bridge
+impl bridge_types::traits::TimepointProvider for GenericTimepointProvider {
+    fn get_timepoint() -> bridge_types::GenericTimepoint {
+        bridge_types::GenericTimepoint::Sora(System::block_number())
+    }
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -2173,15 +2245,25 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
-    type FeeCurrency = FeeCurrency;
-    type FeeAccountId = GetTrustlessBridgeFeesAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type AuxiliaryDigestHandler = LeafProvider;
-    type Currency = Currencies;
+    type AssetId = AssetId;
+    type Balance = Balance;
+    type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
+
+// #[cfg(feature = "wip")] // Substrate bridge
+// pub struct AssetIdConverter;
+
+// #[cfg(feature = "wip")] // Substrate bridge
+// impl Convert<AssetId, H256> for AssetIdConverter {
+//     fn convert(a: AssetId) -> H256 {
+//         a.code.into()
+//     }
+// }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl substrate_bridge_app::Config for Runtime {
@@ -2192,11 +2274,50 @@ impl substrate_bridge_app::Config for Runtime {
         (),
         bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
     >;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type BridgeAccountId = GetTrustlessBridgeAccountId;
     type Currency = Currencies;
     type AssetRegistry = BridgeAssetRegistryImpl;
+    type AccountIdConverter = sp_runtime::traits::Identity;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type WeightInfo = ();
+}
+
+#[cfg(feature = "ready-to-test")] // Substrate bridge
+parameter_types! {
+    pub const BridgeMaxPeers: u32 = 50;
+    // Not as important as some essential transactions (e.g. im_online or similar ones)
+    pub DataSignerPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    // We don't want to have not relevant imports be stuck in transaction pool
+    // for too long
+    pub DataSignerLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
+}
+
+#[cfg(feature = "ready-to-test")] // Substrate bridge
+impl bridge_data_signer::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type OutboundChannel = SubstrateBridgeOutboundChannel;
+    type CallOrigin = dispatch::EnsureAccount<
+        SubNetworkId,
+        (),
+        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
+    >;
+    type MaxPeers = BridgeMaxPeers;
+    type UnsignedPriority = DataSignerPriority;
+    type UnsignedLongevity = DataSignerLongevity;
+}
+
+#[cfg(feature = "ready-to-test")] // Substrate bridge
+impl multisig_verifier::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type CallOrigin = dispatch::EnsureAccount<
+        SubNetworkId,
+        (),
+        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
+    >;
+    type OutboundChannel = SubstrateBridgeOutboundChannel;
+    type MaxPeers = BridgeMaxPeers;
 }
 
 construct_runtime! {
@@ -2285,7 +2406,7 @@ construct_runtime! {
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         // TODO: rename to BridgeProxy
         #[cfg(feature = "ready-to-test")] // Bridges
-        EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
+        BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         // Trustless EVM bridge
         #[cfg(feature = "ready-to-test")] // EVM bridge
@@ -2307,13 +2428,17 @@ construct_runtime! {
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
         #[cfg(feature = "ready-to-test")] // Substrate bridge
-        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 106,
+        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 106,
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
+        BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
+        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call, Config} = 111,
 
         // Dev
         #[cfg(feature = "private-net")]
@@ -3015,13 +3140,13 @@ impl_runtime_apis! {
     }
 
     #[cfg(feature = "ready-to-test")] // Bridges
-    impl evm_bridge_proxy_runtime_api::EvmBridgeProxyAPI<Block, AssetId> for Runtime {
-        fn list_apps(network_id: bridge_types::EVMChainId) -> Vec<bridge_types::types::BridgeAppInfo> {
-            EvmBridgeProxy::list_apps(network_id)
+    impl bridge_proxy_runtime_api::BridgeProxyAPI<Block, AssetId> for Runtime {
+        fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+            BridgeProxy::list_apps()
         }
 
-        fn list_supported_assets(network_id: bridge_types::EVMChainId) -> Vec<bridge_types::types::BridgeAssetInfo<AssetId>> {
-            EvmBridgeProxy::list_supported_assets(network_id)
+        fn list_supported_assets(network_id: bridge_types::GenericNetworkId) -> Vec<bridge_types::types::BridgeAssetInfo> {
+            BridgeProxy::list_supported_assets(network_id)
         }
     }
 
@@ -3039,6 +3164,7 @@ impl_runtime_apis! {
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
+            use xst_benchmarking::Pallet as XSTPoolBench;
 
             let mut list = Vec::<BenchmarkList>::new();
 
@@ -3066,7 +3192,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, ceres_launchpad, CeresLaunchpad);
             list_benchmark!(list, extra, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
             list_benchmark!(list, extra, band, Band);
-            list_benchmark!(list, extra, xst, XSTPool);
+            list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
             #[cfg(feature = "wip")] // order-book
@@ -3086,7 +3212,7 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // EVM bridge
             list_benchmark!(list, extra, migration_app, MigrationApp);
             #[cfg(feature = "ready-to-test")] // Bridges
-            list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
+            list_benchmark!(list, extra, bridge_proxy, BridgeProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3103,11 +3229,13 @@ impl_runtime_apis! {
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
+            use xst_benchmarking::Pallet as XSTPoolBench;
 
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
+            impl xst_benchmarking::Config for Runtime {}
 
             let whitelist: Vec<TrackedStorageKey> = vec![
                 // Block Number
@@ -3150,7 +3278,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
             add_benchmark!(params, batches, band, Band);
-            add_benchmark!(params, batches, xst, XSTPool);
+            add_benchmark!(params, batches, xst, XSTPoolBench::<Runtime>);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
@@ -3171,7 +3299,7 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // EVM bridge
             add_benchmark!(params, batches, migration_app, MigrationApp);
             #[cfg(feature = "ready-to-test")] // Bridges
-            add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
+            add_benchmark!(params, batches, bridge_proxy, BridgeProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

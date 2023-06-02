@@ -36,7 +36,7 @@ extern crate alloc;
 
 use common::{
     AssetInfoProvider, DexInfoProvider, EnsureDEXManager, EnsureTradingPairExists,
-    LiquiditySourceType, ManagementMode,
+    LiquiditySourceType, ManagementMode, TradingPairSourceManager,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -74,28 +74,8 @@ impl<T: Config> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for
     }
 }
 
-impl<T: Config> Pallet<T> {
-    pub fn list_trading_pairs(dex_id: &T::DEXId) -> Result<Vec<TradingPair<T>>, DispatchError> {
-        DEXManager::<T>::ensure_dex_exists(dex_id)?;
-        Ok(EnabledSources::<T>::iter_prefix(dex_id)
-            .map(|(pair, _)| pair)
-            .collect())
-    }
-
-    pub fn is_trading_pair_enabled(
-        dex_id: &T::DEXId,
-        &base_asset_id: &T::AssetId,
-        &target_asset_id: &T::AssetId,
-    ) -> Result<bool, DispatchError> {
-        DEXManager::<T>::ensure_dex_exists(dex_id)?;
-        let pair = TradingPair::<T> {
-            base_asset_id,
-            target_asset_id,
-        };
-        Ok(Self::enabled_sources(dex_id, &pair).is_some())
-    }
-
-    pub fn list_enabled_sources_for_trading_pair(
+impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
+    fn list_enabled_sources_for_trading_pair(
         dex_id: &T::DEXId,
         &base_asset_id: &T::AssetId,
         &target_asset_id: &T::AssetId,
@@ -114,7 +94,7 @@ impl<T: Config> Pallet<T> {
         Ok(sources)
     }
 
-    pub fn is_source_enabled_for_trading_pair(
+    fn is_source_enabled_for_trading_pair(
         dex_id: &T::DEXId,
         base_asset_id: &T::AssetId,
         target_asset_id: &T::AssetId,
@@ -126,7 +106,7 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    pub fn enable_source_for_trading_pair(
+    fn enable_source_for_trading_pair(
         dex_id: &T::DEXId,
         &base_asset_id: &T::AssetId,
         &target_asset_id: &T::AssetId,
@@ -143,6 +123,83 @@ impl<T: Config> Pallet<T> {
             opt_set.as_mut().unwrap().insert(source_type)
         });
         Ok(())
+    }
+
+    fn disable_source_for_trading_pair(
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Self::ensure_trading_pair_exists(dex_id, &base_asset_id, &target_asset_id)?;
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        // This logic considers Ok if source is already enabled.
+        // unwrap() is safe, check done in `ensure_trading_pair_exists`.
+        EnabledSources::<T>::mutate(dex_id, &pair, |opt_set| {
+            opt_set.as_mut().unwrap().remove(&source_type)
+        });
+        Ok(())
+    }
+}
+
+impl<T: Config> Pallet<T> {
+    pub fn register_pair(
+        dex_id: T::DEXId,
+        base_asset_id: T::AssetId,
+        target_asset_id: T::AssetId,
+    ) -> Result<(), DispatchError> {
+        ensure!(
+            base_asset_id != target_asset_id,
+            Error::<T>::IdenticalAssetIds
+        );
+
+        let dex_info = DEXManager::<T>::get_dex_info(&dex_id)?;
+        ensure!(
+            base_asset_id == dex_info.base_asset_id
+                || base_asset_id == dex_info.synthetic_base_asset_id,
+            Error::<T>::ForbiddenBaseAssetId
+        );
+        Assets::<T>::ensure_asset_exists(&base_asset_id)?;
+        Assets::<T>::ensure_asset_exists(&target_asset_id)?;
+
+        let trading_pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        ensure!(
+            Self::enabled_sources(&dex_id, &trading_pair).is_none(),
+            Error::<T>::TradingPairExists
+        );
+        EnabledSources::<T>::insert(
+            &dex_id,
+            &trading_pair,
+            BTreeSet::<LiquiditySourceType>::new(),
+        );
+        Self::deposit_event(Event::TradingPairStored(dex_id, trading_pair));
+        Ok(().into())
+    }
+
+    pub fn list_trading_pairs(dex_id: &T::DEXId) -> Result<Vec<TradingPair<T>>, DispatchError> {
+        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        Ok(EnabledSources::<T>::iter_prefix(dex_id)
+            .map(|(pair, _)| pair)
+            .collect())
+    }
+
+    pub fn is_trading_pair_enabled(
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+    ) -> Result<bool, DispatchError> {
+        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        Ok(Self::enabled_sources(dex_id, &pair).is_some())
     }
 }
 
@@ -198,32 +255,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let _author =
                 T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
-            let dex_info = DEXManager::<T>::get_dex_info(&dex_id)?;
-            ensure!(
-                base_asset_id == dex_info.base_asset_id
-                    || base_asset_id == dex_info.synthetic_base_asset_id,
-                Error::<T>::ForbiddenBaseAssetId
-            );
-            Assets::<T>::ensure_asset_exists(&base_asset_id)?;
-            Assets::<T>::ensure_asset_exists(&target_asset_id)?;
-            ensure!(
-                base_asset_id != target_asset_id,
-                Error::<T>::IdenticalAssetIds
-            );
-            let trading_pair = TradingPair::<T> {
-                base_asset_id,
-                target_asset_id,
-            };
-            ensure!(
-                Self::enabled_sources(&dex_id, &trading_pair).is_none(),
-                Error::<T>::TradingPairExists
-            );
-            EnabledSources::<T>::insert(
-                &dex_id,
-                &trading_pair,
-                BTreeSet::<LiquiditySourceType>::new(),
-            );
-            Self::deposit_event(Event::TradingPairStored(dex_id, trading_pair));
+            Self::register_pair(dex_id, base_asset_id, target_asset_id)?;
             Ok(().into())
         }
     }
@@ -249,7 +281,7 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn enabled_sources)]
-    pub(super) type EnabledSources<T: Config> = StorageDoubleMap<
+    pub type EnabledSources<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
         T::DEXId,

@@ -31,7 +31,7 @@
 #![cfg(test)]
 
 use crate::{Config, *};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, AssetName, AssetSymbol,
@@ -286,6 +286,9 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = ();
 }
 
 impl trading_pair::Config for Runtime {
@@ -315,8 +318,9 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = ();
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
-
 impl vested_rewards::Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
     type RuntimeEvent = RuntimeEvent;

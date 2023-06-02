@@ -29,7 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as pool_xyk, Config};
-use common::prelude::{Balance, Fixed};
+use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
+use common::GetMarketInfo;
 use common::{balance, fixed, hash, DEXInfo, PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -58,6 +59,7 @@ pub type Amount = i128;
 pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type Moment = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -103,6 +105,9 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        XSTPools: xst::{Pallet, Call, Storage, Event<T>},
+        Band: band::{Pallet, Call, Storage, Event<T>},
+        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -240,7 +245,7 @@ impl pswap_distribution::Config for Runtime {
 }
 
 impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
+    type Moment = Moment;
     type OnTimestampSet = ();
     type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
@@ -262,6 +267,58 @@ impl demeter_farming_platform::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            xst::TECH_ACCOUNT_PREFIX.to_vec(),
+            xst::TECH_ACCOUNT_PERMISSIONED.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetSyntheticBaseAssetId: AssetId = BatteryForMusicPlayer.into();
+    pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+}
+
+impl band::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Symbol = common::SymbolName;
+    type WeightInfo = ();
+    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
+    type Time = Timestamp;
+}
+
+impl oracle_proxy::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = ();
+    type Symbol = <Runtime as band::Config>::Symbol;
+    type BandChainOracle = band::Pallet<Runtime>;
+}
+
+impl xst::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
+    type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
+    type EnsureDEXManager = DexManager;
+    type PriceToolsPallet = ();
+    type WeightInfo = ();
+    type Oracle = OracleProxy;
+    type Symbol = SymbolName;
+}
+
+parameter_type_with_key! {
+    pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
+        let common::TradingPair {
+            base_asset_id,
+            target_asset_id
+        } = trading_pair;
+        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
+            .contains(target_asset_id) ||
+            (base_asset_id, target_asset_id) == (&Mango.into(), &GoldenTicket.into()) ||
+            (base_asset_id, target_asset_id) == (&Mango.into(), &BatteryForMusicPlayer.into())
+    };
+}
+
 impl Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
@@ -275,6 +332,8 @@ impl Config for Runtime {
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = xst::Pallet<Runtime>;
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
 
 #[allow(non_snake_case)]
@@ -294,12 +353,19 @@ pub fn CHARLIE() -> AccountId {
 
 pub const DEX_A_ID: DEXId = 220;
 pub const DEX_B_ID: DEXId = 221;
+pub const DEX_C_ID: DEXId = 222;
+// XSTPool uses hardcoded DEXId (DEXId::Polkaswap), without this
+// DEX XSTPool initializes with error
+pub const DEX_D_ID: DEXId = 0;
 
 pub struct ExtBuilder {
     initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    endowed_accounts_for_synthetics_platform:
+        Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
+    initial_synthetics: Vec<(AssetId, SymbolName, Fixed)>,
 }
 
 impl Default for ExtBuilder {
@@ -322,6 +388,22 @@ impl Default for ExtBuilder {
                         is_public: true,
                     },
                 ),
+                (
+                    DEX_C_ID,
+                    DEXInfo {
+                        base_asset_id: Mango.into(),
+                        synthetic_base_asset_id: BatteryForMusicPlayer.into(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEX_D_ID,
+                    DEXInfo {
+                        base_asset_id: GoldenTicket.into(),
+                        synthetic_base_asset_id: BatteryForMusicPlayer.into(),
+                        is_public: true,
+                    },
+                ),
             ],
             endowed_accounts: vec![
                 (ALICE(), RedPepper.into(), balance!(99000)),
@@ -329,12 +411,33 @@ impl Default for ExtBuilder {
                 (BOB(), RedPepper.into(), balance!(2000000)),
                 (CHARLIE(), BlackPepper.into(), balance!(2000000)),
             ],
+            // some assets must be registered (synthetic assets and base synthetic asset)
+            // before the initialization of XSTPool
+            endowed_accounts_for_synthetics_platform: vec![
+                (
+                    ALICE(),
+                    Mango.into(),
+                    balance!(100000),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"SORA Synthetic USD".to_vec()),
+                    common::DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    ALICE(),
+                    BatteryForMusicPlayer.into(),
+                    balance!(10000),
+                    AssetSymbol(b"XST".to_vec()),
+                    AssetName(b"Sora Synthetics".to_vec()),
+                    common::DEFAULT_BALANCE_PRECISION,
+                ),
+            ],
             initial_permission_owners: vec![(
                 MANAGE_DEX,
                 Scope::Limited(hash(&DEX_A_ID)),
                 vec![BOB()],
             )],
             initial_permissions: vec![(BOB(), Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
+            initial_synthetics: vec![(Mango.into(), SymbolName::usd(), fixed!(0))],
         }
     }
 }
@@ -360,6 +463,36 @@ impl ExtBuilder {
         permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self
+                .endowed_accounts_for_synthetics_platform
+                .iter()
+                .cloned()
+                .map(|(account_id, asset_id, _, symbol, name, precision)| {
+                    (
+                        asset_id,
+                        account_id,
+                        symbol,
+                        name,
+                        precision,
+                        balance!(0),
+                        true,
+                        None,
+                        None,
+                    )
+                })
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        xst::GenesisConfig::<Runtime> {
+            initial_synthetic_assets: self.initial_synthetics,
+            reference_asset_id: Teapot.into(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

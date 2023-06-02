@@ -38,6 +38,8 @@ use crate::{
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
+use bridge_types::types::MessageStatus;
+use bridge_types::{GenericAccount, GenericNetworkId, GenericTimepoint};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
@@ -48,9 +50,11 @@ use ethabi::{FixedBytes, Token};
 use frame_support::debug;
 use frame_support::dispatch::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core;
+use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;
 
 use super::encode_packed::{encode_packed, TokenWrapper};
+use bridge_types::traits::MessageStatusNotifier;
 use frame_support::{ensure, RuntimeDebug};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
@@ -192,11 +196,21 @@ impl<T: Config> OutgoingTransfer<T> {
     }
 
     /// Transfers the given `amount` of `asset_id` to the bridge account and reserve it.
-    pub fn prepare(&self) -> Result<(), DispatchError> {
+    pub fn prepare(&self, tx_hash: H256) -> Result<(), DispatchError> {
         let bridge_account = get_bridge_account::<T>(self.network_id);
         common::with_transaction(|| {
             Assets::<T>::transfer_from(&self.asset_id, &self.from, &bridge_account, self.amount)?;
-            Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)
+            Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)?;
+            T::MessageStatusNotifier::outbound_request(
+                GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into()),
+                tx_hash,
+                self.from.clone(),
+                GenericAccount::EVM(self.to),
+                self.asset_id,
+                self.amount,
+                MessageStatus::InQueue,
+            );
+            Ok(())
         })
     }
 
@@ -210,7 +224,7 @@ impl<T: Config> OutgoingTransfer<T> {
     }
 
     /// Validates the request again, then, if the asset is originated in Sidechain, it gets burned.
-    pub fn finalize(&self) -> Result<(), DispatchError> {
+    pub fn finalize(&self, tx_hash: H256) -> Result<(), DispatchError> {
         self.validate()?;
         let bridge_acc = get_bridge_account::<T>(self.network_id);
         common::with_transaction(|| {
@@ -226,6 +240,13 @@ impl<T: Config> OutgoingTransfer<T> {
                 // (see `Pallet::register_sidechain_asset`).
                 Assets::<T>::burn_from(&self.asset_id, &bridge_acc, &bridge_acc, self.amount)?;
             }
+            T::MessageStatusNotifier::update_status(
+                GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into()),
+                tx_hash,
+                MessageStatus::Approved,
+                // In HASHI bridge we don't check if transaction was finished, so put Unknown timepoint here
+                GenericTimepoint::Unknown,
+            );
             Ok(())
         })
     }

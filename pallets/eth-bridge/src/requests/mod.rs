@@ -179,9 +179,9 @@ impl<T: Config> OutgoingRequest<T> {
         }
     }
 
-    fn prepare(&self) -> Result<(), DispatchError> {
+    fn prepare(&self, tx_hash: H256) -> Result<(), DispatchError> {
         match self {
-            OutgoingRequest::Transfer(request) => request.prepare(),
+            OutgoingRequest::Transfer(request) => request.prepare(tx_hash),
             OutgoingRequest::AddAsset(request) => request.prepare(()),
             OutgoingRequest::AddToken(request) => request.prepare(()),
             OutgoingRequest::AddPeer(request) => request.prepare(()),
@@ -193,9 +193,9 @@ impl<T: Config> OutgoingRequest<T> {
         }
     }
 
-    pub(crate) fn finalize(&self) -> Result<(), DispatchError> {
+    pub(crate) fn finalize(&self, tx_hash: H256) -> Result<(), DispatchError> {
         match self {
-            OutgoingRequest::Transfer(request) => request.finalize(),
+            OutgoingRequest::Transfer(request) => request.finalize(tx_hash),
             OutgoingRequest::AddAsset(request) => request.finalize(),
             OutgoingRequest::AddToken(request) => request.finalize(),
             OutgoingRequest::AddPeer(request) => request.finalize(),
@@ -768,7 +768,7 @@ impl<T: Config> OffchainRequest<T> {
     /// Performs additional state changes for the request (e.g., reserves funds for a transfer).
     pub(crate) fn prepare(&self) -> Result<(), DispatchError> {
         match self {
-            OffchainRequest::Outgoing(request, _) => request.prepare(),
+            OffchainRequest::Outgoing(request, tx_hash) => request.prepare(*tx_hash),
             OffchainRequest::LoadIncoming(request) => request.prepare(),
             OffchainRequest::Incoming(request, _) => request.prepare(),
         }
@@ -785,7 +785,7 @@ impl<T: Config> OffchainRequest<T> {
 
     pub fn finalize(&self) -> DispatchResult {
         match self {
-            OffchainRequest::Outgoing(r, _) => r.finalize(),
+            OffchainRequest::Outgoing(r, tx_hash) => r.finalize(*tx_hash),
             OffchainRequest::Incoming(r, _) => r.finalize().map(|_| ()),
             OffchainRequest::LoadIncoming(r) => r.finalize(),
         }

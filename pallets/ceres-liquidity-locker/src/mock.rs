@@ -1,5 +1,6 @@
 use crate::pallet::AccountIdOf;
 use codec::Decode;
+use common::mock::GetTradingPairRestrictedFlag;
 use common::prelude::{Balance, Fixed};
 use common::{balance, fixed, hash, DEXInfo, PSWAP, VAL, XOR, XST};
 use currencies::BasicCurrencyAdapter;
@@ -225,8 +226,9 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = ();
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
-
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;

@@ -84,14 +84,14 @@ where
     C: Send + Sync + 'static,
     C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
-    C::Api: evm_bridge_proxy_rpc::EvmBridgeProxyRuntimeAPI<Block, AssetId>,
+    C::Api: bridge_proxy_rpc::BridgeProxyRuntimeAPI<Block, AssetId>,
     C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     B: sc_client_api::Backend<Block> + Send + Sync + 'static,
     B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
     use beefy_light_client_rpc::{BeefyLightClientAPIServer, BeefyLightClientClient};
     use bridge_channel_rpc::{BridgeChannelAPIServer, BridgeChannelClient};
-    use evm_bridge_proxy_rpc::{EvmBridgeProxyAPIServer, EvmBridgeProxyClient};
+    use bridge_proxy_rpc::{BridgeProxyAPIServer, BridgeProxyClient};
     use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
     use substrate_bridge_channel_rpc::{
         BridgeChannelAPIServer as SubstrateBridgeChannelAPIServer,
@@ -99,11 +99,11 @@ where
     };
 
     rpc.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
-    rpc.merge(EvmBridgeProxyClient::new(client.clone()).into_rpc())?;
+    rpc.merge(BridgeProxyClient::new(client.clone()).into_rpc())?;
     if let Some(storage) = backend.offchain_storage() {
         rpc.merge(BridgeChannelClient::new(storage.clone()).into_rpc())?;
         rpc.merge(
-            <SubstrateBridgeChannelClient<_> as SubstrateBridgeChannelAPIServer<Balance>>::into_rpc(
+            <SubstrateBridgeChannelClient<_> as SubstrateBridgeChannelAPIServer>::into_rpc(
                 SubstrateBridgeChannelClient::new(storage),
             ),
         )?;

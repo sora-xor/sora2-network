@@ -93,6 +93,72 @@ impl<DEXId, AssetId> EnsureTradingPairExists<DEXId, AssetId, DispatchError> for 
     }
 }
 
+pub trait TradingPairSourceManager<DEXId, AssetId> {
+    fn list_enabled_sources_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError>;
+
+    fn is_source_enabled_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError>;
+
+    fn enable_source_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult;
+
+    fn disable_source_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult;
+}
+
+impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
+    fn list_enabled_sources_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+    ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn is_source_enabled_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn enable_source_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn disable_source_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Err(DispatchError::CannotLookup)
+    }
+}
+
 /// Indicates that particular object can be used to perform exchanges.
 pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
     /// Check if liquidity source provides an exchange from given input asset to output asset.
@@ -505,8 +571,16 @@ pub trait ToTechUnitFromDEXAndAsset<DEXId, AssetId>: Sized {
     fn to_tech_unit_from_dex_and_asset(dex_id: DEXId, asset_id: AssetId) -> Self;
 }
 
-pub trait ToTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {
-    fn to_tech_unit_from_dex_and_trading_pair(dex_id: DEXId, trading_pair: TradingPair) -> Self;
+pub trait ToXykTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {
+    fn to_xyk_tech_unit_from_dex_and_trading_pair(dex_id: DEXId, trading_pair: TradingPair)
+        -> Self;
+}
+
+pub trait ToOrderTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {
+    fn to_order_tech_unit_from_dex_and_trading_pair(
+        dex_id: DEXId,
+        trading_pair: TradingPair,
+    ) -> Self;
 }
 
 /// PureOrWrapped is reflexive.
@@ -832,9 +906,13 @@ pub trait AssetInfoProvider<
         Option<Description>,
     );
 
+    fn is_non_divisible(asset_id: &AssetId) -> bool;
+
     fn get_asset_content_src(asset_id: &AssetId) -> Option<ContentSource>;
 
     fn get_asset_description(asset_id: &AssetId) -> Option<Description>;
+
+    fn total_issuance(asset_id: &AssetId) -> Result<Balance, DispatchError>;
 
     fn total_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError>;
 
@@ -879,6 +957,10 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
         unimplemented!()
     }
 
+    fn is_non_divisible(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
     fn get_asset_content_src(_asset_id: &AssetId) -> Option<ContentSource> {
         unimplemented!()
     }
@@ -888,6 +970,10 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
     }
 
     fn total_balance(_asset_id: &AssetId, _who: &AccountId) -> Result<Balance, DispatchError> {
+        unimplemented!()
+    }
+
+    fn total_issuance(_asset_id: &AssetId) -> Result<Balance, DispatchError> {
         unimplemented!()
     }
 

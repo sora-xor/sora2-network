@@ -755,6 +755,10 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                     get_account_id_from_seed::<sr25519::Public>("Relayer"),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer//1"),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer//2"),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer//3"),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer//4"),
                 ],
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
@@ -1145,14 +1149,13 @@ fn testnet_genesis(
         XST.into(),
         TBCD.into(),
     ];
-    let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
+        multisig_verifier: Default::default(),
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         beefy_light_client: Default::default(),
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         substrate_bridge_app: Default::default(),
-        #[cfg(feature = "ready-to-test")] // Substrate bridge
-        substrate_bridge_inbound_channel: Default::default(),
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
         #[cfg(feature = "ready-to-test")] // EVM bridge
@@ -1318,17 +1321,6 @@ fn testnet_genesis(
                     None,
                 ),
                 (
-                    XSTUSD.into(),
-                    assets_and_permissions_account_id.clone(),
-                    AssetSymbol(b"XSTUSD".to_vec()),
-                    AssetName(b"SORA Synthetic USD".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                    Balance::zero(),
-                    true,
-                    None,
-                    None,
-                ),
-                (
                     common::AssetId32::from_bytes(hex!(
                         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
                     ))
@@ -1348,6 +1340,17 @@ fn testnet_genesis(
                     AssetSymbol(b"HMX".to_vec()),
                     AssetName(b"Hermes".to_vec()),
                     18,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    XSTUSD,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"SORA Synthetics USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
                     None,
@@ -1457,12 +1460,6 @@ fn testnet_genesis(
                 .iter()
                 .cloned()
                 .map(|target_asset_id| create_trading_pair(XOR, target_asset_id))
-                .chain(
-                    initial_synthetic_assets
-                        .iter()
-                        .cloned()
-                        .map(|target_asset_id| create_trading_pair(XST, target_asset_id)),
-                )
                 .collect(),
         },
         dexapi: DEXAPIConfig {
@@ -1470,6 +1467,9 @@ fn testnet_genesis(
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
                 LiquiditySourceType::XSTPool,
+
+                #[cfg(feature = "wip")] // order-book
+                LiquiditySourceType::OrderBook,
             ]
             .into(),
         },
@@ -1547,9 +1547,12 @@ fn testnet_genesis(
         technical_membership: Default::default(),
         im_online: Default::default(),
         xst_pool: XSTPoolConfig {
-            tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
-            initial_synthetic_assets: vec![XSTUSD],
+            initial_synthetic_assets: vec![(
+                XSTUSD.into(),
+                common::SymbolName::usd().into(),
+                fixed!(0.00666),
+            )],
         },
         beefy: BeefyConfig {
             authorities: vec![],
@@ -1756,6 +1759,8 @@ fn mainnet_genesis(
 
     let xst_pool_permissioned_tech_account_id =
         framenode_runtime::GetXSTPoolPermissionedTechAccountId::get();
+    let xst_pool_permissioned_account_id =
+        framenode_runtime::GetXSTPoolPermissionedAccountId::get();
 
     let market_maker_rewards_tech_account_id =
         framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
@@ -1834,6 +1839,10 @@ fn mainnet_genesis(
             mbc_pool_free_reserves_tech_account_id.clone(),
         ),
         (
+            xst_pool_permissioned_account_id.clone(),
+            xst_pool_permissioned_tech_account_id.clone(),
+        ),
+        (
             iroha_migration_account_id.clone(),
             iroha_migration_tech_account_id.clone(),
         ),
@@ -1867,7 +1876,6 @@ fn mainnet_genesis(
         umi_nfts: Vec::new(),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
-    let initial_synthetic_assets = vec![XSTUSD.into()];
     let mut bridge_assets = vec![
         AssetConfig::Sidechain {
             id: XOR.into(),
@@ -1956,17 +1964,6 @@ fn mainnet_genesis(
             None,
         ),
         (
-            XSTUSD.into(),
-            assets_and_permissions_account_id.clone(),
-            AssetSymbol(b"XSTUSD".to_vec()),
-            AssetName(b"SORA Synthetic USD".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None,
-        ),
-        (
             common::AssetId32::from_bytes(hex!(
                 "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
             ))
@@ -1974,6 +1971,17 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"CERES".to_vec()),
             AssetName(b"Ceres".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            XSTUSD.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"XSTUSD".to_vec()),
+            AssetName(b"SORA Synthetics USD".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
@@ -2004,11 +2012,11 @@ fn mainnet_genesis(
     }));
     GenesisConfig {
         #[cfg(feature = "ready-to-test")] // Substrate bridge
+        multisig_verifier: Default::default(),
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
         beefy_light_client: Default::default(),
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         substrate_bridge_app: Default::default(),
-        #[cfg(feature = "ready-to-test")] // Substrate bridge
-        substrate_bridge_inbound_channel: Default::default(),
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
         #[cfg(feature = "ready-to-test")] // EVM bridge
@@ -2151,6 +2159,11 @@ fn mainnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                (
+                    xst_pool_permissioned_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         },
         balances: BalancesConfig {
@@ -2167,6 +2180,7 @@ fn mainnet_genesis(
                 (mbc_pool_rewards_account_id.clone(), 0),
                 (mbc_pool_free_reserves_account_id.clone(), 0),
                 (market_maker_rewards_account_id.clone(), 0),
+                (xst_pool_permissioned_account_id.clone(), 0),
             ]
             .into_iter()
             .chain(
@@ -2246,18 +2260,15 @@ fn mainnet_genesis(
                 .iter()
                 .cloned()
                 .map(|target_asset_id| create_trading_pair(XOR.into(), target_asset_id))
-                .chain(
-                    initial_synthetic_assets
-                        .iter()
-                        .cloned()
-                        .map(|target_asset_id| create_trading_pair(XST.into(), target_asset_id)),
-                )
                 .collect(),
         },
         dexapi: DEXAPIConfig {
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
+
+                #[cfg(feature = "wip")] // order-book
+                LiquiditySourceType::OrderBook,
             ]
             .into(),
         },
@@ -2313,9 +2324,12 @@ fn mainnet_genesis(
         technical_membership: Default::default(),
         im_online: Default::default(),
         xst_pool: XSTPoolConfig {
-            tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
-            initial_synthetic_assets: vec![XSTUSD],
+            initial_synthetic_assets: vec![(
+                XSTUSD,
+                common::SymbolName::usd().into(),
+                fixed!(0.00666),
+            )],
         },
         beefy: BeefyConfig {
             authorities: vec![],

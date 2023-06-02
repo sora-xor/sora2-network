@@ -32,7 +32,9 @@
 
 use common::prelude::FixedWrapper;
 use common::{Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
+use fallible_iterator::FallibleIterator;
 use frame_support::pallet_prelude::*;
+use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
@@ -51,6 +53,9 @@ pub mod weights;
 /// Multiplier to convert rates from precision = 9 (which band team use)
 /// to precision = 18 (which we use)
 pub const RATE_MULTIPLIER: i128 = 1_000_000_000;
+
+/// Multiplier to convert rate last_update timestamp to Moment
+pub const MILLISECS_MULTIPLIER: u64 = 1_000;
 
 /// Symbol rate
 #[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
@@ -85,7 +90,32 @@ pub use pallet::*;
 
 impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
     fn quote(symbol: &T::Symbol) -> Result<Option<Rate>, DispatchError> {
-        Ok(Self::rates(symbol).map(|rate| rate.into()))
+        let rate = if let Some(rate) = Self::rates(symbol) {
+            rate
+        } else {
+            return Ok(None);
+        };
+
+        let current_time = T::Time::now();
+        let stale_period = T::GetBandRateStalePeriod::get();
+        // could not convert u64 to Moment directly, this workaround solves this
+        let last_updated = rate
+            .last_updated
+            .saturating_mul(MILLISECS_MULTIPLIER)
+            .try_into()
+            .map_err(|_| "Can't cast u64 to <<T as Config<I>>::Time as Time>::Moment")
+            .unwrap();
+
+        ensure!(
+            last_updated <= current_time,
+            Error::<T, I>::RateHasInvalidTimestamp
+        );
+
+        let current_period = current_time - last_updated;
+
+        ensure!(current_period < stale_period, Error::<T, I>::RateExpired);
+
+        Ok(Some(rate.into()))
     }
 
     fn list_enabled_symbols() -> Result<Vec<(T::Symbol, u64)>, DispatchError> {
@@ -128,6 +158,11 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
         /// Hook which is being executed when some new symbols were relayed
         type OnNewSymbolsRelayedHook: OnNewSymbolsRelayed<Self::Symbol>;
+        /// Rate expiration period in seconds.
+        #[pallet::constant]
+        type GetBandRateStalePeriod: Get<<<Self as pallet::Config<I>>::Time as Time>::Moment>;
+        /// Time used for checking if rate expired
+        type Time: Time;
     }
 
     #[pallet::storage]
@@ -144,7 +179,7 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config<I>, I: 'static = ()> {
         /// New symbol rates were successfully relayed. [symbols]
-        SymbolsRelayed(Vec<T::Symbol>),
+        SymbolsRelayed(Vec<(T::Symbol, Balance)>),
         /// Added new trusted relayer accounts. [relayers]
         RelayersAdded(Vec<T::AccountId>),
         /// Relayer accounts were removed from trusted list. [relayers]
@@ -161,6 +196,10 @@ pub mod pallet {
         NoSuchRelayer,
         /// Relayed rate is too big to be stored in the pallet.
         RateConversionOverflow,
+        /// Rate has invalid timestamp.
+        RateHasInvalidTimestamp,
+        /// Rate is expired and can't be used until next update.
+        RateExpired,
     }
 
     #[pallet::call]
@@ -187,7 +226,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             Self::ensure_relayer(origin)?;
 
-            let symbols = Self::update_rates(
+            let symbol_rates = Self::update_rates(
                 rates,
                 resolve_time,
                 request_id,
@@ -197,7 +236,7 @@ pub mod pallet {
                 },
             )?;
 
-            Self::deposit_event(Event::SymbolsRelayed(symbols));
+            Self::deposit_event(Event::SymbolsRelayed(symbol_rates));
             Ok(().into())
         }
 
@@ -220,7 +259,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             Self::ensure_relayer(origin)?;
 
-            let symbols: Vec<_> = Self::update_rates(
+            let symbol_rates: Vec<_> = Self::update_rates(
                 rates,
                 resolve_time,
                 request_id,
@@ -229,7 +268,7 @@ pub mod pallet {
                 },
             )?;
 
-            Self::deposit_event(Event::SymbolsRelayed(symbols));
+            Self::deposit_event(Event::SymbolsRelayed(symbol_rates));
             Ok(().into())
         }
 
@@ -344,27 +383,37 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         resolve_time: u64,
         request_id: u64,
         f: impl Fn(&mut Option<BandRate>, BandRate),
-    ) -> Result<Vec<T::Symbol>, DispatchError> {
-        let mut symbols = Vec::with_capacity(rates.len());
-        let mut new_symbols = BTreeSet::new();
-        for (symbol, rate_value) in rates {
-            let new_rate = BandRate {
-                value: Self::raw_rate_into_balance(rate_value)?,
-                last_updated: resolve_time,
-                request_id,
-            };
+    ) -> Result<Vec<(T::Symbol, Balance)>, DispatchError> {
+        let converted_rates: Vec<(T::Symbol, Balance)> =
+            fallible_iterator::convert(rates.into_iter().map(
+                |(symbol, rate_value)| -> Result<(T::Symbol, Balance), DispatchError> {
+                    let converted_rate = Self::raw_rate_into_balance(rate_value)?;
+                    Ok((symbol, converted_rate))
+                },
+            ))
+            .collect()?;
+        let new_symbols = converted_rates.iter().fold(
+            BTreeSet::new(),
+            |mut new_symbols_acc, (symbol, rate_value)| {
+                let new_rate = BandRate {
+                    value: *rate_value,
+                    last_updated: resolve_time,
+                    request_id,
+                };
 
-            SymbolRates::<T, I>::mutate(&symbol, |option_old_rate| {
-                if option_old_rate.is_none() {
-                    new_symbols.insert(symbol.clone());
-                }
-                f(option_old_rate, new_rate);
-            });
-            symbols.push(symbol);
-        }
+                SymbolRates::<T, I>::mutate(symbol, |option_old_rate| {
+                    if option_old_rate.is_none() {
+                        new_symbols_acc.insert(symbol.clone());
+                    }
+                    f(option_old_rate, new_rate);
+                });
+                new_symbols_acc
+            },
+        );
+
         T::OnNewSymbolsRelayedHook::on_new_symbols_relayed(Oracle::BandChainFeed, new_symbols)?;
 
-        Ok(symbols)
+        Ok(converted_rates)
     }
 
     pub fn raw_rate_into_balance(raw_rate: u64) -> Result<Balance, DispatchError> {

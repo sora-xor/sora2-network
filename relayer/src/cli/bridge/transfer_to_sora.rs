@@ -58,7 +58,7 @@ impl Command {
         let sub = self.sub.get_unsigned_substrate().await?;
         let recipient: [u8; 32] = *self.recipient.as_ref();
         let network_id = eth.get_chainid().await?;
-        let (eth_app_address, eth_asset) = sub
+        let (eth_app_address, eth_asset, _) = sub
             .storage_fetch(&runtime::storage().eth_app().addresses(&network_id), ())
             .await?
             .ok_or(anyhow!("Network not registered"))?;
