@@ -61,8 +61,12 @@ pub(crate) enum Apps {
     },
     /// Register EthApp with predefined ETH asset id
     EthAppPredefined {
+        /// EthApp contract address
         #[clap(long)]
         contract: H160,
+        /// ETH precision
+        #[clap(long)]
+        precision: u8,
     },
     /// Register EthApp with creating new ETH asset
     EthAppNew {
@@ -75,9 +79,9 @@ pub(crate) enum Apps {
         /// ETH asset symbol
         #[clap(long)]
         symbol: String,
-        /// ETH asset decimals
+        /// ETH precision
         #[clap(long)]
-        decimals: u8,
+        precision: u8,
     },
     /// Register EthApp with existing ETH asset
     EthAppExisting {
@@ -87,6 +91,9 @@ pub(crate) enum Apps {
         /// ETH asset id
         #[clap(long)]
         asset_id: AssetId,
+        /// ETH precision
+        #[clap(long)]
+        precision: u8,
     },
     /// Register MigrationApp
     MigrationApp {
@@ -121,32 +128,34 @@ impl Command {
                 }
             )
             }
-            Apps::EthAppPredefined { contract } => {
+            Apps::EthAppPredefined { contract, precision } => {
                 runtime::runtime_types::framenode_runtime::RuntimeCall::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network_with_existing_asset {
                     network_id,
                     contract: *contract,
-                    asset_id: ETH
+                    asset_id: ETH,
+                    sidechain_precision: *precision
                 }
             )
             }
-            Apps::EthAppNew { contract, name, symbol, decimals } => {
+            Apps::EthAppNew { contract, name, symbol, precision } => {
                 runtime::runtime_types::framenode_runtime::RuntimeCall::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network {
                     network_id,
                     contract: *contract,
                     name: AssetName::from_str(name.as_str()).map_err(|err| anyhow!(format!("{}", err)))?,
                     symbol: AssetSymbol::from_str(symbol.as_str()).map_err(|err| anyhow!(format!("{}", err)))?,
-                    decimals: *decimals
+                    sidechain_precision: *precision
                 }
             )
             }
-            Apps::EthAppExisting { contract, asset_id } => {
+            Apps::EthAppExisting { contract, asset_id, precision } => {
                 runtime::runtime_types::framenode_runtime::RuntimeCall::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network_with_existing_asset {
                     network_id,
                     contract: *contract,
-                    asset_id: *asset_id
+                    asset_id: *asset_id,
+                    sidechain_precision: *precision
                 }
             )
             }
@@ -193,7 +202,7 @@ impl Command {
                     .await?;
                 (contract, registered)
             }
-            Apps::EthAppPredefined { contract }
+            Apps::EthAppPredefined { contract, .. }
             | Apps::EthAppNew { contract, .. }
             | Apps::EthAppExisting { contract, .. } => {
                 let registered = sub
@@ -202,7 +211,7 @@ impl Command {
                         (),
                     )
                     .await?
-                    .map(|(contract, _)| contract);
+                    .map(|(contract, _, _)| contract);
                 (contract, registered)
             }
             Apps::MigrationApp { contract } => {

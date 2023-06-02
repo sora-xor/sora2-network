@@ -205,6 +205,8 @@ mod tests {
         )
         .build();
         ext.execute_with(|| {
+            // Fee ratio should be greater than 0 during this test
+            assert!(XSTPool::enabled_synthetics(&XSTUSD).unwrap().fee_ratio != fixed!(0));
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
             let (quote_outcome_a, _) = XSTPool::quote(
@@ -230,6 +232,7 @@ mod tests {
             let xst_balance_a = Assets::free_balance(&XST, &alice()).unwrap();
 
             assert_eq!(quote_outcome_a.amount, exchange_outcome_a.amount);
+            assert_eq!(quote_outcome_a.fee, exchange_outcome_a.fee);
             assert_eq!(exchange_outcome_a.amount, xst_balance_a);
             assert_eq!(xstusd_balance_a, balance!(48000));
 
@@ -258,6 +261,7 @@ mod tests {
             let xst_balance_b = Assets::free_balance(&XST, &alice()).unwrap();
 
             assert_eq!(quote_outcome_b.amount, exchange_outcome_b.amount);
+            assert_eq!(quote_outcome_b.fee, exchange_outcome_b.fee);
             assert_eq!(xst_balance_a + amount_b.clone(), xst_balance_b);
             assert_eq!(xstusd_balance_b, xstusd_balance_a - quote_outcome_b.amount);
 
@@ -286,6 +290,7 @@ mod tests {
             let xst_balance_c = Assets::free_balance(&XST, &alice()).unwrap();
 
             assert_eq!(quote_outcome_c.amount, exchange_outcome_c.amount);
+            assert_eq!(quote_outcome_c.fee, exchange_outcome_c.fee);
             assert_eq!(xstusd_balance_b + exchange_outcome_c.amount, xstusd_balance_c);
             assert_eq!(xst_balance_b - amount_c.clone(), xst_balance_c.clone());
 
@@ -311,6 +316,7 @@ mod tests {
             let xstusd_balance_d = Assets::free_balance(&XSTUSD, &alice()).unwrap();
             let xst_balance_d = Assets::free_balance(&XST, &alice()).unwrap();
             assert_eq!(quote_outcome_d.amount, exchange_outcome_d.amount);
+            assert_eq!(quote_outcome_d.fee, exchange_outcome_d.fee);
             assert_eq!(xstusd_balance_c - quote_outcome_d.amount, xstusd_balance_d);
             assert_eq!(xst_balance_c + amount_d.clone(), xst_balance_d);
         });

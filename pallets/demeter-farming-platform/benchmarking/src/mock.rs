@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use crate::*;
-use common::mock::ExistentialDeposits;
 pub use common::mock::*;
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
@@ -180,8 +180,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
     type XSTMarketInfo = ();
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
-
 parameter_types! {
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
 }

@@ -159,7 +159,8 @@ fn test_register_network() {
             RuntimeOrigin::root(),
             BASE_NETWORK_ID + 1,
             XOR,
-            H160::repeat_byte(12)
+            H160::repeat_byte(12),
+            18
         ));
         assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID + 1));
     });
@@ -174,7 +175,8 @@ fn test_existing_register_network() {
                 RuntimeOrigin::root(),
                 BASE_NETWORK_ID,
                 XOR,
-                H160::repeat_byte(12)
+                H160::repeat_byte(12),
+                18
             ),
             Error::<Test>::AppAlreadyExists
         );
