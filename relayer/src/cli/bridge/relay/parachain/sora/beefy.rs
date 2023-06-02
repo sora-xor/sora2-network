@@ -47,6 +47,18 @@ impl Command {
         let sender = self.para.get_unsigned_substrate().await?;
         let receiver = self.sub.get_signed_substrate().await?;
         let syncer = crate::relay::beefy_syncer::BeefySyncer::new();
+        ParaMetricsCollectorBuilder::default()
+            .with_client(sender.clone())
+            .with_network_id(receiver.fetch_network_id().await?)
+            .build()
+            .await?
+            .spawn();
+        SoraMetricsCollectorBuilder::default()
+            .with_client(receiver.clone().unsigned())
+            .with_network_id(sender.fetch_network_id().await?)
+            .build()
+            .await?
+            .spawn();
         let beefy_relay = RelayBuilder::new()
             .with_sender_client(sender.clone())
             .with_receiver_client(receiver.clone())

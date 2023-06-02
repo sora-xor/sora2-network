@@ -37,7 +37,7 @@ use std::sync::Arc;
 
 use crate::prelude::*;
 use bridge_types::types::AuxiliaryDigest;
-use bridge_types::H256;
+use bridge_types::{GenericNetworkId, H256};
 use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
 use mmr_rpc::MmrApiClient;
 use sp_core::Bytes;
@@ -106,7 +106,10 @@ pub fn log_extrinsic_events<T: ConfigExt>(events: ExtrinsicEvents<T::Config>) {
 }
 
 #[derive(Debug, Clone)]
-pub struct ClonableClient(Arc<jsonrpsee::async_client::Client>);
+pub struct ClonableClient {
+    inner: Arc<jsonrpsee::async_client::Client>,
+    network: String,
+}
 
 impl RpcClientT for ClonableClient {
     fn request_raw<'a>(
@@ -114,7 +117,8 @@ impl RpcClientT for ClonableClient {
         method: &'a str,
         params: Option<Box<jsonrpsee::core::JsonRawValue>>,
     ) -> subxt::rpc::RpcFuture<'a, Box<jsonrpsee::core::JsonRawValue>> {
-        self.0.request_raw(method, params)
+        metrics::increment_counter!(crate::metrics::SUB_TOTAL_RPC_REQUESTS, "network" => self.network.clone());
+        self.inner.request_raw(method, params)
     }
 
     fn subscribe_raw<'a>(
@@ -123,7 +127,7 @@ impl RpcClientT for ClonableClient {
         params: Option<Box<jsonrpsee::core::JsonRawValue>>,
         unsub: &'a str,
     ) -> subxt::rpc::RpcFuture<'a, subxt::rpc::RpcSubscription> {
-        self.0.subscribe_raw(sub, params, unsub)
+        self.inner.subscribe_raw(sub, params, unsub)
     }
 }
 
@@ -133,8 +137,16 @@ pub struct UnsignedClient<T: ConfigExt> {
     client: ClonableClient,
 }
 
+impl<T: SenderConfig> UnsignedClient<T> {
+    pub async fn fetch_network_id(&self) -> AnyResult<GenericNetworkId> {
+        let address = T::network_id();
+        let network_id = self.storage_fetch_or_default(&address, ()).await?;
+        Ok(network_id.into())
+    }
+}
+
 impl<T: ConfigExt> UnsignedClient<T> {
-    pub async fn new(url: impl Into<String>) -> AnyResult<Self> {
+    pub async fn new(url: impl Into<String>, network: impl Into<String>) -> AnyResult<Self> {
         let url: Uri = url.into().parse()?;
         let (sender, receiver) =
             jsonrpsee::client_transport::ws::WsTransportClientBuilder::default()
@@ -143,13 +155,16 @@ impl<T: ConfigExt> UnsignedClient<T> {
         let client = jsonrpsee::async_client::ClientBuilder::default()
             .max_notifs_per_subscription(4096)
             .build_with_tokio(sender, receiver);
-        let client = ClonableClient(Arc::new(client));
-        let api = ApiInner::<T>::from_rpc_client(client.clone().0).await?;
+        let client = ClonableClient {
+            inner: Arc::new(client),
+            network: network.into(),
+        };
+        let api = ApiInner::<T>::from_rpc_client(client.clone().inner).await?;
         Ok(Self { api, client })
     }
 
     pub fn rpc(&self) -> &jsonrpsee::async_client::Client {
-        &self.client.0
+        &self.client.inner
     }
 
     pub fn mmr(&self) -> &impl mmr_rpc::MmrApiClient<BlockHash<T>, BlockNumber<T>, MmrHash> {

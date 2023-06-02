@@ -84,6 +84,18 @@ impl Command {
             .build()
             .await
             .context("build substrate relay")?;
+        EthMetricsCollectorBuilder::default()
+            .with_beefy(beefy)
+            .with_inbound_channel(inbound_channel_address)
+            .build()
+            .await?
+            .spawn();
+        SoraMetricsCollectorBuilder::default()
+            .with_client(sub.clone())
+            .with_network_id(network_id.into())
+            .build()
+            .await?
+            .spawn();
         if self.disable_message_relay {
             relay.run(!self.send_unneeded_commitments).await?;
         } else {

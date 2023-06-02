@@ -162,7 +162,7 @@ impl SubstrateClient {
     }
 
     pub async fn get_unsigned_substrate(&self) -> AnyResult<SubUnsignedClient<MainnetConfig>> {
-        let sub = SubUnsignedClient::new(self.get_url()?).await?;
+        let sub = SubUnsignedClient::new(self.get_url()?, "sora").await?;
         Ok(sub)
     }
 
@@ -207,7 +207,7 @@ impl ParachainClient {
     }
 
     pub async fn get_unsigned_substrate(&self) -> AnyResult<SubUnsignedClient<ParachainConfig>> {
-        let sub = SubUnsignedClient::new(self.get_url()?).await?;
+        let sub = SubUnsignedClient::new(self.get_url()?, "parachain").await?;
         Ok(sub)
     }
 

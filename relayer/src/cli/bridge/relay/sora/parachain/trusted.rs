@@ -48,6 +48,18 @@ impl Command {
         let sender = self.sub.get_unsigned_substrate().await?;
         let receiver = self.para.get_unsigned_substrate().await?;
         let signer = ecdsa::Pair::from_string(&self.signer, None)?;
+        SoraMetricsCollectorBuilder::default()
+            .with_client(sender.clone())
+            .with_network_id(receiver.fetch_network_id().await?)
+            .build()
+            .await?
+            .spawn();
+        ParaMetricsCollectorBuilder::default()
+            .with_client(receiver.clone())
+            .with_network_id(sender.fetch_network_id().await?)
+            .build()
+            .await?
+            .spawn();
         let messages_relay = RelayBuilder::new()
             .with_sender_client(sender)
             .with_receiver_client(receiver)

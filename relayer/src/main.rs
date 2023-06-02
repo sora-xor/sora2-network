@@ -30,6 +30,7 @@
 
 mod cli;
 mod ethereum;
+mod metrics;
 mod relay;
 mod substrate;
 use clap::StructOpt;
@@ -65,6 +66,9 @@ pub mod prelude {
     pub use crate::ethereum::{
         SignedClient as EthSignedClient, UnsignedClient as EthUnsignedClient,
     };
+    pub use crate::metrics::ethereum::MetricsCollectorBuilder as EthMetricsCollectorBuilder;
+    pub use crate::metrics::para::MetricsCollectorBuilder as ParaMetricsCollectorBuilder;
+    pub use crate::metrics::sora::MetricsCollectorBuilder as SoraMetricsCollectorBuilder;
     pub use crate::substrate::runtime::runtime_types as sub_types;
     pub use crate::substrate::traits::{
         ConfigExt, MainnetConfig, ParachainConfig, ReceiverConfig, SenderConfig,

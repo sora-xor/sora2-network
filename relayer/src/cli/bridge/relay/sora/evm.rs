@@ -54,6 +54,7 @@ impl Command {
         let eth = self.eth.get_unsigned_ethereum().await?;
         let sub = self.sub.get_signed_substrate().await?;
         let chain_id = eth.get_chainid().await?;
+        let mut outbound_channel_address;
         loop {
             let has_light_client = sub
                 .storage_fetch(
@@ -64,22 +65,33 @@ impl Command {
                 )
                 .await?
                 .is_some();
-            let has_channel = sub
+            outbound_channel_address = sub
                 .storage_fetch(
                     &runtime::storage()
                         .bridge_inbound_channel()
                         .channel_addresses(&chain_id),
                     (),
                 )
-                .await?
-                .is_some();
-            if has_channel && has_light_client {
+                .await?;
+            if outbound_channel_address.is_some() && has_light_client {
                 break;
             }
             debug!("Waiting for bridge to be available");
             tokio::time::sleep(Duration::from_secs(10)).await;
         }
         let proof_loader = ProofLoader::new(eth.clone(), self.base_path.clone());
+
+        EthMetricsCollectorBuilder::default()
+            .with_outbound_channel(outbound_channel_address.expect("Checked above"))
+            .build()
+            .await?
+            .spawn();
+        SoraMetricsCollectorBuilder::default()
+            .with_client(sub.clone().unsigned())
+            .with_network_id(chain_id.into())
+            .build()
+            .await?
+            .spawn();
         let relay = Relay::new(sub.clone(), eth.clone(), proof_loader.clone()).await?;
         if self.disable_message_relay {
             relay.run().await?;

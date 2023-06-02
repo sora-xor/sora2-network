@@ -45,6 +45,18 @@ impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let receiver = self.para.get_unsigned_substrate().await?;
         let sender = receiver.clone();
+        ParaMetricsCollectorBuilder::default()
+            .with_client(sender.clone())
+            .with_network_id(receiver.fetch_network_id().await?)
+            .build()
+            .await?
+            .spawn();
+        ParaMetricsCollectorBuilder::default()
+            .with_client(receiver.clone())
+            .with_network_id(sender.fetch_network_id().await?)
+            .build()
+            .await?
+            .spawn();
         let signer = ecdsa::Pair::from_string(&self.signer, None)?;
         let messages_relay = RelayBuilder::new()
             .with_sender_client(sender)

@@ -14,7 +14,8 @@ pub(super) struct Command {
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let sub = self.sub.get_signed_substrate().await?;
-        let mainnet = SubUnsignedClient::<MainnetConfig>::new(self.mainnet_url.clone()).await?;
+        let mainnet =
+            SubUnsignedClient::<MainnetConfig>::new(self.mainnet_url.clone(), "sora").await?;
         for (dex_id, base) in [(0, XOR), (1, XSTUSD)] {
             for asset_id in [XOR, PSWAP, DAI, XSTUSD, VAL, XST] {
                 let reserves = mainnet

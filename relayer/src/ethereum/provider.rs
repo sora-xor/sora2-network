@@ -84,6 +84,7 @@ impl JsonRpcClient for UniversalClient {
         T: Debug + Serialize + Send + Sync,
         R: DeserializeOwned + Send,
     {
+        metrics::increment_counter!(crate::metrics::ETH_TOTAL_RPC_REQUESTS);
         match self {
             Self::Ws(client) => JsonRpcClient::request(client, method, params)
                 .await
