@@ -33,7 +33,7 @@ services:
     container_name: bridge-hardhat
     entrypoint: sh
     command: docker-deploy.sh
-    depends_on: 
+    depends_on:
       geth:
         condition: service_healthy
     volumes:
