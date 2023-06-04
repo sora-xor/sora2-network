@@ -247,15 +247,33 @@ pub mod pallet {
         },
 
         /// User placed new limit order
-        OrderPlaced {
+        LimitOrderPlaced {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             order_id: T::OrderId,
             owner_id: T::AccountId,
         },
 
+        /// User tried to place the limit order out of the spread. The limit order is converted into a market order.
+        LimitOrderConvertedToMarketOrder {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            owner_id: T::AccountId,
+        },
+
+        /// User tried to place the limit order out of the spread.
+        /// One part of the liquidity of the limit order is converted into a market order, and the other part is placed as a limit order.
+        LimitOrderSplittedIntoMarketOrderAndLimitOrder {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            owner_id: T::AccountId,
+            market_order_input: OrderAmount,
+            limit_order_id: T::OrderId,
+            limit_order_input: OrderAmount,
+        },
+
         /// User canceled their limit order
-        OrderCanceled {
+        LimitOrderCanceled {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             order_id: T::OrderId,
@@ -585,16 +603,41 @@ pub mod pallet {
                 LimitOrder::<T>::new(order_id, who.clone(), side, price, amount, now, lifespan);
 
             let mut data = CacheDataLayer::<T>::new();
-            order_book.place_limit_order::<Self, Self>(order, &mut data)?;
+            let (market_input, deal_input) =
+                order_book.place_limit_order::<Self, Self>(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
-            Self::deposit_event(Event::<T>::OrderPlaced {
-                order_book_id,
-                dex_id,
-                order_id,
-                owner_id: who,
-            });
+
+            match (market_input, deal_input) {
+                (None, Some(..)) => {
+                    Self::deposit_event(Event::<T>::LimitOrderConvertedToMarketOrder {
+                        order_book_id,
+                        dex_id,
+                        owner_id: who,
+                    })
+                }
+                (Some(..), None) => Self::deposit_event(Event::<T>::LimitOrderPlaced {
+                    order_book_id,
+                    dex_id,
+                    order_id,
+                    owner_id: who,
+                }),
+                (Some(limit_order_input), Some(market_order_input)) => Self::deposit_event(
+                    Event::<T>::LimitOrderSplittedIntoMarketOrderAndLimitOrder {
+                        order_book_id,
+                        dex_id,
+                        owner_id: who,
+                        market_order_input,
+                        limit_order_id: order_id,
+                        limit_order_input,
+                    },
+                ),
+                _ => {
+                    // should never happen
+                    return Err(Error::<T>::InvalidOrderAmount.into());
+                }
+            }
             Ok(().into())
         }
 
@@ -617,7 +660,7 @@ pub mod pallet {
 
             order_book.cancel_limit_order::<Self>(order, &mut data)?;
             data.commit();
-            Self::deposit_event(Event::<T>::OrderCanceled {
+            Self::deposit_event(Event::<T>::LimitOrderCanceled {
                 order_book_id,
                 dex_id,
                 order_id,

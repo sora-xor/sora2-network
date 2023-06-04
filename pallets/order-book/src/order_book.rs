@@ -42,6 +42,8 @@ use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
 use sp_runtime::traits::{One, Zero};
+use sp_std::cmp::Ordering;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::Add;
 use sp_std::vec::Vec;
 
@@ -109,11 +111,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.last_order_id
     }
 
+    /// Tries to place the limit order and returns market input & deal input amounts.
+    /// In some cases if the limit order crosses the spread, part or all of the amount could be converted into a market order and as a result, the deal input is not empty.
     pub fn place_limit_order<Locker, Unlocker>(
         &self,
         order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
-    ) -> Result<(), DispatchError>
+    ) -> Result<(Option<OrderAmount>, Option<OrderAmount>), DispatchError>
     where
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
@@ -145,40 +149,20 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         let market_change = if cross_spread {
             if self.status == OrderBookStatus::Trade {
-                self.cross_spread(order)?
+                self.cross_spread(order, data)?
             } else {
                 return Err(Error::<T>::InvalidLimitOrderPrice.into());
             }
         } else {
-            let mut payment = Payment::new(self.dex_id, self.order_book_id);
-
-            // necessary to lock the liquidity that taker should receive if execute the limit order
-            let lock_amount = order.deal_amount(MarketRole::Taker, None)?;
-            let lock_asset = lock_amount.associated_asset(&self.order_book_id);
-
-            payment
-                .to_lock
-                .entry(*lock_asset)
-                .or_default()
-                .entry(order.owner.clone())
-                .and_modify(|amount| *amount += *lock_amount.value())
-                .or_insert(*lock_amount.value());
-
-            MarketChange {
-                deal_input: None,
-                deal_output: None,
-                market_input: Some(lock_amount),
-                market_output: None,
-                to_add: vec![order],
-                to_update: Vec::new(),
-                to_delete: Vec::new(),
-                payment,
-            }
+            self.calculate_limit_order_impact(order)?
         };
+
+        let market_input = market_change.market_input;
+        let deal_input = market_change.deal_input;
 
         self.apply_market_change::<Locker, Unlocker>(market_change, data)?;
 
-        Ok(())
+        Ok((market_input, deal_input))
     }
 
     pub fn cancel_limit_order<Unlocker>(
@@ -233,26 +217,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         self.ensure_market_order_valid(&order)?;
 
-        let receiver = order.to.unwrap_or(order.owner.clone());
-
-        let market_change = match order.side {
-            PriceVariant::Buy => self.calculate_market_impact(
-                order.side,
-                order.owner,
-                receiver,
-                order.amount,
-                data.get_aggregated_asks(&self.order_book_id).iter(),
-                data,
-            )?,
-            PriceVariant::Sell => self.calculate_market_impact(
-                order.side,
-                order.owner,
-                receiver,
-                order.amount,
-                data.get_aggregated_bids(&self.order_book_id).iter().rev(),
-                data,
-            )?,
-        };
+        let market_change = self.calculate_market_order_impact(order, data)?;
 
         let (input, output) = if let (Some(input), Some(output)) =
             (market_change.deal_input, market_change.deal_output)
@@ -266,6 +231,69 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.apply_market_change::<Locker, Unlocker>(market_change, data)?;
 
         Ok((input, output))
+    }
+
+    fn calculate_market_order_impact(
+        &self,
+        order: MarketOrder<T>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<
+        MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
+        DispatchError,
+    > {
+        let receiver = order.to.unwrap_or(order.owner.clone());
+
+        match order.side {
+            PriceVariant::Buy => self.calculate_market_impact(
+                order.side,
+                order.owner,
+                receiver,
+                order.amount,
+                data.get_aggregated_asks(&self.order_book_id).iter(),
+                data,
+            ),
+            PriceVariant::Sell => self.calculate_market_impact(
+                order.side,
+                order.owner,
+                receiver,
+                order.amount,
+                data.get_aggregated_bids(&self.order_book_id).iter().rev(),
+                data,
+            ),
+        }
+    }
+
+    fn calculate_limit_order_impact(
+        &self,
+        order: LimitOrder<T>,
+    ) -> Result<
+        MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
+        DispatchError,
+    > {
+        let mut payment = Payment::new(self.dex_id, self.order_book_id);
+
+        // necessary to lock the liquidity that taker should receive if execute the limit order
+        let lock_amount = order.deal_amount(MarketRole::Taker, None)?;
+        let lock_asset = lock_amount.associated_asset(&self.order_book_id);
+
+        payment
+            .to_lock
+            .entry(*lock_asset)
+            .or_default()
+            .entry(order.owner.clone())
+            .and_modify(|amount| *amount += *lock_amount.value())
+            .or_insert(*lock_amount.value());
+
+        Ok(MarketChange {
+            deal_input: None,
+            deal_output: None,
+            market_input: Some(lock_amount),
+            market_output: None,
+            to_add: BTreeMap::from([(order.id, order)]),
+            to_update: BTreeMap::new(),
+            to_delete: Vec::new(),
+            payment,
+        })
     }
 
     /// Calculates how the deal with `taker_base_amount` impacts on the market
@@ -285,7 +313,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let mut taker_amount = OrderVolume::zero();
         let mut maker_amount = OrderVolume::zero();
         let mut limit_order_ids_to_delete = Vec::new();
-        let mut limit_orders_to_update = Vec::new();
+        let mut limit_orders_to_update = BTreeMap::new();
         let mut payment = Payment::new(self.dex_id, self.order_book_id);
 
         let (maker_out_asset, taker_out_asset) = match side {
@@ -299,7 +327,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             };
 
             for limit_order_id in price_level.into_iter() {
-                let mut limit_order = data.get_limit_order(&self.order_book_id, limit_order_id)?;
+                let limit_order = data.get_limit_order(&self.order_book_id, limit_order_id)?;
 
                 if remaining_amount >= limit_order.amount {
                     remaining_amount -= limit_order.amount;
@@ -333,9 +361,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         .entry(limit_order.owner.clone())
                         .and_modify(|payment| *payment += maker_payment)
                         .or_insert(maker_payment);
-                    limit_order.amount -= remaining_amount;
+                    let new_amount = limit_order.amount - remaining_amount;
                     remaining_amount = OrderVolume::zero();
-                    limit_orders_to_update.push(limit_order);
+                    limit_orders_to_update.insert(limit_order.id, new_amount);
                     break;
                 }
             }
@@ -379,7 +407,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             deal_output,
             market_input: None,
             market_output: deal_output,
-            to_add: Vec::new(),
+            to_add: BTreeMap::new(),
             to_update: limit_orders_to_update,
             to_delete: limit_order_ids_to_delete,
             payment,
@@ -526,16 +554,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             data.delete_limit_order(&self.order_book_id, delete_id)?;
         }
 
-        for update_limit_order in market_change.to_update {
-            data.update_limit_order_amount(
-                &self.order_book_id,
-                update_limit_order.id,
-                update_limit_order.amount,
-            )?;
+        for (order_id, new_amount) in market_change.to_update.iter() {
+            data.update_limit_order_amount(&self.order_book_id, *order_id, *new_amount)?;
         }
 
-        for add_limit_order in market_change.to_add {
-            data.insert_limit_order(&self.order_book_id, add_limit_order)?;
+        for limit_order in market_change.to_add.into_values() {
+            data.insert_limit_order(&self.order_book_id, limit_order)?;
         }
 
         Ok(())
@@ -707,14 +731,91 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         volume
     }
 
-    fn cross_spread(
+    fn cross_spread<'a>(
         &self,
-        order: LimitOrder<T>,
+        limit_order: LimitOrder<T>,
+        data: &mut impl DataLayer<T>,
     ) -> Result<
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
-        // todo (m.tagirov)
-        todo!()
+        let (market_amount, limit_amout) = match limit_order.side {
+            PriceVariant::Buy => Self::calculate_market_depth_to_price(
+                limit_order.side,
+                limit_order.price,
+                limit_order.amount,
+                data.get_aggregated_bids(&self.order_book_id).iter().rev(),
+            ),
+            PriceVariant::Sell => Self::calculate_market_depth_to_price(
+                limit_order.side,
+                limit_order.price,
+                limit_order.amount,
+                data.get_aggregated_asks(&self.order_book_id).iter(),
+            ),
+        };
+
+        let mut market_change = MarketChange::new(self.dex_id, self.order_book_id);
+
+        if !market_amount.is_zero() {
+            let market_order = MarketOrder::<T>::new(
+                limit_order.owner.clone(),
+                limit_order.side.switch(),
+                self.order_book_id,
+                market_amount,
+                None,
+            );
+            market_change = self.calculate_market_order_impact(market_order, data)?;
+        }
+
+        if !limit_amout.is_zero() {
+            let new_limit_order = LimitOrder::<T>::new(
+                limit_order.id,
+                limit_order.owner,
+                limit_order.side,
+                limit_order.price,
+                limit_amout,
+                limit_order.time,
+                limit_order.lifespan,
+            );
+            market_change
+                .merge(self.calculate_limit_order_impact(new_limit_order)?)
+                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+        }
+
+        Ok(market_change)
+    }
+
+    fn calculate_market_depth_to_price<'a>(
+        side: PriceVariant,
+        price: OrderPrice,
+        mut amount: OrderVolume,
+        market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
+    ) -> (OrderVolume, OrderVolume) {
+        let ord = match side {
+            PriceVariant::Buy => Ordering::Less,
+            PriceVariant::Sell => Ordering::Greater,
+        };
+
+        let mut market_amount = OrderVolume::zero();
+
+        for (market_price, volume) in market_data {
+            if market_price.cmp(&price) == ord {
+                break;
+            }
+
+            if amount >= *volume {
+                market_amount += volume;
+                amount -= volume;
+            } else {
+                market_amount += amount;
+                amount = OrderVolume::zero();
+            }
+
+            if amount.is_zero() {
+                break;
+            }
+        }
+
+        (market_amount, amount)
     }
 }

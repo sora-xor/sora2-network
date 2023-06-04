@@ -31,10 +31,12 @@
 use crate::traits::{CurrencyLocker, CurrencyUnlocker};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{Balance, PriceVariant, TradingPair};
+use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::{BoundedBTreeMap, BoundedVec, RuntimeDebug};
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::ops::{Add, Sub};
 use sp_std::vec::Vec;
 
 #[cfg(feature = "std")]
@@ -65,7 +67,10 @@ pub enum OrderBookStatus {
     Stop,
 }
 
-#[derive(Eq, PartialEq, Clone, Copy, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Copy, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OrderAmount {
     Base(OrderVolume),
     Quote(OrderVolume),
@@ -74,22 +79,36 @@ pub enum OrderAmount {
 impl OrderAmount {
     pub fn value(&self) -> &OrderVolume {
         match self {
-            OrderAmount::Base(value) => value,
-            OrderAmount::Quote(value) => value,
+            Self::Base(value) => value,
+            Self::Quote(value) => value,
         }
     }
 
     pub fn is_base(&self) -> bool {
         match self {
-            OrderAmount::Base(..) => true,
-            OrderAmount::Quote(..) => false,
+            Self::Base(..) => true,
+            Self::Quote(..) => false,
         }
     }
 
     pub fn is_quote(&self) -> bool {
         match self {
-            OrderAmount::Base(..) => false,
-            OrderAmount::Quote(..) => true,
+            Self::Base(..) => false,
+            Self::Quote(..) => true,
+        }
+    }
+
+    pub fn is_same(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Base(..), Self::Base(..)) | (Self::Quote(..), Self::Quote(..)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn copy_type(&self, amount: OrderVolume) -> Self {
+        match self {
+            Self::Base(..) => Self::Base(amount),
+            Self::Quote(..) => Self::Quote(amount),
         }
     }
 
@@ -98,9 +117,27 @@ impl OrderAmount {
         order_book_id: &'a OrderBookId<AssetId>,
     ) -> &AssetId {
         match self {
-            OrderAmount::Base(..) => &order_book_id.base,
-            OrderAmount::Quote(..) => &order_book_id.quote,
+            Self::Base(..) => &order_book_id.base,
+            Self::Quote(..) => &order_book_id.quote,
         }
+    }
+}
+
+impl Add for OrderAmount {
+    type Output = Result<Self, ()>;
+
+    fn add(self, other: Self) -> Self::Output {
+        ensure!(self.is_same(&other), ());
+        Ok(self.copy_type(self.value().checked_add(*other.value()).ok_or(())?))
+    }
+}
+
+impl Sub for OrderAmount {
+    type Output = Result<Self, ()>;
+
+    fn sub(self, other: Self) -> Self::Output {
+        ensure!(self.is_same(&other), ());
+        Ok(self.copy_type(self.value().checked_sub(*other.value()).ok_or(())?))
     }
 }
 
@@ -197,8 +234,9 @@ pub struct Payment<AssetId, AccountId, DEXId> {
 
 impl<AssetId, AccountId, DEXId> Payment<AssetId, AccountId, DEXId>
 where
-    DEXId: Copy,
-    AssetId: Copy,
+    AssetId: Copy + PartialEq + Ord,
+    AccountId: Ord + Clone,
+    DEXId: Copy + PartialEq,
 {
     pub fn new(dex_id: DEXId, order_book_id: OrderBookId<AssetId>) -> Self {
         Self {
@@ -207,6 +245,33 @@ where
             to_lock: BTreeMap::new(),
             to_unlock: BTreeMap::new(),
         }
+    }
+
+    pub fn merge(&mut self, other: &Self) -> Result<(), ()> {
+        ensure!(self.dex_id == other.dex_id, ());
+        ensure!(self.order_book_id == other.order_book_id, ());
+
+        let merge_asset_map =
+            |map: &mut BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
+             to_merge: &BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>| {
+                to_merge.iter().for_each(|(asset, whom)| {
+                    map.entry(*asset)
+                        .and_modify(|account_map| {
+                            whom.iter().for_each(|(account, volume)| {
+                                account_map
+                                    .entry(account.clone())
+                                    .and_modify(|current_volune| *current_volune += volume)
+                                    .or_insert(*volume);
+                            })
+                        })
+                        .or_insert(whom.clone());
+                });
+            };
+
+        merge_asset_map(&mut self.to_lock, &other.to_lock);
+        merge_asset_map(&mut self.to_unlock, &other.to_unlock);
+
+        Ok(())
     }
 
     pub fn lock<Locker>(&self) -> Result<(), DispatchError>
@@ -253,14 +318,73 @@ where
 #[derive(Eq, PartialEq, Clone, RuntimeDebug)]
 pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
     // Info fields
+    /// The amount of the input asset for the exchange deal
     pub deal_input: Option<OrderAmount>,
+
+    /// The amount of the output asset for the exchange deal
     pub deal_output: Option<OrderAmount>,
+
+    /// The amount of the input asset that is placed into the market
     pub market_input: Option<OrderAmount>,
+
+    /// The amount of the output asset that is placed into the market
     pub market_output: Option<OrderAmount>,
 
     // Fields to apply
-    pub to_add: Vec<LimitOrder>,
-    pub to_update: Vec<LimitOrder>,
+    pub to_add: BTreeMap<OrderId, LimitOrder>,
+    pub to_update: BTreeMap<OrderId, OrderVolume>,
     pub to_delete: Vec<OrderId>,
     pub payment: Payment<AssetId, AccountId, DEXId>,
+}
+
+impl<AccountId, AssetId, DEXId, OrderId, LimitOrder>
+    MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder>
+where
+    AssetId: Copy + PartialEq + Ord,
+    AccountId: Ord + Clone,
+    DEXId: Copy + PartialEq,
+    OrderId: Copy + Ord,
+{
+    pub fn new(dex_id: DEXId, order_book_id: OrderBookId<AssetId>) -> Self {
+        Self {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: None,
+            to_add: BTreeMap::new(),
+            to_update: BTreeMap::new(),
+            to_delete: Vec::new(),
+            payment: Payment::new(dex_id, order_book_id),
+        }
+    }
+
+    pub fn merge(&mut self, mut other: Self) -> Result<(), ()> {
+        let join = |lhs: Option<OrderAmount>,
+                    rhs: Option<OrderAmount>|
+         -> Result<Option<OrderAmount>, ()> {
+            let result = match (lhs, rhs) {
+                (Some(left_amount), Some(right_amount)) => Some((left_amount + right_amount)?),
+                (Some(left_amount), None) => Some(left_amount),
+                (None, Some(right_amount)) => Some(right_amount),
+                (None, None) => None,
+            };
+            Ok(result)
+        };
+
+        self.deal_input = join(self.deal_input, other.deal_input)?;
+        self.deal_output = join(self.deal_output, other.deal_output)?;
+        self.market_input = join(self.market_input, other.market_input)?;
+        self.market_output = join(self.market_output, other.market_output)?;
+
+        self.to_add.append(&mut other.to_add);
+        self.to_update.append(&mut other.to_update);
+
+        self.to_delete.append(&mut other.to_delete);
+        self.to_delete.sort_unstable();
+        self.to_delete.dedup();
+
+        self.payment.merge(&other.payment)?;
+
+        Ok(())
+    }
 }

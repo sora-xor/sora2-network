@@ -187,8 +187,11 @@ fn should_place_limit_order() {
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // place new order
-        assert_ok!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet>(order, &mut data)
+        assert_eq!(
+            order_book
+                .place_limit_order::<OrderBookPallet, OrderBookPallet>(order, &mut data)
+                .unwrap(),
+            (Some(OrderAmount::Quote(deal_amount)), None)
         );
 
         // check
@@ -268,8 +271,11 @@ fn should_place_nft_limit_order() {
         );
 
         // place new order
-        assert_ok!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet>(order, &mut data)
+        assert_eq!(
+            order_book
+                .place_limit_order::<OrderBookPallet, OrderBookPallet>(order, &mut data)
+                .unwrap(),
+            (Some(OrderAmount::Base(amount)), None)
         );
 
         // check
@@ -2787,8 +2793,7 @@ fn should_calculate_market_impact() {
         let buy_amount4 = balance!(391.5);
         let buy_amount5 = balance!(610.7);
 
-        let mut limit_order7 = data.get_limit_order(&order_book_id, 7).unwrap();
-        limit_order7.amount -= buy_amount1;
+        let limit_order7 = data.get_limit_order(&order_book_id, 7).unwrap();
         assert_eq!(
             order_book
                 .calculate_market_impact(
@@ -2805,8 +2810,8 @@ fn should_calculate_market_impact() {
                 deal_output: Some(OrderAmount::Base(buy_amount1)),
                 market_input: None,
                 market_output: Some(OrderAmount::Base(buy_amount1)),
-                to_add: vec![],
-                to_update: vec![limit_order7],
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(limit_order7.id, limit_order7.amount - buy_amount1)]),
                 to_delete: vec![],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
@@ -2826,8 +2831,7 @@ fn should_calculate_market_impact() {
             }
         );
 
-        let mut limit_order9 = data.get_limit_order(&order_book_id, 9).unwrap();
-        limit_order9.amount -= balance!(38.3);
+        let limit_order9 = data.get_limit_order(&order_book_id, 9).unwrap();
         assert_eq!(
             order_book
                 .calculate_market_impact(
@@ -2844,8 +2848,11 @@ fn should_calculate_market_impact() {
                 deal_output: Some(OrderAmount::Base(buy_amount2)),
                 market_input: None,
                 market_output: Some(OrderAmount::Base(buy_amount2)),
-                to_add: vec![],
-                to_update: vec![limit_order9],
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(
+                    limit_order9.id,
+                    limit_order9.amount - balance!(38.3)
+                )]),
                 to_delete: vec![7, 8],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
@@ -2868,8 +2875,7 @@ fn should_calculate_market_impact() {
             }
         );
 
-        let mut limit_order12 = data.get_limit_order(&order_book_id, 12).unwrap();
-        limit_order12.amount -= balance!(3);
+        let limit_order12 = data.get_limit_order(&order_book_id, 12).unwrap();
         assert_eq!(
             order_book
                 .calculate_market_impact(
@@ -2886,8 +2892,8 @@ fn should_calculate_market_impact() {
                 deal_output: Some(OrderAmount::Base(buy_amount3)),
                 market_input: None,
                 market_output: Some(OrderAmount::Base(buy_amount3)),
-                to_add: vec![],
-                to_update: vec![limit_order12],
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(limit_order12.id, limit_order12.amount - balance!(3))]),
                 to_delete: vec![7, 8, 9, 10, 11],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
@@ -2926,8 +2932,8 @@ fn should_calculate_market_impact() {
                 deal_output: Some(OrderAmount::Base(buy_amount4)),
                 market_input: None,
                 market_output: Some(OrderAmount::Base(buy_amount4)),
-                to_add: vec![],
-                to_update: vec![],
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
                 to_delete: vec![7, 8, 9, 10],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
@@ -2966,8 +2972,8 @@ fn should_calculate_market_impact() {
                 deal_output: Some(OrderAmount::Base(buy_amount5)),
                 market_input: None,
                 market_output: Some(OrderAmount::Base(buy_amount5)),
-                to_add: vec![],
-                to_update: vec![],
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
                 to_delete: vec![7, 8, 9, 10, 11, 12],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
@@ -2996,8 +3002,7 @@ fn should_calculate_market_impact() {
         let sell_amount4 = balance!(364.8);
         let sell_amount5 = balance!(569.7);
 
-        let mut limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
-        limit_order1.amount -= buy_amount1;
+        let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         assert_eq!(
             order_book
                 .calculate_market_impact(
@@ -3014,8 +3019,8 @@ fn should_calculate_market_impact() {
                 deal_output: Some(OrderAmount::Quote(balance!(1000))),
                 market_input: None,
                 market_output: Some(OrderAmount::Quote(balance!(1000))),
-                to_add: vec![],
-                to_update: vec![limit_order1],
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(limit_order1.id, limit_order1.amount - buy_amount1)]),
                 to_delete: vec![],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
@@ -3035,8 +3040,7 @@ fn should_calculate_market_impact() {
             }
         );
 
-        let mut limit_order3 = data.get_limit_order(&order_book_id, 3).unwrap();
-        limit_order3.amount -= balance!(6.3);
+        let limit_order3 = data.get_limit_order(&order_book_id, 3).unwrap();
         assert_eq!(
             order_book
                 .calculate_market_impact(
@@ -3053,8 +3057,8 @@ fn should_calculate_market_impact() {
                 deal_output: Some(OrderAmount::Quote(balance!(2679.7))),
                 market_input: None,
                 market_output: Some(OrderAmount::Quote(balance!(2679.7))),
-                to_add: vec![],
-                to_update: vec![limit_order3],
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(limit_order3.id, limit_order3.amount - balance!(6.3))]),
                 to_delete: vec![1, 2],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
@@ -3077,8 +3081,7 @@ fn should_calculate_market_impact() {
             }
         );
 
-        let mut limit_order5 = data.get_limit_order(&order_book_id, 5).unwrap();
-        limit_order5.amount -= balance!(35.2);
+        let limit_order5 = data.get_limit_order(&order_book_id, 5).unwrap();
         assert_eq!(
             order_book
                 .calculate_market_impact(
@@ -3095,8 +3098,11 @@ fn should_calculate_market_impact() {
                 deal_output: Some(OrderAmount::Quote(balance!(3926.22))),
                 market_input: None,
                 market_output: Some(OrderAmount::Quote(balance!(3926.22))),
-                to_add: vec![],
-                to_update: vec![limit_order5],
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(
+                    limit_order5.id,
+                    limit_order5.amount - balance!(35.2)
+                )]),
                 to_delete: vec![1, 2, 3, 4],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
@@ -3138,8 +3144,8 @@ fn should_calculate_market_impact() {
                 deal_output: Some(OrderAmount::Quote(balance!(3591.82))),
                 market_input: None,
                 market_output: Some(OrderAmount::Quote(balance!(3591.82))),
-                to_add: vec![],
-                to_update: vec![],
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
                 to_delete: vec![1, 2, 3, 4],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
@@ -3181,8 +3187,8 @@ fn should_calculate_market_impact() {
                 deal_output: Some(OrderAmount::Quote(balance!(5538.37))),
                 market_input: None,
                 market_output: Some(OrderAmount::Quote(balance!(5538.37))),
-                to_add: vec![],
-                to_update: vec![],
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
                 to_delete: vec![1, 2, 3, 4, 5, 6],
                 payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
                     dex_id,
