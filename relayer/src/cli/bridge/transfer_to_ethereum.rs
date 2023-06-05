@@ -55,7 +55,7 @@ impl Command {
         let eth = self.eth.get_unsigned_ethereum().await?;
         let sub = self.sub.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?;
-        let (_, native_asset_id) = sub
+        let (_, native_asset_id, _) = sub
             .storage_fetch(&runtime::storage().eth_app().addresses(&network_id), ())
             .await?
             .expect("network not found");

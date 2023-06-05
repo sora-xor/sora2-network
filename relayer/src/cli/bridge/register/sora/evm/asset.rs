@@ -54,6 +54,9 @@ pub(crate) enum AssetKind {
         /// ERC20 token address
         #[clap(long)]
         address: H160,
+        /// ERC20 token decimals
+        #[clap(long)]
+        decimals: u8,
     },
     /// Register ERC20 asset with creating new asset
     ERC20 {
@@ -87,13 +90,16 @@ impl Command {
             return Ok(());
         }
         let call = match &self.asset_kind {
-            AssetKind::ExistingERC20 { asset_id, address } => {
-                runtime::runtime_types::erc20_app::pallet::Call::register_existing_erc20_asset {
-                    network_id,
-                    asset_id: asset_id.clone(),
-                    address: *address,
-                }
-            }
+            AssetKind::ExistingERC20 {
+                asset_id,
+                address,
+                decimals,
+            } => runtime::runtime_types::erc20_app::pallet::Call::register_existing_erc20_asset {
+                network_id,
+                asset_id: asset_id.clone(),
+                address: *address,
+                decimals: *decimals,
+            },
             AssetKind::ERC20 {
                 address,
                 name,
