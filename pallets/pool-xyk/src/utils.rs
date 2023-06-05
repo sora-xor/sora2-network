@@ -108,7 +108,6 @@ impl<T: Config> Pallet<T> {
             base_asset_id: ba,
             target_asset_id: ta,
         };
-        Self::ensure_trading_pair_is_not_restricted(&tpair)?;
         let tpair: common::TradingPair<TechAssetIdOf<T>> = tpair.map(|a| a.into());
         Ok((
             tpair,

@@ -60,7 +60,7 @@ fn test_migrate_erc20() {
         assert_ok!(MigrationApp::migrate_erc20(
             RuntimeOrigin::root(),
             BASE_NETWORK_ID,
-            vec![(DAI, H160::repeat_byte(12))]
+            vec![(DAI, H160::repeat_byte(12), 18)]
         ),);
     });
 }
@@ -72,7 +72,7 @@ fn test_migrate_erc20_not_exists() {
             MigrationApp::migrate_erc20(
                 RuntimeOrigin::root(),
                 BASE_NETWORK_ID + 1,
-                vec![(DAI, H160::repeat_byte(12))]
+                vec![(DAI, H160::repeat_byte(12), 18)]
             ),
             Error::<Test>::AppIsNotRegistered
         );
@@ -85,7 +85,7 @@ fn test_migrate_sidechain() {
         assert_ok!(MigrationApp::migrate_sidechain(
             RuntimeOrigin::root(),
             BASE_NETWORK_ID,
-            vec![(DAI, H160::repeat_byte(12))]
+            vec![(DAI, H160::repeat_byte(12), 18)]
         ),);
     });
 }
@@ -97,7 +97,7 @@ fn test_migrate_sidechain_not_exists() {
             MigrationApp::migrate_sidechain(
                 RuntimeOrigin::root(),
                 BASE_NETWORK_ID + 1,
-                vec![(DAI, H160::repeat_byte(12))]
+                vec![(DAI, H160::repeat_byte(12), 18)]
             ),
             Error::<Test>::AppIsNotRegistered
         );

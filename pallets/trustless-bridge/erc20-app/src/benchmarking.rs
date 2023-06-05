@@ -7,8 +7,8 @@ use bridge_types::types::CallOriginOutput;
 use bridge_types::EVMChainId;
 use bridge_types::H256;
 use common::{
-    balance, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, PredefinedAssetId, DAI,
-    DEFAULT_BALANCE_PRECISION, ETH, XOR,
+    balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
+    ETH, XOR,
 };
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::{Get, UnfilteredDispatchable};
@@ -20,28 +20,35 @@ use traits::MultiCurrency;
 pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 benchmarks! {
-    where_clause {where T: bridge_outbound_channel::Config, <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
+    where_clause {where
+        T: bridge_outbound_channel::Config,
+        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>,
+        AssetIdOf<T>: From<AssetId32<PredefinedAssetId>> + From<<T as assets::Config>::AssetId>,
+        AssetNameOf<T>: From<common::AssetName>,
+        AssetSymbolOf<T>: From<common::AssetSymbol>,
+        BalanceOf<T>: From<u128>,
+    }
 
     burn {
         let caller: T::AccountId = whitelisted_caller();
-        let asset_id: T::AssetId = XOR.into();
+        let asset_id: AssetIdOf<T> = XOR.into();
         let recipient = H160::repeat_byte(2);
         let amount = balance!(500);
 
-        let fee_asset = <T as bridge_outbound_channel::Config>::FeeCurrency::get();
+        let fee_asset: AssetIdOf<T> = <T as bridge_outbound_channel::Config>::FeeCurrency::get().into();
 
         // deposit enough money to cover fees
-        <T as assets::Config>::Currency::deposit(fee_asset.clone(), &caller, bridge_outbound_channel::Fee::<T>::get())?;
-        <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
-    }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, asset_id.clone(), recipient, amount)
+        <T as Config>::Currency::deposit(fee_asset.clone(), &caller, bridge_outbound_channel::Fee::<T>::get().into())?;
+        <T as Config>::Currency::deposit(asset_id.clone(), &caller, amount.into())?;
+    }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, asset_id.clone(), recipient, amount.into())
     verify {
-        assert_eq!(assets::Pallet::<T>::free_balance(&asset_id, &caller).unwrap(), 0);
+        assert_eq!(<T as Config>::Currency::free_balance(asset_id, &caller), 0u128.into());
     }
 
     // Benchmark `mint` extrinsic under worst case conditions:
     // * `mint` successfully adds amount to recipient account
     mint {
-        let asset_id: T::AssetId = DAI.into();
+        let asset_id: AssetIdOf<T> = DAI.into();
         let token = TokenAddresses::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let asset_kind = AssetKinds::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let caller = AppAddresses::<T>::get(BASE_NETWORK_ID, asset_kind).unwrap();
@@ -56,7 +63,7 @@ benchmarks! {
 
     }: { call.dispatch_bypass_filter(origin.into())? }
     verify {
-        assert_eq!(assets::Pallet::<T>::free_balance(&asset_id, &recipient).unwrap(), amount);
+        assert_eq!(<T as Config>::Currency::free_balance(asset_id, &recipient), amount.into());
     }
 
     register_erc20_app {
@@ -78,26 +85,26 @@ benchmarks! {
     }
 
     register_erc20_asset {
-        let asset_id: T::AssetId = ETH.into();
+        let asset_id: AssetIdOf<T> = ETH.into();
         let address = H160::repeat_byte(98);
         let network_id = BASE_NETWORK_ID;
         let symbol = AssetSymbol(b"ETH".to_vec());
         let name = AssetName(b"ETH".to_vec());
         assert!(!AssetsByAddresses::<T>::contains_key(network_id, address));
-    }: _(RawOrigin::Root, network_id, address, symbol, name, DEFAULT_BALANCE_PRECISION)
+    }: _(RawOrigin::Root, network_id, address, symbol.into(), name.into(), DEFAULT_BALANCE_PRECISION)
     verify {
         assert!(AssetsByAddresses::<T>::contains_key(network_id, address));
     }
 
     register_native_asset {
-        let asset_id: T::AssetId = ETH.into();
+        let asset_id: AssetIdOf<T> = ETH.into();
         let network_id = BASE_NETWORK_ID;
     }: _(RawOrigin::Root, network_id, asset_id)
     verify {
     }
 
     register_asset_internal {
-        let asset_id: T::AssetId = ETH.into();
+        let asset_id: AssetIdOf<T> = ETH.into();
         let who = AppAddresses::<T>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
         let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, additional: AdditionalEVMInboundData{source: who}, ..Default::default()});
         let address = H160::repeat_byte(98);
