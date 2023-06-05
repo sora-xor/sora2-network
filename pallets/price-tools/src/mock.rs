@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as price_tools, Config};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
@@ -289,7 +289,10 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = PriceTools;
     type WeightInfo = ();
+    type XSTMarketInfo = ();
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
+
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;
     type OnTimestampSet = ();

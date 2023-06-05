@@ -93,7 +93,6 @@ where
                 commitment_block_number - 1,
             )
             .await?
-            .0
             .into_iter()
             .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))
             .collect();

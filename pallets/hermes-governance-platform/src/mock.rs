@@ -1,5 +1,5 @@
 use crate::{self as hermes_governance_platform};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
@@ -180,8 +180,9 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = ();
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
-
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;
     type OnTimestampSet = ();

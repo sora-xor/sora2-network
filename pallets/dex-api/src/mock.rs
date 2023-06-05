@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as dex_api, Config};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed,
@@ -159,6 +159,9 @@ impl Config for Runtime {
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = ();
 }
 
 impl tokens::Config for Runtime {
@@ -293,8 +296,9 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = ();
+    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
 }
-
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;

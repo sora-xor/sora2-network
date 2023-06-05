@@ -132,6 +132,14 @@ impl<RuntimeCall: Codec + Sync + Send, Context, Extra> Checkable<Context>
     fn check(self, _c: &Context) -> Result<Self::Checked, TransactionValidityError> {
         Ok(self)
     }
+
+    #[cfg(feature = "try-runtime")]
+    fn unchecked_into_checked_i_know_what_i_am_doing(
+        self,
+        _c: &Context,
+    ) -> Result<Self::Checked, TransactionValidityError> {
+        unreachable!();
+    }
 }
 
 impl<RuntimeCall: Codec + Sync + Send, Extra> traits::Extrinsic for MyTestXt<RuntimeCall, Extra> {
@@ -466,12 +474,8 @@ impl crate::Config for Runtime {
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = ();
     type Mock = State;
-    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
-    type RemovePeerAccountIds = RemoveTemporaryPeerAccountId;
-    type SchedulerOriginCaller = OriginCaller;
-    type Scheduler = Scheduler;
     type WeightToFee = WeightToFixedFee;
+    type MessageStatusNotifier = ();
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
