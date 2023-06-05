@@ -69,6 +69,8 @@ use common::{Description, GetMarketInfo};
 use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
+#[cfg(feature = "wip")] // order-book
+use frame_support::traits::EitherOf;
 use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
@@ -82,6 +84,8 @@ use frame_election_provider_support::{generate_solution_type, onchain, Sequentia
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
+#[cfg(feature = "wip")] // order-book
+use frame_system::EnsureSigned;
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -196,8 +200,8 @@ pub type Moment = u64;
 
 pub type PeriodicSessions = pallet_session::PeriodicSessions<SessionPeriod, SessionOffset>;
 
-type CouncilCollective = pallet_collective::Instance1;
-type TechnicalCollective = pallet_collective::Instance2;
+pub type CouncilCollective = pallet_collective::Instance1;
+pub type TechnicalCollective = pallet_collective::Instance2;
 
 type MoreThanHalfCouncil = EitherOfDiverse<
     EnsureRoot<AccountId>,
@@ -2009,6 +2013,21 @@ impl order_book::Config for Runtime {
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
+    type ParameterUpdateOrigin = EitherOfDiverse<
+        EnsureSigned<AccountId>,
+        EitherOf<
+            pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+            EnsureRoot<AccountId>,
+        >,
+    >;
+    type StatusUpdateOrigin = EitherOf<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+        EnsureRoot<AccountId>,
+    >;
+    type RemovalOrigin = EitherOf<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+        EnsureRoot<AccountId>,
+    >;
     type WeightInfo = order_book::weights::SubstrateWeight<Runtime>;
 }
 
