@@ -15,7 +15,7 @@ use sp_std::prelude::*;
 use sp_std::vec;
 use traits::MultiCurrency;
 
-use bridge_types::types::MessageNonce;
+use bridge_types::types::{BatchNonce, MessageNonce};
 use bridge_types::EVMChainId;
 
 pub mod weights;
@@ -34,8 +34,6 @@ pub struct Message {
     pub network_id: EVMChainId,
     /// Target application on the Ethereum side.
     pub target: H160,
-    /// A nonce for replay protection and ordering.
-    pub nonce: u64,
     /// Maximum gas this message can use on the Ethereum.
     pub max_gas: U256,
     /// Payload for target application.
@@ -46,6 +44,8 @@ pub struct Message {
 #[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct Commitment {
+    /// A batch nonce for replay protection and ordering.
+    pub nonce: u64,
     /// Total maximum gas that can be used by all messages in the commit.
     /// Should be equal to sum of `max_gas`es of `messages`
     pub total_max_gas: U256,
@@ -71,7 +71,7 @@ pub mod pallet {
     use bridge_types::types::MessageStatus;
     use bridge_types::GenericNetworkId;
     use bridge_types::GenericTimepoint;
-    use frame_support::log::debug;
+    use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -90,7 +90,8 @@ pub mod pallet {
         type MaxMessagePayloadSize: Get<u64>;
 
         /// Max number of messages that can be queued and committed in one go for a given channel.
-        type MaxMessagesPerCommit: Get<u64>;
+        /// Must be < 256
+        type MaxMessagesPerCommit: Get<u8>;
 
         /// Maximum gas limit for one message batch sent to Ethereum.
         type MaxTotalGasLimit: Get<u64>;
@@ -201,7 +202,7 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        MessageAccepted(EVMChainId, MessageNonce),
+        MessageAccepted(EVMChainId, BatchNonce, MessageNonce),
     }
 
     #[pallet::error]
@@ -230,8 +231,9 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn make_message_id(nonce: u64) -> H256 {
-            MessageId::outbound(nonce).using_encoded(|v| <T as Config>::Hashing::hash(v))
+        pub fn make_message_id(batch_nonce: u64, message_id: u64) -> H256 {
+            MessageId::outbound_batched(batch_nonce, message_id)
+                .using_encoded(|v| <T as Config>::Hashing::hash(v))
         }
 
         fn commit(network_id: EVMChainId) -> Weight {
@@ -241,37 +243,48 @@ pub mod pallet {
                 return <T as Config>::WeightInfo::on_initialize_no_messages();
             }
 
-            for message in messages.iter() {
-                T::MessageStatusNotifier::update_status(
-                    GenericNetworkId::EVM(network_id),
-                    Self::make_message_id(message.nonce),
-                    MessageStatus::Committed,
-                    GenericTimepoint::Pending,
-                );
-            }
+            <ChannelNonces<T>>::mutate(network_id, |nonce| {
+                if let Some(v) = nonce.checked_add(1) {
+                    *nonce = v;
+                    let batch_nonce = *nonce;
+                    for i in 0..messages.len() {
+                        T::MessageStatusNotifier::update_status(
+                            GenericNetworkId::EVM(network_id),
+                            Self::make_message_id(batch_nonce, i as u64),
+                            MessageStatus::Committed,
+                            GenericTimepoint::Pending,
+                        );
+                    }
 
-            let commitment = Commitment {
-                total_max_gas,
-                messages,
-            };
+                    let commitment = Commitment {
+                        nonce: batch_nonce,
+                        total_max_gas,
+                        messages,
+                    };
 
-            let average_payload_size = Self::average_payload_size(&commitment.messages);
-            let messages_count = commitment.messages.len();
-            let commitment_hash = Self::make_commitment_hash(&commitment);
-            let digest_item = AuxiliaryDigestItem::Commitment(
-                GenericNetworkId::EVM(network_id),
-                commitment_hash.clone(),
-            );
-            T::AuxiliaryDigestHandler::add_item(digest_item);
+                    let average_payload_size = Self::average_payload_size(&commitment.messages);
+                    let messages_count = commitment.messages.len();
+                    let commitment_hash = Self::make_commitment_hash(&commitment);
+                    let digest_item = AuxiliaryDigestItem::Commitment(
+                        GenericNetworkId::EVM(network_id),
+                        commitment_hash.clone(),
+                    );
+                    T::AuxiliaryDigestHandler::add_item(digest_item);
 
-            let key = Self::make_offchain_key(commitment_hash);
-            offchain_index::set(&*key, &commitment.encode());
+                    let key = Self::make_offchain_key(commitment_hash);
+                    offchain_index::set(&*key, &commitment.encode());
 
-            <T as Config>::WeightInfo::on_initialize(
-                messages_count as u32,
-                average_payload_size as u32,
-            )
+                    <T as Config>::WeightInfo::on_initialize(
+                        messages_count as u32,
+                        average_payload_size as u32,
+                    )
+                } else {
+                    warn!("Batch nonce overflow");
+                    return <T as Config>::WeightInfo::on_initialize_no_messages();
+                }
+            })
         }
+
         fn make_commitment_hash(commitment: &Commitment) -> H256 {
             // Batch(uint256,(address,uint64,uint256,uint256,bytes)[])
             let messages: Vec<Token> = commitment
@@ -280,13 +293,13 @@ pub mod pallet {
                 .map(|message| {
                     Token::Tuple(vec![
                         Token::Address(message.target),
-                        Token::Uint(message.nonce.into()),
                         Token::Uint(message.max_gas.into()),
                         Token::Bytes(message.payload.clone()),
                     ])
                 })
                 .collect();
             let commitment: Vec<Token> = vec![
+                Token::Uint(commitment.nonce.into()),
                 Token::Uint(commitment.total_max_gas),
                 Token::Array(messages),
             ];
@@ -357,42 +370,38 @@ pub mod pallet {
                 Error::<T>::PayloadTooLarge,
             );
 
-            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> Result<H256, DispatchError> {
-                if let Some(v) = nonce.checked_add(1) {
-                    *nonce = v;
-                } else {
-                    return Err(Error::<T>::Overflow.into());
+            // TODO compute fee and charge
+            // Attempt to charge a fee for message submission
+            let fee = match who {
+                RawOrigin::Signed(who) => {
+                    let fee = Self::fee();
+                    technical::Pallet::<T>::transfer_in(
+                        &T::FeeCurrency::get(),
+                        who,
+                        &T::FeeTechAccountId::get(),
+                        fee,
+                    )?;
+                    fee
                 }
+                _ => 0u128.into(),
+            };
 
-                // TODO compute fee and charge
-                // Attempt to charge a fee for message submission
-                let fee = match who {
-                    RawOrigin::Signed(who) => {
-                        let fee = Self::fee();
-                        technical::Pallet::<T>::transfer_in(
-                            &T::FeeCurrency::get(),
-                            who,
-                            &T::FeeTechAccountId::get(),
-                            fee,
-                        )?;
-                        fee
-                    }
-                    _ => 0u128.into(),
-                };
+            // batch nonce
+            let batch_nonce = <ChannelNonces<T>>::get(network_id) + 1;
+            let message_id =
+                MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as MessageNonce;
 
-                append_message_queue::<T>(
-                    network_id,
-                    Message {
-                        network_id: network_id,
-                        target,
-                        nonce: *nonce,
-                        max_gas,
-                        payload: payload.to_vec(),
-                    },
-                );
-                Self::deposit_event(Event::MessageAccepted(network_id, *nonce));
-                Ok(Self::make_message_id(*nonce))
-            })
+            append_message_queue::<T>(
+                network_id,
+                Message {
+                    network_id: network_id,
+                    target,
+                    max_gas,
+                    payload: payload.to_vec(),
+                },
+            );
+            Self::deposit_event(Event::MessageAccepted(network_id, batch_nonce, message_id));
+            Ok(Self::make_message_id(batch_nonce, message_id))
         }
     }
 }

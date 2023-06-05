@@ -38,7 +38,7 @@ use common::prelude::{
 #[cfg(feature = "wip")] // order-book
 use common::LiquiditySourceType;
 use common::{
-    AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
+    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
     ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
@@ -68,14 +68,14 @@ pub mod storage_data_layer;
 pub mod traits;
 pub mod types;
 
-pub use crate::order_book::{OrderBook, OrderBookStatus};
+pub use crate::order_book::OrderBook;
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer};
 pub use types::{
-    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderPrice,
-    OrderVolume, PriceOrders, UserOrders,
+    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderBookStatus,
+    OrderPrice, OrderVolume, PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -233,6 +233,13 @@ pub mod pallet {
             count_of_canceled_orders: u32,
         },
 
+        /// Order book status is changed
+        OrderBookStatusChanged {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            new_status: OrderBookStatus,
+        },
+
         /// Order book attributes are updated by Council
         OrderBookUpdated {
             order_book_id: OrderBookId<AssetIdOf<T>>,
@@ -314,6 +321,22 @@ pub mod pallet {
         Unauthorized,
         /// Invalid asset
         InvalidAsset,
+        /// Invalid tick size
+        InvalidTickSize,
+        /// Invalid step lot size
+        InvalidStepLotSize,
+        /// Invalid min lot size
+        InvalidMinLotSize,
+        /// Invalid max lot size
+        InvalidMaxLotSize,
+        /// Tick size & step lot size are too big and their multiplication overflows Balance
+        TickSizeAndStepLotSizeAreTooBig,
+        /// Tick size & step lot size are too small and their multiplication goes out of precision
+        TickSizeAndStepLotSizeAreTooSmall,
+        /// Max lot size cannot be more that total supply of base asset
+        MaxLotSizeIsMoreThanTotalSupply,
+        /// Indicated limit for slippage has not been met during transaction execution.
+        SlippageLimitExceeded,
     }
 
     #[pallet::call]
@@ -347,10 +370,7 @@ pub mod pallet {
                 Error::<T>::OrderBookAlreadyExists
             );
 
-            let order_book = if T::AssetInfoProvider::get_asset_info(&order_book_id.base).2 != 0 {
-                // regular asset
-                OrderBook::<T>::default(order_book_id, dex_id)
-            } else {
+            let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
                 // nft
                 // ensure the user has nft
                 ensure!(
@@ -359,6 +379,9 @@ pub mod pallet {
                     Error::<T>::UserHasNoNft
                 );
                 OrderBook::<T>::default_nft(order_book_id, dex_id)
+            } else {
+                // regular asset
+                OrderBook::<T>::default(order_book_id, dex_id)
             };
 
             #[cfg(feature = "wip")] // order-book
@@ -398,9 +421,20 @@ pub mod pallet {
                 order_book.cancel_all_limit_orders::<Self>(&mut data)? as u32;
 
             data.commit();
-            <OrderBooks<T>>::remove(order_book_id);
+
+            #[cfg(feature = "wip")] // order-book
+            {
+                T::TradingPairSourceManager::disable_source_for_trading_pair(
+                    &dex_id,
+                    &order_book_id.quote,
+                    &order_book_id.base,
+                    LiquiditySourceType::OrderBook,
+                )?;
+            }
 
             Self::deregister_tech_account(order_book.dex_id, order_book_id)?;
+            <OrderBooks<T>>::remove(order_book_id);
+
             Self::deposit_event(Event::<T>::OrderBookDeleted {
                 order_book_id,
                 dex_id,
@@ -414,30 +448,121 @@ pub mod pallet {
         pub fn update_orderbook(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>>,
-            _tick_size: OrderPrice,
-            _step_lot_size: OrderVolume,
-            _min_lot_size: OrderVolume,
-            _max_lot_size: OrderVolume,
+            tick_size: OrderPrice,
+            step_lot_size: OrderVolume,
+            min_lot_size: OrderVolume,
+            max_lot_size: OrderVolume,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            let mut order_book =
+                <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+            let dex_id = order_book.dex_id;
+
+            // Check that values are non-zero
+            ensure!(tick_size > OrderPrice::zero(), Error::<T>::InvalidTickSize);
             ensure!(
-                <OrderBooks<T>>::contains_key(order_book_id),
-                Error::<T>::UnknownOrderBook
+                step_lot_size > OrderVolume::zero(),
+                Error::<T>::InvalidStepLotSize
             );
-            // todo (m.tagirov)
-            todo!()
+            ensure!(
+                min_lot_size > OrderVolume::zero(),
+                Error::<T>::InvalidMinLotSize
+            );
+            ensure!(
+                max_lot_size > OrderVolume::zero(),
+                Error::<T>::InvalidMaxLotSize
+            );
+
+            // min <= max
+            // It is possible to set min == max if it necessary, e.g. some NFTs
+            ensure!(min_lot_size <= max_lot_size, Error::<T>::InvalidMaxLotSize);
+
+            if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+                // NFT has special bounds as non-divisible asset
+                ensure!(step_lot_size >= balance!(1), Error::<T>::InvalidStepLotSize);
+                ensure!(
+                    step_lot_size % balance!(1) == 0,
+                    Error::<T>::InvalidStepLotSize
+                );
+            }
+
+            // min & max couldn't be less then `step_lot_size`
+            ensure!(min_lot_size >= step_lot_size, Error::<T>::InvalidMinLotSize);
+            ensure!(max_lot_size >= step_lot_size, Error::<T>::InvalidMaxLotSize);
+
+            // min & max must be a multiple of `step_lot_size`
+            ensure!(
+                min_lot_size % step_lot_size == 0,
+                Error::<T>::InvalidMinLotSize
+            );
+            ensure!(
+                max_lot_size % step_lot_size == 0,
+                Error::<T>::InvalidMaxLotSize
+            );
+
+            // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
+            // The min possible deal amount = `tick_size` * `step_lot_size`.
+            // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
+            // and doesn't go out of precision if `tick_size` & `step_lot_size` are too small.
+
+            // Returns error if value overflows.
+            let min_possible_deal_amount = (FixedWrapper::from(tick_size)
+                * FixedWrapper::from(step_lot_size))
+            .try_into_balance()
+            .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
+
+            // 1 is a min non-zero possible value. balance!(0.000000000000000001) == 1
+            // If `tick_size` * `step_lot_size` result goes out of 18 digits precision, the min possible deal amount == 0,
+            // because FixedWrapper::try_into_balance() returns 0 for such cases.
+            ensure!(
+                min_possible_deal_amount >= 1,
+                Error::<T>::TickSizeAndStepLotSizeAreTooSmall
+            );
+
+            // `max_lot_size` couldn't be more then total supply of `base` asset
+            let total_supply = T::AssetInfoProvider::total_issuance(&order_book_id.base)?;
+            ensure!(
+                max_lot_size <= total_supply,
+                Error::<T>::MaxLotSizeIsMoreThanTotalSupply
+            );
+
+            order_book.tick_size = tick_size;
+            order_book.step_lot_size = step_lot_size;
+            order_book.min_lot_size = min_lot_size;
+            order_book.max_lot_size = max_lot_size;
+
+            // Note:
+            // Already existed limit orders are not changed even if they don't meet the requirements of new attributes.
+            // They stay in order book until they are executed, canceled or expired.
+            // All new limit orders must meet the requirements of new attributes.
+
+            <OrderBooks<T>>::set(order_book_id, Some(order_book));
+            Self::deposit_event(Event::<T>::OrderBookUpdated {
+                order_book_id,
+                dex_id,
+            });
+            Ok(().into())
         }
 
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::change_orderbook_status())]
         pub fn change_orderbook_status(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<AssetIdOf<T>>,
-            _status: OrderBookStatus,
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            status: OrderBookStatus,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            // todo (m.tagirov)
-            todo!()
+            let dex_id = <OrderBooks<T>>::mutate(order_book_id, |order_book| {
+                let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
+                order_book.status = status;
+                Ok::<_, Error<T>>(order_book.dex_id)
+            })?;
+            Self::deposit_event(Event::<T>::OrderBookStatusChanged {
+                order_book_id,
+                dex_id,
+                new_status: status,
+            });
+            Ok(().into())
         }
 
         #[pallet::call_index(4)]
@@ -644,37 +769,100 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let deal_info =
             order_book.calculate_deal(input_asset_id, output_asset_id, amount, &mut data)?;
 
+        ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
+
         let fee = 0; // todo (m.tagirov)
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((
-                SwapOutcome::new(deal_info.output_amount, fee),
+                SwapOutcome::new(*deal_info.output_amount.value(), fee),
                 Self::quote_weight(),
             )),
             QuoteAmount::WithDesiredOutput { .. } => Ok((
-                SwapOutcome::new(deal_info.input_amount, fee),
+                SwapOutcome::new(*deal_info.input_amount.value(), fee),
                 Self::quote_weight(),
             )),
         }
     }
 
     fn exchange(
-        _sender: &T::AccountId,
-        _receiver: &T::AccountId,
+        sender: &T::AccountId,
+        receiver: &T::AccountId,
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        _desired_amount: SwapAmount<Balance>,
+        desired_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
-        let _order_book =
-            <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+        let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+        let mut data = CacheDataLayer::<T>::new();
 
-        // todo (m.tagirov) #317 Hidden market orders
-        todo!()
+        let deal_info = order_book.calculate_deal(
+            input_asset_id,
+            output_asset_id,
+            desired_amount.into(),
+            &mut data,
+        )?;
+
+        ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
+
+        match desired_amount {
+            SwapAmount::WithDesiredInput { min_amount_out, .. } => {
+                ensure!(
+                    *deal_info.output_amount.value() >= min_amount_out,
+                    Error::<T>::SlippageLimitExceeded
+                );
+            }
+            SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
+                ensure!(
+                    *deal_info.input_amount.value() <= max_amount_in,
+                    Error::<T>::SlippageLimitExceeded
+                );
+            }
+        }
+
+        let to = if sender == receiver {
+            None
+        } else {
+            Some(receiver.clone())
+        };
+
+        let order = MarketOrder::<T>::new(
+            sender.clone(),
+            deal_info.side,
+            order_book_id,
+            deal_info.base_amount(),
+            to,
+        );
+
+        let (input_amount, output_amount) =
+            order_book.execute_market_order::<Self, Self>(order, &mut data)?;
+
+        let fee = 0; // todo (m.tagirov)
+
+        let result = match desired_amount {
+            SwapAmount::WithDesiredInput { min_amount_out, .. } => {
+                ensure!(
+                    *output_amount.value() >= min_amount_out,
+                    Error::<T>::SlippageLimitExceeded
+                );
+                SwapOutcome::new(*output_amount.value(), fee)
+            }
+            SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
+                ensure!(
+                    *input_amount.value() <= max_amount_in,
+                    Error::<T>::SlippageLimitExceeded
+                );
+                SwapOutcome::new(*input_amount.value(), fee)
+            }
+        };
+
+        data.commit();
+
+        Ok((result, Self::exchange_weight()))
     }
 
     fn check_rewards(

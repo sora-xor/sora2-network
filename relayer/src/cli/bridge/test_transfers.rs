@@ -75,7 +75,7 @@ impl Command {
             )
             .await?
             .unwrap();
-        let (eth_app, native_asset) = sub
+        let (eth_app, native_asset, _) = sub
             .storage_fetch(&runtime::storage().eth_app().addresses(&network_id), ())
             .await?
             .unwrap();

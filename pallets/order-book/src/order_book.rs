@@ -30,7 +30,7 @@
 
 use crate::{
     CurrencyLocker, CurrencyUnlocker, DataLayer, DealInfo, Error, LimitOrder, MarketChange,
-    MarketOrder, MarketRole, OrderAmount, OrderBookId, OrderPrice, OrderVolume,
+    MarketOrder, MarketRole, OrderAmount, OrderBookId, OrderBookStatus, OrderPrice, OrderVolume,
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -44,23 +44,6 @@ use sp_runtime::traits::{One, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::Add;
 use sp_std::vec::Vec;
-
-#[derive(
-    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
-)]
-pub enum OrderBookStatus {
-    /// All operations are allowed.
-    Trade,
-
-    /// Users can place and cancel limit order, but trading is forbidden.
-    PlaceAndCancel,
-
-    /// Users can only cancel their limit orders. Placement and trading are forbidden.
-    OnlyCancel,
-
-    /// All operations with order book are forbidden. Current limit orders are frozen and users cannot cancel them.
-    Stop,
-}
 
 #[derive(Encode, Decode, PartialEq, Eq, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
@@ -261,12 +244,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             *market_change.market_input.value(),
         )?;
 
+        let receiver = order.to.unwrap_or(order.owner);
+
         let taker_unlock_asset = market_change
             .market_output
             .associated_asset(&self.order_book_id);
         Unlocker::unlock_liquidity(
             self.dex_id,
-            &order.owner,
+            &receiver,
             self.order_book_id,
             taker_unlock_asset,
             *market_change.market_output.value(),
@@ -410,7 +395,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         };
 
         ensure!(
-            base > OrderVolume::zero() && quote > OrderVolume::zero(),
+            *base.value() > OrderVolume::zero() && *quote.value() > OrderVolume::zero(),
             Error::<T>::InvalidOrderAmount
         );
 
@@ -419,9 +404,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             PriceVariant::Sell => (base, quote),
         };
 
-        let average_price = (FixedWrapper::from(quote) / FixedWrapper::from(base))
-            .try_into_balance()
-            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+        let average_price = (FixedWrapper::from(*quote.value())
+            / FixedWrapper::from(*base.value()))
+        .try_into_balance()
+        .map_err(|_| Error::<T>::PriceCalculationFailed)?;
 
         Ok(DealInfo::<AssetIdOf<T>> {
             input_asset_id: *input_asset_id,
@@ -440,7 +426,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         &self,
         market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
         depth_limit: Option<OrderAmount>,
-    ) -> Result<(OrderVolume, OrderVolume), DispatchError> {
+    ) -> Result<(OrderAmount, OrderAmount), DispatchError> {
         let mut market_base_volume = OrderVolume::zero();
         let mut market_quote_volume = OrderVolume::zero();
 
@@ -495,7 +481,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::NotEnoughLiquidity
         );
 
-        Ok((market_base_volume, market_quote_volume))
+        Ok((
+            OrderAmount::Base(market_base_volume),
+            OrderAmount::Quote(market_quote_volume),
+        ))
     }
 
     pub fn get_side(

@@ -1,4 +1,4 @@
-use bridge_types::traits::AppRegistry;
+use bridge_types::traits::{AppRegistry, BalancePrecisionConverter, BridgeAssetRegistry};
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
@@ -21,7 +21,7 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
-use sp_runtime::MultiSignature;
+use sp_runtime::{DispatchError, MultiSignature};
 
 use crate as erc20_app;
 
@@ -210,7 +210,7 @@ const INDEXING_PREFIX: &'static [u8] = b"commitment";
 
 parameter_types! {
     pub const MaxMessagePayloadSize: u64 = 2048;
-    pub const MaxMessagesPerCommit: u64 = 3;
+    pub const MaxMessagesPerCommit: u8 = 3;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
@@ -265,6 +265,74 @@ impl AppRegistry<EVMChainId, H160> for AppRegistryImpl {
     }
 }
 
+pub struct BalancePrecisionConverterImpl;
+
+impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConverterImpl {
+    fn from_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: U256,
+    ) -> Option<Balance> {
+        amount.try_into().ok()
+    }
+
+    fn to_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<U256> {
+        Some(amount.into())
+    }
+}
+
+pub struct BridgeAssetRegistryImpl;
+
+impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
+    type AssetName = common::AssetName;
+    type AssetSymbol = common::AssetSymbol;
+
+    fn register_asset(
+        owner: AccountId,
+        name: Self::AssetName,
+        symbol: Self::AssetSymbol,
+    ) -> Result<AssetId, DispatchError> {
+        let asset_id = Assets::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
+        Ok(asset_id)
+    }
+
+    fn manage_asset(
+        manager: AccountId,
+        asset_id: AssetId,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        let scope = permissions::Scope::Limited(common::hash(&asset_id));
+        for permission_id in [permissions::BURN, permissions::MINT] {
+            if permissions::Pallet::<Test>::check_permission_with_scope(
+                manager.clone(),
+                permission_id,
+                &scope,
+            )
+            .is_err()
+            {
+                permissions::Pallet::<Test>::assign_permission(
+                    manager.clone(),
+                    &manager,
+                    permission_id,
+                    scope,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    fn get_raw_info(_asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
+        bridge_types::types::RawAssetInfo {
+            name: Default::default(),
+            symbol: Default::default(),
+            precision: 18,
+        }
+    }
+}
+
 impl erc20_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
@@ -273,10 +341,14 @@ impl erc20_app::Config for Test {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type WeightInfo = ();
     type MessageStatusNotifier = ();
+    type BalancePrecisionConverter = BalancePrecisionConverterImpl;
     type AppRegistry = AppRegistryImpl;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type Currency = Currencies;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
@@ -367,12 +439,14 @@ pub fn new_tester() -> sp_io::TestExternalities {
                     XOR,
                     H160::repeat_byte(3),
                     AssetKind::Thischain,
+                    18,
                 ),
                 (
                     BASE_NETWORK_ID,
                     DAI,
                     H160::repeat_byte(4),
                     AssetKind::Sidechain,
+                    18,
                 ),
             ],
         },

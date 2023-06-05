@@ -2045,7 +2045,7 @@ use bridge_types::{EVMChainId, SubNetworkId, CHANNEL_INDEXING_PREFIX, H256};
 #[cfg(feature = "wip")] // Bridges
 parameter_types! {
     pub const BridgeMaxMessagePayloadSize: u64 = 256;
-    pub const BridgeMaxMessagesPerCommit: u64 = 20;
+    pub const BridgeMaxMessagesPerCommit: u8 = 20;
     pub const BridgeMaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
@@ -2072,6 +2072,7 @@ impl bridge_inbound_channel::Config for Runtime {
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = Dispatch;
     type Hashing = Keccak256;
+    type GasTracker = BridgeProxy;
     type MessageStatusNotifier = BridgeProxy;
     type FeeConverter = FeeConverter;
     type WeightInfo = ();
@@ -2128,8 +2129,12 @@ impl eth_app::Config for Runtime {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = BridgeProxy;
+    type Currency = Currencies;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
+    type AssetIdConverter = AssetIdConverter;
     type WeightInfo = ();
 }
 
@@ -2143,8 +2148,12 @@ impl erc20_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = BridgeProxy;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
+    type AssetIdConverter = AssetIdConverter;
+    type Currency = Currencies;
     type WeightInfo = ();
 }
 
@@ -2271,7 +2280,7 @@ impl substrate_bridge_app::Config for Runtime {
     type AssetRegistry = BridgeAssetRegistryImpl;
     type AccountIdConverter = sp_runtime::traits::Identity;
     type AssetIdConverter = AssetIdConverter;
-    type BalanceConverter = sp_runtime::traits::Identity;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type WeightInfo = ();
 }
 

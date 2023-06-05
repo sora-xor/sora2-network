@@ -32,6 +32,7 @@
 
 use common::prelude::FixedWrapper;
 use common::{Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
+use fallible_iterator::FallibleIterator;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
@@ -178,7 +179,7 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config<I>, I: 'static = ()> {
         /// New symbol rates were successfully relayed. [symbols]
-        SymbolsRelayed(Vec<T::Symbol>),
+        SymbolsRelayed(Vec<(T::Symbol, Balance)>),
         /// Added new trusted relayer accounts. [relayers]
         RelayersAdded(Vec<T::AccountId>),
         /// Relayer accounts were removed from trusted list. [relayers]
@@ -225,7 +226,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             Self::ensure_relayer(origin)?;
 
-            let symbols = Self::update_rates(
+            let symbol_rates = Self::update_rates(
                 rates,
                 resolve_time,
                 request_id,
@@ -235,7 +236,7 @@ pub mod pallet {
                 },
             )?;
 
-            Self::deposit_event(Event::SymbolsRelayed(symbols));
+            Self::deposit_event(Event::SymbolsRelayed(symbol_rates));
             Ok(().into())
         }
 
@@ -258,7 +259,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             Self::ensure_relayer(origin)?;
 
-            let symbols: Vec<_> = Self::update_rates(
+            let symbol_rates: Vec<_> = Self::update_rates(
                 rates,
                 resolve_time,
                 request_id,
@@ -267,7 +268,7 @@ pub mod pallet {
                 },
             )?;
 
-            Self::deposit_event(Event::SymbolsRelayed(symbols));
+            Self::deposit_event(Event::SymbolsRelayed(symbol_rates));
             Ok(().into())
         }
 
@@ -382,27 +383,37 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         resolve_time: u64,
         request_id: u64,
         f: impl Fn(&mut Option<BandRate>, BandRate),
-    ) -> Result<Vec<T::Symbol>, DispatchError> {
-        let mut symbols = Vec::with_capacity(rates.len());
-        let mut new_symbols = BTreeSet::new();
-        for (symbol, rate_value) in rates {
-            let new_rate = BandRate {
-                value: Self::raw_rate_into_balance(rate_value)?,
-                last_updated: resolve_time,
-                request_id,
-            };
+    ) -> Result<Vec<(T::Symbol, Balance)>, DispatchError> {
+        let converted_rates: Vec<(T::Symbol, Balance)> =
+            fallible_iterator::convert(rates.into_iter().map(
+                |(symbol, rate_value)| -> Result<(T::Symbol, Balance), DispatchError> {
+                    let converted_rate = Self::raw_rate_into_balance(rate_value)?;
+                    Ok((symbol, converted_rate))
+                },
+            ))
+            .collect()?;
+        let new_symbols = converted_rates.iter().fold(
+            BTreeSet::new(),
+            |mut new_symbols_acc, (symbol, rate_value)| {
+                let new_rate = BandRate {
+                    value: *rate_value,
+                    last_updated: resolve_time,
+                    request_id,
+                };
 
-            SymbolRates::<T, I>::mutate(&symbol, |option_old_rate| {
-                if option_old_rate.is_none() {
-                    new_symbols.insert(symbol.clone());
-                }
-                f(option_old_rate, new_rate);
-            });
-            symbols.push(symbol);
-        }
+                SymbolRates::<T, I>::mutate(symbol, |option_old_rate| {
+                    if option_old_rate.is_none() {
+                        new_symbols_acc.insert(symbol.clone());
+                    }
+                    f(option_old_rate, new_rate);
+                });
+                new_symbols_acc
+            },
+        );
+
         T::OnNewSymbolsRelayedHook::on_new_symbols_relayed(Oracle::BandChainFeed, new_symbols)?;
 
-        Ok(symbols)
+        Ok(converted_rates)
     }
 
     pub fn raw_rate_into_balance(raw_rate: u64) -> Result<Balance, DispatchError> {

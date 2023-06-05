@@ -1,12 +1,12 @@
-use std::sync::atomic::Ordering;
-use std::sync::{atomic::AtomicU64, Arc};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem};
 use bridge_types::{GenericNetworkId, H256};
 use futures::Stream;
 use futures::StreamExt;
 
-use crate::substrate::{binary_search_first_occurence, LeafProof};
+use crate::substrate::{binary_search_first_occurrence, LeafProof};
 use crate::{prelude::*, substrate::BlockNumber};
 use bridge_common::simplified_proof::convert_to_simplified_mmr_proof;
 use sp_runtime::traits::{Keccak256, UniqueSaturatedInto};
@@ -146,6 +146,10 @@ async fn leaf_proof_with_digest<S: SenderConfig>(
     return Err(anyhow::anyhow!("leaf proof not found"));
 }
 
+/// Finds the first block where stored nonce >= 'nonce'.
+/// - sender - substrate client
+/// - network_id - eth network id
+/// - nonce - nonce to compare
 async fn find_message_block<S: SenderConfig>(
     sender: &SubUnsignedClient<S>,
     network_id: GenericNetworkId,
@@ -162,7 +166,7 @@ async fn find_message_block<S: SenderConfig>(
         low,
         high
     );
-    let start_block = binary_search_first_occurence(low, high, nonce, |block| {
+    let start_block = binary_search_first_occurrence(low, high, nonce, |block| {
         let storage = &storage;
         async move {
             let nonce = sender.storage_fetch(storage, block).await?;
@@ -173,6 +177,11 @@ async fn find_message_block<S: SenderConfig>(
     Ok(start_block)
 }
 
+/// Finds the first commitment where stored nonce >= 'nonce'.
+/// - sender - substrate client
+/// - network_id - eth network id
+/// - count - how many blocks after start to search for commitment
+/// - nonce - nonce to compare
 async fn find_commitment_with_nonce<S: SenderConfig>(
     sender: &SubUnsignedClient<S>,
     network_id: GenericNetworkId,
@@ -189,8 +198,8 @@ async fn find_commitment_with_nonce<S: SenderConfig>(
         let block = start_block + i.into();
         let block_hash = sender.block_hash(block).await;
         let Ok(block_hash) = block_hash else {
-                return Ok(None);
-            };
+            return Ok(None);
+        };
         let digest = sender.auxiliary_digest(Some(block_hash)).await?;
         if digest.logs.is_empty() {
             continue;
