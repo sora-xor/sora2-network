@@ -95,6 +95,7 @@ pub mod pallet {
         Blake2_128Concat, Twox128,
     };
     use frame_system::pallet_prelude::*;
+    use sp_runtime::Either;
 
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -146,6 +147,12 @@ pub mod pallet {
         >;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type Time: Time;
+        type ParameterUpdateOrigin: EnsureOrigin<
+            Self::RuntimeOrigin,
+            Success = Either<Self::AccountId, ()>,
+        >;
+        type StatusUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
+        type RemovalOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
         type WeightInfo: WeightInfo;
     }
 
@@ -331,7 +338,7 @@ pub mod pallet {
         NotEnoughLiquidity,
         /// Cannot create order book with equal base and target assets
         ForbiddenToCreateOrderBookWithSameAssets,
-        /// The asset is not allowed to be base. Only dex base asset can be a base asset for order book
+        /// The asset is not allowed to be base. Only dex base asset can be a quote asset for order book
         NotAllowedBaseAsset,
         /// User cannot create an order book with NFT if they don't have NFT
         UserHasNoNft,
@@ -463,7 +470,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>>,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::RemovalOrigin::ensure_origin(origin)?;
             let order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
@@ -505,7 +512,16 @@ pub mod pallet {
             min_lot_size: OrderVolume,
             max_lot_size: OrderVolume,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            let origin_check_result = T::ParameterUpdateOrigin::ensure_origin(origin)?;
+            match origin_check_result {
+                Either::Left(who) => {
+                    ensure!(
+                        T::AssetInfoProvider::is_asset_owner(&order_book_id.base, &who),
+                        DispatchError::BadOrigin
+                    );
+                }
+                Either::Right(()) => (),
+            }
             let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
@@ -603,7 +619,7 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             status: OrderBookStatus,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            T::StatusUpdateOrigin::ensure_origin(origin)?;
             let dex_id = <OrderBooks<T>>::mutate(order_book_id, |order_book| {
                 let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
                 order_book.status = status;

@@ -11,15 +11,16 @@ mod benchmarking;
 pub mod weights;
 
 use bridge_types::{
-    traits::{MessageStatusNotifier, TimepointProvider},
+    traits::{GasTracker, MessageStatusNotifier, TimepointProvider},
     types::{MessageDirection, MessageStatus},
-    GenericAccount, GenericNetworkId, GenericTimepoint, H160, H256,
+    Address, GenericAccount, GenericNetworkId, GenericTimepoint, H160, H256,
 };
 use codec::{Decode, Encode};
 use common::Balance;
 use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::log;
 use scale_info::TypeInfo;
+use sp_core::U256;
 use sp_std::prelude::*;
 
 pub use weights::WeightInfo;
@@ -94,6 +95,12 @@ pub mod pallet {
         T::AccountId,
         OptionQuery,
     >;
+
+    /// Fee paid for relayed tx on sidechain. Map ((Network ID, Address) => Cumulative Fee Paid).
+    #[pallet::storage]
+    #[pallet::getter(fn sidechain_fee_paid)]
+    pub(super) type SidechainFeePaid<T: Config> =
+        StorageDoubleMap<_, Blake2_128Concat, GenericNetworkId, Blake2_128Concat, Address, U256>;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -194,6 +201,41 @@ pub mod pallet {
             }
             Ok(())
         }
+    }
+}
+
+impl<T: Config> GasTracker<Balance> for Pallet<T> {
+    /// Records fee paid by relayer for message submission.
+    /// - network_id - ethereum network id,
+    /// - batch_nonce - batch nonce,
+    /// - ethereum_relayer_address - relayer that had paid for the batch submission,
+    /// - gas_used - gas paid for batch relaying,
+    /// - gas_price - ethereum base fee in the block when batch was submitted.
+    fn record_tx_fee(
+        network_id: GenericNetworkId,
+        batch_nonce: u64,
+        ethereum_relayer_address: Address,
+        gas_used: U256,
+        gas_price: U256,
+    ) {
+        log::debug!(
+            "Record tx fee: batch_nonce={}, ethereum_relayer_address={}, gas_used={}, gas_price={}",
+            batch_nonce,
+            ethereum_relayer_address,
+            gas_used,
+            gas_price,
+        );
+
+        let tx_fee = gas_used * gas_price;
+
+        SidechainFeePaid::<T>::mutate(
+            network_id,
+            ethereum_relayer_address,
+            |maybe_cumulative_fee| {
+                let cumulative_fee = maybe_cumulative_fee.get_or_insert(U256::from(0));
+                *cumulative_fee += tx_fee;
+            },
+        );
     }
 }
 
