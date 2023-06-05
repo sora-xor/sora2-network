@@ -53,7 +53,7 @@ where
     let high = sub.block_number(finalized_head).await?;
     let low: BlockNumber<T> = 1u32.into();
     let storage = T::current_validator_set();
-    let block = super::binary_search_first_occurence(low, high, vset_id, |n| {
+    let block = super::binary_search_first_occurrence(low, high, vset_id, |n| {
         let storage = &storage;
         let sub = &sub;
         async move {
