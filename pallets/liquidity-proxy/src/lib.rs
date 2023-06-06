@@ -2371,8 +2371,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
-        // #[pallet::weight(<T as Config>::WeightInfo::set_adar_commission_ratio())]
-        #[pallet::weight(10_000_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_adar_commission_ratio())]
         pub fn set_adar_commission_ratio(
             origin: OriginFor<T>,
             commission_ratio: Balance,
