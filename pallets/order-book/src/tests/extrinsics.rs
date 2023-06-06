@@ -512,7 +512,7 @@ fn should_delete_order_book_with_a_lot_of_orders() {
                 buy_price,
                 balance!(10),
                 PriceVariant::Buy,
-                10000
+                Some(10000)
             ));
 
             assert_ok!(OrderBookPallet::place_limit_order(
@@ -521,7 +521,7 @@ fn should_delete_order_book_with_a_lot_of_orders() {
                 sell_price,
                 balance!(10),
                 PriceVariant::Sell,
-                10000
+                Some(10000)
             ));
         }
 
@@ -1229,7 +1229,7 @@ fn should_not_place_limit_order_in_unknown_order_book() {
                 balance!(10),
                 balance!(100),
                 PriceVariant::Buy,
-                1000
+                Some(1000)
             ),
             E::UnknownOrderBook
         );
@@ -1252,6 +1252,7 @@ fn should_place_limit_order() {
         let amount = balance!(100);
         let lifespan = 10000;
         let now = 1234;
+        let current_block = frame_system::Pallet::<Runtime>::block_number();
 
         Timestamp::set_timestamp(now);
 
@@ -1269,7 +1270,7 @@ fn should_place_limit_order() {
             price,
             amount,
             PriceVariant::Buy,
-            lifespan
+            Some(lifespan)
         ));
 
         let order_id = get_last_order_id(order_book_id).unwrap();
@@ -1283,6 +1284,7 @@ fn should_place_limit_order() {
             amount,
             now,
             lifespan,
+            current_block,
         );
 
         let deal_amount = *expected_order
@@ -1370,6 +1372,7 @@ fn should_place_limit_order_with_nft() {
         let amount = balance!(1);
         let lifespan = 10000;
         let now = 1234;
+        let current_block = frame_system::Pallet::<Runtime>::block_number();
 
         Timestamp::set_timestamp(now);
 
@@ -1379,7 +1382,7 @@ fn should_place_limit_order_with_nft() {
             price,
             amount,
             PriceVariant::Sell,
-            lifespan
+            Some(lifespan)
         ));
 
         let order_id = get_last_order_id(order_book_id).unwrap();
@@ -1393,6 +1396,7 @@ fn should_place_limit_order_with_nft() {
             amount,
             now,
             lifespan,
+            current_block,
         );
 
         assert_eq!(
@@ -1455,7 +1459,7 @@ fn should_place_a_lot_of_orders() {
                 buy_price,
                 balance!(10),
                 PriceVariant::Buy,
-                10000
+                Some(10000)
             ));
 
             assert_ok!(OrderBookPallet::place_limit_order(
@@ -1464,7 +1468,7 @@ fn should_place_a_lot_of_orders() {
                 sell_price,
                 balance!(10),
                 PriceVariant::Sell,
-                10000
+                Some(10000)
             ));
         }
     });
