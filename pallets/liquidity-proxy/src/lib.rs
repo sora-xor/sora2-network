@@ -79,7 +79,6 @@ mod test_utils;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
-pub const ADAR_COMMISSION_RATIO: Balance = balance!(0.0025);
 
 const REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
@@ -1917,7 +1916,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn calculate_adar_commission(amount: Balance) -> Result<Balance, DispatchError> {
-        let adar_commission_ratio = FixedWrapper::from(ADAR_COMMISSION_RATIO);
+        let adar_commission_ratio = FixedWrapper::from(Self::adar_commission_ratio());
 
         let adar_commission = (FixedWrapper::from(amount) * adar_commission_ratio)
             .try_into_balance()
@@ -1933,7 +1932,7 @@ impl<T: Config> Pallet<T> {
         mut max_input_amount: Balance,
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
-    ) -> Result<(Balance, Weight), DispatchError> {
+    ) -> Result<(Balance, Balance, Weight), DispatchError> {
         let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
 
         let mut executed_batch_input_amount = balance!(0);
@@ -2002,7 +2001,7 @@ impl<T: Config> Pallet<T> {
         max_input_amount
             .checked_sub(adar_commission)
             .ok_or(Error::<T>::SlippageNotTolerated)?;
-        Ok((adar_commission, total_weight))
+        Ok((adar_commission, executed_batch_input_amount, total_weight))
     }
 }
 
@@ -2283,14 +2282,15 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
-            let (adar_commission, mut weight) = Self::inner_swap_batch_transfer(
-                &who,
-                &input_asset_id,
-                swap_batches,
-                max_input_amount,
-                &selected_source_types,
-                &filter_mode,
-            )?;
+            let (adar_commission, executed_input_amount, mut weight) =
+                Self::inner_swap_batch_transfer(
+                    &who,
+                    &input_asset_id,
+                    swap_batches,
+                    max_input_amount,
+                    &selected_source_types,
+                    &filter_mode,
+                )?;
 
             assets::Pallet::<T>::transfer_from(
                 &input_asset_id,
@@ -2299,6 +2299,12 @@ pub mod pallet {
                 adar_commission,
             )
             .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
+
+            Self::deposit_event(Event::<T>::BatchSwapExecuted(
+                adar_commission,
+                executed_input_amount,
+            ));
+
             weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
 
             Ok(PostDispatchInfo {
@@ -2382,6 +2388,9 @@ pub mod pallet {
         LiquiditySourceEnabled(LiquiditySourceType),
         /// Liquidity source was disabled
         LiquiditySourceDisabled(LiquiditySourceType),
+        /// Batch of swap transfers has been performed
+        /// [ADAR Fee, Input amount]
+        BatchSwapExecuted(Balance, Balance),
     }
 
     #[pallet::error]
@@ -2419,4 +2428,15 @@ pub mod pallet {
         // Failure while transferring commission to ADAR account
         FailedToTransferAdarCommission,
     }
+
+    #[pallet::type_value]
+    pub fn DefaultADARCommissionRatio() -> Balance {
+        balance!(0.0025)
+    }
+
+    /// ADAR commission ratio
+    #[pallet::storage]
+    #[pallet::getter(fn adar_commission_ratio)]
+    pub type ADARCommissionRatio<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultADARCommissionRatio>;
 }

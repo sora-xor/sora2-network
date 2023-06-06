@@ -32,7 +32,7 @@ use crate::mock::*;
 use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
 use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
-use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
+use common::prelude::{AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount};
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
     Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
@@ -3342,6 +3342,45 @@ fn test_batch_swap_desired_input_successful() {
 
         test_utils::check_adar_commission(&swap_batches, sources);
         test_utils::check_swap_batch_executed_amount(swap_batches);
+    });
+}
+
+#[test]
+fn test_batch_swap_emits_event() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        frame_system::Pallet::<Runtime>::set_block_number(1);
+        assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
+
+        let swap_batches = Vec::from([SwapBatchInfo {
+            outcome_asset_id: XOR,
+            dex_id: DEX_C_ID,
+            receivers: vec![
+                BatchReceiverInfo::new(charlie(), balance!(10)),
+                BatchReceiverInfo::new(dave(), balance!(10)),
+            ],
+        }]);
+
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+
+        let amount_in = balance!(20);
+        let adar_fee = (FixedWrapper::from(amount_in) * fixed_wrapper!(0.0025)).into_balance();
+
+        let max_input_amount = amount_in + adar_fee;
+
+        assert_ok!(LiquidityProxy::swap_transfer_batch(
+            RuntimeOrigin::signed(alice()),
+            swap_batches.clone(),
+            XOR,
+            max_input_amount,
+            sources.clone(),
+            filter_mode,
+        ));
+
+        common::test_utils::assert_last_event::<Runtime>(
+            crate::Event::BatchSwapExecuted(adar_fee, amount_in).into(),
+        );
     });
 }
 
