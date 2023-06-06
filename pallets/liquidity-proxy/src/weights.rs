@@ -145,9 +145,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 14_000 nanoseconds.
+		// Minimum execution time: 14_000_000 picoseconds.
 		Weight::from_ref_time(15_000_000)
-			.saturating_add(T::DbWeight::get().writes(1))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 }
 
