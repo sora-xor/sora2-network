@@ -2163,7 +2163,7 @@ pub mod pallet {
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         type GetADARAccountId: Get<Self::AccountId>;
-        type ADARCommissionRatioUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
+        type ADARCommissionRatioUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
