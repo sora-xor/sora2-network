@@ -34,7 +34,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use common::{
-    DEXId, DexInfoProvider, FilterMode, LiquidityRegistry, LiquiditySourceFilter,
+    balance, DEXId, DexInfoProvider, FilterMode, LiquidityRegistry, LiquiditySourceFilter,
     LiquiditySourceType, VAL, XOR, XSTUSD,
 };
 use frame_benchmarking::benchmarks;
@@ -154,6 +154,16 @@ benchmarks! {
         );
     }: {
         T::LiquidityRegistry::list_liquidity_sources(&from_asset, &to_asset, filter).unwrap();
+    }
+    verify {
+    }
+
+    set_adar_commission_ratio {
+    }: {
+        liquidity_proxy::Pallet::<T>::set_adar_commission_ratio(
+            RawOrigin::Root.into(),
+            balance!(0.5)
+        ).unwrap();
     }
     verify {
     }
