@@ -3599,3 +3599,27 @@ fn test_buy_back_handler() {
         );
     });
 }
+
+#[test]
+fn test_set_adar_commission_ratio() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        assert!(LiquidityProxy::adar_commission_ratio() == balance!(0.0025));
+        assert_noop!(
+            LiquidityProxy::set_adar_commission_ratio(
+                RuntimeOrigin::signed(alice()),
+                balance!(0.5)
+            ),
+            DispatchError::BadOrigin
+        );
+        assert_noop!(
+            LiquidityProxy::set_adar_commission_ratio(RuntimeOrigin::root(), balance!(1)),
+            Error::<Runtime>::InvalidADARCommissionRatio
+        );
+        assert_ok!(LiquidityProxy::set_adar_commission_ratio(
+            RuntimeOrigin::root(),
+            balance!(0.5)
+        ));
+        assert!(LiquidityProxy::adar_commission_ratio() == balance!(0.5));
+    })
+}

@@ -2136,6 +2136,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::EnsureOrigin;
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
 
@@ -2162,6 +2163,7 @@ pub mod pallet {
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         type GetADARAccountId: Get<Self::AccountId>;
+        type ADARCommissionRatioUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
@@ -2367,6 +2369,22 @@ pub mod pallet {
             Self::deposit_event(Event::<T>::LiquiditySourceDisabled(liquidity_source));
             Ok(().into())
         }
+
+        #[pallet::call_index(5)]
+        // #[pallet::weight(<T as Config>::WeightInfo::set_adar_commission_ratio())]
+        #[pallet::weight(10_000_000)]
+        pub fn set_adar_commission_ratio(
+            origin: OriginFor<T>,
+            commission_ratio: Balance,
+        ) -> DispatchResultWithPostInfo {
+            T::ADARCommissionRatioUpdateOrigin::ensure_origin(origin)?;
+            ensure!(
+                commission_ratio < balance!(1),
+                Error::<T>::InvalidADARCommissionRatio
+            );
+            ADARCommissionRatio::<T>::put(commission_ratio);
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -2427,6 +2445,8 @@ pub mod pallet {
         InvalidReceiversInfo,
         // Failure while transferring commission to ADAR account
         FailedToTransferAdarCommission,
+        // ADAR commission ratio exceeds 1
+        InvalidADARCommissionRatio,
     }
 
     #[pallet::type_value]
