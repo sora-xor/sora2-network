@@ -37,7 +37,6 @@ use frame_support::{BoundedBTreeMap, BoundedVec, RuntimeDebug};
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::{Add, Sub};
-use sp_std::vec::Vec;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -276,7 +275,7 @@ where
 
     pub fn lock<Locker>(&self) -> Result<(), DispatchError>
     where
-        Locker: CurrencyLocker<AccountId, AssetId, DEXId>,
+        Locker: CurrencyLocker<AccountId, AssetId, DEXId, DispatchError>,
     {
         for (asset_id, from_whom) in self.to_lock.iter() {
             for (account, amount) in from_whom.iter() {
@@ -295,7 +294,7 @@ where
 
     pub fn unlock<Unlocker>(&self) -> Result<(), DispatchError>
     where
-        Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId>,
+        Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId, DispatchError>,
     {
         for (asset_id, to_whom) in self.to_unlock.iter() {
             Unlocker::unlock_liquidity_batch(self.dex_id, self.order_book_id, asset_id, to_whom)?;
@@ -306,8 +305,8 @@ where
 
     pub fn execute_all<Locker, Unlocker>(&self) -> Result<(), DispatchError>
     where
-        Locker: CurrencyLocker<AccountId, AssetId, DEXId>,
-        Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId>,
+        Locker: CurrencyLocker<AccountId, AssetId, DEXId, DispatchError>,
+        Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId, DispatchError>,
     {
         self.lock::<Locker>()?;
         self.unlock::<Unlocker>()?;
@@ -316,7 +315,7 @@ where
 }
 
 #[derive(Eq, PartialEq, Clone, RuntimeDebug)]
-pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
+pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder, BlockNumber> {
     // Info fields
     /// The amount of the input asset for the exchange deal
     pub deal_input: Option<OrderAmount>,
@@ -333,12 +332,13 @@ pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
     // Fields to apply
     pub to_add: BTreeMap<OrderId, LimitOrder>,
     pub to_update: BTreeMap<OrderId, OrderVolume>,
-    pub to_delete: Vec<OrderId>,
+    /// order id and number of block it is scheduled to expire at
+    pub to_delete: BTreeMap<OrderId, BlockNumber>,
     pub payment: Payment<AssetId, AccountId, DEXId>,
 }
 
-impl<AccountId, AssetId, DEXId, OrderId, LimitOrder>
-    MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder>
+impl<AccountId, AssetId, DEXId, OrderId, LimitOrder, BlockNumber>
+    MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder, BlockNumber>
 where
     AssetId: Copy + PartialEq + Ord,
     AccountId: Ord + Clone,
@@ -353,7 +353,7 @@ where
             market_output: None,
             to_add: BTreeMap::new(),
             to_update: BTreeMap::new(),
-            to_delete: Vec::new(),
+            to_delete: BTreeMap::new(),
             payment: Payment::new(dex_id, order_book_id),
         }
     }
@@ -378,10 +378,7 @@ where
 
         self.to_add.append(&mut other.to_add);
         self.to_update.append(&mut other.to_update);
-
         self.to_delete.append(&mut other.to_delete);
-        self.to_delete.sort_unstable();
-        self.to_delete.dedup();
 
         self.payment.merge(&other.payment)?;
 

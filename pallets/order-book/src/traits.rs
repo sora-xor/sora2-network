@@ -34,6 +34,7 @@ use crate::{
 use assets::AssetIdOf;
 use common::PriceVariant;
 use frame_support::sp_runtime::DispatchError;
+use frame_support::weights::WeightMeter;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
@@ -129,8 +130,7 @@ where
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>>;
 }
 
-// todo: make pub(tests) (k.ivanov)
-pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
+pub trait CurrencyLocker<AccountId, AssetId, DEXId, Error> {
     /// Lock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn lock_liquidity(
@@ -139,11 +139,10 @@ pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
         order_book_id: OrderBookId<AssetId>,
         asset_id: &AssetId,
         amount: OrderVolume,
-    ) -> Result<(), DispatchError>;
+    ) -> Result<(), Error>;
 }
 
-// todo: make pub(tests) (k.ivanov)
-pub trait CurrencyUnlocker<AccountId, AssetId, DEXId> {
+pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
     /// Unlock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn unlock_liquidity(
@@ -152,12 +151,35 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId> {
         order_book_id: OrderBookId<AssetId>,
         asset_id: &AssetId,
         amount: OrderVolume,
-    ) -> Result<(), DispatchError>;
+    ) -> Result<(), Error>;
 
     fn unlock_liquidity_batch(
         dex_id: DEXId,
         order_book_id: OrderBookId<AssetId>,
         asset_id: &AssetId,
         receivers: &BTreeMap<AccountId, OrderVolume>,
-    ) -> Result<(), DispatchError>;
+    ) -> Result<(), Error>;
+}
+
+pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
+    /// Execute scheduled expirations considering this block to be `current_block`
+    /// and weight limit to be set by `weight`.
+    ///
+    /// If the weight limit is reached, it should continue where it's left at the
+    /// next block.
+    fn service(current_block: BlockNumber, weight: &mut WeightMeter);
+
+    /// Schedule the order for expiration at block `when`.
+    fn schedule(
+        when: BlockNumber,
+        order_book_id: OrderBookId,
+        order_id: OrderId,
+    ) -> Result<(), Error>;
+
+    /// Remove the order from expiration schedule for block `when`.
+    fn unschedule(
+        when: BlockNumber,
+        order_book_id: OrderBookId,
+        order_id: OrderId,
+    ) -> Result<(), Error>;
 }

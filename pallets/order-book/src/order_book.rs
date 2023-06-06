@@ -29,9 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    CurrencyLocker, CurrencyUnlocker, DataLayer, DealInfo, Error, LimitOrder, MarketChange,
-    MarketOrder, MarketRole, OrderAmount, OrderBookId, OrderBookStatus, OrderPrice, OrderVolume,
-    Payment,
+    CurrencyLocker, CurrencyUnlocker, DataLayer, DealInfo, Error, ExpirationScheduler, LimitOrder,
+    MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookId, OrderBookStatus, OrderPrice,
+    OrderVolume, Payment,
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -41,11 +41,11 @@ use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{One, Zero};
 use sp_std::cmp::Ordering;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::Add;
-use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, PartialEq, Eq, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
@@ -113,14 +113,16 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     /// Tries to place the limit order and returns market input & deal input amounts.
     /// In some cases if the limit order crosses the spread, part or all of the amount could be converted into a market order and as a result, the deal input is not empty.
-    pub fn place_limit_order<Locker, Unlocker>(
+    pub fn place_limit_order<Locker, Unlocker, Scheduler>(
         &self,
         order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<(Option<OrderAmount>, Option<OrderAmount>), DispatchError>
     where
-        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId>,
-        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
+        Scheduler:
+            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
     {
         ensure!(
             self.status == OrderBookStatus::Trade || self.status == OrderBookStatus::PlaceAndCancel,
@@ -160,18 +162,20 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let market_input = market_change.market_input;
         let deal_input = market_change.deal_input;
 
-        self.apply_market_change::<Locker, Unlocker>(market_change, data)?;
+        self.apply_market_change::<Locker, Unlocker, Scheduler>(market_change, data)?;
 
         Ok((market_input, deal_input))
     }
 
-    pub fn cancel_limit_order<Unlocker>(
+    pub fn cancel_limit_order<Unlocker, Scheduler>(
         &self,
         order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<(), DispatchError>
     where
-        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
+        Scheduler:
+            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
     {
         ensure!(
             self.status == OrderBookStatus::Trade
@@ -180,35 +184,39 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::CancellationOfLimitOrdersIsForbidden
         );
 
-        self.cancel_limit_order_unchecked::<Unlocker>(order, data)
+        self.cancel_limit_order_unchecked::<Unlocker, Scheduler>(order, data, false)
     }
 
-    pub fn cancel_all_limit_orders<Unlocker>(
+    pub fn cancel_all_limit_orders<Unlocker, Scheduler>(
         &self,
         data: &mut impl DataLayer<T>,
     ) -> Result<usize, DispatchError>
     where
-        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
+        Scheduler:
+            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
     {
         let orders = data.get_all_limit_orders(&self.order_book_id);
         let count = orders.len();
 
         for order in orders {
-            self.cancel_limit_order_unchecked::<Unlocker>(order, data)?;
+            self.cancel_limit_order_unchecked::<Unlocker, Scheduler>(order, data, false)?;
         }
 
         Ok(count)
     }
 
     /// Executes market order and returns input & output amounts
-    pub fn execute_market_order<Locker, Unlocker>(
+    pub fn execute_market_order<Locker, Unlocker, Scheduler>(
         &self,
         order: MarketOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<(OrderAmount, OrderAmount), DispatchError>
     where
-        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId>,
-        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
+        Scheduler:
+            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
     {
         ensure!(
             self.status == OrderBookStatus::Trade,
@@ -228,7 +236,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             return Err(Error::<T>::PriceCalculationFailed.into());
         };
 
-        self.apply_market_change::<Locker, Unlocker>(market_change, data)?;
+        self.apply_market_change::<Locker, Unlocker, Scheduler>(market_change, data)?;
 
         Ok((input, output))
     }
@@ -238,7 +246,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         order: MarketOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<
-        MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<
+            T::AccountId,
+            T::AssetId,
+            T::DEXId,
+            T::OrderId,
+            LimitOrder<T>,
+            BlockNumberFor<T>,
+        >,
         DispatchError,
     > {
         let receiver = order.to.unwrap_or(order.owner.clone());
@@ -267,7 +282,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         &self,
         order: LimitOrder<T>,
     ) -> Result<
-        MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<
+            T::AccountId,
+            T::AssetId,
+            T::DEXId,
+            T::OrderId,
+            LimitOrder<T>,
+            BlockNumberFor<T>,
+        >,
         DispatchError,
     > {
         let mut payment = Payment::new(self.dex_id, self.order_book_id);
@@ -291,7 +313,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             market_output: None,
             to_add: BTreeMap::from([(order.id, order)]),
             to_update: BTreeMap::new(),
-            to_delete: Vec::new(),
+            to_delete: BTreeMap::new(),
             payment,
         })
     }
@@ -306,13 +328,20 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
         data: &mut impl DataLayer<T>,
     ) -> Result<
-        MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<
+            T::AccountId,
+            T::AssetId,
+            T::DEXId,
+            T::OrderId,
+            LimitOrder<T>,
+            BlockNumberFor<T>,
+        >,
         DispatchError,
     > {
         let mut remaining_amount = taker_base_amount;
         let mut taker_amount = OrderVolume::zero();
         let mut maker_amount = OrderVolume::zero();
-        let mut limit_order_ids_to_delete = Vec::new();
+        let mut limit_order_ids_to_delete = BTreeMap::new();
         let mut limit_orders_to_update = BTreeMap::new();
         let mut payment = Payment::new(self.dex_id, self.order_book_id);
 
@@ -341,7 +370,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         .entry(limit_order.owner.clone())
                         .and_modify(|payment| *payment += maker_payment)
                         .or_insert(maker_payment);
-                    limit_order_ids_to_delete.push(limit_order.id);
+                    limit_order_ids_to_delete.insert(limit_order.id, limit_order.expires_at);
 
                     if remaining_amount.is_zero() {
                         break;
@@ -539,19 +568,29 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         ))
     }
 
-    fn apply_market_change<Locker, Unlocker>(
+    fn apply_market_change<Locker, Unlocker, Scheduler>(
         &self,
-        market_change: MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
+        market_change: MarketChange<
+            T::AccountId,
+            T::AssetId,
+            T::DEXId,
+            T::OrderId,
+            LimitOrder<T>,
+            BlockNumberFor<T>,
+        >,
         data: &mut impl DataLayer<T>,
     ) -> Result<(), DispatchError>
     where
-        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId>,
-        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
+        Scheduler:
+            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
     {
         market_change.payment.execute_all::<Locker, Unlocker>()?;
 
-        for delete_id in market_change.to_delete {
+        for (delete_id, expires_at) in market_change.to_delete {
             data.delete_limit_order(&self.order_book_id, delete_id)?;
+            Scheduler::unschedule(expires_at, self.order_book_id, delete_id)?;
         }
 
         for (order_id, new_amount) in market_change.to_update.iter() {
@@ -559,7 +598,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
 
         for limit_order in market_change.to_add.into_values() {
+            let order_id = limit_order.id;
+            let expires_at = limit_order.expires_at;
             data.insert_limit_order(&self.order_book_id, limit_order)?;
+            Scheduler::schedule(expires_at, self.order_book_id, order_id)?;
         }
 
         Ok(())
@@ -591,13 +633,22 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         aligned
     }
 
-    fn cancel_limit_order_unchecked<Unlocker>(
+    /// ### `ignore_unschedule_error`
+    /// We might ignore error from `unschedule()` with `ignore_unschedule_error = true`.
+    ///
+    /// This is useful for expiration of orders where we want to use the universal interface
+    /// to remove an order. In such case the schedule already does not have the order, because
+    /// it is removed more efficiently than in `unschedule()`
+    pub(crate) fn cancel_limit_order_unchecked<Unlocker, Scheduler>(
         &self,
         order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
+        ignore_unschedule_error: bool,
     ) -> Result<(), DispatchError>
     where
-        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
+        Scheduler:
+            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
     {
         let lock_amount = order.deal_amount(MarketRole::Taker, None)?;
         let lock_asset = lock_amount.associated_asset(&self.order_book_id);
@@ -611,6 +662,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         )?;
 
         data.delete_limit_order(&self.order_book_id, order.id)?;
+
+        let unschedule_result =
+            Scheduler::unschedule(order.expires_at, self.order_book_id, order.id);
+        if !ignore_unschedule_error {
+            unschedule_result?;
+        }
+
         Ok(())
     }
 
@@ -736,7 +794,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         limit_order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<
-        MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<
+            T::AccountId,
+            T::AssetId,
+            T::DEXId,
+            T::OrderId,
+            LimitOrder<T>,
+            BlockNumberFor<T>,
+        >,
         DispatchError,
     > {
         let (market_amount, limit_amout) = match limit_order.side {
@@ -768,15 +833,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
 
         if !limit_amout.is_zero() {
-            let new_limit_order = LimitOrder::<T>::new(
-                limit_order.id,
-                limit_order.owner,
-                limit_order.side,
-                limit_order.price,
-                limit_amout,
-                limit_order.time,
-                limit_order.lifespan,
-            );
+            let mut new_limit_order = limit_order.clone();
+            new_limit_order.amount = limit_amout;
             market_change
                 .merge(self.calculate_limit_order_impact(new_limit_order)?)
                 .map_err(|_| Error::<T>::AmountCalculationFailed)?;

@@ -69,6 +69,8 @@ use common::{Description, GetMarketInfo};
 use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
+#[cfg(feature = "wip")] // order-book
+use frame_support::traits::EitherOf;
 use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
@@ -82,6 +84,8 @@ use frame_election_provider_support::{generate_solution_type, onchain, Sequentia
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
+#[cfg(feature = "wip")] // order-book
+use frame_system::EnsureSigned;
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -196,8 +200,8 @@ pub type Moment = u64;
 
 pub type PeriodicSessions = pallet_session::PeriodicSessions<SessionPeriod, SessionOffset>;
 
-type CouncilCollective = pallet_collective::Instance1;
-type TechnicalCollective = pallet_collective::Instance2;
+pub type CouncilCollective = pallet_collective::Instance1;
+pub type TechnicalCollective = pallet_collective::Instance2;
 
 type MoreThanHalfCouncil = EitherOfDiverse<
     EnsureRoot<AccountId>,
@@ -1994,21 +1998,44 @@ impl hermes_governance_platform::Config for Runtime {
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+    // small value for test environment in order to check postponing expirations
+    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block; // TODO: order-book clarify
+}
+
 #[cfg(feature = "wip")] // order-book
 impl order_book::Config for Runtime {
     const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
     const MIN_ORDER_LIFETIME: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
+    const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50); // TODO: order-book clarify
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
     type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<100000>; // TODO: order-book clarify
+    type MaxExpiringOrdersPerBlock = ConstU32<10000>; // TODO: order-book clarify
+    type MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
     type EnsureTradingPairExists = TradingPair;
     type TradingPairSourceManager = TradingPair;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
+    type ParameterUpdateOrigin = EitherOfDiverse<
+        EnsureSigned<AccountId>,
+        EitherOf<
+            pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+            EnsureRoot<AccountId>,
+        >,
+    >;
+    type StatusUpdateOrigin = EitherOf<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+        EnsureRoot<AccountId>,
+    >;
+    type RemovalOrigin = EitherOf<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+        EnsureRoot<AccountId>,
+    >;
     type WeightInfo = order_book::weights::SubstrateWeight<Runtime>;
 }
 

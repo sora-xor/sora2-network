@@ -610,6 +610,8 @@ fn should_fail_market_change_merge() {
         quote: XOR.into(),
     };
 
+    let expiration_block = 3;
+
     let payment = Payment {
         dex_id: DEX,
         order_book_id,
@@ -650,10 +652,11 @@ fn should_fail_market_change_merge() {
                 balance!(100),
                 1000,
                 10000,
+                100,
             ),
         )]),
         to_update: BTreeMap::from([(2, balance!(20))]),
-        to_delete: vec![1],
+        to_delete: BTreeMap::from([(1, expiration_block)]),
         payment,
     };
 
@@ -686,6 +689,8 @@ fn check_market_change_merge() {
         base: VAL.into(),
         quote: XOR.into(),
     };
+
+    let expiration_block = 3;
 
     let payment = Payment {
         dex_id: DEX,
@@ -733,6 +738,7 @@ fn check_market_change_merge() {
         balance!(100),
         10,
         100,
+        100,
     );
 
     let limit_order1_changed = LimitOrder::<Runtime>::new(
@@ -742,6 +748,7 @@ fn check_market_change_merge() {
         balance!(9),
         balance!(1000),
         10,
+        100,
         100,
     );
 
@@ -753,6 +760,7 @@ fn check_market_change_merge() {
         balance!(100),
         10,
         100,
+        100,
     );
 
     let limit_order3 = LimitOrder::<Runtime>::new(
@@ -762,6 +770,7 @@ fn check_market_change_merge() {
         balance!(11),
         balance!(100),
         10,
+        100,
         100,
     );
 
@@ -773,6 +782,7 @@ fn check_market_change_merge() {
         balance!(100),
         10,
         100,
+        100,
     );
 
     let limit_order5 = LimitOrder::<Runtime>::new(
@@ -782,6 +792,7 @@ fn check_market_change_merge() {
         balance!(12),
         balance!(100),
         10,
+        100,
         100,
     );
 
@@ -812,7 +823,11 @@ fn check_market_change_merge() {
             (update_id2, balance!(30)),
             (update_id3, balance!(40)),
         ]),
-        to_delete: vec![delete_id1, delete_id2, delete_id3],
+        to_delete: BTreeMap::from([
+            (delete_id1, expiration_block),
+            (delete_id2, expiration_block),
+            (delete_id3, expiration_block),
+        ]),
         payment: payment.clone(),
     };
 
@@ -826,7 +841,10 @@ fn check_market_change_merge() {
             (add_id5, limit_order5.clone()),
         ]),
         to_update: BTreeMap::from([(update_id4, balance!(50)), (update_id5, balance!(60))]),
-        to_delete: vec![delete_id4, delete_id5],
+        to_delete: BTreeMap::from([
+            (delete_id4, expiration_block),
+            (delete_id5, expiration_block),
+        ]),
         payment: empty_payment.clone(),
     };
 
@@ -853,7 +871,13 @@ fn check_market_change_merge() {
                 (update_id4, balance!(50)),
                 (update_id5, balance!(60))
             ]),
-            to_delete: vec![delete_id1, delete_id2, delete_id3, delete_id4, delete_id5],
+            to_delete: BTreeMap::from([
+                (delete_id1, expiration_block),
+                (delete_id2, expiration_block),
+                (delete_id3, expiration_block),
+                (delete_id4, expiration_block),
+                (delete_id5, expiration_block)
+            ]),
             payment: payment.clone(),
         }
     );
@@ -873,7 +897,11 @@ fn check_market_change_merge() {
             (update_id2, balance!(30)),
             (update_id5, balance!(60)),
         ]),
-        to_delete: vec![delete_id1, delete_id2, delete_id5],
+        to_delete: BTreeMap::from([
+            (delete_id1, expiration_block),
+            (delete_id2, expiration_block),
+            (delete_id5, expiration_block),
+        ]),
         payment: empty_payment.clone(),
     };
 
@@ -898,7 +926,12 @@ fn check_market_change_merge() {
                 (update_id3, balance!(40)),
                 (update_id5, balance!(60))
             ]),
-            to_delete: vec![delete_id1, delete_id2, delete_id3, delete_id5],
+            to_delete: BTreeMap::from([
+                (delete_id1, expiration_block),
+                (delete_id2, expiration_block),
+                (delete_id3, expiration_block),
+                (delete_id5, expiration_block)
+            ]),
             payment: payment.clone(),
         }
     );
@@ -918,7 +951,11 @@ fn check_market_change_merge() {
             (update_id2, balance!(30)),
             (update_id3, balance!(40)),
         ]),
-        to_delete: vec![delete_id1, delete_id2, delete_id3],
+        to_delete: BTreeMap::from([
+            (delete_id1, expiration_block),
+            (delete_id2, expiration_block),
+            (delete_id3, expiration_block),
+        ]),
         payment: empty_payment.clone(),
     };
 
@@ -941,7 +978,11 @@ fn check_market_change_merge() {
                 (update_id2, balance!(30)),
                 (update_id3, balance!(40)),
             ]),
-            to_delete: vec![delete_id1, delete_id2, delete_id3],
+            to_delete: BTreeMap::from([
+                (delete_id1, expiration_block),
+                (delete_id2, expiration_block),
+                (delete_id3, expiration_block)
+            ]),
             payment: payment.clone(),
         }
     );
@@ -953,7 +994,7 @@ fn check_market_change_merge() {
         market_output: None,
         to_add: BTreeMap::new(),
         to_update: BTreeMap::new(),
-        to_delete: Vec::new(),
+        to_delete: BTreeMap::new(),
         payment: empty_payment.clone(),
     };
 
