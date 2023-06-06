@@ -35,8 +35,9 @@ use common::PriceVariant;
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::traits::Time;
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::Zero;
+use sp_runtime::{SaturatedConversion, Saturating};
 
 /// GTC Limit Order
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen)]
@@ -60,6 +61,7 @@ where
 
     pub time: MomentOf<T>,
     pub lifespan: MomentOf<T>,
+    pub expires_at: BlockNumberFor<T>,
 }
 
 impl<T: crate::Config + Sized> LimitOrder<T> {
@@ -71,7 +73,9 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         amount: OrderVolume,
         time: MomentOf<T>,
         lifespan: MomentOf<T>,
+        current_block: BlockNumberFor<T>,
     ) -> Self {
+        let expires_at = Self::resolve_lifespan(current_block, lifespan);
         Self {
             id,
             owner,
@@ -81,7 +85,31 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
             amount,
             time,
             lifespan,
+            expires_at,
         }
+    }
+
+    /// Returns block number at which to expire the order.
+    /// Aims to expire no earlier than provided lifespan (in ms)
+    fn resolve_lifespan(
+        current_block: BlockNumberFor<T>,
+        lifespan: MomentOf<T>,
+    ) -> BlockNumberFor<T> {
+        let lifespan = lifespan.saturated_into::<u64>();
+        let millis_per_block: u64 = T::MILLISECS_PER_BLOCK.saturated_into::<u64>();
+        // ceil (a/b) = (a + b - 1) / b
+        let mut lifespan_blocks =
+            lifespan.saturating_add(millis_per_block).saturating_sub(1) / millis_per_block;
+        // Expire after the lifespan ends.
+        //
+        // For example, if we want an order to live 9000 ms (or 9s, or 9/6=1.5 blocks),
+        // then the order should be available for at least ceil(1.5)=2 blocks.
+        //
+        // Expirations happen before extrinsic dispatches, so to allow executing
+        // the order at the second block, we need to expire it at the initialization of block 3.
+        lifespan_blocks += 1;
+        let lifespan = lifespan_blocks.saturated_into::<BlockNumberFor<T>>();
+        current_block.saturating_add(lifespan)
     }
 
     pub fn ensure_valid(&self) -> Result<(), DispatchError> {
@@ -95,10 +123,6 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         );
         ensure!(!self.price.is_zero(), Error::<T>::InvalidLimitOrderPrice);
         Ok(())
-    }
-
-    pub fn is_expired(&self) -> bool {
-        T::Time::now() > self.time + self.lifespan
     }
 
     pub fn is_empty(&self) -> bool {
