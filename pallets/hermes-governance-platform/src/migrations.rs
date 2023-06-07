@@ -1,16 +1,13 @@
-use crate::{
-    Config, HermesPollData, HermesPollInfo, HermesVotingInfo, HermesVotings, AccountIdOf,
-};
-use common::Balance;
+use crate::alloc::string::ToString;
+use crate::{AccountIdOf, Config, HermesPollData, HermesPollInfo, HermesVotingInfo, HermesVotings};
+use alloc::string::String;
 use codec::{Decode, Encode};
+use common::Balance;
 use frame_support::dispatch::Weight;
 use frame_support::log;
 use frame_support::traits::Get;
-use alloc::string::String;
 use frame_support::RuntimeDebug;
 use sp_std::vec::Vec;
-use crate::alloc::string::ToString;
-
 
 #[derive(Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Clone, Copy)]
 pub enum VotingOption {
@@ -69,7 +66,7 @@ pub fn migrate_voting_and_poll_data<T: Config>() -> Weight {
 
         let mut options = Vec::new();
         options.push("Yes".to_string());
-        options.push("Yes".to_string());
+        options.push("No".to_string());
 
         Some(HermesPollInfo {
             creator: v.creator,
@@ -81,7 +78,7 @@ pub fn migrate_voting_and_poll_data<T: Config>() -> Weight {
             creator_hermes_withdrawn: v.creator_hermes_withdrawn,
             options,
         })
-    },);
+    });
 
     log::info!(
         target: "runtime",

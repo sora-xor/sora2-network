@@ -13,9 +13,9 @@ mod tests;
 extern crate alloc;
 
 use alloc::string::String;
+use alloc::vec::Vec;
 use codec::{Decode, Encode};
 use common::Balance;
-use alloc::vec::Vec;
 pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
@@ -63,8 +63,9 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{HermesPollInfo, HermesVotingInfo, WeightInfo, migrations, StorageVersion};
+    use crate::{migrations, HermesPollInfo, HermesVotingInfo, StorageVersion, WeightInfo};
     use alloc::string::String;
+    use alloc::vec::Vec;
     use common::prelude::Balance;
     use common::{balance, AssetInfoProvider};
     use frame_support::pallet_prelude::*;
@@ -77,8 +78,6 @@ pub mod pallet {
     use pallet_timestamp as timestamp;
     use sp_core::H256;
     use sp_io::hashing::blake2_256;
-    use alloc::vec::Vec;
-
 
     const PALLET_ID: PalletId = PalletId(*b"hermsgov");
 
@@ -171,7 +170,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn pallet_storage_version)]
     pub type PalletStorageVersion<T: Config> =
-    StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
+        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
@@ -345,10 +344,10 @@ pub mod pallet {
             let poll_id = H256::from(encoded);
 
             if options.len() < 2 {
-               return Err(Error::<T>::InvalidVotingOptions.into())
+                return Err(Error::<T>::InvalidVotingOptions.into());
             }
             if options.len() > 5 {
-                return Err(Error::<T>::TooManyVotingOptions.into())
+                return Err(Error::<T>::TooManyVotingOptions.into());
             }
 
             let hermes_poll_info = HermesPollInfo {

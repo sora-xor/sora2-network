@@ -1,9 +1,14 @@
+use crate::migrations::VotingOption;
 use crate::mock::*;
+use crate::AccountIdOf;
 use crate::{pallet, Error, HermesPollInfo};
 use codec::Encode;
-use common::{balance, AssetInfoProvider, HERMES_ASSET_ID};
+use common::{balance, generate_storage_instance, AssetInfoProvider, HERMES_ASSET_ID};
+use frame_support::pallet_prelude::{StorageDoubleMap, StorageMap};
+use frame_support::storage::types::OptionQuery;
+use frame_support::traits::Hooks;
 use frame_support::PalletId;
-use frame_support::{assert_err, assert_ok};
+use frame_support::{assert_err, assert_ok, Identity};
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
 use sp_runtime::traits::AccountIdConversion;
@@ -1014,5 +1019,104 @@ fn change_min_hermes_for_creating_poll_ok() {
             pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get(),
             balance!(100),
         );
+    });
+}
+
+#[test]
+fn hermes_governance_storage_migration_works() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        generate_storage_instance!(HermesGovernancePlatform, HermesVotings);
+        generate_storage_instance!(HermesGovernancePlatform, HermesPollData);
+
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
+        let user = ALICE;
+        let user1 = CHARLES;
+        let number_of_hermes = pallet::MinimumHermesVotingAmount::<Runtime>::get();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+        let poll_id_a = H256::from(encoded);
+        let poll_id_b = H256::from(encoded);
+        let options = vec!["Yes".to_string(), "No".to_string()];
+
+        type OldHermesVotings = StorageDoubleMap<
+            HermesVotingsOldInstance,
+            Identity,
+            H256,
+            Identity,
+            AccountIdOf<Runtime>,
+            OldHermesVotingInfo,
+            OptionQuery,
+        >;
+
+        type OldHermesPollData<Moment> = StorageMap<
+            HermesPollDataOldInstance,
+            Identity,
+            H256,
+            OldHermesPollInfo<AccountIdOf<Runtime>, Moment>,
+            OptionQuery,
+        >;
+
+        let old_voting_info_a = OldHermesVotingInfo {
+            voting_option: VotingOption::Yes,
+            number_of_hermes: number_of_hermes,
+            hermes_withdrawn: false,
+        };
+
+        let old_voting_info_b = OldHermesVotingInfo {
+            voting_option: VotingOption::No,
+            number_of_hermes: number_of_hermes,
+            hermes_withdrawn: false,
+        };
+
+        let old_poll_data = OldHermesPollInfo {
+            creator: user,
+            hermes_locked: number_of_hermes,
+            poll_start_timestamp: poll_start_timestamp,
+            poll_end_timestamp: poll_end_timestamp,
+            title: "Titile".to_string(),
+            description: "Description".to_string(),
+            creator_hermes_withdrawn: false,
+        };
+
+        OldHermesVotings::insert(&poll_id_a, user, old_voting_info_a);
+        OldHermesVotings::insert(&poll_id_b, user1, old_voting_info_b);
+
+        OldHermesPollData::insert(&poll_id_a, &old_poll_data);
+        OldHermesPollData::insert(&poll_id_b, &old_poll_data);
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000000);
+        run_to_block(5);
+
+        //Storage migration
+        pallet::Pallet::<Runtime>::on_runtime_upgrade();
+
+        let poll_a = pallet::HermesPollData::<Runtime>::get(&poll_id_a).unwrap();
+        let voting_a = pallet::HermesVotings::<Runtime>::get(&poll_id_a, &user).unwrap();
+        assert_eq!(poll_a.options, options);
+        assert_eq!(voting_a.voting_option, "Yes".to_string());
+
+        let poll_b = pallet::HermesPollData::<Runtime>::get(&poll_id_b).unwrap();
+        let voting_b = pallet::HermesVotings::<Runtime>::get(&poll_id_b, &user1).unwrap();
+        assert_eq!(poll_b.options, options);
+        assert_eq!(voting_b.voting_option, "No".to_string());
+
+        // Storage version should be V2 so no changes made
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000000);
+        run_to_block(10);
+
+        // Storage migration
+        pallet::Pallet::<Runtime>::on_runtime_upgrade();
+
+        let poll_a = pallet::HermesPollData::<Runtime>::get(&poll_id_a).unwrap();
+        let voting_a = pallet::HermesVotings::<Runtime>::get(&poll_id_a, &user).unwrap();
+        assert_eq!(poll_a.options, options);
+        assert_eq!(voting_a.voting_option, "Yes".to_string());
+
+        let poll_b = pallet::HermesPollData::<Runtime>::get(&poll_id_b).unwrap();
+        let voting_b = pallet::HermesVotings::<Runtime>::get(&poll_id_b, &user1).unwrap();
+        assert_eq!(poll_b.options, options);
+        assert_eq!(voting_b.voting_option, "No".to_string());
     });
 }

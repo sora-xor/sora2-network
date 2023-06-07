@@ -1,4 +1,6 @@
+use crate::migrations::VotingOption;
 use crate::{self as hermes_governance_platform};
+use codec::{Decode, Encode};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
@@ -6,7 +8,7 @@ use common::{
     Description, Fixed, HERMES_ASSET_ID, PSWAP, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -21,6 +23,34 @@ type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
+pub struct OldHermesPollInfo<AccountId, Moment> {
+    /// Creator of poll
+    pub creator: AccountId,
+    /// Hermes Locked
+    pub hermes_locked: Balance,
+    /// Poll start timestamp
+    pub poll_start_timestamp: Moment,
+    /// Poll end timestamp
+    pub poll_end_timestamp: Moment,
+    /// Poll title
+    pub title: String,
+    /// Description
+    pub description: String,
+    /// Creator Hermes withdrawn
+    pub creator_hermes_withdrawn: bool,
+}
+
+#[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub struct OldHermesVotingInfo {
+    /// Voting option
+    pub voting_option: VotingOption,
+    /// Number of hermes
+    pub number_of_hermes: Balance,
+    /// Hermes withdrawn
+    pub hermes_withdrawn: bool,
+}
 
 construct_runtime! {
     pub enum Runtime where
@@ -54,6 +84,7 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const CHARLES: AccountId = 3;
 pub const BUY_BACK_ACCOUNT: AccountId = 23;
 
 parameter_types! {
@@ -298,6 +329,7 @@ impl Default for ExtBuilder {
             endowed_accounts: vec![
                 (ALICE, HERMES_ASSET_ID, balance!(300000)),
                 (BOB, HERMES_ASSET_ID, balance!(500)),
+                (CHARLES, HERMES_ASSET_ID, balance!(300000)),
             ],
         }
     }
@@ -337,5 +369,13 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_initialize(System::block_number());
     }
 }

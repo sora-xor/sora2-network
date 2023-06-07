@@ -1991,7 +1991,7 @@ parameter_types! {
 }
 
 impl hermes_governance_platform::Config for Runtime {
-    const MIN_DURATION_OF_POLL: Moment = 172_800_000;
+    const MIN_DURATION_OF_POLL: Moment = 14_400_000;
     const MAX_DURATION_OF_POLL: Moment = 604_800_000;
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
