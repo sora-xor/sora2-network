@@ -372,7 +372,7 @@ pub mod pallet {
 
             // TODO compute fee and charge
             // Attempt to charge a fee for message submission
-            let fee = match who {
+            let _fee = match who {
                 RawOrigin::Signed(who) => {
                     let fee = Self::fee();
                     technical::Pallet::<T>::transfer_in(
