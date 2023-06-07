@@ -48,6 +48,7 @@ use framenode_runtime::order_book::{
     Pallet,
 };
 
+use crate::{CacheDataLayer, ExpirationScheduler};
 use assets::AssetIdOf;
 use codec::Decode;
 use common::prelude::{QuoteAmount, SwapAmount};
@@ -57,6 +58,7 @@ use common::{
 };
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Time;
+use frame_support::weights::WeightMeter;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_runtime::traits::UniqueSaturatedInto;
@@ -121,7 +123,7 @@ fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>
     )
     .unwrap();
 
-    let lifespan: MomentOf<T> = 10000u32.into();
+    let lifespan: Option<MomentOf<T>> = Some(10000u32.into());
 
     // prices
     let bp1 = balance!(10);
@@ -433,6 +435,7 @@ benchmarks! {
         let amount = balance!(100);
         let lifespan: MomentOf<T> = 10000u32.into();
         let now = <<T as Config>::Time as Time>::now();
+        let current_block = frame_system::Pallet::<T>::block_number();
 
         create_and_fill_order_book::<T>(order_book_id);
     }: {
@@ -442,7 +445,7 @@ benchmarks! {
             price,
             amount,
             PriceVariant::Buy,
-            lifespan
+            Some(lifespan)
         ).unwrap();
     }
     verify {
@@ -466,6 +469,7 @@ benchmarks! {
             amount,
             now,
             lifespan,
+            current_block
         );
 
         assert_eq!(
@@ -580,6 +584,66 @@ benchmarks! {
             caller_quote_balance + balance!(3499.999935)
         );
     }
+
+    service_base {
+        let mut weight = WeightMeter::max_limit();
+        let block_number = 0u32.unique_saturated_into();
+    }: {
+        OrderBookPallet::<T>::service(block_number, &mut weight);
+    }
+    verify {}
+
+    service_block_base {
+        let mut weight = WeightMeter::max_limit();
+        let block_number = 0u32.unique_saturated_into();
+        // should be the slower layer because cache is not
+        // warmed up
+        let mut data_layer = CacheDataLayer::<T>::new();
+    }: {
+        OrderBookPallet::<T>::service_block(&mut data_layer, block_number, &mut weight);
+    }
+    verify {}
+
+    service_single_expiration {
+        // very similar to cancel_limit_order
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
+
+        let order_id = 5u128.unique_saturated_into();
+
+        let order = OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap();
+
+        let balance_before =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
+
+        // should be the slower layer because cache is not
+        // warmed up
+        let mut data_layer = CacheDataLayer::<T>::new();
+    }: {
+        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, &order_id);
+    }
+    verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderCanceled {
+                order_book_id,
+                dex_id: DEX.into(),
+                order_id,
+                owner_id: order.owner.clone(),
+            }
+            .into(),
+        );
+
+        let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
+        let balance =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
+        let expected_balance = balance_before + deal_amount;
+        assert_eq!(balance, expected_balance);
+    }
+
 
     impl_benchmark_test_suite!(Pallet, framenode_chain_spec::ext(), framenode_runtime::Runtime);
 }
