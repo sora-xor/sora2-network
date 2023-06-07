@@ -1,4 +1,4 @@
-use crate::migrations::VotingOption;
+use crate::migrations::{OldHermesPollInfo, VotingOption};
 use crate::mock::*;
 use crate::AccountIdOf;
 use crate::{pallet, Error, HermesPollInfo};
@@ -1060,13 +1060,13 @@ fn hermes_governance_storage_migration_works() {
 
         let old_voting_info_a = OldHermesVotingInfo {
             voting_option: VotingOption::Yes,
-            number_of_hermes: number_of_hermes,
+            number_of_hermes,
             hermes_withdrawn: false,
         };
 
         let old_voting_info_b = OldHermesVotingInfo {
             voting_option: VotingOption::No,
-            number_of_hermes: number_of_hermes,
+            number_of_hermes,
             hermes_withdrawn: false,
         };
 
