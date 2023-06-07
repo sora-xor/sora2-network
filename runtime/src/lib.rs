@@ -354,7 +354,7 @@ parameter_types! {
     pub const ElectionsMaxVoters: u32 = 10000;
     pub const ElectionsMaxCandidates: u32 = 1000;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
-    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get()];
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get(), GetTbcdAssetId::get()];
     pub const MaxAuthorities: u32 = 100_000;
     pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
@@ -881,6 +881,7 @@ parameter_types! {
     pub const GetDaiAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200060000000000000000000000000000000000000000000000000000000000"));
     pub const GetEthAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200070000000000000000000000000000000000000000000000000000000000"));
     pub const GetXstAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200090000000000000000000000000000000000000000000000000000000000"));
+    pub const GetTbcdAssetId: AssetId = common::AssetId32::from_bytes(hex!("02000a0000000000000000000000000000000000000000000000000000000000"));
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
