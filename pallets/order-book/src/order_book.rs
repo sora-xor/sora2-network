@@ -241,7 +241,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok((input, output))
     }
 
-    fn calculate_market_order_impact(
+    pub fn calculate_market_order_impact(
         &self,
         order: MarketOrder<T>,
         data: &mut impl DataLayer<T>,
@@ -278,7 +278,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
     }
 
-    fn calculate_limit_order_impact(
+    pub fn calculate_limit_order_impact(
         &self,
         order: LimitOrder<T>,
     ) -> Result<
@@ -319,7 +319,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     }
 
     /// Calculates how the deal with `taker_base_amount` impacts on the market
-    pub fn calculate_market_impact<'a>(
+    fn calculate_market_impact<'a>(
         &self,
         side: PriceVariant,
         taker: T::AccountId,
@@ -568,7 +568,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         ))
     }
 
-    fn apply_market_change<Locker, Unlocker, Scheduler>(
+    pub fn apply_market_change<Locker, Unlocker, Scheduler>(
         &self,
         market_change: MarketChange<
             T::AccountId,
@@ -789,7 +789,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         volume
     }
 
-    fn cross_spread<'a>(
+    pub fn cross_spread<'a>(
         &self,
         limit_order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
@@ -806,16 +806,16 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     > {
         let (market_amount, limit_amout) = match limit_order.side {
             PriceVariant::Buy => Self::calculate_market_depth_to_price(
-                limit_order.side,
-                limit_order.price,
-                limit_order.amount,
-                data.get_aggregated_bids(&self.order_book_id).iter().rev(),
-            ),
-            PriceVariant::Sell => Self::calculate_market_depth_to_price(
-                limit_order.side,
+                limit_order.side.switch(),
                 limit_order.price,
                 limit_order.amount,
                 data.get_aggregated_asks(&self.order_book_id).iter(),
+            ),
+            PriceVariant::Sell => Self::calculate_market_depth_to_price(
+                limit_order.side.switch(),
+                limit_order.price,
+                limit_order.amount,
+                data.get_aggregated_bids(&self.order_book_id).iter().rev(),
             ),
         };
 
@@ -824,7 +824,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         if !market_amount.is_zero() {
             let market_order = MarketOrder::<T>::new(
                 limit_order.owner.clone(),
-                limit_order.side.switch(),
+                limit_order.side,
                 self.order_book_id,
                 market_amount,
                 None,
@@ -843,7 +843,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(market_change)
     }
 
-    fn calculate_market_depth_to_price<'a>(
+    /// Calculates and returnes the sum of limit orders up to the `price`or until the `amount` is reached
+    /// and remainig `amount` if it is greater then the market volume.
+    pub fn calculate_market_depth_to_price<'a>(
         side: PriceVariant,
         price: OrderPrice,
         mut amount: OrderVolume,

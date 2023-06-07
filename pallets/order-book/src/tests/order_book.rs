@@ -33,7 +33,7 @@
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
-use common::{balance, AccountIdOf, AssetName, AssetSymbol, PriceVariant, DOT, KSM, VAL, XOR};
+use common::{balance, AssetName, AssetSymbol, PriceVariant, DOT, KSM, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
@@ -301,6 +301,384 @@ fn should_place_nft_limit_order() {
         let balance = free_balance(&order_book_id.base, &owner);
         assert_eq!(balance, balance!(0));
     })
+}
+
+#[test]
+fn should_place_limit_order_out_of_spread() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+        fill_balance(alice(), order_book_id);
+
+        let bid_price1 = balance!(10);
+        let bid_price2 = balance!(9.8);
+        let bid_price3 = balance!(9.5);
+        let new_bid_price = balance!(11.1);
+
+        let ask_price1 = balance!(11);
+        let ask_price2 = balance!(11.2);
+        let ask_price3 = balance!(11.5);
+        let new_ask_price = balance!(9.9);
+
+        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
+        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        // check state before
+
+        assert_eq!(data.get_bids(&order_book_id, &bid_price1).unwrap(), vec![1]);
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(data.get_asks(&order_book_id, &ask_price1).unwrap(), vec![7]);
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (bid_price1, balance!(168.5)),
+                (bid_price2, balance!(139.9)),
+                (bid_price3, balance!(261.3))
+            ])
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([
+                (ask_price1, balance!(176.3)),
+                (ask_price2, balance!(178.6)),
+                (ask_price3, balance!(255.8))
+            ])
+        );
+
+        // buy order 1
+        let buy_order_id1 = 101;
+        let buy_order1 = LimitOrder::<Runtime>::new(
+            buy_order_id1,
+            alice(),
+            PriceVariant::Buy,
+            new_bid_price,
+            balance!(26.3),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book
+                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                    buy_order1, &mut data
+                )
+                .unwrap(),
+            (None, Some(OrderAmount::Quote(balance!(289.3))))
+        );
+
+        // check state
+
+        assert_eq!(data.get_bids(&order_book_id, &bid_price1).unwrap(), vec![1]);
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(data.get_asks(&order_book_id, &ask_price1).unwrap(), vec![7]);
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (bid_price1, balance!(168.5)),
+                (bid_price2, balance!(139.9)),
+                (bid_price3, balance!(261.3))
+            ])
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([
+                (ask_price1, balance!(150)),
+                (ask_price2, balance!(178.6)),
+                (ask_price3, balance!(255.8))
+            ])
+        );
+
+        assert_eq!(
+            alice_base_balance + balance!(26.3),
+            free_balance(&order_book_id.base, &alice())
+        );
+        assert_eq!(
+            alice_quote_balance - balance!(289.3),
+            free_balance(&order_book_id.quote, &alice())
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        // buy order 2
+        let buy_order_id2 = 102;
+        let mut buy_order2 = LimitOrder::<Runtime>::new(
+            buy_order_id2,
+            alice(),
+            PriceVariant::Buy,
+            new_bid_price,
+            balance!(300),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book
+                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                    buy_order2.clone(),
+                    &mut data
+                )
+                .unwrap(),
+            (
+                Some(OrderAmount::Quote(balance!(1665))),
+                Some(OrderAmount::Quote(balance!(1650)))
+            )
+        );
+
+        // check state
+
+        assert_eq!(
+            data.get_bids(&order_book_id, &new_bid_price).unwrap(),
+            vec![buy_order_id2]
+        );
+        assert_eq!(data.get_bids(&order_book_id, &bid_price1).unwrap(), vec![1]);
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(data.get_asks(&order_book_id, &ask_price1), None);
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (new_bid_price, balance!(150)),
+                (bid_price1, balance!(168.5)),
+                (bid_price2, balance!(139.9)),
+                (bid_price3, balance!(261.3))
+            ])
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([(ask_price2, balance!(178.6)), (ask_price3, balance!(255.8))])
+        );
+
+        buy_order2.amount = balance!(150);
+        assert_eq!(
+            data.get_limit_order(&order_book_id, buy_order_id2).unwrap(),
+            buy_order2
+        );
+
+        assert_eq!(
+            alice_base_balance + balance!(150),
+            free_balance(&order_book_id.base, &alice())
+        );
+        assert_eq!(
+            alice_quote_balance - balance!(3315),
+            free_balance(&order_book_id.quote, &alice())
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        // delete limit order
+        assert_ok!(data.delete_limit_order(&order_book_id, buy_order_id2));
+
+        // sell order 1
+        let sell_order_id1 = 201;
+        let sell_order1 = LimitOrder::<Runtime>::new(
+            sell_order_id1,
+            alice(),
+            PriceVariant::Sell,
+            new_ask_price,
+            balance!(18.5),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book
+                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                    sell_order1,
+                    &mut data
+                )
+                .unwrap(),
+            (None, Some(OrderAmount::Base(balance!(18.5))))
+        );
+
+        // check state
+
+        assert_eq!(data.get_bids(&order_book_id, &bid_price1).unwrap(), vec![1]);
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(data.get_asks(&order_book_id, &ask_price1), None);
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (bid_price1, balance!(150)),
+                (bid_price2, balance!(139.9)),
+                (bid_price3, balance!(261.3))
+            ])
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([(ask_price2, balance!(178.6)), (ask_price3, balance!(255.8))])
+        );
+
+        assert_eq!(
+            alice_base_balance - balance!(18.5),
+            free_balance(&order_book_id.base, &alice())
+        );
+        assert_eq!(
+            alice_quote_balance + balance!(185),
+            free_balance(&order_book_id.quote, &alice())
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        // sell order 2
+        let sell_order_id2 = 202;
+        let mut sell_order2 = LimitOrder::<Runtime>::new(
+            sell_order_id2,
+            alice(),
+            PriceVariant::Sell,
+            new_ask_price,
+            balance!(300),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book
+                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                    sell_order2.clone(),
+                    &mut data
+                )
+                .unwrap(),
+            (
+                Some(OrderAmount::Base(balance!(150))),
+                Some(OrderAmount::Base(balance!(150)))
+            )
+        );
+
+        // check state
+
+        assert_eq!(data.get_bids(&order_book_id, &bid_price1), None);
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(
+            data.get_asks(&order_book_id, &new_ask_price).unwrap(),
+            vec![sell_order_id2]
+        );
+        assert_eq!(data.get_asks(&order_book_id, &ask_price1), None);
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([(bid_price2, balance!(139.9)), (bid_price3, balance!(261.3))])
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([
+                (new_ask_price, balance!(150)),
+                (ask_price2, balance!(178.6)),
+                (ask_price3, balance!(255.8))
+            ])
+        );
+
+        sell_order2.amount = balance!(150);
+        assert_eq!(
+            data.get_limit_order(&order_book_id, sell_order_id2)
+                .unwrap(),
+            sell_order2
+        );
+
+        assert_eq!(
+            alice_base_balance - balance!(300),
+            free_balance(&order_book_id.base, &alice())
+        );
+        assert_eq!(
+            alice_quote_balance + balance!(1500),
+            free_balance(&order_book_id.quote, &alice())
+        );
+    });
 }
 
 #[test]
@@ -2775,7 +3153,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
 }
 
 #[test]
-fn should_not_calculate_market_impact_with_empty_side() {
+fn should_not_calculate_market_order_impact_with_empty_side() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -2787,23 +3165,27 @@ fn should_not_calculate_market_impact_with_empty_side() {
         let order_book = create_empty_order_book(order_book_id);
 
         assert_err!(
-            order_book.calculate_market_impact(
-                PriceVariant::Buy,
-                alice(),
-                alice(),
-                balance!(1),
-                data.get_aggregated_asks(&order_book_id).iter(),
+            order_book.calculate_market_order_impact(
+                MarketOrder::<Runtime>::new(
+                    alice(),
+                    PriceVariant::Buy,
+                    order_book_id,
+                    balance!(1),
+                    None
+                ),
                 &mut data
             ),
             E::NotEnoughLiquidity
         );
         assert_err!(
-            order_book.calculate_market_impact(
-                PriceVariant::Sell,
-                alice(),
-                alice(),
-                balance!(1),
-                data.get_aggregated_bids(&order_book_id).iter().rev(),
+            order_book.calculate_market_order_impact(
+                MarketOrder::<Runtime>::new(
+                    alice(),
+                    PriceVariant::Sell,
+                    order_book_id,
+                    balance!(1),
+                    None
+                ),
                 &mut data
             ),
             E::NotEnoughLiquidity
@@ -2812,7 +3194,7 @@ fn should_not_calculate_market_impact_with_empty_side() {
 }
 
 #[test]
-fn should_not_calculate_market_impact_if_liquidity_is_not_enough() {
+fn should_not_calculate_market_order_impact_if_liquidity_is_not_enough() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -2824,23 +3206,27 @@ fn should_not_calculate_market_impact_if_liquidity_is_not_enough() {
         let order_book = create_and_fill_order_book(order_book_id);
 
         assert_err!(
-            order_book.calculate_market_impact(
-                PriceVariant::Buy,
-                alice(),
-                alice(),
-                balance!(1000),
-                data.get_aggregated_asks(&order_book_id).iter(),
+            order_book.calculate_market_order_impact(
+                MarketOrder::<Runtime>::new(
+                    alice(),
+                    PriceVariant::Buy,
+                    order_book_id,
+                    balance!(1000),
+                    None
+                ),
                 &mut data
             ),
             E::NotEnoughLiquidity
         );
         assert_err!(
-            order_book.calculate_market_impact(
-                PriceVariant::Sell,
-                alice(),
-                alice(),
-                balance!(1000),
-                data.get_aggregated_bids(&order_book_id).iter().rev(),
+            order_book.calculate_market_order_impact(
+                MarketOrder::<Runtime>::new(
+                    alice(),
+                    PriceVariant::Sell,
+                    order_book_id,
+                    balance!(1000),
+                    None
+                ),
                 &mut data
             ),
             E::NotEnoughLiquidity
@@ -2849,7 +3235,7 @@ fn should_not_calculate_market_impact_if_liquidity_is_not_enough() {
 }
 
 #[test]
-fn should_calculate_market_impact() {
+fn should_calculate_market_order_impact() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -2860,10 +3246,7 @@ fn should_calculate_market_impact() {
 
         let dex_id = DEX.into();
         let order_book = create_and_fill_order_book(order_book_id);
-        let expiration_block = 3;
-
-        let market_for_buy = data.get_aggregated_asks(&order_book_id);
-        let market_for_sell = data.get_aggregated_bids(&order_book_id);
+        let expiration_block = 18;
 
         let buy_amount1 = balance!(100);
         let buy_amount2 = balance!(300);
@@ -2874,12 +3257,14 @@ fn should_calculate_market_impact() {
         let limit_order7 = data.get_limit_order(&order_book_id, 7).unwrap();
         assert_eq!(
             order_book
-                .calculate_market_impact(
-                    PriceVariant::Buy,
-                    alice(),
-                    alice(),
-                    buy_amount1,
-                    market_for_buy.iter(),
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Buy,
+                        order_book_id,
+                        buy_amount1,
+                        None
+                    ),
                     &mut data
                 )
                 .unwrap(),
@@ -2891,7 +3276,7 @@ fn should_calculate_market_impact() {
                 to_add: BTreeMap::from([]),
                 to_update: BTreeMap::from([(limit_order7.id, limit_order7.amount - buy_amount1)]),
                 to_delete: BTreeMap::from([]),
-                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                payment: Payment {
                     dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -2912,12 +3297,14 @@ fn should_calculate_market_impact() {
         let limit_order9 = data.get_limit_order(&order_book_id, 9).unwrap();
         assert_eq!(
             order_book
-                .calculate_market_impact(
-                    PriceVariant::Buy,
-                    alice(),
-                    dave(),
-                    buy_amount2,
-                    market_for_buy.iter(),
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Buy,
+                        order_book_id,
+                        buy_amount2,
+                        Some(dave())
+                    ),
                     &mut data
                 )
                 .unwrap(),
@@ -2932,7 +3319,7 @@ fn should_calculate_market_impact() {
                     limit_order9.amount - balance!(38.3)
                 )]),
                 to_delete: BTreeMap::from([(7, expiration_block), (8, expiration_block)]),
-                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                payment: Payment {
                     dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -2956,12 +3343,14 @@ fn should_calculate_market_impact() {
         let limit_order12 = data.get_limit_order(&order_book_id, 12).unwrap();
         assert_eq!(
             order_book
-                .calculate_market_impact(
-                    PriceVariant::Buy,
-                    alice(),
-                    alice(),
-                    buy_amount3,
-                    market_for_buy.iter(),
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Buy,
+                        order_book_id,
+                        buy_amount3,
+                        None
+                    ),
                     &mut data
                 )
                 .unwrap(),
@@ -2979,7 +3368,7 @@ fn should_calculate_market_impact() {
                     (10, expiration_block),
                     (11, expiration_block)
                 ]),
-                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                payment: Payment {
                     dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3002,12 +3391,14 @@ fn should_calculate_market_impact() {
 
         assert_eq!(
             order_book
-                .calculate_market_impact(
-                    PriceVariant::Buy,
-                    alice(),
-                    dave(),
-                    buy_amount4,
-                    market_for_buy.iter(),
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Buy,
+                        order_book_id,
+                        buy_amount4,
+                        Some(dave())
+                    ),
                     &mut data
                 )
                 .unwrap(),
@@ -3024,7 +3415,7 @@ fn should_calculate_market_impact() {
                     (9, expiration_block),
                     (10, expiration_block)
                 ]),
-                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                payment: Payment {
                     dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3047,12 +3438,14 @@ fn should_calculate_market_impact() {
 
         assert_eq!(
             order_book
-                .calculate_market_impact(
-                    PriceVariant::Buy,
-                    alice(),
-                    alice(),
-                    buy_amount5,
-                    market_for_buy.iter(),
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Buy,
+                        order_book_id,
+                        buy_amount5,
+                        None
+                    ),
                     &mut data
                 )
                 .unwrap(),
@@ -3071,7 +3464,7 @@ fn should_calculate_market_impact() {
                     (11, expiration_block),
                     (12, expiration_block)
                 ]),
-                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                payment: Payment {
                     dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3101,12 +3494,14 @@ fn should_calculate_market_impact() {
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         assert_eq!(
             order_book
-                .calculate_market_impact(
-                    PriceVariant::Sell,
-                    alice(),
-                    alice(),
-                    sell_amount1,
-                    market_for_sell.iter().rev(),
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Sell,
+                        order_book_id,
+                        sell_amount1,
+                        None
+                    ),
                     &mut data
                 )
                 .unwrap(),
@@ -3118,7 +3513,7 @@ fn should_calculate_market_impact() {
                 to_add: BTreeMap::from([]),
                 to_update: BTreeMap::from([(limit_order1.id, limit_order1.amount - buy_amount1)]),
                 to_delete: BTreeMap::from([]),
-                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                payment: Payment {
                     dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3139,12 +3534,14 @@ fn should_calculate_market_impact() {
         let limit_order3 = data.get_limit_order(&order_book_id, 3).unwrap();
         assert_eq!(
             order_book
-                .calculate_market_impact(
-                    PriceVariant::Sell,
-                    alice(),
-                    dave(),
-                    sell_amount2,
-                    market_for_sell.iter().rev(),
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Sell,
+                        order_book_id,
+                        sell_amount2,
+                        Some(dave())
+                    ),
                     &mut data
                 )
                 .unwrap(),
@@ -3156,7 +3553,7 @@ fn should_calculate_market_impact() {
                 to_add: BTreeMap::from([]),
                 to_update: BTreeMap::from([(limit_order3.id, limit_order3.amount - balance!(6.3))]),
                 to_delete: BTreeMap::from([(1, expiration_block), (2, expiration_block)]),
-                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                payment: Payment {
                     dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3180,12 +3577,14 @@ fn should_calculate_market_impact() {
         let limit_order5 = data.get_limit_order(&order_book_id, 5).unwrap();
         assert_eq!(
             order_book
-                .calculate_market_impact(
-                    PriceVariant::Sell,
-                    alice(),
-                    alice(),
-                    sell_amount3,
-                    market_for_sell.iter().rev(),
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Sell,
+                        order_book_id,
+                        sell_amount3,
+                        None
+                    ),
                     &mut data
                 )
                 .unwrap(),
@@ -3205,7 +3604,7 @@ fn should_calculate_market_impact() {
                     (3, expiration_block),
                     (4, expiration_block)
                 ]),
-                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                payment: Payment {
                     dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3231,12 +3630,14 @@ fn should_calculate_market_impact() {
 
         assert_eq!(
             order_book
-                .calculate_market_impact(
-                    PriceVariant::Sell,
-                    alice(),
-                    dave(),
-                    sell_amount4,
-                    market_for_sell.iter().rev(),
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Sell,
+                        order_book_id,
+                        sell_amount4,
+                        Some(dave())
+                    ),
                     &mut data
                 )
                 .unwrap(),
@@ -3253,7 +3654,7 @@ fn should_calculate_market_impact() {
                     (3, expiration_block),
                     (4, expiration_block)
                 ]),
-                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                payment: Payment {
                     dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3279,12 +3680,14 @@ fn should_calculate_market_impact() {
 
         assert_eq!(
             order_book
-                .calculate_market_impact(
-                    PriceVariant::Sell,
-                    alice(),
-                    alice(),
-                    sell_amount5,
-                    market_for_sell.iter().rev(),
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Sell,
+                        order_book_id,
+                        sell_amount5,
+                        None
+                    ),
                     &mut data
                 )
                 .unwrap(),
@@ -3303,7 +3706,7 @@ fn should_calculate_market_impact() {
                     (5, expiration_block),
                     (6, expiration_block)
                 ]),
-                payment: Payment::<AssetIdOf<Runtime>, AccountIdOf<Runtime>, DEXId> {
+                payment: Payment {
                     dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3324,6 +3727,688 @@ fn should_calculate_market_impact() {
                         )
                     ]),
                 }
+            }
+        );
+    });
+}
+
+#[test]
+fn should_calculate_limit_order_impact() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let dex_id = DEX.into();
+        let order_book = create_empty_order_book(order_book_id);
+
+        let limit_order_buy = LimitOrder::<Runtime>::new(
+            1,
+            alice(),
+            PriceVariant::Buy,
+            balance!(10),
+            balance!(100),
+            100,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+        let limit_order_sell = LimitOrder::<Runtime>::new(
+            2,
+            bob(),
+            PriceVariant::Sell,
+            balance!(11),
+            balance!(150),
+            100,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book
+                .calculate_limit_order_impact(limit_order_buy.clone())
+                .unwrap(),
+            MarketChange {
+                deal_input: None,
+                deal_output: None,
+                market_input: Some(OrderAmount::Quote(balance!(1000))),
+                market_output: None,
+                to_add: BTreeMap::from([(1, limit_order_buy.clone())]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(1000))])
+                    )]),
+                    to_unlock: BTreeMap::new(),
+                }
+            }
+        );
+
+        assert_eq!(
+            order_book
+                .calculate_limit_order_impact(limit_order_sell.clone())
+                .unwrap(),
+            MarketChange {
+                deal_input: None,
+                deal_output: None,
+                market_input: Some(OrderAmount::Base(balance!(150))),
+                market_output: None,
+                to_add: BTreeMap::from([(2, limit_order_sell.clone())]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(bob(), balance!(150))])
+                    )]),
+                    to_unlock: BTreeMap::new(),
+                }
+            }
+        );
+    });
+}
+
+#[test]
+fn should_apply_market_change() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+        fill_balance(alice(), order_book_id);
+        fill_balance(dave(), order_book_id);
+
+        let bid_price1 = balance!(10);
+        let bid_price2 = balance!(9.8);
+        let bid_price3 = balance!(9.5);
+
+        let ask_price1 = balance!(11);
+        let ask_price2 = balance!(11.2);
+        let ask_price3 = balance!(11.5);
+
+        let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
+        let limit_order8 = data.get_limit_order(&order_book_id, 8).unwrap();
+
+        let new_order_id1 = 101;
+        let new_order_id2 = 102;
+
+        let new_limit_order1 = LimitOrder::<Runtime>::new(
+            new_order_id1,
+            alice(),
+            PriceVariant::Buy,
+            bid_price1,
+            balance!(300),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        let new_limit_order2 = LimitOrder::<Runtime>::new(
+            new_order_id2,
+            dave(),
+            PriceVariant::Sell,
+            ask_price1,
+            balance!(300),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        let balance_diff = balance!(50);
+
+        let alice_base_balance = free_balance(&order_book_id.base, &alice());
+        let alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        let bob_base_balance = free_balance(&order_book_id.base, &bob());
+        let bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        let charlie_base_balance = free_balance(&order_book_id.base, &charlie());
+        let charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        let dave_base_balance = free_balance(&order_book_id.base, &dave());
+        let dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        // check state before
+
+        assert_eq!(data.get_bids(&order_book_id, &bid_price1).unwrap(), vec![1]);
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(data.get_asks(&order_book_id, &ask_price1).unwrap(), vec![7]);
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (bid_price1, balance!(168.5)),
+                (bid_price2, balance!(139.9)),
+                (bid_price3, balance!(261.3))
+            ])
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([
+                (ask_price1, balance!(176.3)),
+                (ask_price2, balance!(178.6)),
+                (ask_price3, balance!(255.8))
+            ])
+        );
+
+        let market_change = MarketChange {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: None,
+            to_add: BTreeMap::from([
+                (new_order_id1, new_limit_order1.clone()),
+                (new_order_id2, new_limit_order2.clone()),
+            ]),
+            to_update: BTreeMap::from([(1, balance!(100)), (7, balance!(100))]),
+            to_delete: BTreeMap::from([(2, limit_order2.expires_at), (8, limit_order8.expires_at)]),
+            payment: Payment {
+                dex_id: DEX.into(),
+                order_book_id,
+                to_lock: BTreeMap::from([
+                    (
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), balance_diff)]),
+                    ),
+                    (order_book_id.quote, BTreeMap::from([(bob(), balance_diff)])),
+                ]),
+                to_unlock: BTreeMap::from([
+                    (
+                        order_book_id.base,
+                        BTreeMap::from([(charlie(), balance_diff)]),
+                    ),
+                    (
+                        order_book_id.quote,
+                        BTreeMap::from([(dave(), balance_diff)]),
+                    ),
+                ]),
+            },
+        };
+
+        // apply market change
+        assert_ok!(order_book
+            .apply_market_change::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                market_change,
+                &mut data
+            ));
+
+        // check state after
+
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price1).unwrap(),
+            vec![1, new_order_id1]
+        );
+        assert_eq!(data.get_bids(&order_book_id, &bid_price2).unwrap(), vec![3]);
+        assert_eq!(
+            data.get_bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price1).unwrap(),
+            vec![7, new_order_id2]
+        );
+        assert_eq!(data.get_asks(&order_book_id, &ask_price2).unwrap(), vec![9]);
+        assert_eq!(
+            data.get_asks(&order_book_id, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        assert_eq!(
+            data.get_aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (bid_price1, balance!(400)),
+                (bid_price2, balance!(44.7)),
+                (bid_price3, balance!(261.3))
+            ])
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([
+                (ask_price1, balance!(400)),
+                (ask_price2, balance!(93.2)),
+                (ask_price3, balance!(255.8))
+            ])
+        );
+
+        assert_eq!(
+            alice_base_balance - balance_diff,
+            free_balance(&order_book_id.base, &alice())
+        );
+        assert_eq!(
+            alice_quote_balance,
+            free_balance(&order_book_id.quote, &alice())
+        );
+        assert_eq!(bob_base_balance, free_balance(&order_book_id.base, &bob()));
+        assert_eq!(
+            bob_quote_balance - balance_diff,
+            free_balance(&order_book_id.quote, &bob())
+        );
+        assert_eq!(
+            charlie_base_balance + balance_diff,
+            free_balance(&order_book_id.base, &charlie())
+        );
+        assert_eq!(
+            charlie_quote_balance,
+            free_balance(&order_book_id.quote, &charlie())
+        );
+        assert_eq!(
+            dave_base_balance,
+            free_balance(&order_book_id.base, &dave())
+        );
+        assert_eq!(
+            dave_quote_balance + balance_diff,
+            free_balance(&order_book_id.quote, &dave())
+        );
+
+        assert_eq!(
+            data.get_limit_order(&order_book_id, new_order_id1).unwrap(),
+            new_limit_order1
+        );
+        assert_eq!(
+            data.get_limit_order(&order_book_id, new_order_id2).unwrap(),
+            new_limit_order2
+        );
+    });
+}
+
+#[test]
+fn should_calculate_market_depth_to_price() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+
+        let bids = data.get_aggregated_bids(&order_book_id);
+        let asks = data.get_aggregated_asks(&order_book_id);
+
+        let bid_price1 = balance!(10.5);
+        let bid_price2 = balance!(9.9);
+        let bid_price3 = balance!(9.7);
+        let bid_price4 = balance!(9);
+
+        let ask_price1 = balance!(10.5);
+        let ask_price2 = balance!(11.1);
+        let ask_price3 = balance!(11.3);
+        let ask_price4 = balance!(12);
+
+        let regular_amount = balance!(200);
+        let big_amount = balance!(1000);
+
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Buy,
+                bid_price1,
+                regular_amount,
+                bids.iter().rev()
+            ),
+            (balance!(0), regular_amount)
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Buy,
+                bid_price2,
+                regular_amount,
+                bids.iter().rev()
+            ),
+            (balance!(168.5), balance!(31.5))
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Buy,
+                bid_price3,
+                regular_amount,
+                bids.iter().rev()
+            ),
+            (regular_amount, balance!(0))
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Buy,
+                bid_price4,
+                regular_amount,
+                bids.iter().rev()
+            ),
+            (regular_amount, balance!(0))
+        );
+
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Buy,
+                bid_price1,
+                big_amount,
+                bids.iter().rev()
+            ),
+            (balance!(0), big_amount)
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Buy,
+                bid_price2,
+                big_amount,
+                bids.iter().rev()
+            ),
+            (balance!(168.5), balance!(831.5))
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Buy,
+                bid_price3,
+                big_amount,
+                bids.iter().rev()
+            ),
+            (balance!(308.4), balance!(691.6))
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Buy,
+                bid_price4,
+                big_amount,
+                bids.iter().rev()
+            ),
+            (balance!(569.7), balance!(430.3))
+        );
+
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Sell,
+                ask_price1,
+                regular_amount,
+                asks.iter()
+            ),
+            (balance!(0), regular_amount)
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Sell,
+                ask_price2,
+                regular_amount,
+                asks.iter()
+            ),
+            (balance!(176.3), balance!(23.7))
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Sell,
+                ask_price3,
+                regular_amount,
+                asks.iter()
+            ),
+            (regular_amount, balance!(0))
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Sell,
+                ask_price4,
+                regular_amount,
+                asks.iter()
+            ),
+            (regular_amount, balance!(0))
+        );
+
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Sell,
+                ask_price1,
+                big_amount,
+                asks.iter()
+            ),
+            (balance!(0), big_amount)
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Sell,
+                ask_price2,
+                big_amount,
+                asks.iter()
+            ),
+            (balance!(176.3), balance!(823.7))
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Sell,
+                ask_price3,
+                big_amount,
+                asks.iter()
+            ),
+            (balance!(354.9), balance!(645.1))
+        );
+        assert_eq!(
+            OrderBook::<Runtime>::calculate_market_depth_to_price(
+                PriceVariant::Sell,
+                ask_price4,
+                big_amount,
+                asks.iter()
+            ),
+            (balance!(610.7), balance!(389.3))
+        );
+    });
+}
+
+#[test]
+fn should_cross_spread() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
+        let expiration_block = 18;
+
+        let new_bid_price = balance!(11.1);
+        let new_ask_price = balance!(9.9);
+
+        // buy order 1
+        let buy_order_id1 = 101;
+        let buy_order1 = LimitOrder::<Runtime>::new(
+            buy_order_id1,
+            alice(),
+            PriceVariant::Buy,
+            new_bid_price,
+            balance!(26.3),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book.cross_spread(buy_order1, &mut data).unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Quote(balance!(289.3))),
+                deal_output: Some(OrderAmount::Base(balance!(26.3))),
+                market_input: None,
+                market_output: Some(OrderAmount::Base(balance!(26.3))),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(7, balance!(150))]),
+                to_delete: BTreeMap::from([]),
+                payment: Payment {
+                    dex_id: DEX.into(),
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(289.3))])
+                    ),]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(alice(), balance!(26.3))]),
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(bob(), balance!(289.3))]),
+                        ),
+                    ]),
+                },
+            }
+        );
+
+        // buy order 2
+        let buy_order_id2 = 102;
+        let buy_order2 = LimitOrder::<Runtime>::new(
+            buy_order_id2,
+            alice(),
+            PriceVariant::Buy,
+            new_bid_price,
+            balance!(300),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        let mut expected_buy_order2 = buy_order2.clone();
+        expected_buy_order2.amount = balance!(123.7);
+
+        assert_eq!(
+            order_book.cross_spread(buy_order2, &mut data).unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Quote(balance!(1939.3))),
+                deal_output: Some(OrderAmount::Base(balance!(176.3))),
+                market_input: Some(OrderAmount::Quote(balance!(1373.07))),
+                market_output: Some(OrderAmount::Base(balance!(176.3))),
+                to_add: BTreeMap::from([(buy_order_id2, expected_buy_order2)]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([(7, expiration_block)]),
+                payment: Payment {
+                    dex_id: DEX.into(),
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(3312.37))])
+                    ),]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(alice(), balance!(176.3))]),
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(bob(), balance!(1939.3))]),
+                        ),
+                    ]),
+                },
+            }
+        );
+
+        // sell order 1
+        let sell_order_id1 = 201;
+        let sell_order1 = LimitOrder::<Runtime>::new(
+            sell_order_id1,
+            alice(),
+            PriceVariant::Sell,
+            new_ask_price,
+            balance!(18.5),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book.cross_spread(sell_order1, &mut data).unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Base(balance!(18.5))),
+                deal_output: Some(OrderAmount::Quote(balance!(185))),
+                market_input: None,
+                market_output: Some(OrderAmount::Quote(balance!(185))),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(1, balance!(150))]),
+                to_delete: BTreeMap::from([]),
+                payment: Payment {
+                    dex_id: DEX.into(),
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), balance!(18.5))])
+                    ),]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(bob(), balance!(18.5))]),
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(alice(), balance!(185))]),
+                        ),
+                    ]),
+                },
+            }
+        );
+
+        // sell order 2
+        let sell_order_id2 = 202;
+        let sell_order2 = LimitOrder::<Runtime>::new(
+            sell_order_id2,
+            alice(),
+            PriceVariant::Sell,
+            new_ask_price,
+            balance!(300),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        let mut expected_sell_order2 = sell_order2.clone();
+        expected_sell_order2.amount = balance!(131.5);
+
+        assert_eq!(
+            order_book.cross_spread(sell_order2, &mut data).unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Base(balance!(168.5))),
+                deal_output: Some(OrderAmount::Quote(balance!(1685))),
+                market_input: Some(OrderAmount::Base(balance!(131.5))),
+                market_output: Some(OrderAmount::Quote(balance!(1685))),
+                to_add: BTreeMap::from([(sell_order_id2, expected_sell_order2)]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([(1, expiration_block)]),
+                payment: Payment {
+                    dex_id: DEX.into(),
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), balance!(300))])
+                    ),]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(bob(), balance!(168.5))]),
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(alice(), balance!(1685))]),
+                        ),
+                    ]),
+                },
             }
         );
     });

@@ -34,6 +34,7 @@ use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::{balance, PriceVariant, DAI, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
+use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
     DealInfo, LimitOrder, MarketChange, OrderAmount, OrderBookId, Payment,
 };
@@ -601,6 +602,88 @@ fn check_payment_merge() {
     payment = origin.clone();
     assert_ok!(payment.merge(&empty));
     assert_eq!(payment, origin);
+}
+
+#[test]
+fn check_payment_execute_all() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+
+        fill_balance(alice(), order_book_id);
+        fill_balance(bob(), order_book_id);
+        fill_balance(charlie(), order_book_id);
+        fill_balance(dave(), order_book_id);
+
+        let balance_diff = balance!(150);
+
+        let alice_base_balance = free_balance(&order_book_id.base, &alice());
+        let alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        let bob_base_balance = free_balance(&order_book_id.base, &bob());
+        let bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        let charlie_base_balance = free_balance(&order_book_id.base, &charlie());
+        let charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        let dave_base_balance = free_balance(&order_book_id.base, &dave());
+        let dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+
+        let payment = Payment {
+            dex_id: DEX.into(),
+            order_book_id,
+            to_lock: BTreeMap::from([
+                (
+                    order_book_id.base,
+                    BTreeMap::from([(alice(), balance_diff)]),
+                ),
+                (order_book_id.quote, BTreeMap::from([(bob(), balance_diff)])),
+            ]),
+            to_unlock: BTreeMap::from([
+                (
+                    order_book_id.base,
+                    BTreeMap::from([(charlie(), balance_diff)]),
+                ),
+                (
+                    order_book_id.quote,
+                    BTreeMap::from([(dave(), balance_diff)]),
+                ),
+            ]),
+        };
+
+        assert_ok!(payment.execute_all::<OrderBookPallet, OrderBookPallet>());
+
+        assert_eq!(
+            alice_base_balance - balance_diff,
+            free_balance(&order_book_id.base, &alice())
+        );
+        assert_eq!(
+            alice_quote_balance,
+            free_balance(&order_book_id.quote, &alice())
+        );
+        assert_eq!(bob_base_balance, free_balance(&order_book_id.base, &bob()));
+        assert_eq!(
+            bob_quote_balance - balance_diff,
+            free_balance(&order_book_id.quote, &bob())
+        );
+        assert_eq!(
+            charlie_base_balance + balance_diff,
+            free_balance(&order_book_id.base, &charlie())
+        );
+        assert_eq!(
+            charlie_quote_balance,
+            free_balance(&order_book_id.quote, &charlie())
+        );
+        assert_eq!(
+            dave_base_balance,
+            free_balance(&order_book_id.base, &dave())
+        );
+        assert_eq!(
+            dave_quote_balance + balance_diff,
+            free_balance(&order_book_id.quote, &dave())
+        );
+    });
 }
 
 #[test]
