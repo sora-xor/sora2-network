@@ -101,7 +101,7 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
             "insufficient gas for delivery of all messages"
         );
 
-        uint256 results = processMessages(payable(msg.sender), batch.messages);
+        uint256 results = processMessages(batch.messages);
 
         uint256 gas_used = begin_gas_left - gasleft();
         gas_proofs[batch_nonce] = keccak256(
@@ -149,7 +149,6 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
 
     // - result - message results bitmap, up to 256 messages
     function processMessages(
-        address payable relayer,
         Message[] calldata messages
     ) internal returns (uint256 results) {
         uint256 rewardAmount;
