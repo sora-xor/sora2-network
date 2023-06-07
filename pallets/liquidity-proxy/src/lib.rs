@@ -2294,13 +2294,15 @@ pub mod pallet {
                     &filter_mode,
                 )?;
 
-            assets::Pallet::<T>::transfer_from(
-                &input_asset_id,
-                &who,
-                &T::GetADARAccountId::get(),
-                adar_commission,
-            )
-            .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
+            if adar_commission > balance!(0) {
+                assets::Pallet::<T>::transfer_from(
+                    &input_asset_id,
+                    &who,
+                    &T::GetADARAccountId::get(),
+                    adar_commission,
+                )
+                .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
+            }
 
             Self::deposit_event(Event::<T>::BatchSwapExecuted(
                 adar_commission,
