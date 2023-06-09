@@ -4,7 +4,6 @@
 
 use super::*;
 
-use alloc::string::ToString;
 use codec::{Decode, Encode};
 use common::{balance, HERMES_ASSET_ID};
 use frame_benchmarking::benchmarks;
@@ -37,9 +36,9 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 benchmarks! {
     vote {
         let caller = alice::<T>();
-        let title = "Title".to_string();
-        let description = "Description".to_string();
-        let voting_option = VotingOption::Yes;
+        let title = "Title";
+        let description = "Description";
+        let voting_option = "Yes";
         let hermes_amount = balance!(1000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
@@ -48,6 +47,10 @@ benchmarks! {
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
+        let options = vec![
+            "Yes".try_into().unwrap(),
+            "No".try_into().unwrap(),
+        ];
 
         Assets::<T>::mint(
             RawOrigin::Signed(owner).into(),
@@ -61,9 +64,10 @@ benchmarks! {
             hermes_locked,
             poll_start_timestamp,
             poll_end_timestamp,
-            title,
-            description,
+            title: title.try_into().unwrap(),
+            description: description.try_into().unwrap(),
             creator_hermes_withdrawn: false,
+            options
         };
 
         pallet::HermesPollData::<T>::insert(&poll_id, &hermes_poll_info);
@@ -71,21 +75,25 @@ benchmarks! {
         let _ = HermesGovernancePlatform::<T>::vote(
             RawOrigin::Signed(caller.clone()).into(),
             poll_id.clone(),
-            voting_option,
+            voting_option.try_into().unwrap(),
         ).unwrap();
     }
     verify{
-        assert_last_event::<T>(Event::Voted(caller, poll_id, voting_option).into())
+        assert_last_event::<T>(Event::Voted(caller, poll_id, voting_option.try_into().unwrap()).into())
     }
 
     create_poll {
         let caller = alice::<T>();
-        let title = "Title".to_string();
-        let descripton = "Description".to_string();
+        let title = "Title";
+        let descripton = "Description";
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
         let hermes_amount = balance!(100000);
         let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
+        let options = vec![
+            "Yes".try_into().unwrap(),
+            "No".try_into().unwrap(),
+        ];
 
         Assets::<T>::mint(
             RawOrigin::Signed(owner).into(),
@@ -99,19 +107,20 @@ benchmarks! {
             RawOrigin::Signed(caller.clone()).into(),
             poll_start_timestamp,
             poll_end_timestamp,
-            title.clone(),
-            descripton
+            title.try_into().unwrap(),
+            descripton.try_into().unwrap(),
+            options
         );
     }
     verify{
-        assert_last_event::<T>(Event::Created(caller, title.clone(), poll_start_timestamp, poll_end_timestamp).into())
+        assert_last_event::<T>(Event::Created(caller, title.try_into().unwrap(), poll_start_timestamp, poll_end_timestamp).into())
     }
 
     withdraw_funds_voter {
         let caller = alice::<T>();
-        let title = "Title".to_string();
-        let description = "Description".to_string();
-        let voting_option = VotingOption::Yes;
+        let title = "Title";
+        let description = "Description";
+        let voting_option = "Yes";
         let number_of_hermes = balance!(1000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
@@ -121,6 +130,10 @@ benchmarks! {
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let options = vec![
+            "Yes".try_into().unwrap(),
+            "No".try_into().unwrap(),
+        ];
 
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(owner.clone()).into(),
@@ -134,9 +147,10 @@ benchmarks! {
             hermes_locked,
             poll_start_timestamp,
             poll_end_timestamp,
-            title,
-            description,
+            title: title.try_into().unwrap(),
+            description: description.try_into().unwrap(),
             creator_hermes_withdrawn: false,
+            options
         };
 
         pallet::HermesPollData::<T>::insert(&poll_id, &hermes_poll_info);
@@ -144,7 +158,7 @@ benchmarks! {
         let _ = HermesGovernancePlatform::<T>::vote(
             RawOrigin::Signed(caller.clone()).into(),
             poll_id.clone(),
-            voting_option,
+            voting_option.try_into().unwrap(),
         );
 
         let hermes_voting_info = pallet::HermesVotings::<T>::get(&poll_id, &caller).unwrap();
@@ -161,9 +175,9 @@ benchmarks! {
 
     withdraw_funds_creator {
         let caller = alice::<T>();
-        let title = "Title".to_string();
-        let description = "Description".to_string();
-        let voting_option = VotingOption::Yes;
+        let title = "Title";
+        let description = "Description";
+        let voting_option = "Yes";
         let number_of_hermes = balance!(200000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
@@ -172,6 +186,10 @@ benchmarks! {
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
+        let options = vec![
+            "Yes".try_into().unwrap(),
+            "No".try_into().unwrap(),
+        ];
 
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(owner).into(),
@@ -185,9 +203,10 @@ benchmarks! {
             hermes_locked,
             poll_start_timestamp,
             poll_end_timestamp,
-            title,
-            description,
+            title: title.try_into().unwrap(),
+            description: description.try_into().unwrap(),
             creator_hermes_withdrawn: false,
+            options
         };
 
         pallet::HermesPollData::<T>::insert(&poll_id, &hermes_poll_info);

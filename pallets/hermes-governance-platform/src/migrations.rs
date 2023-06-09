@@ -1,8 +1,8 @@
-use crate::alloc::string::ToString;
-use crate::{AccountIdOf, Config, HermesPollData, HermesPollInfo, HermesVotingInfo, HermesVotings};
+use crate::{
+    AccountIdOf, Balance, Config, HermesPollData, HermesPollInfo, HermesVotingInfo, HermesVotings,
+};
 use alloc::string::String;
 use codec::{Decode, Encode};
-use common::Balance;
 use frame_support::dispatch::Weight;
 use frame_support::log;
 use frame_support::traits::Get;
@@ -45,16 +45,16 @@ pub fn migrate_voting_and_poll_data<T: Config>() -> Weight {
         |(voting_option, number_of_hermes, hermes_withdrawn)| {
             weight += 1;
 
-            let new_voting_option: String;
+            let new_voting_option;
 
             if voting_option == VotingOption::Yes {
-                new_voting_option = "Yes".to_string();
+                new_voting_option = "Yes";
             } else {
-                new_voting_option = "No".to_string();
+                new_voting_option = "No";
             }
 
             Some(HermesVotingInfo {
-                voting_option: new_voting_option,
+                voting_option: new_voting_option.try_into().unwrap(),
                 number_of_hermes,
                 hermes_withdrawn,
             })
@@ -65,16 +65,16 @@ pub fn migrate_voting_and_poll_data<T: Config>() -> Weight {
         weight += 1;
 
         let mut options = Vec::new();
-        options.push("Yes".to_string());
-        options.push("No".to_string());
+        options.push("Yes".try_into().unwrap());
+        options.push("No".try_into().unwrap());
 
         Some(HermesPollInfo {
             creator: v.creator,
             hermes_locked: v.hermes_locked,
             poll_start_timestamp: v.poll_start_timestamp,
             poll_end_timestamp: v.poll_end_timestamp,
-            title: v.title,
-            description: v.description,
+            title: v.title.as_str().try_into().unwrap(),
+            description: v.description.as_str().try_into().unwrap(),
             creator_hermes_withdrawn: v.creator_hermes_withdrawn,
             options,
         })

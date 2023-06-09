@@ -112,11 +112,13 @@ impl frame_system::Config for Runtime {
 
 parameter_types! {
     pub const HermesAssetId: AssetId = HERMES_ASSET_ID;
+    pub const StringLimit: u32 = 64;
 }
 
 impl crate::Config for Runtime {
     const MIN_DURATION_OF_POLL: Self::Moment = 14_400_000;
     const MAX_DURATION_OF_POLL: Self::Moment = 604_800_000;
+    type StringLimit = StringLimit;
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
     type WeightInfo = ();
