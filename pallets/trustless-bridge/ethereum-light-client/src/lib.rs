@@ -1045,6 +1045,12 @@ pub mod pallet {
                 <Headers<T>>::get(network_id, &header_hash).ok_or(Error::<T>::HeaderNotFound)?;
             Ok(header.header.base_fee)
         }
+
+        fn get_best_block_base_fee(network_id: EVMChainId) -> Result<Option<U256>, DispatchError> {
+            let (header_id, _) =
+                <BestBlock<T>>::get(network_id).ok_or(Error::<T>::NetworkNotFound)?;
+            Self::get_base_fee(network_id, header_id.hash)
+        }
     }
 
     impl<T: Config> Verifier for Pallet<T> {

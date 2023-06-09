@@ -874,6 +874,10 @@ fn test_base_fee_oracle() {
             Verifier::get_base_fee(network_id, header_hash).unwrap(),
             base_fee
         );
+        assert_eq!(
+            Verifier::get_best_block_base_fee(network_id).unwrap(),
+            base_fee
+        );
     });
 }
 
@@ -899,6 +903,10 @@ fn test_base_fee_oracle_no_base_fee() {
 
         assert_eq!(
             Verifier::get_base_fee(network_id, header_hash).unwrap(),
+            base_fee
+        );
+        assert_eq!(
+            Verifier::get_best_block_base_fee(network_id).unwrap(),
             base_fee
         );
     });
