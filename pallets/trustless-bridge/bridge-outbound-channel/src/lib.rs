@@ -372,6 +372,9 @@ pub mod pallet {
 
             // TODO compute fee and charge
             // Attempt to charge a fee for message submission
+            // gas used - estimate - depends on payload + batch submission
+            // base fee - from eth light client as EthereumGasOracle
+            // priority fee - some const
             let _fee = match who {
                 RawOrigin::Signed(who) => {
                     let fee = Self::fee();
