@@ -3976,8 +3976,6 @@ fn should_calculate_cancelation_limit_order_impact() {
                 ignore_unschedule_error: true
             }
         );
-
-        // todo
     });
 }
 
@@ -3991,11 +3989,56 @@ fn should_calculate_cancelation_of_all_limit_orders_impact() {
             quote: XOR.into(),
         };
 
-        //let dex_id = DEX.into();
+        let dex_id = DEX.into();
         let order_book = create_and_fill_order_book(order_book_id);
         let expiration_block = 18;
 
-        // todo
+        assert_eq!(
+            order_book
+                .calculate_cancelation_of_all_limit_orders_impact(&mut data)
+                .unwrap(),
+            MarketChange {
+                deal_input: None,
+                deal_output: None,
+                market_input: None,
+                market_output: None,
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([
+                    (1, expiration_block),
+                    (2, expiration_block),
+                    (3, expiration_block),
+                    (4, expiration_block),
+                    (5, expiration_block),
+                    (6, expiration_block),
+                    (7, expiration_block),
+                    (8, expiration_block),
+                    (9, expiration_block),
+                    (10, expiration_block),
+                    (11, expiration_block),
+                    (12, expiration_block)
+                ]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::new(),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(bob(), balance!(475)), (charlie(), balance!(135.7))])
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([
+                                (bob(), balance!(2977.11)),
+                                (charlie(), balance!(2561.26))
+                            ])
+                        )
+                    ]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
     });
 }
 
