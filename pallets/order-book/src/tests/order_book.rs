@@ -1260,7 +1260,10 @@ fn should_cancel_limit_order() {
 
         // cancel the limit order
         assert_ok!(order_book
-            .cancel_limit_order::<OrderBookPallet, OrderBookPallet>(order.clone(), &mut data));
+            .cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order.clone(),
+                &mut data
+            ));
 
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
@@ -1315,8 +1318,10 @@ fn should_not_cancel_unknown_limit_order() {
         );
 
         assert_err!(
-            order_book
-                .cancel_limit_order::<OrderBookPallet, OrderBookPallet>(unknown_order, &mut data),
+            order_book.cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                unknown_order,
+                &mut data
+            ),
             E::UnknownLimitOrder
         );
     });
@@ -1340,25 +1345,30 @@ fn should_not_cancel_limit_order_when_status_doesnt_allow() {
 
         order_book.status = OrderBookStatus::Stop;
         assert_err!(
-            order_book
-                .cancel_limit_order::<OrderBookPallet, OrderBookPallet>(order1.clone(), &mut data),
+            order_book.cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order1.clone(),
+                &mut data
+            ),
             E::CancellationOfLimitOrdersIsForbidden
         );
 
         order_book.status = OrderBookStatus::Trade;
-        assert_ok!(
-            order_book.cancel_limit_order::<OrderBookPallet, OrderBookPallet>(order1, &mut data)
-        );
+        assert_ok!(order_book
+            .cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order1, &mut data
+            ));
 
         order_book.status = OrderBookStatus::PlaceAndCancel;
-        assert_ok!(
-            order_book.cancel_limit_order::<OrderBookPallet, OrderBookPallet>(order2, &mut data)
-        );
+        assert_ok!(order_book
+            .cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order2, &mut data
+            ));
 
         order_book.status = OrderBookStatus::OnlyCancel;
-        assert_ok!(
-            order_book.cancel_limit_order::<OrderBookPallet, OrderBookPallet>(order3, &mut data)
-        );
+        assert_ok!(order_book
+            .cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                order3, &mut data
+            ));
     });
 }
 
@@ -1398,9 +1408,10 @@ fn should_cancel_all_limit_orders() {
         assert!(free_balance(&order_book_id.quote, &tech_account) > balance!(0));
 
         // cancel all orders
-        assert_ok!(
-            order_book.cancel_all_limit_orders::<OrderBookPallet, OrderBookPallet>(&mut data)
-        );
+        assert_ok!(order_book
+            .cancel_all_limit_orders::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                &mut data
+            ));
 
         // empty after canceling of all limit orders
         assert!(data.get_all_limit_orders(&order_book_id).is_empty());
@@ -3290,7 +3301,8 @@ fn should_calculate_market_order_impact() {
                             BTreeMap::from([(bob(), balance!(1100))])
                         )
                     ]),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
 
@@ -3336,7 +3348,8 @@ fn should_calculate_market_order_impact() {
                             ])
                         )
                     ]),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
 
@@ -3385,7 +3398,8 @@ fn should_calculate_market_order_impact() {
                             ])
                         )
                     ]),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
 
@@ -3432,7 +3446,8 @@ fn should_calculate_market_order_impact() {
                             ])
                         )
                     ]),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
 
@@ -3481,7 +3496,8 @@ fn should_calculate_market_order_impact() {
                             ])
                         )
                     ]),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
 
@@ -3527,7 +3543,8 @@ fn should_calculate_market_order_impact() {
                         ),
                         (order_book_id.base, BTreeMap::from([(bob(), sell_amount1)]))
                     ]),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
 
@@ -3570,7 +3587,8 @@ fn should_calculate_market_order_impact() {
                             BTreeMap::from([(bob(), balance!(174.8)), (charlie(), balance!(95.2))])
                         )
                     ]),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
 
@@ -3624,7 +3642,8 @@ fn should_calculate_market_order_impact() {
                             ])
                         )
                     ]),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
 
@@ -3674,7 +3693,8 @@ fn should_calculate_market_order_impact() {
                             ])
                         )
                     ]),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
 
@@ -3726,7 +3746,8 @@ fn should_calculate_market_order_impact() {
                             ])
                         )
                     ]),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
     });
@@ -3784,7 +3805,8 @@ fn should_calculate_limit_order_impact() {
                         BTreeMap::from([(alice(), balance!(1000))])
                     )]),
                     to_unlock: BTreeMap::new(),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
 
@@ -3808,9 +3830,172 @@ fn should_calculate_limit_order_impact() {
                         BTreeMap::from([(bob(), balance!(150))])
                     )]),
                     to_unlock: BTreeMap::new(),
-                }
+                },
+                ignore_unschedule_error: false
             }
         );
+    });
+}
+
+#[test]
+fn should_calculate_cancelation_limit_order_impact() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let dex_id = DEX.into();
+        let order_book = create_and_fill_order_book(order_book_id);
+
+        let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
+        let limit_order8 = data.get_limit_order(&order_book_id, 8).unwrap();
+
+        assert_eq!(
+            order_book
+                .calculate_cancelation_limit_order_impact(limit_order2.clone(), false)
+                .unwrap(),
+            MarketChange {
+                deal_input: None,
+                deal_output: None,
+                market_input: None,
+                market_output: Some(limit_order2.deal_amount(MarketRole::Taker, None).unwrap()),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([(2, limit_order2.expires_at)]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::new(),
+                    to_unlock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(
+                            limit_order2.owner.clone(),
+                            *limit_order2
+                                .deal_amount(MarketRole::Taker, None)
+                                .unwrap()
+                                .value()
+                        )])
+                    )]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
+
+        assert_eq!(
+            order_book
+                .calculate_cancelation_limit_order_impact(limit_order2.clone(), true)
+                .unwrap(),
+            MarketChange {
+                deal_input: None,
+                deal_output: None,
+                market_input: None,
+                market_output: Some(limit_order2.deal_amount(MarketRole::Taker, None).unwrap()),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([(2, limit_order2.expires_at)]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::new(),
+                    to_unlock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(
+                            limit_order2.owner.clone(),
+                            *limit_order2
+                                .deal_amount(MarketRole::Taker, None)
+                                .unwrap()
+                                .value()
+                        )])
+                    )]),
+                },
+                ignore_unschedule_error: true
+            }
+        );
+
+        assert_eq!(
+            order_book
+                .calculate_cancelation_limit_order_impact(limit_order8.clone(), false)
+                .unwrap(),
+            MarketChange {
+                deal_input: None,
+                deal_output: None,
+                market_input: None,
+                market_output: Some(limit_order8.deal_amount(MarketRole::Taker, None).unwrap()),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([(8, limit_order8.expires_at)]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::new(),
+                    to_unlock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(
+                            limit_order8.owner.clone(),
+                            *limit_order8
+                                .deal_amount(MarketRole::Taker, None)
+                                .unwrap()
+                                .value()
+                        )])
+                    )]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
+
+        assert_eq!(
+            order_book
+                .calculate_cancelation_limit_order_impact(limit_order8.clone(), true)
+                .unwrap(),
+            MarketChange {
+                deal_input: None,
+                deal_output: None,
+                market_input: None,
+                market_output: Some(limit_order8.deal_amount(MarketRole::Taker, None).unwrap()),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([(8, limit_order8.expires_at)]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::new(),
+                    to_unlock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(
+                            limit_order8.owner.clone(),
+                            *limit_order8
+                                .deal_amount(MarketRole::Taker, None)
+                                .unwrap()
+                                .value()
+                        )])
+                    )]),
+                },
+                ignore_unschedule_error: true
+            }
+        );
+
+        // todo
+    });
+}
+
+#[test]
+fn should_calculate_cancelation_of_all_limit_orders_impact() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        //let dex_id = DEX.into();
+        let order_book = create_and_fill_order_book(order_book_id);
+        let expiration_block = 18;
+
+        // todo
     });
 }
 
@@ -3946,6 +4131,7 @@ fn should_apply_market_change() {
                     ),
                 ]),
             },
+            ignore_unschedule_error: false,
         };
 
         // apply market change
@@ -4271,6 +4457,7 @@ fn should_cross_spread() {
                         ),
                     ]),
                 },
+                ignore_unschedule_error: false
             }
         );
 
@@ -4318,6 +4505,7 @@ fn should_cross_spread() {
                         ),
                     ]),
                 },
+                ignore_unschedule_error: false
             }
         );
 
@@ -4362,6 +4550,7 @@ fn should_cross_spread() {
                         ),
                     ]),
                 },
+                ignore_unschedule_error: false
             }
         );
 
@@ -4409,6 +4598,7 @@ fn should_cross_spread() {
                         ),
                     ]),
                 },
+                ignore_unschedule_error: false
             }
         );
     });

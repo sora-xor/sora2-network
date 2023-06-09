@@ -495,7 +495,7 @@ pub mod pallet {
 
             let mut data = CacheDataLayer::<T>::new();
             let count_of_canceled_orders =
-                order_book.cancel_all_limit_orders::<Self, Self>(&mut data)? as u32;
+                order_book.cancel_all_limit_orders::<Self, Self, Self>(&mut data)? as u32;
 
             data.commit();
 
@@ -736,7 +736,7 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
 
-            order_book.cancel_limit_order::<Self, Self>(order, &mut data)?;
+            order_book.cancel_limit_order::<Self, Self, Self>(order, &mut data)?;
             data.commit();
             Self::deposit_event(Event::<T>::LimitOrderCanceled {
                 order_book_id,

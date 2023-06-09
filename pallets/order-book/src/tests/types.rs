@@ -741,6 +741,7 @@ fn should_fail_market_change_merge() {
         to_update: BTreeMap::from([(2, balance!(20))]),
         to_delete: BTreeMap::from([(1, expiration_block)]),
         payment,
+        ignore_unschedule_error: false,
     };
 
     let mut market_change = origin.clone();
@@ -912,6 +913,7 @@ fn check_market_change_merge() {
             (delete_id3, expiration_block),
         ]),
         payment: payment.clone(),
+        ignore_unschedule_error: false,
     };
 
     let different = MarketChange {
@@ -929,6 +931,7 @@ fn check_market_change_merge() {
             (delete_id5, expiration_block),
         ]),
         payment: empty_payment.clone(),
+        ignore_unschedule_error: false,
     };
 
     let mut market_change = origin.clone();
@@ -962,6 +965,7 @@ fn check_market_change_merge() {
                 (delete_id5, expiration_block)
             ]),
             payment: payment.clone(),
+            ignore_unschedule_error: false
         }
     );
 
@@ -986,6 +990,7 @@ fn check_market_change_merge() {
             (delete_id5, expiration_block),
         ]),
         payment: empty_payment.clone(),
+        ignore_unschedule_error: false,
     };
 
     market_change = origin.clone();
@@ -1016,6 +1021,7 @@ fn check_market_change_merge() {
                 (delete_id5, expiration_block)
             ]),
             payment: payment.clone(),
+            ignore_unschedule_error: false
         }
     );
 
@@ -1040,6 +1046,7 @@ fn check_market_change_merge() {
             (delete_id3, expiration_block),
         ]),
         payment: empty_payment.clone(),
+        ignore_unschedule_error: false,
     };
 
     market_change = origin.clone();
@@ -1067,6 +1074,7 @@ fn check_market_change_merge() {
                 (delete_id3, expiration_block)
             ]),
             payment: payment.clone(),
+            ignore_unschedule_error: false
         }
     );
 
@@ -1079,6 +1087,7 @@ fn check_market_change_merge() {
         to_update: BTreeMap::new(),
         to_delete: BTreeMap::new(),
         payment: empty_payment.clone(),
+        ignore_unschedule_error: false,
     };
 
     market_change = origin.clone();

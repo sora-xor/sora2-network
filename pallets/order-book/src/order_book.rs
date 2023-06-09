@@ -167,12 +167,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok((market_input, deal_input))
     }
 
-    pub fn cancel_limit_order<Unlocker, Scheduler>(
+    pub fn cancel_limit_order<Locker, Unlocker, Scheduler>(
         &self,
         order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<(), DispatchError>
     where
+        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Scheduler:
             ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
@@ -184,24 +185,24 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::CancellationOfLimitOrdersIsForbidden
         );
 
-        self.cancel_limit_order_unchecked::<Unlocker, Scheduler>(order, data, false)
+        self.cancel_limit_order_unchecked::<Locker, Unlocker, Scheduler>(order, data, false)
     }
 
-    pub fn cancel_all_limit_orders<Unlocker, Scheduler>(
+    pub fn cancel_all_limit_orders<Locker, Unlocker, Scheduler>(
         &self,
         data: &mut impl DataLayer<T>,
     ) -> Result<usize, DispatchError>
     where
+        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Scheduler:
             ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
     {
-        let orders = data.get_all_limit_orders(&self.order_book_id);
-        let count = orders.len();
+        let market_change = self.calculate_cancelation_of_all_limit_orders_impact(data)?;
 
-        for order in orders {
-            self.cancel_limit_order_unchecked::<Unlocker, Scheduler>(order, data, false)?;
-        }
+        let count = market_change.to_delete.len();
+
+        self.apply_market_change::<Locker, Unlocker, Scheduler>(market_change, data)?;
 
         Ok(count)
     }
@@ -315,6 +316,98 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             to_update: BTreeMap::new(),
             to_delete: BTreeMap::new(),
             payment,
+            ignore_unschedule_error: false,
+        })
+    }
+
+    pub fn calculate_cancelation_limit_order_impact(
+        &self,
+        limit_order: LimitOrder<T>,
+        ignore_unschedule_error: bool,
+    ) -> Result<
+        MarketChange<
+            T::AccountId,
+            T::AssetId,
+            T::DEXId,
+            T::OrderId,
+            LimitOrder<T>,
+            BlockNumberFor<T>,
+        >,
+        DispatchError,
+    > {
+        let mut limit_order_ids_to_delete = BTreeMap::new();
+        let mut payment = Payment::new(self.dex_id, self.order_book_id);
+
+        let unlock_amount = limit_order.deal_amount(MarketRole::Taker, None)?;
+        let unlock_asset = unlock_amount.associated_asset(&self.order_book_id);
+
+        limit_order_ids_to_delete.insert(limit_order.id, limit_order.expires_at);
+
+        payment
+            .to_unlock
+            .entry(*unlock_asset)
+            .or_default()
+            .entry(limit_order.owner)
+            .and_modify(|pay| *pay += unlock_amount.value())
+            .or_insert(*unlock_amount.value());
+
+        Ok(MarketChange {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: Some(unlock_amount),
+            to_add: BTreeMap::new(),
+            to_update: BTreeMap::new(),
+            to_delete: limit_order_ids_to_delete,
+            payment,
+            ignore_unschedule_error,
+        })
+    }
+
+    pub fn calculate_cancelation_of_all_limit_orders_impact(
+        &self,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<
+        MarketChange<
+            T::AccountId,
+            T::AssetId,
+            T::DEXId,
+            T::OrderId,
+            LimitOrder<T>,
+            BlockNumberFor<T>,
+        >,
+        DispatchError,
+    > {
+        let mut limit_order_ids_to_delete = BTreeMap::new();
+        let mut payment = Payment::new(self.dex_id, self.order_book_id);
+
+        let limit_orders = data.get_all_limit_orders(&self.order_book_id);
+
+        for limit_order in limit_orders {
+            let unlock_amount = limit_order.deal_amount(MarketRole::Taker, None)?;
+            let unlock_asset = unlock_amount.associated_asset(&self.order_book_id);
+
+            limit_order_ids_to_delete.insert(limit_order.id, limit_order.expires_at);
+
+            payment
+                .to_unlock
+                .entry(*unlock_asset)
+                .or_default()
+                .entry(limit_order.owner)
+                .and_modify(|pay| *pay += unlock_amount.value())
+                .or_insert(*unlock_amount.value());
+        }
+
+        Ok(MarketChange {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: None, // NA for this case, because all the liquidity of both types go out of market
+            to_add: BTreeMap::new(),
+            to_update: BTreeMap::new(),
+            to_delete: limit_order_ids_to_delete,
+            payment,
+            ignore_unschedule_error: false,
         })
     }
 
@@ -440,6 +533,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             to_update: limit_orders_to_update,
             to_delete: limit_order_ids_to_delete,
             payment,
+            ignore_unschedule_error: false,
         })
     }
 
@@ -590,7 +684,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         for (delete_id, expires_at) in market_change.to_delete {
             data.delete_limit_order(&self.order_book_id, delete_id)?;
-            Scheduler::unschedule(expires_at, self.order_book_id, delete_id)?;
+            let unschedule_result =
+                Scheduler::unschedule(expires_at, self.order_book_id, delete_id);
+            if !market_change.ignore_unschedule_error {
+                unschedule_result?;
+            }
         }
 
         for (order_id, new_amount) in market_change.to_update.iter() {
@@ -639,35 +737,22 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     /// This is useful for expiration of orders where we want to use the universal interface
     /// to remove an order. In such case the schedule already does not have the order, because
     /// it is removed more efficiently than in `unschedule()`
-    pub(crate) fn cancel_limit_order_unchecked<Unlocker, Scheduler>(
+    pub(crate) fn cancel_limit_order_unchecked<Locker, Unlocker, Scheduler>(
         &self,
-        order: LimitOrder<T>,
+        limit_order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
         ignore_unschedule_error: bool,
     ) -> Result<(), DispatchError>
     where
+        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Scheduler:
             ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
     {
-        let lock_amount = order.deal_amount(MarketRole::Taker, None)?;
-        let lock_asset = lock_amount.associated_asset(&self.order_book_id);
+        let market_change =
+            self.calculate_cancelation_limit_order_impact(limit_order, ignore_unschedule_error)?;
 
-        Unlocker::unlock_liquidity(
-            self.dex_id,
-            &order.owner,
-            self.order_book_id,
-            lock_asset,
-            *lock_amount.value(),
-        )?;
-
-        data.delete_limit_order(&self.order_book_id, order.id)?;
-
-        let unschedule_result =
-            Scheduler::unschedule(order.expires_at, self.order_book_id, order.id);
-        if !ignore_unschedule_error {
-            unschedule_result?;
-        }
+        self.apply_market_change::<Locker, Unlocker, Scheduler>(market_change, data)?;
 
         Ok(())
     }

@@ -335,6 +335,7 @@ pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder, BlockNum
     /// order id and number of block it is scheduled to expire at
     pub to_delete: BTreeMap<OrderId, BlockNumber>,
     pub payment: Payment<AssetId, AccountId, DEXId>,
+    pub ignore_unschedule_error: bool,
 }
 
 impl<AccountId, AssetId, DEXId, OrderId, LimitOrder, BlockNumber>
@@ -355,6 +356,7 @@ where
             to_update: BTreeMap::new(),
             to_delete: BTreeMap::new(),
             payment: Payment::new(dex_id, order_book_id),
+            ignore_unschedule_error: false,
         }
     }
 
@@ -381,6 +383,9 @@ where
         self.to_delete.append(&mut other.to_delete);
 
         self.payment.merge(&other.payment)?;
+
+        self.ignore_unschedule_error =
+            self.ignore_unschedule_error || other.ignore_unschedule_error;
 
         Ok(())
     }
