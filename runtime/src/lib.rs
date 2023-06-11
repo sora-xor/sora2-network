@@ -1209,7 +1209,13 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
             RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
                 swap_batches,
                 ..
-            }) => swap_batches.iter().map(|x| x.receivers.len()).sum() * SMALL_FEE,
+            }) => Some(
+                swap_batches
+                    .iter()
+                    .map(|x| x.receivers.len() as Balance)
+                    .sum::<Balance>()
+                    * SMALL_FEE,
+            ),
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
