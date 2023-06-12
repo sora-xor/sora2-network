@@ -372,7 +372,7 @@ pub mod pallet {
 
             // TODO compute fee and charge
             // Attempt to charge a fee for message submission
-            // gas used - estimate - depends on payload + batch submission
+            // gas used - estimate - depends on message payload + batch submission + target call
             // base fee - from eth light client as EthereumGasOracle
             // priority fee - some const
             let _fee = match who {

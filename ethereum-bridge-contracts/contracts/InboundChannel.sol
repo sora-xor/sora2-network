@@ -151,7 +151,6 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
     function processMessages(
         Message[] calldata messages
     ) internal returns (uint256 results) {
-        uint256 rewardAmount;
         for (uint256 i = 0; i < messages.length; i++) {
             // Deliver the message to the target
             // Delivery will have fixed maximum gas allowed for the target app
