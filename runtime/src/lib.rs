@@ -64,8 +64,8 @@ use bridge_types::{
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 #[cfg(feature = "wip")]
-use common::{AssetId32, PredefinedAssetId};
-use common::{Description, GetMarketInfo};
+use common::AssetId32;
+use common::{Description, GetMarketInfo, PredefinedAssetId};
 use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
@@ -354,7 +354,7 @@ parameter_types! {
     pub const ElectionsMaxVoters: u32 = 10000;
     pub const ElectionsMaxCandidates: u32 = 1000;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
-    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get()];
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get(), GetTbcdAssetId::get()];
     pub const MaxAuthorities: u32 = 100_000;
     pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
@@ -872,15 +872,16 @@ impl tokens::Config for Runtime {
 
 parameter_types! {
     // This is common::PredefinedAssetId with 0 index, 2 is size, 0 and 0 is code.
-    pub const GetXorAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000"));
-    pub const GetDotAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200010000000000000000000000000000000000000000000000000000000000"));
-    pub const GetKsmAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200020000000000000000000000000000000000000000000000000000000000"));
-    pub const GetUsdAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200030000000000000000000000000000000000000000000000000000000000"));
-    pub const GetValAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200040000000000000000000000000000000000000000000000000000000000"));
-    pub const GetPswapAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
-    pub const GetDaiAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200060000000000000000000000000000000000000000000000000000000000"));
-    pub const GetEthAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200070000000000000000000000000000000000000000000000000000000000"));
-    pub const GetXstAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200090000000000000000000000000000000000000000000000000000000000"));
+    pub const GetXorAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::XOR);
+    pub const GetDotAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::DOT);
+    pub const GetKsmAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::KSM);
+    pub const GetUsdAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::USDT);
+    pub const GetValAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::VAL);
+    pub const GetPswapAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
+    pub const GetDaiAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::DAI);
+    pub const GetEthAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::ETH);
+    pub const GetXstAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::XST);
+    pub const GetTbcdAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::TBCD);
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
