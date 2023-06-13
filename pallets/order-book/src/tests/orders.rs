@@ -50,6 +50,7 @@ fn should_return_error_for_invalid_limit_order_lifetime() {
         balance!(100),
         1000,
         wrong_lifespan1,
+        1,
     );
     assert_err!(order1.ensure_valid(), E::InvalidLifespan);
 
@@ -62,6 +63,7 @@ fn should_return_error_for_invalid_limit_order_lifetime() {
         balance!(100),
         1000,
         wrong_lifespan2,
+        1,
     );
     assert_err!(order2.ensure_valid(), E::InvalidLifespan);
 }
@@ -77,6 +79,7 @@ fn should_return_error_for_invalid_limit_order_amount() {
         wrong_amount,
         1000,
         10000,
+        1,
     );
     assert_err!(order.ensure_valid(), E::InvalidOrderAmount);
 }
@@ -110,6 +113,7 @@ fn should_return_error_for_invalid_limit_order_price() {
         balance!(100),
         1000,
         10000,
+        1,
     );
     assert_err!(order.ensure_valid(), E::InvalidLimitOrderPrice);
 }
@@ -130,6 +134,7 @@ fn should_pass_valid_limit_order() {
         amount,
         1000,
         lifespan1,
+        1,
     );
     assert_ok!(order.ensure_valid());
 
@@ -160,10 +165,18 @@ fn should_not_return_limit_order_deal_amount_with_big_base_limit() {
     let base_amount_limit = balance!(101);
 
     let buy_order =
-        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000);
+        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000, 1);
 
-    let sell_order =
-        LimitOrder::<Runtime>::new(2, alice(), PriceVariant::Sell, price, amount, 1000, 10000);
+    let sell_order = LimitOrder::<Runtime>::new(
+        2,
+        alice(),
+        PriceVariant::Sell,
+        price,
+        amount,
+        1000,
+        10000,
+        1,
+    );
 
     assert_err!(
         buy_order.deal_amount(MarketRole::Maker, Some(base_amount_limit)),
@@ -189,10 +202,18 @@ fn should_return_limit_order_deal_amount() {
     let amount = balance!(100);
 
     let buy_order =
-        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000);
+        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000, 1);
 
-    let sell_order =
-        LimitOrder::<Runtime>::new(2, alice(), PriceVariant::Sell, price, amount, 1000, 10000);
+    let sell_order = LimitOrder::<Runtime>::new(
+        2,
+        alice(),
+        PriceVariant::Sell,
+        price,
+        amount,
+        1000,
+        10000,
+        1,
+    );
 
     assert_eq!(
         buy_order.deal_amount(MarketRole::Maker, None).unwrap(),
