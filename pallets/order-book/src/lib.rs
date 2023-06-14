@@ -386,6 +386,8 @@ pub mod pallet {
         MaxLotSizeIsMoreThanTotalSupply,
         /// Indicated limit for slippage has not been met during transaction execution.
         SlippageLimitExceeded,
+        /// NFT order books are temporarily forbidden
+        NftOrderBooksAreTemporarilyForbidden,
     }
 
     #[pallet::hooks]
@@ -430,14 +432,22 @@ pub mod pallet {
             );
 
             let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-                // nft
-                // ensure the user has nft
-                ensure!(
-                    T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
-                        > Balance::zero(),
-                    Error::<T>::UserHasNoNft
-                );
-                OrderBook::<T>::default_nft(order_book_id, dex_id)
+                // temp solution for stage env
+                // will be removed in #542
+                // todo (m.tagirov)
+                return Err(Error::<T>::NftOrderBooksAreTemporarilyForbidden.into());
+
+                #[allow(unreachable_code)]
+                {
+                    // nft
+                    // ensure the user has nft
+                    ensure!(
+                        T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
+                            > Balance::zero(),
+                        Error::<T>::UserHasNoNft
+                    );
+                    OrderBook::<T>::default_nft(order_book_id, dex_id)
+                }
             } else {
                 // regular asset
                 OrderBook::<T>::default(order_book_id, dex_id)
