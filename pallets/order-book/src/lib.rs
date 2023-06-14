@@ -341,6 +341,8 @@ pub mod pallet {
         ForbiddenToCreateOrderBookWithSameAssets,
         /// The asset is not allowed to be base. Only dex base asset can be a quote asset for order book
         NotAllowedBaseAsset,
+        /// Orderbooks cannot be created with given dex id.
+        NotAllowedDEXId,
         /// User cannot create an order book with NFT if they don't have NFT
         UserHasNoNft,
         /// Lifespan exceeds defined limits
@@ -412,6 +414,12 @@ pub mod pallet {
             ensure!(
                 order_book_id.base != order_book_id.quote,
                 Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
+            );
+            ensure!(
+                T::AllowedDEXIds::get()
+                    .iter()
+                    .any(|allowed| allowed == &dex_id),
+                Error::<T>::NotAllowedDEXId
             );
             let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
             // the base asset of DEX must be a quote asset of order book
