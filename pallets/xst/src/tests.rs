@@ -777,4 +777,107 @@ mod tests {
             )
         });
     }
+
+    #[test]
+    fn should_disallow_xst_amount_exceeding_limit() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let amount_a: Balance = balance!(2300000000);
+            // Buy with desired input
+            assert_noop!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_input(amount_a.clone()),
+                    true,
+                ),
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
+            );
+
+            assert_noop!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+                ),
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
+            );
+
+            // Buy with desired output
+            let amount_b: Balance = balance!(10000001);
+            assert_noop!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_output(amount_b.clone()),
+                    true,
+                ),
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
+            );
+            assert_noop!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                ),
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
+            );
+
+            // Sell with desired input
+            let amount_c: Balance = balance!(10000001);
+            assert_noop!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_input(amount_c.clone()),
+                    true,
+                ),
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
+            );
+            assert_noop!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+                ),
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
+            );
+
+            // Sell with desired output
+            let amount_d: Balance = balance!(2300000000);
+            assert_noop!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_output(amount_d.clone()),
+                    true,
+                ),
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
+            );
+            assert_noop!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                ),
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
+            );
+        });
+    }
 }
