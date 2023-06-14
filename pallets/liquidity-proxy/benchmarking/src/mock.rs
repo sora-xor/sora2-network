@@ -44,7 +44,7 @@ use hex_literal::hex;
 
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{construct_runtime, parameter_types};
-use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot};
 use multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
@@ -170,6 +170,7 @@ impl liquidity_proxy::Config for Runtime {
     type SecondaryMarket = ();
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
     type GetADARAccountId = GetADARAccountId;
+    type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
 }
 
 impl tokens::Config for Runtime {
