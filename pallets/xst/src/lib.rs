@@ -143,6 +143,8 @@ pub mod pallet {
         type Oracle: DataFeed<Self::Symbol, Rate, u64>;
         /// Type of symbol received from oracles
         type Symbol: Parameter + From<common::SymbolName> + MaybeSerializeDeserialize;
+        /// Maximum tradable amount of XST
+        #[pallet::constant]
         type GetSyntheticBaseBuySellLimit: Get<Balance>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
