@@ -66,6 +66,7 @@ pub trait WeightInfo {
 	fn new_trivial() -> Weight;
 	fn is_forbidden_filter() -> Weight;
 	fn list_liquidity_sources() -> Weight;
+	fn set_adar_commission_ratio() -> Weight;
 }
 
 /// Weights for liquidity_proxy using the Substrate node and recommended hardware.
@@ -139,6 +140,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(24_644_000, 9496)
 			.saturating_add(T::DbWeight::get().reads(4_u64))
 	}
+	/// Storage: LiquidityProxy ADARCommissionRatio (r:0 w:1)
+	/// Proof Skipped: LiquidityProxy ADARCommissionRatio (max_values: Some(1), max_size: None, mode: Measured)
+	fn set_adar_commission_ratio() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 14_000_000 picoseconds.
+		Weight::from_ref_time(15_000_000)
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
 }
 
 // For backwards compatibility and tests
@@ -210,5 +221,15 @@ impl WeightInfo for () {
 		// Minimum execution time: 24_061_000 picoseconds.
 		Weight::from_parts(24_644_000, 9496)
 			.saturating_add(RocksDbWeight::get().reads(4_u64))
+	}
+	/// Storage: LiquidityProxy ADARCommissionRatio (r:0 w:1)
+	/// Proof Skipped: LiquidityProxy ADARCommissionRatio (max_values: Some(1), max_size: None, mode: Measured)
+	fn set_adar_commission_ratio() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 14_000 nanoseconds.
+		Weight::from_ref_time(15_000_000)
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }

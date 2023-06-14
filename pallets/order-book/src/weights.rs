@@ -56,6 +56,15 @@ pub trait WeightInfo {
     fn exchange() -> Weight {
         Weight::zero()
     }
+    fn service_base() -> Weight {
+        Weight::zero()
+    }
+    fn service_block_base() -> Weight {
+        Weight::zero()
+    }
+    fn service_single_expiration() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl WeightInfo for () {}
@@ -85,5 +94,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
     }
     fn exchange() -> Weight {
         Weight::zero()
+    }
+    fn service_base() -> Weight {
+        Weight::zero()
+    }
+    fn service_block_base() -> Weight {
+        Weight::zero()
+    }
+    fn service_single_expiration() -> Weight {
+        // todo: benchmark
+        // not zero for now to test weight limits in `on_initialize`
+        Weight::from_parts(93_304_000, 21168)
     }
 }

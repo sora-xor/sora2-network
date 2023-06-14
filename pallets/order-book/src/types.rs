@@ -186,10 +186,11 @@ impl<AssetId: PartialEq> DealInfo<AssetId> {
 }
 
 #[derive(Eq, PartialEq, Clone, RuntimeDebug)]
-pub struct MarketChange<AccountId, OrderId, LimitOrder> {
+pub struct MarketChange<AccountId, OrderId, LimitOrder, BlockNumber> {
     pub market_input: OrderAmount,
     pub market_output: OrderAmount,
-    pub to_delete: Vec<OrderId>,
+    /// order id and number of block it is scheduled to expire at
+    pub to_delete: Vec<(OrderId, BlockNumber)>,
     pub to_update: Vec<LimitOrder>,
     pub makers_output: BTreeMap<AccountId, OrderVolume>,
 }
