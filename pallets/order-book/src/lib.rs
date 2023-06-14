@@ -130,6 +130,7 @@ pub mod pallet {
         type MaxSidePriceCount: Get<u32>;
         type MaxExpiringOrdersPerBlock: Get<u32>;
         type MaxExpirationWeightPerBlock: Get<Weight>;
+        type AllowedDEXIds: Get<&'static [Self::DEXId]>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,

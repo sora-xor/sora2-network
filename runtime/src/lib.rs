@@ -2016,6 +2016,8 @@ impl hermes_governance_platform::Config for Runtime {
 parameter_types! {
     // small value for test environment in order to check postponing expirations
     pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block; // TODO: order-book clarify
+    // `.into()` is not `const`, thus using `as u32`
+    pub const OrderbookAllowedDEXIds: &'static [DEXId] = &[common::DEXId::Polkaswap as u32];
 }
 
 #[cfg(feature = "wip")] // order-book
@@ -2030,6 +2032,7 @@ impl order_book::Config for Runtime {
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<100000>; // TODO: order-book clarify
     type MaxExpiringOrdersPerBlock = ConstU32<10000>; // TODO: order-book clarify
+    type AllowedDEXIds = OrderbookAllowedDEXIds;
     type MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
     type EnsureTradingPairExists = TradingPair;
     type TradingPairSourceManager = TradingPair;
