@@ -989,6 +989,13 @@ impl<T: Config> Pallet<T> {
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
 
+        // The temp solution is to exclude OrderBook source if there are multiple sources.
+        // Will be redesigned in #447
+        #[cfg(feature = "wip")] // order-book
+        if sources.len() > 1 {
+            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
+        }
+
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {
             let src = sources.first().unwrap();
