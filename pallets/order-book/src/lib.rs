@@ -293,7 +293,7 @@ pub mod pallet {
 
         /// User tried to place the limit order out of the spread.
         /// One part of the liquidity of the limit order is converted into a market order, and the other part is placed as a limit order.
-        LimitOrderSplittedIntoMarketOrderAndLimitOrder {
+        LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             owner_id: T::AccountId,
@@ -701,16 +701,16 @@ pub mod pallet {
                     order_id,
                     owner_id: who,
                 }),
-                (Some(limit_order_input), Some(market_order_input)) => Self::deposit_event(
-                    Event::<T>::LimitOrderSplittedIntoMarketOrderAndLimitOrder {
+                (Some(limit_order_input), Some(market_order_input)) => {
+                    Self::deposit_event(Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
                         order_book_id,
                         dex_id,
                         owner_id: who,
                         market_order_input,
                         limit_order_id: order_id,
                         limit_order_input,
-                    },
-                ),
+                    })
+                }
                 _ => {
                     // should never happen
                     return Err(Error::<T>::InvalidOrderAmount.into());

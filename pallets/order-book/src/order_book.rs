@@ -228,11 +228,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         let market_change = self.calculate_market_order_impact(order, data)?;
 
-        let (input, output) = if let (Some(input), Some(output)) =
-            (market_change.deal_input, market_change.deal_output)
-        {
-            (input, output)
-        } else {
+        let (Some(input), Some(output)) =
+            (market_change.deal_input, market_change.deal_output) else {
             // should never happen
             return Err(Error::<T>::PriceCalculationFailed.into());
         };
@@ -928,8 +925,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(market_change)
     }
 
-    /// Calculates and returnes the sum of limit orders up to the `price`or until the `amount` is reached
-    /// and remainig `amount` if it is greater then the market volume.
+    /// Calculates and returns the sum of limit orders up to the `price` or until the `amount` is reached
+    /// and remaining `amount` if it is greater than the market volume.
     pub fn calculate_market_depth_to_price<'a>(
         side: PriceVariant,
         price: OrderPrice,
