@@ -1037,6 +1037,10 @@ impl liquidity_proxy::Config for Runtime {
     type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
     type VestedRewardsPallet = VestedRewards;
     type GetADARAccountId = GetADARAccountId;
+    type ADARCommissionRatioUpdateOrigin = EitherOfDiverse<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+        EnsureRoot<AccountId>,
+    >;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1202,6 +1206,16 @@ impl rewards::Config for Runtime {
 impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
     fn compute_fee(call: &RuntimeCall) -> Option<Balance> {
         let result = match call {
+            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
+                swap_batches,
+                ..
+            }) => Some(
+                swap_batches
+                    .iter()
+                    .map(|x| x.receivers.len() as Balance)
+                    .sum::<Balance>()
+                    * SMALL_FEE,
+            ),
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
