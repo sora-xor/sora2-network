@@ -808,7 +808,7 @@ mod tests {
             );
 
             // Buy with desired output
-            let amount_b: Balance = balance!(10000000);
+            let amount_b: Balance = balance!(10000001);
             assert_noop!(
                 XSTPool::quote(
                     &DEXId::Polkaswap.into(),
@@ -832,7 +832,7 @@ mod tests {
             );
 
             // Sell with desired input
-            let amount_c: Balance = balance!(10000000);
+            let amount_c: Balance = balance!(10000001);
             assert_noop!(
                 XSTPool::quote(
                     &DEXId::Polkaswap.into(),

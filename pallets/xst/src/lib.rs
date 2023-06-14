@@ -838,7 +838,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn ensure_base_asset_amount_within_limit(amount: Balance) -> Result<(), DispatchError> {
-        if amount >= T::GetSyntheticBaseBuySellLimit::get() {
+        if amount > T::GetSyntheticBaseBuySellLimit::get() {
             fail!(Error::<T>::SyntheticBaseBuySellLimitExceeded)
         } else {
             Ok(())
