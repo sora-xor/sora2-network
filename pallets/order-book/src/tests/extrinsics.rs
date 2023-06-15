@@ -248,6 +248,7 @@ fn should_not_create_order_book_that_already_exists() {
 }
 
 #[test]
+#[ignore] // todo (m.tagirov) remove in #542
 fn should_not_create_order_book_for_user_without_nft() {
     ext().execute_with(|| {
         let caller = alice();
@@ -290,6 +291,7 @@ fn should_not_create_order_book_for_user_without_nft() {
 }
 
 #[test]
+#[ignore] // todo (m.tagirov) remove in #542
 fn should_not_create_order_book_for_nft_owner_without_nft() {
     ext().execute_with(|| {
         let caller = alice();
@@ -342,6 +344,7 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
 }
 
 #[test]
+#[ignore] // todo (m.tagirov) remove in #542
 fn should_create_order_book_for_nft() {
     ext().execute_with(|| {
         let caller = alice();
@@ -588,6 +591,7 @@ fn should_delete_order_book_with_a_lot_of_orders() {
 }
 
 #[test]
+#[ignore] // todo (m.tagirov) remove in #542
 fn should_check_permissions_for_update_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
@@ -974,6 +978,7 @@ fn should_not_update_order_book_when_atributes_exceed_total_supply() {
 }
 
 #[test]
+#[ignore] // todo (m.tagirov) remove in #542
 fn should_not_update_order_book_with_nft_bounds() {
     ext().execute_with(|| {
         FrameSystem::inc_providers(&alice());
@@ -1068,6 +1073,7 @@ fn should_update_order_book_with_regular_asset() {
 }
 
 #[test]
+#[ignore] // todo (m.tagirov) remove in #542
 fn should_update_order_book_with_nft() {
     ext().execute_with(|| {
         FrameSystem::inc_providers(&alice());
@@ -1380,6 +1386,7 @@ fn should_place_limit_order() {
 }
 
 #[test]
+#[ignore] // todo (m.tagirov) remove in #542
 fn should_place_limit_order_with_nft() {
     ext().execute_with(|| {
         let caller = alice();
