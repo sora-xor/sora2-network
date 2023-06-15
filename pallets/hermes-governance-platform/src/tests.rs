@@ -7,6 +7,7 @@ use common::{balance, generate_storage_instance, AssetInfoProvider, HERMES_ASSET
 use frame_support::pallet_prelude::{StorageDoubleMap, StorageMap};
 use frame_support::storage::types::OptionQuery;
 use frame_support::traits::Hooks;
+use frame_support::BoundedVec;
 use frame_support::PalletId;
 use frame_support::{assert_err, assert_ok, Identity};
 use sp_core::H256;
@@ -20,11 +21,10 @@ fn create_poll_invalid_start_timestamp() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title = "Title";
         let description = "Description";
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 1);
 
@@ -49,11 +49,10 @@ fn create_poll_invalid_end_timestamp() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title = "Title";
         let description = "Description";
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
@@ -76,10 +75,9 @@ fn create_poll_invalid_minimum_duration_of_poll() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title = "Title";
         let description = "Description";
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
@@ -102,10 +100,9 @@ fn create_poll_invalid_maximum_duration_of_poll() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title = "Title";
         let description = "Description";
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
@@ -128,12 +125,11 @@ fn create_poll_not_enough_hermes_for_creating_poll() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title = "Title";
         let description = "Description";
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-            "Option 4".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+        options.try_push("Option 4".try_into().unwrap()).unwrap();
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
@@ -156,7 +152,8 @@ fn create_poll_invalid_voting_options() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let title = "Title";
         let description = "Description";
-        let options = vec!["Option1".try_into().unwrap()];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
@@ -173,36 +170,6 @@ fn create_poll_invalid_voting_options() {
 }
 
 #[test]
-fn create_poll_too_many_voting_options() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
-        let title = "Title";
-        let description = "Description";
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-            "Option 4".try_into().unwrap(),
-            "Option 5".try_into().unwrap(),
-            "Option 6".try_into().unwrap(),
-        ];
-
-        assert_err!(
-            HermesGovernancePlatform::create_poll(
-                RuntimeOrigin::signed(ALICE),
-                current_timestamp,
-                current_timestamp + 14_400_000,
-                title.try_into().unwrap(),
-                description.try_into().unwrap(),
-                options
-            ),
-            Error::<Runtime>::TooManyVotingOptions
-        );
-    });
-}
-
-#[test]
 fn create_poll_ok() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -212,13 +179,12 @@ fn create_poll_ok() {
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
         let title = "Title";
         let description = "Description";
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-            "Option 4".try_into().unwrap(),
-            "Option 5".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+        options.try_push("Option 4".try_into().unwrap()).unwrap();
+        options.try_push("Option 5".try_into().unwrap()).unwrap();
 
         assert_ok!(HermesGovernancePlatform::create_poll(
             user,
@@ -282,13 +248,12 @@ fn vote_poll_is_not_started() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let voting_option = "Option 1".try_into().unwrap();
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-            "Option 4".try_into().unwrap(),
-            "Option 5".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+        options.try_push("Option 4".try_into().unwrap()).unwrap();
+        options.try_push("Option 5".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -323,11 +288,10 @@ fn vote_poll_is_finished() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let voting_option = "Option 1".try_into().unwrap();
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -362,11 +326,10 @@ fn vote_invalid_option() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let voting_option = "Option 5".try_into().unwrap();
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -400,10 +363,9 @@ fn vote_not_enough_hermes_for_voting() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let voting_option = "Option 1".try_into().unwrap();
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -437,11 +399,10 @@ fn vote_already_voted() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let voting_option = "Option 1";
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -486,12 +447,11 @@ fn vote_ok() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let voting_option = "Option 1";
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-            "Option 4".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+        options.try_push("Option 4".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -565,11 +525,10 @@ fn withdraw_funds_voter_poll_is_not_finished() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let voting_option = "Option 1".try_into().unwrap();
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -609,11 +568,10 @@ fn withdraw_funds_voter_not_voted() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -650,10 +608,9 @@ fn withdraw_funds_voter_funds_already_withdrawn() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let voting_option = "Option 1".try_into().unwrap();
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -705,11 +662,10 @@ fn withdraw_funds_voter_ok() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let voting_option = "Option 1";
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -790,10 +746,9 @@ fn withdraw_funds_creator_you_are_not_creator() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -831,11 +786,10 @@ fn withdraw_funds_creator_poll_is_not_finished() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -872,12 +826,11 @@ fn withdraw_funds_creator_funds_already_withdrawn() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-            "Option 4".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+        options.try_push("Option 4".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,
@@ -929,11 +882,10 @@ fn withdraw_funds_creator_ok() {
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let options = vec![
-            "Option 1".try_into().unwrap(),
-            "Option 2".try_into().unwrap(),
-            "Option 3".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
             creator: user,

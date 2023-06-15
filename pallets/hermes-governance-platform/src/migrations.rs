@@ -6,8 +6,8 @@ use codec::{Decode, Encode};
 use frame_support::dispatch::Weight;
 use frame_support::log;
 use frame_support::traits::Get;
+use frame_support::BoundedVec;
 use frame_support::RuntimeDebug;
-use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Clone, Copy)]
 pub enum VotingOption {
@@ -64,9 +64,9 @@ pub fn migrate_voting_and_poll_data<T: Config>() -> Weight {
     HermesPollData::<T>::translate_values::<OldHermesPollInfo<AccountIdOf<T>, T::Moment>, _>(|v| {
         weight += 1;
 
-        let mut options = Vec::new();
-        options.push("Yes".try_into().unwrap());
-        options.push("No".try_into().unwrap());
+        let mut options = BoundedVec::default();
+        options.try_push("Yes".try_into().unwrap()).unwrap();
+        options.try_push("No".try_into().unwrap()).unwrap();
 
         Some(HermesPollInfo {
             creator: v.creator,

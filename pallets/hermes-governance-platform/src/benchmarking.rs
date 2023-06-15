@@ -8,6 +8,7 @@ use codec::{Decode, Encode};
 use common::{balance, HERMES_ASSET_ID};
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
+use frame_support::BoundedVec;
 use frame_support::PalletId;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
@@ -47,10 +48,9 @@ benchmarks! {
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
         let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
-        let options = vec![
-            "Yes".try_into().unwrap(),
-            "No".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Yes".try_into().unwrap()).unwrap();
+        options.try_push("No".try_into().unwrap()).unwrap();
 
         Assets::<T>::mint(
             RawOrigin::Signed(owner).into(),
@@ -90,10 +90,9 @@ benchmarks! {
         let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
         let hermes_amount = balance!(100000);
         let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
-        let options = vec![
-            "Yes".try_into().unwrap(),
-            "No".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Yes".try_into().unwrap()).unwrap();
+        options.try_push("No".try_into().unwrap()).unwrap();
 
         Assets::<T>::mint(
             RawOrigin::Signed(owner).into(),
@@ -130,10 +129,9 @@ benchmarks! {
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let options = vec![
-            "Yes".try_into().unwrap(),
-            "No".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Yes".try_into().unwrap()).unwrap();
+        options.try_push("No".try_into().unwrap()).unwrap();
 
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(owner.clone()).into(),
@@ -186,10 +184,9 @@ benchmarks! {
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let options = vec![
-            "Yes".try_into().unwrap(),
-            "No".try_into().unwrap(),
-        ];
+        let mut options = BoundedVec::default();
+        options.try_push("Yes".try_into().unwrap()).unwrap();
+        options.try_push("No".try_into().unwrap()).unwrap();
 
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(owner).into(),

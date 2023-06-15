@@ -12,9 +12,9 @@ mod tests;
 
 extern crate alloc;
 
-use alloc::vec::Vec;
 use codec::{Decode, Encode};
 use common::{Balance, BoundedString};
+use frame_support::BoundedVec;
 pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
@@ -31,8 +31,13 @@ pub struct HermesVotingInfo<StringLimit: sp_core::Get<u32>> {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[scale_info(skip_type_params(StringLimit))]
-pub struct HermesPollInfo<AccountId, Moment, StringLimit: sp_core::Get<u32>> {
+#[scale_info(skip_type_params(StringLimit, OptionsLimit))]
+pub struct HermesPollInfo<
+    AccountId,
+    Moment,
+    StringLimit: sp_core::Get<u32>,
+    OptionsLimit: sp_core::Get<u32>,
+> {
     /// Creator of poll
     pub creator: AccountId,
     /// Hermes Locked
@@ -48,7 +53,7 @@ pub struct HermesPollInfo<AccountId, Moment, StringLimit: sp_core::Get<u32>> {
     /// Creator Hermes withdrawn
     pub creator_hermes_withdrawn: bool,
     /// Options
-    pub options: Vec<BoundedString<StringLimit>>,
+    pub options: BoundedVec<BoundedString<StringLimit>, OptionsLimit>,
 }
 
 /// Storage version.
@@ -65,7 +70,6 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{migrations, HermesPollInfo, HermesVotingInfo, StorageVersion, WeightInfo};
-    use alloc::vec::Vec;
     use common::prelude::Balance;
     use common::{balance, AssetInfoProvider, BoundedString};
     use frame_support::pallet_prelude::*;
@@ -94,6 +98,9 @@ pub mod pallet {
 
         /// String limit
         type StringLimit: Get<u32>;
+
+        // Options limit
+        type OptionsLimit: Get<u32>;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -133,7 +140,7 @@ pub mod pallet {
         _,
         Identity,
         H256,
-        HermesPollInfo<AccountIdOf<T>, T::Moment, T::StringLimit>,
+        HermesPollInfo<AccountIdOf<T>, T::Moment, T::StringLimit, T::OptionsLimit>,
         OptionQuery,
     >;
 
@@ -320,7 +327,7 @@ pub mod pallet {
             poll_end_timestamp: T::Moment,
             title: BoundedString<T::StringLimit>,
             description: BoundedString<T::StringLimit>,
-            options: Vec<BoundedString<T::StringLimit>>,
+            options: BoundedVec<BoundedString<T::StringLimit>, T::OptionsLimit>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
             let current_timestamp = Timestamp::<T>::get();
@@ -371,7 +378,7 @@ pub mod pallet {
                 title: title.clone(),
                 description,
                 creator_hermes_withdrawn: false,
-                options,
+                options: options,
             };
 
             // Transfer Hermes to pallet
