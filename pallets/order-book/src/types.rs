@@ -250,27 +250,39 @@ where
         ensure!(self.dex_id == other.dex_id, ());
         ensure!(self.order_book_id == other.order_book_id, ());
 
-        let merge_asset_map =
-            |map: &mut BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
-             to_merge: &BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>| {
-                to_merge.iter().for_each(|(asset, whom)| {
-                    map.entry(*asset)
-                        .and_modify(|account_map| {
-                            whom.iter().for_each(|(account, volume)| {
-                                account_map
-                                    .entry(account.clone())
-                                    .and_modify(|current_volune| *current_volune += volume)
-                                    .or_insert(*volume);
-                            })
-                        })
-                        .or_insert(whom.clone());
-                });
-            };
-
-        merge_asset_map(&mut self.to_lock, &other.to_lock);
-        merge_asset_map(&mut self.to_unlock, &other.to_unlock);
+        for (map, to_merge) in [
+            (&mut self.to_lock, &other.to_lock),
+            (&mut self.to_unlock, &other.to_unlock),
+        ] {
+            Self::merge_asset_map(map, to_merge);
+        }
 
         Ok(())
+    }
+
+    fn merge_account_map(
+        account_map: &mut BTreeMap<AccountId, OrderVolume>,
+        to_merge: &BTreeMap<AccountId, OrderVolume>,
+    ) {
+        for (account, volume) in to_merge {
+            account_map
+                .entry(account.clone())
+                .and_modify(|current_volune| *current_volune += volume)
+                .or_insert(*volume);
+        }
+    }
+
+    fn merge_asset_map(
+        map: &mut BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
+        to_merge: &BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
+    ) {
+        for (asset, whom) in to_merge {
+            map.entry(*asset)
+                .and_modify(|account_map| {
+                    Self::merge_account_map(account_map, whom);
+                })
+                .or_insert(whom.clone());
+        }
     }
 
     pub fn lock<Locker>(&self) -> Result<(), DispatchError>

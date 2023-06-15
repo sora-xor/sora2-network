@@ -1631,19 +1631,19 @@ fn should_not_sum_market_if_limit_is_greater_than_liquidity() {
 
         assert_err!(
             order_book.sum_market(asks.iter(), Some(OrderAmount::Base(balance!(1000)))),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
         assert_err!(
             order_book.sum_market(asks.iter(), Some(OrderAmount::Quote(balance!(10000)))),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
         assert_err!(
             order_book.sum_market(bids.iter().rev(), Some(OrderAmount::Base(balance!(1000)))),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
         assert_err!(
             order_book.sum_market(bids.iter().rev(), Some(OrderAmount::Quote(balance!(10000)))),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
     });
 }
@@ -3186,7 +3186,7 @@ fn should_not_calculate_market_order_impact_with_empty_side() {
                 ),
                 &mut data
             ),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
         assert_err!(
             order_book.calculate_market_order_impact(
@@ -3199,7 +3199,7 @@ fn should_not_calculate_market_order_impact_with_empty_side() {
                 ),
                 &mut data
             ),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
     });
 }
@@ -3227,7 +3227,7 @@ fn should_not_calculate_market_order_impact_if_liquidity_is_not_enough() {
                 ),
                 &mut data
             ),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
         assert_err!(
             order_book.calculate_market_order_impact(
@@ -3240,7 +3240,7 @@ fn should_not_calculate_market_order_impact_if_liquidity_is_not_enough() {
                 ),
                 &mut data
             ),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
     });
 }

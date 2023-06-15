@@ -353,7 +353,7 @@ pub mod pallet {
         /// There are no aggregated bids/asks for the order book
         NoAggregatedData,
         /// There is not enough liquidity in the order book to cover the deal
-        NotEnoughLiquidity,
+        NotEnoughLiquidityInOrderBook,
         /// Cannot create order book with equal base and target assets
         ForbiddenToCreateOrderBookWithSameAssets,
         /// The asset is not allowed to be base. Only dex base asset can be a quote asset for order book
@@ -1024,7 +1024,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             PriceVariant::Buy => order_book.best_ask(&mut data),
             PriceVariant::Sell => order_book.best_bid(&mut data),
         }) else {
-            return Err(Error::<T>::NotEnoughLiquidity.into());
+            return Err(Error::<T>::NotEnoughLiquidityInOrderBook.into());
         };
 
         let target_amount = match amount {

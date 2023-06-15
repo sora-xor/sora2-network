@@ -442,7 +442,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         for (price, _) in market_data {
             let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, side.switch(), price) else {
-                return Err(Error::<T>::NotEnoughLiquidity.into());
+                return Err(Error::<T>::NotEnoughLiquidityInOrderBook.into());
             };
 
             for limit_order_id in price_level.into_iter() {
@@ -492,7 +492,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
         }
 
-        ensure!(remaining_amount.is_zero(), Error::<T>::NotEnoughLiquidity);
+        ensure!(
+            remaining_amount.is_zero(),
+            Error::<T>::NotEnoughLiquidityInOrderBook
+        );
 
         payment
             .to_lock
@@ -650,7 +653,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         ensure!(
             depth_limit.is_none() || enough_liquidity,
-            Error::<T>::NotEnoughLiquidity
+            Error::<T>::NotEnoughLiquidityInOrderBook
         );
 
         Ok((
