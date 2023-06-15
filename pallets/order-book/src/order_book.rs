@@ -314,7 +314,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let mut makers_output = BTreeMap::new();
 
         for (price, _) in market_data {
-            let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, side.switch(), price) else {
+            let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, side.switched(), price) else {
                 return Err(Error::<T>::NotEnoughLiquidity.into());
             };
 
