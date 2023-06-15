@@ -416,7 +416,6 @@ pub mod pallet {
                 order_book_id.base != order_book_id.quote,
                 Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
             );
-            // https://github.com/sora-xor/sora2-network/issues/536
             ensure!(
                 dex_id == common::DEXId::Polkaswap.into(),
                 Error::<T>::NotAllowedDEXId
