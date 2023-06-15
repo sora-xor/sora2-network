@@ -157,7 +157,7 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
         dex_id: DEXId,
         order_book_id: OrderBookId<AssetId>,
         asset_id: &AssetId,
-        receivers: BTreeMap<AccountId, OrderVolume>,
+        receivers: &BTreeMap<AccountId, OrderVolume>,
     ) -> Result<(), Error>;
 }
 
