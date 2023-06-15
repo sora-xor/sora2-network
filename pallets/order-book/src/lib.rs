@@ -130,7 +130,6 @@ pub mod pallet {
         type MaxSidePriceCount: Get<u32>;
         type MaxExpiringOrdersPerBlock: Get<u32>;
         type MaxExpirationWeightPerBlock: Get<Weight>;
-        type AllowedDEXIds: Get<&'static [Self::DEXId]>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,
@@ -415,10 +414,9 @@ pub mod pallet {
                 order_book_id.base != order_book_id.quote,
                 Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
             );
+            // https://github.com/sora-xor/sora2-network/issues/536
             ensure!(
-                T::AllowedDEXIds::get()
-                    .iter()
-                    .any(|allowed| allowed == &dex_id),
+                dex_id == common::DEXId::Polkaswap.into(),
                 Error::<T>::NotAllowedDEXId
             );
             let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
