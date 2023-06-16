@@ -88,7 +88,10 @@ pub fn subscribe_batch_commitments<S: SenderConfig>(
                 let commitment = find_commitment_with_nonce(&sender, network_id, from_block, nonce)
                     .await
                     .map_err(|e| {
-                        error!("Failed to find commitment with nonce {}: {}", nonce, e);
+                        error!(
+                            "Failed to find batch commitment with nonce {}: {}",
+                            nonce, e
+                        );
                         e
                     })?;
                 if let Some((block, _commitment_hash)) = &commitment {
