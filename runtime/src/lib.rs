@@ -65,8 +65,7 @@ use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::Description;
 use common::GetMarketInfo;
-#[cfg(feature = "ready-to-test")]
-use common::{AssetId32, PredefinedAssetId};
+use common::PredefinedAssetId;
 use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
@@ -258,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 54,
+    spec_version: 55,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 54,
+    transaction_version: 55,
     state_version: 0,
 };
 
@@ -2108,7 +2107,7 @@ impl Convert<U256, Balance> for FeeConverter {
 
 #[cfg(feature = "ready-to-test")] // Bridges
 parameter_types! {
-    pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
+    pub const FeeCurrency: AssetId = XOR;
 }
 
 #[cfg(feature = "ready-to-test")] // EVM bridge
