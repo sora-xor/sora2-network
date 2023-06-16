@@ -41,6 +41,9 @@ pub(crate) struct Command {
     para: ParachainClient,
     #[clap(long)]
     signer: String,
+    /// Minimal block for commitment search
+    #[clap(long, default_value = "1")]
+    from_block: u32,
 }
 
 impl Command {
@@ -52,6 +55,7 @@ impl Command {
             .with_sender_client(sender)
             .with_receiver_client(receiver)
             .with_signer(signer)
+            .with_start_block(self.from_block)
             .build()
             .await
             .context("build sora to sora relay")?;

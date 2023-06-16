@@ -42,6 +42,7 @@ use sp_runtime::traits::Keccak256;
 pub struct RelayBuilder<S: SenderConfig, R: ReceiverConfig> {
     sender: Option<SubUnsignedClient<S>>,
     receiver: Option<SubUnsignedClient<R>>,
+    from_block: Option<BlockNumber<S>>,
     signer: Option<ecdsa::Pair>,
 }
 
@@ -51,6 +52,7 @@ impl<S: SenderConfig, R: ReceiverConfig> Default for RelayBuilder<S, R> {
             sender: None,
             receiver: None,
             signer: None,
+            from_block: None,
         }
     }
 }
@@ -79,6 +81,11 @@ where
         self
     }
 
+    pub fn with_start_block(mut self, from_block: BlockNumber<S>) -> Self {
+        self.from_block = Some(from_block);
+        self
+    }
+
     pub async fn build(self) -> AnyResult<Relay<S, R>> {
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
@@ -95,6 +102,7 @@ where
             signer,
             receiver_network_id,
             sender_network_id,
+            from_block: self.from_block,
         })
     }
 }
@@ -106,6 +114,7 @@ pub struct Relay<S: SenderConfig, R: ReceiverConfig> {
     signer: ecdsa::Pair,
     receiver_network_id: SubNetworkId,
     sender_network_id: SubNetworkId,
+    from_block: Option<BlockNumber<S>>,
 }
 
 impl<S, R> Relay<S, R>
@@ -175,6 +184,7 @@ where
         let mut subscription = super::messages_subscription::subscribe_message_commitments(
             self.sender.clone(),
             self.receiver_network_id.into(),
+            self.from_block.unwrap_or(1u32.into()),
             inbound_nonce,
         );
         while let Some(res) = subscription.next().await {

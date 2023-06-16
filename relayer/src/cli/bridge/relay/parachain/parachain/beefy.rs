@@ -38,6 +38,9 @@ pub(crate) struct Command {
     /// Send all Beefy commitments
     #[clap(short, long)]
     send_unneeded_commitments: bool,
+    /// Minimal block for commitment search
+    #[clap(long, default_value = "1")]
+    from_block: u32,
 }
 
 impl Command {
@@ -56,6 +59,7 @@ impl Command {
             .with_sender_client(sender)
             .with_receiver_client(receiver.unsigned())
             .with_syncer(syncer)
+            .with_start_block(self.from_block)
             .build()
             .await
             .context("build sora to sora relay")?;

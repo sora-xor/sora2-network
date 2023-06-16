@@ -153,20 +153,20 @@ async fn leaf_proof_with_digest<S: SenderConfig>(
 async fn find_message_block<S: SenderConfig>(
     sender: &SubUnsignedClient<S>,
     network_id: GenericNetworkId,
+    from_block: BlockNumber<S>,
     nonce: u64,
 ) -> AnyResult<Option<BlockNumber<S>>> {
     let storage = S::bridge_outbound_nonce(network_id);
-    let low: BlockNumber<S> = 1u32.into();
     let finalized_hash = sender.finalized_head().await?;
     let high = sender.block_number(finalized_hash).await?;
 
     trace!(
         "Searching for message with nonce {} in block range {:?}..={:?}",
         nonce,
-        low,
+        from_block,
         high
     );
-    let start_block = binary_search_first_occurrence(low, high, nonce, |block| {
+    let start_block = binary_search_first_occurrence(from_block, high, nonce, |block| {
         let storage = &storage;
         async move {
             let nonce = sender.storage_fetch(storage, block).await?;
@@ -185,10 +185,11 @@ async fn find_message_block<S: SenderConfig>(
 async fn find_commitment_with_nonce<S: SenderConfig>(
     sender: &SubUnsignedClient<S>,
     network_id: GenericNetworkId,
+    from_block: BlockNumber<S>,
     count: u32,
     nonce: u64,
 ) -> AnyResult<Option<(BlockNumber<S>, H256)>> {
-    let start_block = find_message_block(sender, network_id, nonce).await?;
+    let start_block = find_message_block(sender, network_id, from_block, nonce).await?;
     let start_block = if let Some(start_block) = start_block {
         start_block + 1u32.into()
     } else {
@@ -217,6 +218,7 @@ async fn find_commitment_with_nonce<S: SenderConfig>(
 pub fn subscribe_message_commitments<S: SenderConfig>(
     sender: SubUnsignedClient<S>,
     network_id: GenericNetworkId,
+    from_block: BlockNumber<S>,
     latest_nonce: u64,
 ) -> impl Stream<Item = AnyResult<(BlockNumber<S>, H256)>> + Unpin {
     let latest_nonce = Arc::new(AtomicU64::new(latest_nonce));
@@ -226,12 +228,13 @@ pub fn subscribe_message_commitments<S: SenderConfig>(
             let sender = sender.clone();
             async move {
                 let nonce = latest_nonce.load(Ordering::Relaxed) + 1;
-                let commitment = find_commitment_with_nonce(&sender, network_id, 100, nonce)
-                    .await
-                    .map_err(|e| {
-                        error!("Failed to find commitment with nonce {}: {}", nonce, e);
-                        e
-                    })?;
+                let commitment =
+                    find_commitment_with_nonce(&sender, network_id, from_block, 100, nonce)
+                        .await
+                        .map_err(|e| {
+                            error!("Failed to find commitment with nonce {}: {}", nonce, e);
+                            e
+                        })?;
                 if let Some((block, _commitment_hash)) = &commitment {
                     let nonce = sender
                         .storage_fetch_or_default(&S::bridge_outbound_nonce(network_id), *block)
