@@ -7730,6 +7730,7 @@ dependencies = [
  "hex-literal",
  "orml-tokens",
  "pallet-balances",
+ "pallet-collective",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",

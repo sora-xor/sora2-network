@@ -210,7 +210,7 @@ const INDEXING_PREFIX: &'static [u8] = b"commitment";
 
 parameter_types! {
     pub const MaxMessagePayloadSize: u64 = 2048;
-    pub const MaxMessagesPerCommit: u64 = 3;
+    pub const MaxMessagesPerCommit: u8 = 3;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }

@@ -276,6 +276,7 @@ parameter_types! {
         tech_account_id
     };
     pub GetSyntheticBaseAssetId: AssetId = BatteryForMusicPlayer.into();
+    pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000000);
     pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
 }
 
@@ -304,6 +305,7 @@ impl xst::Config for Runtime {
     type WeightInfo = ();
     type Oracle = OracleProxy;
     type Symbol = SymbolName;
+    type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
 }
 
 parameter_type_with_key! {
