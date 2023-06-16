@@ -21,6 +21,14 @@ cargo run --bin relayer --release -- \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
+	bridge register sora evm ethash \
+	--descendants-until-final 10 \
+  $REGISTER_ADDITIONAL_ARGS
+
+cargo run --bin relayer --release -- \
+	--ethereum-url ws://localhost:8546 \
+	--substrate-url ws://localhost:9944 \
+	--substrate-key //Alice \
 	bridge register sora evm channels \
 	--inbound-channel $INBOUND \
 	--outbound-channel $OUTBOUND \

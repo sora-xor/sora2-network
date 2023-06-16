@@ -14,12 +14,26 @@ INBOUND=$(jq '.contracts.InboundChannel.address' $DEPLOYMENTS | tr -d '"')
 OUTBOUND=$(jq '.contracts.OutboundChannel.address' $DEPLOYMENTS | tr -d '"')
 USDT=$(jq '.contracts.USDT.address' $DEPLOYMENTS | tr -d '"')
 DAI=$(jq '.contracts.DAI.address' $DEPLOYMENTS | tr -d '"')
+PRIVATE_NET_CONFIG="/register-bridge/local_net_config.json"
 echo "Use deployments from $DEPLOYMENTS"
+
+REGISTER_ADDITIONAL_ARGS="--custom $PRIVATE_NET_CONFIG"
+if [ $# -gt 0 ]; then
+	REGISTER_ADDITIONAL_ARGS="$@"
+fi
 
 RUST_LOG=info,relayer=debug
 
 # Wait for geth connection
 sleep 10
+
+relayer \
+	--ethereum-url ws://bridge-geth:8545 \
+	--substrate-url ws://bridge-sora-alice:9944 \
+	--substrate-key //Alice \
+	bridge register sora evm ethash \
+	--descendants-until-final 10 \
+  $REGISTER_ADDITIONAL_ARGS
 
 relayer \
 	--ethereum-url ws://bridge-geth:8545 \
