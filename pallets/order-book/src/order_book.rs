@@ -441,7 +441,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         };
 
         for (price, _) in market_data {
-            let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, side.switch(), price) else {
+            let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, side.switched(), price) else {
                 return Err(Error::<T>::NotEnoughLiquidityInOrderBook.into());
             };
 
@@ -891,13 +891,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     > {
         let (market_amount, limit_amout) = match limit_order.side {
             PriceVariant::Buy => Self::calculate_market_depth_to_price(
-                limit_order.side.switch(),
+                limit_order.side.switched(),
                 limit_order.price,
                 limit_order.amount,
                 data.get_aggregated_asks(&self.order_book_id).iter(),
             ),
             PriceVariant::Sell => Self::calculate_market_depth_to_price(
-                limit_order.side.switch(),
+                limit_order.side.switched(),
                 limit_order.price,
                 limit_order.amount,
                 data.get_aggregated_bids(&self.order_book_id).iter().rev(),
