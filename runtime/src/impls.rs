@@ -31,8 +31,6 @@
 use core::marker::PhantomData;
 
 #[cfg(feature = "wip")]
-use bridge_types::traits::BridgeAssetRegistry;
-#[cfg(feature = "wip")]
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
@@ -49,8 +47,6 @@ pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 #[cfg(feature = "wip")]
 use scale_info::TypeInfo;
 use sp_core::U256;
-#[cfg(feature = "wip")]
-use sp_runtime::DispatchError;
 
 pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Currency<
     <T as frame_system::Config>::AccountId,
@@ -294,57 +290,6 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-        }
-    }
-}
-
-#[cfg(feature = "wip")] // Bridges
-pub struct BridgeAssetRegistryImpl;
-
-#[cfg(feature = "wip")] // Bridges
-impl BridgeAssetRegistry<crate::AccountId, crate::AssetId> for BridgeAssetRegistryImpl {
-    type AssetName = crate::AssetName;
-    type AssetSymbol = crate::AssetSymbol;
-
-    fn register_asset(
-        owner: crate::AccountId,
-        name: Self::AssetName,
-        symbol: Self::AssetSymbol,
-    ) -> Result<crate::AssetId, DispatchError> {
-        let asset_id = crate::Assets::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
-        Ok(asset_id)
-    }
-
-    fn manage_asset(
-        manager: crate::AccountId,
-        asset_id: crate::AssetId,
-    ) -> frame_support::pallet_prelude::DispatchResult {
-        let scope = permissions::Scope::Limited(common::hash(&asset_id));
-        for permission_id in [permissions::BURN, permissions::MINT] {
-            if permissions::Pallet::<crate::Runtime>::check_permission_with_scope(
-                manager.clone(),
-                permission_id,
-                &scope,
-            )
-            .is_err()
-            {
-                permissions::Pallet::<crate::Runtime>::assign_permission(
-                    manager.clone(),
-                    &manager,
-                    permission_id,
-                    scope,
-                )?;
-            }
-        }
-        Ok(())
-    }
-
-    fn get_raw_info(asset_id: crate::AssetId) -> bridge_types::types::RawAssetInfo {
-        let (asset_symbol, asset_name, precision, ..) = crate::Assets::asset_infos(asset_id);
-        bridge_types::types::RawAssetInfo {
-            name: asset_name.0,
-            symbol: asset_symbol.0,
-            precision,
         }
     }
 }

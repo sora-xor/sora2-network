@@ -21,9 +21,12 @@ use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::log;
 use scale_info::TypeInfo;
 use sp_core::U256;
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 pub use weights::WeightInfo;
+
+pub const BRIDGE_TECH_ACC_PREFIX: &[u8] = b"bridge";
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
@@ -48,7 +51,7 @@ pub mod pallet {
         traits::BridgeApp,
         types::{BridgeAppInfo, BridgeAssetInfo},
     };
-    use frame_support::pallet_prelude::*;
+    use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_system::pallet_prelude::*;
     use traits::MultiCurrency;
 
@@ -56,7 +59,9 @@ pub mod pallet {
     type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + pallet_timestamp::Config + technical::Config
+    {
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type EthApp: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
@@ -102,6 +107,19 @@ pub mod pallet {
     pub(super) type SidechainFeePaid<T: Config> =
         StorageDoubleMap<_, Blake2_128Concat, GenericNetworkId, Blake2_128Concat, Address, U256>;
 
+    /// Amount of assets locked by bridge for specific network. Map ((Network ID, Asset ID) => Locked amount).
+    #[pallet::storage]
+    #[pallet::getter(fn locked_assets)]
+    pub(super) type LockedAssets<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        GenericNetworkId,
+        Blake2_128Concat,
+        T::AssetId,
+        Balance,
+        ValueQuery,
+    >;
+
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -126,6 +144,8 @@ pub mod pallet {
     pub enum Error<T> {
         PathIsNotAvailable,
         WrongAccountKind,
+        NotEnoughLockedLiquidity,
+        Overflow,
     }
 
     #[pallet::call]
@@ -338,5 +358,138 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
                 direction: MessageDirection::Outbound,
             },
         );
+    }
+}
+
+impl<T: Config> Pallet<T> {
+    pub fn bridge_tech_account(
+        network_id: GenericNetworkId,
+    ) -> <T as technical::Config>::TechAccountId {
+        common::FromGenericPair::from_generic_pair(
+            BRIDGE_TECH_ACC_PREFIX.to_vec(),
+            network_id.encode(),
+        )
+    }
+
+    pub fn bridge_account(network_id: GenericNetworkId) -> Result<T::AccountId, DispatchError> {
+        technical::Pallet::<T>::tech_account_id_to_account_id(&Self::bridge_tech_account(
+            network_id,
+        ))
+    }
+}
+
+impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet<T> {
+    type AssetId = <T as assets::Config>::AssetId;
+    type Balance = Balance;
+
+    fn lock_asset(
+        network_id: GenericNetworkId,
+        asset_kind: bridge_types::types::AssetKind,
+        who: T::AccountId,
+        asset_id: Self::AssetId,
+        amount: Self::Balance,
+    ) -> DispatchResult {
+        let mut locked_amount = LockedAssets::<T>::get(network_id, asset_id);
+        match asset_kind {
+            bridge_types::types::AssetKind::Thischain => {
+                locked_amount = locked_amount
+                    .checked_add(amount)
+                    .ok_or(Error::<T>::Overflow)?;
+                let bridge_account = Self::bridge_tech_account(network_id);
+                technical::Pallet::<T>::transfer_in(&asset_id, &who, &bridge_account, amount)?;
+            }
+            bridge_types::types::AssetKind::Sidechain => {
+                locked_amount = locked_amount
+                    .checked_sub(amount)
+                    .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
+                let bridge_account = Self::bridge_account(network_id)?;
+                technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
+                assets::Pallet::<T>::burn_from(&asset_id, &bridge_account, &who, amount)?;
+            }
+        }
+        LockedAssets::<T>::insert(network_id, asset_id, locked_amount);
+        Ok(())
+    }
+
+    fn unlock_asset(
+        network_id: GenericNetworkId,
+        asset_kind: bridge_types::types::AssetKind,
+        who: T::AccountId,
+        asset_id: Self::AssetId,
+        amount: Self::Balance,
+    ) -> DispatchResult {
+        let mut locked_amount = LockedAssets::<T>::get(network_id, asset_id);
+        match asset_kind {
+            bridge_types::types::AssetKind::Thischain => {
+                locked_amount = locked_amount
+                    .checked_sub(amount)
+                    .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
+                let bridge_account = Self::bridge_tech_account(network_id);
+                technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, &who, amount)?;
+            }
+            bridge_types::types::AssetKind::Sidechain => {
+                locked_amount = locked_amount
+                    .checked_add(amount)
+                    .ok_or(Error::<T>::Overflow)?;
+                let bridge_account = Self::bridge_account(network_id)?;
+                technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
+                assets::Pallet::<T>::mint_to(&asset_id, &bridge_account, &who, amount)?;
+            }
+        }
+        LockedAssets::<T>::insert(network_id, asset_id, locked_amount);
+        Ok(())
+    }
+}
+
+impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::AssetId> for Pallet<T> {
+    type AssetName = common::AssetName;
+    type AssetSymbol = common::AssetSymbol;
+
+    fn register_asset(
+        network_id: GenericNetworkId,
+        name: Self::AssetName,
+        symbol: Self::AssetSymbol,
+    ) -> Result<T::AssetId, DispatchError> {
+        technical::Pallet::<T>::register_tech_account_id_if_not_exist(&Self::bridge_tech_account(
+            network_id,
+        ))?;
+        let owner = Self::bridge_account(network_id)?;
+        let asset_id =
+            assets::Pallet::<T>::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
+        Ok(asset_id)
+    }
+
+    fn manage_asset(network_id: GenericNetworkId, asset_id: T::AssetId) -> DispatchResult {
+        technical::Pallet::<T>::register_tech_account_id_if_not_exist(&Self::bridge_tech_account(
+            network_id,
+        ))?;
+        let manager = Self::bridge_account(network_id)?;
+        let scope = permissions::Scope::Limited(common::hash(&asset_id));
+        for permission_id in [permissions::BURN, permissions::MINT] {
+            if permissions::Pallet::<T>::check_permission_with_scope(
+                manager.clone(),
+                permission_id,
+                &scope,
+            )
+            .is_err()
+            {
+                permissions::Pallet::<T>::assign_permission(
+                    manager.clone(),
+                    &manager,
+                    permission_id,
+                    scope,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    fn get_raw_info(asset_id: T::AssetId) -> bridge_types::types::RawAssetInfo {
+        let (asset_symbol, asset_name, precision, ..) = assets::Pallet::<T>::asset_infos(asset_id);
+        bridge_types::types::RawAssetInfo {
+            name: asset_name.0,
+            symbol: asset_symbol.0,
+            precision,
+        }
     }
 }

@@ -147,7 +147,7 @@ pub mod pallet {
             for (asset_id, address, precision) in erc20_assets {
                 erc20_tokens.push(address);
                 if let Some(registered_token) =
-                    erc20_app::Pallet::<T>::token_address(network_id, asset_id)
+                    erc20_app::Pallet::<T>::token_address(network_id, &asset_id)
                 {
                     if registered_token != address {
                         return Err(Error::<T>::TokenRegisteredWithAnotherAddress.into());
@@ -199,7 +199,7 @@ pub mod pallet {
             let mut sidechain_tokens = vec![];
             for (asset_id, address, precision) in sidechain_assets {
                 sidechain_tokens.push(address);
-                if let Some(_) = erc20_app::Pallet::<T>::token_address(network_id, asset_id) {
+                if let Some(_) = erc20_app::Pallet::<T>::token_address(network_id, &asset_id) {
                     return Err(Error::<T>::TokenRegisteredWithAnotherAddress.into());
                 } else {
                     erc20_app::Pallet::<T>::register_asset_inner(
