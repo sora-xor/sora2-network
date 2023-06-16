@@ -435,7 +435,6 @@ benchmarks! {
         let amount = balance!(100);
         let lifespan: MomentOf<T> = 10000u32.into();
         let now = <<T as Config>::Time as Time>::now();
-        let current_block = frame_system::Pallet::<T>::block_number();
 
         create_and_fill_order_book::<T>(order_book_id);
     }: {
@@ -452,7 +451,7 @@ benchmarks! {
         let order_id = get_last_order_id::<T>(order_book_id).unwrap();
 
         assert_last_event::<T>(
-            Event::<T>::OrderPlaced {
+            Event::<T>::LimitOrderPlaced {
                 order_book_id,
                 dex_id: DEX.into(),
                 order_id,
@@ -460,6 +459,8 @@ benchmarks! {
             }
             .into(),
         );
+
+        let current_block = frame_system::Pallet::<T>::block_number();
 
         let expected_order = LimitOrder::<T>::new(
             order_id,
@@ -507,7 +508,7 @@ benchmarks! {
     }
     verify {
         assert_last_event::<T>(
-            Event::<T>::OrderCanceled {
+            Event::<T>::LimitOrderCanceled {
                 order_book_id,
                 dex_id: DEX.into(),
                 order_id,
@@ -628,7 +629,7 @@ benchmarks! {
     }
     verify {
         assert_last_event::<T>(
-            Event::<T>::OrderCanceled {
+            Event::<T>::LimitOrderExpired {
                 order_book_id,
                 dex_id: DEX.into(),
                 order_id,
