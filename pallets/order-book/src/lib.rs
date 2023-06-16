@@ -77,7 +77,7 @@ pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer, ExpirationScheduler};
 pub use types::{
     DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderBookStatus,
-    OrderPrice, OrderVolume, PriceOrders, UserOrders,
+    OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -277,15 +277,33 @@ pub mod pallet {
         },
 
         /// User placed new limit order
-        OrderPlaced {
+        LimitOrderPlaced {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             order_id: T::OrderId,
             owner_id: T::AccountId,
         },
 
+        /// User tried to place the limit order out of the spread. The limit order is converted into a market order.
+        LimitOrderConvertedToMarketOrder {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            owner_id: T::AccountId,
+        },
+
+        /// User tried to place the limit order out of the spread.
+        /// One part of the liquidity of the limit order is converted into a market order, and the other part is placed as a limit order.
+        LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            owner_id: T::AccountId,
+            market_order_input: OrderAmount,
+            limit_order_id: T::OrderId,
+            limit_order_input: OrderAmount,
+        },
+
         /// User canceled their limit order
-        OrderCanceled {
+        LimitOrderCanceled {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             order_id: T::OrderId,
@@ -293,7 +311,7 @@ pub mod pallet {
         },
 
         /// The order has reached the end of its lifespan
-        OrderExpired {
+        LimitOrderExpired {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             order_id: T::OrderId,
@@ -335,7 +353,7 @@ pub mod pallet {
         /// There are no aggregated bids/asks for the order book
         NoAggregatedData,
         /// There is not enough liquidity in the order book to cover the deal
-        NotEnoughLiquidity,
+        NotEnoughLiquidityInOrderBook,
         /// Cannot create order book with equal base and target assets
         ForbiddenToCreateOrderBookWithSameAssets,
         /// The asset is not allowed to be base. Only dex base asset can be a quote asset for order book
@@ -386,6 +404,8 @@ pub mod pallet {
         MaxLotSizeIsMoreThanTotalSupply,
         /// Indicated limit for slippage has not been met during transaction execution.
         SlippageLimitExceeded,
+        /// NFT order books are temporarily forbidden
+        NftOrderBooksAreTemporarilyForbidden,
     }
 
     #[pallet::hooks]
@@ -430,14 +450,22 @@ pub mod pallet {
             );
 
             let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-                // nft
-                // ensure the user has nft
-                ensure!(
-                    T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
-                        > Balance::zero(),
-                    Error::<T>::UserHasNoNft
-                );
-                OrderBook::<T>::default_nft(order_book_id, dex_id)
+                // temp solution for stage env
+                // will be removed in #542
+                // todo (m.tagirov)
+                return Err(Error::<T>::NftOrderBooksAreTemporarilyForbidden.into());
+
+                #[allow(unreachable_code)]
+                {
+                    // nft
+                    // ensure the user has nft
+                    ensure!(
+                        T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
+                            > Balance::zero(),
+                        Error::<T>::UserHasNoNft
+                    );
+                    OrderBook::<T>::default_nft(order_book_id, dex_id)
+                }
             } else {
                 // regular asset
                 OrderBook::<T>::default(order_book_id, dex_id)
@@ -477,7 +505,7 @@ pub mod pallet {
 
             let mut data = CacheDataLayer::<T>::new();
             let count_of_canceled_orders =
-                order_book.cancel_all_limit_orders::<Self, Self>(&mut data)? as u32;
+                order_book.cancel_all_limit_orders::<Self, Self, Self>(&mut data)? as u32;
 
             data.commit();
 
@@ -663,16 +691,41 @@ pub mod pallet {
             );
 
             let mut data = CacheDataLayer::<T>::new();
-            order_book.place_limit_order::<Self, Self>(order, &mut data)?;
+            let (market_input, deal_input) =
+                order_book.place_limit_order::<Self, Self, Self>(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
-            Self::deposit_event(Event::<T>::OrderPlaced {
-                order_book_id,
-                dex_id,
-                order_id,
-                owner_id: who,
-            });
+
+            match (market_input, deal_input) {
+                (None, Some(..)) => {
+                    Self::deposit_event(Event::<T>::LimitOrderConvertedToMarketOrder {
+                        order_book_id,
+                        dex_id,
+                        owner_id: who,
+                    })
+                }
+                (Some(..), None) => Self::deposit_event(Event::<T>::LimitOrderPlaced {
+                    order_book_id,
+                    dex_id,
+                    order_id,
+                    owner_id: who,
+                }),
+                (Some(limit_order_input), Some(market_order_input)) => {
+                    Self::deposit_event(Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+                        order_book_id,
+                        dex_id,
+                        owner_id: who,
+                        market_order_input,
+                        limit_order_id: order_id,
+                        limit_order_input,
+                    })
+                }
+                _ => {
+                    // should never happen
+                    return Err(Error::<T>::InvalidOrderAmount.into());
+                }
+            }
             Ok(().into())
         }
 
@@ -693,9 +746,9 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
 
-            order_book.cancel_limit_order::<Self, Self>(order, &mut data)?;
+            order_book.cancel_limit_order::<Self, Self, Self>(order, &mut data)?;
             data.commit();
-            Self::deposit_event(Event::<T>::OrderCanceled {
+            Self::deposit_event(Event::<T>::LimitOrderCanceled {
                 order_book_id,
                 dex_id,
                 order_id,
@@ -735,7 +788,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
         dex_id: T::DEXId,
         order_book_id: OrderBookId<T::AssetId>,
         asset_id: &T::AssetId,
-        receivers: BTreeMap<T::AccountId, OrderVolume>,
+        receivers: &BTreeMap<T::AccountId, OrderVolume>,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(dex_id, order_book_id);
         for (account, amount) in receivers.iter() {
@@ -971,7 +1024,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             PriceVariant::Buy => order_book.best_ask(&mut data),
             PriceVariant::Sell => order_book.best_bid(&mut data),
         }) else {
-            return Err(Error::<T>::NotEnoughLiquidity.into());
+            return Err(Error::<T>::NotEnoughLiquidityInOrderBook.into());
         };
 
         let target_amount = match amount {

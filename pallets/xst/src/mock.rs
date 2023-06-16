@@ -109,6 +109,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000);
 }
 
 construct_runtime! {
@@ -189,6 +190,7 @@ impl Config for Runtime {
     type PriceToolsPallet = price_tools::Pallet<Runtime>;
     type Oracle = oracle_proxy::Pallet<Runtime>;
     type Symbol = <Runtime as band::Config>::Symbol;
+    type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
     type WeightInfo = ();
 }
 
