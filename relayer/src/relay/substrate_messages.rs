@@ -174,7 +174,6 @@ where
             messages.push(inbound_channel::Message {
                 target: message.target,
                 payload: message.payload.into(),
-                fee: message.fee,
                 max_gas: message.max_gas,
             });
         }
