@@ -298,10 +298,7 @@ private-net = [
 ]
 
 wip = [
-    "order-book/wip",
     "framenode-chain-spec/wip",
-    "common/wip",
-    "dex-api/wip",
     "pallet-mmr",
     "beefy-light-client",
     "beefy-light-client-runtime-api",
@@ -326,7 +323,10 @@ wip = [
 ]
 
 ready-to-test = [
+    "order-book/ready-to-test",
     "framenode-chain-spec/ready-to-test",
+    "common/ready-to-test",
+    "dex-api/ready-to-test",
 ]
 
 runtime-benchmarks = [
