@@ -4623,6 +4623,7 @@ dependencies = [
  "pswap-distribution",
  "pswap-distribution-benchmarking",
  "pswap-distribution-runtime-api",
+ "qa-tools",
  "referrals",
  "rewards",
  "rewards-runtime-api",
@@ -9337,6 +9338,20 @@ dependencies = [
  "sp-api",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "qa-tools"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
 ]
 
 [[package]]

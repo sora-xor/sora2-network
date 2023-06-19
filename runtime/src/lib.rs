@@ -1589,6 +1589,12 @@ impl faucet::Config for Runtime {
     type WeightInfo = faucet::weights::SubstrateWeight<Runtime>;
 }
 
+#[cfg(feature = "private-net")]
+impl qa_tools::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
+}
+
 parameter_types! {
     pub GetPswapDistributionTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
@@ -2491,6 +2497,8 @@ construct_runtime! {
         // Available only for test net
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
+        #[cfg(feature = "private-net")]
+        QATools: qa_tools::{Pallet, Call, Event<T>} = 112,
     }
 }
 

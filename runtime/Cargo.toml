@@ -87,6 +87,7 @@ price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
+qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true}
 referrals = { path = "../pallets/referrals", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
@@ -262,6 +263,7 @@ std = [
     "price-tools/std",
     "pswap-distribution-runtime-api/std",
     "pswap-distribution/std",
+    "qa-tools/std",
     "referrals/std",
     "rewards-runtime-api/std",
     "rewards/std",
@@ -295,6 +297,7 @@ private-net = [
     "farming/private-net",
     "vested-rewards/private-net",
     "framenode-chain-spec/private-net",
+    "qa-tools",
 ]
 
 wip = [
@@ -373,6 +376,7 @@ runtime-benchmarks = [
     "pswap-distribution-benchmarking/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
+    "qa-tools/runtime-benchmarks",
     "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",

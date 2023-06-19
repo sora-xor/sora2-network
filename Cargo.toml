@@ -284,6 +284,7 @@ members = [
     "pallets/trustless-bridge/bridge-proxy/rpc",
     "pallets/trustless-bridge/bridge-proxy/runtime-api",
     "pallets/band",
+    "pallets/qa-tools",
     "relayer",
     "relayer/substrate-gen",
     "relayer/ethereum-gen",
