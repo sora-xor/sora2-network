@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod benchmarking;
+pub mod migrations;
 pub mod weights;
 
 #[cfg(test)]
@@ -11,23 +12,17 @@ mod tests;
 
 extern crate alloc;
 
-use alloc::string::String;
 use codec::{Decode, Encode};
-use common::Balance;
-use frame_support::RuntimeDebug;
+use common::{Balance, BoundedString};
+use frame_support::BoundedVec;
 pub use weights::WeightInfo;
-
-#[derive(Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Clone, Copy)]
-pub enum VotingOption {
-    Yes,
-    No,
-}
 
 #[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct HermesVotingInfo {
+#[scale_info(skip_type_params(StringLimit))]
+pub struct HermesVotingInfo<StringLimit: sp_core::Get<u32>> {
     /// Voting option
-    voting_option: VotingOption,
+    voting_option: BoundedString<StringLimit>,
     /// Number of hermes
     number_of_hermes: Balance,
     /// Hermes withdrawn
@@ -36,7 +31,13 @@ pub struct HermesVotingInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct HermesPollInfo<AccountId, Moment> {
+#[scale_info(skip_type_params(StringLimit, OptionsLimit))]
+pub struct HermesPollInfo<
+    AccountId,
+    Moment,
+    StringLimit: sp_core::Get<u32>,
+    OptionsLimit: sp_core::Get<u32>,
+> {
     /// Creator of poll
     pub creator: AccountId,
     /// Hermes Locked
@@ -46,21 +47,31 @@ pub struct HermesPollInfo<AccountId, Moment> {
     /// Poll end timestamp
     pub poll_end_timestamp: Moment,
     /// Poll title
-    pub title: String,
+    pub title: BoundedString<StringLimit>,
     /// Description
-    pub description: String,
+    pub description: BoundedString<StringLimit>,
     /// Creator Hermes withdrawn
     pub creator_hermes_withdrawn: bool,
+    /// Options
+    pub options: BoundedVec<BoundedString<StringLimit>, OptionsLimit>,
+}
+
+/// Storage version.
+#[derive(Encode, Decode, Eq, PartialEq, scale_info::TypeInfo)]
+pub enum StorageVersion {
+    /// Initial version
+    V1,
+    /// After migrating 'voting_option' to String, and new 'options' field in HermesPollInfo
+    V2,
 }
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{HermesPollInfo, HermesVotingInfo, VotingOption, WeightInfo};
-    use alloc::string::String;
+    use crate::{migrations, HermesPollInfo, HermesVotingInfo, StorageVersion, WeightInfo};
     use common::prelude::Balance;
-    use common::{balance, AssetInfoProvider};
+    use common::{balance, AssetInfoProvider, BoundedString};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::transactional;
@@ -84,6 +95,12 @@ pub mod pallet {
 
         /// Maximum duration of poll represented in milliseconds
         const MAX_DURATION_OF_POLL: Self::Moment;
+
+        /// String limit
+        type StringLimit: Get<u32>;
+
+        // Options limit
+        type OptionsLimit: Get<u32>;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -113,14 +130,19 @@ pub mod pallet {
         H256,
         Identity,
         AccountIdOf<T>,
-        HermesVotingInfo,
+        HermesVotingInfo<T::StringLimit>,
         OptionQuery,
     >;
 
     #[pallet::storage]
     #[pallet::getter(fn hermes_poll_data)]
-    pub type HermesPollData<T: Config> =
-        StorageMap<_, Identity, H256, HermesPollInfo<AccountIdOf<T>, T::Moment>, OptionQuery>;
+    pub type HermesPollData<T: Config> = StorageMap<
+        _,
+        Identity,
+        H256,
+        HermesPollInfo<AccountIdOf<T>, T::Moment, T::StringLimit, T::OptionsLimit>,
+        OptionQuery,
+    >;
 
     #[pallet::type_value]
     pub fn DefaultMinimumHermesVotingAmount<T: Config>() -> Balance {
@@ -154,13 +176,29 @@ pub mod pallet {
     pub type AuthorityAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
 
+    #[pallet::type_value]
+    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
+        StorageVersion::V1
+    }
+
+    /// Pallet storage version
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub type PalletStorageVersion<T: Config> =
+        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Voting [who, poll, option]
-        Voted(AccountIdOf<T>, H256, VotingOption),
+        Voted(AccountIdOf<T>, H256, BoundedString<T::StringLimit>),
         /// Create poll [who, title, start_timestamp, end_timestamp]
-        Created(AccountIdOf<T>, String, T::Moment, T::Moment),
+        Created(
+            AccountIdOf<T>,
+            BoundedString<T::StringLimit>,
+            T::Moment,
+            T::Moment,
+        ),
         /// Voter Funds Withdrawn [who, balance]
         VoterFundsWithdrawn(AccountIdOf<T>, Balance),
         /// Creator Funds Withdrawn [who, balance]
@@ -201,8 +239,14 @@ pub mod pallet {
         InvalidMinimumDurationOfPoll,
         /// Invalid Maximum Duration Of Poll
         InvalidMaximumDurationOfPoll,
-        /// NotVoted
+        /// Not Voted
         NotVoted,
+        /// Invalid Voting Options
+        InvalidVotingOptions,
+        /// Too Many Voting Options
+        TooManyVotingOptions,
+        /// InvalidOption
+        InvalidOption,
     }
 
     #[pallet::call]
@@ -214,7 +258,7 @@ pub mod pallet {
         pub fn vote(
             origin: OriginFor<T>,
             poll_id: H256,
-            voting_option: VotingOption,
+            voting_option: BoundedString<T::StringLimit>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -233,6 +277,11 @@ pub mod pallet {
             );
 
             ensure!(
+                hermes_poll_info.options.contains(&voting_option),
+                Error::<T>::InvalidOption
+            );
+
+            ensure!(
                 MinimumHermesVotingAmount::<T>::get()
                     <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
                         .unwrap_or(0),
@@ -245,7 +294,7 @@ pub mod pallet {
             );
 
             let hermes_voting_info = HermesVotingInfo {
-                voting_option,
+                voting_option: voting_option.clone(),
                 number_of_hermes: MinimumHermesVotingAmount::<T>::get(),
                 hermes_withdrawn: false,
             };
@@ -276,8 +325,9 @@ pub mod pallet {
             origin: OriginFor<T>,
             poll_start_timestamp: T::Moment,
             poll_end_timestamp: T::Moment,
-            title: String,
-            description: String,
+            title: BoundedString<T::StringLimit>,
+            description: BoundedString<T::StringLimit>,
+            options: BoundedVec<BoundedString<T::StringLimit>, T::OptionsLimit>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
             let current_timestamp = Timestamp::<T>::get();
@@ -313,6 +363,13 @@ pub mod pallet {
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
 
+            if options.len() < 2 {
+                return Err(Error::<T>::InvalidVotingOptions.into());
+            }
+            if options.len() > 5 {
+                return Err(Error::<T>::TooManyVotingOptions.into());
+            }
+
             let hermes_poll_info = HermesPollInfo {
                 creator: user.clone(),
                 hermes_locked: MinimumHermesAmountForCreatingPoll::<T>::get(),
@@ -321,6 +378,7 @@ pub mod pallet {
                 title: title.clone(),
                 description,
                 creator_hermes_withdrawn: false,
+                options: options,
             };
 
             // Transfer Hermes to pallet
@@ -488,7 +546,17 @@ pub mod pallet {
     }
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            if Self::pallet_storage_version() == StorageVersion::V1 {
+                let weight = migrations::migrate::<T>();
+                PalletStorageVersion::<T>::put(StorageVersion::V2);
+                weight
+            } else {
+                Weight::zero()
+            }
+        }
+    }
 
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
