@@ -1,7 +1,6 @@
 //! BridgeOutboundChannel pallet benchmarking
 use super::*;
 
-use bridge_types::U256;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
@@ -23,7 +22,6 @@ benchmarks! {
             append_message_queue::<T>(BASE_NETWORK_ID, Message {
                 network_id: BASE_NETWORK_ID,
                 target: H160::zero(),
-                fee: U256::zero(),
                 max_gas: 100000u64.into(),
                 payload,
             });
@@ -43,7 +41,6 @@ benchmarks! {
         append_message_queue::<T>(BASE_NETWORK_ID, Message {
             network_id: BASE_NETWORK_ID,
             target: H160::zero(),
-            fee: U256::zero(),
             max_gas: 100000u64.into(),
             payload: vec![1u8; T::MaxMessagePayloadSize::get() as usize],
         });
