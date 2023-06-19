@@ -1083,7 +1083,7 @@ pub enum PriceVariant {
 }
 
 impl PriceVariant {
-    pub fn switch(&self) -> Self {
+    pub fn switched(&self) -> Self {
         match self {
             PriceVariant::Buy => PriceVariant::Sell,
             PriceVariant::Sell => PriceVariant::Buy,
