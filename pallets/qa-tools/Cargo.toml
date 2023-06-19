@@ -1,13 +1,12 @@
 [package]
 name = "qa-tools"
-version = "4.0.0-dev"
-description = "FRAME pallet template for defining custom runtime logic."
-authors = ["Substrate DevHub <https://github.com/substrate-developer-hub>"]
-homepage = "https://substrate.io"
+authors = ["Soramitsu"]
+license = "BSD-4-Clause"
+homepage = "https://sora.org"
+repository = 'https://github.com/sora-xor/sora2-network'
 edition = "2021"
-license = "MIT-0"
+version = "0.1.0"
 publish = false
-repository = "https://github.com/substrate-developer-hub/substrate-node-template/"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -22,6 +21,8 @@ frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "p
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 [dev-dependencies]
+framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
+framenode-runtime = { path = "../../runtime", default-features = false, features = ["std"] }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -35,5 +36,8 @@ std = [
 	"frame-system/std",
 	"scale-info/std",
 ]
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	
+]
 try-runtime = ["frame-support/try-runtime"]
