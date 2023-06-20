@@ -43,8 +43,8 @@ xst = { path = "../../pallets/xst" }
 common = { path = "../../common" }
 
 [features]
-wip = [
-    "common/wip",
-    "liquidity-proxy/wip",
-    "framenode-runtime/wip",
+ready-to-test = [
+    "common/ready-to-test",
+    "liquidity-proxy/ready-to-test",
+    "framenode-runtime/ready-to-test",
 ]
