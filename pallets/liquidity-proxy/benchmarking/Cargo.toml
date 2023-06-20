@@ -86,4 +86,5 @@ runtime-benchmarks = [
 wip = [
     "common/wip",
     "dex-api/wip",
+    "liquidity-proxy/wip",
 ]
