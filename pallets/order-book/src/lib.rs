@@ -967,7 +967,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let order = MarketOrder::<T>::new(
             sender.clone(),
-            deal_info.side,
+            deal_info.direction,
             order_book_id,
             deal_info.base_amount(),
             to,
@@ -1024,9 +1024,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
         let mut data = CacheDataLayer::<T>::new();
 
-        let side = order_book.get_side(input_asset_id, output_asset_id)?;
+        let direction = order_book.get_direction(input_asset_id, output_asset_id)?;
 
-        let Some((price, _)) = (match side {
+        let Some((price, _)) = (match direction {
             PriceVariant::Buy => order_book.best_ask(&mut data),
             PriceVariant::Sell => order_book.best_bid(&mut data),
         }) else {
@@ -1034,7 +1034,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         };
 
         let target_amount = match amount {
-            QuoteAmount::WithDesiredInput { desired_amount_in } => match side {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
                 // User wants to swap a known amount of the `quote` asset for the `base` asset.
                 // Necessary to return `base` amount.
                 // Divide the `quote` amount by the price and align the `base` amount.
@@ -1055,7 +1055,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 }
             },
 
-            QuoteAmount::WithDesiredOutput { desired_amount_out } => match side {
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
                 // User wants to swap the `quote` asset for a known amount of the `base` asset.
                 // Necessary to return `quote` amount.
                 // Align the `base` amount and then multiply by the price.

@@ -118,7 +118,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -128,7 +128,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -139,7 +139,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Base(balance!(0)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -149,7 +149,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Quote(balance!(0)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -160,7 +160,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -170,7 +170,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -181,7 +181,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -191,7 +191,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -202,7 +202,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -212,7 +212,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -223,7 +223,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -233,7 +233,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -244,7 +244,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -254,7 +254,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 }
@@ -268,7 +268,7 @@ fn check_deal_info_amounts() {
             output_asset_id: VAL,
             output_amount: OrderAmount::Base(balance!(2)),
             average_price: balance!(0.5),
-            side: PriceVariant::Buy
+            direction: PriceVariant::Buy
         }
         .base_amount(),
         balance!(2)
@@ -281,7 +281,7 @@ fn check_deal_info_amounts() {
             output_asset_id: XOR,
             output_amount: OrderAmount::Quote(balance!(2)),
             average_price: balance!(0.5),
-            side: PriceVariant::Sell
+            direction: PriceVariant::Sell
         }
         .base_amount(),
         balance!(1)
@@ -294,7 +294,7 @@ fn check_deal_info_amounts() {
             output_asset_id: VAL,
             output_amount: OrderAmount::Base(balance!(2)),
             average_price: balance!(0.5),
-            side: PriceVariant::Buy
+            direction: PriceVariant::Buy
         }
         .quote_amount(),
         balance!(1)
@@ -307,7 +307,7 @@ fn check_deal_info_amounts() {
             output_asset_id: XOR,
             output_amount: OrderAmount::Quote(balance!(2)),
             average_price: balance!(0.5),
-            side: PriceVariant::Sell
+            direction: PriceVariant::Sell
         }
         .quote_amount(),
         balance!(2)

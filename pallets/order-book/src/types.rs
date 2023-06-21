@@ -193,7 +193,7 @@ pub struct DealInfo<AssetId> {
     pub output_asset_id: AssetId,
     pub output_amount: OrderAmount,
     pub average_price: OrderPrice,
-    pub side: PriceVariant,
+    pub direction: PriceVariant,
 }
 
 impl<AssetId: PartialEq> DealInfo<AssetId> {

@@ -1528,7 +1528,7 @@ fn should_get_best_ask() {
 }
 
 #[test]
-fn should_not_get_side_if_any_asset_is_not_in_order_book_id() {
+fn should_not_get_direction_if_any_asset_is_not_in_order_book_id() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base: VAL.into(),
@@ -1537,16 +1537,16 @@ fn should_not_get_side_if_any_asset_is_not_in_order_book_id() {
 
         let order_book = create_and_fill_order_book(order_book_id);
 
-        assert_err!(order_book.get_side(&DOT, &KSM), E::InvalidAsset);
-        assert_err!(order_book.get_side(&XOR, &KSM), E::InvalidAsset);
-        assert_err!(order_book.get_side(&DOT, &VAL), E::InvalidAsset);
-        assert_err!(order_book.get_side(&VAL, &VAL), E::InvalidAsset);
-        assert_err!(order_book.get_side(&XOR, &XOR), E::InvalidAsset);
+        assert_err!(order_book.get_direction(&DOT, &KSM), E::InvalidAsset);
+        assert_err!(order_book.get_direction(&XOR, &KSM), E::InvalidAsset);
+        assert_err!(order_book.get_direction(&DOT, &VAL), E::InvalidAsset);
+        assert_err!(order_book.get_direction(&VAL, &VAL), E::InvalidAsset);
+        assert_err!(order_book.get_direction(&XOR, &XOR), E::InvalidAsset);
     });
 }
 
 #[test]
-fn should_get_side() {
+fn should_get_direction() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base: VAL.into(),
@@ -1555,8 +1555,14 @@ fn should_get_side() {
 
         let order_book = create_and_fill_order_book(order_book_id);
 
-        assert_eq!(order_book.get_side(&XOR, &VAL).unwrap(), PriceVariant::Buy);
-        assert_eq!(order_book.get_side(&VAL, &XOR).unwrap(), PriceVariant::Sell);
+        assert_eq!(
+            order_book.get_direction(&XOR, &VAL).unwrap(),
+            PriceVariant::Buy
+        );
+        assert_eq!(
+            order_book.get_direction(&VAL, &XOR).unwrap(),
+            PriceVariant::Sell
+        );
     });
 }
 
@@ -1986,7 +1992,7 @@ fn should_calculate_deal() {
                 output_asset_id: VAL,
                 output_amount: OrderAmount::Base(balance!(271.00535)),
                 average_price: balance!(11.069891867448373251),
-                side: PriceVariant::Buy
+                direction: PriceVariant::Buy
             }
         );
         assert_eq!(
@@ -2004,7 +2010,7 @@ fn should_calculate_deal() {
                 output_asset_id: VAL,
                 output_amount: OrderAmount::Base(balance!(200)),
                 average_price: balance!(11.0237),
-                side: PriceVariant::Buy
+                direction: PriceVariant::Buy
             }
         );
         assert_eq!(
@@ -2022,7 +2028,7 @@ fn should_calculate_deal() {
                 output_asset_id: XOR,
                 output_amount: OrderAmount::Quote(balance!(1993.7)),
                 average_price: balance!(9.9685),
-                side: PriceVariant::Sell
+                direction: PriceVariant::Sell
             }
         );
         assert_eq!(
@@ -2040,7 +2046,7 @@ fn should_calculate_deal() {
                 output_asset_id: XOR,
                 output_amount: OrderAmount::Quote(balance!(2499.999948)),
                 average_price: balance!(9.933909097418510751),
-                side: PriceVariant::Sell
+                direction: PriceVariant::Sell
             }
         );
     });

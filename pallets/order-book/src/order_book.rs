@@ -115,7 +115,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     /// In some cases if the limit order crosses the spread, part or all of the amount could be converted into a market order and as a result, the deal input is not empty.
     pub fn place_limit_order<Locker, Unlocker, Scheduler>(
         &self,
-        order: LimitOrder<T>,
+        limit_order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<(Option<OrderAmount>, Option<OrderAmount>), DispatchError>
     where
@@ -129,20 +129,20 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::PlacementOfLimitOrdersIsForbidden
         );
 
-        self.ensure_limit_order_valid(&order)?;
-        self.check_restrictions(&order, data)?;
+        self.ensure_limit_order_valid(&limit_order)?;
+        self.check_restrictions(&limit_order, data)?;
 
-        let cross_spread = match order.side {
+        let cross_spread = match limit_order.side {
             PriceVariant::Buy => {
                 if let Some((best_ask_price, _)) = self.best_ask(data) {
-                    order.price >= best_ask_price
+                    limit_order.price >= best_ask_price
                 } else {
                     false
                 }
             }
             PriceVariant::Sell => {
                 if let Some((best_bid_price, _)) = self.best_bid(data) {
-                    order.price <= best_bid_price
+                    limit_order.price <= best_bid_price
                 } else {
                     false
                 }
@@ -151,12 +151,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         let market_change = if cross_spread {
             if self.status == OrderBookStatus::Trade {
-                self.cross_spread(order, data)?
+                self.cross_spread(limit_order, data)?
             } else {
                 return Err(Error::<T>::InvalidLimitOrderPrice.into());
             }
         } else {
-            self.calculate_limit_order_impact(order)?
+            self.calculate_limit_order_impact(limit_order)?
         };
 
         let market_input = market_change.market_input;
@@ -169,7 +169,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     pub fn cancel_limit_order<Locker, Unlocker, Scheduler>(
         &self,
-        order: LimitOrder<T>,
+        limit_order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<(), DispatchError>
     where
@@ -185,7 +185,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::CancellationOfLimitOrdersIsForbidden
         );
 
-        self.cancel_limit_order_unchecked::<Locker, Unlocker, Scheduler>(order, data, false)
+        self.cancel_limit_order_unchecked::<Locker, Unlocker, Scheduler>(limit_order, data, false)
     }
 
     pub fn cancel_all_limit_orders<Locker, Unlocker, Scheduler>(
@@ -256,9 +256,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     > {
         let receiver = order.to.unwrap_or(order.owner.clone());
 
-        match order.side {
+        match order.direction {
             PriceVariant::Buy => self.calculate_market_impact(
-                order.side,
+                order.direction,
                 order.owner,
                 receiver,
                 order.amount,
@@ -266,7 +266,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 data,
             ),
             PriceVariant::Sell => self.calculate_market_impact(
-                order.side,
+                order.direction,
                 order.owner,
                 receiver,
                 order.amount,
@@ -278,7 +278,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     pub fn calculate_limit_order_impact(
         &self,
-        order: LimitOrder<T>,
+        limit_order: LimitOrder<T>,
     ) -> Result<
         MarketChange<
             T::AccountId,
@@ -293,14 +293,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let mut payment = Payment::new(self.dex_id, self.order_book_id);
 
         // necessary to lock the liquidity that taker should receive if execute the limit order
-        let lock_amount = order.deal_amount(MarketRole::Taker, None)?;
+        let lock_amount = limit_order.deal_amount(MarketRole::Taker, None)?;
         let lock_asset = lock_amount.associated_asset(&self.order_book_id);
 
         payment
             .to_lock
             .entry(*lock_asset)
             .or_default()
-            .entry(order.owner.clone())
+            .entry(limit_order.owner.clone())
             .and_modify(|amount| *amount += *lock_amount.value())
             .or_insert(*lock_amount.value());
 
@@ -309,7 +309,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             deal_output: None,
             market_input: Some(lock_amount),
             market_output: None,
-            to_add: BTreeMap::from([(order.id, order)]),
+            to_add: BTreeMap::from([(limit_order.id, limit_order)]),
             to_update: BTreeMap::new(),
             to_delete: BTreeMap::new(),
             payment,
@@ -411,7 +411,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     /// Calculates how the deal with `taker_base_amount` impacts on the market
     fn calculate_market_impact<'a>(
         &self,
-        side: PriceVariant,
+        direction: PriceVariant,
         taker: T::AccountId,
         receiver: T::AccountId,
         taker_base_amount: OrderVolume,
@@ -435,13 +435,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let mut limit_orders_to_update = BTreeMap::new();
         let mut payment = Payment::new(self.dex_id, self.order_book_id);
 
-        let (maker_out_asset, taker_out_asset) = match side {
+        let (maker_out_asset, taker_out_asset) = match direction {
             PriceVariant::Buy => (self.order_book_id.quote, self.order_book_id.base),
             PriceVariant::Sell => (self.order_book_id.base, self.order_book_id.quote),
         };
 
         for (price, _) in market_data {
-            let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, side.switched(), price) else {
+            let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, direction.switched(), price) else {
                 return Err(Error::<T>::NotEnoughLiquidityInOrderBook.into());
             };
 
@@ -513,7 +513,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .and_modify(|unlock_amount| *unlock_amount += taker_amount)
             .or_insert(taker_amount);
 
-        let (deal_input, deal_output) = match side {
+        let (deal_input, deal_output) = match direction {
             PriceVariant::Buy => (
                 Some(OrderAmount::Quote(maker_amount)),
                 Some(OrderAmount::Base(taker_amount)),
@@ -544,10 +544,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         amount: QuoteAmount<OrderVolume>,
         data: &mut impl DataLayer<T>,
     ) -> Result<DealInfo<AssetIdOf<T>>, DispatchError> {
-        let side = self.get_side(input_asset_id, output_asset_id)?;
+        let direction = self.get_direction(input_asset_id, output_asset_id)?;
 
         let (base, quote) = match amount {
-            QuoteAmount::WithDesiredInput { desired_amount_in } => match side {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
                 PriceVariant::Buy => self.sum_market(
                     data.get_aggregated_asks(&self.order_book_id).iter(),
                     Some(OrderAmount::Quote(desired_amount_in)),
@@ -557,7 +557,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     Some(OrderAmount::Base(desired_amount_in)),
                 )?,
             },
-            QuoteAmount::WithDesiredOutput { desired_amount_out } => match side {
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
                 PriceVariant::Buy => self.sum_market(
                     data.get_aggregated_asks(&self.order_book_id).iter(),
                     Some(OrderAmount::Base(desired_amount_out)),
@@ -574,7 +574,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::InvalidOrderAmount
         );
 
-        let (input_amount, output_amount) = match side {
+        let (input_amount, output_amount) = match direction {
             PriceVariant::Buy => (quote, base),
             PriceVariant::Sell => (base, quote),
         };
@@ -590,7 +590,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             output_asset_id: *output_asset_id,
             output_amount,
             average_price,
-            side,
+            direction,
         })
     }
 
@@ -705,7 +705,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(())
     }
 
-    pub fn get_side(
+    pub fn get_direction(
         &self,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
@@ -757,18 +757,18 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(())
     }
 
-    fn ensure_limit_order_valid(&self, order: &LimitOrder<T>) -> Result<(), DispatchError> {
-        order.ensure_valid()?;
+    fn ensure_limit_order_valid(&self, limit_order: &LimitOrder<T>) -> Result<(), DispatchError> {
+        limit_order.ensure_valid()?;
         ensure!(
-            order.price % self.tick_size == 0,
+            limit_order.price % self.tick_size == 0,
             Error::<T>::InvalidLimitOrderPrice
         );
         ensure!(
-            self.min_lot_size <= order.amount && order.amount <= self.max_lot_size,
+            self.min_lot_size <= limit_order.amount && limit_order.amount <= self.max_lot_size,
             Error::<T>::InvalidOrderAmount
         );
         ensure!(
-            order.amount % self.step_lot_size == 0,
+            limit_order.amount % self.step_lot_size == 0,
             Error::<T>::InvalidOrderAmount
         );
         Ok(())
@@ -789,18 +789,20 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     fn check_restrictions(
         &self,
-        order: &LimitOrder<T>,
+        limit_order: &LimitOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<(), DispatchError> {
-        if let Some(user_orders) = data.get_user_limit_orders(&order.owner, &self.order_book_id) {
+        if let Some(user_orders) =
+            data.get_user_limit_orders(&limit_order.owner, &self.order_book_id)
+        {
             ensure!(
                 !user_orders.is_full(),
                 Error::<T>::UserHasMaxCountOfOpenedOrders
             );
         }
-        match order.side {
+        match limit_order.side {
             PriceVariant::Buy => {
-                if let Some(bids) = data.get_bids(&self.order_book_id, &order.price) {
+                if let Some(bids) = data.get_bids(&self.order_book_id, &limit_order.price) {
                     ensure!(
                         !bids.is_full(),
                         Error::<T>::PriceReachedMaxCountOfLimitOrders
@@ -814,8 +816,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 );
 
                 if let Some((best_bid_price, _)) = self.best_bid(data) {
-                    if order.price < best_bid_price {
-                        let diff = best_bid_price.abs_diff(order.price);
+                    if limit_order.price < best_bid_price {
+                        let diff = best_bid_price.abs_diff(limit_order.price);
                         ensure!(
                             diff <= T::MAX_PRICE_SHIFT * best_bid_price,
                             Error::<T>::InvalidLimitOrderPrice
@@ -824,7 +826,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 }
             }
             PriceVariant::Sell => {
-                if let Some(asks) = data.get_asks(&self.order_book_id, &order.price) {
+                if let Some(asks) = data.get_asks(&self.order_book_id, &limit_order.price) {
                     ensure!(
                         !asks.is_full(),
                         Error::<T>::PriceReachedMaxCountOfLimitOrders
@@ -838,8 +840,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 );
 
                 if let Some((best_ask_price, _)) = self.best_ask(data) {
-                    if order.price > best_ask_price {
-                        let diff = best_ask_price.abs_diff(order.price);
+                    if limit_order.price > best_ask_price {
+                        let diff = best_ask_price.abs_diff(limit_order.price);
                         ensure!(
                             diff <= T::MAX_PRICE_SHIFT * best_ask_price,
                             Error::<T>::InvalidLimitOrderPrice
