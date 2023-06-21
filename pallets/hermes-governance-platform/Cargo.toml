@@ -48,7 +48,6 @@ technical = { path = "../technical" }
 dex-manager = { path = "../dex-manager" }
 trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
-liquidity-proxy = { path = "../liquidity-proxy" }
 
 [features]
 default = ['std']
