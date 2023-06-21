@@ -814,11 +814,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 );
 
                 if let Some((best_bid_price, _)) = self.best_bid(data) {
-                    let diff = best_bid_price.abs_diff(order.price);
-                    ensure!(
-                        diff <= T::MAX_PRICE_SHIFT * best_bid_price,
-                        Error::<T>::InvalidLimitOrderPrice
-                    );
+                    if order.price < best_bid_price {
+                        let diff = best_bid_price.abs_diff(order.price);
+                        ensure!(
+                            diff <= T::MAX_PRICE_SHIFT * best_bid_price,
+                            Error::<T>::InvalidLimitOrderPrice
+                        );
+                    }
                 }
             }
             PriceVariant::Sell => {
@@ -836,11 +838,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 );
 
                 if let Some((best_ask_price, _)) = self.best_ask(data) {
-                    let diff = best_ask_price.abs_diff(order.price);
-                    ensure!(
-                        diff <= T::MAX_PRICE_SHIFT * best_ask_price,
-                        Error::<T>::InvalidLimitOrderPrice
-                    );
+                    if order.price > best_ask_price {
+                        let diff = best_ask_price.abs_diff(order.price);
+                        ensure!(
+                            diff <= T::MAX_PRICE_SHIFT * best_ask_price,
+                            Error::<T>::InvalidLimitOrderPrice
+                        );
+                    }
                 }
             }
         }
