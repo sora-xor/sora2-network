@@ -4668,3 +4668,226 @@ fn should_cross_spread() {
         );
     });
 }
+
+#[test]
+fn should_cross_spread_with_small_remaining_amount() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
+        let expiration_block = 18;
+
+        // buy order 1
+        // small remaining amount executes in market
+        let buy_order_id1 = 101;
+        let buy_order1 = LimitOrder::<Runtime>::new(
+            buy_order_id1,
+            alice(),
+            PriceVariant::Buy,
+            balance!(11.1),
+            balance!(177),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book.cross_spread(buy_order1, &mut data).unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Quote(balance!(1947.14))),
+                deal_output: Some(OrderAmount::Base(balance!(177))),
+                market_input: None,
+                market_output: Some(OrderAmount::Base(balance!(177))),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(8, balance!(84.7))]),
+                to_delete: BTreeMap::from([(7, expiration_block)]),
+                payment: Payment {
+                    dex_id: DEX.into(),
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(1947.14))])
+                    ),]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(alice(), balance!(177))]),
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([
+                                (bob(), balance!(1939.3)),
+                                (charlie(), balance!(7.84))
+                            ]),
+                        ),
+                    ]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
+
+        // buy order 2
+        // small remaining amount cancelled
+        let buy_order_id2 = 102;
+        let buy_order2 = LimitOrder::<Runtime>::new(
+            buy_order_id2,
+            alice(),
+            PriceVariant::Buy,
+            balance!(11.6),
+            balance!(611),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book.cross_spread(buy_order2, &mut data).unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Quote(balance!(6881.32))),
+                deal_output: Some(OrderAmount::Base(balance!(610.7))),
+                market_input: None,
+                market_output: Some(OrderAmount::Base(balance!(610.7))),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([
+                    (7, expiration_block),
+                    (8, expiration_block),
+                    (9, expiration_block),
+                    (10, expiration_block),
+                    (11, expiration_block),
+                    (12, expiration_block)
+                ]),
+                payment: Payment {
+                    dex_id: DEX.into(),
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(6881.32))])
+                    ),]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(alice(), balance!(610.7))]),
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([
+                                (bob(), balance!(5346.39)),
+                                (charlie(), balance!(1534.93))
+                            ]),
+                        ),
+                    ]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
+
+        // sell order 1
+        // small remaining amount executes in market
+        let sell_order_id1 = 201;
+        let sell_order1 = LimitOrder::<Runtime>::new(
+            sell_order_id1,
+            alice(),
+            PriceVariant::Sell,
+            balance!(9.9),
+            balance!(169),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book.cross_spread(sell_order1, &mut data).unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Base(balance!(169))),
+                deal_output: Some(OrderAmount::Quote(balance!(1689.9))),
+                market_input: None,
+                market_output: Some(OrderAmount::Quote(balance!(1689.9))),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(2, balance!(94.7))]),
+                to_delete: BTreeMap::from([(1, expiration_block)]),
+                payment: Payment {
+                    dex_id: DEX.into(),
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), balance!(169))])
+                    ),]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(bob(), balance!(168.5)), (charlie(), balance!(0.5))]),
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(alice(), balance!(1689.9))]),
+                        ),
+                    ]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
+
+        // sell order 2
+        // small remaining amount cancelled
+        let sell_order_id2 = 202;
+        let sell_order2 = LimitOrder::<Runtime>::new(
+            sell_order_id2,
+            alice(),
+            PriceVariant::Sell,
+            balance!(9.4),
+            balance!(570),
+            10,
+            100000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        assert_eq!(
+            order_book.cross_spread(sell_order2, &mut data).unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Base(balance!(569.7))),
+                deal_output: Some(OrderAmount::Quote(balance!(5538.37))),
+                market_input: None,
+                market_output: Some(OrderAmount::Quote(balance!(5538.37))),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([]),
+                to_delete: BTreeMap::from([
+                    (1, expiration_block),
+                    (2, expiration_block),
+                    (3, expiration_block),
+                    (4, expiration_block),
+                    (5, expiration_block),
+                    (6, expiration_block),
+                ]),
+                payment: Payment {
+                    dex_id: DEX.into(),
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), balance!(569.7))])
+                    ),]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([
+                                (bob(), balance!(303.1)),
+                                (charlie(), balance!(266.6))
+                            ]),
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(alice(), balance!(5538.37))]),
+                        ),
+                    ]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
+    });
+}
