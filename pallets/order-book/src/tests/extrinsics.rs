@@ -1773,6 +1773,232 @@ fn should_place_limit_order_out_of_spread() {
 }
 
 #[test]
+fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+        fill_balance(alice(), order_book_id);
+
+        let now = 1234;
+        Timestamp::set_timestamp(now);
+
+        let lifespan = 100000;
+
+        let bid_price1 = balance!(10);
+        let bid_price2 = balance!(9.8);
+        let bid_price3 = balance!(9.5);
+
+        let ask_price1 = balance!(11);
+        let ask_price2 = balance!(11.2);
+        let ask_price3 = balance!(11.5);
+
+        // check state before
+
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price1).unwrap(),
+            vec![1]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id, &ask_price1).unwrap(),
+            vec![7]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (bid_price1, balance!(168.5)),
+                (bid_price2, balance!(139.9)),
+                (bid_price3, balance!(261.3))
+            ])
+        );
+        assert_eq!(
+            OrderBookPallet::aggregated_asks(&order_book_id),
+            BTreeMap::from([
+                (ask_price1, balance!(176.3)),
+                (ask_price2, balance!(178.6)),
+                (ask_price3, balance!(255.8))
+            ])
+        );
+
+        // buy order 1
+        // small remaining amount executes in market
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(alice()).into(),
+            order_book_id,
+            balance!(11.1),
+            balance!(177),
+            PriceVariant::Buy,
+            Some(lifespan)
+        ));
+
+        // check state
+
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price1).unwrap(),
+            vec![1]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (bid_price1, balance!(168.5)),
+                (bid_price2, balance!(139.9)),
+                (bid_price3, balance!(261.3))
+            ])
+        );
+        assert_eq!(
+            OrderBookPallet::aggregated_asks(&order_book_id),
+            BTreeMap::from([(ask_price2, balance!(177.9)), (ask_price3, balance!(255.8))])
+        );
+
+        // buy order 2
+        // small remaining amount cancelled
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(alice()).into(),
+            order_book_id,
+            balance!(11.6),
+            balance!(434),
+            PriceVariant::Buy,
+            Some(lifespan)
+        ));
+
+        // check state
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price1).unwrap(),
+            vec![1]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price2), None);
+        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price3), None);
+
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(&order_book_id),
+            BTreeMap::from([
+                (bid_price1, balance!(168.5)),
+                (bid_price2, balance!(139.9)),
+                (bid_price3, balance!(261.3))
+            ])
+        );
+        assert_eq!(
+            OrderBookPallet::aggregated_asks(&order_book_id),
+            BTreeMap::from([])
+        );
+
+        // sell order 1
+        // small remaining amount executes in market
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(alice()).into(),
+            order_book_id,
+            balance!(9.9),
+            balance!(169),
+            PriceVariant::Sell,
+            Some(lifespan)
+        ));
+
+        // check state
+        assert_eq!(OrderBookPallet::bids(&order_book_id, &bid_price1), None);
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price2), None);
+        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price3), None);
+
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(&order_book_id),
+            BTreeMap::from([(bid_price2, balance!(139.4)), (bid_price3, balance!(261.3))])
+        );
+        assert_eq!(
+            OrderBookPallet::aggregated_asks(&order_book_id),
+            BTreeMap::from([])
+        );
+
+        // sell order 2
+        // small remaining amount cancelled
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(alice()).into(),
+            order_book_id,
+            balance!(9.4),
+            balance!(401),
+            PriceVariant::Sell,
+            Some(lifespan)
+        ));
+
+        // check state
+        assert_eq!(OrderBookPallet::bids(&order_book_id, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(&order_book_id, &bid_price2), None);
+        assert_eq!(OrderBookPallet::bids(&order_book_id, &bid_price3), None);
+
+        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price2), None);
+        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price3), None);
+
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(&order_book_id),
+            BTreeMap::from([])
+        );
+        assert_eq!(
+            OrderBookPallet::aggregated_asks(&order_book_id),
+            BTreeMap::from([])
+        );
+    });
+}
+
+#[test]
 #[ignore] // it works, but takes a lot of time
 fn should_place_a_lot_of_orders() {
     ext().execute_with(|| {
