@@ -170,6 +170,32 @@ fn create_poll_invalid_voting_options() {
 }
 
 #[test]
+fn create_poll_duplicate_options() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+
+        assert_err!(
+            HermesGovernancePlatform::create_poll(
+                RuntimeOrigin::signed(ALICE),
+                current_timestamp,
+                current_timestamp + 14_400_000,
+                title.try_into().unwrap(),
+                description.try_into().unwrap(),
+                options
+            ),
+            Error::<Runtime>::DuplicateOptions
+        );
+    });
+}
+
+#[test]
 fn create_poll_ok() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {

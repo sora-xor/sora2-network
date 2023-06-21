@@ -82,6 +82,7 @@ pub mod pallet {
     use pallet_timestamp as timestamp;
     use sp_core::H256;
     use sp_io::hashing::blake2_256;
+    use sp_std::collections::btree_set::BTreeSet;
 
     const PALLET_ID: PalletId = PalletId(*b"hermsgov");
 
@@ -99,7 +100,7 @@ pub mod pallet {
         /// String limit
         type StringLimit: Get<u32>;
 
-        // Options limit
+        /// Options limit
         type OptionsLimit: Get<u32>;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -245,8 +246,10 @@ pub mod pallet {
         InvalidVotingOptions,
         /// Too Many Voting Options
         TooManyVotingOptions,
-        /// InvalidOption
+        /// Invalid Option
         InvalidOption,
+        /// Duplicate options
+        DuplicateOptions,
     }
 
     #[pallet::call]
@@ -363,11 +366,17 @@ pub mod pallet {
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
 
-            if options.len() < 2 {
+            let options_len = options.len();
+            if options_len < 2 {
                 return Err(Error::<T>::InvalidVotingOptions.into());
             }
-            if options.len() > 5 {
+            if options_len > 5 {
                 return Err(Error::<T>::TooManyVotingOptions.into());
+            }
+
+            let options_set = BTreeSet::from_iter(&options);
+            if options_set.len() != options_len {
+                return Err(Error::<T>::DuplicateOptions.into());
             }
 
             let hermes_poll_info = HermesPollInfo {
@@ -378,7 +387,7 @@ pub mod pallet {
                 title: title.clone(),
                 description,
                 creator_hermes_withdrawn: false,
-                options: options,
+                options,
             };
 
             // Transfer Hermes to pallet
