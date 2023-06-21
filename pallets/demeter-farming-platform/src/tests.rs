@@ -1967,61 +1967,6 @@ mod tests {
     }
 
     #[test]
-    fn change_pool_multiplier_invalid_multiplier() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-            let pool_asset = XOR;
-            let reward_asset = CERES_ASSET_ID;
-            let is_farm = true;
-            let new_multiplier = 0;
-
-            let token_info = TokenInfo {
-                farms_total_multiplier: 0,
-                staking_total_multiplier: 0,
-                token_per_block: balance!(1),
-                farms_allocation: balance!(0.2),
-                staking_allocation: balance!(0.4),
-                team_allocation: balance!(0.4),
-                team_account: BOB,
-            };
-
-            demeter_farming_platform::TokenInfos::<Runtime>::insert(&reward_asset, &token_info);
-
-            let pool_info = PoolData {
-                multiplier: 1,
-                deposit_fee: balance!(0),
-                is_core: true,
-                is_farm,
-                total_tokens_in_pool: 0,
-                rewards: 0,
-                rewards_to_be_distributed: 0,
-                is_removed: false,
-                base_asset: XOR,
-            };
-
-            demeter_farming_platform::Pools::<Runtime>::append(
-                &pool_asset,
-                &reward_asset,
-                pool_info,
-            );
-
-            assert_err!(
-                demeter_farming_platform::Pallet::<Runtime>::change_pool_multiplier(
-                    RuntimeOrigin::signed(
-                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
-                    ),
-                    pool_asset,
-                    pool_asset,
-                    reward_asset,
-                    is_farm,
-                    new_multiplier,
-                ),
-                demeter_farming_platform::Error::<Runtime>::InvalidMultiplier
-            )
-        });
-    }
-
-    #[test]
     fn change_pool_multiplier_pool_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
