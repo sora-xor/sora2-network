@@ -1129,7 +1129,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             alice(),
             PriceVariant::Buy,
             wrong_buy_price,
-            balance!(100),
+            balance!(10),
             10,
             10000,
             frame_system::Pallet::<Runtime>::block_number(),
@@ -1142,7 +1142,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             alice(),
             PriceVariant::Sell,
             wrong_sell_price,
-            balance!(100),
+            balance!(10),
             10,
             10000,
             frame_system::Pallet::<Runtime>::block_number(),
@@ -1166,6 +1166,22 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
         // fix prices, now they are on the max distance from the spread
         buy_order.price = bes_bid_price - max_price_shift * bes_bid_price;
         sell_order.price = bes_ask_price + max_price_shift * bes_ask_price;
+
+        assert_ok!(order_book
+            .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                buy_order.clone(),
+                &mut data
+            ));
+        assert_ok!(order_book
+            .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
+                sell_order.clone(),
+                &mut data
+            ));
+
+        buy_order.id = 201;
+        buy_order.price = bes_bid_price + max_price_shift * bes_bid_price + order_book.tick_size;
+        sell_order.id = 202;
+        sell_order.price = bes_ask_price - max_price_shift * bes_ask_price - order_book.tick_size;
 
         assert_ok!(order_book
             .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
