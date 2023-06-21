@@ -39,6 +39,7 @@ use sp_core::H256;
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
+use static_assertions::_core::cmp::Ordering;
 
 use crate::IsValid;
 #[cfg(feature = "std")]
@@ -1146,5 +1147,17 @@ impl<N: Get<u32>> TryFrom<&str> for BoundedString<N> {
     type Error = ();
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Ok(Self(value.as_bytes().to_vec().try_into().map_err(|_| ())?))
+    }
+}
+
+impl<N: Get<u32>> PartialOrd for BoundedString<N> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl<N: Get<u32>> Ord for BoundedString<N> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.cmp(&other.0)
     }
 }
