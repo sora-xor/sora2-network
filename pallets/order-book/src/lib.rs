@@ -965,7 +965,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Some(receiver.clone())
         };
 
-        let order = MarketOrder::<T>::new(
+        let market_order = MarketOrder::<T>::new(
             sender.clone(),
             deal_info.direction,
             order_book_id,
@@ -974,7 +974,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         );
 
         let (input_amount, output_amount) =
-            order_book.execute_market_order::<Self, Self, Self>(order, &mut data)?;
+            order_book.execute_market_order::<Self, Self, Self>(market_order, &mut data)?;
 
         let fee = 0; // todo (m.tagirov)
 

@@ -210,7 +210,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     /// Executes market order and returns input & output amounts
     pub fn execute_market_order<Locker, Unlocker, Scheduler>(
         &self,
-        order: MarketOrder<T>,
+        market_order: MarketOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<(OrderAmount, OrderAmount), DispatchError>
     where
@@ -224,9 +224,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::TradingIsForbidden
         );
 
-        self.ensure_market_order_valid(&order)?;
+        self.ensure_market_order_valid(&market_order)?;
 
-        let market_change = self.calculate_market_order_impact(order, data)?;
+        let market_change = self.calculate_market_order_impact(market_order, data)?;
 
         let (Some(input), Some(output)) =
             (market_change.deal_input, market_change.deal_output) else {
@@ -241,7 +241,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     pub fn calculate_market_order_impact(
         &self,
-        order: MarketOrder<T>,
+        market_order: MarketOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<
         MarketChange<
@@ -254,22 +254,22 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         >,
         DispatchError,
     > {
-        let receiver = order.to.unwrap_or(order.owner.clone());
+        let receiver = market_order.to.unwrap_or(market_order.owner.clone());
 
-        match order.direction {
+        match market_order.direction {
             PriceVariant::Buy => self.calculate_market_impact(
-                order.direction,
-                order.owner,
+                market_order.direction,
+                market_order.owner,
                 receiver,
-                order.amount,
+                market_order.amount,
                 data.get_aggregated_asks(&self.order_book_id).iter(),
                 data,
             ),
             PriceVariant::Sell => self.calculate_market_impact(
-                order.direction,
-                order.owner,
+                market_order.direction,
+                market_order.owner,
                 receiver,
-                order.amount,
+                market_order.amount,
                 data.get_aggregated_bids(&self.order_book_id).iter().rev(),
                 data,
             ),
@@ -774,14 +774,17 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(())
     }
 
-    fn ensure_market_order_valid(&self, order: &MarketOrder<T>) -> Result<(), DispatchError> {
-        order.ensure_valid()?;
+    fn ensure_market_order_valid(
+        &self,
+        market_order: &MarketOrder<T>,
+    ) -> Result<(), DispatchError> {
+        market_order.ensure_valid()?;
         ensure!(
-            order.order_book_id == self.order_book_id,
+            market_order.order_book_id == self.order_book_id,
             Error::<T>::InvalidOrderBookId
         );
         ensure!(
-            order.amount % self.step_lot_size == 0,
+            market_order.amount % self.step_lot_size == 0,
             Error::<T>::InvalidOrderAmount
         );
         Ok(())
