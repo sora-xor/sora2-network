@@ -300,7 +300,7 @@ fn migration_to_v2_works() {
         }
         StorageVersion::new(3).put::<crate::Pallet<Runtime>>();
         crate::migrations::v4::Migration::<Runtime>::on_runtime_upgrade();
-        assert_eq!(crate::Pallet::<Runtime>::on_chain_storage_version(), 2);
+        assert_eq!(crate::Pallet::<Runtime>::on_chain_storage_version(), 4);
         let info = crate::CrowdloanInfos::<Runtime>::get(CrowdloanTag(
             b"crowdloan".to_vec().try_into().unwrap(),
         ))
