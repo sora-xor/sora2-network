@@ -428,27 +428,7 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(
-                order_book_id.base != order_book_id.quote,
-                Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
-            );
-            let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
-            // the base asset of DEX must be a quote asset of order book
-            ensure!(
-                order_book_id.quote == dex_info.base_asset_id,
-                Error::<T>::NotAllowedBaseAsset
-            );
-            T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
-            T::EnsureTradingPairExists::ensure_trading_pair_exists(
-                &dex_id,
-                &order_book_id.quote.into(),
-                &order_book_id.base.into(),
-            )?;
-            ensure!(
-                !<OrderBooks<T>>::contains_key(order_book_id),
-                Error::<T>::OrderBookAlreadyExists
-            );
-
+            Self::verify_create_orderbook_params(&dex_id, &order_book_id)?;
             let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
                 // temp solution for stage env
                 // will be removed in #542
@@ -859,6 +839,33 @@ impl<T: Config> Pallet<T> {
         };
 
         Some(order_book_id)
+    }
+
+    pub fn verify_create_orderbook_params(
+        dex_id: &T::DEXId,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
+    ) -> Result<(), DispatchError> {
+        ensure!(
+            order_book_id.base != order_book_id.quote,
+            Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
+        );
+        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
+        // the base asset of DEX must be a quote asset of order book
+        ensure!(
+            order_book_id.quote == dex_info.base_asset_id,
+            Error::<T>::NotAllowedBaseAsset
+        );
+        T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
+        T::EnsureTradingPairExists::ensure_trading_pair_exists(
+            dex_id,
+            &order_book_id.quote.into(),
+            &order_book_id.base.into(),
+        )?;
+        ensure!(
+            !<OrderBooks<T>>::contains_key(order_book_id),
+            Error::<T>::OrderBookAlreadyExists
+        );
+        Ok(())
     }
 }
 

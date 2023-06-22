@@ -9344,11 +9344,13 @@ dependencies = [
 name = "qa-tools"
 version = "0.1.0"
 dependencies = [
+ "common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "framenode-chain-spec",
  "framenode-runtime",
+ "order-book",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

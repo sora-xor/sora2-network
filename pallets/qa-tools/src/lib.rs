@@ -35,9 +35,9 @@ pub use pallet::*;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
 pub mod weights;
+use common::AssetInfoProvider;
+use order_book::OrderBookId;
 pub use weights::*;
 
 #[frame_support::pallet]
@@ -51,29 +51,9 @@ pub mod pallet {
 
     /// Configure the pallet by specifying the parameters and types on which it depends.
     #[pallet::config]
-    pub trait Config: frame_system::Config {
-        /// Because this pallet emits events, it depends on the runtime's definition of an event.
-        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+    pub trait Config: frame_system::Config + order_book::Config {
         /// Type representing the weight of this pallet
         type WeightInfo: WeightInfo;
-    }
-
-    // The pallet's runtime storage items.
-    // https://docs.substrate.io/main-docs/build/runtime-storage/
-    #[pallet::storage]
-    #[pallet::getter(fn something)]
-    // Learn more about declaring storage items:
-    // https://docs.substrate.io/main-docs/build/runtime-storage/#declaring-storage-items
-    pub type Something<T> = StorageValue<_, u32>;
-
-    // Pallets use events to inform users when important changes are made.
-    // https://docs.substrate.io/main-docs/build/events-errors/
-    #[pallet::event]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {
-        /// Event documentation should end with an array that provides descriptive names for event
-        /// parameters. [something, who]
-        SomethingStored { something: u32, who: T::AccountId },
     }
 
     // Errors inform users that something went wrong.
@@ -93,40 +73,60 @@ pub mod pallet {
         /// An example dispatchable that takes a singles value as a parameter, writes the value to
         /// storage and emits an event. This function must be dispatched by a signed extrinsic.
         #[pallet::call_index(0)]
-        #[pallet::weight(T::WeightInfo::do_something())]
-        pub fn do_something(origin: OriginFor<T>, something: u32) -> DispatchResult {
-            // Check that the extrinsic was signed and get the signer.
-            // This function will return an error if the extrinsic is not signed.
-            // https://docs.substrate.io/main-docs/build/origins/
-            let who = ensure_signed(origin)?;
+        #[pallet::weight(<T as Config>::WeightInfo::do_something())]
+        pub fn create_empty_order_books(
+            _origin: OriginFor<T>,
+            dex_id: T::DEXId,
+            order_book_ids: Vec<OrderBookId<T::AssetId>>,
+        ) -> DispatchResult {
+            // Extrinsic only for testing, so any origin is allowed.
+            // It also allows not to worry about fees.
 
-            // Update storage.
-            <Something<T>>::put(something);
+            for order_book_id in &order_book_ids {
+                order_book::Pallet::<T>::verify_create_orderbook_params(&dex_id, order_book_id)?;
+            }
 
-            // Emit an event.
-            Self::deposit_event(Event::SomethingStored { something, who });
-            // Return a successful DispatchResultWithPostInfo
+            for order_book_id in order_book_ids {
+                let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+                    order_book::OrderBook::<T>::default_nft(order_book_id, dex_id)
+                } else {
+                    order_book::OrderBook::<T>::default(order_book_id, dex_id)
+                };
+
+                #[cfg(feature = "wip")] // order-book
+                {
+                    T::TradingPairSourceManager::enable_source_for_trading_pair(
+                        &dex_id,
+                        &order_book_id.quote,
+                        &order_book_id.base,
+                        LiquiditySourceType::OrderBook,
+                    )?;
+                }
+
+                <order_book::OrderBooks<T>>::insert(order_book_id, order_book);
+                order_book::Pallet::<T>::register_tech_account(dex_id, order_book_id)?;
+            }
             Ok(())
         }
 
         /// An example dispatchable that may throw a custom error.
         #[pallet::call_index(1)]
-        #[pallet::weight(T::WeightInfo::cause_error())]
+        #[pallet::weight(<T as Config>::WeightInfo::cause_error())]
         pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
             let _who = ensure_signed(origin)?;
 
-            // Read a value from storage.
-            match <Something<T>>::get() {
-                // Return an error if the value has not been set.
-                None => return Err(Error::<T>::NoneValue.into()),
-                Some(old) => {
-                    // Increment the value read from storage; will error in the event of overflow.
-                    let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-                    // Update the value in storage with the incremented result.
-                    <Something<T>>::put(new);
-                    Ok(())
-                }
-            }
+            // // Read a value from storage.
+            // match <Something<T>>::get() {
+            //     // Return an error if the value has not been set.
+            //     None => return Err(Error::<T>::NoneValue.into()),
+            //     Some(old) => {
+            //         // Increment the value read from storage; will error in the event of overflow.
+            //         let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
+            //         // Update the value in storage with the incremented result.
+            //         <Something<T>>::put(new);
+            Ok(())
+            //     }
+            // }
         }
     }
 }
