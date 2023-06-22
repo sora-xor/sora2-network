@@ -121,6 +121,7 @@ pub struct Relay<S: SenderConfig> {
     chain_id: EVMChainId,
 }
 
+// Relays batches of messages from Substrate to Ethereum.
 impl<S> Relay<S>
 where
     S: SenderConfig,
@@ -144,11 +145,7 @@ where
             return Err(anyhow::anyhow!("Invalid commitment"));
         };
         let inbound_channel_nonce = self.inbound_channel_nonce().await?;
-        if commitment_inner
-            .messages
-            .iter()
-            .all(|message| message.nonce <= inbound_channel_nonce)
-        {
+        if commitment_inner.nonce <= inbound_channel_nonce {
             info!("Channel commitment is already sent");
             return Ok(());
         }
@@ -176,13 +173,12 @@ where
         for message in commitment_inner.messages {
             messages.push(inbound_channel::Message {
                 target: message.target,
-                nonce: message.nonce,
                 payload: message.payload.into(),
-                fee: message.fee,
                 max_gas: message.max_gas,
             });
         }
         let batch = inbound_channel::Batch {
+            nonce: U256::from(commitment_inner.nonce),
             total_max_gas: commitment_inner.total_max_gas,
             messages,
         };
@@ -220,9 +216,9 @@ where
                     data: log.data.to_vec(),
                 };
                 if let Ok(log) =
-                    <inbound_channel::MessageDispatchedFilter as EthLogDecode>::decode_log(&raw_log)
+                    <inbound_channel::BatchDispatchedFilter as EthLogDecode>::decode_log(&raw_log)
                 {
-                    info!("Message dispatched: {:?}", log);
+                    info!("Batch dispatched: {:?}", log);
                 }
             }
         }
@@ -235,13 +231,13 @@ where
     }
 
     async fn inbound_channel_nonce(&self) -> AnyResult<u64> {
-        let nonce = self.inbound_channel.nonce().call().await?;
+        let nonce = self.inbound_channel.batch_nonce().call().await?;
         Ok(nonce)
     }
 
     pub async fn run(mut self) -> AnyResult<()> {
         let inbound_nonce = self.inbound_channel_nonce().await?;
-        let mut subscription = super::messages_subscription::subscribe_message_commitments(
+        let mut subscription = super::batch_subscription::subscribe_batch_commitments(
             self.sender.clone(),
             self.chain_id.into(),
             inbound_nonce,
