@@ -32,7 +32,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 // order-book
-#![cfg(feature = "ready-to-test")]
+#![cfg(feature = "wip")]
 // now it works only as benchmarks, not as unit tests
 // TODO fix when new approach be developed
 #![cfg(not(test))]
@@ -52,7 +52,10 @@ use crate::{CacheDataLayer, ExpirationScheduler};
 use assets::AssetIdOf;
 use codec::Decode;
 use common::prelude::{QuoteAmount, SwapAmount};
-use common::{balance, AssetInfoProvider, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
+use common::{
+    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource, PriceVariant, VAL,
+    XOR,
+};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Time;
 use frame_support::weights::WeightMeter;
@@ -61,6 +64,8 @@ use hex_literal::hex;
 use sp_runtime::traits::UniqueSaturatedInto;
 
 use assets::Pallet as Assets;
+use frame_system::Pallet as FrameSystem;
+use trading_pair::Pallet as TradingPair;
 use Pallet as OrderBookPallet;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
@@ -270,11 +275,31 @@ benchmarks! {
 
     create_orderbook {
         let caller = alice::<T>();
+        FrameSystem::<T>::inc_providers(&caller);
+
+        let nft = Assets::<T>::register_from(
+            &caller,
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(1),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
 
         let order_book_id = OrderBookId::<AssetIdOf<T>> {
-            base: VAL.into(),
+            base: nft,
             quote: XOR.into(),
         };
+
+        TradingPair::<T>::register(
+            RawOrigin::Signed(caller.clone()).into(),
+            DEX.into(),
+            order_book_id.quote,
+            order_book_id.base
+        ).unwrap();
     }: {
         OrderBookPallet::<T>::create_orderbook(
             RawOrigin::Signed(caller.clone()).into(),
@@ -294,7 +319,7 @@ benchmarks! {
 
         assert_eq!(
             OrderBookPallet::<T>::order_books(order_book_id).unwrap(),
-            OrderBook::<T>::default(order_book_id, DEX.into())
+            OrderBook::<T>::default_nft(order_book_id, DEX.into())
         );
     }
 

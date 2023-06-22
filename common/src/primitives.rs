@@ -697,7 +697,7 @@ pub enum LiquiditySourceType {
     MockPool4,
     XSTPool,
 
-    #[cfg(feature = "ready-to-test")] // order-book
+    #[cfg(feature = "wip")] // order-book
     OrderBook,
 }
 

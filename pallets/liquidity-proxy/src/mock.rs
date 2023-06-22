@@ -322,7 +322,7 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = MockMCBCPool;
     type XSTPool = MockXSTPool;
 
-    #[cfg(feature = "ready-to-test")] // order-book
+    #[cfg(feature = "wip")] // order-book
     type OrderBook = (); // todo
 }
 
