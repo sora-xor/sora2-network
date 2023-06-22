@@ -32,7 +32,6 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 smallvec = "1.5.0"
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
-liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 
 eth-bridge = { path = "../eth-bridge", default-features = false }
 referrals = { path = "../referrals", default-features = false }
@@ -84,7 +83,6 @@ std = [
     "traits/std",
     "assets/std",
     "common/std",
-    "liquidity-proxy/std",
     "pswap-distribution/std",
 
     "eth-bridge/std",
