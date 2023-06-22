@@ -324,6 +324,16 @@ pub mod pallet {
             order_id: T::OrderId,
             error: DispatchError,
         },
+
+        /// User executes a deal by the market order
+        MarketOrderExecuted {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            owner_id: T::AccountId,
+            direction: PriceVariant,
+            amount: OrderAmount,
+            to: Option<T::AccountId>,
+        },
     }
 
     #[pallet::error]
@@ -965,13 +975,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Some(receiver.clone())
         };
 
-        let market_order = MarketOrder::<T>::new(
-            sender.clone(),
-            deal_info.direction,
-            order_book_id,
-            deal_info.base_amount(),
-            to,
-        );
+        let direction = deal_info.direction;
+        let amount = deal_info.base_amount();
+
+        let market_order =
+            MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to.clone());
 
         let (input_amount, output_amount) =
             order_book.execute_market_order::<Self, Self, Self>(market_order, &mut data)?;
@@ -996,6 +1004,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         };
 
         data.commit();
+
+        Self::deposit_event(Event::<T>::MarketOrderExecuted {
+            order_book_id,
+            dex_id: *dex_id,
+            owner_id: sender.clone(),
+            direction,
+            amount: OrderAmount::Base(amount),
+            to,
+        });
 
         Ok((result, Self::exchange_weight()))
     }

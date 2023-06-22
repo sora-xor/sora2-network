@@ -39,13 +39,13 @@
 
 #[cfg(not(test))]
 use crate::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, OrderBookStatus,
-    Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus, Pallet,
 };
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, OrderBookStatus,
-    Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus, Pallet,
 };
 
 use crate::{CacheDataLayer, ExpirationScheduler};
@@ -551,6 +551,18 @@ benchmarks! {
         .unwrap();
     }
     verify {
+        assert_last_event::<T>(
+            Event::<T>::MarketOrderExecuted {
+                order_book_id,
+                dex_id: DEX.into(),
+                owner_id: caller.clone(),
+                direction: PriceVariant::Sell,
+                amount: OrderAmount::Base(balance!(355.13473)),
+                to: None,
+            }
+            .into(),
+        );
+
         assert_eq!(
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
             caller_base_balance - balance!(355.13473)
