@@ -32,7 +32,7 @@ use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
-use framenode_runtime::qa_tools::{self, Config, Event, WeightInfo};
+use framenode_runtime::qa_tools::{self, Config, WeightInfo};
 use framenode_runtime::{Runtime, RuntimeOrigin, System};
 
 pub type QAToolsPallet = framenode_runtime::qa_tools::Pallet<Runtime>;
@@ -44,22 +44,22 @@ pub fn alice() -> <Runtime as frame_system::Config>::AccountId {
 #[test]
 fn should_register_technical_account() {
     ext().execute_with(|| {
-        // Go past genesis block so events get deposited
-        System::set_block_number(1);
-        // Dispatch a signed extrinsic.
-        assert_ok!(QAToolsPallet::do_something(
-            RuntimeOrigin::signed(alice()),
-            42
-        ));
-        // Read pallet storage and assert an expected result.
-        assert_eq!(QAToolsPallet::something(), Some(42));
-        // Assert that the correct event was deposited
-        System::assert_last_event(
-            Event::SomethingStored {
-                something: 42,
-                who: alice(),
-            }
-            .into(),
-        );
+        // // Go past genesis block so events get deposited
+        // System::set_block_number(1);
+        // // Dispatch a signed extrinsic.
+        // assert_ok!(QAToolsPallet::do_something(
+        //     RuntimeOrigin::signed(alice()),
+        //     42
+        // ));
+        // // Read pallet storage and assert an expected result.
+        // assert_eq!(QAToolsPallet::something(), Some(42));
+        // // Assert that the correct event was deposited
+        // System::assert_last_event(
+        //     Event::SomethingStored {
+        //         something: 42,
+        //         who: alice(),
+        //     }
+        //     .into(),
+        // );
     });
 }

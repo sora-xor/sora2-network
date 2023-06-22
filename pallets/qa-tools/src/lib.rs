@@ -49,10 +49,8 @@ pub mod pallet {
     #[pallet::pallet]
     pub struct Pallet<T>(_);
 
-    /// Configure the pallet by specifying the parameters and types on which it depends.
     #[pallet::config]
-    pub trait Config: frame_system::Config + order_book::Config {
-        /// Type representing the weight of this pallet
+    pub trait Config: frame_system::Config + order_book::Config + trading_pair::Config {
         type WeightInfo: WeightInfo;
     }
 
@@ -83,6 +81,17 @@ pub mod pallet {
             // It also allows not to worry about fees.
 
             for order_book_id in &order_book_ids {
+                if !trading_pair::Pallet::<T>::is_trading_pair_enabled(
+                    &dex_id,
+                    &order_book_id.quote.into(),
+                    &order_book_id.base.into(),
+                )? {
+                    trading_pair::Pallet::<T>::register_pair(
+                        dex_id,
+                        order_book_id.quote.into(),
+                        order_book_id.base.into(),
+                    )?;
+                }
                 order_book::Pallet::<T>::verify_create_orderbook_params(&dex_id, order_book_id)?;
             }
 

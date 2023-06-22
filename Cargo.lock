@@ -9349,6 +9349,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "trading-pair",
 ]
 
 [[package]]
