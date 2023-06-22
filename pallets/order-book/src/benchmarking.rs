@@ -558,6 +558,7 @@ benchmarks! {
                 owner_id: caller.clone(),
                 direction: PriceVariant::Sell,
                 amount: OrderAmount::Base(balance!(355.13473)),
+                average_price: balance!(9.855414408497867837),
                 to: None,
             }
             .into(),
@@ -612,7 +613,7 @@ benchmarks! {
         // warmed up
         let mut data_layer = CacheDataLayer::<T>::new();
     }: {
-        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, &order_id);
+        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, DEX.into(), order_id);
     }
     verify {
         assert_last_event::<T>(

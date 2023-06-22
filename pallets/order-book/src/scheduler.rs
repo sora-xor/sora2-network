@@ -51,9 +51,9 @@ impl<T: Config> Pallet<T> {
         data_layer: &mut impl DataLayer<T>,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         dex_id: T::DEXId,
-        order_id: &T::OrderId,
+        order_id: T::OrderId,
     ) {
-        let order = match data_layer.get_limit_order(order_book_id, *order_id) {
+        let order = match data_layer.get_limit_order(order_book_id, order_id) {
             Ok(o) => o,
             Err(error) => {
                 // in `debug` environment will panic
@@ -66,7 +66,7 @@ impl<T: Config> Pallet<T> {
                 Self::deposit_event(Event::<T>::ExpirationFailure {
                     order_book_id: order_book_id.clone(),
                     dex_id,
-                    order_id: order_id.clone(),
+                    order_id,
                     error,
                 });
                 return;
@@ -79,7 +79,7 @@ impl<T: Config> Pallet<T> {
             Self::deposit_event(Event::<T>::ExpirationFailure {
                 order_book_id: order_book_id.clone(),
                 dex_id,
-                order_id: order_id.clone(),
+                order_id,
                 error: Error::<T>::UnknownOrderBook.into(),
             });
             return;
@@ -93,7 +93,7 @@ impl<T: Config> Pallet<T> {
                 Self::deposit_event(Event::<T>::LimitOrderExpired {
                     order_book_id: *order_book_id,
                     dex_id: order_book.dex_id,
-                    order_id: *order_id,
+                    order_id,
                     owner_id: order_owner,
                 });
             }
@@ -106,7 +106,7 @@ impl<T: Config> Pallet<T> {
                 Self::deposit_event(Event::<T>::ExpirationFailure {
                     order_book_id: order_book_id.clone(),
                     dex_id,
-                    order_id: order_id.clone(),
+                    order_id,
                     error,
                 });
             }
@@ -145,7 +145,7 @@ impl<T: Config> Pallet<T> {
             if serviced >= to_service {
                 break;
             }
-            Self::service_single_expiration(data_layer, order_book_id, *dex_id, order_id);
+            Self::service_single_expiration(data_layer, order_book_id, *dex_id, *order_id);
             serviced += 1;
             expirations.pop();
         }

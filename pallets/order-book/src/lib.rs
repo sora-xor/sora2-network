@@ -343,6 +343,7 @@ pub mod pallet {
             owner_id: T::AccountId,
             direction: PriceVariant,
             amount: OrderAmount,
+            average_price: OrderVolume,
             to: Option<T::AccountId>,
         },
     }
@@ -995,6 +996,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let (input_amount, output_amount) =
             order_book.execute_market_order::<Self, Self, Self>(market_order, &mut data)?;
 
+        let average_price = if input_amount.is_quote() {
+            (FixedWrapper::from(*input_amount.value()) / FixedWrapper::from(*output_amount.value()))
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?
+        } else {
+            (FixedWrapper::from(*output_amount.value()) / FixedWrapper::from(*input_amount.value()))
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?
+        };
+
         let fee = 0; // todo (m.tagirov)
 
         let result = match desired_amount {
@@ -1022,6 +1033,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             owner_id: sender.clone(),
             direction,
             amount: OrderAmount::Base(amount),
+            average_price,
             to,
         });
 
