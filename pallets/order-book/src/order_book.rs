@@ -121,8 +121,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     where
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
-        Scheduler:
-            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
+        Scheduler: ExpirationScheduler<
+            T::BlockNumber,
+            OrderBookId<T::AssetId>,
+            T::DEXId,
+            T::OrderId,
+            DispatchError,
+        >,
     {
         ensure!(
             self.status == OrderBookStatus::Trade || self.status == OrderBookStatus::PlaceAndCancel,
@@ -175,8 +180,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     where
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
-        Scheduler:
-            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
+        Scheduler: ExpirationScheduler<
+            T::BlockNumber,
+            OrderBookId<T::AssetId>,
+            T::DEXId,
+            T::OrderId,
+            DispatchError,
+        >,
     {
         ensure!(
             self.status == OrderBookStatus::Trade
@@ -195,8 +205,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     where
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
-        Scheduler:
-            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
+        Scheduler: ExpirationScheduler<
+            T::BlockNumber,
+            OrderBookId<T::AssetId>,
+            T::DEXId,
+            T::OrderId,
+            DispatchError,
+        >,
     {
         let market_change = self.calculate_cancelation_of_all_limit_orders_impact(data)?;
 
@@ -216,8 +231,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     where
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
-        Scheduler:
-            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
+        Scheduler: ExpirationScheduler<
+            T::BlockNumber,
+            OrderBookId<T::AssetId>,
+            T::DEXId,
+            T::OrderId,
+            DispatchError,
+        >,
     {
         ensure!(
             self.status == OrderBookStatus::Trade,
@@ -677,15 +697,20 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     where
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
-        Scheduler:
-            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
+        Scheduler: ExpirationScheduler<
+            T::BlockNumber,
+            OrderBookId<T::AssetId>,
+            T::DEXId,
+            T::OrderId,
+            DispatchError,
+        >,
     {
         market_change.payment.execute_all::<Locker, Unlocker>()?;
 
         for (delete_id, expires_at) in market_change.to_delete {
             data.delete_limit_order(&self.order_book_id, delete_id)?;
             let unschedule_result =
-                Scheduler::unschedule(expires_at, self.order_book_id, delete_id);
+                Scheduler::unschedule(expires_at, self.order_book_id, self.dex_id, delete_id);
             if !market_change.ignore_unschedule_error {
                 unschedule_result?;
             }
@@ -699,7 +724,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             let order_id = limit_order.id;
             let expires_at = limit_order.expires_at;
             data.insert_limit_order(&self.order_book_id, limit_order)?;
-            Scheduler::schedule(expires_at, self.order_book_id, order_id)?;
+            Scheduler::schedule(expires_at, self.order_book_id, self.dex_id, order_id)?;
         }
 
         Ok(())
@@ -746,8 +771,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     where
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
-        Scheduler:
-            ExpirationScheduler<T::BlockNumber, OrderBookId<T::AssetId>, T::OrderId, DispatchError>,
+        Scheduler: ExpirationScheduler<
+            T::BlockNumber,
+            OrderBookId<T::AssetId>,
+            T::DEXId,
+            T::OrderId,
+            DispatchError,
+        >,
     {
         let market_change =
             self.calculate_cancelation_limit_order_impact(limit_order, ignore_unschedule_error)?;

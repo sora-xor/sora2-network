@@ -235,7 +235,7 @@ pub mod pallet {
         _,
         Twox128,
         T::BlockNumber,
-        BoundedVec<(OrderBookId<AssetIdOf<T>>, T::OrderId), T::MaxExpiringOrdersPerBlock>,
+        BoundedVec<(OrderBookId<AssetIdOf<T>>, T::DEXId, T::OrderId), T::MaxExpiringOrdersPerBlock>,
         ValueQuery,
     >;
 
@@ -310,7 +310,7 @@ pub mod pallet {
             owner_id: T::AccountId,
         },
 
-        /// The order has reached the end of its lifespan
+        /// The limit order has reached the end of its lifespan
         LimitOrderExpired {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
@@ -321,8 +321,19 @@ pub mod pallet {
         /// Failed to cancel expired order
         ExpirationFailure {
             order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
             order_id: T::OrderId,
             error: DispatchError,
+        },
+
+        /// The some amount of the limit order is executed
+        LimitOrderExecuted {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
+            side: PriceVariant,
+            amount: OrderAmount,
         },
 
         /// User executes a deal by the market order

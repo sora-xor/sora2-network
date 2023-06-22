@@ -903,12 +903,14 @@ fn should_emit_event_on_expiration_failure() {
         assert_ok!(OrderBookPallet::schedule(
             expiration_block,
             non_existent_order_book_id,
+            DEX.into(),
             non_existent_order_id
         ));
         run_to_block(expiration_block);
         assert_last_event::<Runtime>(
             order_book::Event::ExpirationFailure {
                 order_book_id: non_existent_order_book_id,
+                dex_id: DEX.into(),
                 order_id: non_existent_order_id,
                 error: order_book::Error::<Runtime>::UnknownLimitOrder.into(),
             }
