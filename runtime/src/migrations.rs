@@ -44,6 +44,7 @@ impl Get<Vec<BlockNumber>> for FarmingPoolBlocksToInspect {
 }
 
 pub type Migrations = (
+    vested_rewards::migrations::v4::Migration<Runtime>,
     xst::migrations::CustomSyntheticsUpgrade<Runtime>,
     farming::migrations::v3::Migrate<
         Runtime,
