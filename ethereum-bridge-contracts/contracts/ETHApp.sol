@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./interfaces/IRewardSource.sol";
 import "./libraries/ScaleCodec.sol";
 import "./interfaces/IEthTokenReceiver.sol";
 import "./GenericApp.sol";
@@ -13,7 +12,6 @@ import "./GenericApp.sol";
 */
 contract ETHApp is
     GenericApp,
-    IRewardSource,
     IEthTokenReceiver,
     ReentrancyGuard
 {
@@ -75,24 +73,6 @@ contract ETHApp is
                 recipient,
                 amount.encode256()
             );
-    }
-
-    function reward(address payable recipient, uint256 amount)
-        external
-        override
-        onlyRole(REWARD_ROLE)
-        nonReentrant
-    {
-        if (address(this).balance >= amount) {
-            require(
-                recipient != address(0x0),
-                "Recipient must not be a zero address"
-            );
-            // slither-disable-next-line arbitrary-send,low-level-calls
-            (bool success, ) = recipient.call{value: amount}("");
-            require(success, "Transfer failed.");
-            emit Rewarded(recipient, amount);
-        }
     }
 
     function receivePayment() external payable override {}

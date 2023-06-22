@@ -441,7 +441,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         };
 
         for (price, _) in market_data {
-            let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, side.switch(), price) else {
+            let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, side.switched(), price) else {
                 return Err(Error::<T>::NotEnoughLiquidityInOrderBook.into());
             };
 
@@ -814,11 +814,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 );
 
                 if let Some((best_bid_price, _)) = self.best_bid(data) {
-                    let diff = best_bid_price.abs_diff(order.price);
-                    ensure!(
-                        diff <= T::MAX_PRICE_SHIFT * best_bid_price,
-                        Error::<T>::InvalidLimitOrderPrice
-                    );
+                    if order.price < best_bid_price {
+                        let diff = best_bid_price.abs_diff(order.price);
+                        ensure!(
+                            diff <= T::MAX_PRICE_SHIFT * best_bid_price,
+                            Error::<T>::InvalidLimitOrderPrice
+                        );
+                    }
                 }
             }
             PriceVariant::Sell => {
@@ -836,11 +838,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 );
 
                 if let Some((best_ask_price, _)) = self.best_ask(data) {
-                    let diff = best_ask_price.abs_diff(order.price);
-                    ensure!(
-                        diff <= T::MAX_PRICE_SHIFT * best_ask_price,
-                        Error::<T>::InvalidLimitOrderPrice
-                    );
+                    if order.price > best_ask_price {
+                        let diff = best_ask_price.abs_diff(order.price);
+                        ensure!(
+                            diff <= T::MAX_PRICE_SHIFT * best_ask_price,
+                            Error::<T>::InvalidLimitOrderPrice
+                        );
+                    }
                 }
             }
         }
@@ -889,20 +893,30 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         >,
         DispatchError,
     > {
-        let (market_amount, limit_amout) = match limit_order.side {
+        let (mut market_amount, mut limit_amout) = match limit_order.side {
             PriceVariant::Buy => Self::calculate_market_depth_to_price(
-                limit_order.side.switch(),
+                limit_order.side.switched(),
                 limit_order.price,
                 limit_order.amount,
                 data.get_aggregated_asks(&self.order_book_id).iter(),
             ),
             PriceVariant::Sell => Self::calculate_market_depth_to_price(
-                limit_order.side.switch(),
+                limit_order.side.switched(),
                 limit_order.price,
                 limit_order.amount,
                 data.get_aggregated_bids(&self.order_book_id).iter().rev(),
             ),
         };
+
+        if limit_amout < self.min_lot_size {
+            let market_volume = self.market_volume(limit_order.side.switched(), data);
+            if market_volume - market_amount >= limit_amout {
+                market_amount += limit_amout;
+                limit_amout = OrderVolume::zero();
+            } else {
+                limit_amout = OrderVolume::zero();
+            }
+        }
 
         let mut market_change = MarketChange::new(self.dex_id, self.order_book_id);
 

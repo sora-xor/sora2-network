@@ -35,7 +35,7 @@ use assets::AssetIdOf;
 use common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 use common::LiquiditySourceType;
 use common::{
     balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
@@ -358,6 +358,8 @@ pub mod pallet {
         ForbiddenToCreateOrderBookWithSameAssets,
         /// The asset is not allowed to be base. Only dex base asset can be a quote asset for order book
         NotAllowedBaseAsset,
+        /// Orderbooks cannot be created with given dex id.
+        NotAllowedDEXId,
         /// User cannot create an order book with NFT if they don't have NFT
         UserHasNoNft,
         /// Lifespan exceeds defined limits
@@ -428,6 +430,10 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(
+                dex_id == common::DEXId::Polkaswap.into(),
+                Error::<T>::NotAllowedDEXId
+            );
             Self::verify_create_orderbook_params(&dex_id, &order_book_id)?;
             let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
                 // temp solution for stage env
@@ -451,7 +457,7 @@ pub mod pallet {
                 OrderBook::<T>::default(order_book_id, dex_id)
             };
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             {
                 T::TradingPairSourceManager::enable_source_for_trading_pair(
                     &dex_id,
@@ -489,7 +495,7 @@ pub mod pallet {
 
             data.commit();
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             {
                 T::TradingPairSourceManager::disable_source_for_trading_pair(
                     &dex_id,
