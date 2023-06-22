@@ -14,7 +14,7 @@ use sp_io::MultiRemovalResults;
 use sp_runtime::traits::Zero;
 use sp_std::prelude::*;
 
-pub mod v2 {
+pub mod v4 {
     use super::*;
     use common::CrowdloanTag;
     use frame_support::pallet_prelude::*;
@@ -93,9 +93,9 @@ pub mod v2 {
 
     impl<T: crate::Config> OnRuntimeUpgrade for Migration<T> {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
-            if crate::Pallet::<T>::on_chain_storage_version() == 1 {
+            if crate::Pallet::<T>::on_chain_storage_version() == 3 {
                 log::info!(
-                    "Applying migration to version 2: New crowdloan rewards vesting implementation"
+                    "Applying migration to version 3: New crowdloan rewards vesting implementation"
                 );
                 if let Err(err) = common::with_transaction(migrate::<T>) {
                     log::error!(
@@ -103,12 +103,12 @@ pub mod v2 {
                         err
                     );
                 } else {
-                    StorageVersion::new(2).put::<crate::Pallet<T>>();
+                    StorageVersion::new(4).put::<crate::Pallet<T>>();
                 }
                 <T as frame_system::Config>::BlockWeights::get().max_block
             } else {
                 log::error!(
-                    "Runtime upgrade executed with wrong storage version, expected 1, got {:?}",
+                    "Runtime upgrade executed with wrong storage version, expected 3, got {:?}",
                     crate::Pallet::<T>::on_chain_storage_version()
                 );
                 <T as frame_system::Config>::DbWeight::get().reads(1)
