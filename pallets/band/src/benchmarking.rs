@@ -60,6 +60,7 @@ benchmarks! {
             value: Band::<T>::raw_rate_into_balance(2).expect("failed to convert value to Balance"),
             last_updated: 100,
             request_id: 1,
+            dynamic_fee: fixed!(0),
         }));
     }
 
@@ -73,6 +74,7 @@ benchmarks! {
             value: Band::<T>::raw_rate_into_balance(2).expect("failed to convert value to Balance"),
             last_updated: 100,
             request_id: 1,
+            dynamic_fee: fixed!(0),
         }));
     }
 

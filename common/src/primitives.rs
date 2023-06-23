@@ -39,7 +39,7 @@ use sp_core::H256;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
-use crate::IsValid;
+use crate::{Fixed, IsValid};
 #[cfg(feature = "std")]
 use {
     rustc_hex::ToHex,
@@ -1103,4 +1103,5 @@ pub enum Oracle {
 pub struct Rate {
     pub value: Balance,
     pub last_updated: u64,
+    pub dynamic_fee: Fixed,
 }
