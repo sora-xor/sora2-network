@@ -85,9 +85,9 @@ impl<T: Config> Pallet<T> {
         // It's fine to try and unschedule again inside this method
         // since the queue is taken from the storage before this method.
         // (thus `ignore_unschedule_error` is `true`)
-        match order_book.cancel_limit_order_unchecked::<Self, Self>(order, data_layer, true) {
+        match order_book.cancel_limit_order_unchecked::<Self, Self, Self>(order, data_layer, true) {
             Ok(_) => {
-                Self::deposit_event(Event::<T>::OrderExpired {
+                Self::deposit_event(Event::<T>::LimitOrderExpired {
                     order_book_id: *order_book_id,
                     dex_id: order_book.dex_id,
                     order_id: *order_id,
