@@ -2,7 +2,8 @@ use bridge_types::traits::{AppRegistry, BalancePrecisionConverter, BridgeAssetRe
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
-use bridge_types::types::{AdditionalEVMInboundData, AssetKind};
+use bridge_types::evm::AdditionalEVMInboundData;
+use bridge_types::types::AssetKind;
 use bridge_types::H160;
 use bridge_types::H256;
 use bridge_types::{EVMChainId, U256};
@@ -206,11 +207,9 @@ impl dispatch::Config for Test {
     type CallFilter = Everything;
 }
 
-const INDEXING_PREFIX: &'static [u8] = b"commitment";
-
 parameter_types! {
-    pub const MaxMessagePayloadSize: u64 = 2048;
-    pub const MaxMessagesPerCommit: u8 = 3;
+    pub const MaxMessagePayloadSize: u32 = 2048;
+    pub const MaxMessagesPerCommit: u32 = 3;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
@@ -228,9 +227,7 @@ parameter_types! {
 }
 
 impl bridge_outbound_channel::Config for Test {
-    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type MaxTotalGasLimit = MaxTotalGasLimit;

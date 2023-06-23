@@ -47,9 +47,8 @@ use frame_system::RawOrigin;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::traits::Hash;
 
-use bridge_types::types::{
-    AdditionalEVMInboundData, AssetKind, MessageDirection, MessageId, MessageStatus,
-};
+use bridge_types::evm::AdditionalEVMInboundData;
+use bridge_types::types::{AssetKind, MessageDirection, MessageId, MessageStatus};
 
 fn assert_event(event: RuntimeEvent) {
     System::events()

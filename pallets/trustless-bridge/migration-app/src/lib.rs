@@ -60,7 +60,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::types::{AdditionalEVMOutboundData, AssetKind};
+    use bridge_types::evm::AdditionalEVMOutboundData;
+    use bridge_types::types::AssetKind;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::{OriginFor, *};
