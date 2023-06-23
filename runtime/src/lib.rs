@@ -64,12 +64,12 @@ use bridge_types::{
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 #[cfg(feature = "wip")]
-use common::{AssetId32, PredefinedAssetId};
-use common::{Description, GetMarketInfo};
+use common::AssetId32;
+use common::{Description, GetMarketInfo, PredefinedAssetId};
 use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 use frame_support::traits::EitherOf;
 use frame_support::weights::ConstantMultiplier;
 
@@ -84,7 +84,7 @@ use frame_election_provider_support::{generate_solution_type, onchain, Sequentia
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 use frame_system::EnsureSigned;
 use hex_literal::hex;
 use pallet_grandpa::{
@@ -354,7 +354,7 @@ parameter_types! {
     pub const ElectionsMaxVoters: u32 = 10000;
     pub const ElectionsMaxCandidates: u32 = 1000;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
-    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get()];
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get(), GetTbcdAssetId::get()];
     pub const MaxAuthorities: u32 = 100_000;
     pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
@@ -872,15 +872,16 @@ impl tokens::Config for Runtime {
 
 parameter_types! {
     // This is common::PredefinedAssetId with 0 index, 2 is size, 0 and 0 is code.
-    pub const GetXorAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000"));
-    pub const GetDotAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200010000000000000000000000000000000000000000000000000000000000"));
-    pub const GetKsmAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200020000000000000000000000000000000000000000000000000000000000"));
-    pub const GetUsdAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200030000000000000000000000000000000000000000000000000000000000"));
-    pub const GetValAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200040000000000000000000000000000000000000000000000000000000000"));
-    pub const GetPswapAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
-    pub const GetDaiAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200060000000000000000000000000000000000000000000000000000000000"));
-    pub const GetEthAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200070000000000000000000000000000000000000000000000000000000000"));
-    pub const GetXstAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200090000000000000000000000000000000000000000000000000000000000"));
+    pub const GetXorAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::XOR);
+    pub const GetDotAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::DOT);
+    pub const GetKsmAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::KSM);
+    pub const GetUsdAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::USDT);
+    pub const GetValAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::VAL);
+    pub const GetPswapAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
+    pub const GetDaiAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::DAI);
+    pub const GetEthAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::ETH);
+    pub const GetXstAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::XST);
+    pub const GetTbcdAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::TBCD);
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
@@ -1036,6 +1037,10 @@ impl liquidity_proxy::Config for Runtime {
     type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
     type VestedRewardsPallet = VestedRewards;
     type GetADARAccountId = GetADARAccountId;
+    type ADARCommissionRatioUpdateOrigin = EitherOfDiverse<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+        EnsureRoot<AccountId>,
+    >;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1075,7 +1080,7 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
 
-    #[cfg(feature = "wip")] // order-book
+    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = order_book::Pallet<Runtime>;
 }
 
@@ -1201,6 +1206,16 @@ impl rewards::Config for Runtime {
 impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
     fn compute_fee(call: &RuntimeCall) -> Option<Balance> {
         let result = match call {
+            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
+                swap_batches,
+                ..
+            }) => Some(
+                swap_batches
+                    .iter()
+                    .map(|x| x.receivers.len() as Balance)
+                    .sum::<Balance>()
+                    * SMALL_FEE,
+            ),
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
@@ -1798,6 +1813,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 
 parameter_types! {
     pub const GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
+    pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000);
 }
 
 impl xst::Config for Runtime {
@@ -1809,6 +1825,7 @@ impl xst::Config for Runtime {
     type WeightInfo = xst::weights::SubstrateWeight<Runtime>;
     type Oracle = OracleProxy;
     type Symbol = <Runtime as band::Config>::Symbol;
+    type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
 }
 
 parameter_types! {
@@ -1988,11 +2005,15 @@ impl band::Config for Runtime {
 
 parameter_types! {
     pub const HermesAssetId: AssetId = common::HERMES_ASSET_ID;
+    pub const StringLimit: u32 = 64;
+    pub const OptionsLimit: u32 = 5;
 }
 
 impl hermes_governance_platform::Config for Runtime {
-    const MIN_DURATION_OF_POLL: Moment = 172_800_000;
+    const MIN_DURATION_OF_POLL: Moment = 14_400_000;
     const MAX_DURATION_OF_POLL: Moment = 604_800_000;
+    type StringLimit = StringLimit;
+    type OptionsLimit = OptionsLimit;
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
@@ -2003,7 +2024,7 @@ parameter_types! {
     pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block; // TODO: order-book clarify
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 impl order_book::Config for Runtime {
     const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
     const MIN_ORDER_LIFETIME: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
@@ -2013,7 +2034,7 @@ impl order_book::Config for Runtime {
     type OrderId = u128;
     type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
-    type MaxSidePriceCount = ConstU32<100000>; // TODO: order-book clarify
+    type MaxSidePriceCount = ConstU32<10000>; // TODO: order-book clarify
     type MaxExpiringOrdersPerBlock = ConstU32<10000>; // TODO: order-book clarify
     type MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
     type EnsureTradingPairExists = TradingPair;
@@ -2419,7 +2440,7 @@ construct_runtime! {
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
         // Trustless bridges
@@ -3222,7 +3243,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             list_benchmark!(list, extra, order_book, OrderBook);
 
             // Trustless bridge
@@ -3309,7 +3330,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             add_benchmark!(params, batches, order_book, OrderBook);
 
             // Trustless bridge

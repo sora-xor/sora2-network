@@ -79,7 +79,6 @@ mod test_utils;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
-pub const ADAR_COMMISSION_RATIO: Balance = balance!(0.0025);
 
 const REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
@@ -260,7 +259,7 @@ impl<T: Config> Pallet<T> {
             _ => false,
         };
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             is_order_book = selected_source_types.contains(&LiquiditySourceType::OrderBook);
         }
@@ -989,6 +988,13 @@ impl<T: Config> Pallet<T> {
         let locked = trading_pair::LockedLiquiditySources::<T>::get();
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
+
+        // The temp solution is to exclude OrderBook source if there are multiple sources.
+        // Will be redesigned in #447
+        #[cfg(feature = "ready-to-test")] // order-book
+        if sources.len() > 1 {
+            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
+        }
 
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {
@@ -1917,7 +1923,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn calculate_adar_commission(amount: Balance) -> Result<Balance, DispatchError> {
-        let adar_commission_ratio = FixedWrapper::from(ADAR_COMMISSION_RATIO);
+        let adar_commission_ratio = FixedWrapper::from(Self::adar_commission_ratio());
 
         let adar_commission = (FixedWrapper::from(amount) * adar_commission_ratio)
             .try_into_balance()
@@ -1933,7 +1939,7 @@ impl<T: Config> Pallet<T> {
         mut max_input_amount: Balance,
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
-    ) -> Result<(Balance, Weight), DispatchError> {
+    ) -> Result<(Balance, Balance, Weight), DispatchError> {
         let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
 
         let mut executed_batch_input_amount = balance!(0);
@@ -2002,7 +2008,7 @@ impl<T: Config> Pallet<T> {
         max_input_amount
             .checked_sub(adar_commission)
             .ok_or(Error::<T>::SlippageNotTolerated)?;
-        Ok((adar_commission, total_weight))
+        Ok((adar_commission, executed_batch_input_amount, total_weight))
     }
 }
 
@@ -2137,6 +2143,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::EnsureOrigin;
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
 
@@ -2163,6 +2170,7 @@ pub mod pallet {
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         type GetADARAccountId: Get<Self::AccountId>;
+        type ADARCommissionRatioUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
@@ -2283,22 +2291,31 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
-            let (adar_commission, mut weight) = Self::inner_swap_batch_transfer(
-                &who,
-                &input_asset_id,
-                swap_batches,
-                max_input_amount,
-                &selected_source_types,
-                &filter_mode,
-            )?;
+            let (adar_commission, executed_input_amount, mut weight) =
+                Self::inner_swap_batch_transfer(
+                    &who,
+                    &input_asset_id,
+                    swap_batches,
+                    max_input_amount,
+                    &selected_source_types,
+                    &filter_mode,
+                )?;
 
-            assets::Pallet::<T>::transfer_from(
-                &input_asset_id,
-                &who,
-                &T::GetADARAccountId::get(),
+            if adar_commission > balance!(0) {
+                assets::Pallet::<T>::transfer_from(
+                    &input_asset_id,
+                    &who,
+                    &T::GetADARAccountId::get(),
+                    adar_commission,
+                )
+                .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
+            }
+
+            Self::deposit_event(Event::<T>::BatchSwapExecuted(
                 adar_commission,
-            )
-            .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
+                executed_input_amount,
+            ));
+
             weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
 
             Ok(PostDispatchInfo {
@@ -2361,6 +2378,21 @@ pub mod pallet {
             Self::deposit_event(Event::<T>::LiquiditySourceDisabled(liquidity_source));
             Ok(().into())
         }
+
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_adar_commission_ratio())]
+        pub fn set_adar_commission_ratio(
+            origin: OriginFor<T>,
+            commission_ratio: Balance,
+        ) -> DispatchResultWithPostInfo {
+            T::ADARCommissionRatioUpdateOrigin::ensure_origin(origin)?;
+            ensure!(
+                commission_ratio < balance!(1),
+                Error::<T>::InvalidADARCommissionRatio
+            );
+            ADARCommissionRatio::<T>::put(commission_ratio);
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -2382,6 +2414,9 @@ pub mod pallet {
         LiquiditySourceEnabled(LiquiditySourceType),
         /// Liquidity source was disabled
         LiquiditySourceDisabled(LiquiditySourceType),
+        /// Batch of swap transfers has been performed
+        /// [ADAR Fee, Input amount]
+        BatchSwapExecuted(Balance, Balance),
     }
 
     #[pallet::error]
@@ -2418,5 +2453,18 @@ pub mod pallet {
         InvalidReceiversInfo,
         // Failure while transferring commission to ADAR account
         FailedToTransferAdarCommission,
+        // ADAR commission ratio exceeds 1
+        InvalidADARCommissionRatio,
     }
+
+    #[pallet::type_value]
+    pub fn DefaultADARCommissionRatio() -> Balance {
+        balance!(0.0025)
+    }
+
+    /// ADAR commission ratio
+    #[pallet::storage]
+    #[pallet::getter(fn adar_commission_ratio)]
+    pub type ADARCommissionRatio<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultADARCommissionRatio>;
 }

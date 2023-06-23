@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "wip")] // order-book
+#![cfg(feature = "ready-to-test")] // order-book
 
 use core::cmp::min;
 
@@ -215,7 +215,7 @@ fn test_lock_unlock_other_accounts(
         dex_id.into(),
         order_book_id,
         asset_id,
-        unlocks
+        &unlocks
     ));
 
     let unlock_account_balance_after_unlock1 = free_balance(asset_id, unlock_account1);
@@ -1212,7 +1212,7 @@ fn should_not_quote_with_empty_side() {
                 QuoteAmount::with_desired_output(balance!(200)),
                 true
             ),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
 
         assert_err!(
@@ -1223,7 +1223,7 @@ fn should_not_quote_with_empty_side() {
                 QuoteAmount::with_desired_output(balance!(2500)),
                 true
             ),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
     });
 }
@@ -1302,7 +1302,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
                 QuoteAmount::with_desired_output(balance!(1000)),
                 true
             ),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
 
         assert_err!(
@@ -1313,7 +1313,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
                 QuoteAmount::with_desired_output(balance!(10000)),
                 true
             ),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
     });
 }
@@ -1474,7 +1474,7 @@ fn should_not_quote_without_impact_with_empty_side() {
                 QuoteAmount::with_desired_output(balance!(200)),
                 true
             ),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
 
         assert_err!(
@@ -1485,7 +1485,7 @@ fn should_not_quote_without_impact_with_empty_side() {
                 QuoteAmount::with_desired_output(balance!(2500)),
                 true
             ),
-            E::NotEnoughLiquidity
+            E::NotEnoughLiquidityInOrderBook
         );
     });
 }

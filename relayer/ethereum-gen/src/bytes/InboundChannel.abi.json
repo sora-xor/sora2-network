@@ -293,13 +293,7 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "initialRewardSource",
-        "type": "address"
-      }
-    ],
+    "inputs": [],
     "name": "initialize",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -388,11 +382,6 @@
                 "internalType": "address",
                 "name": "target",
                 "type": "address"
-              },
-              {
-                "internalType": "uint256",
-                "name": "fee",
-                "type": "uint256"
               },
               {
                 "internalType": "uint256",

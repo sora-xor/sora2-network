@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "wip")] // order-book
+#![cfg(feature = "ready-to-test")] // order-book
 
 use assets::AssetIdOf;
 use common::{balance, AssetInfoProvider, Balance, DEXId, PriceVariant};
@@ -137,7 +137,7 @@ pub fn create_and_fill_order_book(
     fill_balance(bob(), order_book_id);
     fill_balance(charlie(), order_book_id);
 
-    let lifespan = Some(10000);
+    let lifespan = Some(100000);
 
     // prices
     let bp1 = balance!(10);
