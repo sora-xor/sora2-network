@@ -35,7 +35,7 @@ use assets::AssetIdOf;
 use common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 use common::LiquiditySourceType;
 use common::{
     balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
@@ -358,6 +358,8 @@ pub mod pallet {
         ForbiddenToCreateOrderBookWithSameAssets,
         /// The asset is not allowed to be base. Only dex base asset can be a quote asset for order book
         NotAllowedBaseAsset,
+        /// Orderbooks cannot be created with given dex id.
+        NotAllowedDEXId,
         /// User cannot create an order book with NFT if they don't have NFT
         UserHasNoNft,
         /// Lifespan exceeds defined limits
@@ -432,6 +434,10 @@ pub mod pallet {
                 order_book_id.base != order_book_id.quote,
                 Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
             );
+            ensure!(
+                dex_id == common::DEXId::Polkaswap.into(),
+                Error::<T>::NotAllowedDEXId
+            );
             let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
             // the base asset of DEX must be a quote asset of order book
             ensure!(
@@ -471,7 +477,7 @@ pub mod pallet {
                 OrderBook::<T>::default(order_book_id, dex_id)
             };
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             {
                 T::TradingPairSourceManager::enable_source_for_trading_pair(
                     &dex_id,
@@ -509,7 +515,7 @@ pub mod pallet {
 
             data.commit();
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             {
                 T::TradingPairSourceManager::disable_source_for_trading_pair(
                     &dex_id,
