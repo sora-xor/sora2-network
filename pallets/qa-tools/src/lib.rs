@@ -46,7 +46,7 @@ pub use weights::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use frame_support::pallet_prelude::*;
+    use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
     use sp_std::prelude::*;
 
@@ -100,12 +100,15 @@ pub mod pallet {
             _origin: OriginFor<T>,
             dex_id: T::DEXId,
             order_book_ids: Vec<OrderBookId<T::AssetId>>,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             // Extrinsic is only for testing, so any origin is allowed.
             // It also allows not to worry about fees.
 
             Self::create_multiple_empty_unchecked(dex_id, order_book_ids)?;
-            Ok(())
+            Ok(PostDispatchInfo {
+                actual_weight: Some(Weight::zero()),
+                pays_fee: Pays::No,
+            })
         }
 
         /// An example dispatchable that may throw a custom error.
@@ -117,14 +120,17 @@ pub mod pallet {
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
             fill_settings: Vec<(OrderBookId<T::AssetId>, OrderBookFillSettings)>,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             // Extrinsic is only for testing, so any origin is allowed.
             // It also allows not to worry about fees.
 
             let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
             Self::create_multiple_empty_unchecked(dex_id, order_book_ids)?;
             Self::fill_multiple_empty_unchecked(bids_owner, asks_owner, fill_settings)?;
-            Ok(())
+            Ok(PostDispatchInfo {
+                actual_weight: Some(Weight::zero()),
+                pays_fee: Pays::No,
+            })
         }
     }
 
