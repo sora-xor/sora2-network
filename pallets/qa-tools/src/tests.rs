@@ -28,12 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use common::{balance, AssetInfoProvider, DEXId, VAL, XOR};
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
-use framenode_runtime::qa_tools::{self, Config, WeightInfo};
+use framenode_runtime::qa_tools::{self, Config, OrderBookFillSettings, WeightInfo};
 use framenode_runtime::{Runtime, RuntimeOrigin, System};
+use order_book::OrderBookId;
 
 pub type QAToolsPallet = framenode_runtime::qa_tools::Pallet<Runtime>;
 
@@ -42,24 +44,33 @@ pub fn alice() -> <Runtime as frame_system::Config>::AccountId {
 }
 
 #[test]
-fn should_register_technical_account() {
+fn should_create_and_fill_orderbook() {
     ext().execute_with(|| {
-        // // Go past genesis block so events get deposited
-        // System::set_block_number(1);
-        // // Dispatch a signed extrinsic.
-        // assert_ok!(QAToolsPallet::do_something(
-        //     RuntimeOrigin::signed(alice()),
-        //     42
-        // ));
-        // // Read pallet storage and assert an expected result.
-        // assert_eq!(QAToolsPallet::something(), Some(42));
-        // // Assert that the correct event was deposited
-        // System::assert_last_event(
-        //     Event::SomethingStored {
-        //         something: 42,
-        //         who: alice(),
-        //     }
-        //     .into(),
-        // );
+        let start_balance_xor = assets::Pallet::<Runtime>::total_balance(&XOR, &alice()).unwrap();
+        let start_balance_val = assets::Pallet::<Runtime>::total_balance(&VAL, &alice()).unwrap();
+        assert_ok!(QAToolsPallet::order_book_create_and_fill_many(
+            RuntimeOrigin::signed(alice()),
+            DEXId::Polkaswap.into(),
+            alice(),
+            alice(),
+            vec![(
+                OrderBookId {
+                    base: VAL,
+                    quote: XOR
+                },
+                OrderBookFillSettings {
+                    best_bid_price: balance!(10),
+                    best_ask_price: balance!(11)
+                }
+            )]
+        ));
+        assert_eq!(
+            assets::Pallet::<Runtime>::total_balance(&XOR, &alice()).unwrap(),
+            start_balance_xor
+        );
+        assert_eq!(
+            assets::Pallet::<Runtime>::total_balance(&VAL, &alice()).unwrap(),
+            start_balance_val
+        );
     });
 }

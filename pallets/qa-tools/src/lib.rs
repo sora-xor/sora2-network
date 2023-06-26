@@ -46,6 +46,7 @@ pub use weights::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::prelude::FixedWrapper;
     use common::{balance, Balance, PriceVariant};
     use frame_support::traits::{Get, Time};
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
@@ -90,8 +91,8 @@ pub mod pallet {
     )]
     // #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
     pub struct OrderBookFillSettings {
-        best_bid_price: order_book::types::OrderPrice,
-        best_ask_price: order_book::types::OrderPrice,
+        pub best_bid_price: order_book::types::OrderPrice,
+        pub best_ask_price: order_book::types::OrderPrice,
     }
 
     // Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -217,8 +218,13 @@ pub mod pallet {
             ];
 
             let base_amount_give: Balance = sell_orders.iter().map(|(_, base)| base).sum();
-            let quote_amount_give: Balance =
-                buy_orders.iter().map(|(quote, base)| quote * base).sum();
+            let quote_amount_give: Balance = buy_orders
+                .iter()
+                .map(|(quote, base)| {
+                    let quote_amount_fixed = FixedWrapper::from(*quote) * FixedWrapper::from(*base);
+                    quote_amount_fixed.into_balance()
+                })
+                .sum();
 
             let mut data = order_book::cache_data_layer::CacheDataLayer::<T>::new();
 
