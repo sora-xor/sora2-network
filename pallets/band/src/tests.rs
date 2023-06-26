@@ -574,6 +574,6 @@ fn should_calculate_dynamic_fee() {
 
         assert_eq!(rate_b.dynamic_fee, fixed!(0.39));
 
-        assert_eq!(rate_c.dynamic_fee, fixed!(0.039),);
+        assert_eq!(rate_c.dynamic_fee, fixed!(0.039));
     })
 }
