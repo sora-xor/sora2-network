@@ -93,5 +93,10 @@ benchmarks! {
         assert_eq!(Band::<T>::trusted_relayers().unwrap().contains(&relayer), false);
     }
 
+    set_dynamic_fee_parameters {
+        let parameters = FeeCalculationParameters::new(fixed!(0), fixed!(0), fixed!(0));
+    }: _(RawOrigin::Root, parameters)
+    verify {}
+
     impl_benchmark_test_suite!(Band, crate::mock::new_test_ext(), crate::mock::Runtime);
 }

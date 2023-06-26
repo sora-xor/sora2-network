@@ -48,6 +48,8 @@ mod tests;
 
 mod benchmarking;
 
+pub mod migrations;
+
 pub mod weights;
 
 /// Multiplier to convert rates from precision = 9 (which band team use)
@@ -180,6 +182,9 @@ pub mod pallet {
     use super::*;
     use sp_std::collections::btree_set::BTreeSet;
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     /// `Band` pallet is used to relay data from *BandChain* oracles to Polkaswap.
     /// This data contains information about some symbols rates, like price of some cryptocurrencies,
     /// stocks, fiat and etc.
@@ -191,6 +196,7 @@ pub mod pallet {
     /// every asset category. This will prevent overlapping tickers.
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T, I = ()>(_);
 
@@ -426,7 +432,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config<I>>::WeightInfo::remove_relayers())] // TODO: change
+        #[pallet::weight(<T as Config<I>>::WeightInfo::set_dynamic_fee_parameters())]
         pub fn set_dynamic_fee_parameters(
             origin: OriginFor<T>,
             fee_parameters: FeeCalculationParameters,
