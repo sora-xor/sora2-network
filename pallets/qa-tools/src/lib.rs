@@ -197,49 +197,63 @@ pub mod pallet {
             let now = T::Time::now();
             let current_block = frame_system::Pallet::<T>::block_number();
 
-            // (price, amount)
+            // (price_steps_from_best_ask, amount)
             let buy_orders = [
-                (balance!(10), balance!(168.5)),
-                (balance!(9.8), balance!(95.2)),
-                (balance!(9.8), balance!(44.7)),
-                (balance!(9.5), balance!(56.4)),
-                (balance!(9.5), balance!(89.9)),
-                (balance!(9.5), balance!(115)),
+                (0, balance!(168.5)),
+                (1, balance!(95.2)),
+                (1, balance!(44.7)),
+                (3, balance!(56.4)),
+                (3, balance!(89.9)),
+                (3, balance!(115)),
             ];
 
-            // (price, amount)
+            // (price_steps_from_best_bid, amount)
             let sell_orders = [
-                (balance!(11), balance!(176.3)),
-                (balance!(11.2), balance!(85.4)),
-                (balance!(11.2), balance!(93.2)),
-                (balance!(11.5), balance!(36.6)),
-                (balance!(11.5), balance!(205.5)),
-                (balance!(11.5), balance!(13.7)),
+                (0, balance!(176.3)),
+                (1, balance!(85.4)),
+                (1, balance!(93.2)),
+                (3, balance!(36.6)),
+                (3, balance!(205.5)),
+                (3, balance!(13.7)),
             ];
 
-            let base_amount_give: Balance = sell_orders.iter().map(|(_, base)| base).sum();
-            let quote_amount_give: Balance = buy_orders
-                .iter()
-                .map(|(quote, base)| {
-                    let quote_amount_fixed = FixedWrapper::from(*quote) * FixedWrapper::from(*base);
-                    quote_amount_fixed.into_balance()
-                })
-                .sum();
+            let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| base).sum();
 
             let mut data = order_book::cache_data_layer::CacheDataLayer::<T>::new();
 
             for (order_book_id, settings) in fill_settings {
                 let mut order_book = <order_book::OrderBooks<T>>::get(order_book_id)
                     .ok_or(Error::<T>::OrderBookUnkonwnBook)?;
+                // Convert price steps and best ask to prices
+                let buy_orders: Vec<_> = buy_orders
+                    .iter()
+                    .map(|(buy_price_steps, base)| {
+                        (
+                            settings.best_ask_price - buy_price_steps * order_book.tick_size,
+                            *base,
+                        )
+                    })
+                    .collect();
+                // Total amount of quote asset to be locked from `asks_owner`
+                let buy_quote_locked: Balance = buy_orders
+                    .iter()
+                    .map(|(quote, base)| {
+                        let quote_amount_fixed =
+                            FixedWrapper::from(*quote) * FixedWrapper::from(*base);
+                        quote_amount_fixed.into_balance()
+                    })
+                    .sum();
+
+                // mint required amount to make this extrinsic self-sufficient
                 assets::Pallet::<T>::mint_unchecked(
                     &order_book_id.base,
                     &bids_owner,
-                    base_amount_give,
+                    sell_base_locked,
                 )?;
                 assets::Pallet::<T>::mint_unchecked(
                     &order_book_id.quote,
                     &asks_owner,
-                    quote_amount_give,
+                    buy_quote_locked,
                 )?;
 
                 for (buy_price, buy_amount) in buy_orders {
