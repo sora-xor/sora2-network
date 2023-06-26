@@ -46,6 +46,8 @@ pub use weights::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::{balance, Balance, PriceVariant};
+    use frame_support::traits::{Get, Time};
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
     use sp_std::prelude::*;
@@ -56,6 +58,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + order_book::Config + trading_pair::Config {
         type WeightInfo: WeightInfo;
+        type OrderBookOrderLifespan: Get<<Self::Time as Time>::Moment>;
     }
 
     // Errors inform users that something went wrong.
@@ -65,6 +68,10 @@ pub mod pallet {
         NoneValue,
         /// Errors should have helpful documentation associated with them.
         StorageOverflow,
+        /// Order book does not exist for this trading pair
+        OrderBookUnkonwnBook,
+        /// Could not place limit order
+        OrderBookFailedToPlaceOrders,
     }
 
     #[derive(
@@ -97,14 +104,16 @@ pub mod pallet {
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::do_something())]
         pub fn order_book_create_empty_many(
-            _origin: OriginFor<T>,
+            origin: OriginFor<T>,
             dex_id: T::DEXId,
             order_book_ids: Vec<OrderBookId<T::AssetId>>,
         ) -> DispatchResultWithPostInfo {
-            // Extrinsic is only for testing, so any origin is allowed.
-            // It also allows not to worry about fees.
+            let _ = ensure_signed(origin)?;
 
             Self::create_multiple_empty_unchecked(dex_id, order_book_ids)?;
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
             Ok(PostDispatchInfo {
                 actual_weight: Some(Weight::zero()),
                 pays_fee: Pays::No,
@@ -115,18 +124,20 @@ pub mod pallet {
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::cause_error())]
         pub fn order_book_create_and_fill_many(
-            _origin: OriginFor<T>,
+            origin: OriginFor<T>,
             dex_id: T::DEXId,
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
             fill_settings: Vec<(OrderBookId<T::AssetId>, OrderBookFillSettings)>,
         ) -> DispatchResultWithPostInfo {
-            // Extrinsic is only for testing, so any origin is allowed.
-            // It also allows not to worry about fees.
+            let _ = ensure_signed(origin)?;
 
             let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
             Self::create_multiple_empty_unchecked(dex_id, order_book_ids)?;
             Self::fill_multiple_empty_unchecked(bids_owner, asks_owner, fill_settings)?;
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
             Ok(PostDispatchInfo {
                 actual_weight: Some(Weight::zero()),
                 pays_fee: Pays::No,
@@ -182,38 +193,70 @@ pub mod pallet {
             asks_owner: T::AccountId,
             fill_settings: Vec<(OrderBookId<T::AssetId>, OrderBookFillSettings)>,
         ) -> Result<(), DispatchError> {
-            // assets::Pallet::<T>::update_balance(
-            //     RuntimeOrigin::root(),
-            //     account.clone(),
-            //     order_book_id.base,
-            //     INIT_BALANCE.try_into().unwrap()
-            // )?;
+            let now = T::Time::now();
+            let current_block = frame_system::Pallet::<T>::block_number();
 
-            // let lifespan = Some(100000);
+            // (price, amount)
+            let buy_orders = [
+                (balance!(10), balance!(168.5)),
+                (balance!(9.8), balance!(95.2)),
+                (balance!(9.8), balance!(44.7)),
+                (balance!(9.5), balance!(56.4)),
+                (balance!(9.5), balance!(89.9)),
+                (balance!(9.5), balance!(115)),
+            ];
 
-            // // prices
-            // let bp1 = balance!(10);
-            // let bp2 = balance!(9.8);
-            // let bp3 = balance!(9.5);
-            // let sp1 = balance!(11);
-            // let sp2 = balance!(11.2);
-            // let sp3 = balance!(11.5);
+            // (price, amount)
+            let sell_orders = [
+                (balance!(11), balance!(176.3)),
+                (balance!(11.2), balance!(85.4)),
+                (balance!(11.2), balance!(93.2)),
+                (balance!(11.5), balance!(36.6)),
+                (balance!(11.5), balance!(205.5)),
+                (balance!(11.5), balance!(13.7)),
+            ];
 
-            // // buy amounts
-            // let amount1 = balance!(168.5);
-            // let amount2 = balance!(95.2);
-            // let amount3 = balance!(44.7);
-            // let amount4 = balance!(56.4);
-            // let amount5 = balance!(89.9);
-            // let amount6 = balance!(115);
+            let base_amount_give: Balance = sell_orders.iter().map(|(_, base)| base).sum();
+            let quote_amount_give: Balance =
+                buy_orders.iter().map(|(quote, base)| quote * base).sum();
 
-            // // sell amounts
-            // let amount7 = balance!(176.3);
-            // let amount8 = balance!(85.4);
-            // let amount9 = balance!(93.2);
-            // let amount10 = balance!(36.6);
-            // let amount11 = balance!(205.5);
-            // let amount12 = balance!(13.7);
+            let mut data = order_book::cache_data_layer::CacheDataLayer::<T>::new();
+
+            for (order_book_id, settings) in fill_settings {
+                let mut order_book = <order_book::OrderBooks<T>>::get(order_book_id)
+                    .ok_or(Error::<T>::OrderBookUnkonwnBook)?;
+                assets::Pallet::<T>::mint_unchecked(
+                    &order_book_id.base,
+                    &bids_owner,
+                    base_amount_give,
+                )?;
+                assets::Pallet::<T>::mint_unchecked(
+                    &order_book_id.quote,
+                    &asks_owner,
+                    quote_amount_give,
+                )?;
+
+                for (buy_price, buy_amount) in buy_orders {
+                    let order_id = order_book.next_order_id();
+                    let order = order_book::LimitOrder::<T>::new(
+                        order_id,
+                        asks_owner.clone(),
+                        PriceVariant::Buy,
+                        buy_price,
+                        buy_amount,
+                        now,
+                        T::OrderBookOrderLifespan::get(),
+                        current_block,
+                    );
+                    let (market_input, deal_input) =
+                        order_book.place_limit_order::<order_book::Pallet<T>, order_book::Pallet<T>, order_book::Pallet<T>>(order, &mut data)?;
+                    if let (None, None) = (market_input, deal_input) {
+                        // should never happen
+                        return Err(Error::<T>::OrderBookFailedToPlaceOrders.into());
+                    }
+                }
+            }
+            data.commit();
             Ok(())
         }
     }
