@@ -28,6 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! Tests are not essential for this testing helper pallet,
+//! but they make modify-run iterations during development much quicker
+
 use common::{balance, AssetInfoProvider, DEXId, VAL, XOR};
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
