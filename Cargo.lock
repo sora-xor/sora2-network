@@ -9337,6 +9337,7 @@ dependencies = [
 name = "qa-tools"
 version = "0.1.0"
 dependencies = [
+ "assets",
  "common",
  "frame-benchmarking",
  "frame-support",
@@ -9349,6 +9350,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-std",
  "trading-pair",
 ]
 

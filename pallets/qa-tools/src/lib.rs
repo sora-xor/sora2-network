@@ -32,6 +32,9 @@
 
 pub use pallet::*;
 
+// #[cfg(feature = "std")]
+// use serde::{Deserialize, Serialize};
+
 #[cfg(test)]
 mod tests;
 
@@ -45,6 +48,7 @@ pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_std::prelude::*;
 
     #[pallet::pallet]
     pub struct Pallet<T>(_);
@@ -63,6 +67,26 @@ pub mod pallet {
         StorageOverflow,
     }
 
+    #[derive(
+        Encode,
+        Decode,
+        Eq,
+        PartialEq,
+        Copy,
+        Clone,
+        PartialOrd,
+        Ord,
+        RuntimeDebug,
+        Hash,
+        scale_info::TypeInfo,
+        MaxEncodedLen,
+    )]
+    // #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+    pub struct OrderBookFillSettings {
+        best_bid_price: order_book::types::OrderPrice,
+        best_ask_price: order_book::types::OrderPrice,
+    }
+
     // Dispatchable functions allows users to interact with the pallet and invoke state changes.
     // These functions materialize as "extrinsics", which are often compared to transactions.
     // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
@@ -72,14 +96,43 @@ pub mod pallet {
         /// storage and emits an event. This function must be dispatched by a signed extrinsic.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::do_something())]
-        pub fn create_empty_order_books(
+        pub fn order_book_create_empty_many(
             _origin: OriginFor<T>,
             dex_id: T::DEXId,
             order_book_ids: Vec<OrderBookId<T::AssetId>>,
         ) -> DispatchResult {
-            // Extrinsic only for testing, so any origin is allowed.
+            // Extrinsic is only for testing, so any origin is allowed.
             // It also allows not to worry about fees.
 
+            Self::create_multiple_empty_unchecked(dex_id, order_book_ids)?;
+            Ok(())
+        }
+
+        /// An example dispatchable that may throw a custom error.
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::cause_error())]
+        pub fn order_book_create_and_fill_many(
+            _origin: OriginFor<T>,
+            dex_id: T::DEXId,
+            bids_owner: T::AccountId,
+            asks_owner: T::AccountId,
+            fill_settings: Vec<(OrderBookId<T::AssetId>, OrderBookFillSettings)>,
+        ) -> DispatchResult {
+            // Extrinsic is only for testing, so any origin is allowed.
+            // It also allows not to worry about fees.
+
+            let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
+            Self::create_multiple_empty_unchecked(dex_id, order_book_ids)?;
+            Self::fill_multiple_empty_unchecked(bids_owner, asks_owner, fill_settings)?;
+            Ok(())
+        }
+    }
+
+    impl<T: Config> Pallet<T> {
+        fn create_multiple_empty_unchecked(
+            dex_id: T::DEXId,
+            order_book_ids: Vec<OrderBookId<T::AssetId>>,
+        ) -> Result<(), DispatchError> {
             for order_book_id in &order_book_ids {
                 if !trading_pair::Pallet::<T>::is_trading_pair_enabled(
                     &dex_id,
@@ -118,24 +171,44 @@ pub mod pallet {
             Ok(())
         }
 
-        /// An example dispatchable that may throw a custom error.
-        #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::cause_error())]
-        pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
-            let _who = ensure_signed(origin)?;
+        fn fill_multiple_empty_unchecked(
+            bids_owner: T::AccountId,
+            asks_owner: T::AccountId,
+            fill_settings: Vec<(OrderBookId<T::AssetId>, OrderBookFillSettings)>,
+        ) -> Result<(), DispatchError> {
+            // assets::Pallet::<T>::update_balance(
+            //     RuntimeOrigin::root(),
+            //     account.clone(),
+            //     order_book_id.base,
+            //     INIT_BALANCE.try_into().unwrap()
+            // )?;
 
-            // // Read a value from storage.
-            // match <Something<T>>::get() {
-            //     // Return an error if the value has not been set.
-            //     None => return Err(Error::<T>::NoneValue.into()),
-            //     Some(old) => {
-            //         // Increment the value read from storage; will error in the event of overflow.
-            //         let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-            //         // Update the value in storage with the incremented result.
-            //         <Something<T>>::put(new);
+            // let lifespan = Some(100000);
+
+            // // prices
+            // let bp1 = balance!(10);
+            // let bp2 = balance!(9.8);
+            // let bp3 = balance!(9.5);
+            // let sp1 = balance!(11);
+            // let sp2 = balance!(11.2);
+            // let sp3 = balance!(11.5);
+
+            // // buy amounts
+            // let amount1 = balance!(168.5);
+            // let amount2 = balance!(95.2);
+            // let amount3 = balance!(44.7);
+            // let amount4 = balance!(56.4);
+            // let amount5 = balance!(89.9);
+            // let amount6 = balance!(115);
+
+            // // sell amounts
+            // let amount7 = balance!(176.3);
+            // let amount8 = balance!(85.4);
+            // let amount9 = balance!(93.2);
+            // let amount10 = balance!(36.6);
+            // let amount11 = balance!(205.5);
+            // let amount12 = balance!(13.7);
             Ok(())
-            //     }
-            // }
         }
     }
 }
