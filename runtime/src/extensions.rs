@@ -78,7 +78,12 @@ where
     ) -> sp_api::TransactionValidity {
         call.check_for_swap_in_batch()?;
         let info = Self::pre_dispatch_info(who, call, info);
-        self.0.validate(who, call, &*info, len)
+        self.0.validate(who, call, &*info, len).map(|mut v| {
+            if matches!(info.class, frame_support::dispatch::DispatchClass::Normal) {
+                v.priority = crate::constants::NORMAL_DISPATCH_PRIORITY;
+            }
+            v
+        })
     }
 
     fn pre_dispatch(
