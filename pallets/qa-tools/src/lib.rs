@@ -32,9 +32,6 @@
 
 pub use pallet::*;
 
-// #[cfg(feature = "std")]
-// use serde::{Deserialize, Serialize};
-
 #[cfg(test)]
 mod tests;
 
@@ -51,6 +48,8 @@ pub mod pallet {
     use frame_support::traits::{Get, Time};
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
+    use order_book::cache_data_layer::CacheDataLayer;
+    use order_book::{MomentOf, OrderBook};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -59,7 +58,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + order_book::Config + trading_pair::Config {
         type WeightInfo: WeightInfo;
-        type OrderBookOrderLifespan: Get<<Self::Time as Time>::Moment>;
+        type OrderBookOrderLifespan: Get<MomentOf<Self>>;
     }
 
     // Errors inform users that something went wrong.
@@ -89,7 +88,6 @@ pub mod pallet {
         scale_info::TypeInfo,
         MaxEncodedLen,
     )]
-    // #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
     pub struct OrderBookFillSettings {
         pub best_bid_price: order_book::types::OrderPrice,
         pub best_ask_price: order_book::types::OrderPrice,
@@ -194,12 +192,11 @@ pub mod pallet {
             asks_owner: T::AccountId,
             fill_settings: Vec<(OrderBookId<T::AssetId>, OrderBookFillSettings)>,
         ) -> Result<(), DispatchError> {
-            let now = T::Time::now();
-            let current_block = frame_system::Pallet::<T>::block_number();
+            let now = <T as order_book::Config>::Time::now();
 
             // (price_steps_from_best_ask, amount)
-            let buy_orders = [
-                (0, balance!(168.5)),
+            let buy_orders_steps = [
+                (0u128, balance!(168.5)),
                 (1, balance!(95.2)),
                 (1, balance!(44.7)),
                 (3, balance!(56.4)),
@@ -208,8 +205,8 @@ pub mod pallet {
             ];
 
             // (price_steps_from_best_bid, amount)
-            let sell_orders = [
-                (0, balance!(176.3)),
+            let sell_orders_steps = [
+                (0u128, balance!(176.3)),
                 (1, balance!(85.4)),
                 (1, balance!(93.2)),
                 (3, balance!(36.6)),
@@ -217,66 +214,124 @@ pub mod pallet {
                 (3, balance!(13.7)),
             ];
 
-            let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| base).sum();
-
             let mut data = order_book::cache_data_layer::CacheDataLayer::<T>::new();
 
             for (order_book_id, settings) in fill_settings {
-                let mut order_book = <order_book::OrderBooks<T>>::get(order_book_id)
-                    .ok_or(Error::<T>::OrderBookUnkonwnBook)?;
-                // Convert price steps and best ask to prices
-                let buy_orders: Vec<_> = buy_orders
-                    .iter()
-                    .map(|(buy_price_steps, base)| {
-                        (
-                            settings.best_ask_price - buy_price_steps * order_book.tick_size,
-                            *base,
-                        )
-                    })
-                    .collect();
-                // Total amount of quote asset to be locked from `asks_owner`
-                let buy_quote_locked: Balance = buy_orders
-                    .iter()
-                    .map(|(quote, base)| {
-                        let quote_amount_fixed =
-                            FixedWrapper::from(*quote) * FixedWrapper::from(*base);
-                        quote_amount_fixed.into_balance()
-                    })
-                    .sum();
-
-                // mint required amount to make this extrinsic self-sufficient
-                assets::Pallet::<T>::mint_unchecked(
-                    &order_book_id.base,
-                    &bids_owner,
-                    sell_base_locked,
+                Self::fill_order_book(
+                    &mut data,
+                    order_book_id,
+                    asks_owner.clone(),
+                    bids_owner.clone(),
+                    buy_orders_steps.into_iter(),
+                    sell_orders_steps.into_iter(),
+                    settings,
+                    now,
                 )?;
-                assets::Pallet::<T>::mint_unchecked(
-                    &order_book_id.quote,
-                    &asks_owner,
-                    buy_quote_locked,
-                )?;
-
-                for (buy_price, buy_amount) in buy_orders {
-                    let order_id = order_book.next_order_id();
-                    let order = order_book::LimitOrder::<T>::new(
-                        order_id,
-                        asks_owner.clone(),
-                        PriceVariant::Buy,
-                        buy_price,
-                        buy_amount,
-                        now,
-                        T::OrderBookOrderLifespan::get(),
-                        current_block,
-                    );
-                    let (market_input, deal_input) =
-                        order_book.place_limit_order::<order_book::Pallet<T>, order_book::Pallet<T>, order_book::Pallet<T>>(order, &mut data)?;
-                    if let (None, None) = (market_input, deal_input) {
-                        // should never happen
-                        return Err(Error::<T>::OrderBookFailedToPlaceOrders.into());
-                    }
-                }
             }
             data.commit();
+            Ok(())
+        }
+
+        fn fill_order_book(
+            data: &mut CacheDataLayer<T>,
+            book_id: OrderBookId<T::AssetId>,
+            asks_owner: T::AccountId,
+            bids_owner: T::AccountId,
+            buy_orders_steps: impl Iterator<Item = (u128, Balance)>,
+            sell_orders_steps: impl Iterator<Item = (u128, Balance)>,
+            settings: OrderBookFillSettings,
+            now: MomentOf<T>,
+        ) -> Result<(), DispatchError> {
+            let current_block = frame_system::Pallet::<T>::block_number();
+            let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
+                .ok_or(Error::<T>::OrderBookUnkonwnBook)?;
+
+            // Convert price steps and best ask to prices
+            let buy_orders: Vec<_> = buy_orders_steps
+                .map(|(price_steps, base)| {
+                    (
+                        settings.best_ask_price - price_steps * order_book.tick_size,
+                        base,
+                    )
+                })
+                .collect();
+            let sell_orders: Vec<_> = sell_orders_steps
+                .map(|(price_steps, base)| {
+                    (
+                        settings.best_bid_price + price_steps * order_book.tick_size,
+                        base,
+                    )
+                })
+                .collect();
+            // Total amount of quote asset to be locked from `asks_owner`
+            let buy_quote_locked: Balance = buy_orders
+                .iter()
+                .map(|(quote, base)| {
+                    let quote_amount_fixed = FixedWrapper::from(*quote) * FixedWrapper::from(*base);
+                    quote_amount_fixed.into_balance()
+                })
+                .sum();
+            let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| base).sum();
+
+            // mint required amount to make this extrinsic self-sufficient
+            assets::Pallet::<T>::mint_unchecked(&book_id.base, &bids_owner, sell_base_locked)?;
+            assets::Pallet::<T>::mint_unchecked(&book_id.quote, &asks_owner, buy_quote_locked)?;
+
+            // place buy orders
+            Self::place_multiple_orders(
+                data,
+                &mut order_book,
+                bids_owner.clone(),
+                PriceVariant::Buy,
+                buy_orders.into_iter(),
+                now,
+                T::OrderBookOrderLifespan::get(),
+                current_block,
+            )?;
+
+            // place sell orders
+            Self::place_multiple_orders(
+                data,
+                &mut order_book,
+                asks_owner.clone(),
+                PriceVariant::Sell,
+                sell_orders.into_iter(),
+                now,
+                T::OrderBookOrderLifespan::get(),
+                current_block,
+            )?;
+            Ok(())
+        }
+
+        fn place_multiple_orders(
+            data: &mut CacheDataLayer<T>,
+            book: &mut OrderBook<T>,
+            owner: T::AccountId,
+            side: PriceVariant,
+            orders: impl Iterator<Item = (Balance, Balance)>,
+            time: MomentOf<T>,
+            lifespan: MomentOf<T>,
+            current_block: BlockNumberFor<T>,
+        ) -> Result<(), DispatchError> {
+            for (price, amount) in orders {
+                let order_id = book.next_order_id();
+                let order = order_book::LimitOrder::<T>::new(
+                    order_id,
+                    owner.clone(),
+                    side,
+                    price,
+                    amount,
+                    time,
+                    lifespan,
+                    current_block,
+                );
+                let (market_input, deal_input) =
+                    book.place_limit_order::<order_book::Pallet<T>, order_book::Pallet<T>, order_book::Pallet<T>>(order, data)?;
+                if let (None, None) = (market_input, deal_input) {
+                    // should never happen
+                    return Err(Error::<T>::OrderBookFailedToPlaceOrders.into());
+                }
+            }
             Ok(())
         }
     }
