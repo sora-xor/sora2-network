@@ -78,7 +78,6 @@ where
                 None => None,
             }
         });
-        frame_support::log::info!("finished translating SymbolRates!");
 
         StorageVersion::new(1).put::<Pallet<T>>();
         weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))
