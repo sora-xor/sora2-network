@@ -98,8 +98,7 @@ pub mod pallet {
     // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// An example dispatchable that takes a singles value as a parameter, writes the value to
-        /// storage and emits an event. This function must be dispatched by a signed extrinsic.
+        /// Create multiple many order books with default parameters if do not exist.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::do_something())]
         pub fn order_book_create_empty_many(
@@ -119,7 +118,8 @@ pub mod pallet {
             })
         }
 
-        /// An example dispatchable that may throw a custom error.
+        /// Create multiple many order books with default parameters if do not exist and
+        /// fill them according to given parameters
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::cause_error())]
         pub fn order_book_create_and_fill_many(
@@ -145,11 +145,16 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Does not create an order book if already exists
         fn create_multiple_empty_unchecked(
             dex_id: T::DEXId,
             order_book_ids: Vec<OrderBookId<T::AssetId>>,
         ) -> Result<(), DispatchError> {
-            for order_book_id in &order_book_ids {
+            let to_create_ids: Vec<_> = order_book_ids
+                .into_iter()
+                .filter(|id| !<order_book::OrderBooks<T>>::contains_key(id))
+                .collect();
+            for order_book_id in &to_create_ids {
                 if !trading_pair::Pallet::<T>::is_trading_pair_enabled(
                     &dex_id,
                     &order_book_id.quote.into(),
@@ -164,7 +169,7 @@ pub mod pallet {
                 order_book::Pallet::<T>::verify_create_orderbook_params(&dex_id, order_book_id)?;
             }
 
-            for order_book_id in order_book_ids {
+            for order_book_id in to_create_ids {
                 let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
                     order_book::OrderBook::<T>::default_nft(order_book_id, dex_id)
                 } else {
