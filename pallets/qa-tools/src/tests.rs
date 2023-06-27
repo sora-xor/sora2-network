@@ -32,9 +32,7 @@
 //! but they make modify-run iterations during development much quicker
 
 use common::{balance, AssetInfoProvider, DEXId, VAL, XOR};
-use frame_support::traits::Get;
-use frame_support::{assert_err, assert_ok};
-use frame_system::RawOrigin;
+use frame_support::assert_ok;
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools::{self, Config, OrderBookFillSettings, WeightInfo};
 use framenode_runtime::{Runtime, RuntimeOrigin, System};
@@ -51,16 +49,17 @@ fn should_create_and_fill_orderbook() {
     ext().execute_with(|| {
         let start_balance_xor = assets::Pallet::<Runtime>::total_balance(&XOR, &alice()).unwrap();
         let start_balance_val = assets::Pallet::<Runtime>::total_balance(&VAL, &alice()).unwrap();
+        let order_book_id = OrderBookId {
+            base: VAL,
+            quote: XOR,
+        };
         assert_ok!(QAToolsPallet::order_book_create_and_fill_many(
             RuntimeOrigin::signed(alice()),
             DEXId::Polkaswap.into(),
             alice(),
             alice(),
             vec![(
-                OrderBookId {
-                    base: VAL,
-                    quote: XOR
-                },
+                order_book_id,
                 OrderBookFillSettings {
                     best_bid_price: balance!(11),
                     best_ask_price: balance!(10)
@@ -74,6 +73,15 @@ fn should_create_and_fill_orderbook() {
         assert_eq!(
             assets::Pallet::<Runtime>::total_balance(&VAL, &alice()).unwrap(),
             start_balance_val
+        );
+
+        assert_eq!(
+            order_book::Pallet::<Runtime>::aggregated_bids(order_book_id).len(),
+            3
+        );
+        assert_eq!(
+            order_book::Pallet::<Runtime>::aggregated_asks(order_book_id).len(),
+            3
         );
     });
 }

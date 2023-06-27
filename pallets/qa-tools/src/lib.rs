@@ -199,7 +199,10 @@ pub mod pallet {
         ) -> Result<(), DispatchError> {
             let now = <T as order_book::Config>::Time::now();
 
-            // (price_steps_from_best_ask, amount)
+            // Prices are specified as price steps from the specified best ask price.
+            // Amounts are added to min_lot and aligned with lot(amount) step.
+
+            // (price, amount)
             let buy_orders_steps = [
                 (0u128, balance!(168.5)),
                 (1, balance!(95.2)),
@@ -256,7 +259,7 @@ pub mod pallet {
                 .map(|(price_steps, base)| {
                     (
                         settings.best_ask_price - price_steps * order_book.tick_size,
-                        base,
+                        order_book.align_amount(base + order_book.step_lot_size),
                     )
                 })
                 .collect();
@@ -264,7 +267,7 @@ pub mod pallet {
                 .map(|(price_steps, base)| {
                     (
                         settings.best_bid_price + price_steps * order_book.tick_size,
-                        base,
+                        order_book.align_amount(base + order_book.step_lot_size),
                     )
                 })
                 .collect();
