@@ -101,7 +101,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Create multiple many order books with default parameters if do not exist.
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::do_something())]
+        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_many())]
         pub fn order_book_create_empty_many(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
@@ -130,7 +130,7 @@ pub mod pallet {
         /// Create multiple many order books with default parameters if do not exist and
         /// fill them according to given parameters
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::cause_error())]
+        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_many())]
         pub fn order_book_create_and_fill_many(
             origin: OriginFor<T>,
             dex_id: T::DEXId,

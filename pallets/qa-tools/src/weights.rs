@@ -35,12 +35,11 @@
 use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use core::marker::PhantomData;
 
-/// Weight functions needed for pallet_template.
 pub trait WeightInfo {
-	fn do_something() -> Weight {
+	fn order_book_create_empty_many() -> Weight {
         Weight::zero()
     }
-	fn cause_error() -> Weight {
+	fn order_book_create_and_fill_many() -> Weight {
         Weight::zero()
     }
 }
