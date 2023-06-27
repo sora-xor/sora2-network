@@ -45,6 +45,7 @@ pub mod pallet {
     use super::*;
     use common::prelude::FixedWrapper;
     use common::{balance, Balance, PriceVariant};
+    use frame_support::dispatch::DispatchErrorWithPostInfo;
     use frame_support::traits::{Get, Time};
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
@@ -108,7 +109,15 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_signed(origin)?;
 
-            Self::create_multiple_empty_unchecked(dex_id, order_book_ids)?;
+            Self::create_multiple_empty_unchecked(dex_id, order_book_ids).map_err(|e| {
+                DispatchErrorWithPostInfo {
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                }
+            })?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -132,8 +141,24 @@ pub mod pallet {
             let _ = ensure_signed(origin)?;
 
             let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
-            Self::create_multiple_empty_unchecked(dex_id, order_book_ids)?;
-            Self::fill_multiple_empty_unchecked(bids_owner, asks_owner, fill_settings)?;
+            Self::create_multiple_empty_unchecked(dex_id, order_book_ids).map_err(|e| {
+                DispatchErrorWithPostInfo {
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                }
+            })?;
+            Self::fill_multiple_empty_unchecked(bids_owner, asks_owner, fill_settings).map_err(
+                |e| DispatchErrorWithPostInfo {
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                },
+            )?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
