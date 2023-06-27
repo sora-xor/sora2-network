@@ -1221,7 +1221,7 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
                         }
                         swaps_and_receivers_counter
                     })
-                    * BIG_FEE,
+                    * SMALL_FEE,
             ),
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
