@@ -1208,12 +1208,19 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
         let result = match call {
             RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
                 swap_batches,
+                input_asset_id,
                 ..
             }) => Some(
                 swap_batches
                     .iter()
-                    .map(|x| x.receivers.len() as Balance)
-                    .sum::<Balance>()
+                    .map(|x| (x.receivers.len(), x.outcome_asset_id != *input_asset_id))
+                    .fold(balance!(0), |mut swaps_and_receivers_counter, (receivers_count, different_input_output_assets_flag)| {
+                        swaps_and_receivers_counter += receivers_count as Balance;
+                        if different_input_output_assets_flag {
+                            swaps_and_receivers_counter += 1;
+                        }
+                        swaps_and_receivers_counter
+                    })
                     * SMALL_FEE,
             ),
             RuntimeCall::Assets(assets::Call::register { .. })
