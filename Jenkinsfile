@@ -15,8 +15,6 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       substrate: true,
       cargoDoc: true,
       prStatusNotif: true,
-      buildTestCmds: [
-        'housekeeping/build.sh'
-      ]
+      buildTestCmds: ['housekeeping/build.sh']
       )
 pipeline.runPipeline()
