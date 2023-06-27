@@ -122,7 +122,7 @@ pub mod pallet {
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
             Ok(PostDispatchInfo {
-                actual_weight: Some(Weight::zero()),
+                actual_weight: None,
                 pays_fee: Pays::No,
             })
         }
@@ -163,7 +163,7 @@ pub mod pallet {
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
             Ok(PostDispatchInfo {
-                actual_weight: Some(Weight::zero()),
+                actual_weight: None,
                 pays_fee: Pays::No,
             })
         }
