@@ -785,9 +785,6 @@ pub mod pallet {
                 return Err(Error::<T>::Unauthorized.into());
             }
 
-            // Check if multiplier is valid
-            ensure!(new_multiplier >= 1, Error::<T>::InvalidMultiplier);
-
             // Get pool info and check if pool exists
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             let mut old_multiplier = 0;

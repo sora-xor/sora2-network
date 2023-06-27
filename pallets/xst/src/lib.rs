@@ -143,6 +143,9 @@ pub mod pallet {
         type Oracle: DataFeed<Self::Symbol, Rate, u64>;
         /// Type of symbol received from oracles
         type Symbol: Parameter + From<common::SymbolName> + MaybeSerializeDeserialize;
+        /// Maximum tradable amount of XST
+        #[pallet::constant]
+        type GetSyntheticBaseBuySellLimit: Get<Balance>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -341,6 +344,8 @@ pub mod pallet {
         IndivisibleReferenceAsset,
         /// Synthetic asset must be divisible
         CantEnableIndivisibleAsset,
+        /// Input/output amount of synthetic base asset exceeds the limit
+        SyntheticBaseBuySellLimitExceeded,
     }
 
     /// Synthetic assets and their reference symbols.
@@ -625,6 +630,7 @@ impl<T: Config> Pallet<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                Self::ensure_base_asset_amount_within_limit(output_amount)?;
                 if deduce_fee {
                     let fee_amount = (fee_ratio * output_amount)
                         .try_into_balance()
@@ -639,6 +645,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 // Calculate how much `synthetic_asset_id` we need to give to buy (get)
                 // `desired_amount_out` of `main_asset_id`
+                Self::ensure_base_asset_amount_within_limit(desired_amount_out)?;
                 let desired_amount_out_with_fee = if deduce_fee {
                     (FixedWrapper::from(desired_amount_out) / (fixed_wrapper!(1) - fee_ratio))
                         .try_into_balance()
@@ -686,6 +693,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 // Calculate how much `synthetic_asset_id` we will get
                 // if we sell `desired_amount_in` of `main_asset_id`
+                Self::ensure_base_asset_amount_within_limit(desired_amount_in)?;
                 let fee_amount = if deduce_fee {
                     (fee_ratio * FixedWrapper::from(desired_amount_in))
                         .try_into_balance()
@@ -716,6 +724,7 @@ impl<T: Config> Pallet<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                Self::ensure_base_asset_amount_within_limit(input_amount)?;
                 if deduce_fee {
                     let input_amount_with_fee =
                         FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
@@ -832,6 +841,14 @@ impl<T: Config> Pallet<T> {
         Ok((fee_amount * output_to_base)
             .try_into_balance()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?)
+    }
+
+    fn ensure_base_asset_amount_within_limit(amount: Balance) -> Result<(), DispatchError> {
+        if amount > T::GetSyntheticBaseBuySellLimit::get() {
+            fail!(Error::<T>::SyntheticBaseBuySellLimitExceeded)
+        } else {
+            Ok(())
+        }
     }
 
     /// This function is used to determine particular synthetic asset price in terms of a reference asset.

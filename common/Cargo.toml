@@ -77,4 +77,4 @@ std = [
 ]
 test = ["env_logger"]
 
-wip = []
+ready-to-test = []

@@ -34,8 +34,6 @@ pub struct Message {
     pub network_id: EVMChainId,
     /// Target application on the Ethereum side.
     pub target: H160,
-    /// Fee for accepting message on this channel.
-    pub fee: U256,
     /// Maximum gas this message can use on the Ethereum.
     pub max_gas: U256,
     /// Payload for target application.
@@ -215,8 +213,6 @@ pub mod pallet {
         QueueSizeLimitReached,
         /// Maximum gas for queued batch exceeds limit.
         MaxGasTooBig,
-        /// Cannot pay the fee to submit a message.
-        NoFunds,
         /// Cannot increment nonce
         Overflow,
         /// This channel already exists
@@ -297,7 +293,6 @@ pub mod pallet {
                 .map(|message| {
                     Token::Tuple(vec![
                         Token::Address(message.target),
-                        Token::Uint(message.fee.into()),
                         Token::Uint(message.max_gas.into()),
                         Token::Bytes(message.payload.clone()),
                     ])
@@ -375,8 +370,12 @@ pub mod pallet {
                 Error::<T>::PayloadTooLarge,
             );
 
+            // TODO compute fee and charge
             // Attempt to charge a fee for message submission
-            let fee = match who {
+            // gas used - estimate - depends on message payload + batch submission + target call
+            // base fee - from eth light client as EthereumGasOracle
+            // priority fee - some const
+            let _fee = match who {
                 RawOrigin::Signed(who) => {
                     let fee = Self::fee();
                     technical::Pallet::<T>::transfer_in(
@@ -392,7 +391,7 @@ pub mod pallet {
 
             // batch nonce
             let batch_nonce = <ChannelNonces<T>>::get(network_id) + 1;
-            let message_nonce =
+            let message_id =
                 MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as MessageNonce;
 
             append_message_queue::<T>(
@@ -400,17 +399,12 @@ pub mod pallet {
                 Message {
                     network_id: network_id,
                     target,
-                    fee: fee.into(),
                     max_gas,
                     payload: payload.to_vec(),
                 },
             );
-            Self::deposit_event(Event::MessageAccepted(
-                network_id,
-                batch_nonce,
-                message_nonce,
-            ));
-            Ok(Self::make_message_id(batch_nonce, message_nonce))
+            Self::deposit_event(Event::MessageAccepted(network_id, batch_nonce, message_id));
+            Ok(Self::make_message_id(batch_nonce, message_id))
         }
     }
 }
