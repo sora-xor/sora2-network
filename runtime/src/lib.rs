@@ -1210,8 +1210,8 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
                 swap_batches,
                 input_asset_id,
                 ..
-            }) => Some(
-                swap_batches
+            }) => {
+                let fee = swap_batches
                     .iter()
                     .map(|x| (x.receivers.len(), x.outcome_asset_id != *input_asset_id))
                     .fold(balance!(0), |mut swaps_and_receivers_counter, (receivers_count, different_input_output_assets_flag)| {
@@ -1221,8 +1221,13 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
                         }
                         swaps_and_receivers_counter
                     })
-                    * SMALL_FEE,
-            ),
+                    * SMALL_FEE;
+                if fee == 0 {
+                    Some(SMALL_FEE)
+                } else {
+                    Some(fee)
+                }
+            }
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
