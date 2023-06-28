@@ -49,14 +49,12 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::substrate::MainnetAssetId;
+    use bridge_types::evm::*;
     use bridge_types::traits::{
         BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry, MessageStatusNotifier,
     };
-    use bridge_types::types::{
-        AdditionalEVMInboundData, AdditionalEVMOutboundData, BridgeAppInfo, BridgeAssetInfo,
-        CallOriginOutput, EVMAppInfo, EVMAppKind, EVMAssetInfo, MessageStatus,
-    };
+    use bridge_types::types::{BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, MessageStatus};
+    use bridge_types::MainnetAssetId;
     use bridge_types::{GenericAccount, GenericNetworkId, H256};
     use bridge_types::{H160, U256};
     use frame_support::pallet_prelude::*;

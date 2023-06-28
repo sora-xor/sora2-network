@@ -50,15 +50,15 @@ pub mod pallet {
 
     use super::*;
 
-    use bridge_types::substrate::MainnetAssetId;
+    use bridge_types::evm::*;
     use bridge_types::traits::{
         AppRegistry, BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry,
         MessageStatusNotifier, OutboundChannel,
     };
     use bridge_types::types::{
-        AdditionalEVMInboundData, AdditionalEVMOutboundData, AssetKind, BridgeAppInfo,
-        BridgeAssetInfo, CallOriginOutput, EVMAppInfo, EVMAppKind, EVMAssetInfo, MessageStatus,
+        AssetKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, MessageStatus,
     };
+    use bridge_types::MainnetAssetId;
     use bridge_types::{EVMChainId, GenericAccount, GenericNetworkId, H256};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;

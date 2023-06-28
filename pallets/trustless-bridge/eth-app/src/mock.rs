@@ -1,5 +1,6 @@
+use bridge_types::evm::{AdditionalEVMInboundData, AdditionalEVMOutboundData};
 use bridge_types::traits::{BalancePrecisionConverter, BridgeAssetRegistry};
-use bridge_types::types::{AdditionalEVMInboundData, AdditionalEVMOutboundData, CallOriginOutput};
+use bridge_types::types::CallOriginOutput;
 use currencies::BasicCurrencyAdapter;
 use sp_core::U256;
 use sp_std::marker::PhantomData;

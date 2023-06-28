@@ -47,9 +47,8 @@ use frame_system::RawOrigin;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::traits::Hash;
 
-use bridge_types::types::{
-    AdditionalEVMInboundData, AssetKind, MessageDirection, MessageId, MessageStatus,
-};
+use bridge_types::evm::AdditionalEVMInboundData;
+use bridge_types::types::{AssetKind, MessageDirection, MessageId, MessageStatus};
 
 fn assert_event(event: RuntimeEvent) {
     System::events()
@@ -145,7 +144,7 @@ fn mint_successfull() {
         let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
-            MessageId::inbound(0),
+            MessageId::inbound_batched(0, 0),
             GenericTimepoint::Parachain(1),
             &RuntimeCall::ERC20App(erc20_app::Call::mint {
                 token,
@@ -156,8 +155,8 @@ fn mint_successfull() {
             .encode(),
             AdditionalEVMInboundData { source },
         );
-        let message_id =
-            MessageId::inbound(0).using_encoded(<Test as dispatch::Config>::Hashing::hash);
+        let message_id = MessageId::inbound_batched(0, 0)
+            .using_encoded(<Test as dispatch::Config>::Hashing::hash);
         assert_eq!(
             Transactions::<Test>::get(
                 (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), &recipient),
@@ -186,7 +185,7 @@ fn mint_failed() {
         let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
-            MessageId::inbound(0),
+            MessageId::inbound_batched(0, 0),
             Default::default(),
             &RuntimeCall::ERC20App(erc20_app::Call::mint {
                 token,
