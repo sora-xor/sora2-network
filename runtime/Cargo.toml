@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "2.0.0"
+version = "1.11.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -328,9 +328,7 @@ wip = [
     "multisig-verifier",
 ]
 
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-]
+ready-to-test = ["framenode-chain-spec/ready-to-test"]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
@@ -473,5 +471,5 @@ try-runtime = [
     "pallet-mmr/try-runtime",
     "pallet-beefy-mmr/try-runtime",
     "bridge-data-signer/try-runtime",
-    "multisig-verifier/try-runtime"
+    "multisig-verifier/try-runtime",
 ]
