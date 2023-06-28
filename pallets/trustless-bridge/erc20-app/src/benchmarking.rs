@@ -1,7 +1,7 @@
 //! ERC20App pallet benchmarking
 
 use crate::*;
-use bridge_types::types::AdditionalEVMInboundData;
+use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::types::AssetKind;
 use bridge_types::types::CallOriginOutput;
 use bridge_types::EVMChainId;

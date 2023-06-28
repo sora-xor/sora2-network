@@ -2,7 +2,8 @@
 use super::*;
 
 use crate::{AssetIdOf, AssetNameOf, AssetSymbolOf, BalanceOf};
-use bridge_types::types::{AdditionalEVMInboundData, CallOriginOutput};
+use bridge_types::evm::AdditionalEVMInboundData;
+use bridge_types::types::CallOriginOutput;
 use bridge_types::H160;
 use bridge_types::H256;
 use common::{balance, AssetId32, PredefinedAssetId, XOR};

@@ -98,3 +98,5 @@ pub mod rewards {
     pub const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
     pub const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
 }
+
+pub const NORMAL_DISPATCH_PRIORITY: u64 = 1000;
