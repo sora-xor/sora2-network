@@ -219,7 +219,7 @@ bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", branch 
 dispatch = { git = "https://github.com/sora-xor//sora2-common.git", branch = "bridge-asset-locker" }
 substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "bridge-asset-locker" }
 substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", branch = "bridge-asset-locker" }
-substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "bridge-asset-locker" }
+bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "bridge-asset-locker" }
 bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", branch = "bridge-asset-locker" }
 bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", branch = "bridge-asset-locker" }
 multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", branch = "bridge-asset-locker" }
@@ -235,7 +235,7 @@ multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", bra
 # dispatch = { path = "../sora2-common/pallets/dispatch" }
 # substrate-bridge-app = { path = "../sora2-common/pallets/substrate-app" }
 # substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }
-# substrate-bridge-channel-rpc = { path = "../sora2-common/pallets/substrate-channel/rpc" }
+# bridge-channel-rpc = { path = "../sora2-common/pallets/substrate-channel/rpc" }
 # bridge-types = { path = "../sora2-common/pallets/types" }
 # bridge-data-signer = { path = "../sora2-common/pallets/data-signer" }
 # multisig-verifier = { path = "../sora2-common/pallets/multisig-verifier" }
@@ -276,7 +276,6 @@ members = [
     "pallets/trustless-bridge/ethereum-light-client",
     "pallets/trustless-bridge/bridge-inbound-channel",
     "pallets/trustless-bridge/bridge-outbound-channel",
-    "pallets/trustless-bridge/bridge-channel-rpc",
     "pallets/trustless-bridge/eth-app",
     "pallets/trustless-bridge/erc20-app",
     "pallets/trustless-bridge/migration-app",

@@ -50,16 +50,16 @@ pub mod pallet {
 
     use super::*;
 
-    use bridge_types::substrate::MainnetAssetId;
+    use bridge_types::evm::*;
     use bridge_types::traits::BridgeAssetLocker;
     use bridge_types::traits::{
         AppRegistry, BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry,
         MessageStatusNotifier, OutboundChannel,
     };
     use bridge_types::types::{
-        AdditionalEVMInboundData, AdditionalEVMOutboundData, AssetKind, BridgeAppInfo,
-        BridgeAssetInfo, CallOriginOutput, EVMAppInfo, EVMAppKind, EVMAssetInfo, MessageStatus,
+        AssetKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, MessageStatus,
     };
+    use bridge_types::MainnetAssetId;
     use bridge_types::{EVMChainId, GenericAccount, GenericNetworkId, H256};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
@@ -264,9 +264,9 @@ pub mod pallet {
             T::BridgeAssetLocker::unlock_asset(
                 network_id.into(),
                 asset_kind,
-                recipient.clone(),
-                asset_id.clone(),
-                amount.clone(),
+                &recipient,
+                &asset_id,
+                &amount,
             )?;
 
             T::MessageStatusNotifier::inbound_request(
@@ -530,9 +530,9 @@ pub mod pallet {
             T::BridgeAssetLocker::lock_asset(
                 network_id.into(),
                 asset_kind,
-                who.clone(),
-                asset_id.clone(),
-                amount.clone(),
+                &who,
+                &asset_id,
+                &amount,
             )?;
 
             let token_address = TokenAddresses::<T>::get(network_id, &asset_id)
@@ -581,9 +581,9 @@ pub mod pallet {
             T::BridgeAssetLocker::unlock_asset(
                 network_id.into(),
                 asset_kind,
-                recipient.clone(),
-                asset_id.clone(),
-                amount.clone(),
+                &recipient,
+                &asset_id,
+                &amount,
             )?;
 
             Self::deposit_event(Event::Refunded(

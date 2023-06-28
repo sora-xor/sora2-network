@@ -2,15 +2,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use bridge_types::{H160, H256, U256};
-use codec::{Decode, Encode};
-use ethabi::{self, Token};
+use bridge_types::{H256, U256};
+use codec::Encode;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use sp_core::RuntimeDebug;
 use sp_io::offchain_index;
-use sp_runtime::traits::Hash;
 use sp_std::prelude::*;
 use sp_std::vec;
 use traits::MultiCurrency;
@@ -27,31 +24,9 @@ mod benchmarking;
 #[cfg(test)]
 mod test;
 
-/// Wire-format for committed messages
-#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub struct Message {
-    pub network_id: EVMChainId,
-    /// Target application on the Ethereum side.
-    pub target: H160,
-    /// Maximum gas this message can use on the Ethereum.
-    pub max_gas: U256,
-    /// Payload for target application.
-    pub payload: Vec<u8>,
-}
-
-/// Wire-format for commitment
-#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub struct Commitment {
-    /// A batch nonce for replay protection and ordering.
-    pub nonce: u64,
-    /// Total maximum gas that can be used by all messages in the commit.
-    /// Should be equal to sum of `max_gas`es of `messages`
-    pub total_max_gas: U256,
-    /// Messages passed through the channel in the current commit.
-    pub messages: Vec<Message>,
-}
+// We use U256 bitfield to represent message statuses, so
+// we can store only 256 messages in single commitment.
+pub const MAX_QUEUE_SIZE: usize = 256;
 
 type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
     <T as frame_system::Config>::AccountId,
@@ -62,10 +37,10 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use bridge_types::evm::*;
     use bridge_types::traits::AuxiliaryDigestHandler;
     use bridge_types::traits::MessageStatusNotifier;
     use bridge_types::traits::OutboundChannel;
-    use bridge_types::types::AdditionalEVMOutboundData;
     use bridge_types::types::AuxiliaryDigestItem;
     use bridge_types::types::MessageId;
     use bridge_types::types::MessageStatus;
@@ -81,17 +56,12 @@ pub mod pallet {
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        /// Prefix for offchain storage keys.
-        const INDEXING_PREFIX: &'static [u8];
-
-        type Hashing: Hash<Output = H256>;
-
         /// Max bytes in a message payload
-        type MaxMessagePayloadSize: Get<u64>;
+        type MaxMessagePayloadSize: Get<u32>;
 
         /// Max number of messages that can be queued and committed in one go for a given channel.
         /// Must be < 256
-        type MaxMessagesPerCommit: Get<u8>;
+        type MaxMessagesPerCommit: Get<u32>;
 
         /// Maximum gas limit for one message batch sent to Ethereum.
         type MaxTotalGasLimit: Get<u64>;
@@ -127,8 +97,13 @@ pub mod pallet {
     /// Messages waiting to be committed. To update the queue, use `append_message_queue` and `take_message_queue` methods
     /// (to keep correct value in [QueuesTotalGas]).
     #[pallet::storage]
-    pub(crate) type MessageQueues<T: Config> =
-        StorageMap<_, Identity, EVMChainId, Vec<Message>, ValueQuery>;
+    pub(crate) type MessageQueues<T: Config> = StorageMap<
+        _,
+        Identity,
+        EVMChainId,
+        BoundedVec<Message<T::MaxMessagePayloadSize>, T::MaxMessagesPerCommit>,
+        ValueQuery,
+    >;
 
     /// Total gas for each queue. Updated by mutating the queues with methods `append_message_queue` and `take_message_queue`.
     #[pallet::storage]
@@ -136,13 +111,23 @@ pub mod pallet {
         StorageMap<_, Identity, EVMChainId, U256, ValueQuery>;
 
     /// Add message to queue and accumulate total maximum gas value    
-    pub(crate) fn append_message_queue<T: Config>(network: EVMChainId, msg: Message) {
+    pub(crate) fn append_message_queue<T: Config>(
+        network: EVMChainId,
+        msg: Message<T::MaxMessagePayloadSize>,
+    ) -> DispatchResult {
         QueuesTotalGas::<T>::mutate(network, |sum| *sum = sum.saturating_add(msg.max_gas));
-        MessageQueues::<T>::append(network, msg);
+        MessageQueues::<T>::try_append(network, msg)
+            .map_err(|_| Error::<T>::QueueSizeLimitReached)?;
+        Ok(())
     }
 
     /// Take the queue together with accumulated total maximum gas value.
-    pub(crate) fn take_message_queue<T: Config>(network: EVMChainId) -> (Vec<Message>, U256) {
+    pub(crate) fn take_message_queue<T: Config>(
+        network: EVMChainId,
+    ) -> (
+        BoundedVec<Message<T::MaxMessagePayloadSize>, T::MaxMessagesPerCommit>,
+        U256,
+    ) {
         (
             MessageQueues::<T>::take(network),
             QueuesTotalGas::<T>::take(network),
@@ -232,8 +217,7 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         pub fn make_message_id(batch_nonce: u64, message_id: u64) -> H256 {
-            MessageId::outbound_batched(batch_nonce, message_id)
-                .using_encoded(|v| <T as Config>::Hashing::hash(v))
+            MessageId::outbound_batched(batch_nonce, message_id).hash()
         }
 
         fn commit(network_id: EVMChainId) -> Weight {
@@ -256,22 +240,25 @@ pub mod pallet {
                         );
                     }
 
-                    let commitment = Commitment {
-                        nonce: batch_nonce,
-                        total_max_gas,
-                        messages,
-                    };
+                    let average_payload_size = Self::average_payload_size(&messages);
+                    let messages_count = messages.len();
 
-                    let average_payload_size = Self::average_payload_size(&commitment.messages);
-                    let messages_count = commitment.messages.len();
-                    let commitment_hash = Self::make_commitment_hash(&commitment);
+                    let commitment =
+                        bridge_types::GenericCommitment::EVM(bridge_types::evm::Commitment {
+                            nonce: batch_nonce,
+                            total_max_gas,
+                            messages,
+                        });
+
+                    let commitment_hash = commitment.hash();
                     let digest_item = AuxiliaryDigestItem::Commitment(
                         GenericNetworkId::EVM(network_id),
                         commitment_hash.clone(),
                     );
                     T::AuxiliaryDigestHandler::add_item(digest_item);
 
-                    let key = Self::make_offchain_key(commitment_hash);
+                    let key =
+                        bridge_types::utils::make_offchain_key(network_id.into(), batch_nonce);
                     offchain_index::set(&*key, &commitment.encode());
 
                     <T as Config>::WeightInfo::on_initialize(
@@ -285,39 +272,11 @@ pub mod pallet {
             })
         }
 
-        fn make_commitment_hash(commitment: &Commitment) -> H256 {
-            // Batch(uint256,(address,uint64,uint256,uint256,bytes)[])
-            let messages: Vec<Token> = commitment
-                .messages
-                .iter()
-                .map(|message| {
-                    Token::Tuple(vec![
-                        Token::Address(message.target),
-                        Token::Uint(message.max_gas.into()),
-                        Token::Bytes(message.payload.clone()),
-                    ])
-                })
-                .collect();
-            let commitment: Vec<Token> = vec![
-                Token::Uint(commitment.nonce.into()),
-                Token::Uint(commitment.total_max_gas),
-                Token::Array(messages),
-            ];
-            // Structs are represented as tuples in ABI
-            // https://docs.soliditylang.org/en/v0.8.15/abi-spec.html#mapping-solidity-to-abi-types
-            let input = ethabi::encode(&vec![Token::Tuple(commitment)]);
-            <T as Config>::Hashing::hash(&input)
-        }
-
-        fn average_payload_size(messages: &[Message]) -> usize {
+        fn average_payload_size(messages: &[Message<T::MaxMessagePayloadSize>]) -> usize {
             let sum: usize = messages.iter().fold(0, |acc, x| acc + x.payload.len());
             // We overestimate message payload size rather than underestimate.
             // So add 1 here to account for integer division truncation.
             (sum / messages.len()).saturating_add(1)
-        }
-
-        pub fn make_offchain_key(hash: H256) -> Vec<u8> {
-            (T::INDEXING_PREFIX, hash).encode()
         }
     }
 
@@ -360,9 +319,10 @@ pub mod pallet {
                 current_total_gas.saturating_add(max_gas) <= T::MaxTotalGasLimit::get().into(),
                 Error::<T>::MaxGasTooBig,
             );
+            let message_queue_len = MessageQueues::<T>::decode_len(network_id).unwrap_or(0);
             ensure!(
-                MessageQueues::<T>::decode_len(network_id).unwrap_or(0)
-                    < T::MaxMessagesPerCommit::get() as usize,
+                message_queue_len < T::MaxMessagesPerCommit::get() as usize
+                    && message_queue_len < MAX_QUEUE_SIZE,
                 Error::<T>::QueueSizeLimitReached,
             );
             ensure!(
@@ -397,12 +357,14 @@ pub mod pallet {
             append_message_queue::<T>(
                 network_id,
                 Message {
-                    network_id: network_id,
                     target,
                     max_gas,
-                    payload: payload.to_vec(),
+                    payload: payload
+                        .to_vec()
+                        .try_into()
+                        .map_err(|_| Error::<T>::PayloadTooLarge)?,
                 },
-            );
+            )?;
             Self::deposit_event(Event::MessageAccepted(network_id, batch_nonce, message_id));
             Ok(Self::make_message_id(batch_nonce, message_id))
         }

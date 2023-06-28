@@ -56,10 +56,7 @@ use crate::impls::{
     DispatchableSubstrateBridgeCall, EVMBridgeCallFilter, SubstrateBridgeCallFilter,
 };
 #[cfg(feature = "wip")]
-use bridge_types::{
-    types::{AdditionalEVMInboundData, LeafExtraData},
-    U256,
-};
+use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 #[cfg(feature = "wip")]
@@ -2087,12 +2084,12 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
 }
 
 #[cfg(feature = "wip")]
-use bridge_types::{EVMChainId, SubNetworkId, CHANNEL_INDEXING_PREFIX, H256};
+use bridge_types::{EVMChainId, SubNetworkId, H256};
 
 #[cfg(feature = "wip")] // Bridges
 parameter_types! {
-    pub const BridgeMaxMessagePayloadSize: u64 = 256;
-    pub const BridgeMaxMessagesPerCommit: u8 = 20;
+    pub const BridgeMaxMessagePayloadSize: u32 = 256;
+    pub const BridgeMaxMessagesPerCommit: u32 = 20;
     pub const BridgeMaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
@@ -2131,9 +2128,7 @@ impl bridge_inbound_channel::Config for Runtime {
 
 #[cfg(feature = "wip")] // EVM bridge
 impl bridge_outbound_channel::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type MaxTotalGasLimit = BridgeMaxTotalGasLimit;
@@ -2246,6 +2241,8 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type MessageDispatch = SubstrateDispatch;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
+    type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
+    type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type WeightInfo = ();
 }
 
@@ -2287,9 +2284,7 @@ impl bridge_types::traits::TimepointProvider for GenericTimepointProvider {
 
 #[cfg(feature = "wip")] // Substrate bridge
 impl substrate_bridge_channel::outbound::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MessageStatusNotifier = BridgeProxy;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;

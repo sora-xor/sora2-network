@@ -385,26 +385,26 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
     fn lock_asset(
         network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
-        who: T::AccountId,
-        asset_id: Self::AssetId,
-        amount: Self::Balance,
+        who: &T::AccountId,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
     ) -> DispatchResult {
         let mut locked_amount = LockedAssets::<T>::get(network_id, asset_id);
         match asset_kind {
             bridge_types::types::AssetKind::Thischain => {
                 locked_amount = locked_amount
-                    .checked_add(amount)
+                    .checked_add(*amount)
                     .ok_or(Error::<T>::Overflow)?;
                 let bridge_account = Self::bridge_tech_account(network_id);
-                technical::Pallet::<T>::transfer_in(&asset_id, &who, &bridge_account, amount)?;
+                technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
             }
             bridge_types::types::AssetKind::Sidechain => {
                 locked_amount = locked_amount
-                    .checked_sub(amount)
+                    .checked_sub(*amount)
                     .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
                 let bridge_account = Self::bridge_account(network_id)?;
                 technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
-                assets::Pallet::<T>::burn_from(&asset_id, &bridge_account, &who, amount)?;
+                assets::Pallet::<T>::burn_from(&asset_id, &bridge_account, who, *amount)?;
             }
         }
         LockedAssets::<T>::insert(network_id, asset_id, locked_amount);
@@ -414,26 +414,26 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
     fn unlock_asset(
         network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
-        who: T::AccountId,
-        asset_id: Self::AssetId,
-        amount: Self::Balance,
+        who: &T::AccountId,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
     ) -> DispatchResult {
         let mut locked_amount = LockedAssets::<T>::get(network_id, asset_id);
         match asset_kind {
             bridge_types::types::AssetKind::Thischain => {
                 locked_amount = locked_amount
-                    .checked_sub(amount)
+                    .checked_sub(*amount)
                     .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
                 let bridge_account = Self::bridge_tech_account(network_id);
-                technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, &who, amount)?;
+                technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
             }
             bridge_types::types::AssetKind::Sidechain => {
                 locked_amount = locked_amount
-                    .checked_add(amount)
+                    .checked_add(*amount)
                     .ok_or(Error::<T>::Overflow)?;
                 let bridge_account = Self::bridge_account(network_id)?;
                 technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
-                assets::Pallet::<T>::mint_to(&asset_id, &bridge_account, &who, amount)?;
+                assets::Pallet::<T>::mint_to(&asset_id, &bridge_account, who, *amount)?;
             }
         }
         LockedAssets::<T>::insert(network_id, asset_id, locked_amount);

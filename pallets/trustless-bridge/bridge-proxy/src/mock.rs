@@ -31,9 +31,10 @@
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
+use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::traits::TimepointProvider;
 use bridge_types::traits::{AppRegistry, BalancePrecisionConverter};
-use bridge_types::types::{AdditionalEVMInboundData, AssetKind, CallOriginOutput, MessageId};
+use bridge_types::types::{AssetKind, CallOriginOutput, MessageId};
 use bridge_types::H160;
 use bridge_types::H256;
 use bridge_types::{EVMChainId, U256};
@@ -85,7 +86,6 @@ pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 pub const BASE_EVM_NETWORK_ID: EVMChainId = EVMChainId::zero();
-const INDEXING_PREFIX: &'static [u8] = b"commitment";
 pub const BUY_BACK_ACCOUNT: AccountId = AccountId32::new([23u8; 32]);
 
 parameter_types! {
@@ -217,8 +217,8 @@ impl dispatch::Config for Test {
 }
 
 parameter_types! {
-    pub const MaxMessagePayloadSize: u64 = 2048;
-    pub const MaxMessagesPerCommit: u8 = 3;
+    pub const MaxMessagePayloadSize: u32 = 2048;
+    pub const MaxMessagesPerCommit: u32 = 3;
     pub const Decimals: u32 = 12;
 }
 pub struct FeeConverter;
@@ -235,9 +235,7 @@ parameter_types! {
 }
 
 impl bridge_outbound_channel::Config for Test {
-    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;

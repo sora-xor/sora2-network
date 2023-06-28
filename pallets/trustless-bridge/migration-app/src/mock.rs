@@ -3,8 +3,9 @@ use sp_core::U256;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
+use bridge_types::evm::{AdditionalEVMInboundData, AdditionalEVMOutboundData};
 use bridge_types::traits::{BalancePrecisionConverter, BridgeAssetRegistry, OutboundChannel};
-use bridge_types::types::{AdditionalEVMInboundData, AdditionalEVMOutboundData, AssetKind};
+use bridge_types::types::AssetKind;
 use bridge_types::H160;
 use bridge_types::H256;
 use bridge_types::{EVMChainId, GenericNetworkId};

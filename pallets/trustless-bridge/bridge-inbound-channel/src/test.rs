@@ -14,8 +14,8 @@ use sp_runtime::{MultiSignature, Perbill};
 use sp_std::convert::From;
 use sp_std::marker::PhantomData;
 
+use bridge_types::evm::Proof;
 use bridge_types::traits::{AppRegistry, MessageDispatch, OutboundChannel};
-use bridge_types::types::Proof;
 use bridge_types::{GenericNetworkId, GenericTimepoint, Log, H160, H256, U256};
 
 use common::mock::ExistentialDeposits;

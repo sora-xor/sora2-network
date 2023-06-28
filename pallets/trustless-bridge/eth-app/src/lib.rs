@@ -18,6 +18,7 @@
 
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
+use bridge_types::types::AssetKind;
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
@@ -49,15 +50,13 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::substrate::MainnetAssetId;
+    use bridge_types::evm::*;
     use bridge_types::traits::{
         BalancePrecisionConverter, BridgeApp, BridgeAssetLocker, BridgeAssetRegistry,
         MessageStatusNotifier,
     };
-    use bridge_types::types::{
-        AdditionalEVMInboundData, AdditionalEVMOutboundData, AssetKind, BridgeAppInfo,
-        BridgeAssetInfo, CallOriginOutput, EVMAppInfo, EVMAppKind, EVMAssetInfo, MessageStatus,
-    };
+    use bridge_types::types::{BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, MessageStatus};
+    use bridge_types::MainnetAssetId;
     use bridge_types::{GenericAccount, GenericNetworkId, H256};
     use bridge_types::{H160, U256};
     use frame_support::pallet_prelude::*;
@@ -216,9 +215,9 @@ pub mod pallet {
             T::BridgeAssetLocker::unlock_asset(
                 network_id.into(),
                 AssetKind::Sidechain,
-                recipient.clone(),
-                asset_id.clone(),
-                thischain_amount.clone(),
+                &recipient,
+                &asset_id,
+                &thischain_amount,
             )?;
             T::MessageStatusNotifier::inbound_request(
                 GenericNetworkId::EVM(network_id),
@@ -311,9 +310,9 @@ pub mod pallet {
             T::BridgeAssetLocker::lock_asset(
                 network_id.into(),
                 AssetKind::Sidechain,
-                who.clone(),
-                asset_id.clone(),
-                amount.clone(),
+                &who,
+                &asset_id,
+                &amount,
             )?;
 
             let message = OutboundPayload::<T> {
@@ -360,9 +359,9 @@ pub mod pallet {
             T::BridgeAssetLocker::unlock_asset(
                 network_id.into(),
                 AssetKind::Sidechain,
-                recipient.clone(),
-                asset_id.clone(),
-                amount.clone(),
+                &recipient,
+                &asset_id,
+                &amount,
             )?;
 
             Self::deposit_event(Event::Refunded(network_id, recipient, amount));

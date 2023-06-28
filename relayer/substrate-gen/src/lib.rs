@@ -61,6 +61,10 @@ pub enum BridgeSignatureVersion {
     V2,
 }
 
+pub type MaxU32 = sp_runtime::traits::ConstU32<{ core::u32::MAX }>;
+pub type UnboundedBridgeMessage = bridge_types::substrate::BridgeMessage<MaxU32>;
+pub type UnboundedGenericCommitment = bridge_types::GenericCommitment<MaxU32, MaxU32>;
+
 #[subxt::subxt(
     runtime_metadata_path = "src/bytes/metadata.scale",
     derive_for_all_types = "Clone"
@@ -72,6 +76,10 @@ pub mod runtime {
     use crate::BridgeSignatureVersion;
     #[subxt(substitute_type = "eth_bridge::offchain::SignatureParams")]
     use crate::SignatureParams;
+    #[subxt(substitute_type = "bridge_types::substrate::BridgeMessage")]
+    use crate::UnboundedBridgeMessage;
+    #[subxt(substitute_type = "bridge_types::GenericCommitment")]
+    use crate::UnboundedGenericCommitment;
     #[subxt(substitute_type = "beefy_light_client::SubstrateBridgeMessageProof")]
     use ::beefy_light_client::SubstrateBridgeMessageProof;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
@@ -86,12 +94,12 @@ pub mod runtime {
     use ::bridge_common::simplified_proof::Proof;
     #[subxt(substitute_type = "bridge_types::ethashproof::DoubleNodeWithMerkleProof")]
     use ::bridge_types::ethashproof::DoubleNodeWithMerkleProof;
+    #[subxt(substitute_type = "bridge_types::evm::Proof")]
+    use ::bridge_types::evm::Proof;
     #[subxt(substitute_type = "bridge_types::log::Log")]
     use ::bridge_types::log::Log;
     #[subxt(substitute_type = "bridge_types::network_config::NetworkConfig")]
     use ::bridge_types::network_config::NetworkConfig;
-    #[subxt(substitute_type = "bridge_types::substrate::BridgeMessage")]
-    use ::bridge_types::substrate::BridgeMessage;
     #[subxt(substitute_type = "bridge_types::types::AssetKind")]
     use ::bridge_types::types::AssetKind;
     #[subxt(substitute_type = "bridge_types::types::AuxiliaryDigest")]
@@ -102,8 +110,6 @@ pub mod runtime {
     use ::bridge_types::types::Message;
     #[subxt(substitute_type = "bridge_types::types::ParachainMessage")]
     use ::bridge_types::types::ParachainMessage;
-    #[subxt(substitute_type = "bridge_types::types::Proof")]
-    use ::bridge_types::types::Proof;
     #[subxt(substitute_type = "bridge_types::GenericNetworkId")]
     use ::bridge_types::GenericNetworkId;
     #[subxt(substitute_type = "bridge_types::header::Header")]
