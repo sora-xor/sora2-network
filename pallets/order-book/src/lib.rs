@@ -76,8 +76,8 @@ pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer, ExpirationScheduler};
 pub use types::{
-    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderBookStatus,
-    OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
+    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent, OrderBookId,
+    OrderBookStatus, OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -289,6 +289,8 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             owner_id: T::AccountId,
+            direction: PriceVariant,
+            amount: OrderAmount,
         },
 
         /// User tried to place the limit order out of the spread.
@@ -297,9 +299,9 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             owner_id: T::AccountId,
+            market_order_direction: PriceVariant,
             market_order_input: OrderAmount,
             limit_order_id: T::OrderId,
-            limit_order_input: OrderAmount,
         },
 
         /// User canceled their limit order
@@ -719,41 +721,13 @@ pub mod pallet {
             );
 
             let mut data = CacheDataLayer::<T>::new();
-            let (market_input, deal_input) =
-                order_book.place_limit_order::<Self, Self, Self>(order, &mut data)?;
+            let events = order_book.place_limit_order::<Self, Self, Self>(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
 
-            match (market_input, deal_input) {
-                (None, Some(..)) => {
-                    Self::deposit_event(Event::<T>::LimitOrderConvertedToMarketOrder {
-                        order_book_id,
-                        dex_id,
-                        owner_id: who,
-                    })
-                }
-                (Some(..), None) => Self::deposit_event(Event::<T>::LimitOrderPlaced {
-                    order_book_id,
-                    dex_id,
-                    order_id,
-                    owner_id: who,
-                }),
-                (Some(limit_order_input), Some(market_order_input)) => {
-                    Self::deposit_event(Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
-                        order_book_id,
-                        dex_id,
-                        owner_id: who,
-                        market_order_input,
-                        limit_order_id: order_id,
-                        limit_order_input,
-                    })
-                }
-                _ => {
-                    // should never happen
-                    return Err(Error::<T>::InvalidOrderAmount.into());
-                }
-            }
+            Self::emit_events(dex_id, order_book_id, events);
+
             Ok(().into())
         }
 
@@ -774,14 +748,9 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
 
-            order_book.cancel_limit_order::<Self, Self, Self>(order, &mut data)?;
+            let events = order_book.cancel_limit_order::<Self, Self, Self>(order, &mut data)?;
             data.commit();
-            Self::deposit_event(Event::<T>::LimitOrderCanceled {
-                order_book_id,
-                dex_id,
-                order_id,
-                owner_id: who,
-            });
+            Self::emit_events(dex_id, order_book_id, events);
             Ok(().into())
         }
     }
@@ -888,6 +857,92 @@ impl<T: Config> Pallet<T> {
 
         Some(order_book_id)
     }
+
+    fn emit_events(
+        dex_id: T::DEXId,
+        order_book_id: OrderBookId<AssetIdOf<T>>,
+        events: Vec<OrderBookEvent<T::AccountId, T::OrderId>>,
+    ) {
+        for order_book_event in events {
+            let event = match order_book_event {
+                OrderBookEvent::LimitOrderPlaced { order_id, owner_id } => {
+                    Event::<T>::LimitOrderPlaced {
+                        order_book_id,
+                        dex_id,
+                        order_id,
+                        owner_id,
+                    }
+                }
+
+                OrderBookEvent::LimitOrderConvertedToMarketOrder {
+                    owner_id,
+                    direction,
+                    amount,
+                } => Event::<T>::LimitOrderConvertedToMarketOrder {
+                    order_book_id,
+                    dex_id,
+                    owner_id,
+                    direction,
+                    amount,
+                },
+
+                OrderBookEvent::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+                    owner_id,
+                    market_order_direction,
+                    market_order_input,
+                    limit_order_id,
+                } => Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+                    order_book_id,
+                    dex_id,
+                    owner_id,
+                    market_order_direction,
+                    market_order_input,
+                    limit_order_id,
+                },
+
+                OrderBookEvent::LimitOrderCanceled { order_id, owner_id } => {
+                    Event::<T>::LimitOrderCanceled {
+                        order_book_id,
+                        dex_id,
+                        order_id,
+                        owner_id,
+                    }
+                }
+
+                OrderBookEvent::LimitOrderExecuted {
+                    order_id,
+                    owner_id,
+                    side,
+                    amount,
+                } => Event::<T>::LimitOrderExecuted {
+                    order_book_id,
+                    dex_id,
+                    order_id,
+                    owner_id,
+                    side,
+                    amount,
+                },
+
+                OrderBookEvent::MarketOrderExecuted {
+                    owner_id,
+                    direction,
+                    amount,
+                    average_price,
+                    to,
+                } => Event::<T>::MarketOrderExecuted {
+                    order_book_id,
+                    dex_id,
+                    owner_id,
+                    direction,
+                    amount,
+                    average_price,
+                    to,
+                },
+            };
+
+            Self::deposit_event(event);
+        }
+    }
 }
 
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
@@ -993,18 +1048,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let market_order =
             MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to.clone());
 
-        let (input_amount, output_amount) =
+        let (input_amount, output_amount, events) =
             order_book.execute_market_order::<Self, Self, Self>(market_order, &mut data)?;
-
-        let average_price = if input_amount.is_quote() {
-            (FixedWrapper::from(*input_amount.value()) / FixedWrapper::from(*output_amount.value()))
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?
-        } else {
-            (FixedWrapper::from(*output_amount.value()) / FixedWrapper::from(*input_amount.value()))
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?
-        };
 
         let fee = 0; // todo (m.tagirov)
 
@@ -1027,15 +1072,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         data.commit();
 
-        Self::deposit_event(Event::<T>::MarketOrderExecuted {
-            order_book_id,
-            dex_id: *dex_id,
-            owner_id: sender.clone(),
-            direction,
-            amount: OrderAmount::Base(amount),
-            average_price,
-            to,
-        });
+        Self::emit_events(order_book.dex_id, order_book_id, events);
 
         Ok((result, Self::exchange_weight()))
     }

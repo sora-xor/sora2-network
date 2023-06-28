@@ -223,6 +223,9 @@ impl<AssetId: PartialEq> DealInfo<AssetId> {
     }
 }
 
+/// Instructions about payments.
+/// It contains lists of which liquidity should be locked in the tech account
+/// and which liquidity should be unlocked from the tech account to users.
 #[derive(Eq, PartialEq, Clone, RuntimeDebug)]
 pub struct Payment<AssetId, AccountId, DEXId> {
     pub dex_id: DEXId,
@@ -327,7 +330,7 @@ where
 }
 
 #[derive(Eq, PartialEq, Clone, RuntimeDebug)]
-pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder, BlockNumber> {
+pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
     // Info fields
     /// The amount of the input asset for the exchange deal
     pub deal_input: Option<OrderAmount>,
@@ -342,16 +345,24 @@ pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder, BlockNum
     pub market_output: Option<OrderAmount>,
 
     // Fields to apply
-    pub to_add: BTreeMap<OrderId, LimitOrder>,
-    pub to_update: BTreeMap<OrderId, OrderVolume>,
-    /// order id and number of block it is scheduled to expire at
-    pub to_delete: BTreeMap<OrderId, BlockNumber>,
+    /// Limit orders that should be placed in the order book
+    pub to_place: BTreeMap<OrderId, LimitOrder>,
+
+    /// Limit orders that should be partially executed and executed amount
+    pub to_part_execute: BTreeMap<OrderId, (LimitOrder, OrderAmount)>,
+
+    /// Limit orders that should be fully executed
+    pub to_full_execute: BTreeMap<OrderId, LimitOrder>,
+
+    /// Limit orders that should be cancelled
+    pub to_cancel: BTreeMap<OrderId, LimitOrder>,
+
     pub payment: Payment<AssetId, AccountId, DEXId>,
     pub ignore_unschedule_error: bool,
 }
 
-impl<AccountId, AssetId, DEXId, OrderId, LimitOrder, BlockNumber>
-    MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder, BlockNumber>
+impl<AccountId, AssetId, DEXId, OrderId, LimitOrder>
+    MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder>
 where
     AssetId: Copy + PartialEq + Ord,
     AccountId: Ord + Clone,
@@ -364,9 +375,10 @@ where
             deal_output: None,
             market_input: None,
             market_output: None,
-            to_add: BTreeMap::new(),
-            to_update: BTreeMap::new(),
-            to_delete: BTreeMap::new(),
+            to_place: BTreeMap::new(),
+            to_part_execute: BTreeMap::new(),
+            to_full_execute: BTreeMap::new(),
+            to_cancel: BTreeMap::new(),
             payment: Payment::new(dex_id, order_book_id),
             ignore_unschedule_error: false,
         }
@@ -390,9 +402,10 @@ where
         self.market_input = join(self.market_input, other.market_input)?;
         self.market_output = join(self.market_output, other.market_output)?;
 
-        self.to_add.append(&mut other.to_add);
-        self.to_update.append(&mut other.to_update);
-        self.to_delete.append(&mut other.to_delete);
+        self.to_place.append(&mut other.to_place);
+        self.to_part_execute.append(&mut other.to_part_execute);
+        self.to_full_execute.append(&mut other.to_full_execute);
+        self.to_cancel.append(&mut other.to_cancel);
 
         self.payment.merge(&other.payment)?;
 
@@ -401,4 +414,44 @@ where
 
         Ok(())
     }
+}
+
+pub enum OrderBookEvent<AccountId, OrderId> {
+    LimitOrderPlaced {
+        order_id: OrderId,
+        owner_id: AccountId,
+    },
+
+    LimitOrderConvertedToMarketOrder {
+        owner_id: AccountId,
+        direction: PriceVariant,
+        amount: OrderAmount,
+    },
+
+    LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+        owner_id: AccountId,
+        market_order_direction: PriceVariant,
+        market_order_input: OrderAmount,
+        limit_order_id: OrderId,
+    },
+
+    LimitOrderCanceled {
+        order_id: OrderId,
+        owner_id: AccountId,
+    },
+
+    LimitOrderExecuted {
+        order_id: OrderId,
+        owner_id: AccountId,
+        side: PriceVariant,
+        amount: OrderAmount,
+    },
+
+    MarketOrderExecuted {
+        owner_id: AccountId,
+        direction: PriceVariant,
+        amount: OrderAmount,
+        average_price: OrderVolume,
+        to: Option<AccountId>,
+    },
 }

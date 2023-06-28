@@ -725,10 +725,10 @@ fn should_fail_market_change_merge() {
         deal_output: None,
         market_input: None,
         market_output: None,
-        to_add: BTreeMap::from([(
-            3,
+        to_place: BTreeMap::from([(
+            4,
             LimitOrder::<Runtime>::new(
-                3,
+                4,
                 alice(),
                 PriceVariant::Buy,
                 balance!(10),
@@ -738,8 +738,9 @@ fn should_fail_market_change_merge() {
                 100,
             ),
         )]),
-        to_update: BTreeMap::from([(2, balance!(20))]),
-        to_delete: BTreeMap::from([(1, expiration_block)]),
+        to_part_execute: BTreeMap::from([(3, balance!(20))]),
+        to_full_execute: BTreeMap::from([(2, (balance!(20), expiration_block))]),
+        to_cancel: BTreeMap::from([(1, expiration_block)]),
         payment,
         ignore_unschedule_error: false,
     };
@@ -808,14 +809,14 @@ fn check_market_change_merge() {
         to_unlock: BTreeMap::new(),
     };
 
-    let add_id1 = 301;
-    let add_id2 = 302;
-    let add_id3 = 303;
-    let add_id4 = 304;
-    let add_id5 = 305;
+    let place_id1 = 301;
+    let place_id2 = 302;
+    let place_id3 = 303;
+    let place_id4 = 304;
+    let place_id5 = 305;
 
     let limit_order1 = LimitOrder::<Runtime>::new(
-        add_id1,
+        place_id1,
         alice(),
         PriceVariant::Buy,
         balance!(10),
@@ -826,7 +827,7 @@ fn check_market_change_merge() {
     );
 
     let limit_order1_changed = LimitOrder::<Runtime>::new(
-        add_id1,
+        place_id1,
         alice(),
         PriceVariant::Buy,
         balance!(9),
@@ -837,7 +838,7 @@ fn check_market_change_merge() {
     );
 
     let limit_order2 = LimitOrder::<Runtime>::new(
-        add_id2,
+        place_id2,
         bob(),
         PriceVariant::Sell,
         balance!(15),
@@ -848,7 +849,7 @@ fn check_market_change_merge() {
     );
 
     let limit_order3 = LimitOrder::<Runtime>::new(
-        add_id3,
+        place_id3,
         charlie(),
         PriceVariant::Buy,
         balance!(11),
@@ -859,7 +860,7 @@ fn check_market_change_merge() {
     );
 
     let limit_order4 = LimitOrder::<Runtime>::new(
-        add_id4,
+        place_id4,
         dave(),
         PriceVariant::Sell,
         balance!(16),
@@ -870,7 +871,7 @@ fn check_market_change_merge() {
     );
 
     let limit_order5 = LimitOrder::<Runtime>::new(
-        add_id5,
+        place_id5,
         alice(),
         PriceVariant::Buy,
         balance!(12),
@@ -880,37 +881,48 @@ fn check_market_change_merge() {
         100,
     );
 
-    let update_id1 = 201;
-    let update_id2 = 202;
-    let update_id3 = 203;
-    let update_id4 = 204;
-    let update_id5 = 205;
+    let part_exec_id1 = 301;
+    let part_exec_id2 = 302;
+    let part_exec_id3 = 303;
+    let part_exec_id4 = 304;
+    let part_exec_id5 = 305;
 
-    let delete_id1 = 101;
-    let delete_id2 = 102;
-    let delete_id3 = 103;
-    let delete_id4 = 104;
-    let delete_id5 = 105;
+    let full_exec_id1 = 201;
+    let full_exec_id2 = 202;
+    let full_exec_id3 = 203;
+    let full_exec_id4 = 204;
+    let full_exec_id5 = 205;
+
+    let cancel_id1 = 101;
+    let cancel_id2 = 102;
+    let cancel_id3 = 103;
+    let cancel_id4 = 104;
+    let cancel_id5 = 105;
 
     let origin = MarketChange {
         deal_input: Some(OrderAmount::Base(balance!(1000))),
         deal_output: Some(OrderAmount::Quote(balance!(2000))),
         market_input: Some(OrderAmount::Base(balance!(3000))),
         market_output: Some(OrderAmount::Quote(balance!(4000))),
-        to_add: BTreeMap::from([
-            (add_id1, limit_order1.clone()),
-            (add_id2, limit_order2.clone()),
-            (add_id3, limit_order3.clone()),
+        to_place: BTreeMap::from([
+            (place_id1, limit_order1.clone()),
+            (place_id2, limit_order2.clone()),
+            (place_id3, limit_order3.clone()),
         ]),
-        to_update: BTreeMap::from([
-            (update_id1, balance!(20)),
-            (update_id2, balance!(30)),
-            (update_id3, balance!(40)),
+        to_part_execute: BTreeMap::from([
+            (part_exec_id1, balance!(20)),
+            (part_exec_id2, balance!(30)),
+            (part_exec_id3, balance!(40)),
         ]),
-        to_delete: BTreeMap::from([
-            (delete_id1, expiration_block),
-            (delete_id2, expiration_block),
-            (delete_id3, expiration_block),
+        to_full_execute: BTreeMap::from([
+            (full_exec_id1, (balance!(20), expiration_block)),
+            (full_exec_id2, (balance!(30), expiration_block)),
+            (full_exec_id3, (balance!(40), expiration_block)),
+        ]),
+        to_cancel: BTreeMap::from([
+            (cancel_id1, expiration_block),
+            (cancel_id2, expiration_block),
+            (cancel_id3, expiration_block),
         ]),
         payment: payment.clone(),
         ignore_unschedule_error: false,
@@ -921,14 +933,21 @@ fn check_market_change_merge() {
         deal_output: None,
         market_input: None,
         market_output: None,
-        to_add: BTreeMap::from([
-            (add_id4, limit_order4.clone()),
-            (add_id5, limit_order5.clone()),
+        to_place: BTreeMap::from([
+            (place_id4, limit_order4.clone()),
+            (place_id5, limit_order5.clone()),
         ]),
-        to_update: BTreeMap::from([(update_id4, balance!(50)), (update_id5, balance!(60))]),
-        to_delete: BTreeMap::from([
-            (delete_id4, expiration_block),
-            (delete_id5, expiration_block),
+        to_part_execute: BTreeMap::from([
+            (part_exec_id4, balance!(50)),
+            (part_exec_id5, balance!(60)),
+        ]),
+        to_full_execute: BTreeMap::from([
+            (full_exec_id4, (balance!(50), expiration_block)),
+            (full_exec_id5, (balance!(60), expiration_block)),
+        ]),
+        to_cancel: BTreeMap::from([
+            (cancel_id4, expiration_block),
+            (cancel_id5, expiration_block),
         ]),
         payment: empty_payment.clone(),
         ignore_unschedule_error: false,
@@ -943,26 +962,33 @@ fn check_market_change_merge() {
             deal_output: Some(OrderAmount::Quote(balance!(2000))),
             market_input: Some(OrderAmount::Base(balance!(3000))),
             market_output: Some(OrderAmount::Quote(balance!(4000))),
-            to_add: BTreeMap::from([
-                (add_id1, limit_order1.clone()),
-                (add_id2, limit_order2.clone()),
-                (add_id3, limit_order3.clone()),
-                (add_id4, limit_order4.clone()),
-                (add_id5, limit_order5.clone()),
+            to_place: BTreeMap::from([
+                (place_id1, limit_order1.clone()),
+                (place_id2, limit_order2.clone()),
+                (place_id3, limit_order3.clone()),
+                (place_id4, limit_order4.clone()),
+                (place_id5, limit_order5.clone()),
             ]),
-            to_update: BTreeMap::from([
-                (update_id1, balance!(20)),
-                (update_id2, balance!(30)),
-                (update_id3, balance!(40)),
-                (update_id4, balance!(50)),
-                (update_id5, balance!(60))
+            to_part_execute: BTreeMap::from([
+                (part_exec_id1, balance!(20)),
+                (part_exec_id2, balance!(30)),
+                (part_exec_id3, balance!(40)),
+                (part_exec_id4, balance!(50)),
+                (part_exec_id5, balance!(60))
             ]),
-            to_delete: BTreeMap::from([
-                (delete_id1, expiration_block),
-                (delete_id2, expiration_block),
-                (delete_id3, expiration_block),
-                (delete_id4, expiration_block),
-                (delete_id5, expiration_block)
+            to_full_execute: BTreeMap::from([
+                (full_exec_id1, (balance!(20), expiration_block)),
+                (full_exec_id2, (balance!(30), expiration_block)),
+                (full_exec_id3, (balance!(40), expiration_block)),
+                (full_exec_id4, (balance!(50), expiration_block)),
+                (full_exec_id5, (balance!(60), expiration_block))
+            ]),
+            to_cancel: BTreeMap::from([
+                (cancel_id1, expiration_block),
+                (cancel_id2, expiration_block),
+                (cancel_id3, expiration_block),
+                (cancel_id4, expiration_block),
+                (cancel_id5, expiration_block)
             ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
@@ -974,20 +1000,25 @@ fn check_market_change_merge() {
         deal_output: Some(OrderAmount::Quote(balance!(8000))),
         market_input: None,
         market_output: None,
-        to_add: BTreeMap::from([
-            (add_id1, limit_order1_changed.clone()),
-            (add_id2, limit_order2.clone()),
-            (add_id5, limit_order5.clone()),
+        to_place: BTreeMap::from([
+            (place_id1, limit_order1_changed.clone()),
+            (place_id2, limit_order2.clone()),
+            (place_id5, limit_order5.clone()),
         ]),
-        to_update: BTreeMap::from([
-            (update_id1, balance!(120)),
-            (update_id2, balance!(30)),
-            (update_id5, balance!(60)),
+        to_part_execute: BTreeMap::from([
+            (part_exec_id1, balance!(120)),
+            (part_exec_id2, balance!(30)),
+            (part_exec_id5, balance!(60)),
         ]),
-        to_delete: BTreeMap::from([
-            (delete_id1, expiration_block),
-            (delete_id2, expiration_block),
-            (delete_id5, expiration_block),
+        to_full_execute: BTreeMap::from([
+            (full_exec_id1, (balance!(120), expiration_block)),
+            (full_exec_id2, (balance!(30), expiration_block)),
+            (full_exec_id5, (balance!(60), expiration_block)),
+        ]),
+        to_cancel: BTreeMap::from([
+            (cancel_id1, expiration_block),
+            (cancel_id2, expiration_block),
+            (cancel_id5, expiration_block),
         ]),
         payment: empty_payment.clone(),
         ignore_unschedule_error: false,
@@ -1002,23 +1033,29 @@ fn check_market_change_merge() {
             deal_output: Some(OrderAmount::Quote(balance!(10000))),
             market_input: Some(OrderAmount::Base(balance!(3000))),
             market_output: Some(OrderAmount::Quote(balance!(4000))),
-            to_add: BTreeMap::from([
-                (add_id1, limit_order1_changed.clone()),
-                (add_id2, limit_order2.clone()),
-                (add_id3, limit_order3.clone()),
-                (add_id5, limit_order5.clone()),
+            to_place: BTreeMap::from([
+                (place_id1, limit_order1_changed.clone()),
+                (place_id2, limit_order2.clone()),
+                (place_id3, limit_order3.clone()),
+                (place_id5, limit_order5.clone()),
             ]),
-            to_update: BTreeMap::from([
-                (update_id1, balance!(120)),
-                (update_id2, balance!(30)),
-                (update_id3, balance!(40)),
-                (update_id5, balance!(60))
+            to_part_execute: BTreeMap::from([
+                (part_exec_id1, balance!(120)),
+                (part_exec_id2, balance!(30)),
+                (part_exec_id3, balance!(40)),
+                (part_exec_id5, balance!(60))
             ]),
-            to_delete: BTreeMap::from([
-                (delete_id1, expiration_block),
-                (delete_id2, expiration_block),
-                (delete_id3, expiration_block),
-                (delete_id5, expiration_block)
+            to_full_execute: BTreeMap::from([
+                (full_exec_id1, (balance!(120), expiration_block)),
+                (full_exec_id2, (balance!(30), expiration_block)),
+                (full_exec_id3, (balance!(40), expiration_block)),
+                (full_exec_id5, (balance!(60), expiration_block))
+            ]),
+            to_cancel: BTreeMap::from([
+                (cancel_id1, expiration_block),
+                (cancel_id2, expiration_block),
+                (cancel_id3, expiration_block),
+                (cancel_id5, expiration_block)
             ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
@@ -1030,20 +1067,25 @@ fn check_market_change_merge() {
         deal_output: Some(OrderAmount::Quote(balance!(2000))),
         market_input: Some(OrderAmount::Base(balance!(3000))),
         market_output: Some(OrderAmount::Quote(balance!(4000))),
-        to_add: BTreeMap::from([
-            (add_id1, limit_order1.clone()),
-            (add_id2, limit_order2.clone()),
-            (add_id3, limit_order3.clone()),
+        to_place: BTreeMap::from([
+            (place_id1, limit_order1.clone()),
+            (place_id2, limit_order2.clone()),
+            (place_id3, limit_order3.clone()),
         ]),
-        to_update: BTreeMap::from([
-            (update_id1, balance!(20)),
-            (update_id2, balance!(30)),
-            (update_id3, balance!(40)),
+        to_part_execute: BTreeMap::from([
+            (part_exec_id1, balance!(20)),
+            (part_exec_id2, balance!(30)),
+            (part_exec_id3, balance!(40)),
         ]),
-        to_delete: BTreeMap::from([
-            (delete_id1, expiration_block),
-            (delete_id2, expiration_block),
-            (delete_id3, expiration_block),
+        to_full_execute: BTreeMap::from([
+            (full_exec_id1, (balance!(20), expiration_block)),
+            (full_exec_id2, (balance!(30), expiration_block)),
+            (full_exec_id3, (balance!(40), expiration_block)),
+        ]),
+        to_cancel: BTreeMap::from([
+            (cancel_id1, expiration_block),
+            (cancel_id2, expiration_block),
+            (cancel_id3, expiration_block),
         ]),
         payment: empty_payment.clone(),
         ignore_unschedule_error: false,
@@ -1058,20 +1100,25 @@ fn check_market_change_merge() {
             deal_output: Some(OrderAmount::Quote(balance!(4000))),
             market_input: Some(OrderAmount::Base(balance!(6000))),
             market_output: Some(OrderAmount::Quote(balance!(8000))),
-            to_add: BTreeMap::from([
-                (add_id1, limit_order1.clone()),
-                (add_id2, limit_order2.clone()),
-                (add_id3, limit_order3.clone()),
+            to_place: BTreeMap::from([
+                (place_id1, limit_order1.clone()),
+                (place_id2, limit_order2.clone()),
+                (place_id3, limit_order3.clone()),
             ]),
-            to_update: BTreeMap::from([
-                (update_id1, balance!(20)),
-                (update_id2, balance!(30)),
-                (update_id3, balance!(40)),
+            to_part_execute: BTreeMap::from([
+                (part_exec_id1, balance!(20)),
+                (part_exec_id2, balance!(30)),
+                (part_exec_id3, balance!(40)),
             ]),
-            to_delete: BTreeMap::from([
-                (delete_id1, expiration_block),
-                (delete_id2, expiration_block),
-                (delete_id3, expiration_block)
+            to_full_execute: BTreeMap::from([
+                (full_exec_id1, (balance!(20), expiration_block)),
+                (full_exec_id2, (balance!(30), expiration_block)),
+                (full_exec_id3, (balance!(40), expiration_block)),
+            ]),
+            to_cancel: BTreeMap::from([
+                (cancel_id1, expiration_block),
+                (cancel_id2, expiration_block),
+                (cancel_id3, expiration_block)
             ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
@@ -1083,9 +1130,10 @@ fn check_market_change_merge() {
         deal_output: None,
         market_input: None,
         market_output: None,
-        to_add: BTreeMap::new(),
-        to_update: BTreeMap::new(),
-        to_delete: BTreeMap::new(),
+        to_place: BTreeMap::new(),
+        to_part_execute: BTreeMap::new(),
+        to_full_execute: BTreeMap::new(),
+        to_cancel: BTreeMap::new(),
         payment: empty_payment.clone(),
         ignore_unschedule_error: false,
     };
