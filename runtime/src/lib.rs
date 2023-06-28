@@ -1214,6 +1214,7 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
                     .iter()
                     .map(|x| x.receivers.len() as Balance)
                     .sum::<Balance>()
+                    .max(1)
                     * SMALL_FEE,
             ),
             RuntimeCall::Assets(assets::Call::register { .. })
