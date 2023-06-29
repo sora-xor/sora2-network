@@ -1,5 +1,5 @@
 use super::*;
-use bridge_types::types::AdditionalEVMOutboundData;
+use bridge_types::evm::AdditionalEVMOutboundData;
 use currencies::BasicCurrencyAdapter;
 
 use bridge_types::traits::OutboundChannel;
@@ -17,7 +17,7 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::MultiSignature;
 use sp_std::convert::From;
 
@@ -159,8 +159,8 @@ impl assets::Config for Test {
 }
 
 parameter_types! {
-    pub const MaxMessagePayloadSize: u64 = 128;
-    pub const MaxMessagesPerCommit: u8 = 5;
+    pub const MaxMessagePayloadSize: u32 = 128;
+    pub const MaxMessagesPerCommit: u32 = 5;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
@@ -179,9 +179,7 @@ parameter_types! {
 }
 
 impl bridge_outbound_channel::Config for Test {
-    const INDEXING_PREFIX: &'static [u8] = b"commitment";
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type MaxTotalGasLimit = MaxTotalGasLimit;

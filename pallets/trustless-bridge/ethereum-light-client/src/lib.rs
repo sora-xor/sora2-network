@@ -42,8 +42,8 @@ pub use bridge_types::difficulty::ForkConfig as EthereumDifficultyConfig;
 use bridge_types::ethashproof::{
     DoubleNodeWithMerkleProof as EthashProofData, EthashProver, MixNonce,
 };
+use bridge_types::evm::Proof;
 use bridge_types::traits::Verifier;
-use bridge_types::types::Proof;
 pub use bridge_types::Header as EthereumHeader;
 use bridge_types::{EVMChainId, HeaderId as EthereumHeaderId, Receipt, H256, U256};
 

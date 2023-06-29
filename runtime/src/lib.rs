@@ -53,14 +53,10 @@ pub mod tests;
 use crate::impls::PreimageWeightInfo;
 #[cfg(feature = "ready-to-test")]
 use crate::impls::{
-    BridgeAssetRegistryImpl, DispatchableSubstrateBridgeCall, EVMBridgeCallFilter,
-    SubstrateBridgeCallFilter,
+    DispatchableSubstrateBridgeCall, EVMBridgeCallFilter, SubstrateBridgeCallFilter,
 };
 #[cfg(feature = "ready-to-test")]
-use bridge_types::{
-    types::{AdditionalEVMInboundData, LeafExtraData},
-    U256,
-};
+use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::Description;
@@ -2089,12 +2085,12 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
 }
 
 #[cfg(feature = "ready-to-test")]
-use bridge_types::{EVMChainId, SubNetworkId, CHANNEL_INDEXING_PREFIX, H256};
+use bridge_types::{EVMChainId, SubNetworkId, H256};
 
 #[cfg(feature = "ready-to-test")] // Bridges
 parameter_types! {
-    pub const BridgeMaxMessagePayloadSize: u64 = 256;
-    pub const BridgeMaxMessagesPerCommit: u8 = 20;
+    pub const BridgeMaxMessagePayloadSize: u32 = 256;
+    pub const BridgeMaxMessagesPerCommit: u32 = 20;
     pub const BridgeMaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
@@ -2133,9 +2129,7 @@ impl bridge_inbound_channel::Config for Runtime {
 
 #[cfg(feature = "ready-to-test")] // EVM bridge
 impl bridge_outbound_channel::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type MaxTotalGasLimit = BridgeMaxTotalGasLimit;
@@ -2178,12 +2172,11 @@ impl eth_app::Config for Runtime {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = BridgeProxy;
-    type Currency = Currencies;
-    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetRegistry = BridgeProxy;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
-    type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type AssetIdConverter = AssetIdConverter;
+    type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2197,12 +2190,11 @@ impl erc20_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = BridgeProxy;
-    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetRegistry = BridgeProxy;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
-    type AssetIdConverter = sp_runtime::traits::ConvertInto;
-    type Currency = Currencies;
+    type AssetIdConverter = AssetIdConverter;
+    type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2250,6 +2242,8 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type MessageDispatch = SubstrateDispatch;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
+    type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
+    type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type WeightInfo = ();
 }
 
@@ -2291,9 +2285,7 @@ impl bridge_types::traits::TimepointProvider for GenericTimepointProvider {
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl substrate_bridge_channel::outbound::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MessageStatusNotifier = BridgeProxy;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
@@ -2324,13 +2316,12 @@ impl substrate_bridge_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
     >;
     type MessageStatusNotifier = BridgeProxy;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
-    type Currency = Currencies;
-    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetRegistry = BridgeProxy;
     type AccountIdConverter = sp_runtime::traits::Identity;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type WeightInfo = ();
+    type BridgeAssetLocker = BridgeProxy;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
