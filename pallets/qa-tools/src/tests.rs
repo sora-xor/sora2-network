@@ -34,11 +34,11 @@
 use common::{balance, AssetInfoProvider, DEXId, VAL, XOR};
 use frame_support::assert_ok;
 use framenode_chain_spec::ext;
-use framenode_runtime::qa_tools::{self, Config, OrderBookFillSettings, WeightInfo};
-use framenode_runtime::{Runtime, RuntimeOrigin, System};
+use framenode_runtime::qa_tools::{self, OrderBookFillSettings};
+use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::OrderBookId;
 
-pub type QAToolsPallet = framenode_runtime::qa_tools::Pallet<Runtime>;
+pub type QAToolsPallet = qa_tools::Pallet<Runtime>;
 
 pub fn alice() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([1u8; 32])

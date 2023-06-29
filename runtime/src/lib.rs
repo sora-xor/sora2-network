@@ -159,11 +159,13 @@ use impls::{
 };
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+pub use qa_tools;
 #[cfg(feature = "wip")]
 use sp_runtime::traits::Keccak256;
 pub use {
-    assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, qa_tools,
-    trading_pair, xst,
+    assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
+    xst,
 };
 
 /// An index to a block.

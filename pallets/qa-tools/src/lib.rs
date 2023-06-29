@@ -32,7 +32,7 @@
 
 pub use pallet::*;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "ready-to-test"))] // order-book
 mod tests;
 
 pub mod weights;
