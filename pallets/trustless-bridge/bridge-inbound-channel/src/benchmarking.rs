@@ -10,7 +10,8 @@ use hex_literal::hex;
 use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
-use bridge_types::types::{MessageId, Proof};
+use bridge_types::evm::Proof;
+use bridge_types::types::MessageId;
 use bridge_types::{Header, Log};
 
 const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
