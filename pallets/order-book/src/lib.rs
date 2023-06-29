@@ -300,7 +300,8 @@ pub mod pallet {
             dex_id: T::DEXId,
             owner_id: T::AccountId,
             market_order_direction: PriceVariant,
-            market_order_input: OrderAmount,
+            market_order_amount: OrderAmount,
+            market_order_average_price: OrderPrice,
             limit_order_id: T::OrderId,
         },
 
@@ -889,14 +890,16 @@ impl<T: Config> Pallet<T> {
                 OrderBookEvent::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
                     owner_id,
                     market_order_direction,
-                    market_order_input,
+                    market_order_amount,
+                    market_order_average_price,
                     limit_order_id,
                 } => Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
                     order_book_id,
                     dex_id,
                     owner_id,
                     market_order_direction,
-                    market_order_input,
+                    market_order_amount,
+                    market_order_average_price,
                     limit_order_id,
                 },
 

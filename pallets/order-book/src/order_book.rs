@@ -168,6 +168,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             self.calculate_limit_order_impact(limit_order)?
         };
 
+        let maybe_average_price = market_change.average_deal_price();
+        let maybe_deal_amount = market_change.deal_base_amount();
         let (market_input, deal_input) = (market_change.market_input, market_change.deal_input);
 
         let mut events =
@@ -186,20 +188,23 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     amount: OrderAmount::Base(amount),
                 })
             }
-            (Some(..), None) => {
-                events.push(OrderBookEvent::LimitOrderPlaced { order_id, owner_id })
-            }
+            (Some(..), None) => (),
             (Some(..), Some(market_order_input)) => {
                 let market_order_direction = if market_order_input.is_quote() {
                     PriceVariant::Buy
                 } else {
                     PriceVariant::Sell
                 };
+                let (Some(deal_amount), Some(market_order_average_price)) = (maybe_deal_amount, maybe_average_price) else {
+                    // should never happen
+                    return Err(Error::<T>::PriceCalculationFailed.into());
+                };
                 events.push(
                     OrderBookEvent::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
                         owner_id,
                         market_order_direction,
-                        market_order_input,
+                        market_order_amount: OrderAmount::Base(deal_amount),
+                        market_order_average_price,
                         limit_order_id: order_id,
                     },
                 )
@@ -302,14 +307,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             return Err(Error::<T>::PriceCalculationFailed.into());
         };
 
-        let average_price = if input.is_quote() {
-            (FixedWrapper::from(*input.value()) / FixedWrapper::from(*output.value()))
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?
-        } else {
-            (FixedWrapper::from(*output.value()) / FixedWrapper::from(*input.value()))
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?
+        let Some(average_price) = market_change.average_deal_price() else {
+            // should never happen
+            return Err(Error::<T>::PriceCalculationFailed.into());
         };
 
         let mut events =
@@ -638,10 +638,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             PriceVariant::Sell => (base, quote),
         };
 
-        let average_price = (FixedWrapper::from(*quote.value())
-            / FixedWrapper::from(*base.value()))
-        .try_into_balance()
-        .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+        let average_price = OrderAmount::average_price(input_amount, output_amount)
+            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
 
         Ok(DealInfo::<AssetIdOf<T>> {
             input_asset_id: *input_asset_id,

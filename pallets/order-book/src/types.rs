@@ -30,10 +30,11 @@
 
 use crate::traits::{CurrencyLocker, CurrencyUnlocker};
 use codec::{Decode, Encode, MaxEncodedLen};
+use common::prelude::FixedWrapper;
 use common::{Balance, PriceVariant, TradingPair};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::{BoundedBTreeMap, BoundedVec, RuntimeDebug};
+use frame_support::{BoundedBTreeMap, BoundedVec};
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::{Add, Sub};
@@ -67,7 +68,7 @@ pub enum OrderBookStatus {
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Copy, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode, Decode, Eq, PartialEq, Clone, Copy, Debug, scale_info::TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OrderAmount {
@@ -120,6 +121,19 @@ impl OrderAmount {
             Self::Quote(..) => &order_book_id.quote,
         }
     }
+
+    pub fn average_price(input: OrderAmount, output: OrderAmount) -> Result<OrderPrice, ()> {
+        let average_price = if input.is_quote() {
+            (FixedWrapper::from(*input.value()) / FixedWrapper::from(*output.value()))
+                .try_into_balance()
+                .map_err(|_| ())?
+        } else {
+            (FixedWrapper::from(*output.value()) / FixedWrapper::from(*input.value()))
+                .try_into_balance()
+                .map_err(|_| ())?
+        };
+        Ok(average_price)
+    }
 }
 
 impl Add for OrderAmount {
@@ -140,7 +154,7 @@ impl Sub for OrderAmount {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Copy, RuntimeDebug)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub enum MarketRole {
     Maker,
     Taker,
@@ -155,7 +169,7 @@ pub enum MarketRole {
     Clone,
     PartialOrd,
     Ord,
-    RuntimeDebug,
+    Debug,
     Hash,
     scale_info::TypeInfo,
     MaxEncodedLen,
@@ -186,7 +200,7 @@ impl<AssetId> From<OrderBookId<AssetId>> for TradingPair<AssetId> {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, RuntimeDebug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct DealInfo<AssetId> {
     pub input_asset_id: AssetId,
     pub input_amount: OrderAmount,
@@ -226,7 +240,7 @@ impl<AssetId: PartialEq> DealInfo<AssetId> {
 /// Instructions about payments.
 /// It contains lists of which liquidity should be locked in the tech account
 /// and which liquidity should be unlocked from the tech account to users.
-#[derive(Eq, PartialEq, Clone, RuntimeDebug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Payment<AssetId, AccountId, DEXId> {
     pub dex_id: DEXId,
     pub order_book_id: OrderBookId<AssetId>,
@@ -329,7 +343,7 @@ where
     }
 }
 
-#[derive(Eq, PartialEq, Clone, RuntimeDebug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
     // Info fields
     /// The amount of the input asset for the exchange deal
@@ -414,8 +428,33 @@ where
 
         Ok(())
     }
+
+    pub fn average_deal_price(&self) -> Option<OrderPrice> {
+        let (Some(input), Some(output)) = (self.deal_input, self.deal_output) else {
+            return None;
+        };
+
+        let Ok(price) = OrderAmount::average_price(input, output) else {
+            return None;
+        };
+
+        Some(price)
+    }
+
+    pub fn deal_base_amount(&self) -> Option<OrderVolume> {
+        let (Some(input), Some(output)) = (self.deal_input, self.deal_output) else {
+            return None;
+        };
+
+        if input.is_base() {
+            Some(*input.value())
+        } else {
+            Some(*output.value())
+        }
+    }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub enum OrderBookEvent<AccountId, OrderId> {
     LimitOrderPlaced {
         order_id: OrderId,
@@ -431,7 +470,8 @@ pub enum OrderBookEvent<AccountId, OrderId> {
     LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
         owner_id: AccountId,
         market_order_direction: PriceVariant,
-        market_order_input: OrderAmount,
+        market_order_amount: OrderAmount,
+        market_order_average_price: OrderPrice,
         limit_order_id: OrderId,
     },
 
@@ -451,7 +491,7 @@ pub enum OrderBookEvent<AccountId, OrderId> {
         owner_id: AccountId,
         direction: PriceVariant,
         amount: OrderAmount,
-        average_price: OrderVolume,
+        average_price: OrderPrice,
         to: Option<AccountId>,
     },
 }
