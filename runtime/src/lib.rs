@@ -2175,7 +2175,7 @@ impl eth_app::Config for Runtime {
     type MessageStatusNotifier = BridgeProxy;
     type AssetRegistry = BridgeProxy;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
-    type AssetIdConverter = AssetIdConverter;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
@@ -2193,7 +2193,7 @@ impl erc20_app::Config for Runtime {
     type MessageStatusNotifier = BridgeProxy;
     type AssetRegistry = BridgeProxy;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
-    type AssetIdConverter = AssetIdConverter;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
@@ -2295,16 +2295,6 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
-
-// #[cfg(feature = "wip")] // Substrate bridge
-// pub struct AssetIdConverter;
-
-// #[cfg(feature = "wip")] // Substrate bridge
-// impl Convert<AssetId, H256> for AssetIdConverter {
-//     fn convert(a: AssetId) -> H256 {
-//         a.code.into()
-//     }
-// }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl substrate_bridge_app::Config for Runtime {
