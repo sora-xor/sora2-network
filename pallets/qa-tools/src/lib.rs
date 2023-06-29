@@ -62,13 +62,8 @@ pub mod pallet {
         type OrderBookOrderLifespan: Get<MomentOf<Self>>;
     }
 
-    // Errors inform users that something went wrong.
     #[pallet::error]
     pub enum Error<T> {
-        /// Error names should be descriptive.
-        NoneValue,
-        /// Errors should have helpful documentation associated with them.
-        StorageOverflow,
         /// Order book does not exist for this trading pair
         OrderBookUnkonwnBook,
         /// Could not place limit order
@@ -96,12 +91,15 @@ pub mod pallet {
         pub best_ask_price: order_book::types::OrderPrice,
     }
 
-    // Dispatchable functions allows users to interact with the pallet and invoke state changes.
-    // These functions materialize as "extrinsics", which are often compared to transactions.
-    // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Create multiple many order books with default parameters if do not exist.
+        ///
+        /// Parameters:
+        /// - `origin`: caller, should be account because unsigned error messages are unclear,
+        /// - `dex_id`: DEXId for all created order books,
+        /// - `order_book_ids`: assets of the created order books; trading pairs are created
+        /// if necessary,
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_many())]
         pub fn order_book_create_empty_many(
@@ -111,6 +109,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_signed(origin)?;
 
+            // replace with more convenient `with_pays_fee` when/if available
+            // https://github.com/paritytech/substrate/pull/14470
             Self::create_multiple_empty_unchecked(dex_id, order_book_ids).map_err(|e| {
                 DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
@@ -130,7 +130,19 @@ pub mod pallet {
         }
 
         /// Create multiple many order books with default parameters if do not exist and
-        /// fill them according to given parameters
+        /// fill them according to given parameters.
+        ///
+        /// Balance for placing the orders is minted automatically, trading pairs are
+        /// created if needed.
+        ///
+        /// Parameters:
+        /// - `origin`: caller, should be account because unsigned error messages are unclear,
+        /// - `dex_id`: DEXId for all created order books,
+        /// - `bids_owner`: Creator of the buy orders placed on the order books,
+        /// - `asks_owner`: Creator of the sell orders placed on the order books,
+        /// - `fill_settings`: Parameters for placing the orders. `best_bid_price` should be at
+        /// least 3 price steps from the lowest accepted price, and `best_ask_price` - at least
+        /// 3 steps below maximum price,
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_many())]
         pub fn order_book_create_and_fill_many(
@@ -172,7 +184,7 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        /// Does not create an order book if already exists
+        /// Does not create an order book if it already exists
         fn create_multiple_empty_unchecked(
             dex_id: T::DEXId,
             order_book_ids: Vec<OrderBookId<T::AssetId>>,
@@ -219,6 +231,11 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Place orders into the orderbook.
+        ///
+        /// In fill settings, `best_bid_price` should be at least 3 price steps from the
+        /// lowest accepted price, and `best_ask_price` - at least 3 steps below
+        /// maximum price.
         fn fill_multiple_empty_unchecked(
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
@@ -267,6 +284,7 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Fill a single order book.
         fn fill_order_book(
             data: &mut CacheDataLayer<T>,
             book_id: OrderBookId<T::AssetId>,
