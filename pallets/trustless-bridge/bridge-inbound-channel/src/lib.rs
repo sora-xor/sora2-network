@@ -195,7 +195,7 @@ pub mod pallet {
 
             Self::handle_fee(envelope.fee, &relayer);
 
-            let message_id = MessageId::inbound_batched(envelope.nonce, 0);
+            let message_id = MessageId::inbound(envelope.nonce);
             T::MessageDispatch::dispatch(
                 network_id,
                 message_id.into(),
