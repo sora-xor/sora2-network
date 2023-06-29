@@ -90,7 +90,9 @@ pub mod pallet {
         MaxEncodedLen,
     )]
     pub struct OrderBookFillSettings {
+        /// Best (highest) price for placed buy orders
         pub best_bid_price: order_book::types::OrderPrice,
+        /// Best (lowest) price for placed sell orders
         pub best_ask_price: order_book::types::OrderPrice,
     }
 
@@ -227,7 +229,7 @@ pub mod pallet {
             // Prices are specified as price steps from the specified best ask price.
             // Amounts are added to min_lot and aligned with lot(amount) step.
 
-            // (price, amount)
+            // (price_steps_from_best_bid, amount)
             let buy_orders_steps = [
                 (0u128, balance!(168.5)),
                 (1, balance!(95.2)),
@@ -237,7 +239,7 @@ pub mod pallet {
                 (3, balance!(115)),
             ];
 
-            // (price_steps_from_best_bid, amount)
+            // (price_steps_from_best_ask, amount)
             let sell_orders_steps = [
                 (0u128, balance!(176.3)),
                 (1, balance!(85.4)),
@@ -279,11 +281,11 @@ pub mod pallet {
             let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
                 .ok_or(Error::<T>::OrderBookUnkonwnBook)?;
 
-            // Convert price steps and best ask to prices
+            // Convert price steps and best price to actual prices
             let buy_orders: Vec<_> = buy_orders_steps
                 .map(|(price_steps, base)| {
                     (
-                        settings.best_ask_price - price_steps * order_book.tick_size,
+                        settings.best_bid_price - price_steps * order_book.tick_size,
                         order_book.align_amount(base + order_book.step_lot_size),
                     )
                 })
@@ -291,12 +293,12 @@ pub mod pallet {
             let sell_orders: Vec<_> = sell_orders_steps
                 .map(|(price_steps, base)| {
                     (
-                        settings.best_bid_price + price_steps * order_book.tick_size,
+                        settings.best_ask_price + price_steps * order_book.tick_size,
                         order_book.align_amount(base + order_book.step_lot_size),
                     )
                 })
                 .collect();
-            // Total amount of quote asset to be locked from `asks_owner`
+            // Total amount of quote asset to be locked from `bids_owner`
             let buy_quote_locked: Balance = buy_orders
                 .iter()
                 .map(|(quote, base)| {
@@ -307,8 +309,8 @@ pub mod pallet {
             let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| base).sum();
 
             // mint required amount to make this extrinsic self-sufficient
-            assets::Pallet::<T>::mint_unchecked(&book_id.base, &bids_owner, sell_base_locked)?;
-            assets::Pallet::<T>::mint_unchecked(&book_id.quote, &asks_owner, buy_quote_locked)?;
+            assets::Pallet::<T>::mint_unchecked(&book_id.base, &bids_owner, buy_quote_locked)?;
+            assets::Pallet::<T>::mint_unchecked(&book_id.quote, &asks_owner, sell_base_locked)?;
 
             // place buy orders
             Self::place_multiple_orders(
