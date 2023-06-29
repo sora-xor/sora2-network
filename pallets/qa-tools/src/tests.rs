@@ -61,8 +61,8 @@ fn should_create_and_fill_orderbook() {
             vec![(
                 order_book_id,
                 OrderBookFillSettings {
-                    best_bid_price: balance!(11),
-                    best_ask_price: balance!(10)
+                    best_bid_price: balance!(10),
+                    best_ask_price: balance!(11)
                 }
             )]
         ));

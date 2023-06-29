@@ -309,8 +309,8 @@ pub mod pallet {
             let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| base).sum();
 
             // mint required amount to make this extrinsic self-sufficient
-            assets::Pallet::<T>::mint_unchecked(&book_id.base, &bids_owner, buy_quote_locked)?;
-            assets::Pallet::<T>::mint_unchecked(&book_id.quote, &asks_owner, sell_base_locked)?;
+            assets::Pallet::<T>::mint_unchecked(&book_id.quote, &bids_owner, buy_quote_locked)?;
+            assets::Pallet::<T>::mint_unchecked(&book_id.base, &asks_owner, sell_base_locked)?;
 
             // place buy orders
             Self::place_multiple_orders(
