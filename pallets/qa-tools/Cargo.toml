@@ -12,18 +12,17 @@ publish = false
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-assets = { path = "../assets", default-features = false }
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
 common = { path = "../../common", default-features = false }
-order-book = { path = "../../pallets/order-book", default-features = false }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-trading-pair = { path = "../trading-pair", default-features = false }
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+assets = { path = "../assets", default-features = false }
+order-book = { path = "../../pallets/order-book", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
@@ -36,7 +35,6 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 default = ["std"]
 std = [
 	"codec/std",
-	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
 	"order-book/std",
@@ -51,13 +49,4 @@ ready-to-test = [
 private-net = [
     "framenode-chain-spec/private-net",
     "framenode-runtime/private-net",
-]
-
-runtime-benchmarks = [
-	"frame-benchmarking/runtime-benchmarks",
-	"order-book/runtime-benchmarks",
-]
-try-runtime = [
-	"frame-support/try-runtime",
-	"order-book/try-runtime"
 ]
