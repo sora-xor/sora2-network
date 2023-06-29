@@ -263,7 +263,7 @@ std = [
     "price-tools/std",
     "pswap-distribution-runtime-api/std",
     "pswap-distribution/std",
-    "qa-tools?/std",
+    "qa-tools/std",
     "referrals/std",
     "rewards-runtime-api/std",
     "rewards/std",
