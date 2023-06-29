@@ -6,7 +6,7 @@ use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::types::AssetKind;
 use bridge_types::H160;
 use bridge_types::H256;
-use bridge_types::{EVMChainId, U256};
+use bridge_types::{EVMChainId, GenericNetworkId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair,
@@ -289,18 +289,24 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
     type AssetSymbol = common::AssetSymbol;
 
     fn register_asset(
-        owner: AccountId,
+        network_id: GenericNetworkId,
         name: Self::AssetName,
         symbol: Self::AssetSymbol,
     ) -> Result<AssetId, DispatchError> {
+        let owner =
+            bridge_types::test_utils::BridgeAssetLockerImpl::<()>::bridge_account(network_id);
+        frame_system::Pallet::<Test>::inc_providers(&owner);
         let asset_id = Assets::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
         Ok(asset_id)
     }
 
     fn manage_asset(
-        manager: AccountId,
+        network_id: GenericNetworkId,
         asset_id: AssetId,
     ) -> frame_support::pallet_prelude::DispatchResult {
+        let manager =
+            bridge_types::test_utils::BridgeAssetLockerImpl::<()>::bridge_account(network_id);
+        frame_system::Pallet::<Test>::inc_providers(&manager);
         let scope = permissions::Scope::Limited(common::hash(&asset_id));
         for permission_id in [permissions::BURN, permissions::MINT] {
             if permissions::Pallet::<Test>::check_permission_with_scope(
@@ -338,14 +344,13 @@ impl erc20_app::Config for Test {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type WeightInfo = ();
     type MessageStatusNotifier = ();
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
     type AppRegistry = AppRegistryImpl;
     type AssetRegistry = BridgeAssetRegistryImpl;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
-    type Currency = Currencies;
+    type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {

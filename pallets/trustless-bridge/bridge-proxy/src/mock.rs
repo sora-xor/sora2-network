@@ -33,7 +33,7 @@ use currencies::BasicCurrencyAdapter;
 // Mock runtime
 use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::traits::TimepointProvider;
-use bridge_types::traits::{AppRegistry, BalancePrecisionConverter, BridgeAssetRegistry};
+use bridge_types::traits::{AppRegistry, BalancePrecisionConverter};
 use bridge_types::types::{AssetKind, CallOriginOutput, MessageId};
 use bridge_types::H160;
 use bridge_types::H256;
@@ -51,7 +51,7 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
-use sp_runtime::{AccountId32, DispatchError, DispatchResult, MultiSignature};
+use sp_runtime::{AccountId32, DispatchResult, MultiSignature};
 
 use crate as proxy;
 
@@ -77,7 +77,7 @@ frame_support::construct_runtime!(
         BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>},
         EthApp: eth_app::{Pallet, Call, Config<T>, Storage, Event<T>},
         ERC20App: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
-        EvmBridgeProxy: proxy::{Pallet, Call, Storage, Event},
+        BridgeProxy: proxy::{Pallet, Call, Storage, Event},
     }
 );
 
@@ -240,7 +240,7 @@ impl bridge_outbound_channel::Config for Test {
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type FeeCurrency = FeeCurrency;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type MaxTotalGasLimit = MaxTotalGasLimit;
     type AuxiliaryDigestHandler = ();
     type WeightInfo = ();
@@ -285,61 +285,12 @@ impl eth_app::Config for Test {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
-    type Currency = Currencies;
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
-    type AssetRegistry = BridgeAssetRegistryImpl;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type AssetRegistry = BridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
-}
-
-pub struct BridgeAssetRegistryImpl;
-
-impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
-    type AssetName = common::AssetName;
-    type AssetSymbol = common::AssetSymbol;
-
-    fn register_asset(
-        owner: AccountId,
-        name: Self::AssetName,
-        symbol: Self::AssetSymbol,
-    ) -> Result<AssetId, DispatchError> {
-        let asset_id = Assets::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
-        Ok(asset_id)
-    }
-
-    fn manage_asset(
-        manager: AccountId,
-        asset_id: AssetId,
-    ) -> frame_support::pallet_prelude::DispatchResult {
-        let scope = permissions::Scope::Limited(common::hash(&asset_id));
-        for permission_id in [permissions::BURN, permissions::MINT] {
-            if permissions::Pallet::<Test>::check_permission_with_scope(
-                manager.clone(),
-                permission_id,
-                &scope,
-            )
-            .is_err()
-            {
-                permissions::Pallet::<Test>::assign_permission(
-                    manager.clone(),
-                    &manager,
-                    permission_id,
-                    scope,
-                )?;
-            }
-        }
-        Ok(())
-    }
-
-    fn get_raw_info(_asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
-        bridge_types::types::RawAssetInfo {
-            name: Default::default(),
-            symbol: Default::default(),
-            precision: 18,
-        }
-    }
 }
 
 pub struct AppRegistryImpl;
@@ -382,13 +333,12 @@ impl erc20_app::Config for Test {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
-    type MessageStatusNotifier = EvmBridgeProxy;
+    type MessageStatusNotifier = BridgeProxy;
     type AppRegistry = AppRegistryImpl;
-    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetRegistry = BridgeProxy;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
-    type Currency = Currencies;
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
+    type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
 

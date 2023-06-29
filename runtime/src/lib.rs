@@ -53,8 +53,7 @@ pub mod tests;
 use crate::impls::PreimageWeightInfo;
 #[cfg(feature = "wip")]
 use crate::impls::{
-    BridgeAssetRegistryImpl, DispatchableSubstrateBridgeCall, EVMBridgeCallFilter,
-    SubstrateBridgeCallFilter,
+    DispatchableSubstrateBridgeCall, EVMBridgeCallFilter, SubstrateBridgeCallFilter,
 };
 #[cfg(feature = "wip")]
 use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
@@ -2172,12 +2171,11 @@ impl eth_app::Config for Runtime {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = BridgeProxy;
-    type Currency = Currencies;
-    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetRegistry = BridgeProxy;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type AssetIdConverter = AssetIdConverter;
+    type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2191,12 +2189,11 @@ impl erc20_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = BridgeProxy;
-    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetRegistry = BridgeProxy;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type AssetIdConverter = AssetIdConverter;
-    type Currency = Currencies;
+    type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2318,13 +2315,12 @@ impl substrate_bridge_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
     >;
     type MessageStatusNotifier = BridgeProxy;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
-    type Currency = Currencies;
-    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetRegistry = BridgeProxy;
     type AccountIdConverter = sp_runtime::traits::Identity;
     type AssetIdConverter = AssetIdConverter;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type WeightInfo = ();
+    type BridgeAssetLocker = BridgeProxy;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
