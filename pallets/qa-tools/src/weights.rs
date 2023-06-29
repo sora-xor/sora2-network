@@ -46,7 +46,7 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {}
 
-// This pallet is intended only for use in `private-net` for 
-// testing purposes, thus weights are not important.
+// This pallet is intended for use only in `private-net`
+// and for testing purposes, thus weights are not important.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {}
