@@ -1859,7 +1859,8 @@ impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pal
     fn list_supported_assets(
         network_id: GenericNetworkId,
     ) -> Vec<bridge_types::types::BridgeAssetInfo> {
-        use bridge_types::types::{BridgeAssetInfo, EVMAppKind, EVMLegacyAssetInfo};
+        use bridge_types::evm::{EVMAppKind, EVMLegacyAssetInfo};
+        use bridge_types::types::BridgeAssetInfo;
         let Ok(network_id) = Self::ensure_generic_network(network_id) else {
             return vec![];
         };
@@ -1891,7 +1892,8 @@ impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pal
     }
 
     fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
-        use bridge_types::types::{BridgeAppInfo, EVMAppInfo, EVMAppKind};
+        use bridge_types::evm::{EVMAppInfo, EVMAppKind};
+        use bridge_types::types::BridgeAppInfo;
         let mut apps = vec![];
         let network_id = T::GetEthNetworkId::get();
         let generic_network_id = GenericNetworkId::EVMLegacy(network_id.unique_saturated_into());

@@ -1,7 +1,8 @@
 //! ETHApp pallet benchmarking
 use super::*;
 
-use bridge_types::types::{AdditionalEVMInboundData, CallOriginOutput};
+use bridge_types::evm::AdditionalEVMInboundData;
+use bridge_types::types::CallOriginOutput;
 use bridge_types::H256;
 use common::{AssetId32, PredefinedAssetId, DAI};
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
