@@ -1,20 +1,18 @@
 @Library('jenkins-library@feature/dops-2395/rust_library') _
 
-def pipeline = new org.rust.substratePipeline(steps: this,
+def pipeline = new org.rust.AppPipeline(steps: this,
       assignReviewers: true,
       disableSecretScanner: false,
+      substrate: true,
       secretScannerExclusion: '.*Cargo.toml\$|.*pr.sh\$',
-      rustcVersion: 'nightly-2021-12-10',
       pushTags: ['develop': 'dev', 'master': 'latest'],
-      contractsPath: 'ethereum-bridge-contracts',
-      contractsEnvFile: 'env.template',
       envImageName: 'docker.soramitsu.co.jp/sora2/env:sub4',
       appImageName: 'docker.soramitsu.co.jp/sora2/substrate',
       benchmarkingBase: 'develop',
-      codeCoverage: true,
-      substrate: true,
+      codeCoverageCommand: './housekeeping/coverage.sh',
       cargoDoc: true,
       prStatusNotif: true,
-      buildTestCmds: ['housekeeping/build.sh']
+      buildTestCmds: ['housekeeping/build.sh'],
+      buildArtifacts: 'framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, subwasm_report.json, pallet_list.txt'
       )
 pipeline.runPipeline()
