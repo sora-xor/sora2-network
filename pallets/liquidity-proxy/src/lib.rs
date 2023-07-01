@@ -259,7 +259,7 @@ impl<T: Config> Pallet<T> {
             _ => false,
         };
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             is_order_book = selected_source_types.contains(&LiquiditySourceType::OrderBook);
         }
@@ -988,6 +988,13 @@ impl<T: Config> Pallet<T> {
         let locked = trading_pair::LockedLiquiditySources::<T>::get();
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
+
+        // The temp solution is to exclude OrderBook source if there are multiple sources.
+        // Will be redesigned in #447
+        #[cfg(feature = "ready-to-test")] // order-book
+        if sources.len() > 1 {
+            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
+        }
 
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {

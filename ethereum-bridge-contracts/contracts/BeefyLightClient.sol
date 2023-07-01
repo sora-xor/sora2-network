@@ -24,7 +24,7 @@ contract BeefyLightClient is ISimplifiedMMRProof, Ownable {
     /* Events */
     /**
      * @notice Notifies an observer that the complete verification process has
-     *  finished successfuly and the new commitmentHash will be accepted
+     *  finished successfully and the new commitmentHash will be accepted
      * @param prover The address of the successful prover
      * @param blockNumber commitment block number
      */
@@ -36,10 +36,10 @@ contract BeefyLightClient is ISimplifiedMMRProof, Ownable {
 
     /**
      * The Commitment, with its payload, is the core thing we are trying to verify with
-     * this contract. It contains a MMR root that commits to the polkadot history, including
-     * past blocks and parachain blocks and can be used to verify both polkadot and parachain blocks.
+     * this contract. It contains a MMR root that commits to the Polkadot history, including
+     * past blocks and parachain blocks and can be used to verify both Polkadot and parachain blocks.
      * @param payload the payload of the new commitment in beefy justifications (in
-     * our case, this is a new MMR root for all past polkadot blocks)
+     * our case, this is a new MMR root for all past Polkadot blocks)
      * @param blockNumber block number for the given commitment
      * @param validatorSetId validator set id that signed the given commitment
      */

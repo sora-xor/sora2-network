@@ -160,7 +160,7 @@ impl Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
 
-    #[cfg(feature = "wip")] // order-book
+    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
 }
 
