@@ -60,9 +60,8 @@ use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::Description;
-use common::GetMarketInfo;
 use common::PredefinedAssetId;
-use common::{XOR, XST, XSTUSD};
+use common::XOR;
 use constants::currency::deposit;
 use constants::time::*;
 #[cfg(feature = "wip")] // order-book
@@ -957,15 +956,8 @@ parameter_types! {
 }
 
 parameter_type_with_key! {
-    pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
-        let common::TradingPair {
-            base_asset_id,
-            target_asset_id
-        } = trading_pair;
-        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
-            .contains(target_asset_id) ||
-            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into()) ||
-            (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XST.into())
+    pub GetTradingPairRestrictedFlag: |_trading_pair: common::TradingPair<AssetId>| -> bool {
+        false
     };
 }
 
