@@ -59,9 +59,9 @@ use crate::impls::{
 use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::Description;
 use common::PredefinedAssetId;
 use common::XOR;
+use common::{Description, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 #[cfg(feature = "wip")] // order-book
@@ -956,8 +956,12 @@ parameter_types! {
 }
 
 parameter_type_with_key! {
-    pub GetTradingPairRestrictedFlag: |_trading_pair: common::TradingPair<AssetId>| -> bool {
-        false
+    pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
+        let common::TradingPair {
+            base_asset_id,
+            target_asset_id
+        } = trading_pair;
+        (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into())
     };
 }
 
