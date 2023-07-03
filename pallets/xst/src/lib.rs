@@ -64,6 +64,7 @@ use frame_support::{ensure, fail, RuntimeDebug};
 use serde::{Deserialize, Serialize};
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
+use sp_std::if_std;
 use sp_std::vec::Vec;
 
 pub use weights::WeightInfo;
@@ -635,16 +636,19 @@ impl<T: Config> Pallet<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Self::ensure_base_asset_amount_within_limit(output_amount, check_limits)?;
-                if deduce_fee {
+
+                let fee_amount = if deduce_fee {
                     let fee_amount = (fee_ratio * output_amount)
                         .try_into_balance()
                         .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                     output_amount = output_amount.saturating_sub(fee_amount);
-                    (desired_amount_in, output_amount, fee_amount)
+                    fee_amount
                 } else {
-                    (desired_amount_in, output_amount, 0)
-                }
+                    0
+                };
+                Self::ensure_base_asset_amount_within_limit(output_amount, check_limits)?;
+
+                (desired_amount_in, output_amount, fee_amount)
             }
 
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
@@ -734,8 +738,7 @@ impl<T: Config> Pallet<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Self::ensure_base_asset_amount_within_limit(input_amount, check_limits)?;
-                if deduce_fee {
+                let (input_amount_with_fee, fee) = if deduce_fee {
                     let input_amount_with_fee =
                         FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
                     let input_amount_with_fee = input_amount_with_fee
@@ -743,12 +746,18 @@ impl<T: Config> Pallet<T> {
                         .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                     (
                         input_amount_with_fee,
-                        desired_amount_out,
                         input_amount_with_fee.saturating_sub(input_amount),
                     )
                 } else {
-                    (input_amount, desired_amount_out, 0)
-                }
+                    (input_amount, 0)
+                };
+                println!("here!");
+                Self::ensure_base_asset_amount_within_limit(input_amount_with_fee, check_limits)?;
+                (
+                    input_amount_with_fee,
+                    desired_amount_out,
+                    fee
+                )
             }
         })
     }
@@ -845,6 +854,9 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
         check_limits: bool,
     ) -> Result<(), DispatchError> {
+        if_std! {
+            println!("base_asset_amount: {:?}", FixedWrapper::from(amount));
+        }
         if check_limits && amount > T::GetSyntheticBaseBuySellLimit::get() {
             fail!(Error::<T>::SyntheticBaseBuySellLimitExceeded)
         } else {

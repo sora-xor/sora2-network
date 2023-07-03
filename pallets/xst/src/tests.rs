@@ -782,7 +782,18 @@ mod tests {
     fn should_disallow_xst_amount_exceeding_limit() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let amount_a: Balance = balance!(2300000000);
+            
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (XST_s)
+            // 1 XST buy price = D_b/X_s = 110/0.5 = 220 DAI (XST_b)
+            // 1 XSTUSD = 1 DAI (S)
+            // fee ratio for XSTUSD = 0.00666 (F_r)
+            // amount_out = 10_000_000 XST
+            // amount in = amount_out / (1 - F_r) * XST_b / S = 10_000_000 / (1 - 0.00666) * 220 / 1 = 2214750236.57559344 (XSTUSD)
+            let amount_a: Balance = balance!(2214750236.575593452663369226) + 1;
             // Buy with desired input
             assert_noop!(
                 XSTPool::quote(
@@ -808,7 +819,7 @@ mod tests {
             );
 
             // Buy with desired output
-            let amount_b: Balance = balance!(10000001);
+            let amount_b: Balance = balance!(10000000) + 1;
             assert_noop!(
                 XSTPool::quote(
                     &DEXId::Polkaswap.into(),
@@ -832,7 +843,7 @@ mod tests {
             );
 
             // Sell with desired input
-            let amount_c: Balance = balance!(10000001);
+            let amount_c: Balance = balance!(10000000) + 1;
             assert_noop!(
                 XSTPool::quote(
                     &DEXId::Polkaswap.into(),
@@ -855,8 +866,18 @@ mod tests {
                 Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
 
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (XST_s)
+            // 1 XST buy price = D_b/X_s = 110/0.5 = 220 DAI (XST_b)
+            // 1 XSTUSD = 1 DAI (S)
+            // fee ratio for XSTUSD = 0.00666 (F_r)
+            // amount_in = 10_000_000 XST
+            // amount out = amount_in * (1 - F_r) * XST_s / S = 10_000_000 * (1 - 0.00666) * 150 / 1 = 1490009999.999999999818062202 (XSTUSD)
             // Sell with desired output
-            let amount_d: Balance = balance!(2300000000);
+            let amount_d: Balance = balance!(1490009999.999999999818062202) + 1;
             assert_noop!(
                 XSTPool::quote(
                     &DEXId::Polkaswap.into(),
@@ -877,6 +898,132 @@ mod tests {
                     SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
                 ),
                 Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
+            );
+        });
+    }
+
+    #[test]
+    fn should_allow_xst_amount_near_limit() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+
+            assets::Pallet::<Runtime>::update_balance(
+                RuntimeOrigin::root(), alice(), XSTUSD.into(), balance!(13000000000) as i128)
+                .expect("Expected to update Alice XSTUSD balance");
+            assets::Pallet::<Runtime>::update_balance(
+                RuntimeOrigin::root(), alice(), XST.into(), balance!(13000000000) as i128)
+                .expect("Expected to update Alice XST balance");
+            
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (XST_s)
+            // 1 XST buy price = D_b/X_s = 110/0.5 = 220 DAI (XST_b)
+            // 1 XSTUSD = 1 DAI (S)
+            // fee ratio for XSTUSD = 0.00666 (F_r)
+            // amount_out = 10_000_000 XST
+            // amount in = amount_out / (1 - F_r) * XST_b / S = 10_000_000 / (1 - 0.00666) * 220 / 1 = 2214750236.575593452663369226 (XSTUSD)
+
+            // precision is 10^-9
+            let amount_a: Balance = balance!(2214750236.575593452663369226) - 1_000_000_000;
+            // Buy with desired input
+            assert_ok!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_input(amount_a.clone()),
+                    true,
+                )
+            );
+            assert_ok!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+                )
+            );
+
+            // Buy with desired output
+            let amount_b: Balance = balance!(10000000);
+            assert_ok!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_output(amount_b.clone()),
+                    true,
+                )
+            );
+            assert_ok!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                )
+            );
+
+            // Sell with desired input
+            let amount_c: Balance = balance!(10000000);
+            assert_ok!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_input(amount_c.clone()),
+                    true,
+                )
+            );
+            assert_ok!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+                )
+            );
+
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (XST_s)
+            // 1 XST buy price = D_b/X_s = 110/0.5 = 220 DAI (XST_b)
+            // 1 XSTUSD = 1 DAI (S)
+            // fee ratio for XSTUSD = 0.00666 (F_r)
+            // amount_in = 10_000_000 XST
+            // amount out = amount_in * (1 - F_r) * XST_s / S = 10_000_000 * (1 - 0.00666) * 150 / 1 = 1490009999.999999999818062202 (XSTUSD)
+            
+            // precision is 10^-9
+            let amount_d: Balance = balance!(1490009999.999999999818062202) - 1_000_000_000;
+            // Sell with desired output
+            assert_ok!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_output(amount_d.clone()),
+                    true,
+                )
+            );
+            assert_ok!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                )
             );
         });
     }
