@@ -448,10 +448,31 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             for limit_order_id in price_level.into_iter() {
                 let limit_order = data.get_limit_order(&self.order_book_id, limit_order_id)?;
 
-                if remaining_amount >= limit_order.amount {
-                    remaining_amount -= limit_order.amount;
-                    taker_amount += limit_order.deal_amount(MarketRole::Taker, None)?.value();
-                    let maker_payment = *limit_order.deal_amount(MarketRole::Maker, None)?.value();
+                let (amount, dust) = if limit_order.amount % self.step_lot_size != 0 {
+                    let aligned = self.align_amount(limit_order.amount);
+                    (aligned, limit_order.amount - aligned)
+                } else {
+                    (limit_order.amount, OrderVolume::zero())
+                };
+
+                if !dust.is_zero() {
+                    payment
+                        .to_unlock
+                        .entry(taker_out_asset)
+                        .or_default()
+                        .entry(limit_order.owner.clone())
+                        .and_modify(|unlock_amount| *unlock_amount += dust)
+                        .or_insert(dust);
+                }
+
+                if remaining_amount >= amount {
+                    remaining_amount -= amount;
+                    taker_amount += limit_order
+                        .deal_amount(MarketRole::Taker, Some(amount))?
+                        .value();
+                    let maker_payment = *limit_order
+                        .deal_amount(MarketRole::Maker, Some(amount))?
+                        .value();
                     maker_amount += maker_payment;
                     payment
                         .to_unlock
@@ -480,7 +501,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         .entry(limit_order.owner.clone())
                         .and_modify(|payment| *payment += maker_payment)
                         .or_insert(maker_payment);
-                    let new_amount = limit_order.amount - remaining_amount;
+                    let new_amount = amount - remaining_amount;
                     remaining_amount = OrderVolume::zero();
                     limit_orders_to_update.insert(limit_order.id, new_amount);
                     break;

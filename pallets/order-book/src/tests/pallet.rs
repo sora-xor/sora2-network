@@ -1837,6 +1837,13 @@ fn should_exchange_and_transfer_to_another_account() {
 }
 
 #[test]
+fn should_exchange_with_dust_refund() {
+    ext().execute_with(|| {
+        // todo
+    });
+}
+
+#[test]
 fn should_not_exchange_with_non_existed_order_book() {
     ext().execute_with(|| {
         assert_err!(

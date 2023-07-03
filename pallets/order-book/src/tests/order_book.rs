@@ -3860,6 +3860,13 @@ fn should_calculate_limit_order_impact() {
 }
 
 #[test]
+fn should_calculate_market_order_impact_with_dust() {
+    ext().execute_with(|| {
+        // todo
+    });
+}
+
+#[test]
 fn should_calculate_cancelation_limit_order_impact() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
