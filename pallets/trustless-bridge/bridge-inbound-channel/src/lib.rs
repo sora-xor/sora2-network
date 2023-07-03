@@ -2,8 +2,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use bridge_types::evm::{AdditionalEVMInboundData, AdditionalEVMOutboundData};
 use bridge_types::traits::{MessageDispatch, Verifier};
-use bridge_types::types::{AdditionalEVMInboundData, AdditionalEVMOutboundData, MessageId};
+use bridge_types::types::MessageId;
 use bridge_types::EVMChainId;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;

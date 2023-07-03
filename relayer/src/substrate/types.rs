@@ -64,6 +64,10 @@ pub type BeefySignedCommitment<T> =
 pub type BeefyCommitment<T> = sp_beefy::Commitment<BlockNumber<T>>;
 pub type MmrLeaf<T> = sp_beefy::mmr::MmrLeaf<BlockNumber<T>, BlockHash<T>, MmrHash, LeafExtra>;
 pub type AssetId = AssetId32<PredefinedAssetId>;
+pub type MaxU32 = sp_runtime::traits::ConstU32<{ core::u32::MAX }>;
+pub type OffchainDataOf<T> =
+    bridge_types::types::BridgeOffchainData<BlockNumber<T>, MaxU32, MaxU32>;
+pub type UnboundedGenericCommitment = bridge_types::GenericCommitment<MaxU32, MaxU32>;
 
 pub enum StorageKind {
     Persistent,

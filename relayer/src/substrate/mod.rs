@@ -37,7 +37,6 @@ use std::sync::Arc;
 
 use crate::prelude::*;
 use bridge_types::types::AuxiliaryDigest;
-use bridge_types::H256;
 use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
 use mmr_rpc::MmrApiClient;
 use sp_core::Bytes;
@@ -196,34 +195,26 @@ impl<T: ConfigExt> UnsignedClient<T> {
         self.rpc()
     }
 
-    pub async fn bridge_commitments(
-        &self,
-        hash: H256,
-    ) -> AnyResult<bridge_channel_rpc::Commitment> {
-        Ok(
-            bridge_channel_rpc::BridgeChannelAPIClient::commitment(self.rpc(), hash)
-                .await?
-                .ok_or(anyhow!(
-                    "Connect to substrate server with enabled offhcain indexing"
-                ))?,
-        )
-    }
-
     pub async fn auxiliary_digest(&self, at: Option<BlockHash<T>>) -> AnyResult<AuxiliaryDigest> {
         let res = leaf_provider_rpc::LeafProviderAPIClient::latest_digest(self.rpc(), at).await?;
         Ok(res.unwrap_or_default())
     }
 
-    pub async fn substrate_bridge_commitments(
+    pub async fn bridge_commitment(
         &self,
-        hash: H256,
-    ) -> AnyResult<substrate_bridge_channel_rpc::Commitment> {
+        network_id: bridge_types::GenericNetworkId,
+        batch_nonce: u64,
+    ) -> AnyResult<OffchainDataOf<T>> {
         Ok(
-            substrate_bridge_channel_rpc::BridgeChannelAPIClient::commitment(self.rpc(), hash)
-                .await?
-                .ok_or(anyhow!(
-                    "Connect to substrate server with enabled offhcain indexing"
-                ))?,
+            bridge_channel_rpc::BridgeChannelAPIClient::<OffchainDataOf<T>>::commitment(
+                self.rpc(),
+                network_id,
+                batch_nonce,
+            )
+            .await?
+            .ok_or(anyhow!(
+                "Connect to substrate server with enabled offhcain indexing"
+            ))?,
         )
     }
 
