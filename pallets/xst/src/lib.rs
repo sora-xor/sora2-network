@@ -751,13 +751,8 @@ impl<T: Config> Pallet<T> {
                 } else {
                     (input_amount, 0)
                 };
-                println!("here!");
                 Self::ensure_base_asset_amount_within_limit(input_amount_with_fee, check_limits)?;
-                (
-                    input_amount_with_fee,
-                    desired_amount_out,
-                    fee
-                )
+                (input_amount_with_fee, desired_amount_out, fee)
             }
         })
     }
@@ -854,9 +849,6 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
         check_limits: bool,
     ) -> Result<(), DispatchError> {
-        if_std! {
-            println!("base_asset_amount: {:?}", FixedWrapper::from(amount));
-        }
         if check_limits && amount > T::GetSyntheticBaseBuySellLimit::get() {
             fail!(Error::<T>::SyntheticBaseBuySellLimitExceeded)
         } else {
