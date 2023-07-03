@@ -31,7 +31,7 @@
 use crate::mock::RuntimeCall;
 use crate::mock::RuntimeEvent;
 use crate::mock::{
-    new_tester, AccountId, BridgeOutboundChannel, Currencies, Dispatch, ERC20App, EvmBridgeProxy,
+    new_tester, AccountId, BridgeOutboundChannel, BridgeProxy, Currencies, Dispatch, ERC20App,
     System, Test, BASE_EVM_NETWORK_ID,
 };
 use crate::{BridgeRequest, Transactions};
@@ -47,9 +47,8 @@ use frame_system::RawOrigin;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::traits::Hash;
 
-use bridge_types::types::{
-    AdditionalEVMInboundData, AssetKind, MessageDirection, MessageId, MessageStatus,
-};
+use bridge_types::evm::AdditionalEVMInboundData;
+use bridge_types::types::{AssetKind, MessageDirection, MessageId, MessageStatus};
 
 fn assert_event(event: RuntimeEvent) {
     System::events()
@@ -69,7 +68,7 @@ fn burn_successfull() {
             balance!(1) as i128,
         )
         .unwrap();
-        EvmBridgeProxy::burn(
+        BridgeProxy::burn(
             RawOrigin::Signed(caller.clone()).into(),
             BASE_EVM_NETWORK_ID.into(),
             XOR,
@@ -77,6 +76,10 @@ fn burn_successfull() {
             1000,
         )
         .unwrap();
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),
+            1000
+        );
         let message_id = BridgeOutboundChannel::make_message_id(1, 0);
         assert_eq!(
             Transactions::<Test>::get(
@@ -123,7 +126,7 @@ fn burn_failed() {
     new_tester().execute_with(|| {
         let caller: AccountId = Keyring::Alice.into();
         assert_noop!(
-            EvmBridgeProxy::burn(
+            BridgeProxy::burn(
                 RawOrigin::Signed(caller.clone()).into(),
                 BASE_EVM_NETWORK_ID.into(),
                 XOR,
@@ -131,6 +134,10 @@ fn burn_failed() {
                 1000,
             ),
             pallet_balances::Error::<Test>::InsufficientBalance
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),
+            0
         );
         assert_eq!(Transactions::<Test>::iter().count(), 0);
         assert_eq!(System::events().len(), 0);
@@ -155,6 +162,10 @@ fn mint_successfull() {
             })
             .encode(),
             AdditionalEVMInboundData { source },
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), DAI),
+            1000
         );
         let message_id =
             MessageId::inbound(0).using_encoded(<Test as dispatch::Config>::Hashing::hash);
@@ -197,7 +208,72 @@ fn mint_failed() {
             .encode(),
             AdditionalEVMInboundData { source },
         );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), DAI),
+            0
+        );
         assert_eq!(Transactions::<Test>::iter().count(), 0);
         assert_eq!(System::events().len(), 1);
+    })
+}
+
+#[test]
+fn mint_not_enough_locked() {
+    new_tester().execute_with(|| {
+        let recipient: AccountId = Keyring::Alice.into();
+        let source = ERC20App::app_address(BASE_EVM_NETWORK_ID, AssetKind::Thischain).unwrap();
+        let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, XOR).unwrap();
+        Dispatch::dispatch(
+            BASE_EVM_NETWORK_ID,
+            MessageId::inbound(0),
+            GenericTimepoint::Parachain(1),
+            &RuntimeCall::ERC20App(erc20_app::Call::mint {
+                token,
+                sender: Default::default(),
+                recipient: recipient.clone(),
+                amount: 1000u64.into(),
+            })
+            .encode(),
+            AdditionalEVMInboundData { source },
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),
+            0
+        );
+        assert_event(
+            dispatch::Event::<Test>::MessageDispatched(
+                MessageId::inbound(0),
+                Err(crate::Error::<Test>::NotEnoughLockedLiquidity.into()),
+            )
+            .into(),
+        );
+    })
+}
+
+#[test]
+fn burn_no_enough_locked() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+        Currencies::update_balance(
+            RawOrigin::Root.into(),
+            caller.clone(),
+            DAI,
+            balance!(1) as i128,
+        )
+        .unwrap();
+        assert_noop!(
+            BridgeProxy::burn(
+                RawOrigin::Signed(caller.clone()).into(),
+                BASE_EVM_NETWORK_ID.into(),
+                DAI,
+                GenericAccount::EVM(H160::default()),
+                1000,
+            ),
+            crate::Error::<Test>::NotEnoughLockedLiquidity
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), DAI),
+            0
+        );
     })
 }

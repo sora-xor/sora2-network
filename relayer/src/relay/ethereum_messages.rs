@@ -30,7 +30,7 @@
 
 use std::time::Duration;
 
-use bridge_types::types::Proof;
+use bridge_types::evm::Proof;
 use bridge_types::EVMChainId;
 use ethers::abi::RawLog;
 
