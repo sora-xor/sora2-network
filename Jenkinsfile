@@ -13,6 +13,7 @@ def pipeline = new org.rust.AppPipeline(steps: this,
       coberturaReportFile: 'cobertura_report',
       cargoDoc: true,
       prStatusNotif: true,
+      smartContractScanner: true,
       buildTestCmds: ['housekeeping/build.sh'],
       buildArtifacts: 'framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, subwasm_report.json, pallet_list.txt'
       )
