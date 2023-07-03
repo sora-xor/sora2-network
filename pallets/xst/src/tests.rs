@@ -774,7 +774,25 @@ mod tests {
                     fixed!(1),
                 ),
                 Err(Error::<Runtime>::InvalidFeeRatio.into())
-            )
+            );
+
+            assert_eq!(
+                XSTPool::set_synthetic_asset_fee(
+                    RuntimeOrigin::root(),
+                    XSTUSD.into(),
+                    fixed!(-0.1),
+                ),
+                Err(Error::<Runtime>::InvalidFeeRatio.into())
+            );
+
+            assert_eq!(
+                XSTPool::set_synthetic_asset_fee(
+                    RuntimeOrigin::root(),
+                    XSTUSD.into(),
+                    fixed!(1),
+                ),
+                Err(Error::<Runtime>::InvalidFeeRatio.into())
+            );
         });
     }
 

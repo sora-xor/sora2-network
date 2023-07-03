@@ -64,7 +64,6 @@ use frame_support::{ensure, fail, RuntimeDebug};
 use serde::{Deserialize, Serialize};
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
-use sp_std::if_std;
 use sp_std::vec::Vec;
 
 pub use weights::WeightInfo;
@@ -272,6 +271,10 @@ pub mod pallet {
             fee_ratio: Fixed,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
+            ensure!(
+                fee_ratio >= fixed!(0) && fee_ratio < fixed!(1),
+                Error::<T>::InvalidFeeRatio
+            );
 
             EnabledSynthetics::<T>::try_mutate(
                 &synthetic_asset,
