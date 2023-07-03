@@ -329,7 +329,7 @@ pub mod pallet {
             error: DispatchError,
         },
 
-        /// The some amount of the limit order is executed
+        /// Some amount of the limit order is executed
         LimitOrderExecuted {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
