@@ -2244,6 +2244,18 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type WeightInfo = ();
+    type Hashing = Keccak256;
+    type AssetId = AssetId;
+    type Balance = Balance;
+    type OutboundChannel = SubstrateBridgeOutboundChannel;
+
+    type CallOrigin = dispatch::EnsureAccount<
+        SubNetworkId,
+        (),
+        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
+    >;
+
+    type MessageStatusNotifier = BridgeProxy;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
