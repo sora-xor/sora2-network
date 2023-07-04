@@ -3776,6 +3776,227 @@ fn should_calculate_market_order_impact() {
 }
 
 #[test]
+fn should_calculate_market_order_impact_with_dust() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let dex_id = DEX.into();
+        let mut order_book = create_and_fill_order_book(order_book_id);
+        let expiration_block = 18;
+
+        // change lot size precision
+        order_book.step_lot_size = balance!(1);
+
+        let amount1 = balance!(100);
+        let amount2 = balance!(200);
+
+        let buy_dust1 = balance!(0.3);
+        let buy_dust2 = balance!(0.4);
+        let sell_dust1 = balance!(0.5);
+        let sell_dust2 = balance!(0.2);
+
+        let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
+        let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
+        let limit_order7 = data.get_limit_order(&order_book_id, 7).unwrap();
+        let limit_order8 = data.get_limit_order(&order_book_id, 8).unwrap();
+
+        assert_eq!(
+            order_book
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Buy,
+                        order_book_id,
+                        amount1,
+                        None
+                    ),
+                    &mut data
+                )
+                .unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Quote(balance!(1100))),
+                deal_output: Some(OrderAmount::Base(amount1)),
+                market_input: None,
+                market_output: Some(OrderAmount::Base(amount1)),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(
+                    limit_order7.id,
+                    limit_order7.amount - amount1 - buy_dust1
+                )]),
+                to_delete: BTreeMap::from([]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(1100))])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(alice(), amount1), (bob(), buy_dust1)])
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(bob(), balance!(1100))])
+                        )
+                    ]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
+
+        assert_eq!(
+            order_book
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Buy,
+                        order_book_id,
+                        amount2,
+                        None
+                    ),
+                    &mut data
+                )
+                .unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Quote(balance!(2204.8))),
+                deal_output: Some(OrderAmount::Base(amount2)),
+                market_input: None,
+                market_output: Some(OrderAmount::Base(amount2)),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(
+                    limit_order8.id,
+                    limit_order8.amount - balance!(24) - buy_dust2
+                )]),
+                to_delete: BTreeMap::from([(7, expiration_block)]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.quote,
+                        BTreeMap::from([(alice(), balance!(2204.8))])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([
+                                (alice(), amount2),
+                                (bob(), buy_dust1),
+                                (charlie(), buy_dust2)
+                            ])
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(bob(), balance!(1936)), (charlie(), balance!(268.8))])
+                        )
+                    ]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
+
+        assert_eq!(
+            order_book
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Sell,
+                        order_book_id,
+                        amount1,
+                        None
+                    ),
+                    &mut data
+                )
+                .unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Base(amount1)),
+                deal_output: Some(OrderAmount::Quote(balance!(1000))),
+                market_input: None,
+                market_output: Some(OrderAmount::Quote(balance!(1000))),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(
+                    limit_order1.id,
+                    limit_order1.amount - amount1 - sell_dust1
+                )]),
+                to_delete: BTreeMap::from([]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), amount1)])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (order_book_id.base, BTreeMap::from([(bob(), amount1)])),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([(alice(), balance!(1000)), (bob(), sell_dust1 * 10)])
+                        )
+                    ]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
+
+        assert_eq!(
+            order_book
+                .calculate_market_order_impact(
+                    MarketOrder::<Runtime>::new(
+                        alice(),
+                        PriceVariant::Sell,
+                        order_book_id,
+                        amount2,
+                        None
+                    ),
+                    &mut data
+                )
+                .unwrap(),
+            MarketChange {
+                deal_input: Some(OrderAmount::Base(amount2)),
+                deal_output: Some(OrderAmount::Quote(balance!(1993.6))),
+                market_input: None,
+                market_output: Some(OrderAmount::Quote(balance!(1993.6))),
+                to_add: BTreeMap::from([]),
+                to_update: BTreeMap::from([(
+                    limit_order2.id,
+                    limit_order2.amount - balance!(32) - sell_dust2
+                )]),
+                to_delete: BTreeMap::from([(1, expiration_block)]),
+                payment: Payment {
+                    dex_id,
+                    order_book_id,
+                    to_lock: BTreeMap::from([(
+                        order_book_id.base,
+                        BTreeMap::from([(alice(), amount2)])
+                    )]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(bob(), balance!(168)), (charlie(), balance!(32))])
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([
+                                (alice(), balance!(1993.6)),
+                                (bob(), sell_dust1 * 10),
+                                (charlie(), sell_dust2 * 98 / 10) // the same as (* 9.8), but allowed for integer
+                            ])
+                        )
+                    ]),
+                },
+                ignore_unschedule_error: false
+            }
+        );
+    });
+}
+
+#[test]
 fn should_calculate_limit_order_impact() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
@@ -3856,13 +4077,6 @@ fn should_calculate_limit_order_impact() {
                 ignore_unschedule_error: false
             }
         );
-    });
-}
-
-#[test]
-fn should_calculate_market_order_impact_with_dust() {
-    ext().execute_with(|| {
-        // todo
     });
 }
 

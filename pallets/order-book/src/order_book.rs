@@ -456,6 +456,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 };
 
                 if !dust.is_zero() {
+                    let dust = *limit_order
+                        .deal_amount(MarketRole::Taker, Some(dust))?
+                        .value();
                     payment
                         .to_unlock
                         .entry(taker_out_asset)
