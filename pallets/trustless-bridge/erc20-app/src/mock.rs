@@ -224,6 +224,7 @@ impl Convert<U256, Balance> for FeeConverter {
 
 parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
+    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 impl bridge_outbound_channel::Config for Test {
@@ -235,6 +236,7 @@ impl bridge_outbound_channel::Config for Test {
     type FeeCurrency = FeeCurrency;
     type MessageStatusNotifier = ();
     type AuxiliaryDigestHandler = ();
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
