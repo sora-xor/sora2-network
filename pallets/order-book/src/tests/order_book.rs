@@ -189,11 +189,7 @@ fn should_place_limit_order() {
 
         // place new order
         assert_eq!(
-            order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    order, &mut data
-                )
-                .unwrap(),
+            order_book.place_limit_order(order, &mut data).unwrap(),
             vec![OrderBookEvent::LimitOrderPlaced {
                 order_id,
                 owner_id: owner.clone()
@@ -279,11 +275,7 @@ fn should_place_nft_limit_order() {
 
         // place new order
         assert_eq!(
-            order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    order, &mut data
-                )
-                .unwrap(),
+            order_book.place_limit_order(order, &mut data).unwrap(),
             vec![OrderBookEvent::LimitOrderPlaced {
                 order_id,
                 owner_id: owner.clone()
@@ -388,11 +380,7 @@ fn should_place_limit_order_out_of_spread() {
         );
 
         assert_eq!(
-            order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order1, &mut data
-                )
-                .unwrap(),
+            order_book.place_limit_order(buy_order1, &mut data).unwrap(),
             vec![
                 OrderBookEvent::LimitOrderExecuted {
                     order_id: 7,
@@ -474,10 +462,7 @@ fn should_place_limit_order_out_of_spread() {
 
         assert_eq!(
             order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order2.clone(),
-                    &mut data
-                )
+                .place_limit_order(buy_order2.clone(), &mut data)
                 .unwrap(),
             vec![
                 OrderBookEvent::LimitOrderExecuted {
@@ -576,10 +561,7 @@ fn should_place_limit_order_out_of_spread() {
 
         assert_eq!(
             order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order1,
-                    &mut data
-                )
+                .place_limit_order(sell_order1, &mut data)
                 .unwrap(),
             vec![
                 OrderBookEvent::LimitOrderExecuted {
@@ -658,10 +640,7 @@ fn should_place_limit_order_out_of_spread() {
 
         assert_eq!(
             order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order2.clone(),
-                    &mut data
-                )
+                .place_limit_order(sell_order2.clone(), &mut data)
                 .unwrap(),
             vec![
                 OrderBookEvent::LimitOrderExecuted {
@@ -769,36 +748,22 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
 
         order_book.status = OrderBookStatus::Stop;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order.clone(),
-                &mut data
-            ),
+            order_book.place_limit_order(order.clone(), &mut data),
             E::PlacementOfLimitOrdersIsForbidden
         );
 
         order_book.status = OrderBookStatus::OnlyCancel;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order.clone(),
-                &mut data
-            ),
+            order_book.place_limit_order(order.clone(), &mut data),
             E::PlacementOfLimitOrdersIsForbidden
         );
 
         order_book.status = OrderBookStatus::PlaceAndCancel;
-        assert_ok!(order_book
-            .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order.clone(),
-                &mut data
-            ));
+        assert_ok!(order_book.place_limit_order(order.clone(), &mut data));
 
         order_book.status = OrderBookStatus::Trade;
         order.id = 2;
-        assert_ok!(order_book
-            .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order.clone(),
-                &mut data
-            ));
+        assert_ok!(order_book.place_limit_order(order.clone(), &mut data));
     });
 }
 
@@ -828,40 +793,28 @@ fn should_not_place_invalid_limit_order() {
         let mut wrong_price_order = order.clone();
         wrong_price_order.price = balance!(10) + order_book.tick_size / 100;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                wrong_price_order,
-                &mut data
-            ),
+            order_book.place_limit_order(wrong_price_order, &mut data),
             E::InvalidLimitOrderPrice
         );
 
         let mut too_small_amount_order = order.clone();
         too_small_amount_order.amount = order_book.min_lot_size / 2;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                too_small_amount_order,
-                &mut data
-            ),
+            order_book.place_limit_order(too_small_amount_order, &mut data),
             E::InvalidOrderAmount
         );
 
         let mut too_big_amount_order = order.clone();
         too_big_amount_order.amount = order_book.max_lot_size + 1;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                too_big_amount_order,
-                &mut data
-            ),
+            order_book.place_limit_order(too_big_amount_order, &mut data),
             E::InvalidOrderAmount
         );
 
         let mut wrong_amount_order = order.clone();
         wrong_amount_order.amount = balance!(100) + order_book.step_lot_size / 100;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                wrong_amount_order,
-                &mut data
-            ),
+            order_book.place_limit_order(wrong_amount_order, &mut data),
             E::InvalidOrderAmount
         );
     })
@@ -906,40 +859,28 @@ fn should_not_place_invalid_nft_limit_order() {
         let mut wrong_price_order = order.clone();
         wrong_price_order.price = balance!(10) + order_book.tick_size / 100;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                wrong_price_order,
-                &mut data
-            ),
+            order_book.place_limit_order(wrong_price_order, &mut data),
             E::InvalidLimitOrderPrice
         );
 
         let mut too_small_amount_order = order.clone();
         too_small_amount_order.amount = balance!(0.5);
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                too_small_amount_order,
-                &mut data
-            ),
+            order_book.place_limit_order(too_small_amount_order, &mut data),
             E::InvalidOrderAmount
         );
 
         let mut too_big_amount_order = order.clone();
         too_big_amount_order.amount = order_book.max_lot_size + 1;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                too_big_amount_order,
-                &mut data
-            ),
+            order_book.place_limit_order(too_big_amount_order, &mut data),
             E::InvalidOrderAmount
         );
 
         let mut wrong_amount_order = order.clone();
         wrong_amount_order.amount = balance!(1) - order_book.step_lot_size / 100;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                wrong_amount_order,
-                &mut data
-            ),
+            order_book.place_limit_order(wrong_amount_order, &mut data),
             E::InvalidOrderAmount
         );
     })
@@ -976,19 +917,13 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
         for _ in 0..max_orders_per_user {
             order.id += 1;
             order.price += balance!(0.001);
-            assert_ok!(order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    order.clone(),
-                    &mut data
-                ));
+            assert_ok!(order_book.place_limit_order(order.clone(), &mut data));
         }
 
         order.id += 1;
         order.price += balance!(0.001);
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order, &mut data
-            ),
+            order_book.place_limit_order(order, &mut data),
             E::UserHasMaxCountOfOpenedOrders
         );
     })
@@ -1047,30 +982,18 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
             // but we do it in a hacky way for simplicity
             sell_order.expires_at += 1;
 
-            assert_ok!(order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order.clone(),
-                    &mut data
-                ));
-            assert_ok!(order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order.clone(),
-                    &mut data
-                ));
+            assert_ok!(order_book.place_limit_order(buy_order.clone(), &mut data));
+            assert_ok!(order_book.place_limit_order(sell_order.clone(), &mut data));
         }
 
         buy_order.id += 1;
         sell_order.id += 1;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                buy_order, &mut data
-            ),
+            order_book.place_limit_order(buy_order, &mut data),
             E::PriceReachedMaxCountOfLimitOrders
         );
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                sell_order, &mut data
-            ),
+            order_book.place_limit_order(sell_order, &mut data),
             E::PriceReachedMaxCountOfLimitOrders
         );
     })
@@ -1133,30 +1056,18 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
             // but we do it in a hacky way for simplicity
             sell_order.expires_at += 1;
 
-            assert_ok!(order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order.clone(),
-                    &mut data
-                ));
-            assert_ok!(order_book
-                .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order.clone(),
-                    &mut data
-                ));
+            assert_ok!(order_book.place_limit_order(buy_order.clone(), &mut data));
+            assert_ok!(order_book.place_limit_order(sell_order.clone(), &mut data));
         }
 
         buy_order.id += 1;
         sell_order.id += 1;
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                buy_order, &mut data
-            ),
+            order_book.place_limit_order(buy_order, &mut data),
             E::OrderBookReachedMaxCountOfPricesForSide
         );
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                sell_order, &mut data
-            ),
+            order_book.place_limit_order(sell_order, &mut data),
             E::OrderBookReachedMaxCountOfPricesForSide
         );
     })
@@ -1209,17 +1120,11 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
         );
 
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                buy_order.clone(),
-                &mut data
-            ),
+            order_book.place_limit_order(buy_order.clone(), &mut data),
             E::InvalidLimitOrderPrice
         );
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                sell_order.clone(),
-                &mut data
-            ),
+            order_book.place_limit_order(sell_order.clone(), &mut data),
             E::InvalidLimitOrderPrice
         );
 
@@ -1227,32 +1132,16 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
         buy_order.price = bes_bid_price - max_price_shift * bes_bid_price;
         sell_order.price = bes_ask_price + max_price_shift * bes_ask_price;
 
-        assert_ok!(order_book
-            .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                buy_order.clone(),
-                &mut data
-            ));
-        assert_ok!(order_book
-            .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                sell_order.clone(),
-                &mut data
-            ));
+        assert_ok!(order_book.place_limit_order(buy_order.clone(), &mut data));
+        assert_ok!(order_book.place_limit_order(sell_order.clone(), &mut data));
 
         buy_order.id = 201;
         buy_order.price = bes_bid_price + max_price_shift * bes_bid_price + order_book.tick_size;
         sell_order.id = 202;
         sell_order.price = bes_ask_price - max_price_shift * bes_ask_price - order_book.tick_size;
 
-        assert_ok!(order_book
-            .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                buy_order.clone(),
-                &mut data
-            ));
-        assert_ok!(order_book
-            .place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                sell_order.clone(),
-                &mut data
-            ));
+        assert_ok!(order_book.place_limit_order(buy_order.clone(), &mut data));
+        assert_ok!(order_book.place_limit_order(sell_order.clone(), &mut data));
     })
 }
 
@@ -1298,15 +1187,11 @@ fn should_not_place_limit_order_in_spread() {
         order_book.status = OrderBookStatus::PlaceAndCancel;
 
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                buy_order, &mut data
-            ),
+            order_book.place_limit_order(buy_order, &mut data),
             E::InvalidLimitOrderPrice
         );
         assert_err!(
-            order_book.place_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                sell_order, &mut data
-            ),
+            order_book.place_limit_order(sell_order, &mut data),
             E::InvalidLimitOrderPrice
         );
     });
@@ -1341,11 +1226,7 @@ fn should_cancel_limit_order() {
         let balance_before = free_balance(&order_book_id.quote, &order.owner);
 
         // cancel the limit order
-        assert_ok!(order_book
-            .cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order.clone(),
-                &mut data
-            ));
+        assert_ok!(order_book.cancel_limit_order(order.clone(), &mut data));
 
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
@@ -1400,10 +1281,7 @@ fn should_not_cancel_unknown_limit_order() {
         );
 
         assert_err!(
-            order_book.cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                unknown_order,
-                &mut data
-            ),
+            order_book.cancel_limit_order(unknown_order, &mut data),
             E::UnknownLimitOrder
         );
     });
@@ -1427,30 +1305,18 @@ fn should_not_cancel_limit_order_when_status_doesnt_allow() {
 
         order_book.status = OrderBookStatus::Stop;
         assert_err!(
-            order_book.cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order1.clone(),
-                &mut data
-            ),
+            order_book.cancel_limit_order(order1.clone(), &mut data),
             E::CancellationOfLimitOrdersIsForbidden
         );
 
         order_book.status = OrderBookStatus::Trade;
-        assert_ok!(order_book
-            .cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order1, &mut data
-            ));
+        assert_ok!(order_book.cancel_limit_order(order1, &mut data));
 
         order_book.status = OrderBookStatus::PlaceAndCancel;
-        assert_ok!(order_book
-            .cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order2, &mut data
-            ));
+        assert_ok!(order_book.cancel_limit_order(order2, &mut data));
 
         order_book.status = OrderBookStatus::OnlyCancel;
-        assert_ok!(order_book
-            .cancel_limit_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order3, &mut data
-            ));
+        assert_ok!(order_book.cancel_limit_order(order3, &mut data));
     });
 }
 
@@ -1490,10 +1356,7 @@ fn should_cancel_all_limit_orders() {
         assert!(free_balance(&order_book_id.quote, &tech_account) > balance!(0));
 
         // cancel all orders
-        assert_ok!(order_book
-            .cancel_all_limit_orders::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                &mut data
-            ));
+        assert_ok!(order_book.cancel_all_limit_orders(&mut data));
 
         // empty after canceling of all limit orders
         assert!(data.get_all_limit_orders(&order_book_id).is_empty());
@@ -2134,28 +1997,19 @@ fn should_not_execute_market_order_with_non_trade_status() {
 
         order_book.status = OrderBookStatus::PlaceAndCancel;
         assert_err!(
-            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order.clone(),
-                &mut data
-            ),
+            order_book.execute_market_order(order.clone(), &mut data),
             E::TradingIsForbidden
         );
 
         order_book.status = OrderBookStatus::OnlyCancel;
         assert_err!(
-            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order.clone(),
-                &mut data
-            ),
+            order_book.execute_market_order(order.clone(), &mut data),
             E::TradingIsForbidden
         );
 
         order_book.status = OrderBookStatus::Stop;
         assert_err!(
-            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order.clone(),
-                &mut data
-            ),
+            order_book.execute_market_order(order.clone(), &mut data),
             E::TradingIsForbidden
         );
     });
@@ -2183,9 +2037,7 @@ fn should_not_execute_market_order_with_empty_amount() {
         );
 
         assert_err!(
-            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order, &mut data
-            ),
+            order_book.execute_market_order(order, &mut data),
             E::InvalidOrderAmount
         );
     });
@@ -2217,9 +2069,7 @@ fn should_not_execute_market_order_with_invalid_order_book_id() {
         );
 
         assert_err!(
-            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order, &mut data
-            ),
+            order_book.execute_market_order(order, &mut data),
             E::InvalidOrderBookId
         );
     });
@@ -2247,9 +2097,7 @@ fn should_not_execute_market_order_with_invalid_amount() {
         );
 
         assert_err!(
-            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                order, &mut data
-            ),
+            order_book.execute_market_order(order, &mut data),
             E::InvalidOrderAmount
         );
     });
@@ -2313,10 +2161,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
         // 1st buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(buy_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1650)),
@@ -2388,10 +2233,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
         // 2nd buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(buy_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1674.74)),
@@ -2474,10 +2316,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
         // 3rd buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(buy_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1708.53)),
@@ -2557,10 +2396,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
         // 1st sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(sell_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
@@ -2631,10 +2467,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
         // 2nd sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(sell_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
@@ -2716,10 +2549,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
         // 3rd sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(sell_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
@@ -2801,10 +2631,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
 
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(buy_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05)),
@@ -2834,10 +2661,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
         );
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(sell_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7)),
@@ -2956,10 +2780,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 1st buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(buy_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1650)),
@@ -3042,10 +2863,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 2nd buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(buy_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1674.74)),
@@ -3139,10 +2957,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 3rd buy order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(buy_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1708.53)),
@@ -3233,10 +3048,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 1st sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(sell_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
@@ -3318,10 +3130,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 2nd sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(sell_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
@@ -3414,10 +3223,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         // 3rd sell order
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(sell_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
@@ -3510,10 +3316,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
 
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    buy_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(buy_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05)),
@@ -3543,10 +3346,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         );
         assert_eq!(
             order_book
-                .execute_market_order::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                    sell_order.clone(),
-                    &mut data
-                )
+                .execute_market_order(sell_order.clone(), &mut data)
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7)),
@@ -4701,11 +4501,7 @@ fn should_apply_market_change() {
         };
 
         // apply market change
-        assert_ok!(order_book
-            .apply_market_change::<OrderBookPallet, OrderBookPallet, OrderBookPallet>(
-                market_change,
-                &mut data
-            ));
+        assert_ok!(order_book.apply_market_change(market_change, &mut data));
 
         // check state after
 

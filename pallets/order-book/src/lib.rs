@@ -125,6 +125,15 @@ pub mod pallet {
             + Eq
             + MaxEncodedLen
             + scale_info::TypeInfo;
+        type Locker: CurrencyLocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
+        type Unlocker: CurrencyUnlocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
+        type Scheduler: ExpirationScheduler<
+            Self::BlockNumber,
+            OrderBookId<Self::AssetId>,
+            Self::DEXId,
+            Self::OrderId,
+            DispatchError,
+        >;
         type MaxOpenedLimitOrdersPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
         type MaxSidePriceCount: Get<u32>;
@@ -535,8 +544,7 @@ pub mod pallet {
             let dex_id = order_book.dex_id;
 
             let mut data = CacheDataLayer::<T>::new();
-            let count_of_canceled_orders =
-                order_book.cancel_all_limit_orders::<Self, Self, Self>(&mut data)? as u32;
+            let count_of_canceled_orders = order_book.cancel_all_limit_orders(&mut data)? as u32;
 
             data.commit();
 
@@ -722,7 +730,7 @@ pub mod pallet {
             );
 
             let mut data = CacheDataLayer::<T>::new();
-            let events = order_book.place_limit_order::<Self, Self, Self>(order, &mut data)?;
+            let events = order_book.place_limit_order(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
@@ -749,7 +757,7 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
 
-            let events = order_book.cancel_limit_order::<Self, Self, Self>(order, &mut data)?;
+            let events = order_book.cancel_limit_order(order, &mut data)?;
             data.commit();
             Self::emit_events(dex_id, order_book_id, events);
             Ok(().into())
@@ -1052,7 +1060,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to.clone());
 
         let (input_amount, output_amount, events) =
-            order_book.execute_market_order::<Self, Self, Self>(market_order, &mut data)?;
+            order_book.execute_market_order(market_order, &mut data)?;
 
         let fee = 0; // todo (m.tagirov)
 
