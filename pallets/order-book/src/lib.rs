@@ -402,6 +402,8 @@ pub mod pallet {
         TickSizeAndStepLotSizeAreTooBig,
         /// Tick size & step lot size are too small and their multiplication goes out of precision
         TickSizeAndStepLotSizeAreTooSmall,
+        /// TODO: explain why it's bad
+        TickSizeAndStepLotSizeUnderflow,
         /// Max lot size cannot be more that total supply of base asset
         MaxLotSizeIsMoreThanTotalSupply,
         /// Indicated limit for slippage has not been met during transaction execution.
@@ -589,7 +591,8 @@ pub mod pallet {
 
             // Returns error if value overflows.
             let min_possible_deal_amount = (FixedWrapper::from(tick_size)
-                * FixedWrapper::from(step_lot_size))
+                .lossless_mul(FixedWrapper::from(step_lot_size))
+                .ok_or(Error::<T>::TickSizeAndStepLotSizeUnderflow)?)
             .try_into_balance()
             .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
 
