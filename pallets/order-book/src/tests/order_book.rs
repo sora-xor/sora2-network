@@ -40,7 +40,7 @@ use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
     Config, DataLayer, DealInfo, LimitOrder, MarketChange, MarketOrder, MarketRole, OrderAmount,
-    OrderBook, OrderBookEvent, OrderBookId, OrderBookStatus, Payment,
+    OrderBook, OrderBookId, OrderBookStatus, Payment,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_core::Get;
@@ -188,13 +188,7 @@ fn should_place_limit_order() {
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // place new order
-        assert_eq!(
-            order_book.place_limit_order(order, &mut data).unwrap(),
-            vec![OrderBookEvent::LimitOrderPlaced {
-                order_id,
-                owner_id: owner.clone()
-            }]
-        );
+        assert_ok!(order_book.place_limit_order(order, &mut data));
 
         // check
         let mut expected_bids = bids_before.clone();
@@ -274,13 +268,7 @@ fn should_place_nft_limit_order() {
         );
 
         // place new order
-        assert_eq!(
-            order_book.place_limit_order(order, &mut data).unwrap(),
-            vec![OrderBookEvent::LimitOrderPlaced {
-                order_id,
-                owner_id: owner.clone()
-            }]
-        );
+        assert_ok!(order_book.place_limit_order(order, &mut data));
 
         // check
         assert_eq!(
@@ -379,22 +367,7 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_eq!(
-            order_book.place_limit_order(buy_order1, &mut data).unwrap(),
-            vec![
-                OrderBookEvent::LimitOrderExecuted {
-                    order_id: 7,
-                    owner_id: bob(),
-                    side: PriceVariant::Sell,
-                    amount: OrderAmount::Base(balance!(26.3))
-                },
-                OrderBookEvent::LimitOrderConvertedToMarketOrder {
-                    owner_id: alice(),
-                    direction: PriceVariant::Buy,
-                    amount: OrderAmount::Base(balance!(26.3))
-                }
-            ]
-        );
+        assert_ok!(order_book.place_limit_order(buy_order1, &mut data));
 
         // check state
 
@@ -460,30 +433,7 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_eq!(
-            order_book
-                .place_limit_order(buy_order2.clone(), &mut data)
-                .unwrap(),
-            vec![
-                OrderBookEvent::LimitOrderExecuted {
-                    order_id: 7,
-                    owner_id: bob(),
-                    side: PriceVariant::Sell,
-                    amount: OrderAmount::Base(balance!(150))
-                },
-                OrderBookEvent::LimitOrderPlaced {
-                    order_id: buy_order_id2,
-                    owner_id: alice(),
-                },
-                OrderBookEvent::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
-                    owner_id: alice(),
-                    market_order_direction: PriceVariant::Buy,
-                    market_order_amount: OrderAmount::Base(balance!(150)),
-                    market_order_average_price: balance!(11),
-                    limit_order_id: buy_order_id2
-                }
-            ]
-        );
+        assert_ok!(order_book.place_limit_order(buy_order2.clone(), &mut data));
 
         // check state
 
@@ -559,24 +509,7 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_eq!(
-            order_book
-                .place_limit_order(sell_order1, &mut data)
-                .unwrap(),
-            vec![
-                OrderBookEvent::LimitOrderExecuted {
-                    order_id: 1,
-                    owner_id: bob(),
-                    side: PriceVariant::Buy,
-                    amount: OrderAmount::Base(balance!(18.5))
-                },
-                OrderBookEvent::LimitOrderConvertedToMarketOrder {
-                    owner_id: alice(),
-                    direction: PriceVariant::Sell,
-                    amount: OrderAmount::Base(balance!(18.5))
-                }
-            ]
-        );
+        assert_ok!(order_book.place_limit_order(sell_order1, &mut data));
 
         // check state
 
@@ -638,30 +571,7 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_eq!(
-            order_book
-                .place_limit_order(sell_order2.clone(), &mut data)
-                .unwrap(),
-            vec![
-                OrderBookEvent::LimitOrderExecuted {
-                    order_id: 1,
-                    owner_id: bob(),
-                    side: PriceVariant::Buy,
-                    amount: OrderAmount::Base(balance!(150))
-                },
-                OrderBookEvent::LimitOrderPlaced {
-                    order_id: sell_order_id2,
-                    owner_id: alice(),
-                },
-                OrderBookEvent::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
-                    owner_id: alice(),
-                    market_order_direction: PriceVariant::Sell,
-                    market_order_amount: OrderAmount::Base(balance!(150)),
-                    market_order_average_price: balance!(10),
-                    limit_order_id: sell_order_id2
-                }
-            ]
-        );
+        assert_ok!(order_book.place_limit_order(sell_order2.clone(), &mut data));
 
         // check state
 
@@ -2165,22 +2075,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1650)),
-                OrderAmount::Base(balance!(150)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 7,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(150))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(11),
-                        to: None
-                    }
-                ]
+                OrderAmount::Base(balance!(150))
             )
         );
         assert_eq!(
@@ -2237,34 +2132,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1674.74)),
-                OrderAmount::Base(balance!(150)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 7,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(26.3))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 8,
-                        owner_id: charlie(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(85.4))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 9,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(38.3))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(11.164933333333333333),
-                        to: None
-                    }
-                ]
+                OrderAmount::Base(balance!(150))
             )
         );
         assert_eq!(
@@ -2320,34 +2188,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1708.53)),
-                OrderAmount::Base(balance!(150)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 9,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(54.9))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 10,
-                        owner_id: charlie(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(36.6))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 11,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(58.5))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(11.3902),
-                        to: None
-                    }
-                ]
+                OrderAmount::Base(balance!(150))
             )
         );
         assert_eq!(
@@ -2400,22 +2241,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
-                OrderAmount::Quote(balance!(1500)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 1,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(150))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(10),
-                        to: None
-                    }
-                ]
+                OrderAmount::Quote(balance!(1500))
             )
         );
         assert_eq!(
@@ -2471,34 +2297,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
-                OrderAmount::Quote(balance!(1473.7)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 1,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(18.5))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 2,
-                        owner_id: charlie(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(95.2))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 3,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(36.3))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(9.824666666666666666),
-                        to: None
-                    }
-                ]
+                OrderAmount::Quote(balance!(1473.7))
             )
         );
         assert_eq!(
@@ -2553,34 +2352,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
-                OrderAmount::Quote(balance!(1427.52)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 3,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(8.4))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 4,
-                        owner_id: charlie(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(56.4))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 5,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(85.2))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(9.5168),
-                        to: None
-                    }
-                ]
+                OrderAmount::Quote(balance!(1427.52))
             )
         );
         assert_eq!(
@@ -2635,28 +2407,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05)),
-                OrderAmount::Base(balance!(160.7)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 11,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(147))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 12,
-                        owner_id: charlie(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(13.7))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(160.7)),
-                        average_price: balance!(11.5),
-                        to: None
-                    }
-                ]
+                OrderAmount::Base(balance!(160.7))
             )
         );
         assert_eq!(
@@ -2665,28 +2416,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7)),
-                OrderAmount::Quote(balance!(1137.15)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 5,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(4.7))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 6,
-                        owner_id: charlie(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(115))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(119.7)),
-                        average_price: balance!(9.5),
-                        to: None
-                    }
-                ]
+                OrderAmount::Quote(balance!(1137.15))
             )
         );
         assert_eq!(
@@ -2784,22 +2514,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1650)),
-                OrderAmount::Base(balance!(150)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 7,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(150))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(11),
-                        to: Some(dave())
-                    }
-                ]
+                OrderAmount::Base(balance!(150))
             )
         );
         assert_eq!(
@@ -2867,34 +2582,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1674.74)),
-                OrderAmount::Base(balance!(150)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 7,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(26.3))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 8,
-                        owner_id: charlie(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(85.4))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 9,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(38.3))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(11.164933333333333333),
-                        to: Some(dave())
-                    }
-                ]
+                OrderAmount::Base(balance!(150))
             )
         );
         assert_eq!(
@@ -2961,34 +2649,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1708.53)),
-                OrderAmount::Base(balance!(150)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 9,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(54.9))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 10,
-                        owner_id: charlie(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(36.6))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 11,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(58.5))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(11.3902),
-                        to: Some(dave())
-                    }
-                ]
+                OrderAmount::Base(balance!(150))
             )
         );
         assert_eq!(
@@ -3052,22 +2713,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
-                OrderAmount::Quote(balance!(1500)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 1,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(150))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(10),
-                        to: Some(dave())
-                    }
-                ]
+                OrderAmount::Quote(balance!(1500))
             )
         );
         assert_eq!(
@@ -3134,34 +2780,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
-                OrderAmount::Quote(balance!(1473.7)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 1,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(18.5))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 2,
-                        owner_id: charlie(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(95.2))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 3,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(36.3))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(9.824666666666666666),
-                        to: Some(dave())
-                    }
-                ]
+                OrderAmount::Quote(balance!(1473.7))
             )
         );
         assert_eq!(
@@ -3227,34 +2846,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150)),
-                OrderAmount::Quote(balance!(1427.52)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 3,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(8.4))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 4,
-                        owner_id: charlie(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(56.4))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 5,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(85.2))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(150)),
-                        average_price: balance!(9.5168),
-                        to: Some(dave())
-                    }
-                ]
+                OrderAmount::Quote(balance!(1427.52))
             )
         );
         assert_eq!(
@@ -3320,28 +2912,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05)),
-                OrderAmount::Base(balance!(160.7)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 11,
-                        owner_id: bob(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(147))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 12,
-                        owner_id: charlie(),
-                        side: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(13.7))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(160.7)),
-                        average_price: balance!(11.5),
-                        to: Some(dave())
-                    }
-                ]
+                OrderAmount::Base(balance!(160.7))
             )
         );
         assert_eq!(
@@ -3350,28 +2921,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7)),
-                OrderAmount::Quote(balance!(1137.15)),
-                vec![
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 5,
-                        owner_id: bob(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(4.7))
-                    },
-                    OrderBookEvent::LimitOrderExecuted {
-                        order_id: 6,
-                        owner_id: charlie(),
-                        side: PriceVariant::Buy,
-                        amount: OrderAmount::Base(balance!(115))
-                    },
-                    OrderBookEvent::MarketOrderExecuted {
-                        owner_id: alice(),
-                        direction: PriceVariant::Sell,
-                        amount: OrderAmount::Base(balance!(119.7)),
-                        average_price: balance!(9.5),
-                        to: Some(dave())
-                    }
-                ]
+                OrderAmount::Quote(balance!(1137.15))
             )
         );
         assert_eq!(

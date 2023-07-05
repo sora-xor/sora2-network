@@ -29,7 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    Config, LimitOrder, MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders,
+    Config, LimitOrder, MarketSide, OrderBookEvent, OrderBookId, OrderPrice, OrderVolume,
+    PriceOrders, UserOrders,
 };
 use assets::AssetIdOf;
 use common::PriceVariant;
@@ -184,4 +185,12 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, DEXId, OrderId, Error> {
         dex_id: DEXId,
         order_id: OrderId,
     ) -> Result<(), Error>;
+}
+
+pub trait Delegate<AccountId, AssetId, OrderId, DEXId> {
+    fn emit_event(
+        dex_id: DEXId,
+        order_book_id: OrderBookId<AssetId>,
+        event: OrderBookEvent<AccountId, OrderId>,
+    );
 }

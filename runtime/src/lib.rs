@@ -2031,6 +2031,7 @@ impl order_book::Config for Runtime {
     type Locker = OrderBook;
     type Unlocker = OrderBook;
     type Scheduler = OrderBook;
+    type Delegate = OrderBook;
     type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<10000>; // TODO: order-book clarify
