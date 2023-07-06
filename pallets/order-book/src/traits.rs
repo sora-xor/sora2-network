@@ -47,14 +47,14 @@ where
     /// Returns the limit order if exists, otherwise returns error.
     fn get_limit_order(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         order_id: T::OrderId,
     ) -> Result<LimitOrder<T>, DispatchError>;
 
     /// Returns all limit orders of order book
     fn get_all_limit_orders(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Vec<LimitOrder<T>>;
 
     /// Inserts limit order consistently in all necessary storages.
@@ -62,7 +62,7 @@ where
     /// If order_id already exists - returns error. Use `update_limit_order` to update the existing order.
     fn insert_limit_order(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         order: LimitOrder<T>,
     ) -> Result<(), DispatchError>;
 
@@ -70,7 +70,7 @@ where
     /// If order doesn't exist - return error
     fn update_limit_order_amount(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         order_id: T::OrderId,
         new_amount: OrderVolume,
     ) -> Result<(), DispatchError>;
@@ -80,14 +80,14 @@ where
     /// Must check before call. If returns error, it means we have problems with data consistency.
     fn delete_limit_order(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError>;
 
     /// Returns order ids of orders inside the bid or ask price
     fn get_limit_orders_by_price(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         side: PriceVariant,
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
@@ -100,34 +100,34 @@ where
     /// Returns order ids of orders inside the bid price
     fn get_bids(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>>;
 
     /// Returns order ids of orders inside the ask price
     fn get_asks(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>>;
 
     /// Returns all bid prices with their volumes
     fn get_aggregated_bids(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount>;
 
     /// Returns all ask prices with their volumes
     fn get_aggregated_asks(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount>;
 
     /// Returns order ids of user
     fn get_user_limit_orders(
         &mut self,
         account: &T::AccountId,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>>;
 }
 
@@ -137,7 +137,7 @@ pub trait CurrencyLocker<AccountId, AssetId, DEXId, Error> {
     fn lock_liquidity(
         dex_id: DEXId,
         account: &AccountId,
-        order_book_id: OrderBookId<AssetId>,
+        order_book_id: OrderBookId<AssetId, DEXId>,
         asset_id: &AssetId,
         amount: OrderVolume,
     ) -> Result<(), Error>;
@@ -149,14 +149,14 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
     fn unlock_liquidity(
         dex_id: DEXId,
         account: &AccountId,
-        order_book_id: OrderBookId<AssetId>,
+        order_book_id: OrderBookId<AssetId, DEXId>,
         asset_id: &AssetId,
         amount: OrderVolume,
     ) -> Result<(), Error>;
 
     fn unlock_liquidity_batch(
         dex_id: DEXId,
-        order_book_id: OrderBookId<AssetId>,
+        order_book_id: OrderBookId<AssetId, DEXId>,
         asset_id: &AssetId,
         receivers: &BTreeMap<AccountId, OrderVolume>,
     ) -> Result<(), Error>;
@@ -190,7 +190,7 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, DEXId, OrderId, Error> {
 pub trait Delegate<AccountId, AssetId, OrderId, DEXId> {
     fn emit_event(
         dex_id: DEXId,
-        order_book_id: OrderBookId<AssetId>,
+        order_book_id: OrderBookId<AssetId, DEXId>,
         event: OrderBookEvent<AccountId, OrderId>,
     );
 }

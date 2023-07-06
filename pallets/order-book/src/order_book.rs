@@ -52,7 +52,7 @@ pub struct OrderBook<T>
 where
     T: crate::Config,
 {
-    pub order_book_id: OrderBookId<AssetIdOf<T>>,
+    pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     pub dex_id: T::DEXId,
     pub status: OrderBookStatus,
     pub last_order_id: T::OrderId,
@@ -64,7 +64,7 @@ where
 
 impl<T: crate::Config + Sized> OrderBook<T> {
     pub fn new(
-        order_book_id: OrderBookId<AssetIdOf<T>>,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         dex_id: T::DEXId,
         tick_size: OrderPrice,
         step_lot_size: OrderVolume,
@@ -83,7 +83,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
     }
 
-    pub fn default(order_book_id: OrderBookId<AssetIdOf<T>>, dex_id: T::DEXId) -> Self {
+    pub fn default(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>, dex_id: T::DEXId) -> Self {
         Self::new(
             order_book_id,
             dex_id,
@@ -94,7 +94,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         )
     }
 
-    pub fn default_nft(order_book_id: OrderBookId<AssetIdOf<T>>, dex_id: T::DEXId) -> Self {
+    pub fn default_nft(
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        dex_id: T::DEXId,
+    ) -> Self {
         Self::new(
             order_book_id,
             dex_id,
@@ -772,12 +775,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         output_asset_id: &AssetIdOf<T>,
     ) -> Result<PriceVariant, DispatchError> {
         match self.order_book_id {
-            OrderBookId::<AssetIdOf<T>> { base, quote }
+            OrderBookId::<AssetIdOf<T>, _> { base, quote, .. }
                 if base == *output_asset_id && quote == *input_asset_id =>
             {
                 Ok(PriceVariant::Buy)
             }
-            OrderBookId::<AssetIdOf<T>> { base, quote }
+            OrderBookId::<AssetIdOf<T>, _> { base, quote, .. }
                 if base == *input_asset_id && quote == *output_asset_id =>
             {
                 Ok(PriceVariant::Sell)

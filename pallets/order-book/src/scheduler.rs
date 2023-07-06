@@ -49,7 +49,7 @@ use sp_runtime::{DispatchError, Saturating};
 impl<T: Config> Pallet<T> {
     pub fn service_single_expiration(
         data_layer: &mut impl DataLayer<T>,
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         dex_id: T::DEXId,
         order_id: T::OrderId,
     ) {
@@ -160,7 +160,7 @@ impl<T: Config> Pallet<T> {
 impl<T: Config>
     ExpirationScheduler<
         T::BlockNumber,
-        OrderBookId<AssetIdOf<T>>,
+        OrderBookId<AssetIdOf<T>, T::DEXId>,
         T::DEXId,
         T::OrderId,
         DispatchError,
@@ -191,7 +191,7 @@ impl<T: Config>
 
     fn schedule(
         when: T::BlockNumber,
-        order_book_id: OrderBookId<AssetIdOf<T>>,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         dex_id: T::DEXId,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
@@ -204,7 +204,7 @@ impl<T: Config>
 
     fn unschedule(
         when: T::BlockNumber,
-        order_book_id: OrderBookId<AssetIdOf<T>>,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         dex_id: T::DEXId,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {

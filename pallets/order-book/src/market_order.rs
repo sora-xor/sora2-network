@@ -44,7 +44,7 @@ where
 {
     pub owner: T::AccountId,
     pub direction: PriceVariant,
-    pub order_book_id: OrderBookId<AssetIdOf<T>>,
+    pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
 
     /// Amount of OrderBookId `base` asset
     pub amount: OrderVolume,
@@ -58,7 +58,7 @@ impl<T: crate::Config> MarketOrder<T> {
     pub fn new(
         owner: T::AccountId,
         direction: PriceVariant,
-        order_book_id: OrderBookId<AssetIdOf<T>>,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         amount: OrderVolume,
         to: Option<T::AccountId>,
     ) -> Self {

@@ -94,7 +94,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 //   9.8 |  139.9 | buy2, buy3
 //   9.5 |  261.3 | buy4, buy5, buy6
 //          Bids
-fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>>) {
+fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) {
     OrderBookPallet::<T>::create_orderbook(
         RawOrigin::Signed(bob::<T>()).into(),
         DEX.into(),
@@ -254,7 +254,7 @@ fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>
 }
 
 fn get_last_order_id<T: Config>(
-    order_book_id: OrderBookId<AssetIdOf<T>>,
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
 ) -> Option<<T as Config>::OrderId> {
     if let Some(order_book) = OrderBookPallet::<T>::order_books(order_book_id) {
         Some(order_book.last_order_id)
@@ -271,7 +271,8 @@ benchmarks! {
     create_orderbook {
         let caller = alice::<T>();
 
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -299,7 +300,8 @@ benchmarks! {
     }
 
     delete_orderbook {
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -325,7 +327,8 @@ benchmarks! {
     }
 
     update_orderbook {
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -363,7 +366,8 @@ benchmarks! {
     }
 
     change_orderbook_status {
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -392,7 +396,8 @@ benchmarks! {
     place_limit_order {
         let caller = alice::<T>();
 
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -461,7 +466,8 @@ benchmarks! {
     }
 
     cancel_limit_order {
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -500,7 +506,8 @@ benchmarks! {
     }
 
     quote {
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -523,7 +530,8 @@ benchmarks! {
     exchange {
         let caller = alice::<T>();
 
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -595,7 +603,8 @@ benchmarks! {
 
     service_single_expiration {
         // very similar to cancel_limit_order
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };

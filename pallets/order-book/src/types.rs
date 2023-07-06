@@ -112,9 +112,9 @@ impl OrderAmount {
         }
     }
 
-    pub fn associated_asset<'a, AssetId>(
+    pub fn associated_asset<'a, AssetId, DEXId>(
         &'a self,
-        order_book_id: &'a OrderBookId<AssetId>,
+        order_book_id: &'a OrderBookId<AssetId, DEXId>,
     ) -> &AssetId {
         match self {
             Self::Base(..) => &order_book_id.base,
@@ -175,24 +175,27 @@ pub enum MarketRole {
     MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct OrderBookId<AssetId> {
+pub struct OrderBookId<AssetId, DEXId> {
+    /// DEX id
+    pub dex_id: DEXId,
     /// Base asset.
     pub base: AssetId,
     /// Quote asset. It should be a base asset of DEX.
     pub quote: AssetId,
 }
 
-impl<AssetId> From<TradingPair<AssetId>> for OrderBookId<AssetId> {
-    fn from(trading_pair: TradingPair<AssetId>) -> Self {
+impl<AssetId, DEXId> OrderBookId<AssetId, DEXId> {
+    fn from_trading_pair(trading_pair: TradingPair<AssetId>, dex_id: DEXId) -> Self {
         Self {
+            dex_id,
             base: trading_pair.target_asset_id,
             quote: trading_pair.base_asset_id,
         }
     }
 }
 
-impl<AssetId> From<OrderBookId<AssetId>> for TradingPair<AssetId> {
-    fn from(order_book_id: OrderBookId<AssetId>) -> Self {
+impl<AssetId, DEXId> From<OrderBookId<AssetId, DEXId>> for TradingPair<AssetId> {
+    fn from(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
         Self {
             base_asset_id: order_book_id.quote,
             target_asset_id: order_book_id.base,
@@ -243,7 +246,7 @@ impl<AssetId: PartialEq> DealInfo<AssetId> {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Payment<AssetId, AccountId, DEXId> {
     pub dex_id: DEXId,
-    pub order_book_id: OrderBookId<AssetId>,
+    pub order_book_id: OrderBookId<AssetId, DEXId>,
     pub to_lock: BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
     pub to_unlock: BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
 }
@@ -254,7 +257,7 @@ where
     AccountId: Ord + Clone,
     DEXId: Copy + PartialEq,
 {
-    pub fn new(dex_id: DEXId, order_book_id: OrderBookId<AssetId>) -> Self {
+    pub fn new(dex_id: DEXId, order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
         Self {
             dex_id,
             order_book_id,
@@ -383,7 +386,7 @@ where
     DEXId: Copy + PartialEq,
     OrderId: Copy + Ord,
 {
-    pub fn new(dex_id: DEXId, order_book_id: OrderBookId<AssetId>) -> Self {
+    pub fn new(dex_id: DEXId, order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
         Self {
             deal_input: None,
             deal_output: None,
