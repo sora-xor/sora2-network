@@ -50,7 +50,7 @@ pub mod pallet {
     use frame_support::traits::{Get, Time};
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
-    use order_book::cache_data_layer::CacheDataLayer;
+    use order_book::DataLayer;
     use order_book::{MomentOf, OrderBook};
     use sp_std::prelude::*;
 
@@ -293,7 +293,7 @@ pub mod pallet {
 
         /// Fill a single order book.
         fn fill_order_book(
-            data: &mut CacheDataLayer<T>,
+            data: &mut impl DataLayer<T>,
             book_id: OrderBookId<T::AssetId>,
             asks_owner: T::AccountId,
             bids_owner: T::AccountId,
@@ -366,7 +366,7 @@ pub mod pallet {
         }
 
         fn place_multiple_orders(
-            data: &mut CacheDataLayer<T>,
+            data: &mut impl DataLayer<T>,
             book: &mut OrderBook<T>,
             owner: T::AccountId,
             side: PriceVariant,
