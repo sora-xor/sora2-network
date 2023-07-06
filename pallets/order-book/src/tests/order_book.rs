@@ -56,7 +56,6 @@ fn should_create_new() {
 
     let expected = OrderBook::<Runtime> {
         order_book_id: order_book_id,
-        dex_id: DEX.into(),
         status: OrderBookStatus::Trade,
         last_order_id: 0,
         tick_size: balance!(0.001),
@@ -68,7 +67,6 @@ fn should_create_new() {
     assert_eq!(
         OrderBook::<Runtime>::new(
             order_book_id,
-            DEX.into(),
             balance!(0.001),
             balance!(0.1),
             balance!(1),
@@ -88,7 +86,6 @@ fn should_create_default() {
 
     let expected = OrderBook::<Runtime> {
         order_book_id: order_book_id,
-        dex_id: DEX.into(),
         status: OrderBookStatus::Trade,
         last_order_id: 0,
         tick_size: balance!(0.00001),
@@ -97,10 +94,7 @@ fn should_create_default() {
         max_lot_size: balance!(100000),
     };
 
-    assert_eq!(
-        OrderBook::<Runtime>::default(order_book_id, DEX.into()),
-        expected
-    );
+    assert_eq!(OrderBook::<Runtime>::default(order_book_id), expected);
 }
 
 #[test]
@@ -113,7 +107,6 @@ fn should_create_default_nft() {
 
     let expected = OrderBook::<Runtime> {
         order_book_id: order_book_id,
-        dex_id: DEX.into(),
         status: OrderBookStatus::Trade,
         last_order_id: 0,
         tick_size: balance!(0.00001),
@@ -122,10 +115,7 @@ fn should_create_default_nft() {
         max_lot_size: balance!(100000),
     };
 
-    assert_eq!(
-        OrderBook::<Runtime>::default_nft(order_book_id, DEX.into()),
-        expected
-    );
+    assert_eq!(OrderBook::<Runtime>::default_nft(order_book_id), expected);
 }
 
 #[test]
@@ -136,7 +126,7 @@ fn should_increment_order_id() {
         quote: XOR.into(),
     };
 
-    let mut order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
+    let mut order_book = OrderBook::<Runtime>::default(order_book_id);
     assert_eq!(order_book.last_order_id, 0);
 
     assert_eq!(order_book.next_order_id(), 1);
@@ -252,8 +242,8 @@ fn should_place_nft_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default_nft(order_book_id, DEX.into());
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        let order_book = OrderBook::<Runtime>::default_nft(order_book_id);
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         let order_id = 11;
         let price = balance!(10);
@@ -646,8 +636,8 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
             quote: XOR.into(),
         };
 
-        let mut order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        let mut order_book = OrderBook::<Runtime>::default(order_book_id);
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         fill_balance(alice(), order_book_id);
 
@@ -694,7 +684,7 @@ fn should_not_place_invalid_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
+        let order_book = OrderBook::<Runtime>::default(order_book_id);
 
         let order = LimitOrder::<Runtime>::new(
             1,
@@ -761,7 +751,7 @@ fn should_not_place_invalid_nft_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default_nft(order_book_id, DEX.into());
+        let order_book = OrderBook::<Runtime>::default_nft(order_book_id);
 
         let order = LimitOrder::<Runtime>::new(
             1,
@@ -815,8 +805,8 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        let order_book = OrderBook::<Runtime>::default(order_book_id);
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         fill_balance(alice(), order_book_id);
 
@@ -859,8 +849,8 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        let order_book = OrderBook::<Runtime>::default(order_book_id);
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
         let max_orders_for_price: u32 = <Runtime as Config>::MaxLimitOrdersForPrice::get();
 
         let mut buy_order = LimitOrder::<Runtime>::new(
@@ -931,8 +921,8 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        let order_book = OrderBook::<Runtime>::default(order_book_id);
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
         let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
 
         let mut buy_order = LimitOrder::<Runtime>::new(
@@ -1261,7 +1251,7 @@ fn should_cancel_all_limit_orders() {
         let order_book = create_and_fill_order_book(order_book_id);
 
         let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
-            &OrderBookPallet::tech_account_for_order_book(DEX.into(), order_book_id.clone()),
+            &OrderBookPallet::tech_account_for_order_book(order_book_id.clone()),
         )
         .unwrap();
 
@@ -1489,7 +1479,7 @@ fn should_align_nft_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default_nft(order_book_id, DEX.into());
+        let order_book = OrderBook::<Runtime>::default_nft(order_book_id);
 
         // default nft step = 1
         assert_eq!(order_book.align_amount(balance!(10.01)), balance!(10));
@@ -3093,7 +3083,6 @@ fn should_calculate_market_order_impact() {
             quote: XOR.into(),
         };
 
-        let dex_id = DEX.into();
         let order_book = create_and_fill_order_book(order_book_id);
 
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
@@ -3154,7 +3143,6 @@ fn should_calculate_market_order_impact() {
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
@@ -3201,7 +3189,6 @@ fn should_calculate_market_order_impact() {
                 ]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
@@ -3254,7 +3241,6 @@ fn should_calculate_market_order_impact() {
                 ]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
@@ -3303,7 +3289,6 @@ fn should_calculate_market_order_impact() {
                 ]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
@@ -3354,7 +3339,6 @@ fn should_calculate_market_order_impact() {
                 ]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
@@ -3407,7 +3391,6 @@ fn should_calculate_market_order_impact() {
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
@@ -3454,7 +3437,6 @@ fn should_calculate_market_order_impact() {
                 ]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
@@ -3506,7 +3488,6 @@ fn should_calculate_market_order_impact() {
                 ]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
@@ -3558,7 +3539,6 @@ fn should_calculate_market_order_impact() {
                 ]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
@@ -3612,7 +3592,6 @@ fn should_calculate_market_order_impact() {
                 ]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
@@ -3647,7 +3626,6 @@ fn should_calculate_limit_order_impact() {
             quote: XOR.into(),
         };
 
-        let dex_id = DEX.into();
         let order_book = create_empty_order_book(order_book_id);
 
         let limit_order_buy = LimitOrder::<Runtime>::new(
@@ -3685,7 +3663,6 @@ fn should_calculate_limit_order_impact() {
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
@@ -3711,7 +3688,6 @@ fn should_calculate_limit_order_impact() {
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
@@ -3736,7 +3712,6 @@ fn should_calculate_cancelation_limit_order_impact() {
             quote: XOR.into(),
         };
 
-        let dex_id = DEX.into();
         let order_book = create_and_fill_order_book(order_book_id);
 
         let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
@@ -3756,7 +3731,6 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::new(),
                     to_unlock: BTreeMap::from([(
@@ -3788,7 +3762,6 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::new(),
                     to_unlock: BTreeMap::from([(
@@ -3820,7 +3793,6 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(8, limit_order8.clone())]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::new(),
                     to_unlock: BTreeMap::from([(
@@ -3852,7 +3824,6 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(8, limit_order8.clone())]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::new(),
                     to_unlock: BTreeMap::from([(
@@ -3883,7 +3854,6 @@ fn should_calculate_cancelation_of_all_limit_orders_impact() {
             quote: XOR.into(),
         };
 
-        let dex_id = DEX.into();
         let order_book = create_and_fill_order_book(order_book_id);
 
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
@@ -3926,7 +3896,6 @@ fn should_calculate_cancelation_of_all_limit_orders_impact() {
                     (12, limit_order12),
                 ]),
                 payment: Payment {
-                    dex_id,
                     order_book_id,
                     to_lock: BTreeMap::new(),
                     to_unlock: BTreeMap::from([
@@ -4071,7 +4040,6 @@ fn should_apply_market_change() {
             to_full_execute: BTreeMap::from([(8, limit_order8.clone())]),
             to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
             payment: Payment {
-                dex_id: DEX.into(),
                 order_book_id,
                 to_lock: BTreeMap::from([
                     (
@@ -4408,7 +4376,6 @@ fn should_cross_spread() {
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id: DEX.into(),
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
@@ -4457,7 +4424,6 @@ fn should_cross_spread() {
                 to_full_execute: BTreeMap::from([(7, limit_order7)]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id: DEX.into(),
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
@@ -4506,7 +4472,6 @@ fn should_cross_spread() {
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id: DEX.into(),
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
@@ -4555,7 +4520,6 @@ fn should_cross_spread() {
                 to_full_execute: BTreeMap::from([(1, limit_order1)]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id: DEX.into(),
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
@@ -4639,7 +4603,6 @@ fn should_cross_spread_with_small_remaining_amount() {
                 to_full_execute: BTreeMap::from([(7, limit_order7.clone())]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id: DEX.into(),
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
@@ -4696,7 +4659,6 @@ fn should_cross_spread_with_small_remaining_amount() {
                 ]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id: DEX.into(),
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
@@ -4749,7 +4711,6 @@ fn should_cross_spread_with_small_remaining_amount() {
                 to_full_execute: BTreeMap::from([(1, limit_order1.clone())]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id: DEX.into(),
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
@@ -4803,7 +4764,6 @@ fn should_cross_spread_with_small_remaining_amount() {
                 ]),
                 to_cancel: BTreeMap::from([]),
                 payment: Payment {
-                    dex_id: DEX.into(),
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,

@@ -245,7 +245,6 @@ impl<AssetId: PartialEq> DealInfo<AssetId> {
 /// and which liquidity should be unlocked from the tech account to users.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Payment<AssetId, AccountId, DEXId> {
-    pub dex_id: DEXId,
     pub order_book_id: OrderBookId<AssetId, DEXId>,
     pub to_lock: BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
     pub to_unlock: BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
@@ -257,9 +256,8 @@ where
     AccountId: Ord + Clone,
     DEXId: Copy + PartialEq,
 {
-    pub fn new(dex_id: DEXId, order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
+    pub fn new(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
         Self {
-            dex_id,
             order_book_id,
             to_lock: BTreeMap::new(),
             to_unlock: BTreeMap::new(),
@@ -267,7 +265,6 @@ where
     }
 
     pub fn merge(&mut self, other: &Self) -> Result<(), ()> {
-        ensure!(self.dex_id == other.dex_id, ());
         ensure!(self.order_book_id == other.order_book_id, ());
 
         for (map, to_merge) in [
@@ -311,13 +308,7 @@ where
     {
         for (asset_id, from_whom) in self.to_lock.iter() {
             for (account, amount) in from_whom.iter() {
-                Locker::lock_liquidity(
-                    self.dex_id,
-                    account,
-                    self.order_book_id,
-                    asset_id,
-                    *amount,
-                )?;
+                Locker::lock_liquidity(account, self.order_book_id, asset_id, *amount)?;
             }
         }
 
@@ -329,7 +320,7 @@ where
         Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId, DispatchError>,
     {
         for (asset_id, to_whom) in self.to_unlock.iter() {
-            Unlocker::unlock_liquidity_batch(self.dex_id, self.order_book_id, asset_id, to_whom)?;
+            Unlocker::unlock_liquidity_batch(self.order_book_id, asset_id, to_whom)?;
         }
 
         Ok(())
@@ -386,7 +377,7 @@ where
     DEXId: Copy + PartialEq,
     OrderId: Copy + Ord,
 {
-    pub fn new(dex_id: DEXId, order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
+    pub fn new(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
         Self {
             deal_input: None,
             deal_output: None,
@@ -396,7 +387,7 @@ where
             to_part_execute: BTreeMap::new(),
             to_full_execute: BTreeMap::new(),
             to_cancel: BTreeMap::new(),
-            payment: Payment::new(dex_id, order_book_id),
+            payment: Payment::new(order_book_id),
             ignore_unschedule_error: false,
         }
     }

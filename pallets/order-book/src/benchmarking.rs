@@ -95,12 +95,8 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 //   9.5 |  261.3 | buy4, buy5, buy6
 //          Bids
 fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) {
-    OrderBookPallet::<T>::create_orderbook(
-        RawOrigin::Signed(bob::<T>()).into(),
-        DEX.into(),
-        order_book_id,
-    )
-    .unwrap();
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
+        .unwrap();
 
     Assets::<T>::update_balance(
         RawOrigin::Root.into(),
@@ -279,7 +275,6 @@ benchmarks! {
     }: {
         OrderBookPallet::<T>::create_orderbook(
             RawOrigin::Signed(caller.clone()).into(),
-            DEX.into(),
             order_book_id
         ).unwrap();
     }
@@ -287,7 +282,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookCreated {
                 order_book_id,
-                dex_id: DEX.into(),
                 creator: caller,
             }
             .into(),
@@ -295,7 +289,7 @@ benchmarks! {
 
         assert_eq!(
             OrderBookPallet::<T>::order_books(order_book_id).unwrap(),
-            OrderBook::<T>::default(order_book_id, DEX.into())
+            OrderBook::<T>::default(order_book_id)
         );
     }
 
@@ -317,7 +311,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookDeleted {
                 order_book_id,
-                dex_id: DEX.into(),
                 count_of_canceled_orders: 12,
             }
             .into(),
@@ -353,7 +346,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookUpdated {
                 order_book_id,
-                dex_id: DEX.into(),
             }
             .into(),
         );
@@ -384,7 +376,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookStatusChanged {
                 order_book_id,
-                dex_id: DEX.into(),
                 new_status: OrderBookStatus::Stop,
             }
             .into(),
@@ -433,7 +424,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::LimitOrderPlaced {
                 order_book_id,
-                dex_id: DEX.into(),
                 order_id,
                 owner_id: caller.clone(),
             }
@@ -491,7 +481,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::LimitOrderCanceled {
                 order_book_id,
-                dex_id: DEX.into(),
                 order_id,
                 owner_id: order.owner.clone(),
             }
@@ -562,7 +551,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::MarketOrderExecuted {
                 order_book_id,
-                dex_id: DEX.into(),
                 owner_id: caller.clone(),
                 direction: PriceVariant::Sell,
                 amount: OrderAmount::Base(balance!(355.13473)),
@@ -622,13 +610,12 @@ benchmarks! {
         // warmed up
         let mut data_layer = CacheDataLayer::<T>::new();
     }: {
-        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, DEX.into(), order_id);
+        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, order_id);
     }
     verify {
         assert_last_event::<T>(
             Event::<T>::LimitOrderExpired {
                 order_book_id,
-                dex_id: DEX.into(),
                 order_id,
                 owner_id: order.owner.clone(),
             }

@@ -135,7 +135,6 @@ pub trait CurrencyLocker<AccountId, AssetId, DEXId, Error> {
     /// Lock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn lock_liquidity(
-        dex_id: DEXId,
         account: &AccountId,
         order_book_id: OrderBookId<AssetId, DEXId>,
         asset_id: &AssetId,
@@ -147,7 +146,6 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
     /// Unlock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn unlock_liquidity(
-        dex_id: DEXId,
         account: &AccountId,
         order_book_id: OrderBookId<AssetId, DEXId>,
         asset_id: &AssetId,
@@ -155,7 +153,6 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
     ) -> Result<(), Error>;
 
     fn unlock_liquidity_batch(
-        dex_id: DEXId,
         order_book_id: OrderBookId<AssetId, DEXId>,
         asset_id: &AssetId,
         receivers: &BTreeMap<AccountId, OrderVolume>,
@@ -174,7 +171,6 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, DEXId, OrderId, Error> {
     fn schedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
-        dex_id: DEXId,
         order_id: OrderId,
     ) -> Result<(), Error>;
 
@@ -182,14 +178,12 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, DEXId, OrderId, Error> {
     fn unschedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
-        dex_id: DEXId,
         order_id: OrderId,
     ) -> Result<(), Error>;
 }
 
 pub trait Delegate<AccountId, AssetId, OrderId, DEXId> {
     fn emit_event(
-        dex_id: DEXId,
         order_book_id: OrderBookId<AssetId, DEXId>,
         event: OrderBookEvent<AccountId, OrderId>,
     );

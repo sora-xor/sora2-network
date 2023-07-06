@@ -59,28 +59,21 @@ type TechnicalRawOrigin = pallet_collective::RawOrigin<
 #[test]
 fn should_not_create_order_book_with_disallowed_dex_id() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
+        let mut order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: common::DEXId::PolkaswapXSTUSD.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                common::DEXId::PolkaswapXSTUSD.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::NotAllowedDEXId,
         );
 
         // any number except 0 (polkaswap dex id) should not be allowed
+        order_book_id.dex_id = 12345678;
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                12345678,
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::NotAllowedDEXId,
         );
     });
@@ -97,13 +90,12 @@ fn should_create_order_book_with_correct_dex_id() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
         assert_eq!(
             OrderBookPallet::order_books(order_book_id).unwrap(),
-            OrderBook::default(order_book_id, DEX.into())
+            OrderBook::default(order_book_id)
         );
     });
 }
@@ -118,11 +110,7 @@ fn should_not_create_order_book_with_same_assets() {
         };
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::ForbiddenToCreateOrderBookWithSameAssets
         );
     });
@@ -138,11 +126,7 @@ fn should_not_create_order_book_with_wrong_quote_asset() {
         };
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::NotAllowedBaseAsset
         );
     });
@@ -162,11 +146,7 @@ fn should_not_create_order_book_with_non_existed_asset() {
         };
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             assets::Error::<Runtime>::AssetIdNotExists
         );
     });
@@ -197,11 +177,7 @@ fn should_not_create_order_book_with_non_existed_trading_pair() {
         };
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(caller).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(caller).into(), order_book_id),
             trading_pair::Error::<Runtime>::TradingPairDoesntExist
         );
     });
@@ -218,13 +194,12 @@ fn should_create_order_book_for_regular_assets() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
         assert_eq!(
             OrderBookPallet::order_books(order_book_id).unwrap(),
-            OrderBook::default(order_book_id, DEX.into())
+            OrderBook::default(order_book_id)
         );
     });
 }
@@ -240,16 +215,11 @@ fn should_not_create_order_book_that_already_exists() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::OrderBookAlreadyExists
         );
     });
@@ -289,11 +259,7 @@ fn should_not_create_order_book_for_user_without_nft() {
         ));
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(caller).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(caller).into(), order_book_id),
             E::UserHasNoNft
         );
     });
@@ -343,11 +309,7 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
         .unwrap();
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(caller).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(caller).into(), order_book_id),
             E::UserHasNoNft
         );
     });
@@ -396,13 +358,12 @@ fn should_create_order_book_for_nft() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(caller).into(),
-            DEX.into(),
             order_book_id
         ));
 
         assert_eq!(
             OrderBookPallet::order_books(order_book_id).unwrap(),
-            OrderBook::default_nft(order_book_id, DEX.into())
+            OrderBook::default_nft(order_book_id)
         );
     });
 }
@@ -493,7 +454,7 @@ fn should_delete_order_book() {
         let owner = bob();
 
         let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
-            &OrderBookPallet::tech_account_for_order_book(DEX.into(), order_book_id.clone()),
+            &OrderBookPallet::tech_account_for_order_book(order_book_id.clone()),
         )
         .unwrap();
 
@@ -554,7 +515,6 @@ fn should_delete_order_book_with_a_lot_of_orders() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
@@ -1032,7 +992,6 @@ fn should_not_update_order_book_with_nft_bounds() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
@@ -1129,7 +1088,6 @@ fn should_update_order_book_with_nft() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
@@ -1456,7 +1414,6 @@ fn should_place_limit_order_with_nft() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(caller.clone()).into(),
-            DEX.into(),
             order_book_id
         ));
 
@@ -2043,7 +2000,6 @@ fn should_place_a_lot_of_orders() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 

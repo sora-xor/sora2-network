@@ -331,29 +331,11 @@ fn should_fail_payment_merge() {
 
     assert_err!(
         Payment {
-            dex_id: DEX.into(),
             order_book_id,
             to_lock: BTreeMap::from([(XOR, BTreeMap::from([(alice(), balance!(100))]))]),
             to_unlock: BTreeMap::from([(VAL, BTreeMap::from([(bob(), balance!(50))]))])
         }
         .merge(&Payment {
-            dex_id: common::DEXId::PolkaswapXSTUSD.into(),
-            order_book_id,
-            to_lock: BTreeMap::from([(XOR, BTreeMap::from([(alice(), balance!(100))]))]),
-            to_unlock: BTreeMap::from([(VAL, BTreeMap::from([(bob(), balance!(50))]))])
-        }),
-        ()
-    );
-
-    assert_err!(
-        Payment {
-            dex_id: DEX.into(),
-            order_book_id,
-            to_lock: BTreeMap::from([(XOR, BTreeMap::from([(alice(), balance!(100))]))]),
-            to_unlock: BTreeMap::from([(VAL, BTreeMap::from([(bob(), balance!(50))]))])
-        }
-        .merge(&Payment {
-            dex_id: DEX.into(),
             order_book_id: other_order_book_id,
             to_lock: BTreeMap::from([(XOR, BTreeMap::from([(alice(), balance!(100))]))]),
             to_unlock: BTreeMap::from([(DAI, BTreeMap::from([(bob(), balance!(50))]))])
@@ -371,7 +353,6 @@ fn check_payment_merge() {
     };
 
     let origin = Payment {
-        dex_id: DEX.into(),
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -396,7 +377,6 @@ fn check_payment_merge() {
     };
 
     let different = Payment {
-        dex_id: DEX.into(),
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -425,7 +405,6 @@ fn check_payment_merge() {
     assert_eq!(
         payment,
         Payment {
-            dex_id: DEX.into(),
             order_book_id,
             to_lock: BTreeMap::from([
                 (
@@ -471,7 +450,6 @@ fn check_payment_merge() {
     );
 
     let partial_match = Payment {
-        dex_id: DEX.into(),
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -500,7 +478,6 @@ fn check_payment_merge() {
     assert_eq!(
         payment,
         Payment {
-            dex_id: DEX.into(),
             order_book_id,
             to_lock: BTreeMap::from([
                 (
@@ -542,7 +519,6 @@ fn check_payment_merge() {
     );
 
     let full_match = Payment {
-        dex_id: DEX.into(),
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -571,7 +547,6 @@ fn check_payment_merge() {
     assert_eq!(
         payment,
         Payment {
-            dex_id: DEX.into(),
             order_book_id,
             to_lock: BTreeMap::from([
                 (
@@ -597,7 +572,6 @@ fn check_payment_merge() {
     );
 
     let empty = Payment {
-        dex_id: DEX.into(),
         order_book_id,
         to_lock: BTreeMap::new(),
         to_unlock: BTreeMap::new(),
@@ -617,7 +591,7 @@ fn check_payment_execute_all() {
             quote: XOR.into(),
         };
 
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         fill_balance(alice(), order_book_id);
         fill_balance(bob(), order_book_id);
@@ -636,7 +610,6 @@ fn check_payment_execute_all() {
         let dave_quote_balance = free_balance(&order_book_id.quote, &dave());
 
         let payment = Payment {
-            dex_id: DEX.into(),
             order_book_id,
             to_lock: BTreeMap::from([
                 (
@@ -700,7 +673,6 @@ fn should_fail_market_change_merge() {
     };
 
     let payment = Payment {
-        dex_id: DEX.into(),
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -820,7 +792,6 @@ fn check_market_change_merge() {
     };
 
     let payment = Payment {
-        dex_id: DEX.into(),
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -845,7 +816,6 @@ fn check_market_change_merge() {
     };
 
     let empty_payment = Payment {
-        dex_id: DEX.into(),
         order_book_id,
         to_lock: BTreeMap::new(),
         to_unlock: BTreeMap::new(),

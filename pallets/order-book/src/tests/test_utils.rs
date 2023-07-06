@@ -108,7 +108,6 @@ pub fn create_empty_order_book(
 ) -> OrderBook<Runtime> {
     assert_ok!(OrderBookPallet::create_orderbook(
         RawOrigin::Signed(bob()).into(),
-        DEX.into(),
         order_book_id
     ));
 
@@ -131,7 +130,6 @@ pub fn create_and_fill_order_book(
 ) -> OrderBook<Runtime> {
     assert_ok!(OrderBookPallet::create_orderbook(
         RawOrigin::Signed(bob()).into(),
-        DEX.into(),
         order_book_id
     ));
 

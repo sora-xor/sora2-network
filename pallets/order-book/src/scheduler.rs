@@ -50,7 +50,6 @@ impl<T: Config> Pallet<T> {
     pub fn service_single_expiration(
         data_layer: &mut impl DataLayer<T>,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
-        dex_id: T::DEXId,
         order_id: T::OrderId,
     ) {
         let order = match data_layer.get_limit_order(order_book_id, order_id) {
@@ -65,7 +64,6 @@ impl<T: Config> Pallet<T> {
                 // in `release` will emit event
                 Self::deposit_event(Event::<T>::ExpirationFailure {
                     order_book_id: order_book_id.clone(),
-                    dex_id,
                     order_id,
                     error,
                 });
@@ -78,7 +76,6 @@ impl<T: Config> Pallet<T> {
                 order {:?} is set to expire but corresponding order book {:?} is not found", order_id, order_book_id);
             Self::deposit_event(Event::<T>::ExpirationFailure {
                 order_book_id: order_book_id.clone(),
-                dex_id,
                 order_id,
                 error: Error::<T>::UnknownOrderBook.into(),
             });
@@ -92,7 +89,6 @@ impl<T: Config> Pallet<T> {
             Ok(_) => {
                 Self::deposit_event(Event::<T>::LimitOrderExpired {
                     order_book_id: *order_book_id,
-                    dex_id: order_book.dex_id,
                     order_id,
                     owner_id: order_owner,
                 });
@@ -105,7 +101,6 @@ impl<T: Config> Pallet<T> {
                 );
                 Self::deposit_event(Event::<T>::ExpirationFailure {
                     order_book_id: order_book_id.clone(),
-                    dex_id,
                     order_id,
                     error,
                 });
@@ -141,11 +136,11 @@ impl<T: Config> Pallet<T> {
         );
         let postponed = expirations.len() as u64 - to_service;
         let mut serviced = 0;
-        while let Some((order_book_id, dex_id, order_id)) = expirations.last() {
+        while let Some((order_book_id, order_id)) = expirations.last() {
             if serviced >= to_service {
                 break;
             }
-            Self::service_single_expiration(data_layer, order_book_id, *dex_id, *order_id);
+            Self::service_single_expiration(data_layer, order_book_id, *order_id);
             serviced += 1;
             expirations.pop();
         }
@@ -192,12 +187,11 @@ impl<T: Config>
     fn schedule(
         when: T::BlockNumber,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        dex_id: T::DEXId,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
         <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
             block_expirations
-                .try_push((order_book_id, dex_id, order_id))
+                .try_push((order_book_id, order_id))
                 .map_err(|_| Error::<T>::BlockScheduleFull.into())
         })
     }
@@ -205,11 +199,10 @@ impl<T: Config>
     fn unschedule(
         when: T::BlockNumber,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        dex_id: T::DEXId,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
         <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
-            let Some(remove_index) = block_expirations.iter().position(|next| next == &(order_book_id, dex_id, order_id)) else {
+            let Some(remove_index) = block_expirations.iter().position(|next| next == &(order_book_id, order_id)) else {
                 return Err(Error::<T>::ExpirationNotFound.into());
             };
             block_expirations.remove(remove_index);
