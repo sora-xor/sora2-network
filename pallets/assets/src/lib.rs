@@ -798,7 +798,7 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> DispatchResult {
         // No need to check if asset exist.
-        // `ensure_asset_is_mintable` will get Default::default() aka `is_mintable == false` and retrun an error.
+        // `ensure_asset_is_mintable` will get Default::default() aka `is_mintable == false` and return an error.
         Self::ensure_asset_is_mintable(asset_id)?;
         Self::check_permission_maybe_with_parameters(issuer, MINT, asset_id)?;
 
