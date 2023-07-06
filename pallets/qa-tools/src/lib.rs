@@ -65,10 +65,16 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
+        /// Order book related errors
+        OrderBook(OrderBookError),
+    }
+
+    #[derive(Encode, Decode, scale_info::TypeInfo, frame_support::PalletError)]
+    pub enum OrderBookError {
         /// Order book does not exist for this trading pair
-        OrderBookUnkonwnBook,
+        UnknownOrderBook,
         /// Could not place limit order
-        OrderBookFailedToPlaceOrders,
+        FailedToPlaceOrders,
     }
 
     #[derive(
@@ -298,7 +304,7 @@ pub mod pallet {
         ) -> Result<(), DispatchError> {
             let current_block = frame_system::Pallet::<T>::block_number();
             let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
-                .ok_or(Error::<T>::OrderBookUnkonwnBook)?;
+                .ok_or(Error::<T>::OrderBook(OrderBookError::UnknownOrderBook))?;
 
             // Convert price steps and best price to actual prices
             let buy_orders: Vec<_> = buy_orders_steps
@@ -385,7 +391,7 @@ pub mod pallet {
                     book.place_limit_order::<order_book::Pallet<T>, order_book::Pallet<T>, order_book::Pallet<T>>(order, data)?;
                 if let (None, None) = (market_input, deal_input) {
                     // should never happen
-                    return Err(Error::<T>::OrderBookFailedToPlaceOrders.into());
+                    return Err(Error::<T>::OrderBook(OrderBookError::FailedToPlaceOrders).into());
                 }
             }
             Ok(())
