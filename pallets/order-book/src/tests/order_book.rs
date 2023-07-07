@@ -3142,6 +3142,7 @@ fn should_calculate_market_order_impact() {
                 )]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3188,6 +3189,7 @@ fn should_calculate_market_order_impact() {
                     (8, limit_order8.clone())
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3240,6 +3242,7 @@ fn should_calculate_market_order_impact() {
                     (11, limit_order11.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3288,6 +3291,7 @@ fn should_calculate_market_order_impact() {
                     (10, limit_order10.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3338,6 +3342,7 @@ fn should_calculate_market_order_impact() {
                     (12, limit_order12.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3390,6 +3395,7 @@ fn should_calculate_market_order_impact() {
                 )]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3436,6 +3442,7 @@ fn should_calculate_market_order_impact() {
                     (2, limit_order2.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3487,6 +3494,7 @@ fn should_calculate_market_order_impact() {
                     (4, limit_order4.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3538,6 +3546,7 @@ fn should_calculate_market_order_impact() {
                     (4, limit_order4.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3591,6 +3600,7 @@ fn should_calculate_market_order_impact() {
                     (6, limit_order6.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3662,6 +3672,7 @@ fn should_calculate_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3687,6 +3698,7 @@ fn should_calculate_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3730,6 +3742,7 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::new(),
@@ -3761,6 +3774,7 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::new(),
@@ -3792,6 +3806,7 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(8, limit_order8.clone())]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::new(),
@@ -3823,6 +3838,7 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(8, limit_order8.clone())]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::new(),
@@ -3895,6 +3911,7 @@ fn should_calculate_cancelation_of_all_limit_orders_impact() {
                     (11, limit_order11),
                     (12, limit_order12),
                 ]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::new(),
@@ -4039,6 +4056,7 @@ fn should_apply_market_change() {
             ]),
             to_full_execute: BTreeMap::from([(8, limit_order8.clone())]),
             to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
+            to_force_update: BTreeMap::from([]),
             payment: Payment {
                 order_book_id,
                 to_lock: BTreeMap::from([
@@ -4375,6 +4393,7 @@ fn should_cross_spread() {
                 )]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4423,6 +4442,7 @@ fn should_cross_spread() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([(7, limit_order7)]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4471,6 +4491,7 @@ fn should_cross_spread() {
                 )]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4519,6 +4540,7 @@ fn should_cross_spread() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([(1, limit_order1)]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4602,6 +4624,7 @@ fn should_cross_spread_with_small_remaining_amount() {
                 )]),
                 to_full_execute: BTreeMap::from([(7, limit_order7.clone())]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4658,6 +4681,7 @@ fn should_cross_spread_with_small_remaining_amount() {
                     (12, limit_order12),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4710,6 +4734,7 @@ fn should_cross_spread_with_small_remaining_amount() {
                 )]),
                 to_full_execute: BTreeMap::from([(1, limit_order1.clone())]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4763,6 +4788,7 @@ fn should_cross_spread_with_small_remaining_amount() {
                     (6, limit_order6),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
