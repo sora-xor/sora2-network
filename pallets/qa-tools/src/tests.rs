@@ -50,12 +50,12 @@ fn should_create_and_fill_orderbook() {
         let start_balance_xor = assets::Pallet::<Runtime>::total_balance(&XOR, &alice()).unwrap();
         let start_balance_val = assets::Pallet::<Runtime>::total_balance(&VAL, &alice()).unwrap();
         let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
             base: VAL,
             quote: XOR,
         };
         assert_ok!(QAToolsPallet::order_book_create_and_fill_many(
             RuntimeOrigin::signed(alice()),
-            DEXId::Polkaswap.into(),
             alice(),
             alice(),
             vec![(

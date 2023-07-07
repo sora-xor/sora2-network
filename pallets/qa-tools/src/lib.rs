@@ -100,25 +100,23 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Create multiple many order books with default parameters if do not exist.
+        /// Create multiple order books with default parameters (if do not exist yet).
         ///
         /// Parameters:
-        /// - `origin`: caller, should be account because unsigned error messages are unclear,
-        /// - `dex_id`: DEXId for all created order books,
-        /// - `order_book_ids`: assets of the created order books; trading pairs are created
+        /// - `origin`: caller, should be account because error messages for unsigned txs are unclear,
+        /// - `order_book_ids`: ids of the created order books; trading pairs are created
         /// if necessary,
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_many())]
         pub fn order_book_create_empty_many(
             origin: OriginFor<T>,
-            dex_id: T::DEXId,
-            order_book_ids: Vec<OrderBookId<T::AssetId>>,
+            order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_signed(origin)?;
 
             // replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            Self::create_multiple_empty_unchecked(dex_id, order_book_ids).map_err(|e| {
+            Self::create_multiple_empty_unchecked(order_book_ids).map_err(|e| {
                 DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
@@ -147,22 +145,21 @@ pub mod pallet {
         /// - `dex_id`: DEXId for all created order books,
         /// - `bids_owner`: Creator of the buy orders placed on the order books,
         /// - `asks_owner`: Creator of the sell orders placed on the order books,
-        /// - `fill_settings`: Parameters for placing the orders. `best_bid_price` should be at
-        /// least 3 price steps from the lowest accepted price, and `best_ask_price` - at least
-        /// 3 steps below maximum price,
+        /// - `fill_settings`: Parameters for placing the orders in each order book.
+        /// `best_bid_price` should be at least 3 price steps from the lowest accepted price,
+        /// and `best_ask_price` - at least 3 steps below maximum price,
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_many())]
         pub fn order_book_create_and_fill_many(
             origin: OriginFor<T>,
-            dex_id: T::DEXId,
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
-            fill_settings: Vec<(OrderBookId<T::AssetId>, OrderBookFillSettings)>,
+            fill_settings: Vec<(OrderBookId<T::AssetId, T::DEXId>, OrderBookFillSettings)>,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_signed(origin)?;
 
             let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
-            Self::create_multiple_empty_unchecked(dex_id, order_book_ids).map_err(|e| {
+            Self::create_multiple_empty_unchecked(order_book_ids).map_err(|e| {
                 DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
@@ -193,8 +190,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Does not create an order book if it already exists
         fn create_multiple_empty_unchecked(
-            dex_id: T::DEXId,
-            order_book_ids: Vec<OrderBookId<T::AssetId>>,
+            order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
         ) -> Result<(), DispatchError> {
             let to_create_ids: Vec<_> = order_book_ids
                 .into_iter()
@@ -202,30 +198,30 @@ pub mod pallet {
                 .collect();
             for order_book_id in &to_create_ids {
                 if !trading_pair::Pallet::<T>::is_trading_pair_enabled(
-                    &dex_id,
+                    &order_book_id.dex_id,
                     &order_book_id.quote.into(),
                     &order_book_id.base.into(),
                 )? {
                     trading_pair::Pallet::<T>::register_pair(
-                        dex_id,
+                        order_book_id.dex_id,
                         order_book_id.quote.into(),
                         order_book_id.base.into(),
                     )?;
                 }
-                order_book::Pallet::<T>::verify_create_orderbook_params(&dex_id, order_book_id)?;
+                order_book::Pallet::<T>::verify_create_orderbook_params(&order_book_id)?;
             }
 
             for order_book_id in to_create_ids {
                 let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-                    order_book::OrderBook::<T>::default_nft(order_book_id, dex_id)
+                    order_book::OrderBook::<T>::default_nft(order_book_id)
                 } else {
-                    order_book::OrderBook::<T>::default(order_book_id, dex_id)
+                    order_book::OrderBook::<T>::default(order_book_id)
                 };
 
                 #[cfg(feature = "wip")] // order-book
                 {
                     T::TradingPairSourceManager::enable_source_for_trading_pair(
-                        &dex_id,
+                        &order_book_id.dex_id,
                         &order_book_id.quote,
                         &order_book_id.base,
                         LiquiditySourceType::OrderBook,
@@ -233,7 +229,7 @@ pub mod pallet {
                 }
 
                 <order_book::OrderBooks<T>>::insert(order_book_id, order_book);
-                order_book::Pallet::<T>::register_tech_account(dex_id, order_book_id)?;
+                order_book::Pallet::<T>::register_tech_account(order_book_id)?;
             }
             Ok(())
         }
@@ -246,7 +242,7 @@ pub mod pallet {
         fn fill_multiple_empty_unchecked(
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
-            fill_settings: Vec<(OrderBookId<T::AssetId>, OrderBookFillSettings)>,
+            fill_settings: Vec<(OrderBookId<T::AssetId, T::DEXId>, OrderBookFillSettings)>,
         ) -> Result<(), DispatchError> {
             let now = <T as order_book::Config>::Time::now();
 
@@ -294,7 +290,7 @@ pub mod pallet {
         /// Fill a single order book.
         fn fill_order_book(
             data: &mut impl DataLayer<T>,
-            book_id: OrderBookId<T::AssetId>,
+            book_id: OrderBookId<T::AssetId, T::DEXId>,
             asks_owner: T::AccountId,
             bids_owner: T::AccountId,
             buy_orders_steps: impl Iterator<Item = (u128, Balance)>,
@@ -387,12 +383,7 @@ pub mod pallet {
                     lifespan,
                     current_block,
                 );
-                let (market_input, deal_input) =
-                    book.place_limit_order::<order_book::Pallet<T>, order_book::Pallet<T>, order_book::Pallet<T>>(order, data)?;
-                if let (None, None) = (market_input, deal_input) {
-                    // should never happen
-                    return Err(Error::<T>::OrderBook(OrderBookError::FailedToPlaceOrders).into());
-                }
+                book.place_limit_order(order, data)?;
             }
             Ok(())
         }

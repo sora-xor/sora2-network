@@ -2040,6 +2040,10 @@ impl order_book::Config for Runtime {
     const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50); // TODO: order-book clarify
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
+    type Locker = OrderBook;
+    type Unlocker = OrderBook;
+    type Scheduler = OrderBook;
+    type Delegate = OrderBook;
     type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<10000>; // TODO: order-book clarify
