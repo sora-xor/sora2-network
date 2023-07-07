@@ -39,13 +39,13 @@
 
 #[cfg(not(test))]
 use crate::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, OrderBookStatus,
-    Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus, Pallet,
 };
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, OrderBookStatus,
-    Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus, Pallet,
 };
 
 use crate::{CacheDataLayer, ExpirationScheduler};
@@ -437,7 +437,7 @@ benchmarks! {
 
         let current_block = frame_system::Pallet::<T>::block_number();
 
-        let expected_order = LimitOrder::<T>::new(
+        let expected_limit_order = LimitOrder::<T>::new(
             order_id,
             caller.clone(),
             PriceVariant::Buy,
@@ -450,10 +450,10 @@ benchmarks! {
 
         assert_eq!(
             OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap(),
-            expected_order
+            expected_limit_order
         );
 
-        let deal_amount = *expected_order.deal_amount(MarketRole::Taker, None).unwrap().value();
+        let deal_amount = *expected_limit_order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
         let expected_balance = balance_before - deal_amount;
@@ -551,6 +551,19 @@ benchmarks! {
         .unwrap();
     }
     verify {
+        assert_last_event::<T>(
+            Event::<T>::MarketOrderExecuted {
+                order_book_id,
+                dex_id: DEX.into(),
+                owner_id: caller.clone(),
+                direction: PriceVariant::Sell,
+                amount: OrderAmount::Base(balance!(355.13473)),
+                average_price: balance!(9.855414408497867837),
+                to: None,
+            }
+            .into(),
+        );
+
         assert_eq!(
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
             caller_base_balance - balance!(355.13473)
@@ -600,7 +613,7 @@ benchmarks! {
         // warmed up
         let mut data_layer = CacheDataLayer::<T>::new();
     }: {
-        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, &order_id);
+        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, DEX.into(), order_id);
     }
     verify {
         assert_last_event::<T>(

@@ -106,66 +106,66 @@ impl<T: Config> CacheDataLayer<T> {
     fn add_to_bids(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order: &LimitOrder<T>,
+        limit_order: &LimitOrder<T>,
     ) -> Result<(), ()> {
         let mut bids = self
             .bids
-            .get(order_book_id, &order.price)
+            .get(order_book_id, &limit_order.price)
             .cloned()
             .unwrap_or_default();
-        bids.try_push(order.id).map_err(|_| ())?;
-        self.bids.set(order_book_id, &order.price, bids);
+        bids.try_push(limit_order.id).map_err(|_| ())?;
+        self.bids.set(order_book_id, &limit_order.price, bids);
         Ok(())
     }
 
     fn remove_from_bids(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order: &LimitOrder<T>,
+        limit_order: &LimitOrder<T>,
     ) {
         let mut bids = self
             .bids
-            .get(order_book_id, &order.price)
+            .get(order_book_id, &limit_order.price)
             .cloned()
             .unwrap_or_default();
-        bids.retain(|x| *x != order.id);
+        bids.retain(|x| *x != limit_order.id);
         if bids.is_empty() {
-            self.bids.remove(order_book_id, &order.price);
+            self.bids.remove(order_book_id, &limit_order.price);
         } else {
-            self.bids.set(order_book_id, &order.price, bids);
+            self.bids.set(order_book_id, &limit_order.price, bids);
         }
     }
 
     fn add_to_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order: &LimitOrder<T>,
+        limit_order: &LimitOrder<T>,
     ) -> Result<(), ()> {
         let mut asks = self
             .asks
-            .get(order_book_id, &order.price)
+            .get(order_book_id, &limit_order.price)
             .cloned()
             .unwrap_or_default();
-        asks.try_push(order.id).map_err(|_| ())?;
-        self.asks.set(order_book_id, &order.price, asks);
+        asks.try_push(limit_order.id).map_err(|_| ())?;
+        self.asks.set(order_book_id, &limit_order.price, asks);
         Ok(())
     }
 
     fn remove_from_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order: &LimitOrder<T>,
+        limit_order: &LimitOrder<T>,
     ) {
         let mut asks = self
             .asks
-            .get(order_book_id, &order.price)
+            .get(order_book_id, &limit_order.price)
             .cloned()
             .unwrap_or_default();
-        asks.retain(|x| *x != order.id);
+        asks.retain(|x| *x != limit_order.id);
         if asks.is_empty() {
-            self.asks.remove(order_book_id, &order.price);
+            self.asks.remove(order_book_id, &limit_order.price);
         } else {
-            self.asks.set(order_book_id, &order.price, asks);
+            self.asks.set(order_book_id, &limit_order.price, asks);
         }
     }
 
@@ -290,40 +290,43 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
     fn insert_limit_order(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order: LimitOrder<T>,
+        limit_order: LimitOrder<T>,
     ) -> Result<(), DispatchError> {
-        if self.limit_orders.contains_key(order_book_id, &order.id) {
+        if self
+            .limit_orders
+            .contains_key(order_book_id, &limit_order.id)
+        {
             return Err(Error::<T>::LimitOrderAlreadyExists.into());
         }
 
-        match order.side {
+        match limit_order.side {
             PriceVariant::Buy => {
-                self.add_to_bids(order_book_id, &order)
+                self.add_to_bids(order_book_id, &limit_order)
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
-                self.add_to_aggregated_bids(order_book_id, &order.price, &order.amount)
+                self.add_to_aggregated_bids(order_book_id, &limit_order.price, &limit_order.amount)
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
             }
             PriceVariant::Sell => {
-                self.add_to_asks(order_book_id, &order)
+                self.add_to_asks(order_book_id, &limit_order)
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
-                self.add_to_aggregated_asks(order_book_id, &order.price, &order.amount)
+                self.add_to_aggregated_asks(order_book_id, &limit_order.price, &limit_order.amount)
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
             }
         }
 
         let mut user_orders = self
             .user_limit_orders
-            .get(&order.owner, order_book_id)
+            .get(&limit_order.owner, order_book_id)
             .cloned()
             .unwrap_or_default();
         user_orders
-            .try_push(order.id)
+            .try_push(limit_order.id)
             .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
         self.user_limit_orders
-            .set(&order.owner, order_book_id, user_orders);
+            .set(&limit_order.owner, order_book_id, user_orders);
 
         self.limit_orders
-            .set(order_book_id, &order.id.clone(), order);
+            .set(order_book_id, &limit_order.id.clone(), limit_order);
 
         Ok(())
     }

@@ -118,7 +118,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -128,7 +128,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -139,7 +139,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Base(balance!(0)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -149,7 +149,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Quote(balance!(0)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -160,7 +160,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -170,7 +170,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -181,7 +181,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -191,7 +191,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -202,7 +202,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -212,7 +212,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -223,7 +223,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -233,7 +233,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 
@@ -244,7 +244,7 @@ fn check_deal_info_valid() {
         output_asset_id: VAL,
         output_amount: OrderAmount::Base(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Buy
+        direction: PriceVariant::Buy
     }
     .is_valid());
 
@@ -254,7 +254,7 @@ fn check_deal_info_valid() {
         output_asset_id: XOR,
         output_amount: OrderAmount::Quote(balance!(2)),
         average_price: balance!(0.5),
-        side: PriceVariant::Sell
+        direction: PriceVariant::Sell
     }
     .is_valid());
 }
@@ -268,7 +268,7 @@ fn check_deal_info_amounts() {
             output_asset_id: VAL,
             output_amount: OrderAmount::Base(balance!(2)),
             average_price: balance!(0.5),
-            side: PriceVariant::Buy
+            direction: PriceVariant::Buy
         }
         .base_amount(),
         balance!(2)
@@ -281,7 +281,7 @@ fn check_deal_info_amounts() {
             output_asset_id: XOR,
             output_amount: OrderAmount::Quote(balance!(2)),
             average_price: balance!(0.5),
-            side: PriceVariant::Sell
+            direction: PriceVariant::Sell
         }
         .base_amount(),
         balance!(1)
@@ -294,7 +294,7 @@ fn check_deal_info_amounts() {
             output_asset_id: VAL,
             output_amount: OrderAmount::Base(balance!(2)),
             average_price: balance!(0.5),
-            side: PriceVariant::Buy
+            direction: PriceVariant::Buy
         }
         .quote_amount(),
         balance!(1)
@@ -307,7 +307,7 @@ fn check_deal_info_amounts() {
             output_asset_id: XOR,
             output_amount: OrderAmount::Quote(balance!(2)),
             average_price: balance!(0.5),
-            side: PriceVariant::Sell
+            direction: PriceVariant::Sell
         }
         .quote_amount(),
         balance!(2)
@@ -693,8 +693,6 @@ fn should_fail_market_change_merge() {
         quote: XOR.into(),
     };
 
-    let expiration_block = 3;
-
     let payment = Payment {
         dex_id: DEX,
         order_book_id,
@@ -725,10 +723,10 @@ fn should_fail_market_change_merge() {
         deal_output: None,
         market_input: None,
         market_output: None,
-        to_add: BTreeMap::from([(
-            3,
+        to_place: BTreeMap::from([(
+            4,
             LimitOrder::<Runtime>::new(
-                3,
+                4,
                 alice(),
                 PriceVariant::Buy,
                 balance!(10),
@@ -738,8 +736,48 @@ fn should_fail_market_change_merge() {
                 100,
             ),
         )]),
-        to_update: BTreeMap::from([(2, balance!(20))]),
-        to_delete: BTreeMap::from([(1, expiration_block)]),
+        to_part_execute: BTreeMap::from([(
+            3,
+            (
+                LimitOrder::<Runtime>::new(
+                    3,
+                    alice(),
+                    PriceVariant::Buy,
+                    balance!(20),
+                    balance!(100),
+                    1000,
+                    10000,
+                    100,
+                ),
+                OrderAmount::Base(balance!(10)),
+            ),
+        )]),
+        to_full_execute: BTreeMap::from([(
+            2,
+            LimitOrder::<Runtime>::new(
+                2,
+                alice(),
+                PriceVariant::Buy,
+                balance!(20),
+                balance!(100),
+                1000,
+                10000,
+                100,
+            ),
+        )]),
+        to_cancel: BTreeMap::from([(
+            1,
+            LimitOrder::<Runtime>::new(
+                1,
+                alice(),
+                PriceVariant::Buy,
+                balance!(10),
+                balance!(100),
+                1000,
+                10000,
+                100,
+            ),
+        )]),
         payment,
         ignore_unschedule_error: false,
     };
@@ -774,8 +812,6 @@ fn check_market_change_merge() {
         quote: XOR.into(),
     };
 
-    let expiration_block = 3;
-
     let payment = Payment {
         dex_id: DEX,
         order_book_id,
@@ -808,109 +844,133 @@ fn check_market_change_merge() {
         to_unlock: BTreeMap::new(),
     };
 
-    let add_id1 = 301;
-    let add_id2 = 302;
-    let add_id3 = 303;
-    let add_id4 = 304;
-    let add_id5 = 305;
+    let order_id1 = 101;
+    let order_id2 = 102;
+    let order_id3 = 103;
+    let order_id4 = 104;
+    let order_id5 = 105;
 
-    let limit_order1 = LimitOrder::<Runtime>::new(
-        add_id1,
+    let order1_origin = LimitOrder::<Runtime>::new(
+        order_id1,
         alice(),
         PriceVariant::Buy,
         balance!(10),
         balance!(100),
-        10,
-        100,
+        1000,
+        10000,
         100,
     );
 
-    let limit_order1_changed = LimitOrder::<Runtime>::new(
-        add_id1,
+    let order1_other = LimitOrder::<Runtime>::new(
+        order_id1,
         alice(),
         PriceVariant::Buy,
         balance!(9),
         balance!(1000),
-        10,
-        100,
+        1000,
+        10000,
         100,
     );
 
-    let limit_order2 = LimitOrder::<Runtime>::new(
-        add_id2,
+    let order2_origin = LimitOrder::<Runtime>::new(
+        order_id2,
         bob(),
         PriceVariant::Sell,
         balance!(15),
         balance!(100),
-        10,
-        100,
+        1000,
+        10000,
         100,
     );
 
-    let limit_order3 = LimitOrder::<Runtime>::new(
-        add_id3,
+    let order2_other = LimitOrder::<Runtime>::new(
+        order_id2,
+        bob(),
+        PriceVariant::Buy,
+        balance!(14),
+        balance!(200),
+        1000,
+        10000,
+        100,
+    );
+
+    let order3_origin = LimitOrder::<Runtime>::new(
+        order_id3,
         charlie(),
         PriceVariant::Buy,
         balance!(11),
         balance!(100),
-        10,
-        100,
+        1000,
+        10000,
         100,
     );
 
-    let limit_order4 = LimitOrder::<Runtime>::new(
-        add_id4,
+    let order3_other = LimitOrder::<Runtime>::new(
+        order_id3,
+        charlie(),
+        PriceVariant::Buy,
+        balance!(12),
+        balance!(1000),
+        1000,
+        10000,
+        100,
+    );
+
+    let order4_origin = LimitOrder::<Runtime>::new(
+        order_id4,
         dave(),
         PriceVariant::Sell,
         balance!(16),
         balance!(100),
-        10,
-        100,
+        1000,
+        10000,
         100,
     );
 
-    let limit_order5 = LimitOrder::<Runtime>::new(
-        add_id5,
+    let order5_origin = LimitOrder::<Runtime>::new(
+        order_id5,
         alice(),
         PriceVariant::Buy,
         balance!(12),
         balance!(100),
-        10,
-        100,
+        1000,
+        10000,
         100,
     );
-
-    let update_id1 = 201;
-    let update_id2 = 202;
-    let update_id3 = 203;
-    let update_id4 = 204;
-    let update_id5 = 205;
-
-    let delete_id1 = 101;
-    let delete_id2 = 102;
-    let delete_id3 = 103;
-    let delete_id4 = 104;
-    let delete_id5 = 105;
 
     let origin = MarketChange {
         deal_input: Some(OrderAmount::Base(balance!(1000))),
         deal_output: Some(OrderAmount::Quote(balance!(2000))),
         market_input: Some(OrderAmount::Base(balance!(3000))),
         market_output: Some(OrderAmount::Quote(balance!(4000))),
-        to_add: BTreeMap::from([
-            (add_id1, limit_order1.clone()),
-            (add_id2, limit_order2.clone()),
-            (add_id3, limit_order3.clone()),
+        to_place: BTreeMap::from([
+            (order_id1, order1_origin.clone()),
+            (order_id2, order2_origin.clone()),
+            (order_id3, order3_origin.clone()),
         ]),
-        to_update: BTreeMap::from([
-            (update_id1, balance!(20)),
-            (update_id2, balance!(30)),
-            (update_id3, balance!(40)),
+        to_part_execute: BTreeMap::from([
+            (
+                order_id1,
+                (order1_origin.clone(), OrderAmount::Base(balance!(20))),
+            ),
+            (
+                order_id2,
+                (order2_origin.clone(), OrderAmount::Base(balance!(30))),
+            ),
+            (
+                order_id3,
+                (order3_origin.clone(), OrderAmount::Base(balance!(40))),
+            ),
         ]),
-        to_delete: BTreeMap::from([
-            (delete_id1, expiration_block),
-            (delete_id2, expiration_block),
-            (delete_id3, expiration_block),
+        to_full_execute: BTreeMap::from([
+            (order_id1, order1_origin.clone()),
+            (order_id2, order2_origin.clone()),
+            (order_id3, order3_origin.clone()),
+        ]),
+        to_cancel: BTreeMap::from([
+            (order_id1, order1_origin.clone()),
+            (order_id2, order2_origin.clone()),
+            (order_id3, order3_origin.clone()),
         ]),
         payment: payment.clone(),
         ignore_unschedule_error: false,
@@ -921,14 +981,27 @@ fn check_market_change_merge() {
         deal_output: None,
         market_input: None,
         market_output: None,
-        to_add: BTreeMap::from([
-            (add_id4, limit_order4.clone()),
-            (add_id5, limit_order5.clone()),
+        to_place: BTreeMap::from([
+            (order_id4, order4_origin.clone()),
+            (order_id5, order5_origin.clone()),
         ]),
-        to_update: BTreeMap::from([(update_id4, balance!(50)), (update_id5, balance!(60))]),
-        to_delete: BTreeMap::from([
-            (delete_id4, expiration_block),
-            (delete_id5, expiration_block),
+        to_part_execute: BTreeMap::from([
+            (
+                order_id4,
+                (order4_origin.clone(), OrderAmount::Base(balance!(50))),
+            ),
+            (
+                order_id5,
+                (order5_origin.clone(), OrderAmount::Base(balance!(60))),
+            ),
+        ]),
+        to_full_execute: BTreeMap::from([
+            (order_id4, order4_origin.clone()),
+            (order_id5, order5_origin.clone()),
+        ]),
+        to_cancel: BTreeMap::from([
+            (order_id4, order4_origin.clone()),
+            (order_id5, order5_origin.clone()),
         ]),
         payment: empty_payment.clone(),
         ignore_unschedule_error: false,
@@ -943,26 +1016,48 @@ fn check_market_change_merge() {
             deal_output: Some(OrderAmount::Quote(balance!(2000))),
             market_input: Some(OrderAmount::Base(balance!(3000))),
             market_output: Some(OrderAmount::Quote(balance!(4000))),
-            to_add: BTreeMap::from([
-                (add_id1, limit_order1.clone()),
-                (add_id2, limit_order2.clone()),
-                (add_id3, limit_order3.clone()),
-                (add_id4, limit_order4.clone()),
-                (add_id5, limit_order5.clone()),
+            to_place: BTreeMap::from([
+                (order_id1, order1_origin.clone()),
+                (order_id2, order2_origin.clone()),
+                (order_id3, order3_origin.clone()),
+                (order_id4, order4_origin.clone()),
+                (order_id5, order5_origin.clone()),
             ]),
-            to_update: BTreeMap::from([
-                (update_id1, balance!(20)),
-                (update_id2, balance!(30)),
-                (update_id3, balance!(40)),
-                (update_id4, balance!(50)),
-                (update_id5, balance!(60))
+            to_part_execute: BTreeMap::from([
+                (
+                    order_id1,
+                    (order1_origin.clone(), OrderAmount::Base(balance!(20)))
+                ),
+                (
+                    order_id2,
+                    (order2_origin.clone(), OrderAmount::Base(balance!(30)))
+                ),
+                (
+                    order_id3,
+                    (order3_origin.clone(), OrderAmount::Base(balance!(40)))
+                ),
+                (
+                    order_id4,
+                    (order4_origin.clone(), OrderAmount::Base(balance!(50)))
+                ),
+                (
+                    order_id5,
+                    (order5_origin.clone(), OrderAmount::Base(balance!(60)))
+                ),
             ]),
-            to_delete: BTreeMap::from([
-                (delete_id1, expiration_block),
-                (delete_id2, expiration_block),
-                (delete_id3, expiration_block),
-                (delete_id4, expiration_block),
-                (delete_id5, expiration_block)
+            to_full_execute: BTreeMap::from([
+                (order_id1, order1_origin.clone()),
+                (order_id2, order2_origin.clone()),
+                (order_id3, order3_origin.clone()),
+                (order_id4, order4_origin.clone()),
+                (order_id5, order5_origin.clone()),
+            ]),
+            to_cancel: BTreeMap::from([
+                (order_id1, order1_origin.clone()),
+                (order_id2, order2_origin.clone()),
+                (order_id3, order3_origin.clone()),
+                (order_id4, order4_origin.clone()),
+                (order_id5, order5_origin.clone()),
             ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
@@ -974,20 +1069,34 @@ fn check_market_change_merge() {
         deal_output: Some(OrderAmount::Quote(balance!(8000))),
         market_input: None,
         market_output: None,
-        to_add: BTreeMap::from([
-            (add_id1, limit_order1_changed.clone()),
-            (add_id2, limit_order2.clone()),
-            (add_id5, limit_order5.clone()),
+        to_place: BTreeMap::from([
+            (order_id1, order1_other.clone()),
+            (order_id2, order2_origin.clone()),
+            (order_id5, order5_origin.clone()),
         ]),
-        to_update: BTreeMap::from([
-            (update_id1, balance!(120)),
-            (update_id2, balance!(30)),
-            (update_id5, balance!(60)),
+        to_part_execute: BTreeMap::from([
+            (
+                order_id1,
+                (order1_other.clone(), OrderAmount::Base(balance!(120))),
+            ),
+            (
+                order_id2,
+                (order2_origin.clone(), OrderAmount::Base(balance!(30))),
+            ),
+            (
+                order_id5,
+                (order5_origin.clone(), OrderAmount::Base(balance!(60))),
+            ),
         ]),
-        to_delete: BTreeMap::from([
-            (delete_id1, expiration_block),
-            (delete_id2, expiration_block),
-            (delete_id5, expiration_block),
+        to_full_execute: BTreeMap::from([
+            (order_id1, order1_other.clone()),
+            (order_id2, order2_origin.clone()),
+            (order_id5, order5_origin.clone()),
+        ]),
+        to_cancel: BTreeMap::from([
+            (order_id1, order1_other.clone()),
+            (order_id2, order2_origin.clone()),
+            (order_id5, order5_origin.clone()),
         ]),
         payment: empty_payment.clone(),
         ignore_unschedule_error: false,
@@ -1002,23 +1111,41 @@ fn check_market_change_merge() {
             deal_output: Some(OrderAmount::Quote(balance!(10000))),
             market_input: Some(OrderAmount::Base(balance!(3000))),
             market_output: Some(OrderAmount::Quote(balance!(4000))),
-            to_add: BTreeMap::from([
-                (add_id1, limit_order1_changed.clone()),
-                (add_id2, limit_order2.clone()),
-                (add_id3, limit_order3.clone()),
-                (add_id5, limit_order5.clone()),
+            to_place: BTreeMap::from([
+                (order_id1, order1_other.clone()),
+                (order_id2, order2_origin.clone()),
+                (order_id3, order3_origin.clone()),
+                (order_id5, order5_origin.clone()),
             ]),
-            to_update: BTreeMap::from([
-                (update_id1, balance!(120)),
-                (update_id2, balance!(30)),
-                (update_id3, balance!(40)),
-                (update_id5, balance!(60))
+            to_part_execute: BTreeMap::from([
+                (
+                    order_id1,
+                    (order1_other.clone(), OrderAmount::Base(balance!(120)))
+                ),
+                (
+                    order_id2,
+                    (order2_origin.clone(), OrderAmount::Base(balance!(30)))
+                ),
+                (
+                    order_id3,
+                    (order3_origin.clone(), OrderAmount::Base(balance!(40)))
+                ),
+                (
+                    order_id5,
+                    (order5_origin.clone(), OrderAmount::Base(balance!(60)))
+                ),
             ]),
-            to_delete: BTreeMap::from([
-                (delete_id1, expiration_block),
-                (delete_id2, expiration_block),
-                (delete_id3, expiration_block),
-                (delete_id5, expiration_block)
+            to_full_execute: BTreeMap::from([
+                (order_id1, order1_other.clone()),
+                (order_id2, order2_origin.clone()),
+                (order_id3, order3_origin.clone()),
+                (order_id5, order5_origin.clone()),
+            ]),
+            to_cancel: BTreeMap::from([
+                (order_id1, order1_other.clone()),
+                (order_id2, order2_origin.clone()),
+                (order_id3, order3_origin.clone()),
+                (order_id5, order5_origin.clone()),
             ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
@@ -1030,20 +1157,34 @@ fn check_market_change_merge() {
         deal_output: Some(OrderAmount::Quote(balance!(2000))),
         market_input: Some(OrderAmount::Base(balance!(3000))),
         market_output: Some(OrderAmount::Quote(balance!(4000))),
-        to_add: BTreeMap::from([
-            (add_id1, limit_order1.clone()),
-            (add_id2, limit_order2.clone()),
-            (add_id3, limit_order3.clone()),
+        to_place: BTreeMap::from([
+            (order_id1, order1_other.clone()),
+            (order_id2, order2_other.clone()),
+            (order_id3, order3_other.clone()),
         ]),
-        to_update: BTreeMap::from([
-            (update_id1, balance!(20)),
-            (update_id2, balance!(30)),
-            (update_id3, balance!(40)),
+        to_part_execute: BTreeMap::from([
+            (
+                order_id1,
+                (order1_other.clone(), OrderAmount::Base(balance!(120))),
+            ),
+            (
+                order_id2,
+                (order2_other.clone(), OrderAmount::Base(balance!(130))),
+            ),
+            (
+                order_id3,
+                (order3_other.clone(), OrderAmount::Base(balance!(140))),
+            ),
         ]),
-        to_delete: BTreeMap::from([
-            (delete_id1, expiration_block),
-            (delete_id2, expiration_block),
-            (delete_id3, expiration_block),
+        to_full_execute: BTreeMap::from([
+            (order_id1, order1_other.clone()),
+            (order_id2, order2_other.clone()),
+            (order_id3, order3_other.clone()),
+        ]),
+        to_cancel: BTreeMap::from([
+            (order_id1, order1_other.clone()),
+            (order_id2, order2_other.clone()),
+            (order_id3, order3_other.clone()),
         ]),
         payment: empty_payment.clone(),
         ignore_unschedule_error: false,
@@ -1058,20 +1199,34 @@ fn check_market_change_merge() {
             deal_output: Some(OrderAmount::Quote(balance!(4000))),
             market_input: Some(OrderAmount::Base(balance!(6000))),
             market_output: Some(OrderAmount::Quote(balance!(8000))),
-            to_add: BTreeMap::from([
-                (add_id1, limit_order1.clone()),
-                (add_id2, limit_order2.clone()),
-                (add_id3, limit_order3.clone()),
+            to_place: BTreeMap::from([
+                (order_id1, order1_other.clone()),
+                (order_id2, order2_other.clone()),
+                (order_id3, order3_other.clone()),
             ]),
-            to_update: BTreeMap::from([
-                (update_id1, balance!(20)),
-                (update_id2, balance!(30)),
-                (update_id3, balance!(40)),
+            to_part_execute: BTreeMap::from([
+                (
+                    order_id1,
+                    (order1_other.clone(), OrderAmount::Base(balance!(120)))
+                ),
+                (
+                    order_id2,
+                    (order2_other.clone(), OrderAmount::Base(balance!(130)))
+                ),
+                (
+                    order_id3,
+                    (order3_other.clone(), OrderAmount::Base(balance!(140)))
+                ),
             ]),
-            to_delete: BTreeMap::from([
-                (delete_id1, expiration_block),
-                (delete_id2, expiration_block),
-                (delete_id3, expiration_block)
+            to_full_execute: BTreeMap::from([
+                (order_id1, order1_other.clone()),
+                (order_id2, order2_other.clone()),
+                (order_id3, order3_other.clone()),
+            ]),
+            to_cancel: BTreeMap::from([
+                (order_id1, order1_other.clone()),
+                (order_id2, order2_other.clone()),
+                (order_id3, order3_other.clone()),
             ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
@@ -1083,9 +1238,10 @@ fn check_market_change_merge() {
         deal_output: None,
         market_input: None,
         market_output: None,
-        to_add: BTreeMap::new(),
-        to_update: BTreeMap::new(),
-        to_delete: BTreeMap::new(),
+        to_place: BTreeMap::new(),
+        to_part_execute: BTreeMap::new(),
+        to_full_execute: BTreeMap::new(),
+        to_cancel: BTreeMap::new(),
         payment: empty_payment.clone(),
         ignore_unschedule_error: false,
     };

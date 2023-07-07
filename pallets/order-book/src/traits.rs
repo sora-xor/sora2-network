@@ -29,7 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    Config, LimitOrder, MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders,
+    Config, LimitOrder, MarketSide, OrderBookEvent, OrderBookId, OrderPrice, OrderVolume,
+    PriceOrders, UserOrders,
 };
 use assets::AssetIdOf;
 use common::PriceVariant;
@@ -161,7 +162,7 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
     ) -> Result<(), Error>;
 }
 
-pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
+pub trait ExpirationScheduler<BlockNumber, OrderBookId, DEXId, OrderId, Error> {
     /// Execute scheduled expirations considering this block to be `current_block`
     /// and weight limit to be set by `weight`.
     ///
@@ -173,6 +174,7 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
     fn schedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
+        dex_id: DEXId,
         order_id: OrderId,
     ) -> Result<(), Error>;
 
@@ -180,6 +182,15 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
     fn unschedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
+        dex_id: DEXId,
         order_id: OrderId,
     ) -> Result<(), Error>;
+}
+
+pub trait Delegate<AccountId, AssetId, OrderId, DEXId> {
+    fn emit_event(
+        dex_id: DEXId,
+        order_book_id: OrderBookId<AssetId>,
+        event: OrderBookEvent<AccountId, OrderId>,
+    );
 }

@@ -74,10 +74,10 @@ pub use crate::order_book::OrderBook;
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
-pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer, ExpirationScheduler};
+pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer, Delegate, ExpirationScheduler};
 pub use types::{
-    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderBookStatus,
-    OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
+    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent, OrderBookId,
+    OrderBookStatus, OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -125,6 +125,16 @@ pub mod pallet {
             + Eq
             + MaxEncodedLen
             + scale_info::TypeInfo;
+        type Locker: CurrencyLocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
+        type Unlocker: CurrencyUnlocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
+        type Scheduler: ExpirationScheduler<
+            Self::BlockNumber,
+            OrderBookId<Self::AssetId>,
+            Self::DEXId,
+            Self::OrderId,
+            DispatchError,
+        >;
+        type Delegate: Delegate<Self::AccountId, Self::AssetId, Self::OrderId, Self::DEXId>;
         type MaxOpenedLimitOrdersPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
         type MaxSidePriceCount: Get<u32>;
@@ -235,7 +245,7 @@ pub mod pallet {
         _,
         Twox128,
         T::BlockNumber,
-        BoundedVec<(OrderBookId<AssetIdOf<T>>, T::OrderId), T::MaxExpiringOrdersPerBlock>,
+        BoundedVec<(OrderBookId<AssetIdOf<T>>, T::DEXId, T::OrderId), T::MaxExpiringOrdersPerBlock>,
         ValueQuery,
     >;
 
@@ -289,6 +299,8 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             owner_id: T::AccountId,
+            direction: PriceVariant,
+            amount: OrderAmount,
         },
 
         /// User tried to place the limit order out of the spread.
@@ -297,9 +309,10 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             owner_id: T::AccountId,
-            market_order_input: OrderAmount,
+            market_order_direction: PriceVariant,
+            market_order_amount: OrderAmount,
+            market_order_average_price: OrderPrice,
             limit_order_id: T::OrderId,
-            limit_order_input: OrderAmount,
         },
 
         /// User canceled their limit order
@@ -310,7 +323,7 @@ pub mod pallet {
             owner_id: T::AccountId,
         },
 
-        /// The order has reached the end of its lifespan
+        /// The limit order has reached the end of its lifespan
         LimitOrderExpired {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
@@ -321,8 +334,30 @@ pub mod pallet {
         /// Failed to cancel expired order
         ExpirationFailure {
             order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
             order_id: T::OrderId,
             error: DispatchError,
+        },
+
+        /// Some amount of the limit order is executed
+        LimitOrderExecuted {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
+            side: PriceVariant,
+            amount: OrderAmount,
+        },
+
+        /// User executes a deal by the market order
+        MarketOrderExecuted {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            owner_id: T::AccountId,
+            direction: PriceVariant,
+            amount: OrderAmount,
+            average_price: OrderVolume,
+            to: Option<T::AccountId>,
         },
     }
 
@@ -510,8 +545,7 @@ pub mod pallet {
             let dex_id = order_book.dex_id;
 
             let mut data = CacheDataLayer::<T>::new();
-            let count_of_canceled_orders =
-                order_book.cancel_all_limit_orders::<Self, Self, Self>(&mut data)? as u32;
+            let count_of_canceled_orders = order_book.cancel_all_limit_orders(&mut data)? as u32;
 
             data.commit();
 
@@ -680,7 +714,6 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
-            let dex_id = order_book.dex_id;
             let order_id = order_book.next_order_id();
             let now = T::Time::now();
             let current_block = frame_system::Pallet::<T>::block_number();
@@ -697,41 +730,11 @@ pub mod pallet {
             );
 
             let mut data = CacheDataLayer::<T>::new();
-            let (market_input, deal_input) =
-                order_book.place_limit_order::<Self, Self, Self>(order, &mut data)?;
+            order_book.place_limit_order(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
 
-            match (market_input, deal_input) {
-                (None, Some(..)) => {
-                    Self::deposit_event(Event::<T>::LimitOrderConvertedToMarketOrder {
-                        order_book_id,
-                        dex_id,
-                        owner_id: who,
-                    })
-                }
-                (Some(..), None) => Self::deposit_event(Event::<T>::LimitOrderPlaced {
-                    order_book_id,
-                    dex_id,
-                    order_id,
-                    owner_id: who,
-                }),
-                (Some(limit_order_input), Some(market_order_input)) => {
-                    Self::deposit_event(Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
-                        order_book_id,
-                        dex_id,
-                        owner_id: who,
-                        market_order_input,
-                        limit_order_id: order_id,
-                        limit_order_input,
-                    })
-                }
-                _ => {
-                    // should never happen
-                    return Err(Error::<T>::InvalidOrderAmount.into());
-                }
-            }
             Ok(().into())
         }
 
@@ -750,16 +753,9 @@ pub mod pallet {
 
             let order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
-            let dex_id = order_book.dex_id;
 
-            order_book.cancel_limit_order::<Self, Self, Self>(order, &mut data)?;
+            order_book.cancel_limit_order(order, &mut data)?;
             data.commit();
-            Self::deposit_event(Event::<T>::LimitOrderCanceled {
-                order_book_id,
-                dex_id,
-                order_id,
-                owner_id: who,
-            });
             Ok(().into())
         }
     }
@@ -801,6 +797,94 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
             technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, *amount)?;
         }
         Ok(())
+    }
+}
+
+impl<T: Config> Delegate<T::AccountId, T::AssetId, T::OrderId, T::DEXId> for Pallet<T> {
+    fn emit_event(
+        dex_id: T::DEXId,
+        order_book_id: OrderBookId<AssetIdOf<T>>,
+        event: OrderBookEvent<T::AccountId, T::OrderId>,
+    ) {
+        let event = match event {
+            OrderBookEvent::LimitOrderPlaced { order_id, owner_id } => {
+                Event::<T>::LimitOrderPlaced {
+                    order_book_id,
+                    dex_id,
+                    order_id,
+                    owner_id,
+                }
+            }
+
+            OrderBookEvent::LimitOrderConvertedToMarketOrder {
+                owner_id,
+                direction,
+                amount,
+            } => Event::<T>::LimitOrderConvertedToMarketOrder {
+                order_book_id,
+                dex_id,
+                owner_id,
+                direction,
+                amount,
+            },
+
+            OrderBookEvent::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+                owner_id,
+                market_order_direction,
+                market_order_amount,
+                market_order_average_price,
+                limit_order_id,
+            } => Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+                order_book_id,
+                dex_id,
+                owner_id,
+                market_order_direction,
+                market_order_amount,
+                market_order_average_price,
+                limit_order_id,
+            },
+
+            OrderBookEvent::LimitOrderCanceled { order_id, owner_id } => {
+                Event::<T>::LimitOrderCanceled {
+                    order_book_id,
+                    dex_id,
+                    order_id,
+                    owner_id,
+                }
+            }
+
+            OrderBookEvent::LimitOrderExecuted {
+                order_id,
+                owner_id,
+                side,
+                amount,
+            } => Event::<T>::LimitOrderExecuted {
+                order_book_id,
+                dex_id,
+                order_id,
+                owner_id,
+                side,
+                amount,
+            },
+
+            OrderBookEvent::MarketOrderExecuted {
+                owner_id,
+                direction,
+                amount,
+                average_price,
+                to,
+            } => Event::<T>::MarketOrderExecuted {
+                order_book_id,
+                dex_id,
+                owner_id,
+                direction,
+                amount,
+                average_price,
+                to,
+            },
+        };
+
+        Self::deposit_event(event);
     }
 }
 
@@ -965,16 +1049,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Some(receiver.clone())
         };
 
-        let order = MarketOrder::<T>::new(
-            sender.clone(),
-            deal_info.side,
-            order_book_id,
-            deal_info.base_amount(),
-            to,
-        );
+        let direction = deal_info.direction;
+        let amount = deal_info.base_amount();
+
+        let market_order =
+            MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to.clone());
 
         let (input_amount, output_amount) =
-            order_book.execute_market_order::<Self, Self, Self>(order, &mut data)?;
+            order_book.execute_market_order(market_order, &mut data)?;
 
         let fee = 0; // todo (m.tagirov)
 
@@ -1024,9 +1106,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
         let mut data = CacheDataLayer::<T>::new();
 
-        let side = order_book.get_side(input_asset_id, output_asset_id)?;
+        let direction = order_book.get_direction(input_asset_id, output_asset_id)?;
 
-        let Some((price, _)) = (match side {
+        let Some((price, _)) = (match direction {
             PriceVariant::Buy => order_book.best_ask(&mut data),
             PriceVariant::Sell => order_book.best_bid(&mut data),
         }) else {
@@ -1034,7 +1116,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         };
 
         let target_amount = match amount {
-            QuoteAmount::WithDesiredInput { desired_amount_in } => match side {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
                 // User wants to swap a known amount of the `quote` asset for the `base` asset.
                 // Necessary to return `base` amount.
                 // Divide the `quote` amount by the price and align the `base` amount.
@@ -1055,7 +1137,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 }
             },
 
-            QuoteAmount::WithDesiredOutput { desired_amount_out } => match side {
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
                 // User wants to swap the `quote` asset for a known amount of the `base` asset.
                 // Necessary to return `quote` amount.
                 // Align the `base` amount and then multiply by the price.
