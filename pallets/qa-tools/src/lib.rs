@@ -73,8 +73,6 @@ pub mod pallet {
     pub enum OrderBookError {
         /// Order book does not exist for this trading pair
         UnknownOrderBook,
-        /// Could not place limit order
-        FailedToPlaceOrders,
     }
 
     #[derive(
