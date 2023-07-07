@@ -343,6 +343,13 @@ pub mod pallet {
             amount: OrderAmount,
         },
 
+        /// The limit order is updated
+        LimitOrderUpdated {
+            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
+        },
+
         /// User executes a deal by the market order
         MarketOrderExecuted {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -650,16 +657,22 @@ pub mod pallet {
                 Error::<T>::MaxLotSizeIsMoreThanTotalSupply
             );
 
+            let prev_step_lot_size = order_book.step_lot_size;
+
             order_book.tick_size = tick_size;
             order_book.step_lot_size = step_lot_size;
             order_book.min_lot_size = min_lot_size;
             order_book.max_lot_size = max_lot_size;
 
             // Note:
-            // Already existed limit orders are not changed even if they don't meet the requirements of new attributes.
-            // They stay in order book until they are executed, canceled or expired.
+            // The amounts of already existed limit orders are aligned if they don't meet the requirements of new `step_lot_size` value.
             // All new limit orders must meet the requirements of new attributes.
 
+            if order_book.step_lot_size > prev_step_lot_size {
+                let mut data = CacheDataLayer::<T>::new();
+                order_book.align_limit_orders(&mut data)?;
+                data.commit();
+            }
             <OrderBooks<T>>::set(order_book_id, Some(order_book));
             Self::deposit_event(Event::<T>::OrderBookUpdated { order_book_id });
             Ok(().into())
@@ -841,6 +854,14 @@ impl<T: Config> Delegate<T::AccountId, T::AssetId, T::OrderId, T::DEXId> for Pal
                 side,
                 amount,
             },
+
+            OrderBookEvent::LimitOrderUpdated { order_id, owner_id } => {
+                Event::<T>::LimitOrderUpdated {
+                    order_book_id,
+                    order_id,
+                    owner_id,
+                }
+            }
 
             OrderBookEvent::MarketOrderExecuted {
                 owner_id,

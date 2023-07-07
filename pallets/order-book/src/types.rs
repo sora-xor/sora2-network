@@ -365,6 +365,9 @@ pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
     /// Limit orders that should be cancelled
     pub to_cancel: BTreeMap<OrderId, LimitOrder>,
 
+    /// Limit orders that should be forcibly updated
+    pub to_force_update: BTreeMap<OrderId, LimitOrder>,
+
     pub payment: Payment<AssetId, AccountId, DEXId>,
     pub ignore_unschedule_error: bool,
 }
@@ -387,6 +390,7 @@ where
             to_part_execute: BTreeMap::new(),
             to_full_execute: BTreeMap::new(),
             to_cancel: BTreeMap::new(),
+            to_force_update: BTreeMap::new(),
             payment: Payment::new(order_book_id),
             ignore_unschedule_error: false,
         }
@@ -414,6 +418,7 @@ where
         self.to_part_execute.append(&mut other.to_part_execute);
         self.to_full_execute.append(&mut other.to_full_execute);
         self.to_cancel.append(&mut other.to_cancel);
+        self.to_force_update.append(&mut other.to_force_update);
 
         self.payment.merge(&other.payment)?;
 
@@ -479,6 +484,11 @@ pub enum OrderBookEvent<AccountId, OrderId> {
         owner_id: AccountId,
         side: PriceVariant,
         amount: OrderAmount,
+    },
+
+    LimitOrderUpdated {
+        order_id: OrderId,
+        owner_id: AccountId,
     },
 
     MarketOrderExecuted {
