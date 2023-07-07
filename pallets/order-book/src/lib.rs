@@ -591,11 +591,10 @@ pub mod pallet {
             // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
             // and doesn't go out of precision if `tick_size` & `step_lot_size` are too small.
 
-            // Returns error if value overflows.
             let min_possible_deal_amount = (FixedWrapper::from(tick_size)
                 .lossless_mul(FixedWrapper::from(step_lot_size))
                 .ok_or(Error::<T>::TickSizeAndStepLotSizeLosePrecision)?)
-            .try_into_balance()
+            .try_into_balance() // Returns error if value overflows.
             .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
 
             // 1 is a min non-zero possible value. balance!(0.000000000000000001) == 1
