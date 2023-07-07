@@ -52,8 +52,7 @@ pub struct OrderBook<T>
 where
     T: crate::Config,
 {
-    pub order_book_id: OrderBookId<AssetIdOf<T>>,
-    pub dex_id: T::DEXId,
+    pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     pub status: OrderBookStatus,
     pub last_order_id: T::OrderId,
     pub tick_size: OrderPrice,      // price precision
@@ -64,8 +63,7 @@ where
 
 impl<T: crate::Config + Sized> OrderBook<T> {
     pub fn new(
-        order_book_id: OrderBookId<AssetIdOf<T>>,
-        dex_id: T::DEXId,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         tick_size: OrderPrice,
         step_lot_size: OrderVolume,
         min_lot_size: OrderVolume,
@@ -73,7 +71,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     ) -> Self {
         Self {
             order_book_id,
-            dex_id,
             status: OrderBookStatus::Trade,
             last_order_id: T::OrderId::zero(),
             tick_size,
@@ -83,10 +80,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
     }
 
-    pub fn default(order_book_id: OrderBookId<AssetIdOf<T>>, dex_id: T::DEXId) -> Self {
+    pub fn default(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
         Self::new(
             order_book_id,
-            dex_id,
             balance!(0.00001), // TODO: order-book clarify
             balance!(0.00001), // TODO: order-book clarify
             balance!(1),       // TODO: order-book clarify
@@ -94,10 +90,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         )
     }
 
-    pub fn default_nft(order_book_id: OrderBookId<AssetIdOf<T>>, dex_id: T::DEXId) -> Self {
+    pub fn default_nft(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
         Self::new(
             order_book_id,
-            dex_id,
             balance!(0.00001), // TODO: order-book clarify
             balance!(1),       // TODO: order-book clarify
             balance!(1),       // TODO: order-book clarify
@@ -170,7 +165,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     PriceVariant::Sell
                 };
                 T::Delegate::emit_event(
-                    self.dex_id,
                     self.order_book_id,
                     OrderBookEvent::LimitOrderConvertedToMarketOrder {
                         owner_id,
@@ -191,7 +185,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     return Err(Error::<T>::PriceCalculationFailed.into());
                 };
                 T::Delegate::emit_event(
-                    self.dex_id,
                     self.order_book_id,
                     OrderBookEvent::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
                         owner_id,
@@ -268,7 +261,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.apply_market_change(market_change, data)?;
 
         T::Delegate::emit_event(
-            self.dex_id,
             self.order_book_id,
             OrderBookEvent::MarketOrderExecuted {
                 owner_id: market_order.owner,
@@ -319,7 +311,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
-        let mut payment = Payment::new(self.dex_id, self.order_book_id);
+        let mut payment = Payment::new(self.order_book_id);
 
         // necessary to lock the liquidity that taker should receive if execute the limit order
         let lock_amount = limit_order.deal_amount(MarketRole::Taker, None)?;
@@ -356,7 +348,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         DispatchError,
     > {
         let mut limit_order_ids_to_cancel = BTreeMap::new();
-        let mut payment = Payment::new(self.dex_id, self.order_book_id);
+        let mut payment = Payment::new(self.order_book_id);
 
         let unlock_amount = limit_order.deal_amount(MarketRole::Taker, None)?;
         let unlock_asset = unlock_amount.associated_asset(&self.order_book_id);
@@ -393,7 +385,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         DispatchError,
     > {
         let mut limit_order_ids_to_cancel = BTreeMap::new();
-        let mut payment = Payment::new(self.dex_id, self.order_book_id);
+        let mut payment = Payment::new(self.order_book_id);
 
         let limit_orders = data.get_all_limit_orders(&self.order_book_id);
 
@@ -444,7 +436,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let mut maker_amount = OrderVolume::zero();
         let mut limit_orders_to_part_execute = BTreeMap::new();
         let mut limit_orders_to_full_execute = BTreeMap::new();
-        let mut payment = Payment::new(self.dex_id, self.order_book_id);
+        let mut payment = Payment::new(self.order_book_id);
 
         let (maker_out_asset, taker_out_asset) = match direction {
             PriceVariant::Buy => (self.order_book_id.quote, self.order_book_id.base),
@@ -689,7 +681,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             let unschedule_result = T::Scheduler::unschedule(
                 limit_order.expires_at,
                 self.order_book_id,
-                self.dex_id,
                 limit_order.id,
             );
             if !market_change.ignore_unschedule_error {
@@ -697,7 +688,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
 
             T::Delegate::emit_event(
-                self.dex_id,
                 self.order_book_id,
                 OrderBookEvent::LimitOrderCanceled {
                     order_id: limit_order.id,
@@ -711,7 +701,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             let unschedule_result = T::Scheduler::unschedule(
                 limit_order.expires_at,
                 self.order_book_id,
-                self.dex_id,
                 limit_order.id,
             );
             if !market_change.ignore_unschedule_error {
@@ -719,7 +708,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
 
             T::Delegate::emit_event(
-                self.dex_id,
                 self.order_book_id,
                 OrderBookEvent::LimitOrderExecuted {
                     order_id: limit_order.id,
@@ -738,7 +726,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             )?;
 
             T::Delegate::emit_event(
-                self.dex_id,
                 self.order_book_id,
                 OrderBookEvent::LimitOrderExecuted {
                     order_id: limit_order.id,
@@ -754,10 +741,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             let owner_id = limit_order.owner.clone();
             let expires_at = limit_order.expires_at;
             data.insert_limit_order(&self.order_book_id, limit_order)?;
-            T::Scheduler::schedule(expires_at, self.order_book_id, self.dex_id, order_id)?;
+            T::Scheduler::schedule(expires_at, self.order_book_id, order_id)?;
 
             T::Delegate::emit_event(
-                self.dex_id,
                 self.order_book_id,
                 OrderBookEvent::LimitOrderPlaced { order_id, owner_id },
             );
@@ -772,12 +758,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         output_asset_id: &AssetIdOf<T>,
     ) -> Result<PriceVariant, DispatchError> {
         match self.order_book_id {
-            OrderBookId::<AssetIdOf<T>> { base, quote }
+            OrderBookId::<AssetIdOf<T>, _> { base, quote, .. }
                 if base == *output_asset_id && quote == *input_asset_id =>
             {
                 Ok(PriceVariant::Buy)
             }
-            OrderBookId::<AssetIdOf<T>> { base, quote }
+            OrderBookId::<AssetIdOf<T>, _> { base, quote, .. }
                 if base == *input_asset_id && quote == *output_asset_id =>
             {
                 Ok(PriceVariant::Sell)
@@ -969,7 +955,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
         }
 
-        let mut market_change = MarketChange::new(self.dex_id, self.order_book_id);
+        let mut market_change = MarketChange::new(self.order_book_id);
 
         if !market_amount.is_zero() {
             let market_order = MarketOrder::<T>::new(

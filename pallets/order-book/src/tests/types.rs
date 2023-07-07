@@ -72,7 +72,8 @@ fn check_order_amount() {
         OrderAmount::Quote(balance!(110))
     );
 
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
     };
@@ -316,41 +317,25 @@ fn check_deal_info_amounts() {
 
 #[test]
 fn should_fail_payment_merge() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
     };
 
-    let other_order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+    let other_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        dex_id: DEX.into(),
         base: DAI.into(),
         quote: XOR.into(),
     };
 
     assert_err!(
         Payment {
-            dex_id: DEX,
             order_book_id,
             to_lock: BTreeMap::from([(XOR, BTreeMap::from([(alice(), balance!(100))]))]),
             to_unlock: BTreeMap::from([(VAL, BTreeMap::from([(bob(), balance!(50))]))])
         }
         .merge(&Payment {
-            dex_id: common::DEXId::PolkaswapXSTUSD,
-            order_book_id,
-            to_lock: BTreeMap::from([(XOR, BTreeMap::from([(alice(), balance!(100))]))]),
-            to_unlock: BTreeMap::from([(VAL, BTreeMap::from([(bob(), balance!(50))]))])
-        }),
-        ()
-    );
-
-    assert_err!(
-        Payment {
-            dex_id: DEX,
-            order_book_id,
-            to_lock: BTreeMap::from([(XOR, BTreeMap::from([(alice(), balance!(100))]))]),
-            to_unlock: BTreeMap::from([(VAL, BTreeMap::from([(bob(), balance!(50))]))])
-        }
-        .merge(&Payment {
-            dex_id: DEX,
             order_book_id: other_order_book_id,
             to_lock: BTreeMap::from([(XOR, BTreeMap::from([(alice(), balance!(100))]))]),
             to_unlock: BTreeMap::from([(DAI, BTreeMap::from([(bob(), balance!(50))]))])
@@ -361,13 +346,13 @@ fn should_fail_payment_merge() {
 
 #[test]
 fn check_payment_merge() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
     };
 
     let origin = Payment {
-        dex_id: DEX,
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -392,7 +377,6 @@ fn check_payment_merge() {
     };
 
     let different = Payment {
-        dex_id: DEX,
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -421,7 +405,6 @@ fn check_payment_merge() {
     assert_eq!(
         payment,
         Payment {
-            dex_id: DEX,
             order_book_id,
             to_lock: BTreeMap::from([
                 (
@@ -467,7 +450,6 @@ fn check_payment_merge() {
     );
 
     let partial_match = Payment {
-        dex_id: DEX,
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -496,7 +478,6 @@ fn check_payment_merge() {
     assert_eq!(
         payment,
         Payment {
-            dex_id: DEX,
             order_book_id,
             to_lock: BTreeMap::from([
                 (
@@ -538,7 +519,6 @@ fn check_payment_merge() {
     );
 
     let full_match = Payment {
-        dex_id: DEX,
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -567,7 +547,6 @@ fn check_payment_merge() {
     assert_eq!(
         payment,
         Payment {
-            dex_id: DEX,
             order_book_id,
             to_lock: BTreeMap::from([
                 (
@@ -593,7 +572,6 @@ fn check_payment_merge() {
     );
 
     let empty = Payment {
-        dex_id: DEX,
         order_book_id,
         to_lock: BTreeMap::new(),
         to_unlock: BTreeMap::new(),
@@ -607,12 +585,13 @@ fn check_payment_merge() {
 #[test]
 fn check_payment_execute_all() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         fill_balance(alice(), order_book_id);
         fill_balance(bob(), order_book_id);
@@ -631,7 +610,6 @@ fn check_payment_execute_all() {
         let dave_quote_balance = free_balance(&order_book_id.quote, &dave());
 
         let payment = Payment {
-            dex_id: DEX.into(),
             order_book_id,
             to_lock: BTreeMap::from([
                 (
@@ -688,13 +666,13 @@ fn check_payment_execute_all() {
 
 #[test]
 fn should_fail_market_change_merge() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
     };
 
     let payment = Payment {
-        dex_id: DEX,
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -807,13 +785,13 @@ fn should_fail_market_change_merge() {
 
 #[test]
 fn check_market_change_merge() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
     };
 
     let payment = Payment {
-        dex_id: DEX,
         order_book_id,
         to_lock: BTreeMap::from([
             (
@@ -838,7 +816,6 @@ fn check_market_change_merge() {
     };
 
     let empty_payment = Payment {
-        dex_id: DEX,
         order_book_id,
         to_lock: BTreeMap::new(),
         to_unlock: BTreeMap::new(),
