@@ -171,6 +171,7 @@ impl liquidity_proxy::Config for Runtime {
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
     type GetADARAccountId = GetADARAccountId;
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -288,7 +289,7 @@ impl dex_api::Config for Runtime {
     type XSTPool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    
+
     #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
 }

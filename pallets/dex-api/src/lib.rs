@@ -388,10 +388,7 @@ pub mod pallet {
             Balance,
             DispatchError,
         >;
-        type DexInfoProvider: DexInfoProvider<
-            Self::DEXId,
-            DEXInfo<Self>,
-        >;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self>>;
 
         #[cfg(feature = "ready-to-test")] // order-book
         type OrderBook: LiquiditySource<
