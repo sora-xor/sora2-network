@@ -34,17 +34,17 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 [features]
 default = ["std"]
 std = [
-	"codec/std",
-	"frame-support/std",
-	"frame-system/std",
-	"order-book/std",
-	"scale-info/std",
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "order-book/std",
+    "scale-info/std",
 ]
 ready-to-test = [
     "framenode-chain-spec/ready-to-test",
     "framenode-runtime/ready-to-test",
     "common/ready-to-test",
-	"order-book/ready-to-test"
+    "order-book/ready-to-test"
 ]
 private-net = [
     "framenode-chain-spec/private-net",

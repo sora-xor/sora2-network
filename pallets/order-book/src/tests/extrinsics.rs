@@ -59,27 +59,21 @@ type TechnicalRawOrigin = pallet_collective::RawOrigin<
 #[test]
 fn should_not_create_order_book_with_disallowed_dex_id() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let mut order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: common::DEXId::PolkaswapXSTUSD.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                common::DEXId::PolkaswapXSTUSD.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::NotAllowedDEXId,
         );
 
         // any number except 0 (polkaswap dex id) should not be allowed
+        order_book_id.dex_id = 12345678;
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                12345678,
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::NotAllowedDEXId,
         );
     });
@@ -88,20 +82,20 @@ fn should_not_create_order_book_with_disallowed_dex_id() {
 #[test]
 fn should_create_order_book_with_correct_dex_id() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
         assert_eq!(
             OrderBookPallet::order_books(order_book_id).unwrap(),
-            OrderBook::default(order_book_id, DEX.into())
+            OrderBook::default(order_book_id)
         );
     });
 }
@@ -109,17 +103,14 @@ fn should_create_order_book_with_correct_dex_id() {
 #[test]
 fn should_not_create_order_book_with_same_assets() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: XOR.into(),
             quote: XOR.into(),
         };
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::ForbiddenToCreateOrderBookWithSameAssets
         );
     });
@@ -128,17 +119,14 @@ fn should_not_create_order_book_with_same_assets() {
 #[test]
 fn should_not_create_order_book_with_wrong_quote_asset() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: XOR.into(),
             quote: VAL.into(),
         };
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::NotAllowedBaseAsset
         );
     });
@@ -151,17 +139,14 @@ fn should_not_create_order_book_with_non_existed_asset() {
             "0123456789012345678901234567890123456789012345678901234567890123"
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: wrong_asset.into(),
             quote: XOR.into(),
         };
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             assets::Error::<Runtime>::AssetIdNotExists
         );
     });
@@ -185,17 +170,14 @@ fn should_not_create_order_book_with_non_existed_trading_pair() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: new_asset.into(),
             quote: XOR.into(),
         };
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(caller).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(caller).into(), order_book_id),
             trading_pair::Error::<Runtime>::TradingPairDoesntExist
         );
     });
@@ -204,20 +186,20 @@ fn should_not_create_order_book_with_non_existed_trading_pair() {
 #[test]
 fn should_create_order_book_for_regular_assets() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
         assert_eq!(
             OrderBookPallet::order_books(order_book_id).unwrap(),
-            OrderBook::default(order_book_id, DEX.into())
+            OrderBook::default(order_book_id)
         );
     });
 }
@@ -225,23 +207,19 @@ fn should_create_order_book_for_regular_assets() {
 #[test]
 fn should_not_create_order_book_that_already_exists() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::OrderBookAlreadyExists
         );
     });
@@ -267,7 +245,8 @@ fn should_not_create_order_book_for_user_without_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft,
             quote: XOR.into(),
         };
@@ -280,11 +259,7 @@ fn should_not_create_order_book_for_user_without_nft() {
         ));
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(caller).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(caller).into(), order_book_id),
             E::UserHasNoNft
         );
     });
@@ -310,7 +285,8 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft,
             quote: XOR.into(),
         };
@@ -333,11 +309,7 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
         .unwrap();
 
         assert_err!(
-            OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(caller).into(),
-                DEX.into(),
-                order_book_id
-            ),
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(caller).into(), order_book_id),
             E::UserHasNoNft
         );
     });
@@ -371,7 +343,8 @@ fn should_create_order_book_for_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft,
             quote: XOR.into(),
         };
@@ -385,13 +358,12 @@ fn should_create_order_book_for_nft() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(caller).into(),
-            DEX.into(),
             order_book_id
         ));
 
         assert_eq!(
             OrderBookPallet::order_books(order_book_id).unwrap(),
-            OrderBook::default_nft(order_book_id, DEX.into())
+            OrderBook::default_nft(order_book_id)
         );
     });
 }
@@ -399,7 +371,8 @@ fn should_create_order_book_for_nft() {
 #[test]
 fn should_check_permissions_for_delete_order_book() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -455,7 +428,8 @@ fn should_check_permissions_for_delete_order_book() {
 #[test]
 fn should_not_delete_unknown_order_book() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -470,7 +444,8 @@ fn should_not_delete_unknown_order_book() {
 #[test]
 fn should_delete_order_book() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -479,7 +454,7 @@ fn should_delete_order_book() {
         let owner = bob();
 
         let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
-            &OrderBookPallet::tech_account_for_order_book(DEX.into(), order_book_id.clone()),
+            &OrderBookPallet::tech_account_for_order_book(order_book_id.clone()),
         )
         .unwrap();
 
@@ -532,14 +507,14 @@ fn should_delete_order_book() {
 #[ignore] // it works, but takes a lot of time
 fn should_delete_order_book_with_a_lot_of_orders() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
@@ -594,7 +569,8 @@ fn should_delete_order_book_with_a_lot_of_orders() {
 #[ignore] // todo (m.tagirov) remove in #542
 fn should_check_permissions_for_update_order_book() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -686,7 +662,8 @@ fn should_check_permissions_for_update_order_book() {
             None,
         )
         .unwrap();
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft,
             quote: XOR.into(),
         };
@@ -736,7 +713,8 @@ fn should_check_permissions_for_update_order_book() {
 #[test]
 fn should_not_update_unknown_order_book() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -758,7 +736,8 @@ fn should_not_update_unknown_order_book() {
 #[test]
 fn should_not_update_order_book_with_zero_attributes() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -823,7 +802,8 @@ fn should_not_update_order_book_with_zero_attributes() {
 #[test]
 fn should_not_update_order_book_with_simple_mistakes() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -896,7 +876,8 @@ fn should_not_update_order_book_with_simple_mistakes() {
 #[test]
 fn should_not_update_order_book_with_wrong_min_deal_amount() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -992,7 +973,8 @@ fn should_not_update_order_book_with_wrong_min_deal_amount() {
 #[test]
 fn should_not_update_order_book_when_attributes_exceed_total_supply() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1031,7 +1013,8 @@ fn should_not_update_order_book_with_nft_bounds() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft,
             quote: XOR.into(),
         };
@@ -1045,7 +1028,6 @@ fn should_not_update_order_book_with_nft_bounds() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
@@ -1078,7 +1060,8 @@ fn should_not_update_order_book_with_nft_bounds() {
 #[test]
 fn should_update_order_book_with_regular_asset() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1126,7 +1109,8 @@ fn should_update_order_book_with_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft,
             quote: XOR.into(),
         };
@@ -1140,7 +1124,6 @@ fn should_update_order_book_with_nft() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
@@ -1170,7 +1153,8 @@ fn should_update_order_book_with_nft() {
 #[test]
 fn should_check_permissions_for_change_order_book_status() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1233,7 +1217,8 @@ fn should_check_permissions_for_change_order_book_status() {
 #[test]
 fn should_not_change_status_of_unknown_order_book() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1252,7 +1237,8 @@ fn should_not_change_status_of_unknown_order_book() {
 #[test]
 fn should_change_order_book_status() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1313,7 +1299,8 @@ fn should_change_order_book_status() {
 #[test]
 fn should_not_place_limit_order_in_unknown_order_book() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1336,7 +1323,8 @@ fn should_not_place_limit_order_in_unknown_order_book() {
 fn should_place_limit_order() {
     ext().execute_with(|| {
         let caller = alice();
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1447,7 +1435,8 @@ fn should_place_limit_order_with_nft() {
             INIT_BALANCE.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft,
             quote: XOR.into(),
         };
@@ -1461,7 +1450,6 @@ fn should_place_limit_order_with_nft() {
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(caller.clone()).into(),
-            DEX.into(),
             order_book_id
         ));
 
@@ -1522,7 +1510,8 @@ fn should_place_limit_order_with_nft() {
 #[test]
 fn should_place_limit_order_out_of_spread() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1811,7 +1800,8 @@ fn should_place_limit_order_out_of_spread() {
 #[test]
 fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -2038,14 +2028,14 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
 #[ignore] // it works, but takes a lot of time
 fn should_place_a_lot_of_orders() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
-            DEX.into(),
             order_book_id
         ));
 
@@ -2094,7 +2084,8 @@ fn should_place_a_lot_of_orders() {
 fn should_not_cancel_unknown_limit_order() {
     ext().execute_with(|| {
         let caller = alice();
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -2118,7 +2109,8 @@ fn should_not_cancel_unknown_limit_order() {
 fn should_not_cancel_not_own_limit_order() {
     ext().execute_with(|| {
         let caller = alice(); // but owner is Bob
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -2141,7 +2133,8 @@ fn should_not_cancel_not_own_limit_order() {
 #[test]
 fn should_cancel_limit_order() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };

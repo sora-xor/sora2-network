@@ -246,6 +246,10 @@ pub trait DataFeed<Symbol, Rate, ResolveTime> {
 
     /// Get all supported symbols and their last update time
     fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError>;
+
+    /// Get rate for the specified symbol without any checks
+    /// - `symbol`: which symbol to query
+    fn quote_unchecked(symbol: &Symbol) -> Option<Rate>;
 }
 
 impl<Symbol, Rate, ResolveTime> DataFeed<Symbol, Rate, ResolveTime> for () {
@@ -255,6 +259,10 @@ impl<Symbol, Rate, ResolveTime> DataFeed<Symbol, Rate, ResolveTime> for () {
 
     fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError> {
         Ok(Vec::new())
+    }
+
+    fn quote_unchecked(_symbol: &Symbol) -> Option<Rate> {
+        None
     }
 }
 

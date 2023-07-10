@@ -81,6 +81,10 @@ impl FixedWrapper {
         self.inner.and_then(|num| num.rsqrt(Floor)).into()
     }
 
+    pub fn abs(self) -> Self {
+        self.inner.and_then(|num| num.abs()).into()
+    }
+
     /// Calculates square root of self using fractional representation.
     #[cfg(feature = "std")]
     pub fn sqrt(&self) -> Self {
