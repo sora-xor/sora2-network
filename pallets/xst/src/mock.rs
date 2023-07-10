@@ -180,6 +180,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type GetFee = ();
     type EnsureDEXManager = ();
     type EnsureTradingPairExists = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl Config for Runtime {
