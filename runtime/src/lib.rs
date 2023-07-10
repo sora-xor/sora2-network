@@ -2000,6 +2000,8 @@ parameter_types! {
     pub const HermesAssetId: AssetId = common::HERMES_ASSET_ID;
     pub const StringLimit: u32 = 64;
     pub const OptionsLimit: u32 = 5;
+    pub const TitleLimit: u32 = 128;
+    pub const DescriptionLimit: u32 = 4096;
 }
 
 impl hermes_governance_platform::Config for Runtime {
@@ -2009,6 +2011,8 @@ impl hermes_governance_platform::Config for Runtime {
     type OptionsLimit = OptionsLimit;
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
+    type TitleLimit = TitleLimit;
+    type DescriptionLimit = DescriptionLimit;
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 

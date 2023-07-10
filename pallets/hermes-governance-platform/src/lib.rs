@@ -31,12 +31,14 @@ pub struct HermesVotingInfo<StringLimit: sp_core::Get<u32>> {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[scale_info(skip_type_params(StringLimit, OptionsLimit))]
+#[scale_info(skip_type_params(StringLimit, OptionsLimit, TitleLimit, DescriptionLimit))]
 pub struct HermesPollInfo<
     AccountId,
     Moment,
     StringLimit: sp_core::Get<u32>,
     OptionsLimit: sp_core::Get<u32>,
+    TitleLimit: sp_core::Get<u32>,
+    DescriptionLimit: sp_core::Get<u32>,
 > {
     /// Creator of poll
     pub creator: AccountId,
@@ -47,9 +49,9 @@ pub struct HermesPollInfo<
     /// Poll end timestamp
     pub poll_end_timestamp: Moment,
     /// Poll title
-    pub title: BoundedString<StringLimit>,
+    pub title: BoundedString<TitleLimit>,
     /// Description
-    pub description: BoundedString<StringLimit>,
+    pub description: BoundedString<DescriptionLimit>,
     /// Creator Hermes withdrawn
     pub creator_hermes_withdrawn: bool,
     /// Options
@@ -103,6 +105,12 @@ pub mod pallet {
         /// Options limit
         type OptionsLimit: Get<u32>;
 
+        /// Title limit
+        type TitleLimit: Get<u32>;
+
+        /// Description limit
+        type DescriptionLimit: Get<u32>;
+
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -141,7 +149,14 @@ pub mod pallet {
         _,
         Identity,
         H256,
-        HermesPollInfo<AccountIdOf<T>, T::Moment, T::StringLimit, T::OptionsLimit>,
+        HermesPollInfo<
+            AccountIdOf<T>,
+            T::Moment,
+            T::StringLimit,
+            T::OptionsLimit,
+            T::TitleLimit,
+            T::DescriptionLimit,
+        >,
         OptionQuery,
     >;
 
@@ -196,7 +211,7 @@ pub mod pallet {
         /// Create poll [who, title, start_timestamp, end_timestamp]
         Created(
             AccountIdOf<T>,
-            BoundedString<T::StringLimit>,
+            BoundedString<T::TitleLimit>,
             T::Moment,
             T::Moment,
         ),
@@ -328,8 +343,8 @@ pub mod pallet {
             origin: OriginFor<T>,
             poll_start_timestamp: T::Moment,
             poll_end_timestamp: T::Moment,
-            title: BoundedString<T::StringLimit>,
-            description: BoundedString<T::StringLimit>,
+            title: BoundedString<T::TitleLimit>,
+            description: BoundedString<T::DescriptionLimit>,
             options: BoundedVec<BoundedString<T::StringLimit>, T::OptionsLimit>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;

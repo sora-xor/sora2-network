@@ -114,6 +114,8 @@ parameter_types! {
     pub const HermesAssetId: AssetId = HERMES_ASSET_ID;
     pub const StringLimit: u32 = 64;
     pub const OptionsLimit: u32 = 5;
+    pub const TitleLimit: u32 = 128;
+    pub const DescriptionLimit: u32 = 4096;
 }
 
 impl crate::Config for Runtime {
@@ -121,6 +123,8 @@ impl crate::Config for Runtime {
     const MAX_DURATION_OF_POLL: Self::Moment = 604_800_000;
     type StringLimit = StringLimit;
     type OptionsLimit = OptionsLimit;
+    type TitleLimit = TitleLimit;
+    type DescriptionLimit = DescriptionLimit;
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
     type WeightInfo = ();
