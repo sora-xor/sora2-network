@@ -668,7 +668,7 @@ pub mod pallet {
             // The amounts of already existed limit orders are aligned if they don't meet the requirements of new `step_lot_size` value.
             // All new limit orders must meet the requirements of new attributes.
 
-            if order_book.step_lot_size > prev_step_lot_size {
+            if prev_step_lot_size % order_book.step_lot_size != 0 {
                 let mut data = CacheDataLayer::<T>::new();
                 order_book.align_limit_orders(&mut data)?;
                 data.commit();
