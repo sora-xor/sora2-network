@@ -1073,6 +1073,7 @@ impl dex_api::Config for Runtime {
     type MockLiquiditySource4 =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
 

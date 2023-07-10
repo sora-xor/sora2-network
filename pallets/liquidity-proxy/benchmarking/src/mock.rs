@@ -287,7 +287,8 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
-
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    
     #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
 }

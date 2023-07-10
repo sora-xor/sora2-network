@@ -159,6 +159,7 @@ impl Config for Runtime {
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
+    type DexInfoProvider = DexManager;
 
     #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
