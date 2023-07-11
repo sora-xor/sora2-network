@@ -998,6 +998,22 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
     }
 }
 
+pub trait SyntheticInfoProvider<AssetId> {
+    fn is_synthetic(asset_id: &AssetId) -> bool;
+
+    fn get_synthetic_assets() -> Vec<AssetId>;
+}
+
+impl<AssetId> SyntheticInfoProvider<AssetId> for () {
+    fn is_synthetic(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
+    fn get_synthetic_assets() -> Vec<AssetId> {
+        unimplemented!()
+    }
+}
+
 pub trait IsValid {
     fn is_valid(&self) -> bool;
 }

@@ -127,7 +127,7 @@ fn should_not_create_order_book_with_wrong_quote_asset() {
 
         assert_err!(
             OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
-            E::NotAllowedBaseAsset
+            E::NotAllowedQuoteAsset
         );
     });
 }

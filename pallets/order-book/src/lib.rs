@@ -40,7 +40,7 @@ use common::LiquiditySourceType;
 use common::{
     balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
-    ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
+    SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 use core::fmt::Debug;
 use frame_support::ensure;
@@ -155,6 +155,7 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type Time: Time;
         type ParameterUpdateOrigin: EnsureOrigin<
@@ -384,10 +385,12 @@ pub mod pallet {
         NotEnoughLiquidityInOrderBook,
         /// Cannot create order book with equal base and target assets
         ForbiddenToCreateOrderBookWithSameAssets,
-        /// The asset is not allowed to be base. Only dex base asset can be a quote asset for order book
-        NotAllowedBaseAsset,
+        /// The asset is not allowed to be quote. Only the dex base asset can be a quote asset for order book
+        NotAllowedQuoteAsset,
         /// Orderbooks cannot be created with given dex id.
         NotAllowedDEXId,
+        /// Synthetic assets are forbidden for order book.
+        SyntheticAssetIsForbidden,
         /// User cannot create an order book with NFT if they don't have NFT
         UserHasNoNft,
         /// Lifespan exceeds defined limits
@@ -466,11 +469,19 @@ pub mod pallet {
                 Error::<T>::NotAllowedDEXId
             );
             let dex_info = T::DexInfoProvider::get_dex_info(&order_book_id.dex_id)?;
-            // the base asset of DEX must be a quote asset of order book
+            // a quote asset of order book must be the base asset of DEX
             ensure!(
                 order_book_id.quote == dex_info.base_asset_id,
-                Error::<T>::NotAllowedBaseAsset
+                Error::<T>::NotAllowedQuoteAsset
             );
+
+            // synthetic asset are forbidden
+            ensure!(
+                order_book_id.base != dex_info.synthetic_base_asset_id
+                    && !T::SyntheticInfoProvider::is_synthetic(&order_book_id.base),
+                Error::<T>::SyntheticAssetIsForbidden
+            );
+
             T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
             T::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &order_book_id.dex_id,
