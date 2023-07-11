@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::alloc::collections::HashSet;
-use common::DataFeed;
+use common::{fixed, DataFeed};
 use frame_support::{assert_err, error::BadOrigin};
 
 use crate::{mock::*, Oracle, Rate};
@@ -108,6 +108,7 @@ fn quote_and_list_enabled_symbols_should_work() {
                     value: Band::raw_rate_into_balance(value.clone())
                         .expect("failed to convert rate into Balance"),
                     last_updated: resolve_time,
+                    dynamic_fee: fixed!(0),
                 };
                 assert_eq!(
                     <OracleProxy as DataFeed<String, Rate, u64>>::quote(symbol),
