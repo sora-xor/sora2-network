@@ -150,7 +150,7 @@ pipeline {
                                     SKIP_WASM_BUILD=1 cargo check
                                     SKIP_WASM_BUILD=1 cargo check --features private-net,ready-to-test
                                     SKIP_WASM_BUILD=1 cargo check --features private-net,ready-to-test,wip
-                                    cargo test
+                                    cargo test --features try-runtime
                                     cargo test --features \"private-net wip ready-to-test runtime-benchmarks\"
                                 '''
                             }
