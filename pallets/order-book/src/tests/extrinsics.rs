@@ -34,6 +34,7 @@ use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, PriceVariant, DEFAULT_BALANCE_PRECISION, VAL, XOR,
+    XST, XSTUSD,
 };
 use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
@@ -128,6 +129,36 @@ fn should_not_create_order_book_with_wrong_quote_asset() {
         assert_err!(
             OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
             E::NotAllowedQuoteAsset
+        );
+    });
+}
+
+#[test]
+fn should_not_create_order_book_with_synthetic_base_asset() {
+    ext().execute_with(|| {
+        let xst_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: XST.into(),
+            quote: XOR.into(),
+        };
+
+        assert_err!(
+            OrderBookPallet::create_orderbook(RawOrigin::Signed(alice()).into(), xst_order_book_id),
+            E::SyntheticAssetIsForbidden
+        );
+
+        let xstusd_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: XSTUSD.into(),
+            quote: XOR.into(),
+        };
+
+        assert_err!(
+            OrderBookPallet::create_orderbook(
+                RawOrigin::Signed(alice()).into(),
+                xstusd_order_book_id
+            ),
+            E::SyntheticAssetIsForbidden
         );
     });
 }
