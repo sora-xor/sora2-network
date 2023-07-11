@@ -2032,6 +2032,15 @@ impl order_book::Config for Runtime {
     type Unlocker = OrderBook;
     type Scheduler = OrderBook;
     type Delegate = OrderBook;
+
+    // preferably set this and other vec boundaries to an exponent
+    // of 2 because amortized (exponential capacity) growth will
+    // probably allocate (next_power_of_two) bytes anyway.
+    //
+    // or initialize it via `with_capacity` instead.
+
+    // this limit is mostly because of requirement to use bounded vectors.
+    // a person can create multiple accounts at any time.
     type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<10000>; // TODO: order-book clarify
