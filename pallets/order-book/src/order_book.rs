@@ -274,6 +274,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok((input, output))
     }
 
+    pub fn align_limit_orders(&self, data: &mut impl DataLayer<T>) -> Result<(), DispatchError> {
+        let market_change = self.calculate_align_limit_orders_impact(data)?;
+        self.apply_market_change(market_change, data)?;
+        Ok(())
+    }
+
     pub fn calculate_market_order_impact(
         &self,
         market_order: MarketOrder<T>,
@@ -334,6 +340,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             to_part_execute: BTreeMap::new(),
             to_full_execute: BTreeMap::new(),
             to_cancel: BTreeMap::new(),
+            to_force_update: BTreeMap::new(),
             payment,
             ignore_unschedule_error: false,
         })
@@ -347,7 +354,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
-        let mut limit_order_ids_to_cancel = BTreeMap::new();
+        let mut limit_orders_to_cancel = BTreeMap::new();
         let mut payment = Payment::new(self.order_book_id);
 
         let unlock_amount = limit_order.deal_amount(MarketRole::Taker, None)?;
@@ -361,7 +368,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .and_modify(|pay| *pay += unlock_amount.value())
             .or_insert(*unlock_amount.value());
 
-        limit_order_ids_to_cancel.insert(limit_order.id, limit_order);
+        limit_orders_to_cancel.insert(limit_order.id, limit_order);
 
         Ok(MarketChange {
             deal_input: None,
@@ -371,7 +378,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             to_place: BTreeMap::new(),
             to_part_execute: BTreeMap::new(),
             to_full_execute: BTreeMap::new(),
-            to_cancel: limit_order_ids_to_cancel,
+            to_cancel: limit_orders_to_cancel,
+            to_force_update: BTreeMap::new(),
             payment,
             ignore_unschedule_error,
         })
@@ -384,7 +392,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
-        let mut limit_order_ids_to_cancel = BTreeMap::new();
+        let mut limit_orders_to_cancel = BTreeMap::new();
         let mut payment = Payment::new(self.order_book_id);
 
         let limit_orders = data.get_all_limit_orders(&self.order_book_id);
@@ -401,7 +409,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 .and_modify(|pay| *pay += unlock_amount.value())
                 .or_insert(*unlock_amount.value());
 
-            limit_order_ids_to_cancel.insert(limit_order.id, limit_order);
+            limit_orders_to_cancel.insert(limit_order.id, limit_order);
         }
 
         Ok(MarketChange {
@@ -412,7 +420,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             to_place: BTreeMap::new(),
             to_part_execute: BTreeMap::new(),
             to_full_execute: BTreeMap::new(),
-            to_cancel: limit_order_ids_to_cancel,
+            to_cancel: limit_orders_to_cancel,
+            to_force_update: BTreeMap::new(),
             payment,
             ignore_unschedule_error: false,
         })
@@ -539,6 +548,60 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             to_part_execute: limit_orders_to_part_execute,
             to_full_execute: limit_orders_to_full_execute,
             to_cancel: BTreeMap::new(),
+            to_force_update: BTreeMap::new(),
+            payment,
+            ignore_unschedule_error: false,
+        })
+    }
+
+    pub fn calculate_align_limit_orders_impact(
+        &self,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<
+        MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
+        DispatchError,
+    > {
+        let mut limit_orders_to_cancel = BTreeMap::new();
+        let mut limit_orders_to_force_update = BTreeMap::new();
+        let mut payment = Payment::new(self.order_book_id);
+
+        let limit_orders = data.get_all_limit_orders(&self.order_book_id);
+
+        for mut limit_order in limit_orders {
+            if limit_order.amount % self.step_lot_size != 0 {
+                let refund = if limit_order.amount < self.step_lot_size {
+                    limit_orders_to_cancel.insert(limit_order.id, limit_order.clone());
+                    limit_order.amount
+                } else {
+                    let amount = self.align_amount(limit_order.amount);
+                    let dust = limit_order.amount - amount;
+                    limit_order.amount = amount;
+                    limit_orders_to_force_update.insert(limit_order.id, limit_order.clone());
+                    dust
+                };
+
+                let refund = limit_order.deal_amount(MarketRole::Taker, Some(refund))?;
+
+                payment
+                    .to_unlock
+                    .entry(*refund.associated_asset(&self.order_book_id))
+                    .or_default()
+                    .entry(limit_order.owner)
+                    .and_modify(|unlock_amount| *unlock_amount += *refund.value())
+                    .or_insert(*refund.value());
+            }
+        }
+
+        Ok(MarketChange {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: None, // NA for this case, because all the liquidity of both types can go out of market
+            to_place: BTreeMap::new(),
+            to_part_execute: BTreeMap::new(),
+            to_full_execute: BTreeMap::new(),
+            to_cancel: limit_orders_to_cancel,
+            to_force_update: limit_orders_to_force_update,
             payment,
             ignore_unschedule_error: false,
         })
@@ -732,6 +795,22 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     owner_id: limit_order.owner,
                     side: limit_order.side,
                     amount: executed_amount,
+                },
+            );
+        }
+
+        for limit_order in market_change.to_force_update.into_values() {
+            data.update_limit_order_amount(
+                &self.order_book_id,
+                limit_order.id,
+                limit_order.amount,
+            )?;
+
+            T::Delegate::emit_event(
+                self.order_book_id,
+                OrderBookEvent::LimitOrderUpdated {
+                    order_id: limit_order.id,
+                    owner_id: limit_order.owner,
                 },
             );
         }
