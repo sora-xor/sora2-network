@@ -457,28 +457,7 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::verify_create_orderbook_params(&order_book_id)?;
-            let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-                // temp solution for stage env
-                // will be removed in #542
-                // todo (m.tagirov)
-                return Err(Error::<T>::NftOrderBooksAreTemporarilyForbidden.into());
-
-                #[allow(unreachable_code)]
-                {
-                    // nft
-                    // ensure the user has nft
-                    ensure!(
-                        T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
-                            > Balance::zero(),
-                        Error::<T>::UserHasNoNft
-                    );
-                    OrderBook::<T>::default_nft(order_book_id)
-                }
-            } else {
-                // regular asset
-                OrderBook::<T>::default(order_book_id)
-            };
+            Self::verify_create_orderbook_params(&who, &order_book_id)?;
 
             #[cfg(feature = "ready-to-test")] // order-book
             {
@@ -489,10 +468,7 @@ pub mod pallet {
                     LiquiditySourceType::OrderBook,
                 )?;
             }
-
-            <OrderBooks<T>>::insert(order_book_id, order_book);
-            Self::register_tech_account(order_book_id)?;
-
+            Self::create_orderbook_unchecked(&order_book_id)?;
             Self::deposit_event(Event::<T>::OrderBookCreated {
                 order_book_id,
                 creator: who,
@@ -902,6 +878,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn verify_create_orderbook_params(
+        who: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         ensure!(
@@ -918,6 +895,25 @@ impl<T: Config> Pallet<T> {
             order_book_id.quote == dex_info.base_asset_id,
             Error::<T>::NotAllowedBaseAsset
         );
+
+        if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+            // temp solution for stage env
+            // will be removed in #542
+            // todo (m.tagirov)
+            return Err(Error::<T>::NftOrderBooksAreTemporarilyForbidden.into());
+
+            #[allow(unreachable_code)]
+            {
+                // nft
+                // ensure the user has nft
+                ensure!(
+                    T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
+                        > Balance::zero(),
+                    Error::<T>::UserHasNoNft
+                );
+            }
+        };
+
         T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             &order_book_id.dex_id,
@@ -929,6 +925,19 @@ impl<T: Config> Pallet<T> {
             Error::<T>::OrderBookAlreadyExists
         );
         Ok(())
+    }
+
+    pub fn create_orderbook_unchecked(
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Result<(), DispatchError> {
+        let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+            OrderBook::<T>::default_nft(*order_book_id)
+        } else {
+            // regular asset
+            OrderBook::<T>::default(*order_book_id)
+        };
+        <OrderBooks<T>>::insert(order_book_id, order_book);
+        Self::register_tech_account(*order_book_id)
     }
 }
 

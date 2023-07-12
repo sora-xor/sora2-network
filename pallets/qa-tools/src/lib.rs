@@ -37,7 +37,6 @@ pub use pallet::*;
 mod tests;
 
 pub mod weights;
-use common::AssetInfoProvider;
 use order_book::OrderBookId;
 pub use weights::*;
 
@@ -110,11 +109,11 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
         ) -> DispatchResultWithPostInfo {
-            let _ = ensure_signed(origin)?;
+            let who = ensure_signed(origin)?;
 
             // replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            Self::create_multiple_empty_unchecked(order_book_ids).map_err(|e| {
+            Self::create_multiple_empty_unchecked(&who, order_book_ids).map_err(|e| {
                 DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
@@ -154,10 +153,10 @@ pub mod pallet {
             asks_owner: T::AccountId,
             fill_settings: Vec<(OrderBookId<T::AssetId, T::DEXId>, OrderBookFillSettings)>,
         ) -> DispatchResultWithPostInfo {
-            let _ = ensure_signed(origin)?;
+            let who = ensure_signed(origin)?;
 
             let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
-            Self::create_multiple_empty_unchecked(order_book_ids).map_err(|e| {
+            Self::create_multiple_empty_unchecked(&who, order_book_ids).map_err(|e| {
                 DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
@@ -188,6 +187,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Does not create an order book if it already exists
         fn create_multiple_empty_unchecked(
+            who: &T::AccountId,
             order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
         ) -> Result<(), DispatchError> {
             let to_create_ids: Vec<_> = order_book_ids
@@ -206,28 +206,12 @@ pub mod pallet {
                         order_book_id.base.into(),
                     )?;
                 }
-                order_book::Pallet::<T>::verify_create_orderbook_params(&order_book_id)?;
+                // todo: add nft if doesn't own (k.ivanov)
+                order_book::Pallet::<T>::verify_create_orderbook_params(who, &order_book_id)?;
             }
 
             for order_book_id in to_create_ids {
-                let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-                    order_book::OrderBook::<T>::default_nft(order_book_id)
-                } else {
-                    order_book::OrderBook::<T>::default(order_book_id)
-                };
-
-                #[cfg(feature = "wip")] // order-book
-                {
-                    T::TradingPairSourceManager::enable_source_for_trading_pair(
-                        &order_book_id.dex_id,
-                        &order_book_id.quote,
-                        &order_book_id.base,
-                        LiquiditySourceType::OrderBook,
-                    )?;
-                }
-
-                <order_book::OrderBooks<T>>::insert(order_book_id, order_book);
-                order_book::Pallet::<T>::register_tech_account(order_book_id)?;
+                order_book::Pallet::<T>::create_orderbook_unchecked(&order_book_id)?;
             }
             Ok(())
         }
