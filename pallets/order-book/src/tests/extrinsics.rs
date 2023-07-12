@@ -157,12 +157,20 @@ fn should_not_create_order_book_with_synthetic_base_asset() {
             quote: XOR.into(),
         };
 
-        assert_ok!(TradingPair::register(
-            RawOrigin::Signed(alice()).into(),
-            DEX.into(),
-            xst_order_book_id.quote,
-            xst_order_book_id.base
-        ));
+        if !TradingPair::is_trading_pair_enabled(
+            &xst_order_book_id.dex_id,
+            &xst_order_book_id.quote,
+            &xst_order_book_id.base,
+        )
+        .unwrap()
+        {
+            assert_ok!(TradingPair::register(
+                RawOrigin::Signed(alice()).into(),
+                xst_order_book_id.dex_id,
+                xst_order_book_id.quote,
+                xst_order_book_id.base
+            ));
+        }
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Signed(alice()).into(),
