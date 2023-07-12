@@ -165,7 +165,7 @@ impl<T: Config> Pallet<T> {
         fees_account_id: &T::AccountId,
         dex_id: T::DEXId,
     ) -> DispatchResult {
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let base_total = Assets::<T>::free_balance(&dex_info.base_asset_id, &fees_account_id)?;
         if base_total == 0 {
             Self::deposit_event(Event::<T>::NothingToExchange(
@@ -436,21 +436,16 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, PoolXykPallet};
+    use common::{AccountIdOf, DEXInfo, PoolXykPallet};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::Percent;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
-        frame_system::Config
-        + common::Config
-        + assets::Config
-        + technical::Config
-        + dex_manager::Config
+        frame_system::Config + common::Config + assets::Config + technical::Config
     {
         const PSWAP_BURN_PERCENT: Percent;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -471,6 +466,7 @@ pub mod pallet {
         type GetParliamentAccountId: Get<Self::AccountId>;
         type PoolXykPallet: PoolXykPallet<Self::AccountId, Self::AssetId>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
     }
 
     /// The current storage version.

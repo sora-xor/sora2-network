@@ -251,6 +251,7 @@ impl assets::Config for Runtime {
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -279,6 +280,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = pool_xyk::Pallet<Runtime>;
     type GetParliamentAccountId = GetParliamentAccountId;
     type BuyBackHandler = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl demeter_farming_platform::Config for Runtime {
@@ -304,7 +306,6 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

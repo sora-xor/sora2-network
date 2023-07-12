@@ -45,8 +45,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type DEXInfo<T> = common::prelude::DEXInfo<<T as assets::Config>::AssetId>;
-
 impl<T: Config>
     LiquiditySource<
         LiquiditySourceId<T::DEXId, LiquiditySourceType>,
@@ -388,7 +386,6 @@ pub mod pallet {
             Balance,
             DispatchError,
         >;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self>>;
 
         #[cfg(feature = "ready-to-test")] // order-book
         type OrderBook: LiquiditySource<
