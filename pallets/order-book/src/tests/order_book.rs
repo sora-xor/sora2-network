@@ -2989,6 +2989,81 @@ fn should_execute_market_order_and_transfer_to_another_account() {
 }
 
 #[test]
+fn should_align_limit_orders() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let mut order_book = create_and_fill_order_book(order_book_id);
+
+        // change lot size precision
+        order_book.step_lot_size = balance!(1);
+
+        let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
+        let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
+        let limit_order3 = data.get_limit_order(&order_book_id, 3).unwrap();
+        let limit_order4 = data.get_limit_order(&order_book_id, 4).unwrap();
+        let limit_order5 = data.get_limit_order(&order_book_id, 5).unwrap();
+        let limit_order6 = data.get_limit_order(&order_book_id, 6).unwrap();
+        let limit_order7 = data.get_limit_order(&order_book_id, 7).unwrap();
+        let limit_order8 = data.get_limit_order(&order_book_id, 8).unwrap();
+        let limit_order9 = data.get_limit_order(&order_book_id, 9).unwrap();
+        let limit_order10 = data.get_limit_order(&order_book_id, 10).unwrap();
+        let limit_order11 = data.get_limit_order(&order_book_id, 11).unwrap();
+        let limit_order12 = data.get_limit_order(&order_book_id, 12).unwrap();
+
+        // check that amounts are original before align
+        assert_eq!(limit_order1.amount, balance!(168.5));
+        assert_eq!(limit_order2.amount, balance!(95.2));
+        assert_eq!(limit_order3.amount, balance!(44.7));
+        assert_eq!(limit_order4.amount, balance!(56.4));
+        assert_eq!(limit_order5.amount, balance!(89.9));
+        assert_eq!(limit_order6.amount, balance!(115));
+        assert_eq!(limit_order7.amount, balance!(176.3));
+        assert_eq!(limit_order8.amount, balance!(85.4));
+        assert_eq!(limit_order9.amount, balance!(93.2));
+        assert_eq!(limit_order10.amount, balance!(36.6));
+        assert_eq!(limit_order11.amount, balance!(205.5));
+        assert_eq!(limit_order12.amount, balance!(13.7));
+
+        // align
+        assert_ok!(order_book.align_limit_orders(&mut data));
+
+        let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
+        let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
+        let limit_order3 = data.get_limit_order(&order_book_id, 3).unwrap();
+        let limit_order4 = data.get_limit_order(&order_book_id, 4).unwrap();
+        let limit_order5 = data.get_limit_order(&order_book_id, 5).unwrap();
+        let limit_order6 = data.get_limit_order(&order_book_id, 6).unwrap();
+        let limit_order7 = data.get_limit_order(&order_book_id, 7).unwrap();
+        let limit_order8 = data.get_limit_order(&order_book_id, 8).unwrap();
+        let limit_order9 = data.get_limit_order(&order_book_id, 9).unwrap();
+        let limit_order10 = data.get_limit_order(&order_book_id, 10).unwrap();
+        let limit_order11 = data.get_limit_order(&order_book_id, 11).unwrap();
+        let limit_order12 = data.get_limit_order(&order_book_id, 12).unwrap();
+
+        // check that amouts are aligned
+        assert_eq!(limit_order1.amount, balance!(168));
+        assert_eq!(limit_order2.amount, balance!(95));
+        assert_eq!(limit_order3.amount, balance!(44));
+        assert_eq!(limit_order4.amount, balance!(56));
+        assert_eq!(limit_order5.amount, balance!(89));
+        assert_eq!(limit_order6.amount, balance!(115));
+        assert_eq!(limit_order7.amount, balance!(176));
+        assert_eq!(limit_order8.amount, balance!(85));
+        assert_eq!(limit_order9.amount, balance!(93));
+        assert_eq!(limit_order10.amount, balance!(36));
+        assert_eq!(limit_order11.amount, balance!(205));
+        assert_eq!(limit_order12.amount, balance!(13));
+    });
+}
+
+#[test]
 fn should_not_calculate_market_order_impact_with_empty_side() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
@@ -3142,6 +3217,7 @@ fn should_calculate_market_order_impact() {
                 )]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3188,6 +3264,7 @@ fn should_calculate_market_order_impact() {
                     (8, limit_order8.clone())
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3240,6 +3317,7 @@ fn should_calculate_market_order_impact() {
                     (11, limit_order11.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3288,6 +3366,7 @@ fn should_calculate_market_order_impact() {
                     (10, limit_order10.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3338,6 +3417,7 @@ fn should_calculate_market_order_impact() {
                     (12, limit_order12.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3390,6 +3470,7 @@ fn should_calculate_market_order_impact() {
                 )]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3436,6 +3517,7 @@ fn should_calculate_market_order_impact() {
                     (2, limit_order2.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3487,6 +3569,7 @@ fn should_calculate_market_order_impact() {
                     (4, limit_order4.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3538,6 +3621,7 @@ fn should_calculate_market_order_impact() {
                     (4, limit_order4.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3591,6 +3675,7 @@ fn should_calculate_market_order_impact() {
                     (6, limit_order6.clone()),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3662,6 +3747,7 @@ fn should_calculate_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3687,6 +3773,7 @@ fn should_calculate_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -3730,6 +3817,7 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::new(),
@@ -3761,6 +3849,7 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::new(),
@@ -3792,6 +3881,7 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(8, limit_order8.clone())]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::new(),
@@ -3823,6 +3913,7 @@ fn should_calculate_cancelation_limit_order_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([(8, limit_order8.clone())]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::new(),
@@ -3895,6 +3986,7 @@ fn should_calculate_cancelation_of_all_limit_orders_impact() {
                     (11, limit_order11),
                     (12, limit_order12),
                 ]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::new(),
@@ -3913,6 +4005,209 @@ fn should_calculate_cancelation_of_all_limit_orders_impact() {
                     ]),
                 },
                 ignore_unschedule_error: false
+            }
+        );
+    });
+}
+
+#[test]
+fn should_calculate_align_limit_orders_impact() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let mut order_book = create_and_fill_order_book(order_book_id);
+        fill_balance(alice(), order_book_id);
+
+        assert_ok!(order_book.place_limit_order(
+            LimitOrder::<Runtime>::new(
+                13,
+                alice(),
+                PriceVariant::Buy,
+                balance!(10.1),
+                balance!(1.1),
+                10,
+                10000,
+                frame_system::Pallet::<Runtime>::block_number(),
+            ),
+            &mut data
+        ));
+
+        // the remaining balance of limit order 13 becomes 0.1 after that
+        assert_ok!(order_book.execute_market_order(
+            MarketOrder::<Runtime>::new(
+                alice(),
+                PriceVariant::Sell,
+                order_book_id,
+                balance!(1),
+                None
+            ),
+            &mut data
+        ));
+
+        assert_ok!(order_book.place_limit_order(
+            LimitOrder::<Runtime>::new(
+                14,
+                alice(),
+                PriceVariant::Buy,
+                balance!(10.1),
+                balance!(1),
+                10,
+                10000,
+                frame_system::Pallet::<Runtime>::block_number(),
+            ),
+            &mut data
+        ));
+
+        assert_ok!(order_book.place_limit_order(
+            LimitOrder::<Runtime>::new(
+                15,
+                alice(),
+                PriceVariant::Sell,
+                balance!(10.9),
+                balance!(1.1),
+                10,
+                10000,
+                frame_system::Pallet::<Runtime>::block_number(),
+            ),
+            &mut data
+        ));
+
+        // the remaining balance of limit order 15 becomes 0.1 after that
+        assert_ok!(order_book.execute_market_order(
+            MarketOrder::<Runtime>::new(
+                alice(),
+                PriceVariant::Buy,
+                order_book_id,
+                balance!(1),
+                None
+            ),
+            &mut data
+        ));
+
+        assert_ok!(order_book.place_limit_order(
+            LimitOrder::<Runtime>::new(
+                16,
+                alice(),
+                PriceVariant::Sell,
+                balance!(10.9),
+                balance!(1),
+                10,
+                10000,
+                frame_system::Pallet::<Runtime>::block_number(),
+            ),
+            &mut data
+        ));
+
+        let mut limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
+        let mut limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
+        let mut limit_order3 = data.get_limit_order(&order_book_id, 3).unwrap();
+        let mut limit_order4 = data.get_limit_order(&order_book_id, 4).unwrap();
+        let mut limit_order5 = data.get_limit_order(&order_book_id, 5).unwrap();
+        let mut limit_order7 = data.get_limit_order(&order_book_id, 7).unwrap();
+        let mut limit_order8 = data.get_limit_order(&order_book_id, 8).unwrap();
+        let mut limit_order9 = data.get_limit_order(&order_book_id, 9).unwrap();
+        let mut limit_order10 = data.get_limit_order(&order_book_id, 10).unwrap();
+        let mut limit_order11 = data.get_limit_order(&order_book_id, 11).unwrap();
+        let mut limit_order12 = data.get_limit_order(&order_book_id, 12).unwrap();
+        let limit_order13 = data.get_limit_order(&order_book_id, 13).unwrap();
+        let limit_order15 = data.get_limit_order(&order_book_id, 15).unwrap();
+
+        // empty market change if all limit orders have suitable amount
+        assert_eq!(
+            order_book
+                .calculate_align_limit_orders_impact(&mut data)
+                .unwrap(),
+            MarketChange {
+                deal_input: None,
+                deal_output: None,
+                market_input: None,
+                market_output: None,
+                to_place: BTreeMap::new(),
+                to_part_execute: BTreeMap::new(),
+                to_full_execute: BTreeMap::new(),
+                to_cancel: BTreeMap::new(),
+                to_force_update: BTreeMap::new(),
+                payment: Payment {
+                    order_book_id,
+                    to_lock: BTreeMap::new(),
+                    to_unlock: BTreeMap::new(),
+                },
+                ignore_unschedule_error: false,
+            }
+        );
+
+        // change lot size precision
+        order_book.step_lot_size = balance!(1);
+
+        limit_order1.amount = balance!(168);
+        limit_order2.amount = balance!(95);
+        limit_order3.amount = balance!(44);
+        limit_order4.amount = balance!(56);
+        limit_order5.amount = balance!(89);
+
+        limit_order7.amount = balance!(176);
+        limit_order8.amount = balance!(85);
+        limit_order9.amount = balance!(93);
+        limit_order10.amount = balance!(36);
+        limit_order11.amount = balance!(205);
+        limit_order12.amount = balance!(13);
+
+        // limit orders 6, 14 & 16 are not presented because they already have suitable amount for new step_lot_size
+        assert_eq!(
+            order_book
+                .calculate_align_limit_orders_impact(&mut data)
+                .unwrap(),
+            MarketChange {
+                deal_input: None,
+                deal_output: None,
+                market_input: None,
+                market_output: None,
+                to_place: BTreeMap::from([]),
+                to_part_execute: BTreeMap::from([]),
+                to_full_execute: BTreeMap::from([]),
+                to_cancel: BTreeMap::from([(13, limit_order13), (15, limit_order15)]),
+                to_force_update: BTreeMap::from([
+                    (1, limit_order1),
+                    (2, limit_order2),
+                    (3, limit_order3),
+                    (4, limit_order4),
+                    (5, limit_order5),
+                    (7, limit_order7),
+                    (8, limit_order8),
+                    (9, limit_order9),
+                    (10, limit_order10),
+                    (11, limit_order11),
+                    (12, limit_order12),
+                ]),
+                payment: Payment {
+                    order_book_id,
+                    to_lock: BTreeMap::from([]),
+                    to_unlock: BTreeMap::from([
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([
+                                (alice(), balance!(0.1)),
+                                (bob(), balance!(1)),
+                                (charlie(), balance!(1.7))
+                            ])
+                        ),
+                        (
+                            order_book_id.quote,
+                            BTreeMap::from([
+                                (alice(), balance!(1.01)),
+                                (bob(), balance!(20.41)),
+                                (charlie(), balance!(5.76))
+                            ])
+                        )
+                    ]),
+                },
+                ignore_unschedule_error: false,
             }
         );
     });
@@ -4039,6 +4334,7 @@ fn should_apply_market_change() {
             ]),
             to_full_execute: BTreeMap::from([(8, limit_order8.clone())]),
             to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
+            to_force_update: BTreeMap::from([]),
             payment: Payment {
                 order_book_id,
                 to_lock: BTreeMap::from([
@@ -4375,6 +4671,7 @@ fn should_cross_spread() {
                 )]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4423,6 +4720,7 @@ fn should_cross_spread() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([(7, limit_order7)]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4471,6 +4769,7 @@ fn should_cross_spread() {
                 )]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4519,6 +4818,7 @@ fn should_cross_spread() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([(1, limit_order1)]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4602,6 +4902,7 @@ fn should_cross_spread_with_small_remaining_amount() {
                 )]),
                 to_full_execute: BTreeMap::from([(7, limit_order7.clone())]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4658,6 +4959,7 @@ fn should_cross_spread_with_small_remaining_amount() {
                     (12, limit_order12),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4710,6 +5012,7 @@ fn should_cross_spread_with_small_remaining_amount() {
                 )]),
                 to_full_execute: BTreeMap::from([(1, limit_order1.clone())]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(
@@ -4763,6 +5066,7 @@ fn should_cross_spread_with_small_remaining_amount() {
                     (6, limit_order6),
                 ]),
                 to_cancel: BTreeMap::from([]),
+                to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
                     to_lock: BTreeMap::from([(

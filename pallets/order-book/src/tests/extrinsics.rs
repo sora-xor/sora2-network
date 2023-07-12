@@ -1069,7 +1069,34 @@ fn should_update_order_book_with_regular_asset() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
+        create_and_fill_order_book(order_book_id);
+
+        let limit_order1 = OrderBookPallet::limit_orders(order_book_id, 1).unwrap();
+        let limit_order2 = OrderBookPallet::limit_orders(order_book_id, 2).unwrap();
+        let limit_order3 = OrderBookPallet::limit_orders(order_book_id, 3).unwrap();
+        let limit_order4 = OrderBookPallet::limit_orders(order_book_id, 4).unwrap();
+        let limit_order5 = OrderBookPallet::limit_orders(order_book_id, 5).unwrap();
+        let limit_order6 = OrderBookPallet::limit_orders(order_book_id, 6).unwrap();
+        let limit_order7 = OrderBookPallet::limit_orders(order_book_id, 7).unwrap();
+        let limit_order8 = OrderBookPallet::limit_orders(order_book_id, 8).unwrap();
+        let limit_order9 = OrderBookPallet::limit_orders(order_book_id, 9).unwrap();
+        let limit_order10 = OrderBookPallet::limit_orders(order_book_id, 10).unwrap();
+        let limit_order11 = OrderBookPallet::limit_orders(order_book_id, 11).unwrap();
+        let limit_order12 = OrderBookPallet::limit_orders(order_book_id, 12).unwrap();
+
+        // check amounts before update
+        assert_eq!(limit_order1.amount, balance!(168.5));
+        assert_eq!(limit_order2.amount, balance!(95.2));
+        assert_eq!(limit_order3.amount, balance!(44.7));
+        assert_eq!(limit_order4.amount, balance!(56.4));
+        assert_eq!(limit_order5.amount, balance!(89.9));
+        assert_eq!(limit_order6.amount, balance!(115));
+        assert_eq!(limit_order7.amount, balance!(176.3));
+        assert_eq!(limit_order8.amount, balance!(85.4));
+        assert_eq!(limit_order9.amount, balance!(93.2));
+        assert_eq!(limit_order10.amount, balance!(36.6));
+        assert_eq!(limit_order11.amount, balance!(205.5));
+        assert_eq!(limit_order12.amount, balance!(13.7));
 
         let tick_size = balance!(0.01);
         let step_lot_size = balance!(0.001);
@@ -1087,10 +1114,39 @@ fn should_update_order_book_with_regular_asset() {
 
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
 
+        // check new attributes
         assert_eq!(order_book.tick_size, tick_size);
         assert_eq!(order_book.step_lot_size, step_lot_size);
         assert_eq!(order_book.min_lot_size, min_lot_size);
         assert_eq!(order_book.max_lot_size, max_lot_size);
+
+        let limit_order1 = OrderBookPallet::limit_orders(order_book_id, 1).unwrap();
+        let limit_order2 = OrderBookPallet::limit_orders(order_book_id, 2).unwrap();
+        let limit_order3 = OrderBookPallet::limit_orders(order_book_id, 3).unwrap();
+        let limit_order4 = OrderBookPallet::limit_orders(order_book_id, 4).unwrap();
+        let limit_order5 = OrderBookPallet::limit_orders(order_book_id, 5).unwrap();
+        let limit_order6 = OrderBookPallet::limit_orders(order_book_id, 6).unwrap();
+        let limit_order7 = OrderBookPallet::limit_orders(order_book_id, 7).unwrap();
+        let limit_order8 = OrderBookPallet::limit_orders(order_book_id, 8).unwrap();
+        let limit_order9 = OrderBookPallet::limit_orders(order_book_id, 9).unwrap();
+        let limit_order10 = OrderBookPallet::limit_orders(order_book_id, 10).unwrap();
+        let limit_order11 = OrderBookPallet::limit_orders(order_book_id, 11).unwrap();
+        let limit_order12 = OrderBookPallet::limit_orders(order_book_id, 12).unwrap();
+
+        // check that amounts are not changed after update
+        // because they are suitable for new step_lot_size
+        assert_eq!(limit_order1.amount, balance!(168.5));
+        assert_eq!(limit_order2.amount, balance!(95.2));
+        assert_eq!(limit_order3.amount, balance!(44.7));
+        assert_eq!(limit_order4.amount, balance!(56.4));
+        assert_eq!(limit_order5.amount, balance!(89.9));
+        assert_eq!(limit_order6.amount, balance!(115));
+        assert_eq!(limit_order7.amount, balance!(176.3));
+        assert_eq!(limit_order8.amount, balance!(85.4));
+        assert_eq!(limit_order9.amount, balance!(93.2));
+        assert_eq!(limit_order10.amount, balance!(36.6));
+        assert_eq!(limit_order11.amount, balance!(205.5));
+        assert_eq!(limit_order12.amount, balance!(13.7));
     });
 }
 
@@ -1150,6 +1206,111 @@ fn should_update_order_book_with_nft() {
         assert_eq!(order_book.step_lot_size, step_lot_size);
         assert_eq!(order_book.min_lot_size, min_lot_size);
         assert_eq!(order_book.max_lot_size, max_lot_size);
+    });
+}
+
+#[test]
+fn should_align_limit_orders_when_update_order_book() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+
+        let limit_order1 = OrderBookPallet::limit_orders(order_book_id, 1).unwrap();
+        let limit_order2 = OrderBookPallet::limit_orders(order_book_id, 2).unwrap();
+        let limit_order3 = OrderBookPallet::limit_orders(order_book_id, 3).unwrap();
+        let limit_order4 = OrderBookPallet::limit_orders(order_book_id, 4).unwrap();
+        let limit_order5 = OrderBookPallet::limit_orders(order_book_id, 5).unwrap();
+        let limit_order6 = OrderBookPallet::limit_orders(order_book_id, 6).unwrap();
+        let limit_order7 = OrderBookPallet::limit_orders(order_book_id, 7).unwrap();
+        let limit_order8 = OrderBookPallet::limit_orders(order_book_id, 8).unwrap();
+        let limit_order9 = OrderBookPallet::limit_orders(order_book_id, 9).unwrap();
+        let limit_order10 = OrderBookPallet::limit_orders(order_book_id, 10).unwrap();
+        let limit_order11 = OrderBookPallet::limit_orders(order_book_id, 11).unwrap();
+        let limit_order12 = OrderBookPallet::limit_orders(order_book_id, 12).unwrap();
+
+        // check that amounts are original before align
+        assert_eq!(limit_order1.amount, balance!(168.5));
+        assert_eq!(limit_order2.amount, balance!(95.2));
+        assert_eq!(limit_order3.amount, balance!(44.7));
+        assert_eq!(limit_order4.amount, balance!(56.4));
+        assert_eq!(limit_order5.amount, balance!(89.9));
+        assert_eq!(limit_order6.amount, balance!(115));
+        assert_eq!(limit_order7.amount, balance!(176.3));
+        assert_eq!(limit_order8.amount, balance!(85.4));
+        assert_eq!(limit_order9.amount, balance!(93.2));
+        assert_eq!(limit_order10.amount, balance!(36.6));
+        assert_eq!(limit_order11.amount, balance!(205.5));
+        assert_eq!(limit_order12.amount, balance!(13.7));
+
+        // get balances before align
+        let bob_base_balance = free_balance(&order_book_id.base, &bob());
+        let bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        let charlie_base_balance = free_balance(&order_book_id.base, &charlie());
+        let charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+
+        let tick_size = balance!(0.01);
+        let step_lot_size = balance!(1); // change lot size precision
+        let min_lot_size = balance!(1);
+        let max_lot_size = balance!(10000);
+
+        assert_ok!(OrderBookPallet::update_orderbook(
+            RuntimeOrigin::root(),
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size
+        ));
+
+        let limit_order1 = OrderBookPallet::limit_orders(order_book_id, 1).unwrap();
+        let limit_order2 = OrderBookPallet::limit_orders(order_book_id, 2).unwrap();
+        let limit_order3 = OrderBookPallet::limit_orders(order_book_id, 3).unwrap();
+        let limit_order4 = OrderBookPallet::limit_orders(order_book_id, 4).unwrap();
+        let limit_order5 = OrderBookPallet::limit_orders(order_book_id, 5).unwrap();
+        let limit_order6 = OrderBookPallet::limit_orders(order_book_id, 6).unwrap();
+        let limit_order7 = OrderBookPallet::limit_orders(order_book_id, 7).unwrap();
+        let limit_order8 = OrderBookPallet::limit_orders(order_book_id, 8).unwrap();
+        let limit_order9 = OrderBookPallet::limit_orders(order_book_id, 9).unwrap();
+        let limit_order10 = OrderBookPallet::limit_orders(order_book_id, 10).unwrap();
+        let limit_order11 = OrderBookPallet::limit_orders(order_book_id, 11).unwrap();
+        let limit_order12 = OrderBookPallet::limit_orders(order_book_id, 12).unwrap();
+
+        // check that amouts are aligned
+        assert_eq!(limit_order1.amount, balance!(168));
+        assert_eq!(limit_order2.amount, balance!(95));
+        assert_eq!(limit_order3.amount, balance!(44));
+        assert_eq!(limit_order4.amount, balance!(56));
+        assert_eq!(limit_order5.amount, balance!(89));
+        assert_eq!(limit_order6.amount, balance!(115));
+        assert_eq!(limit_order7.amount, balance!(176));
+        assert_eq!(limit_order8.amount, balance!(85));
+        assert_eq!(limit_order9.amount, balance!(93));
+        assert_eq!(limit_order10.amount, balance!(36));
+        assert_eq!(limit_order11.amount, balance!(205));
+        assert_eq!(limit_order12.amount, balance!(13));
+
+        // check dust refund
+        assert_eq!(
+            free_balance(&order_book_id.base, &bob()),
+            bob_base_balance + balance!(1)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance + balance!(20.41)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &charlie()),
+            charlie_base_balance + balance!(1.7)
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &charlie()),
+            charlie_quote_balance + balance!(5.76)
+        );
     });
 }
 
@@ -2146,7 +2307,7 @@ fn should_cancel_limit_order() {
 
         let order_id = 5;
 
-        let order = OrderBookPallet::limit_orders(&order_book_id, order_id).unwrap();
+        let order = OrderBookPallet::limit_orders(order_book_id, order_id).unwrap();
 
         // fix state before
         let bids_before = OrderBookPallet::bids(&order_book_id, &order.price).unwrap_or_default();
