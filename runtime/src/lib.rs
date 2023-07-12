@@ -1593,6 +1593,7 @@ parameter_types! {
 
 #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 impl qa_tools::Config for Runtime {
+    type AssetInfoProvider = Assets;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
     type OrderBookOrderLifespan = OrderBookOrderLifespan;
 }

@@ -44,8 +44,12 @@ pub use weights::*;
 pub mod pallet {
     use super::*;
     use common::prelude::FixedWrapper;
-    use common::{balance, Balance, PriceVariant};
+    use common::{
+        balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision,
+        ContentSource, Description, PriceVariant,
+    };
     use frame_support::dispatch::DispatchErrorWithPostInfo;
+    use frame_support::sp_runtime::traits::Zero;
     use frame_support::traits::{Get, Time};
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
@@ -60,6 +64,15 @@ pub mod pallet {
     pub trait Config: frame_system::Config + order_book::Config + trading_pair::Config {
         type WeightInfo: WeightInfo;
         type OrderBookOrderLifespan: Get<MomentOf<Self>>;
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     #[pallet::error]
@@ -206,7 +219,13 @@ pub mod pallet {
                         order_book_id.base.into(),
                     )?;
                 }
-                // todo: add nft if doesn't own (k.ivanov)
+                if <T as pallet::Config>::AssetInfoProvider::total_balance(
+                    &order_book_id.base,
+                    &who,
+                )? == Balance::zero()
+                {
+                    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &who, 1)?;
+                }
                 order_book::Pallet::<T>::verify_create_orderbook_params(who, &order_book_id)?;
             }
 
