@@ -30,7 +30,8 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{Error, Pallet, mock::*, test_utils::relay_symbol};
+    use crate::{Error, Pallet, mock::*, test_utils::{relay_new_symbol, relay_symbol}};
+    use band::FeeCalculationParameters;
     use common::{self, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, AssetId32};
     use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::{Zero};
@@ -637,7 +638,7 @@ mod tests {
     fn enable_and_disable_synthetic_should_work() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let euro = relay_symbol("EURO", 2_000_000_000);
+            let euro = relay_new_symbol("EURO", 2_000_000_000);
 
             let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
 
@@ -686,7 +687,7 @@ mod tests {
     fn set_synthetic_fee_should_work() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let euro = relay_symbol("EURO", 2_000_000_000);
+            let euro = relay_new_symbol("EURO", 2_000_000_000);
 
             XSTPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
@@ -753,7 +754,7 @@ mod tests {
     fn should_disallow_invalid_fee_ratio() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let euro = relay_symbol("EURO", 2_000_000_000);
+            let euro = relay_new_symbol("EURO", 2_000_000_000);
             assert_eq!(
                 XSTPool::register_synthetic_asset(
                     RuntimeOrigin::root(),
@@ -878,6 +879,84 @@ mod tests {
                 ),
                 Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
+        });
+    }
+
+    #[test]
+    fn dynamic_fee_should_be_taken_into_account() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            Band::set_dynamic_fee_parameters(
+                RuntimeOrigin::root(),
+                FeeCalculationParameters::new(
+                    fixed!(0),
+                    fixed!(0.1),
+                    fixed!(0.05)
+                )
+            ).expect("Expected to set the dynamic fee calculation paramteres for the Band pallet");
+            let euro = relay_new_symbol("EURO", 3_000_000_000);
+            relay_symbol(euro.clone(), 2_000_000_000);
+
+            XSTPool::register_synthetic_asset(
+                RuntimeOrigin::root(),
+                AssetSymbol("XSTEUR".into()),
+                AssetName("XST Euro".into()),
+                euro.clone(),
+                fixed!(0),
+            ).expect("Failed to register synthetic asset");
+
+            let xsteuro = XSTPool::enabled_symbols(&euro).expect("Expected synthetic asset");
+            let quote_amount = QuoteAmount::with_desired_input(balance!(100));
+
+            let (swap_outcome_before, _) = XSTPool::quote(
+                &DEXId::Polkaswap,
+                &XST.into(),
+                &xsteuro,
+                quote_amount.clone(),
+                true
+            )
+            .expect("Failed to quote XST -> XSTEURO ");
+            
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
+            // 1 XSTEURO = 2 DAI (S)
+            // fee ratio for XSTEURO = 0.3 (F_r)
+            // amount in = 100 XST (A_in)
+            // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.7) / 2 = 5250 XSTEURO (A_out)
+            // fee = F_xst / X_b = 0.3 * 100 / 0.6 = 50 XOR
+            assert_approx_eq!(swap_outcome_before.amount, balance!(5250), 10000);
+            assert_approx_eq!(swap_outcome_before.fee, balance!(50), 10000);
+
+            assert_ok!(XSTPool::set_synthetic_asset_fee(
+                RuntimeOrigin::root(),
+                xsteuro.clone(),
+                fixed!(0.3))
+            );
+
+            let (swap_outcome_after, _) = XSTPool::quote(
+                &DEXId::Polkaswap,
+                &XST.into(),
+                &xsteuro,
+                quote_amount,
+                true
+            )
+            .expect("Failed to quote XST -> XSTEURO");
+
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
+            // 1 XSTEURO = 2 DAI (S)
+            // fee ratio for XSTEURO = 0.6 (F_r) <- dynamic fee + synthetic fee
+            // amount in = 100 XST (A_in)
+            // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.4) / 2 = 3000 XSTEURO (A_out)
+            // fee = F_xst / X_b = 0.6 * 100 / 0.6 = 100 XOR
+            assert_approx_eq!(swap_outcome_after.amount, balance!(3000), 10000);
+            assert_approx_eq!(swap_outcome_after.fee, balance!(100), 10000);
         });
     }
 }
