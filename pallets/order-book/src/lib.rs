@@ -477,8 +477,7 @@ pub mod pallet {
 
             // synthetic asset are forbidden
             ensure!(
-                order_book_id.base != dex_info.synthetic_base_asset_id
-                    && !T::SyntheticInfoProvider::is_synthetic(&order_book_id.base),
+                !T::SyntheticInfoProvider::is_synthetic(&order_book_id.base),
                 Error::<T>::SyntheticAssetIsForbidden
             );
 
