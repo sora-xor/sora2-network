@@ -186,6 +186,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {

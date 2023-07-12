@@ -299,6 +299,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;

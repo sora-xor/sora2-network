@@ -526,7 +526,6 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     #[pallet::config]
     pub trait Config<I: 'static = ()>:
         frame_system::Config + common::Config + assets::Config + technical::Config

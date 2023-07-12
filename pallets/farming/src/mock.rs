@@ -292,6 +292,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);

@@ -985,6 +985,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 parameter_types! {

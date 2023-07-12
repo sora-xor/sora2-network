@@ -511,6 +511,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;

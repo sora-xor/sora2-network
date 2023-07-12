@@ -178,6 +178,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 parameter_types! {
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
