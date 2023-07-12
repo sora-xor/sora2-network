@@ -457,10 +457,6 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(
-                order_book_id.dex_id == common::DEXId::Polkaswap.into(),
-                Error::<T>::NotAllowedDEXId
-            );
             Self::verify_create_orderbook_params(&order_book_id)?;
             let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
                 // temp solution for stage env
@@ -911,6 +907,10 @@ impl<T: Config> Pallet<T> {
         ensure!(
             order_book_id.base != order_book_id.quote,
             Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
+        );
+        ensure!(
+            order_book_id.dex_id == common::DEXId::Polkaswap.into(),
+            Error::<T>::NotAllowedDEXId
         );
         let dex_info = T::DexInfoProvider::get_dex_info(&order_book_id.dex_id)?;
         // the base asset of DEX must be a quote asset of order book
