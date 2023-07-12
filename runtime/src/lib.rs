@@ -1215,7 +1215,6 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
-            | RuntimeCall::Rewards(rewards::Call::claim { .. })
             | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
                 ..
             })
