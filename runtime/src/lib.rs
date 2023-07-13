@@ -1589,7 +1589,7 @@ impl faucet::Config for Runtime {
 }
 
 parameter_types! {
-    pub QaToolsOrderLifespan: Moment = 60*10*1000; // 10 minutes
+    pub QaToolsOrderLifespan: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 1 month
 }
 
 #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
