@@ -33,8 +33,8 @@
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, PriceVariant, DEFAULT_BALANCE_PRECISION, VAL, XOR,
-    XST, XSTUSD,
+    balance, AssetId32, AssetName, AssetSymbol, PriceVariant, DEFAULT_BALANCE_PRECISION, ETH,
+    PSWAP, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
@@ -2363,5 +2363,416 @@ fn should_cancel_limit_order() {
         let balance = free_balance(&order_book_id.quote, &order.owner);
         let expected_balance = balance_before + deal_amount;
         assert_eq!(balance, expected_balance);
+    });
+}
+
+#[test]
+fn should_not_cancel_not_own_limit_orders_batch() {
+    ext().execute_with(|| {
+        let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id1);
+
+        let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id2);
+
+        // Bob owns orders (1, 3, 5, 7, 9, 11) in both order books
+        let to_cancel = vec![
+            (order_book_id1, vec![1, 3, 5, 7, 9, 11]),
+            (order_book_id2, vec![1, 2, 5, 7, 9, 11]), // add not owned order 2
+        ];
+
+        assert_err!(
+            OrderBookPallet::cancel_limit_orders_batch(RawOrigin::Signed(bob()).into(), to_cancel),
+            E::Unauthorized
+        );
+    });
+}
+
+#[test]
+fn should_not_cancel_unknown_limit_orders_batch() {
+    ext().execute_with(|| {
+        let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id1);
+
+        let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id2);
+
+        // Bob owns orders (1, 3, 5, 7, 9, 11) in both order books
+        let to_cancel = vec![
+            (order_book_id1, vec![1, 3, 5, 7, 9, 11]),
+            (order_book_id2, vec![1, 3, 5, 7, 9, 11, 100]), // add unknown order 100
+        ];
+
+        assert_err!(
+            OrderBookPallet::cancel_limit_orders_batch(RawOrigin::Signed(bob()).into(), to_cancel),
+            E::UnknownLimitOrder
+        );
+    });
+}
+
+#[test]
+fn should_not_cancel_limit_orders_batch_in_stopped_order_book() {
+    ext().execute_with(|| {
+        let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id1);
+
+        let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id2);
+
+        let order_book_id3 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: ETH.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id3);
+
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RawOrigin::Root.into(),
+            order_book_id1,
+            OrderBookStatus::PlaceAndCancel
+        ));
+
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RawOrigin::Root.into(),
+            order_book_id2,
+            OrderBookStatus::OnlyCancel
+        ));
+
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RawOrigin::Root.into(),
+            order_book_id3,
+            OrderBookStatus::Stop
+        ));
+
+        // Bob owns orders (1, 3, 5, 7, 9, 11) in all order books
+        let to_cancel = vec![
+            (order_book_id1, vec![1, 3, 5, 7, 9, 11]),
+            (order_book_id2, vec![1, 3, 5, 7, 9, 11]),
+            (order_book_id3, vec![1, 3, 5, 7, 9, 11]),
+        ];
+
+        assert_err!(
+            OrderBookPallet::cancel_limit_orders_batch(RawOrigin::Signed(bob()).into(), to_cancel),
+            E::CancellationOfLimitOrdersIsForbidden
+        );
+    });
+}
+
+#[test]
+fn should_cancel_all_user_limit_orders_batch() {
+    ext().execute_with(|| {
+        let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id1);
+
+        let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id2);
+
+        let bid_price1 = balance!(10);
+        let bid_price2 = balance!(9.8);
+        let bid_price3 = balance!(9.5);
+
+        let ask_price1 = balance!(11);
+        let ask_price2 = balance!(11.2);
+        let ask_price3 = balance!(11.5);
+
+        // check state before
+
+        // order book 1
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id1, &bid_price1).unwrap(),
+            vec![1]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id1, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id1, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price1).unwrap(),
+            vec![7]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        // order book 2
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price1).unwrap(),
+            vec![1]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id2, &ask_price1).unwrap(),
+            vec![7]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id2, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id2, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        // cancel all Bob's limit orders
+        // Bob owns orders (1, 3, 5, 7, 9, 11) in both order books
+        let to_cancel = vec![
+            (order_book_id1, vec![1, 3, 5, 7, 9, 11]),
+            (order_book_id2, vec![1, 3, 5, 7, 9, 11]),
+        ];
+
+        assert_ok!(OrderBookPallet::cancel_limit_orders_batch(
+            RawOrigin::Signed(bob()).into(),
+            to_cancel
+        ));
+
+        // check state after
+
+        // order book 1
+        assert_eq!(OrderBookPallet::bids(&order_book_id1, &bid_price1), None);
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id1, &bid_price2).unwrap(),
+            vec![2]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id1, &bid_price3).unwrap(),
+            vec![4, 6]
+        );
+
+        assert_eq!(OrderBookPallet::asks(&order_book_id1, &ask_price1), None);
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price2).unwrap(),
+            vec![8]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price3).unwrap(),
+            vec![10, 12]
+        );
+
+        // order book 2
+        assert_eq!(OrderBookPallet::bids(&order_book_id2, &bid_price1), None);
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price2).unwrap(),
+            vec![2]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price3).unwrap(),
+            vec![4, 6]
+        );
+
+        assert_eq!(OrderBookPallet::asks(&order_book_id2, &ask_price1), None);
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id2, &ask_price2).unwrap(),
+            vec![8]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id2, &ask_price3).unwrap(),
+            vec![10, 12]
+        );
+    });
+}
+
+#[test]
+fn should_cancel_part_of_all_user_limit_orders_batch() {
+    ext().execute_with(|| {
+        let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id1);
+
+        let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id2);
+
+        let bid_price1 = balance!(10);
+        let bid_price2 = balance!(9.8);
+        let bid_price3 = balance!(9.5);
+
+        let ask_price1 = balance!(11);
+        let ask_price2 = balance!(11.2);
+        let ask_price3 = balance!(11.5);
+
+        // check state before
+
+        // order book 1
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id1, &bid_price1).unwrap(),
+            vec![1]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id1, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id1, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price1).unwrap(),
+            vec![7]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        // order book 2
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price1).unwrap(),
+            vec![1]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id2, &ask_price1).unwrap(),
+            vec![7]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id2, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id2, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        // cancel all Bob's limit orders
+        // Bob owns orders (1, 3, 5, 7, 9, 11) in both order books
+        let to_cancel = vec![
+            (order_book_id1, vec![1, 5, 9]),
+            (order_book_id2, vec![3, 7, 11]),
+        ];
+
+        assert_ok!(OrderBookPallet::cancel_limit_orders_batch(
+            RawOrigin::Signed(bob()).into(),
+            to_cancel
+        ));
+
+        // check state after
+
+        // order book 1
+        assert_eq!(OrderBookPallet::bids(&order_book_id1, &bid_price1), None);
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id1, &bid_price2).unwrap(),
+            vec![2, 3]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id1, &bid_price3).unwrap(),
+            vec![4, 6]
+        );
+
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price1).unwrap(),
+            vec![7]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price2).unwrap(),
+            vec![8]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id1, &ask_price3).unwrap(),
+            vec![10, 11, 12]
+        );
+
+        // order book 2
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price1).unwrap(),
+            vec![1]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price2).unwrap(),
+            vec![2]
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id2, &bid_price3).unwrap(),
+            vec![4, 5, 6]
+        );
+
+        assert_eq!(OrderBookPallet::asks(&order_book_id2, &ask_price1), None);
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id2, &ask_price2).unwrap(),
+            vec![8, 9]
+        );
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id2, &ask_price3).unwrap(),
+            vec![10, 12]
+        );
     });
 }
