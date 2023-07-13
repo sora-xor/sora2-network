@@ -78,6 +78,9 @@ pub mod pallet {
             BalanceOf<Self>,
         >;
 
+        #[pallet::constant]
+        type ThisNetworkId: Get<GenericNetworkId>;
+
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
     }
@@ -216,10 +219,6 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn make_message_id(batch_nonce: u64, message_id: u64) -> H256 {
-            MessageId::outbound_batched(batch_nonce, message_id).hash()
-        }
-
         fn commit(network_id: EVMChainId) -> Weight {
             debug!("Commit messages");
             let (messages, total_max_gas) = take_message_queue::<T>(network_id);
@@ -234,7 +233,13 @@ pub mod pallet {
                     for i in 0..messages.len() {
                         T::MessageStatusNotifier::update_status(
                             GenericNetworkId::EVM(network_id),
-                            Self::make_message_id(batch_nonce, i as u64),
+                            MessageId::batched(
+                                T::ThisNetworkId::get(),
+                                network_id.into(),
+                                batch_nonce,
+                                i as u64,
+                            )
+                            .hash(),
                             MessageStatus::Committed,
                             GenericTimepoint::Pending,
                         );
@@ -366,7 +371,13 @@ pub mod pallet {
                 },
             )?;
             Self::deposit_event(Event::MessageAccepted(network_id, batch_nonce, message_id));
-            Ok(Self::make_message_id(batch_nonce, message_id))
+            Ok(MessageId::batched(
+                T::ThisNetworkId::get(),
+                network_id.into(),
+                batch_nonce,
+                message_id,
+            )
+            .hash())
         }
     }
 }
