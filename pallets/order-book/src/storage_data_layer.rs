@@ -37,6 +37,7 @@ use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::Zero;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
@@ -322,5 +323,15 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>> {
         <UserLimitOrders<T>>::get(account, order_book_id)
+    }
+
+    fn get_all_user_limit_orders(
+        &mut self,
+        account: &T::AccountId,
+    ) -> BTreeMap<
+        OrderBookId<AssetIdOf<T>, T::DEXId>,
+        UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
+    > {
+        <UserLimitOrders<T>>::iter_prefix(account).collect()
     }
 }

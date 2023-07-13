@@ -765,6 +765,32 @@ pub mod pallet {
             data.commit();
             Ok(().into())
         }
+
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order().saturating_mul(limit_orders_to_cancel.iter().fold(0, |count, (_, order_ids)| count + order_ids.len() as u64)))]
+        pub fn cancel_limit_orders_batch(
+            origin: OriginFor<T>,
+            limit_orders_to_cancel: Vec<(OrderBookId<AssetIdOf<T>, T::DEXId>, Vec<T::OrderId>)>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let mut data = CacheDataLayer::<T>::new();
+
+            for (order_book_id, order_ids) in limit_orders_to_cancel {
+                for order_id in order_ids {
+                    let order = data.get_limit_order(&order_book_id, order_id)?;
+
+                    ensure!(order.owner == who, Error::<T>::Unauthorized);
+
+                    let order_book =
+                        <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+
+                    order_book.cancel_limit_order(order, &mut data)?;
+                }
+            }
+
+            data.commit();
+            Ok(().into())
+        }
     }
 }
 
