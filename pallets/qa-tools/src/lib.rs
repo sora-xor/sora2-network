@@ -106,8 +106,8 @@ pub mod pallet {
         /// - `order_book_ids`: ids of the created order books; trading pairs are created
         /// if necessary,
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_many())]
-        pub fn order_book_create_empty_many(
+        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
+        pub fn order_book_create_empty_batch(
             origin: OriginFor<T>,
             order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
         ) -> DispatchResultWithPostInfo {
@@ -147,8 +147,8 @@ pub mod pallet {
         /// `best_bid_price` should be at least 3 price steps from the lowest accepted price,
         /// and `best_ask_price` - at least 3 steps below maximum price,
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_many())]
-        pub fn order_book_create_and_fill_many(
+        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_batch())]
+        pub fn order_book_create_and_fill_batch(
             origin: OriginFor<T>,
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,

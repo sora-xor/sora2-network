@@ -55,7 +55,7 @@ pub fn bob() -> <Runtime as frame_system::Config>::AccountId {
 #[test]
 fn should_create_and_fill_orderbook() {
     ext().execute_with(|| {
-        fn test_create_and_fill_many(
+        fn test_create_and_fill_batch(
             base: AssetId32<PredefinedAssetId>,
             quote: AssetId32<PredefinedAssetId>,
             best_bid_price: Balance,
@@ -70,7 +70,7 @@ fn should_create_and_fill_orderbook() {
                 base,
                 quote,
             };
-            assert_ok!(QAToolsPallet::order_book_create_and_fill_many(
+            assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::signed(alice()),
                 alice(),
                 alice(),
@@ -105,10 +105,10 @@ fn should_create_and_fill_orderbook() {
             );
         }
 
-        test_create_and_fill_many(VAL, XOR, balance!(10), balance!(11));
+        test_create_and_fill_batch(VAL, XOR, balance!(10), balance!(11));
 
         FrameSystem::inc_providers(&bob());
-        let nft = assets::Pallet::<Runtime>::register_from(
+        let _nft = assets::Pallet::<Runtime>::register_from(
             &bob(),
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
@@ -120,6 +120,6 @@ fn should_create_and_fill_orderbook() {
         )
         .unwrap();
         // todo (m.tagirov) enable in #542
-        // test_create_and_fill_many(nft, XOR, balance!(10), balance!(11));
+        // test_create_and_fill_batch(nft, XOR, balance!(10), balance!(11));
     });
 }
