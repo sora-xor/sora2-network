@@ -702,9 +702,9 @@ fn should_fail_market_change_merge() {
         market_input: None,
         market_output: None,
         to_place: BTreeMap::from([(
-            4,
+            5,
             LimitOrder::<Runtime>::new(
-                4,
+                5,
                 alice(),
                 PriceVariant::Buy,
                 balance!(10),
@@ -715,10 +715,10 @@ fn should_fail_market_change_merge() {
             ),
         )]),
         to_part_execute: BTreeMap::from([(
-            3,
+            4,
             (
                 LimitOrder::<Runtime>::new(
-                    3,
+                    4,
                     alice(),
                     PriceVariant::Buy,
                     balance!(20),
@@ -731,9 +731,9 @@ fn should_fail_market_change_merge() {
             ),
         )]),
         to_full_execute: BTreeMap::from([(
-            2,
+            3,
             LimitOrder::<Runtime>::new(
-                2,
+                3,
                 alice(),
                 PriceVariant::Buy,
                 balance!(20),
@@ -744,6 +744,19 @@ fn should_fail_market_change_merge() {
             ),
         )]),
         to_cancel: BTreeMap::from([(
+            2,
+            LimitOrder::<Runtime>::new(
+                2,
+                alice(),
+                PriceVariant::Buy,
+                balance!(10),
+                balance!(100),
+                1000,
+                10000,
+                100,
+            ),
+        )]),
+        to_force_update: BTreeMap::from([(
             1,
             LimitOrder::<Runtime>::new(
                 1,
@@ -949,6 +962,11 @@ fn check_market_change_merge() {
             (order_id2, order2_origin.clone()),
             (order_id3, order3_origin.clone()),
         ]),
+        to_force_update: BTreeMap::from([
+            (order_id1, order1_origin.clone()),
+            (order_id2, order2_origin.clone()),
+            (order_id3, order3_origin.clone()),
+        ]),
         payment: payment.clone(),
         ignore_unschedule_error: false,
     };
@@ -977,6 +995,10 @@ fn check_market_change_merge() {
             (order_id5, order5_origin.clone()),
         ]),
         to_cancel: BTreeMap::from([
+            (order_id4, order4_origin.clone()),
+            (order_id5, order5_origin.clone()),
+        ]),
+        to_force_update: BTreeMap::from([
             (order_id4, order4_origin.clone()),
             (order_id5, order5_origin.clone()),
         ]),
@@ -1036,6 +1058,13 @@ fn check_market_change_merge() {
                 (order_id4, order4_origin.clone()),
                 (order_id5, order5_origin.clone()),
             ]),
+            to_force_update: BTreeMap::from([
+                (order_id1, order1_origin.clone()),
+                (order_id2, order2_origin.clone()),
+                (order_id3, order3_origin.clone()),
+                (order_id4, order4_origin.clone()),
+                (order_id5, order5_origin.clone()),
+            ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
         }
@@ -1071,6 +1100,11 @@ fn check_market_change_merge() {
             (order_id5, order5_origin.clone()),
         ]),
         to_cancel: BTreeMap::from([
+            (order_id1, order1_other.clone()),
+            (order_id2, order2_origin.clone()),
+            (order_id5, order5_origin.clone()),
+        ]),
+        to_force_update: BTreeMap::from([
             (order_id1, order1_other.clone()),
             (order_id2, order2_origin.clone()),
             (order_id5, order5_origin.clone()),
@@ -1124,6 +1158,12 @@ fn check_market_change_merge() {
                 (order_id3, order3_origin.clone()),
                 (order_id5, order5_origin.clone()),
             ]),
+            to_force_update: BTreeMap::from([
+                (order_id1, order1_other.clone()),
+                (order_id2, order2_origin.clone()),
+                (order_id3, order3_origin.clone()),
+                (order_id5, order5_origin.clone()),
+            ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
         }
@@ -1159,6 +1199,11 @@ fn check_market_change_merge() {
             (order_id3, order3_other.clone()),
         ]),
         to_cancel: BTreeMap::from([
+            (order_id1, order1_other.clone()),
+            (order_id2, order2_other.clone()),
+            (order_id3, order3_other.clone()),
+        ]),
+        to_force_update: BTreeMap::from([
             (order_id1, order1_other.clone()),
             (order_id2, order2_other.clone()),
             (order_id3, order3_other.clone()),
@@ -1205,6 +1250,11 @@ fn check_market_change_merge() {
                 (order_id2, order2_other.clone()),
                 (order_id3, order3_other.clone()),
             ]),
+            to_force_update: BTreeMap::from([
+                (order_id1, order1_other.clone()),
+                (order_id2, order2_other.clone()),
+                (order_id3, order3_other.clone()),
+            ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
         }
@@ -1219,6 +1269,7 @@ fn check_market_change_merge() {
         to_part_execute: BTreeMap::new(),
         to_full_execute: BTreeMap::new(),
         to_cancel: BTreeMap::new(),
+        to_force_update: BTreeMap::new(),
         payment: empty_payment.clone(),
         ignore_unschedule_error: false,
     };
