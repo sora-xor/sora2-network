@@ -878,7 +878,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn verify_create_orderbook_params(
-        who: &T::AccountId,
+        _who: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         ensure!(
@@ -902,12 +902,13 @@ impl<T: Config> Pallet<T> {
             // todo (m.tagirov)
             return Err(Error::<T>::NftOrderBooksAreTemporarilyForbidden.into());
 
+            // todo: rename `_who` to `who`
             #[allow(unreachable_code)]
             {
                 // nft
                 // ensure the user has nft
                 ensure!(
-                    T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
+                    T::AssetInfoProvider::total_balance(&order_book_id.base, &_who)?
                         > Balance::zero(),
                     Error::<T>::UserHasNoNft
                 );
