@@ -35,26 +35,21 @@ pub use pallet::*;
 // private-net to make circular dependencies work
 #[cfg(all(test, feature = "private-net", feature = "ready-to-test"))] // order-book
 mod tests;
-
 pub mod weights;
-use order_book::OrderBookId;
 pub use weights::*;
+mod pallets;
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::prelude::FixedWrapper;
     use common::{
-        balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision,
-        ContentSource, Description, PriceVariant,
+        AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
     };
     use frame_support::dispatch::DispatchErrorWithPostInfo;
-    use frame_support::sp_runtime::traits::Zero;
-    use frame_support::traits::{Get, Time};
+    use frame_support::traits::Get;
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
-    use order_book::DataLayer;
-    use order_book::{MomentOf, OrderBook};
+    use order_book::{MomentOf, OrderBookId};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -78,13 +73,7 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         /// Order book related errors
-        OrderBook(OrderBookError),
-    }
-
-    #[derive(Encode, Decode, scale_info::TypeInfo, frame_support::PalletError)]
-    pub enum OrderBookError {
-        /// Order book does not exist for this trading pair
-        UnknownOrderBook,
+        OrderBook(pallets::order_book_tools::Error),
     }
 
     #[derive(
@@ -126,14 +115,13 @@ pub mod pallet {
 
             // replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            Self::create_multiple_empty_unchecked(&who, order_book_ids).map_err(|e| {
-                DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: None,
-                        pays_fee: Pays::No,
-                    },
-                    error: e,
-                }
+            pallets::order_book_tools::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
+                .map_err(|e| DispatchErrorWithPostInfo {
+                post_info: PostDispatchInfo {
+                    actual_weight: None,
+                    pays_fee: Pays::No,
+                },
+                error: e,
             })?;
 
             // Extrinsic is only for testing, so we return all fees
@@ -169,24 +157,26 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
 
             let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
-            Self::create_multiple_empty_unchecked(&who, order_book_ids).map_err(|e| {
-                DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: None,
-                        pays_fee: Pays::No,
-                    },
-                    error: e,
-                }
-            })?;
-            Self::fill_multiple_empty_unchecked(bids_owner, asks_owner, fill_settings).map_err(
-                |e| DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: None,
-                        pays_fee: Pays::No,
-                    },
-                    error: e,
+            pallets::order_book_tools::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
+                .map_err(|e| DispatchErrorWithPostInfo {
+                post_info: PostDispatchInfo {
+                    actual_weight: None,
+                    pays_fee: Pays::No,
                 },
-            )?;
+                error: e,
+            })?;
+            pallets::order_book_tools::fill_multiple_empty_unchecked::<T>(
+                bids_owner,
+                asks_owner,
+                fill_settings,
+            )
+            .map_err(|e| DispatchErrorWithPostInfo {
+                post_info: PostDispatchInfo {
+                    actual_weight: None,
+                    pays_fee: Pays::No,
+                },
+                error: e,
+            })?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -197,197 +187,5 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> Pallet<T> {
-        /// Does not create an order book if it already exists
-        fn create_multiple_empty_unchecked(
-            who: &T::AccountId,
-            order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
-        ) -> Result<(), DispatchError> {
-            let to_create_ids: Vec<_> = order_book_ids
-                .into_iter()
-                .filter(|id| !<order_book::OrderBooks<T>>::contains_key(id))
-                .collect();
-            for order_book_id in &to_create_ids {
-                if !trading_pair::Pallet::<T>::is_trading_pair_enabled(
-                    &order_book_id.dex_id,
-                    &order_book_id.quote.into(),
-                    &order_book_id.base.into(),
-                )? {
-                    trading_pair::Pallet::<T>::register_pair(
-                        order_book_id.dex_id,
-                        order_book_id.quote.into(),
-                        order_book_id.base.into(),
-                    )?;
-                }
-                if <T as pallet::Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base)
-                    && <T as pallet::Config>::AssetInfoProvider::total_balance(
-                        &order_book_id.base,
-                        &who,
-                    )? == Balance::zero()
-                {
-                    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &who, 1)?;
-                }
-                order_book::Pallet::<T>::verify_create_orderbook_params(who, &order_book_id)?;
-            }
-
-            for order_book_id in to_create_ids {
-                order_book::Pallet::<T>::create_orderbook_unchecked(&order_book_id)?;
-            }
-            Ok(())
-        }
-
-        /// Place orders into the orderbook.
-        ///
-        /// In fill settings, `best_bid_price` should be at least 3 price steps from the
-        /// lowest accepted price, and `best_ask_price` - at least 3 steps below
-        /// maximum price.
-        fn fill_multiple_empty_unchecked(
-            bids_owner: T::AccountId,
-            asks_owner: T::AccountId,
-            fill_settings: Vec<(OrderBookId<T::AssetId, T::DEXId>, OrderBookFillSettings)>,
-        ) -> Result<(), DispatchError> {
-            let now = <T as order_book::Config>::Time::now();
-
-            // Prices are specified as price steps from the specified best ask price.
-            // Amounts are added to min_lot and aligned with lot(amount) step.
-
-            // (price_steps_from_best_bid, amount)
-            let buy_orders_steps = [
-                (0u128, balance!(168.5)),
-                (1, balance!(95.2)),
-                (1, balance!(44.7)),
-                (3, balance!(56.4)),
-                (3, balance!(89.9)),
-                (3, balance!(115)),
-            ];
-
-            // (price_steps_from_best_ask, amount)
-            let sell_orders_steps = [
-                (0u128, balance!(176.3)),
-                (1, balance!(85.4)),
-                (1, balance!(93.2)),
-                (3, balance!(36.6)),
-                (3, balance!(205.5)),
-                (3, balance!(13.7)),
-            ];
-
-            let mut data = order_book::cache_data_layer::CacheDataLayer::<T>::new();
-
-            for (order_book_id, settings) in fill_settings {
-                Self::fill_order_book(
-                    &mut data,
-                    order_book_id,
-                    asks_owner.clone(),
-                    bids_owner.clone(),
-                    buy_orders_steps.into_iter(),
-                    sell_orders_steps.into_iter(),
-                    settings,
-                    now,
-                )?;
-            }
-            data.commit();
-            Ok(())
-        }
-
-        /// Fill a single order book.
-        fn fill_order_book(
-            data: &mut impl DataLayer<T>,
-            book_id: OrderBookId<T::AssetId, T::DEXId>,
-            asks_owner: T::AccountId,
-            bids_owner: T::AccountId,
-            buy_orders_steps: impl Iterator<Item = (u128, Balance)>,
-            sell_orders_steps: impl Iterator<Item = (u128, Balance)>,
-            settings: OrderBookFillSettings,
-            now: MomentOf<T>,
-        ) -> Result<(), DispatchError> {
-            let current_block = frame_system::Pallet::<T>::block_number();
-            let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
-                .ok_or(Error::<T>::OrderBook(OrderBookError::UnknownOrderBook))?;
-
-            // Convert price steps and best price to actual prices
-            let buy_orders: Vec<_> = buy_orders_steps
-                .map(|(price_steps, base)| {
-                    (
-                        settings.best_bid_price - price_steps * order_book.tick_size,
-                        order_book.align_amount(base + order_book.step_lot_size),
-                    )
-                })
-                .collect();
-            let sell_orders: Vec<_> = sell_orders_steps
-                .map(|(price_steps, base)| {
-                    (
-                        settings.best_ask_price + price_steps * order_book.tick_size,
-                        order_book.align_amount(base + order_book.step_lot_size),
-                    )
-                })
-                .collect();
-            // Total amount of quote asset to be locked from `bids_owner`
-            let buy_quote_locked: Balance = buy_orders
-                .iter()
-                .map(|(quote, base)| {
-                    let quote_amount_fixed = FixedWrapper::from(*quote) * FixedWrapper::from(*base);
-                    quote_amount_fixed.into_balance()
-                })
-                .sum();
-            let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| base).sum();
-
-            // mint required amount to make this extrinsic self-sufficient
-            assets::Pallet::<T>::mint_unchecked(&book_id.quote, &bids_owner, buy_quote_locked)?;
-            assets::Pallet::<T>::mint_unchecked(&book_id.base, &asks_owner, sell_base_locked)?;
-
-            // place buy orders
-            Self::place_multiple_orders(
-                data,
-                &mut order_book,
-                bids_owner.clone(),
-                PriceVariant::Buy,
-                buy_orders.into_iter(),
-                now,
-                T::OrderBookOrderLifespan::get(),
-                current_block,
-            )?;
-
-            // place sell orders
-            Self::place_multiple_orders(
-                data,
-                &mut order_book,
-                asks_owner.clone(),
-                PriceVariant::Sell,
-                sell_orders.into_iter(),
-                now,
-                T::OrderBookOrderLifespan::get(),
-                current_block,
-            )?;
-
-            <order_book::OrderBooks<T>>::set(book_id, Some(order_book));
-            Ok(())
-        }
-
-        fn place_multiple_orders(
-            data: &mut impl DataLayer<T>,
-            book: &mut OrderBook<T>,
-            owner: T::AccountId,
-            side: PriceVariant,
-            orders: impl Iterator<Item = (Balance, Balance)>,
-            time: MomentOf<T>,
-            lifespan: MomentOf<T>,
-            current_block: BlockNumberFor<T>,
-        ) -> Result<(), DispatchError> {
-            for (price, amount) in orders {
-                let order_id = book.next_order_id();
-                let order = order_book::LimitOrder::<T>::new(
-                    order_id,
-                    owner.clone(),
-                    side,
-                    price,
-                    amount,
-                    time,
-                    lifespan,
-                    current_block,
-                );
-                book.place_limit_order(order, data)?;
-            }
-            Ok(())
-        }
-    }
+    impl<T: Config> Pallet<T> {}
 }

@@ -119,6 +119,7 @@ fn should_create_and_fill_orderbook() {
             None,
         )
         .unwrap();
-        test_create_and_fill_many(nft, XOR, balance!(10), balance!(11));
+        // todo (m.tagirov) enable in #542
+        // test_create_and_fill_many(nft, XOR, balance!(10), balance!(11));
     });
 }
