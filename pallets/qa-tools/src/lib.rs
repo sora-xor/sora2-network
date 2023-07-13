@@ -219,10 +219,11 @@ pub mod pallet {
                         order_book_id.base.into(),
                     )?;
                 }
-                if <T as pallet::Config>::AssetInfoProvider::total_balance(
-                    &order_book_id.base,
-                    &who,
-                )? == Balance::zero()
+                if <T as pallet::Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base)
+                    && <T as pallet::Config>::AssetInfoProvider::total_balance(
+                        &order_book_id.base,
+                        &who,
+                    )? == Balance::zero()
                 {
                     assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &who, 1)?;
                 }
