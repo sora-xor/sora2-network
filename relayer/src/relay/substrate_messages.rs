@@ -259,14 +259,23 @@ where
                             .sender
                             .bridge_commitment(self.chain_id.into(), nonce)
                             .await?;
+                        dbg!("new block in commitment_blocks");
+                        dbg!(&offchain_data.block_number);
                         v.insert(offchain_data.block_number);
+                        let block_number: u64 = offchain_data.block_number.into();
+                        self.syncer.update_latest_requested(block_number + 1);
                         offchain_data.block_number
                     }
                     std::collections::btree_map::Entry::Occupied(v) => v.get().clone(),
                 };
+                dbg!("get block number");
+                dbg!(&block_number);
                 let latest_sent = self.syncer.latest_sent();
                 if Into::<u64>::into(block_number) > latest_sent {
-                    debug!("Waiting for BEEFY block {:?}", block_number);
+                    debug!(
+                        "Waiting for BEEFY block {:?}, latest sent {:?}",
+                        block_number, latest_sent
+                    );
                     break;
                 }
                 self.send_commitment(nonce).await?;
