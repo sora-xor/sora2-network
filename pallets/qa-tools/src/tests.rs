@@ -31,57 +31,95 @@
 //! Tests are not essential for this testing helper pallet,
 //! but they make modify-run iterations during development much quicker
 
-use common::{balance, AssetInfoProvider, DEXId, VAL, XOR};
+use common::{
+    balance, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
+    PredefinedAssetId, VAL, XOR,
+};
 use frame_support::assert_ok;
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools::{self, OrderBookFillSettings};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::OrderBookId;
 
+type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
 pub type QAToolsPallet = qa_tools::Pallet<Runtime>;
 
 pub fn alice() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
 }
 
+pub fn bob() -> <Runtime as frame_system::Config>::AccountId {
+    <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
+}
+
 #[test]
 fn should_create_and_fill_orderbook() {
     ext().execute_with(|| {
-        let start_balance_xor = assets::Pallet::<Runtime>::total_balance(&XOR, &alice()).unwrap();
-        let start_balance_val = assets::Pallet::<Runtime>::total_balance(&VAL, &alice()).unwrap();
-        let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
-            base: VAL,
-            quote: XOR,
-        };
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_many(
-            RuntimeOrigin::signed(alice()),
-            alice(),
-            alice(),
-            vec![(
-                order_book_id,
-                OrderBookFillSettings {
-                    best_bid_price: balance!(10),
-                    best_ask_price: balance!(11)
-                }
-            )]
-        ));
-        assert_eq!(
-            assets::Pallet::<Runtime>::total_balance(&XOR, &alice()).unwrap(),
-            start_balance_xor
-        );
-        assert_eq!(
-            assets::Pallet::<Runtime>::total_balance(&VAL, &alice()).unwrap(),
-            start_balance_val
-        );
+        fn test_create_and_fill_batch(
+            base: AssetId32<PredefinedAssetId>,
+            quote: AssetId32<PredefinedAssetId>,
+            best_bid_price: Balance,
+            best_ask_price: Balance,
+        ) {
+            let mut start_balance_base =
+                assets::Pallet::<Runtime>::total_balance(&base, &alice()).unwrap();
+            let start_balance_quote =
+                assets::Pallet::<Runtime>::total_balance(&quote, &alice()).unwrap();
+            let order_book_id = OrderBookId {
+                dex_id: DEXId::Polkaswap.into(),
+                base,
+                quote,
+            };
+            assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+                RuntimeOrigin::signed(alice()),
+                alice(),
+                alice(),
+                vec![(
+                    order_book_id,
+                    OrderBookFillSettings {
+                        best_bid_price,
+                        best_ask_price
+                    }
+                )]
+            ));
+            assert_eq!(
+                assets::Pallet::<Runtime>::total_balance(&quote, &alice()).unwrap(),
+                start_balance_quote
+            );
+            // 1 nft is minted in case none were owned
+            if start_balance_base == 0 && assets::Pallet::<Runtime>::is_non_divisible(&base) {
+                start_balance_base += 1;
+            }
+            assert_eq!(
+                assets::Pallet::<Runtime>::total_balance(&base, &alice()).unwrap(),
+                start_balance_base
+            );
 
-        assert_eq!(
-            order_book::Pallet::<Runtime>::aggregated_bids(order_book_id).len(),
-            3
-        );
-        assert_eq!(
-            order_book::Pallet::<Runtime>::aggregated_asks(order_book_id).len(),
-            3
-        );
+            assert_eq!(
+                order_book::Pallet::<Runtime>::aggregated_bids(order_book_id).len(),
+                3
+            );
+            assert_eq!(
+                order_book::Pallet::<Runtime>::aggregated_asks(order_book_id).len(),
+                3
+            );
+        }
+
+        test_create_and_fill_batch(VAL, XOR, balance!(10), balance!(11));
+
+        FrameSystem::inc_providers(&bob());
+        let _nft = assets::Pallet::<Runtime>::register_from(
+            &bob(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(1),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+        // todo (m.tagirov) enable in #542
+        // test_create_and_fill_batch(nft, XOR, balance!(10), balance!(11));
     });
 }

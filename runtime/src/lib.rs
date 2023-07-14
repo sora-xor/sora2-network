@@ -128,7 +128,8 @@ pub use common::{
     balance, fixed, fixed_from_basis_points, AssetInfoProvider, AssetName, AssetSymbol,
     BalancePrecision, BasisPoints, ContentSource, CrowdloanTag, DexInfoProvider, FilterMode, Fixed,
     FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned, OnValBurned, TradingPairSourceManager,
+    LiquiditySourceType, OnPswapBurned, OnValBurned, SyntheticInfoProvider,
+    TradingPairSourceManager,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::EthereumHeader;
@@ -1588,13 +1589,14 @@ impl faucet::Config for Runtime {
 }
 
 parameter_types! {
-    pub OrderBookOrderLifespan: Moment = 60*10*1000; // 10 minutes
+    pub QaToolsOrderLifespan: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 1 month
 }
 
 #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 impl qa_tools::Config for Runtime {
+    type AssetInfoProvider = Assets;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
-    type OrderBookOrderLifespan = OrderBookOrderLifespan;
+    type OrderBookOrderLifespan = QaToolsOrderLifespan;
 }
 
 parameter_types! {
@@ -2052,6 +2054,7 @@ impl order_book::Config for Runtime {
     type EnsureTradingPairExists = TradingPair;
     type TradingPairSourceManager = TradingPair;
     type AssetInfoProvider = Assets;
+    type SyntheticInfoProvider = XSTPool;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
     type ParameterUpdateOrigin = EitherOfDiverse<
