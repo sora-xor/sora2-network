@@ -32,7 +32,7 @@
 
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
-use common::{balance, PriceVariant, VAL, XOR};
+use common::{balance, PriceVariant, ETH, PSWAP, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
@@ -40,6 +40,7 @@ use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{Config, DataLayer, LimitOrder, OrderBookId};
 use framenode_runtime::Runtime;
 use sp_core::Get;
+use sp_runtime::BoundedVec;
 use sp_std::collections::btree_map::BTreeMap;
 
 trait StoragePush {
@@ -67,7 +68,8 @@ fn should_work_as_cache() {
     ext().execute_with(|| {
         let mut data = CacheDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -157,7 +159,8 @@ fn should_work_as_storage() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -237,7 +240,8 @@ fn storage_should_get_all_limit_orders() {
 
 fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush)) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -346,7 +350,8 @@ fn storage_should_insert_limit_order() {
 
 fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush)) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -490,7 +495,8 @@ fn storage_should_not_insert_limit_order() {
 
 fn should_not_insert_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -542,7 +548,8 @@ fn storage_should_delete_limit_order() {
 
 fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush)) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1007,7 +1014,8 @@ fn storage_should_not_delete_unknown_limit_order() {
 
 fn should_not_delete_unknown_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1035,7 +1043,8 @@ fn storage_should_update_limit_order() {
 
 fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush)) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1167,7 +1176,8 @@ fn storage_should_update_limit_order_with_zero_amount() {
 
 fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime> + StoragePush)) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1283,7 +1293,8 @@ fn storage_should_not_update_unknown_limit_order() {
 
 fn should_not_update_unknown_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1312,7 +1323,8 @@ fn storage_should_not_update_equal_limit_order() {
 
 fn should_not_update_equal_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1357,7 +1369,8 @@ fn storage_should_not_update_limit_order_with_bigger_amount() {
 
 fn should_not_update_limit_order_with_bigger_amount(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1393,14 +1406,15 @@ fn cache_should_get_limit_orders_by_price() {
 }
 
 #[test]
-fn storag_should_get_limit_orders_by_price() {
+fn storage_should_get_limit_orders_by_price() {
     let mut storage = StorageDataLayer::<Runtime>::new();
     get_limit_orders_by_price(&mut storage);
 }
 
 fn get_limit_orders_by_price(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1415,6 +1429,103 @@ fn get_limit_orders_by_price(data: &mut impl DataLayer<Runtime>) {
         assert_eq!(
             data.get_asks(&order_book_id, &sell_price),
             data.get_limit_orders_by_price(&order_book_id, PriceVariant::Sell, &sell_price)
+        );
+    });
+}
+
+#[test]
+fn cache_should_get_user_limit_orders() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    get_user_limit_orders(&mut cache);
+}
+
+#[test]
+fn storage_should_get_user_limit_orders() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    get_user_limit_orders(&mut storage);
+}
+
+fn get_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+
+        let empty_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(empty_order_book_id);
+
+        assert_eq!(
+            data.get_user_limit_orders(&bob(), &empty_order_book_id),
+            None
+        );
+
+        assert_eq!(
+            data.get_user_limit_orders(&bob(), &order_book_id).unwrap(),
+            vec![1, 3, 5, 7, 9, 11]
+        );
+    });
+}
+
+#[test]
+fn cache_should_get_all_user_limit_orders() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    get_all_user_limit_orders(&mut cache);
+}
+
+#[test]
+fn storage_should_get_all_user_limit_orders() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    get_all_user_limit_orders(&mut storage);
+}
+
+fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
+    ext().execute_with(|| {
+        let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id1);
+
+        let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id2);
+
+        let empty_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: ETH.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(empty_order_book_id);
+
+        // no orders from empty_order_book_id
+        assert_eq!(
+            data.get_all_user_limit_orders(&bob()),
+            BTreeMap::from([
+                (
+                    order_book_id1,
+                    BoundedVec::try_from(vec![1, 3, 5, 7, 9, 11]).unwrap()
+                ),
+                (
+                    order_book_id2,
+                    BoundedVec::try_from(vec![1, 3, 5, 7, 9, 11]).unwrap()
+                )
+            ])
         );
     });
 }
