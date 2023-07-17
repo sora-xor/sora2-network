@@ -150,10 +150,10 @@ fn batch_dispatched_event_abi() -> Box<Event> {
 pub struct BatchDispatched {
     /// The address of the inbound channel on Ethereum that processed this message.
     pub channel: H160,
-    /// Ethereum address of batch sender
-    pub relayer: H160,
     /// A nonce for enforcing replay protection and ordering.
     pub batch_nonce: u64,
+    /// Ethereum address of batch sender
+    pub relayer: H160,
     /// A bitfield status of message delivery.
     pub results: u64,
     /// A number of messages in a batch.
@@ -198,8 +198,8 @@ impl TryFrom<Log> for BatchDispatched {
 
         Ok(Self {
             channel: address,
-            relayer: relayer.ok_or(BatchDispatchedEventDecodeError)?,
             batch_nonce: batch_nonce.ok_or(BatchDispatchedEventDecodeError)?,
+            relayer: relayer.ok_or(BatchDispatchedEventDecodeError)?,
             results: results.ok_or(BatchDispatchedEventDecodeError)?,
             results_length: results_length.ok_or(BatchDispatchedEventDecodeError)?,
             gas_spent: gas_spent.ok_or(BatchDispatchedEventDecodeError)?,

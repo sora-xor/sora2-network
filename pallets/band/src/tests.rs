@@ -29,12 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::alloc::collections::HashSet;
+use common::{fixed, DataFeed, Rate};
 use common::{prelude::FixedWrapper, Balance, Fixed};
-use common::{DataFeed, Rate};
 use frame_support::{assert_noop, error::BadOrigin};
 use sp_std::collections::btree_set::BTreeSet;
 
-use crate::{mock::*, BandRate, Error};
+use crate::{mock::*, BandRate, Error, FeeCalculationParameters};
 
 pub fn band_rate_into_balance(rate: u64) -> Balance {
     let fixed = Fixed::from_bits(rate as i128 * super::RATE_MULTIPLIER);
@@ -177,6 +177,7 @@ fn relay_should_work() {
                     value: band_rate_into_balance(rate),
                     last_updated: initial_resolve_time,
                     request_id,
+                    dynamic_fee: fixed!(0),
                 })
             );
         }
@@ -218,6 +219,7 @@ fn relay_should_not_update_if_time_is_lower_than_last_stored() {
                 value: band_rate_into_balance(2),
                 last_updated: initial_resolve_time,
                 request_id,
+                dynamic_fee: fixed!(0),
             })
         );
     });
@@ -260,6 +262,7 @@ fn force_relay_should_rewrite_rates_without_time_check() {
                 value: band_rate_into_balance(new_rub_rate),
                 last_updated: new_resolve_time,
                 request_id: new_request_id,
+                dynamic_fee: fixed!(0),
             })
         );
     });
@@ -337,6 +340,7 @@ fn relay_should_store_last_duplicated_rate() {
                 value: band_rate_into_balance(4),
                 last_updated: initial_resolve_time,
                 request_id: 0,
+                dynamic_fee: fixed!(0),
             })
         );
     });
@@ -368,6 +372,7 @@ fn force_relay_should_store_last_duplicated_rate() {
                 value: band_rate_into_balance(4),
                 last_updated: initial_resolve_time,
                 request_id: 0,
+                dynamic_fee: fixed!(0),
             })
         );
     });
@@ -401,6 +406,7 @@ fn quote_and_list_enabled_symbols_should_work() {
                     value: band_rate_into_balance(rate),
                     last_updated: initial_resolve_time,
                     request_id: 0,
+                    dynamic_fee: fixed!(0),
                 })
             );
         }
@@ -409,6 +415,7 @@ fn quote_and_list_enabled_symbols_should_work() {
             value: band_rate_into_balance(1),
             last_updated: initial_resolve_time,
             request_id: 0,
+            dynamic_fee: fixed!(0),
         };
 
         assert_eq!(
@@ -469,5 +476,104 @@ fn quote_invalid_rate_should_fail() {
             <Band as DataFeed<String, Rate, u64>>::quote(&"RUB".to_owned()),
             Err(Error::<Runtime>::RateHasInvalidTimestamp.into())
         );
+    })
+}
+
+#[test]
+fn set_dynamic_fee_parameters_should_work() {
+    new_test_ext().execute_with(|| {
+        let parameters = FeeCalculationParameters::new(fixed!(0.1), fixed!(1), fixed!(0.05));
+
+        Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone())
+            .expect("Expected to set the dynamic fee calculation parameters");
+        let uploaded_parameters = Band::dynamic_fee_parameters();
+
+        assert_eq!(parameters, uploaded_parameters,);
+    })
+}
+
+#[test]
+fn set_invalid_dynamic_fee_parameters_should_fail() {
+    new_test_ext().execute_with(|| {
+        let parameters = FeeCalculationParameters::new(fixed!(-0.1), fixed!(0), fixed!(0));
+        assert_eq!(
+            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone(),),
+            Err(Error::<Runtime>::InvalidDynamicFeeParameters.into())
+        );
+
+        let parameters = FeeCalculationParameters::new(fixed!(0), fixed!(-1), fixed!(0));
+        assert_eq!(
+            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone(),),
+            Err(Error::<Runtime>::InvalidDynamicFeeParameters.into())
+        );
+
+        let parameters = FeeCalculationParameters::new(fixed!(0), fixed!(0), fixed!(-1));
+        assert_eq!(
+            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone(),),
+            Err(Error::<Runtime>::InvalidDynamicFeeParameters.into())
+        );
+
+        let parameters = FeeCalculationParameters::new(fixed!(1), fixed!(0), fixed!(0));
+        assert_eq!(
+            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone(),),
+            Err(Error::<Runtime>::InvalidDynamicFeeParameters.into())
+        );
+    })
+}
+
+#[test]
+fn should_calculate_dynamic_fee() {
+    new_test_ext().execute_with(|| {
+        let parameters = FeeCalculationParameters::new(fixed!(0.1), fixed!(0.01), fixed!(0.05));
+
+        Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone())
+            .expect("Expected to set the dynamic fee calculation parameters");
+
+        let relayer = 1;
+        let symbol_name = "USD".to_owned();
+        Timestamp::set_timestamp(10_000);
+
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::relay(
+            RuntimeOrigin::signed(relayer),
+            vec![(symbol_name.clone(), 1_500_000_000)],
+            0,
+            0,
+        )
+        .expect("Failed to relay rates");
+
+        let rate_a = Band::quote(&symbol_name)
+            .expect("Expected to get the Ok result from quote")
+            .expect("Expected to get the rate of symbol");
+
+        Band::relay(
+            RuntimeOrigin::signed(relayer),
+            vec![("USD".to_owned(), 1_000_000_000)],
+            1,
+            0,
+        )
+        .expect("Failed to relay rates");
+
+        let rate_b = Band::quote(&symbol_name)
+            .expect("Expected to get the Ok result from quote")
+            .expect("Expected to get the rate of symbol");
+
+        Band::relay(
+            RuntimeOrigin::signed(relayer),
+            vec![("USD".to_owned(), 1_000_000_000)],
+            2,
+            0,
+        )
+        .expect("Failed to relay rates");
+
+        let rate_c = Band::quote(&symbol_name)
+            .expect("Expected to get the Ok result from quote")
+            .expect("Expected to get the rate of symbol");
+
+        assert_eq!(rate_a.dynamic_fee, fixed!(0),);
+
+        assert_eq!(rate_b.dynamic_fee, fixed!(0.39));
+
+        assert_eq!(rate_c.dynamic_fee, fixed!(0.039));
     })
 }

@@ -31,7 +31,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::prelude::FixedWrapper;
-use common::{Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
+use common::{fixed, fixed_wrapper, Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
 use fallible_iterator::FallibleIterator;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Time;
@@ -48,6 +48,8 @@ mod tests;
 
 mod benchmarking;
 
+pub mod migrations;
+
 pub mod weights;
 
 /// Multiplier to convert rates from precision = 9 (which band team use)
@@ -56,6 +58,39 @@ pub const RATE_MULTIPLIER: i128 = 1_000_000_000;
 
 /// Multiplier to convert rate last_update timestamp to Moment
 pub const MILLISECS_MULTIPLIER: u64 = 1_000;
+
+#[derive(RuntimeDebug, Encode, Decode, TypeInfo, Clone, PartialEq, Eq)]
+pub struct FeeCalculationParameters {
+    pub decay: Fixed,
+    pub min_fee: Fixed,
+    pub deviation: Fixed,
+}
+
+impl FeeCalculationParameters {
+    pub fn validate<T: Config<I>, I: 'static>(&self) -> Result<(), DispatchError> {
+        ensure!(
+            self.decay >= fixed!(0) && self.decay < fixed!(1),
+            Error::<T, I>::InvalidDynamicFeeParameters
+        );
+        ensure!(
+            self.min_fee >= fixed!(0),
+            Error::<T, I>::InvalidDynamicFeeParameters
+        );
+        ensure!(
+            self.deviation >= fixed!(0),
+            Error::<T, I>::InvalidDynamicFeeParameters
+        );
+        Ok(())
+    }
+
+    pub fn new(decay: Fixed, min_fee: Fixed, deviation: Fixed) -> Self {
+        Self {
+            decay,
+            min_fee,
+            deviation,
+        }
+    }
+}
 
 /// Symbol rate
 #[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
@@ -67,13 +102,22 @@ pub struct BandRate {
     /// Request identifier in the *Band* protocol.
     /// Useful for debugging and in emergency cases.
     pub request_id: u64,
+    /// Current dynamic fee for the symbol
+    pub dynamic_fee: Fixed,
 }
 
 impl BandRate {
-    pub fn update_if_outdated(&mut self, new: BandRate) {
+    pub fn update_if_outdated<T: Config<I>, I: 'static>(
+        &mut self,
+        mut new: BandRate,
+    ) -> Result<(), DispatchError> {
         if self.last_updated <= new.last_updated {
+            new.dynamic_fee =
+                Pallet::<T, I>::calculate_dynamic_fee(self.dynamic_fee, self.value, new.value)?;
+
             *self = new;
         }
+        Ok(())
     }
 }
 
@@ -82,6 +126,7 @@ impl From<BandRate> for Rate {
         Rate {
             value: value.value,
             last_updated: value.last_updated,
+            dynamic_fee: value.dynamic_fee,
         }
     }
 }
@@ -126,12 +171,19 @@ impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
             },
         )))
     }
+
+    fn quote_unchecked(symbol: &T::Symbol) -> Option<Rate> {
+        Self::rates(symbol).map(|band_rate| band_rate.into())
+    }
 }
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
     use sp_std::collections::btree_set::BTreeSet;
+
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     /// `Band` pallet is used to relay data from *BandChain* oracles to Polkaswap.
     /// This data contains information about some symbols rates, like price of some cryptocurrencies,
@@ -144,6 +196,7 @@ pub mod pallet {
     /// every asset category. This will prevent overlapping tickers.
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T, I = ()>(_);
 
@@ -175,6 +228,20 @@ pub mod pallet {
     pub type SymbolRates<T: Config<I>, I: 'static = ()> =
         StorageMap<_, Blake2_128Concat, T::Symbol, Option<BandRate>, ValueQuery>;
 
+    #[pallet::type_value]
+    pub fn DefaultDynamicFeeParameters<T: Config<I>, I: 'static>() -> FeeCalculationParameters {
+        FeeCalculationParameters {
+            decay: fixed!(0),
+            min_fee: fixed!(1),
+            deviation: fixed!(0),
+        }
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn dynamic_fee_parameters)]
+    pub type DynamicFeeParameters<T: Config<I>, I: 'static = ()> =
+        StorageValue<_, FeeCalculationParameters, ValueQuery, DefaultDynamicFeeParameters<T, I>>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config<I>, I: 'static = ()> {
@@ -200,6 +267,10 @@ pub mod pallet {
         RateHasInvalidTimestamp,
         /// Rate is expired and can't be used until next update.
         RateExpired,
+        /// Error during dynamic fee calculation
+        DynamicFeeCalculationError,
+        /// Dynamic fee parameters are invalid,
+        InvalidDynamicFeeParameters,
     }
 
     #[pallet::call]
@@ -231,8 +302,11 @@ pub mod pallet {
                 resolve_time,
                 request_id,
                 |option_old_rate, new_rate| match option_old_rate {
-                    Some(rate) => rate.update_if_outdated(new_rate),
-                    None => _ = option_old_rate.insert(new_rate),
+                    Some(rate) => rate.update_if_outdated::<T, I>(new_rate),
+                    None => {
+                        _ = option_old_rate.insert(new_rate);
+                        Ok(())
+                    }
                 },
             )?;
 
@@ -265,6 +339,7 @@ pub mod pallet {
                 request_id,
                 |option_old_rate, new_rate| {
                     let _ = option_old_rate.insert(new_rate);
+                    Ok(())
                 },
             )?;
 
@@ -355,6 +430,18 @@ pub mod pallet {
             ));
             Ok(().into())
         }
+
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config<I>>::WeightInfo::set_dynamic_fee_parameters())]
+        pub fn set_dynamic_fee_parameters(
+            origin: OriginFor<T>,
+            fee_parameters: FeeCalculationParameters,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            fee_parameters.validate::<T, I>()?;
+            DynamicFeeParameters::<T, I>::put(fee_parameters);
+            Ok(().into())
+        }
     }
 }
 
@@ -382,7 +469,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         rates: Vec<(T::Symbol, u64)>,
         resolve_time: u64,
         request_id: u64,
-        f: impl Fn(&mut Option<BandRate>, BandRate),
+        f: impl Fn(&mut Option<BandRate>, BandRate) -> Result<(), DispatchError>,
     ) -> Result<Vec<(T::Symbol, Balance)>, DispatchError> {
         let converted_rates: Vec<(T::Symbol, Balance)> =
             fallible_iterator::convert(rates.into_iter().map(
@@ -392,24 +479,30 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
                 },
             ))
             .collect()?;
-        let new_symbols = converted_rates.iter().fold(
+        let new_symbols = fallible_iterator::convert(
+            converted_rates
+                .iter()
+                .map(|symbol_rate| Ok::<_, DispatchError>(symbol_rate)),
+        )
+        .fold(
             BTreeSet::new(),
             |mut new_symbols_acc, (symbol, rate_value)| {
                 let new_rate = BandRate {
                     value: *rate_value,
                     last_updated: resolve_time,
                     request_id,
+                    dynamic_fee: fixed!(0),
                 };
 
                 SymbolRates::<T, I>::mutate(symbol, |option_old_rate| {
                     if option_old_rate.is_none() {
                         new_symbols_acc.insert(symbol.clone());
                     }
-                    f(option_old_rate, new_rate);
-                });
-                new_symbols_acc
+                    f(option_old_rate, new_rate)
+                })?;
+                Ok(new_symbols_acc)
             },
-        );
+        )?;
 
         T::OnNewSymbolsRelayedHook::on_new_symbols_relayed(Oracle::BandChainFeed, new_symbols)?;
 
@@ -424,5 +517,39 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
                 FixedWrapper::from(fixed).try_into_balance().ok()
             })
             .ok_or_else(|| Error::<T, I>::RateConversionOverflow.into())
+    }
+
+    pub fn calculate_dynamic_fee(
+        prev_fee: Fixed,
+        prev_rate: Balance,
+        new_rate: Balance,
+    ) -> Result<Fixed, DispatchError> {
+        let FeeCalculationParameters {
+            decay,
+            min_fee,
+            deviation,
+        } = Self::dynamic_fee_parameters();
+
+        let prev_fee = FixedWrapper::from(prev_fee);
+        let prev_rate = FixedWrapper::from(prev_rate);
+        let new_rate = FixedWrapper::from(new_rate);
+
+        let decay = FixedWrapper::from(decay);
+        let min_fee = FixedWrapper::from(min_fee);
+        let doubled_deviation = FixedWrapper::from(deviation) * fixed_wrapper!(2);
+
+        let decayed_fee = prev_fee * decay;
+
+        let new_fee_part =
+            (prev_rate / new_rate - fixed_wrapper!(1)).abs() - doubled_deviation - min_fee;
+        let new_fee = if new_fee_part > fixed_wrapper!(0) {
+            decayed_fee + new_fee_part
+        } else {
+            decayed_fee
+        };
+
+        new_fee
+            .get()
+            .map_err(|_| Error::<T, I>::DynamicFeeCalculationError.into())
     }
 }
