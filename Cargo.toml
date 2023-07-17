@@ -223,6 +223,20 @@ bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", ta
 bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.7" }
 bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.7" }
 multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.7" }
+#beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#dispatch = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
+#multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", branch = "fix/commitment_hash" }
 
 # [patch."https://github.com/sora-xor/sora2-common.git"]
 # beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }

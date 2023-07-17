@@ -252,19 +252,13 @@ where
                 }
                 continue;
             }
-            dbg!(&inbound_nonce);
-            dbg!(&outbound_nonce);
             for nonce in (inbound_nonce + 1)..=outbound_nonce {
                 let block_number = match self.commitment_blocks.entry(nonce) {
                     std::collections::btree_map::Entry::Vacant(v) => {
-                        dbg!(&self.chain_id);
-                        dbg!(&nonce);
                         let offchain_data = self
                             .sender
                             .bridge_commitment(self.chain_id.into(), nonce)
                             .await?;
-                        dbg!("new block in commitment_blocks");
-                        dbg!(&offchain_data.block_number);
                         v.insert(offchain_data.block_number);
                         offchain_data.block_number
                     }
@@ -272,8 +266,6 @@ where
                 };
                 let block_number: u64 = block_number.into();
                 self.syncer.update_latest_requested(block_number + 1);
-                dbg!("get block number");
-                dbg!(&block_number);
                 let latest_sent = self.syncer.latest_sent();
                 if Into::<u64>::into(block_number) > latest_sent {
                     debug!(
@@ -282,7 +274,6 @@ where
                     );
                     break;
                 }
-                self.send_commitment(nonce).await?;
                 if let Err(err) = self.send_commitment(nonce).await {
                     return Err(anyhow!("Error sending message commitment: {:?}", err));
                 }
