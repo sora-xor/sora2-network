@@ -31,7 +31,7 @@
 #![cfg(feature = "ready-to-test")] // order-book
 
 use assets::AssetIdOf;
-use common::{balance, AssetInfoProvider, Balance, DEXId, PriceVariant};
+use common::{balance, AssetInfoProvider, Balance, PriceVariant};
 use frame_support::assert_ok;
 use frame_support::traits::Hooks;
 use frame_support::weights::Weight;
@@ -41,10 +41,11 @@ use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_std::collections::btree_map::BTreeMap;
 
 pub type E = order_book::Error<Runtime>;
-pub const DEX: DEXId = DEXId::Polkaswap;
+pub const DEX: common::DEXId = common::DEXId::Polkaswap;
 pub const INIT_BALANCE: Balance = balance!(1000000);
 
 pub type OrderBookPallet = Pallet<Runtime>;
+pub type DEXId = <Runtime as common::Config>::DEXId;
 
 pub fn alice() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
@@ -85,7 +86,7 @@ pub fn free_balance(
 
 pub fn fill_balance(
     account: <Runtime as frame_system::Config>::AccountId,
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
 ) {
     assert_ok!(assets::Pallet::<Runtime>::update_balance(
         RuntimeOrigin::root(),
@@ -103,11 +104,10 @@ pub fn fill_balance(
 }
 
 pub fn create_empty_order_book(
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
 ) -> OrderBook<Runtime> {
     assert_ok!(OrderBookPallet::create_orderbook(
         RawOrigin::Signed(bob()).into(),
-        DEX.into(),
         order_book_id
     ));
 
@@ -126,11 +126,10 @@ pub fn create_empty_order_book(
 //   9.5 |  261.3 | buy4, buy5, buy6
 //          Bids
 pub fn create_and_fill_order_book(
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
 ) -> OrderBook<Runtime> {
     assert_ok!(OrderBookPallet::create_orderbook(
         RawOrigin::Signed(bob()).into(),
-        DEX.into(),
         order_book_id
     ));
 
@@ -309,7 +308,7 @@ pub fn create_and_fill_order_book(
 }
 
 pub fn get_last_order_id(
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
 ) -> Option<<Runtime as Config>::OrderId> {
     if let Some(order_book) = OrderBookPallet::order_books(order_book_id) {
         Some(order_book.last_order_id)
