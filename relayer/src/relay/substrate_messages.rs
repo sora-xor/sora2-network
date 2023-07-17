@@ -136,7 +136,7 @@ where
         .await?;
         let commitment_hash = commitment.offchain_data.commitment.hash();
         let bridge_types::GenericCommitment::EVM(commitment_inner) = commitment.offchain_data.commitment else {
-            return Err(anyhow::anyhow!("Invalid commitment"));
+            return Err(anyhow::anyhow!("Invalid commitment. EVM commitment is expected"));
         };
         let inbound_channel_nonce = self.inbound_channel_nonce().await?;
         if commitment_inner.nonce <= inbound_channel_nonce {
@@ -184,7 +184,7 @@ where
         let messages_total_gas = batch.total_max_gas;
         let mut call = self
             .inbound_channel
-            .submit(batch, leaf_bytes, proof.clone())
+            .submit(batch, leaf_bytes, proof)
             .legacy();
 
         debug!("Fill submit messages");
@@ -252,9 +252,13 @@ where
                 }
                 continue;
             }
+            dbg!(&inbound_nonce);
+            dbg!(&outbound_nonce);
             for nonce in (inbound_nonce + 1)..=outbound_nonce {
                 let block_number = match self.commitment_blocks.entry(nonce) {
                     std::collections::btree_map::Entry::Vacant(v) => {
+                        dbg!(&self.chain_id);
+                        dbg!(&nonce);
                         let offchain_data = self
                             .sender
                             .bridge_commitment(self.chain_id.into(), nonce)
@@ -262,12 +266,12 @@ where
                         dbg!("new block in commitment_blocks");
                         dbg!(&offchain_data.block_number);
                         v.insert(offchain_data.block_number);
-                        let block_number: u64 = offchain_data.block_number.into();
-                        self.syncer.update_latest_requested(block_number + 1);
                         offchain_data.block_number
                     }
                     std::collections::btree_map::Entry::Occupied(v) => v.get().clone(),
                 };
+                let block_number: u64 = block_number.into();
+                self.syncer.update_latest_requested(block_number + 1);
                 dbg!("get block number");
                 dbg!(&block_number);
                 let latest_sent = self.syncer.latest_sent();
