@@ -3702,7 +3702,7 @@ fn should_calculate_limit_order_impact() {
 }
 
 #[test]
-fn should_calculate_cancelation_limit_order_impact() {
+fn should_calculate_cancellation_limit_order_impact() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -3719,7 +3719,7 @@ fn should_calculate_cancelation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancelation_limit_order_impact(limit_order2.clone(), false)
+                .calculate_cancellation_limit_order_impact(limit_order2.clone(), false)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -3750,7 +3750,7 @@ fn should_calculate_cancelation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancelation_limit_order_impact(limit_order2.clone(), true)
+                .calculate_cancellation_limit_order_impact(limit_order2.clone(), true)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -3781,7 +3781,7 @@ fn should_calculate_cancelation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancelation_limit_order_impact(limit_order8.clone(), false)
+                .calculate_cancellation_limit_order_impact(limit_order8.clone(), false)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -3812,7 +3812,7 @@ fn should_calculate_cancelation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancelation_limit_order_impact(limit_order8.clone(), true)
+                .calculate_cancellation_limit_order_impact(limit_order8.clone(), true)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -3844,7 +3844,7 @@ fn should_calculate_cancelation_limit_order_impact() {
 }
 
 #[test]
-fn should_calculate_cancelation_of_all_limit_orders_impact() {
+fn should_calculate_cancellation_of_all_limit_orders_impact() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -3871,7 +3871,7 @@ fn should_calculate_cancelation_of_all_limit_orders_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancelation_of_all_limit_orders_impact(&mut data)
+                .calculate_cancellation_of_all_limit_orders_impact(&mut data)
                 .unwrap(),
             MarketChange {
                 deal_input: None,

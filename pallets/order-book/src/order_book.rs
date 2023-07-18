@@ -223,7 +223,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         &self,
         data: &mut impl DataLayer<T>,
     ) -> Result<usize, DispatchError> {
-        let market_change = self.calculate_cancelation_of_all_limit_orders_impact(data)?;
+        let market_change = self.calculate_cancellation_of_all_limit_orders_impact(data)?;
 
         let count = market_change.to_cancel.len();
 
@@ -339,7 +339,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         })
     }
 
-    pub fn calculate_cancelation_limit_order_impact(
+    pub fn calculate_cancellation_limit_order_impact(
         &self,
         limit_order: LimitOrder<T>,
         ignore_unschedule_error: bool,
@@ -377,7 +377,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         })
     }
 
-    pub fn calculate_cancelation_of_all_limit_orders_impact(
+    pub fn calculate_cancellation_of_all_limit_orders_impact(
         &self,
         data: &mut impl DataLayer<T>,
     ) -> Result<
@@ -791,7 +791,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         ignore_unschedule_error: bool,
     ) -> Result<(), DispatchError> {
         let market_change =
-            self.calculate_cancelation_limit_order_impact(limit_order, ignore_unschedule_error)?;
+            self.calculate_cancellation_limit_order_impact(limit_order, ignore_unschedule_error)?;
 
         self.apply_market_change(market_change, data)
     }
