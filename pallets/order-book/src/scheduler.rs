@@ -82,7 +82,7 @@ impl<T: Config> Pallet<T> {
             return;
         };
 
-        // It's fine to try and unschedule again inside this method
+        // It's fine to fail on unschedule again inside this method
         // since the queue is taken from the storage before this method.
         // (thus `ignore_unschedule_error` is `true`)
         match order_book.cancel_limit_order_unchecked(order, data_layer, true) {
