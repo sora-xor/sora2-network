@@ -214,9 +214,7 @@ pub mod pallet {
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + common::Config + assets::Config + dex_manager::Config
-    {
+    pub trait Config: frame_system::Config + common::Config + assets::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         /// Weight information for extrinsics in this pallet.
