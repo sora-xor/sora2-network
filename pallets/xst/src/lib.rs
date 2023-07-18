@@ -628,6 +628,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 // Calculate how much `main_asset_id` we will buy (get)
                 // if we give `desired_amount_in` of `synthetic_asset_id`
+                ensure!(desired_amount_in != 0, Error::<T>::PriceCalculationFailed);
                 let mut output_amount: Balance = FixedWrapper::from(Self::buy_price(
                     main_asset_id,
                     synthetic_asset_id,
@@ -653,6 +654,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 // Calculate how much `synthetic_asset_id` we need to give to buy (get)
                 // `desired_amount_out` of `main_asset_id`
+                ensure!(desired_amount_out != 0, Error::<T>::PriceCalculationFailed);
                 Self::ensure_base_asset_amount_within_limit(desired_amount_out, check_limits)?;
                 let desired_amount_out_with_fee = if deduce_fee {
                     (FixedWrapper::from(desired_amount_out) / (fixed_wrapper!(1) - fee_ratio))
@@ -702,6 +704,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 // Calculate how much `synthetic_asset_id` we will get
                 // if we sell `desired_amount_in` of `main_asset_id`
+                ensure!(desired_amount_in != 0, Error::<T>::PriceCalculationFailed);
                 Self::ensure_base_asset_amount_within_limit(desired_amount_in, check_limits)?;
                 let fee_amount = if deduce_fee {
                     (fee_ratio * FixedWrapper::from(desired_amount_in))
@@ -726,6 +729,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 // Calculate how much `main_asset_id` we need to sell to get
                 // `desired_amount_out` of `synthetic_asset_id`
+                ensure!(desired_amount_out != 0, Error::<T>::PriceCalculationFailed);
                 let input_amount: Balance = FixedWrapper::from(Self::sell_price(
                     main_asset_id,
                     synthetic_asset_id,

@@ -34,7 +34,7 @@ mod tests {
     use band::FeeCalculationParameters;
     use common::{self, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, AssetId32};
     use frame_support::{assert_ok, assert_noop};
-    use sp_arithmetic::traits::{Zero};
+    use sp_arithmetic::traits::Zero;
 
     type XSTPool = Pallet<Runtime>;
     type PriceTools = price_tools::Pallet<Runtime>;
@@ -1121,6 +1121,104 @@ mod tests {
                     &XSTUSD,
                     SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
                 )
+            );
+        });
+    }
+
+    #[test]
+    fn should_disallow_zero_amounts_in_quote_exchange() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            // Buy with desired input
+            assert_noop!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_input(0),
+                    true,
+                ),
+                Error::<Runtime>::PriceCalculationFailed
+            );
+            assert_noop!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    SwapAmount::with_desired_input(0, Balance::zero()),
+                ),
+                Error::<Runtime>::PriceCalculationFailed
+            );
+
+            // Buy with desired output
+            assert_noop!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_output(0),
+                    true,
+                ),
+                Error::<Runtime>::PriceCalculationFailed
+            );
+            assert_noop!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    SwapAmount::with_desired_output(0, Balance::max_value()),
+                ),
+                Error::<Runtime>::PriceCalculationFailed
+            );
+
+            // Sell with desired input
+            assert_noop!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_input(0),
+                    true,
+                ),
+                Error::<Runtime>::PriceCalculationFailed
+            );
+            assert_noop!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    SwapAmount::with_desired_input(0, Balance::zero()),
+                ),
+                Error::<Runtime>::PriceCalculationFailed
+            );
+
+            // Sell with desired output
+            assert_noop!(
+                XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_output(0),
+                    true,
+                ),
+                Error::<Runtime>::PriceCalculationFailed
+            );
+            assert_noop!(
+                XSTPool::exchange(
+                    &alice(),
+                    &alice(),
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    SwapAmount::with_desired_output(0, Balance::max_value()),
+                ),
+                Error::<Runtime>::PriceCalculationFailed
             );
         });
     }
