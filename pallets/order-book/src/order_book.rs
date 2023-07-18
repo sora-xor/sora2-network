@@ -408,7 +408,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             deal_input: None,
             deal_output: None,
             market_input: None,
-            market_output: None, // NA for this case, because all the liquidity of both types go out of market
+            market_output: None, // NA for this case, because all the liquidity of both types goes out of market
             to_place: BTreeMap::new(),
             to_part_execute: BTreeMap::new(),
             to_full_execute: BTreeMap::new(),
@@ -418,7 +418,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         })
     }
 
-    /// Calculates how the deal with `taker_base_amount` impacts on the market
+    /// Calculates how the deal with `taker_base_amount` impacts the market
     fn calculate_market_impact<'a>(
         &self,
         direction: PriceVariant,
