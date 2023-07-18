@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.15;
 
-import "../BeefyLightClient.sol";
+import "./BeefyLightClient.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TestBeefyLightClient is BeefyLightClient {

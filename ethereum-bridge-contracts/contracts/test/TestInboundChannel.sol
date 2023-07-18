@@ -5,8 +5,8 @@ import "../InboundChannel.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TestInboundChannel is InboundChannel, Ownable {
-    constructor(address _beefyLightClient)
-        InboundChannel(_beefyLightClient)
+    constructor()
+        InboundChannel()
     {}
 
     function reset() external onlyOwner {
