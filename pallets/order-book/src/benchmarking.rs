@@ -40,25 +40,29 @@
 #[cfg(not(test))]
 use crate::{
     Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus, Pallet,
+    OrderBookStatus, OrderBooks, Pallet,
 };
 #[cfg(test)]
 use framenode_runtime::order_book::{
     Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus, Pallet,
+    OrderBookStatus, OrderBooks, Pallet,
 };
 
+#[cfg(test)]
+use crate::tests::test_utils::generate_account;
+use crate::traits::DataLayer;
 use crate::{CacheDataLayer, ExpirationScheduler};
 use assets::AssetIdOf;
 use codec::Decode;
 use common::prelude::{QuoteAmount, SwapAmount};
 use common::{balance, AssetInfoProvider, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
 use frame_benchmarking::benchmarks;
-use frame_support::traits::Time;
+use frame_support::traits::{Get, Time};
 use frame_support::weights::WeightMeter;
+use frame_support::{assert_err, assert_ok};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::traits::{SaturatedConversion, Saturating, UniqueSaturatedInto};
 
 use assets::Pallet as Assets;
 use Pallet as OrderBookPallet;
@@ -247,6 +251,52 @@ fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>
         lifespan,
     )
     .unwrap();
+}
+
+fn fill_order_book_worst_case<T: Config>(
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    data: &mut impl DataLayer<T>,
+) {
+    let max_side_price_count = T::MaxSidePriceCount::get();
+    let max_orders_per_price = T::MaxLimitOrdersForPrice::get();
+    let max_orders_per_user = T::MaxOpenedLimitOrdersPerUser::get();
+    let max_expiring_orders_per_block = T::MaxExpiringOrdersPerBlock::get();
+
+    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
+    let amount = order_book.step_lot_size;
+    let now = T::Time::now();
+    let current_block = frame_system::Pallet::<T>::block_number();
+
+    let bid_prices = (1..=max_side_price_count).map(|i| (i as u128) * order_book.tick_size);
+    let ask_prices = (max_side_price_count + 1..=2 * max_side_price_count)
+        .rev()
+        .map(|i| (i as u128) * order_book.tick_size);
+
+    let mut users = (1..).map(generate_account);
+    let mut current_user = users.next();
+    // # of orders placed by `current_users`
+    let mut user_orders = 0;
+
+    let mut lifespans = (1..).map(|i| {
+        i * T::MILLISECS_PER_BLOCK.saturated_into::<u64>()
+            + T::MIN_ORDER_LIFETIME.saturated_into::<u64>()
+    });
+    let block_orders = 0;
+    for bid_price in bid_prices {
+        let buy_order = LimitOrder::<T>::new(
+            order_book.next_order_id(),
+            current_user,
+            PriceVariant::Buy,
+            bid_price,
+            amount,
+            now,
+            lifespans.next().unwrap().into(),
+            current_block,
+        );
+        order_book.place_limit_order(buy_order, data).unwrap();
+        user_orders += 1;
+        block_orders += 1;
+    }
 }
 
 fn get_last_order_id<T: Config>(
