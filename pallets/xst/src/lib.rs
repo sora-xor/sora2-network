@@ -833,11 +833,17 @@ impl<T: Config> Pallet<T> {
         } = EnabledSynthetics::<T>::get(synthetic_asset_id)
             .ok_or(Error::<T>::SyntheticDoesNotExist)?;
 
-        let dynamic_fee: FixedWrapper = T::Oracle::quote_unchecked(&reference_symbol)
+        let dynamic_fee_ratio: FixedWrapper = T::Oracle::quote_unchecked(&reference_symbol)
             .map_or(fixed_wrapper!(0), |rate| rate.dynamic_fee.into());
         let fee_ratio: FixedWrapper = fee_ratio.into();
+        let resulting_fee_ratio = fee_ratio + dynamic_fee_ratio;
 
-        return Ok(fee_ratio + dynamic_fee);
+        ensure!(
+            resulting_fee_ratio < fixed_wrapper!(1),
+            Error::<T>::InvalidFeeRatio
+        );
+
+        return Ok(resulting_fee_ratio);
     }
 
     /// Used for converting XST fee to XOR
