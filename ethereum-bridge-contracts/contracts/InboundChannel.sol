@@ -129,7 +129,7 @@ contract InboundChannel is AccessControl, ReentrancyGuard {
     }
 
     function addPeerByPeer(address newPeerAddress) external returns (bool) {
-        require(msg.sender == address(this));
+        require(msg.sender == address(this), "caller not this contract");
 
         //TODO set up call signature
         bytes memory call = abi.encodePacked(
@@ -145,7 +145,7 @@ contract InboundChannel is AccessControl, ReentrancyGuard {
     }
 
     function removePeerByPeer(address peerAddress) external returns (bool) {
-        require(msg.sender == address(this));
+        require(msg.sender == address(this), "caller not this contract");
 
         //TODO set up call signature
         bytes memory call = abi.encodePacked(
@@ -202,11 +202,11 @@ contract InboundChannel is AccessControl, ReentrancyGuard {
         uint256 signatureCount = v.length;
         require(
             signatureCount == r.length,
-            "signatureCount and r length mismatch"
+            "v and r length mismatch"
         );
         require(
             signatureCount == s.length,
-            "signatureCount and s length mismatch"
+            "v and s length mismatch"
         );
         uint256 needSigs = peersCount - (peersCount - 1) / 3;
         require(signatureCount >= needSigs, "not enough signatures");
