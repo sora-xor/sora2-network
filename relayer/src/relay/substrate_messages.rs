@@ -264,8 +264,7 @@ where
                     }
                     std::collections::btree_map::Entry::Occupied(v) => v.get().clone(),
                 };
-                let block_number: u64 = block_number.into();
-                self.syncer.update_latest_requested(block_number + 1);
+                self.syncer.update_latest_requested(block_number.into());
                 let latest_sent = self.syncer.latest_sent();
                 if Into::<u64>::into(block_number) > latest_sent {
                     debug!(
