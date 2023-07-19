@@ -55,7 +55,7 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, PriceVariant, Rate,
-    RewardReason, TradingPairSourceManager, DAI, XSTUSD,
+    RewardReason, SyntheticInfoProvider, TradingPairSourceManager, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -618,11 +618,7 @@ impl<T: Config> Pallet<T> {
         deduce_fee: bool,
         check_limits: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
-        let fee_ratio = FixedWrapper::from(
-            EnabledSynthetics::<T>::get(synthetic_asset_id)
-                .ok_or(Error::<T>::SyntheticDoesNotExist)?
-                .fee_ratio,
-        );
+        let fee_ratio = Self::get_aggregated_fee(synthetic_asset_id)?;
 
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
@@ -693,11 +689,7 @@ impl<T: Config> Pallet<T> {
         deduce_fee: bool,
         check_limits: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
-        let fee_ratio = FixedWrapper::from(
-            EnabledSynthetics::<T>::get(synthetic_asset_id)
-                .ok_or(Error::<T>::SyntheticDoesNotExist)?
-                .fee_ratio,
-        );
+        let fee_ratio = Self::get_aggregated_fee(synthetic_asset_id)?;
 
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
@@ -821,6 +813,20 @@ impl<T: Config> Pallet<T> {
 
             Ok(result)
         })
+    }
+
+    fn get_aggregated_fee(synthetic_asset_id: &T::AssetId) -> Result<FixedWrapper, DispatchError> {
+        let SyntheticInfo {
+            reference_symbol,
+            fee_ratio,
+        } = EnabledSynthetics::<T>::get(synthetic_asset_id)
+            .ok_or(Error::<T>::SyntheticDoesNotExist)?;
+
+        let dynamic_fee: FixedWrapper = T::Oracle::quote_unchecked(&reference_symbol)
+            .map_or(fixed_wrapper!(0), |rate| rate.dynamic_fee.into());
+        let fee_ratio: FixedWrapper = fee_ratio.into();
+
+        return Ok(fee_ratio + dynamic_fee);
     }
 
     /// Used for converting XST fee to XOR
@@ -994,9 +1000,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             return false;
         }
         if input_asset_id == &T::GetSyntheticBaseAssetId::get() {
-            EnabledSynthetics::<T>::contains_key(&output_asset_id)
+            Self::is_synthetic(&output_asset_id)
         } else if output_asset_id == &T::GetSyntheticBaseAssetId::get() {
-            EnabledSynthetics::<T>::contains_key(&input_asset_id)
+            Self::is_synthetic(&input_asset_id)
         } else {
             false
         }
@@ -1124,5 +1130,15 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
         EnabledSynthetics::<T>::iter()
             .map(|(asset_id, _)| asset_id)
             .collect()
+    }
+}
+
+impl<T: Config> SyntheticInfoProvider<T::AssetId> for Pallet<T> {
+    fn is_synthetic(asset_id: &T::AssetId) -> bool {
+        EnabledSynthetics::<T>::contains_key(asset_id)
+    }
+
+    fn get_synthetic_assets() -> Vec<T::AssetId> {
+        EnabledSynthetics::<T>::iter_keys().collect()
     }
 }
