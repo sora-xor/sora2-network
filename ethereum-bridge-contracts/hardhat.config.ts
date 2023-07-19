@@ -13,6 +13,7 @@ import "@nomiclabs/hardhat-solhint";
 import "hardhat-deploy";
 import "hardhat-deploy-ethers";
 import '@typechain/hardhat';
+import '@nomicfoundation/hardhat-chai-matchers';
 import { HardhatUserConfig, task } from "hardhat/config";
 
 const getenv = (name: string) => {
