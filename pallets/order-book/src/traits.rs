@@ -123,12 +123,21 @@ where
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount>;
 
-    /// Returns order ids of user
+    /// Returns order ids of user from the order book with `order_book_id`
     fn get_user_limit_orders(
         &mut self,
         account: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>>;
+
+    /// Returns order ids of user from all order books
+    fn get_all_user_limit_orders(
+        &mut self,
+        account: &T::AccountId,
+    ) -> BTreeMap<
+        OrderBookId<AssetIdOf<T>, T::DEXId>,
+        UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
+    >;
 }
 
 pub trait CurrencyLocker<AccountId, AssetId, DEXId, Error> {
