@@ -541,7 +541,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         let decayed_fee = prev_fee * decay;
 
         let new_fee_part =
-            (prev_rate / new_rate - fixed_wrapper!(1)).abs() - doubled_deviation - min_fee;
+            (new_rate / prev_rate - fixed_wrapper!(1)).abs() - doubled_deviation - min_fee;
         let new_fee = if new_fee_part > fixed_wrapper!(0) {
             decayed_fee + new_fee_part
         } else {
@@ -551,5 +551,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         new_fee
             .get()
             .map_err(|_| Error::<T, I>::DynamicFeeCalculationError.into())
+            .map(|fee| if fee >= fixed!(1) { fixed!(1) } else { fee })
     }
 }

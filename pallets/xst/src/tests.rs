@@ -809,8 +809,8 @@ mod tests {
                     fixed!(0.05)
                 )
             ).expect("Expected to set the dynamic fee calculation paramteres for the Band pallet");
-            let euro = relay_new_symbol("EURO", 3_000_000_000);
-            relay_symbol(euro.clone(), 2_000_000_000);
+            let euro = relay_new_symbol("EURO", 2_000_000_000);
+            relay_symbol(euro.clone(), 3_000_000_000);
 
             XSTPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
@@ -848,8 +848,8 @@ mod tests {
                     fixed!(0.05)
                 )
             ).expect("Expected to set the dynamic fee calculation paramteres for the Band pallet");
-            let euro = relay_new_symbol("EURO", 3_000_000_000);
-            relay_symbol(euro.clone(), 2_000_000_000);
+            let euro = relay_new_symbol("EURO", 2_000_000_000);
+            relay_symbol(euro.clone(), 3_000_000_000);
 
             XSTPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
@@ -876,12 +876,12 @@ mod tests {
             // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
             // 1 XOR = 90 DAI in sell case (D_s)
             // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
-            // 1 XSTEURO = 2 DAI (S)
+            // 1 XSTEURO = 3 DAI (S)
             // fee ratio for XSTEURO = 0.3 (F_r)
             // amount in = 100 XST (A_in)
-            // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.7) / 2 = 5250 XSTEURO (A_out)
+            // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.7) / 3 = 3500 XSTEURO (A_out)
             // fee = F_xst / X_b = 0.3 * 100 / 0.6 = 50 XOR
-            assert_approx_eq!(swap_outcome_before.amount, balance!(5250), 10000);
+            assert_approx_eq!(swap_outcome_before.amount, balance!(3500), 10000);
             assert_approx_eq!(swap_outcome_before.fee, balance!(50), 10000);
 
             assert_ok!(XSTPool::set_synthetic_asset_fee(
@@ -904,12 +904,12 @@ mod tests {
             // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
             // 1 XOR = 90 DAI in sell case (D_s)
             // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
-            // 1 XSTEURO = 2 DAI (S)
+            // 1 XSTEURO = 3 DAI (S)
             // fee ratio for XSTEURO = 0.6 (F_r) <- dynamic fee + synthetic fee
             // amount in = 100 XST (A_in)
-            // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.4) / 2 = 3000 XSTEURO (A_out)
+            // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.4) / 3 = 2000 XSTEURO (A_out)
             // fee = F_xst / X_b = 0.6 * 100 / 0.6 = 100 XOR
-            assert_approx_eq!(swap_outcome_after.amount, balance!(3000), 10000);
+            assert_approx_eq!(swap_outcome_after.amount, balance!(2000), 10000);
             assert_approx_eq!(swap_outcome_after.fee, balance!(100), 10000);
         });
     }
