@@ -1,13 +1,24 @@
-use crate::{Config, OrderBookFillSettings};
+use crate::Config;
 use common::prelude::FixedWrapper;
 use common::{balance, AssetInfoProvider, Balance, PriceVariant};
 use frame_support::pallet_prelude::*;
 use frame_support::sp_runtime::traits::Zero;
-use frame_support::traits::{Get, Time};
+use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use order_book::DataLayer;
 use order_book::{MomentOf, OrderBook, OrderBookId};
 use sp_std::prelude::*;
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct OrderBookFillSettings<Moment> {
+    /// Best (highest) price for placed buy orders
+    pub best_bid_price: order_book::types::OrderPrice,
+    /// Best (lowest) price for placed sell orders
+    pub best_ask_price: order_book::types::OrderPrice,
+    /// Lifespan of inserted orders
+    pub lifespan: Moment,
+}
 
 #[derive(Encode, Decode, scale_info::TypeInfo, frame_support::PalletError)]
 pub enum Error {
@@ -59,7 +70,10 @@ pub fn create_multiple_empty_unchecked<T: Config>(
 pub fn fill_multiple_empty_unchecked<T: Config>(
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
-    fill_settings: Vec<(OrderBookId<T::AssetId, T::DEXId>, OrderBookFillSettings)>,
+    fill_settings: Vec<(
+        OrderBookId<T::AssetId, T::DEXId>,
+        OrderBookFillSettings<MomentOf<T>>,
+    )>,
 ) -> Result<(), DispatchError> {
     let now = <T as order_book::Config>::Time::now();
 
@@ -112,7 +126,7 @@ fn fill_order_book<T: Config>(
     bids_owner: T::AccountId,
     buy_orders_steps: impl Iterator<Item = (u128, Balance)>,
     sell_orders_steps: impl Iterator<Item = (u128, Balance)>,
-    settings: OrderBookFillSettings,
+    settings: OrderBookFillSettings<MomentOf<T>>,
     now: MomentOf<T>,
 ) -> Result<(), DispatchError> {
     let current_block = frame_system::Pallet::<T>::block_number();
@@ -158,7 +172,7 @@ fn fill_order_book<T: Config>(
         PriceVariant::Buy,
         buy_orders.into_iter(),
         now,
-        T::OrderBookOrderLifespan::get(),
+        settings.lifespan,
         current_block,
     )?;
 
@@ -170,7 +184,7 @@ fn fill_order_book<T: Config>(
         PriceVariant::Sell,
         sell_orders.into_iter(),
         now,
-        T::OrderBookOrderLifespan::get(),
+        settings.lifespan,
         current_block,
     )?;
 

@@ -1588,15 +1588,10 @@ impl faucet::Config for Runtime {
     type WeightInfo = faucet::weights::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-    pub QaToolsOrderLifespan: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 1 month
-}
-
 #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 impl qa_tools::Config for Runtime {
     type AssetInfoProvider = Assets;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
-    type OrderBookOrderLifespan = QaToolsOrderLifespan;
 }
 
 parameter_types! {

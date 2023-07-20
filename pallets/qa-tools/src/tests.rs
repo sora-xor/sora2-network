@@ -78,7 +78,8 @@ fn should_create_and_fill_orderbook() {
                     order_book_id,
                     OrderBookFillSettings {
                         best_bid_price,
-                        best_ask_price
+                        best_ask_price,
+                        lifespan: <Runtime as order_book::Config>::MAX_ORDER_LIFETIME,
                     }
                 )]
             ));

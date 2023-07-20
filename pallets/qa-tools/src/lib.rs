@@ -46,10 +46,10 @@ pub mod pallet {
         AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
     };
     use frame_support::dispatch::DispatchErrorWithPostInfo;
-    use frame_support::traits::Get;
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
+    pub use pallets::order_book_tools::OrderBookFillSettings;
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -58,7 +58,6 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + order_book::Config + trading_pair::Config {
         type WeightInfo: WeightInfo;
-        type OrderBookOrderLifespan: Get<MomentOf<Self>>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
@@ -74,27 +73,6 @@ pub mod pallet {
     pub enum Error<T> {
         /// Order book related errors
         OrderBook(pallets::order_book_tools::Error),
-    }
-
-    #[derive(
-        Encode,
-        Decode,
-        Eq,
-        PartialEq,
-        Copy,
-        Clone,
-        PartialOrd,
-        Ord,
-        RuntimeDebug,
-        Hash,
-        scale_info::TypeInfo,
-        MaxEncodedLen,
-    )]
-    pub struct OrderBookFillSettings {
-        /// Best (highest) price for placed buy orders
-        pub best_bid_price: order_book::types::OrderPrice,
-        /// Best (lowest) price for placed sell orders
-        pub best_ask_price: order_book::types::OrderPrice,
     }
 
     #[pallet::call]
@@ -152,7 +130,10 @@ pub mod pallet {
             origin: OriginFor<T>,
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
-            fill_settings: Vec<(OrderBookId<T::AssetId, T::DEXId>, OrderBookFillSettings)>,
+            fill_settings: Vec<(
+                OrderBookId<T::AssetId, T::DEXId>,
+                OrderBookFillSettings<MomentOf<T>>,
+            )>,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
