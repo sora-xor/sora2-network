@@ -132,7 +132,7 @@ fn fill_order_book<T: Config>(
     let current_block = frame_system::Pallet::<T>::block_number();
     let lifespan = settings
         .lifespan
-        .unwrap_or(<T as order_book::Config>::MAX_ORDER_LIFETIME);
+        .unwrap_or(<T as order_book::Config>::MAX_ORDER_LIFESPAN);
     let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
         .ok_or(crate::Error::<T>::OrderBook(Error::UnknownOrderBook))?;
 

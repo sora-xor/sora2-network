@@ -106,8 +106,8 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
-        const MAX_ORDER_LIFETIME: MomentOf<Self>;
-        const MIN_ORDER_LIFETIME: MomentOf<Self>;
+        const MAX_ORDER_LIFESPAN: MomentOf<Self>;
+        const MIN_ORDER_LIFESPAN: MomentOf<Self>;
         const MILLISECS_PER_BLOCK: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
 
@@ -669,7 +669,7 @@ pub mod pallet {
             let order_id = order_book.next_order_id();
             let now = T::Time::now();
             let current_block = frame_system::Pallet::<T>::block_number();
-            let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFETIME);
+            let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFESPAN);
             let order = LimitOrder::<T>::new(
                 order_id,
                 who.clone(),

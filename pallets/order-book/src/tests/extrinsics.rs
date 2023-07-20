@@ -568,9 +568,9 @@ fn should_delete_order_book_with_a_lot_of_orders() {
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
 
         let mut buy_price = balance!(1000);
-        let mut buy_lifetime = 10000; // ms
+        let mut buy_lifespan = 10000; // ms
         let mut sell_price = balance!(1001);
-        let mut sell_lifetime = 10000; // ms
+        let mut sell_lifespan = 10000; // ms
 
         let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
 
@@ -582,8 +582,8 @@ fn should_delete_order_book_with_a_lot_of_orders() {
 
             buy_price -= order_book.tick_size;
             sell_price += order_book.tick_size;
-            buy_lifetime += 5000;
-            sell_lifetime += 5000;
+            buy_lifespan += 5000;
+            sell_lifespan += 5000;
 
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(account.clone()).into(),
@@ -591,7 +591,7 @@ fn should_delete_order_book_with_a_lot_of_orders() {
                 buy_price,
                 balance!(10),
                 PriceVariant::Buy,
-                Some(buy_lifetime)
+                Some(buy_lifespan)
             ));
 
             assert_ok!(OrderBookPallet::place_limit_order(
@@ -600,7 +600,7 @@ fn should_delete_order_book_with_a_lot_of_orders() {
                 sell_price,
                 balance!(10),
                 PriceVariant::Sell,
-                Some(sell_lifetime)
+                Some(sell_lifespan)
             ));
         }
 
@@ -2214,9 +2214,9 @@ fn should_place_a_lot_of_orders() {
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
 
         let mut buy_price = balance!(1000);
-        let mut buy_lifetime = 10000; // ms
+        let mut buy_lifespan = 10000; // ms
         let mut sell_price = balance!(1001);
-        let mut sell_lifetime = 10000; // ms
+        let mut sell_lifespan = 10000; // ms
 
         let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
 
@@ -2228,8 +2228,8 @@ fn should_place_a_lot_of_orders() {
 
             buy_price -= order_book.tick_size;
             sell_price += order_book.tick_size;
-            buy_lifetime += 5000;
-            sell_lifetime += 5000;
+            buy_lifespan += 5000;
+            sell_lifespan += 5000;
 
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(account.clone()).into(),
@@ -2237,7 +2237,7 @@ fn should_place_a_lot_of_orders() {
                 buy_price,
                 balance!(10),
                 PriceVariant::Buy,
-                Some(buy_lifetime)
+                Some(buy_lifespan)
             ));
 
             assert_ok!(OrderBookPallet::place_limit_order(
@@ -2246,7 +2246,7 @@ fn should_place_a_lot_of_orders() {
                 sell_price,
                 balance!(10),
                 PriceVariant::Sell,
-                Some(sell_lifetime)
+                Some(sell_lifespan)
             ));
         }
     });
