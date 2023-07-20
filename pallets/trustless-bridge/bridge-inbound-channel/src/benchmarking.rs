@@ -48,7 +48,7 @@ benchmarks! {
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
-        let message_id = MessageId::inbound(envelope.nonce);
+        let message_id = MessageId::basic(BASE_NETWORK_ID.into(), bridge_types::SubNetworkId::Mainnet.into(), envelope.nonce);
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }
@@ -77,7 +77,7 @@ benchmarks! {
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
-        let message_id = MessageId::inbound(envelope.nonce);
+        let message_id = MessageId::basic(BASE_NETWORK_ID.into(), bridge_types::SubNetworkId::Mainnet.into(), envelope.nonce);
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }
@@ -94,7 +94,7 @@ benchmarks! {
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
-        let message_id = MessageId::inbound(envelope.nonce);
+        let message_id = MessageId::basic(BASE_NETWORK_ID.into(), bridge_types::SubNetworkId::Mainnet.into(), envelope.nonce);
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }
