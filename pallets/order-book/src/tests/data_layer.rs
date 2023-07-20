@@ -30,7 +30,7 @@
 
 #![cfg(feature = "ready-to-test")] // order-book
 
-use crate::tests::test_utils::*;
+use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::{balance, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
@@ -74,7 +74,7 @@ fn should_work_as_cache() {
         };
 
         let order_id = 1;
-        let owner = alice();
+        let owner = alice::<Runtime>();
         let price = balance!(12);
         let amount = balance!(100);
 
@@ -165,7 +165,7 @@ fn should_work_as_storage() {
         };
 
         let order_id = 1;
-        let owner = alice();
+        let owner = alice::<Runtime>();
         let price = balance!(12);
         let amount = balance!(100);
 
@@ -250,7 +250,7 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
         let order_sell_id1 = 3;
         let order_sell_id2 = 4;
         let order_sell_id3 = 5;
-        let owner = alice();
+        let owner = alice::<Runtime>();
         let price1 = balance!(12);
         let price2 = balance!(13);
         let amount = balance!(10);
@@ -357,7 +357,7 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         let order_buy_id = 1;
         let order_sell_id = 2;
-        let owner = alice();
+        let owner = alice::<Runtime>();
         let price = balance!(12);
         let amount = balance!(10);
 
@@ -500,7 +500,7 @@ fn should_not_insert_limit_order(data: &mut impl DataLayer<Runtime>) {
             quote: XOR.into(),
         };
 
-        let owner = alice();
+        let owner = alice::<Runtime>();
         let price = balance!(12);
         let amount = balance!(10);
 
@@ -558,7 +558,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         let order_sell_id1 = 3;
         let order_sell_id2 = 4;
         let order_sell_id3 = 5;
-        let owner = alice();
+        let owner = alice::<Runtime>();
         let price1 = balance!(12);
         let price2 = balance!(13);
         let amount = balance!(10);
@@ -1049,7 +1049,7 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         };
 
         let order_id = 1;
-        let owner = alice();
+        let owner = alice::<Runtime>();
         let price = balance!(10);
         let amount = balance!(100);
         let new_amount = balance!(80);
@@ -1182,7 +1182,7 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
         };
 
         let order_id = 1;
-        let owner = alice();
+        let owner = alice::<Runtime>();
         let price = balance!(10);
         let amount = balance!(100);
         let new_amount = balance!(0);
@@ -1333,7 +1333,7 @@ fn should_not_update_equal_limit_order(data: &mut impl DataLayer<Runtime>) {
 
         let order = LimitOrder::<Runtime>::new(
             order_id,
-            alice(),
+            alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(12),
             amount,
@@ -1380,7 +1380,7 @@ fn should_not_update_limit_order_with_bigger_amount(data: &mut impl DataLayer<Ru
 
         let order = LimitOrder::<Runtime>::new(
             order_id,
-            alice(),
+            alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(12),
             amount,

@@ -67,6 +67,7 @@ mod market_order;
 mod order_book;
 mod scheduler;
 pub mod storage_data_layer;
+mod test_utils;
 pub mod traits;
 pub mod types;
 

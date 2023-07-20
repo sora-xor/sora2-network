@@ -266,14 +266,16 @@ fn fill_order_book_worst_case<T: Config>(
     let amount = order_book.step_lot_size;
     let now = T::Time::now();
     let current_block = frame_system::Pallet::<T>::block_number();
+    // to allow mutating with `order_book.next_order_id()` later
+    let tick_size = order_book.tick_size;
 
-    let bid_prices = (1..=max_side_price_count).map(|i| (i as u128) * order_book.tick_size);
+    let bid_prices = (1..=max_side_price_count).map(|i| (i as u128) * tick_size);
     let ask_prices = (max_side_price_count + 1..=2 * max_side_price_count)
         .rev()
-        .map(|i| (i as u128) * order_book.tick_size);
+        .map(|i| (i as u128) * tick_size);
 
-    let mut users = (1..).map(generate_account);
-    let mut current_user = users.next();
+    let mut users = (1..).map(crate::test_utils::generate_account::<T>);
+    let mut current_user = users.next().expect("infinite iterator");
     // # of orders placed by `current_users`
     let mut user_orders = 0;
 
@@ -281,16 +283,16 @@ fn fill_order_book_worst_case<T: Config>(
         i * T::MILLISECS_PER_BLOCK.saturated_into::<u64>()
             + T::MIN_ORDER_LIFETIME.saturated_into::<u64>()
     });
-    let block_orders = 0;
+    let mut block_orders = 0;
     for bid_price in bid_prices {
         let buy_order = LimitOrder::<T>::new(
             order_book.next_order_id(),
-            current_user,
+            current_user.clone(),
             PriceVariant::Buy,
             bid_price,
             amount,
             now,
-            lifespans.next().unwrap().into(),
+            lifespans.next().unwrap().saturated_into(),
             current_block,
         );
         order_book.place_limit_order(buy_order, data).unwrap();
