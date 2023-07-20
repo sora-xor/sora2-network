@@ -16,8 +16,8 @@ pub struct OrderBookFillSettings<Moment> {
     pub best_bid_price: order_book::types::OrderPrice,
     /// Best (lowest) price for placed sell orders
     pub best_ask_price: order_book::types::OrderPrice,
-    /// Lifespan of inserted orders
-    pub lifespan: Moment,
+    /// Lifespan of inserted orders, max by default
+    pub lifespan: Option<Moment>,
 }
 
 #[derive(Encode, Decode, scale_info::TypeInfo, frame_support::PalletError)]
@@ -130,6 +130,9 @@ fn fill_order_book<T: Config>(
     now: MomentOf<T>,
 ) -> Result<(), DispatchError> {
     let current_block = frame_system::Pallet::<T>::block_number();
+    let lifespan = settings
+        .lifespan
+        .unwrap_or(<T as order_book::Config>::MAX_ORDER_LIFETIME);
     let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
         .ok_or(crate::Error::<T>::OrderBook(Error::UnknownOrderBook))?;
 
@@ -172,7 +175,7 @@ fn fill_order_book<T: Config>(
         PriceVariant::Buy,
         buy_orders.into_iter(),
         now,
-        settings.lifespan,
+        lifespan,
         current_block,
     )?;
 
@@ -184,7 +187,7 @@ fn fill_order_book<T: Config>(
         PriceVariant::Sell,
         sell_orders.into_iter(),
         now,
-        settings.lifespan,
+        lifespan,
         current_block,
     )?;
 
