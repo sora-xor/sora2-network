@@ -56,7 +56,6 @@ mod tests;
 
 pub type TradingPair<T> = common::prelude::TradingPair<<T as assets::Config>::AssetId>;
 type Assets<T> = assets::Pallet<T>;
-type DEXManager<T> = dex_manager::Pallet<T>;
 
 pub use weights::WeightInfo;
 
@@ -80,7 +79,7 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
         &base_asset_id: &T::AssetId,
         &target_asset_id: &T::AssetId,
     ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
-        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        T::DexInfoProvider::ensure_dex_exists(dex_id)?;
         let pair = TradingPair::<T> {
             base_asset_id,
             target_asset_id,
@@ -156,7 +155,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::IdenticalAssetIds
         );
 
-        let dex_info = DEXManager::<T>::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         ensure!(
             base_asset_id == dex_info.base_asset_id
                 || base_asset_id == dex_info.synthetic_base_asset_id,
@@ -183,7 +182,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn list_trading_pairs(dex_id: &T::DEXId) -> Result<Vec<TradingPair<T>>, DispatchError> {
-        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        T::DexInfoProvider::ensure_dex_exists(dex_id)?;
         Ok(EnabledSources::<T>::iter_prefix(dex_id)
             .map(|(pair, _)| pair)
             .collect())
@@ -194,7 +193,7 @@ impl<T: Config> Pallet<T> {
         &base_asset_id: &T::AssetId,
         &target_asset_id: &T::AssetId,
     ) -> Result<bool, DispatchError> {
-        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        T::DexInfoProvider::ensure_dex_exists(dex_id)?;
         let pair = TradingPair::<T> {
             base_asset_id,
             target_asset_id,
@@ -208,21 +207,19 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::DexIdOf;
+    use common::{DEXInfo, DexIdOf};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + common::Config + assets::Config + dex_manager::Config
-    {
+    pub trait Config: frame_system::Config + common::Config + assets::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
     }
 
     /// The current storage version.
