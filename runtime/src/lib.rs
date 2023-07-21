@@ -2114,6 +2114,7 @@ impl Convert<U256, Balance> for FeeConverter {
 #[cfg(feature = "wip")] // Bridges
 parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
+    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2130,6 +2131,7 @@ impl bridge_inbound_channel::Config for Runtime {
     type OutboundChannel = BridgeOutboundChannel;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2142,6 +2144,7 @@ impl bridge_outbound_channel::Config for Runtime {
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type MessageStatusNotifier = BridgeProxy;
     type AuxiliaryDigestHandler = LeafProvider;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
@@ -2249,6 +2252,7 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type UnsignedLongevity = DataSignerLongevity;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
@@ -2298,6 +2302,7 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type AssetId = AssetId;
     type Balance = Balance;
     type TimepointProvider = GenericTimepointProvider;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 

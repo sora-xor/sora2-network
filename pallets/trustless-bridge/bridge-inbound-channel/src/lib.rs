@@ -87,6 +87,9 @@ pub mod pallet {
             AdditionalEVMOutboundData,
         >;
 
+        #[pallet::constant]
+        type ThisNetworkId: Get<GenericNetworkId>;
+
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
     }
@@ -195,7 +198,8 @@ pub mod pallet {
 
             Self::handle_fee(envelope.fee, &relayer);
 
-            let message_id = MessageId::inbound(envelope.nonce);
+            let message_id =
+                MessageId::basic(network_id.into(), T::ThisNetworkId::get(), envelope.nonce);
             T::MessageDispatch::dispatch(
                 network_id,
                 message_id.into(),
@@ -259,8 +263,13 @@ pub mod pallet {
             );
 
             for i in 0..batch_dispatched_event.results_length {
-                let message_id = MessageId::outbound_batched(batch_dispatched_event.batch_nonce, i)
-                    .using_encoded(|v| <T as Config>::Hashing::hash(v));
+                let message_id = MessageId::batched(
+                    T::ThisNetworkId::get(),
+                    network_id.into(),
+                    batch_dispatched_event.batch_nonce,
+                    i,
+                )
+                .using_encoded(|v| <T as Config>::Hashing::hash(v));
 
                 let message_status = if (batch_dispatched_event.results & 1 << i) != 0 {
                     MessageStatus::Done
