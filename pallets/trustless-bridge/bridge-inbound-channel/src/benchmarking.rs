@@ -10,7 +10,8 @@ use hex_literal::hex;
 use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
-use bridge_types::types::{MessageId, Proof};
+use bridge_types::evm::Proof;
+use bridge_types::types::MessageId;
 use bridge_types::{Header, Log};
 
 const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
@@ -47,7 +48,7 @@ benchmarks! {
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
-        let message_id = MessageId::inbound(envelope.nonce);
+        let message_id = MessageId::basic(BASE_NETWORK_ID.into(), bridge_types::SubNetworkId::Mainnet.into(), envelope.nonce);
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }
@@ -76,7 +77,7 @@ benchmarks! {
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
-        let message_id = MessageId::inbound(envelope.nonce);
+        let message_id = MessageId::basic(BASE_NETWORK_ID.into(), bridge_types::SubNetworkId::Mainnet.into(), envelope.nonce);
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }
@@ -93,7 +94,7 @@ benchmarks! {
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
-        let message_id = MessageId::inbound(envelope.nonce);
+        let message_id = MessageId::basic(BASE_NETWORK_ID.into(), bridge_types::SubNetworkId::Mainnet.into(), envelope.nonce);
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }

@@ -53,14 +53,10 @@ pub mod tests;
 use crate::impls::PreimageWeightInfo;
 #[cfg(feature = "wip")]
 use crate::impls::{
-    BridgeAssetRegistryImpl, DispatchableSubstrateBridgeCall, EVMBridgeCallFilter,
-    SubstrateBridgeCallFilter,
+    DispatchableSubstrateBridgeCall, EVMBridgeCallFilter, SubstrateBridgeCallFilter,
 };
 #[cfg(feature = "wip")]
-use bridge_types::{
-    types::{AdditionalEVMInboundData, LeafExtraData},
-    U256,
-};
+use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 #[cfg(feature = "wip")]
@@ -132,7 +128,8 @@ pub use common::{
     balance, fixed, fixed_from_basis_points, AssetInfoProvider, AssetName, AssetSymbol,
     BalancePrecision, BasisPoints, ContentSource, CrowdloanTag, DexInfoProvider, FilterMode, Fixed,
     FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned, OnValBurned, TradingPairSourceManager,
+    LiquiditySourceType, OnPswapBurned, OnValBurned, SyntheticInfoProvider,
+    TradingPairSourceManager,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::EthereumHeader;
@@ -938,6 +935,7 @@ impl assets::Config for Runtime {
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -1047,24 +1045,28 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance2> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance3> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl dex_api::Config for Runtime {
@@ -1723,6 +1725,7 @@ impl pswap_distribution::Config for Runtime {
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -2032,6 +2035,10 @@ impl order_book::Config for Runtime {
     const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50); // TODO: order-book clarify
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
+    type Locker = OrderBook;
+    type Unlocker = OrderBook;
+    type Scheduler = OrderBook;
+    type Delegate = OrderBook;
     type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<10000>; // TODO: order-book clarify
@@ -2040,6 +2047,7 @@ impl order_book::Config for Runtime {
     type EnsureTradingPairExists = TradingPair;
     type TradingPairSourceManager = TradingPair;
     type AssetInfoProvider = Assets;
+    type SyntheticInfoProvider = XSTPool;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
     type ParameterUpdateOrigin = EitherOfDiverse<
@@ -2088,12 +2096,12 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
 }
 
 #[cfg(feature = "wip")]
-use bridge_types::{EVMChainId, SubNetworkId, CHANNEL_INDEXING_PREFIX, H256};
+use bridge_types::{EVMChainId, SubNetworkId, H256};
 
 #[cfg(feature = "wip")] // Bridges
 parameter_types! {
-    pub const BridgeMaxMessagePayloadSize: u64 = 256;
-    pub const BridgeMaxMessagesPerCommit: u8 = 20;
+    pub const BridgeMaxMessagePayloadSize: u32 = 256;
+    pub const BridgeMaxMessagesPerCommit: u32 = 20;
     pub const BridgeMaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
@@ -2112,6 +2120,7 @@ impl Convert<U256, Balance> for FeeConverter {
 #[cfg(feature = "wip")] // Bridges
 parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
+    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2128,13 +2137,12 @@ impl bridge_inbound_channel::Config for Runtime {
     type OutboundChannel = BridgeOutboundChannel;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 #[cfg(feature = "wip")] // EVM bridge
 impl bridge_outbound_channel::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type MaxTotalGasLimit = BridgeMaxTotalGasLimit;
@@ -2142,6 +2150,7 @@ impl bridge_outbound_channel::Config for Runtime {
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type MessageStatusNotifier = BridgeProxy;
     type AuxiliaryDigestHandler = LeafProvider;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
@@ -2177,12 +2186,11 @@ impl eth_app::Config for Runtime {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = BridgeProxy;
-    type Currency = Currencies;
-    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetRegistry = BridgeProxy;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type AssetIdConverter = AssetIdConverter;
+    type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2196,12 +2204,11 @@ impl erc20_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = BridgeProxy;
-    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetRegistry = BridgeProxy;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type AssetIdConverter = AssetIdConverter;
-    type Currency = Currencies;
+    type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2249,6 +2256,9 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type MessageDispatch = SubstrateDispatch;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
+    type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
+    type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
@@ -2290,9 +2300,7 @@ impl bridge_types::traits::TimepointProvider for GenericTimepointProvider {
 
 #[cfg(feature = "wip")] // Substrate bridge
 impl substrate_bridge_channel::outbound::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MessageStatusNotifier = BridgeProxy;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
@@ -2300,6 +2308,7 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type AssetId = AssetId;
     type Balance = Balance;
     type TimepointProvider = GenericTimepointProvider;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
@@ -2323,13 +2332,12 @@ impl substrate_bridge_app::Config for Runtime {
         bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
     >;
     type MessageStatusNotifier = BridgeProxy;
-    type BridgeAccountId = GetTrustlessBridgeAccountId;
-    type Currency = Currencies;
-    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetRegistry = BridgeProxy;
     type AccountIdConverter = sp_runtime::traits::Identity;
     type AssetIdConverter = AssetIdConverter;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type WeightInfo = ();
+    type BridgeAssetLocker = BridgeProxy;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge

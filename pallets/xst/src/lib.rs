@@ -55,7 +55,7 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, PriceVariant, Rate,
-    RewardReason, TradingPairSourceManager, DAI, XSTUSD,
+    RewardReason, SyntheticInfoProvider, TradingPairSourceManager, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -616,12 +616,9 @@ impl<T: Config> Pallet<T> {
         synthetic_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
+        check_limits: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
-        let fee_ratio = FixedWrapper::from(
-            EnabledSynthetics::<T>::get(synthetic_asset_id)
-                .ok_or(Error::<T>::SyntheticDoesNotExist)?
-                .fee_ratio,
-        );
+        let fee_ratio = Self::get_aggregated_fee(synthetic_asset_id)?;
 
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
@@ -634,7 +631,7 @@ impl<T: Config> Pallet<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Self::ensure_base_asset_amount_within_limit(output_amount)?;
+                Self::ensure_base_asset_amount_within_limit(output_amount, check_limits)?;
                 if deduce_fee {
                     let fee_amount = (fee_ratio * output_amount)
                         .try_into_balance()
@@ -649,7 +646,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 // Calculate how much `synthetic_asset_id` we need to give to buy (get)
                 // `desired_amount_out` of `main_asset_id`
-                Self::ensure_base_asset_amount_within_limit(desired_amount_out)?;
+                Self::ensure_base_asset_amount_within_limit(desired_amount_out, check_limits)?;
                 let desired_amount_out_with_fee = if deduce_fee {
                     (FixedWrapper::from(desired_amount_out) / (fixed_wrapper!(1) - fee_ratio))
                         .try_into_balance()
@@ -690,18 +687,15 @@ impl<T: Config> Pallet<T> {
         synthetic_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
+        check_limits: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
-        let fee_ratio = FixedWrapper::from(
-            EnabledSynthetics::<T>::get(synthetic_asset_id)
-                .ok_or(Error::<T>::SyntheticDoesNotExist)?
-                .fee_ratio,
-        );
+        let fee_ratio = Self::get_aggregated_fee(synthetic_asset_id)?;
 
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 // Calculate how much `synthetic_asset_id` we will get
                 // if we sell `desired_amount_in` of `main_asset_id`
-                Self::ensure_base_asset_amount_within_limit(desired_amount_in)?;
+                Self::ensure_base_asset_amount_within_limit(desired_amount_in, check_limits)?;
                 let fee_amount = if deduce_fee {
                     (fee_ratio * FixedWrapper::from(desired_amount_in))
                         .try_into_balance()
@@ -732,7 +726,7 @@ impl<T: Config> Pallet<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Self::ensure_base_asset_amount_within_limit(input_amount)?;
+                Self::ensure_base_asset_amount_within_limit(input_amount, check_limits)?;
                 if deduce_fee {
                     let input_amount_with_fee =
                         FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
@@ -774,12 +768,14 @@ impl<T: Config> Pallet<T> {
                         &output_asset_id,
                         swap_amount.into(),
                         true,
+                        true,
                     )?
                 } else {
                     Self::decide_buy_amounts(
                         &output_asset_id,
                         &input_asset_id,
                         swap_amount.into(),
+                        true,
                         true,
                     )?
                 };
@@ -819,6 +815,20 @@ impl<T: Config> Pallet<T> {
         })
     }
 
+    fn get_aggregated_fee(synthetic_asset_id: &T::AssetId) -> Result<FixedWrapper, DispatchError> {
+        let SyntheticInfo {
+            reference_symbol,
+            fee_ratio,
+        } = EnabledSynthetics::<T>::get(synthetic_asset_id)
+            .ok_or(Error::<T>::SyntheticDoesNotExist)?;
+
+        let dynamic_fee: FixedWrapper = T::Oracle::quote_unchecked(&reference_symbol)
+            .map_or(fixed_wrapper!(0), |rate| rate.dynamic_fee.into());
+        let fee_ratio: FixedWrapper = fee_ratio.into();
+
+        return Ok(fee_ratio + dynamic_fee);
+    }
+
     /// Used for converting XST fee to XOR
     fn convert_fee(fee_amount: Balance) -> Result<Balance, DispatchError> {
         let output_to_base: FixedWrapper =
@@ -837,8 +847,11 @@ impl<T: Config> Pallet<T> {
             .map_err(|_| Error::<T>::PriceCalculationFailed)?)
     }
 
-    fn ensure_base_asset_amount_within_limit(amount: Balance) -> Result<(), DispatchError> {
-        if amount > T::GetSyntheticBaseBuySellLimit::get() {
+    fn ensure_base_asset_amount_within_limit(
+        amount: Balance,
+        check_limits: bool,
+    ) -> Result<(), DispatchError> {
+        if check_limits && amount > T::GetSyntheticBaseBuySellLimit::get() {
             fail!(Error::<T>::SyntheticBaseBuySellLimitExceeded)
         } else {
             Ok(())
@@ -926,35 +939,14 @@ impl<T: Config> Pallet<T> {
             None,
         )
     }
-}
 
-impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
-    for Pallet<T>
-{
-    fn can_exchange(
-        dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
-    ) -> bool {
-        if *dex_id != DEXId::Polkaswap.into() {
-            return false;
-        }
-        if input_asset_id == &T::GetSyntheticBaseAssetId::get() {
-            EnabledSynthetics::<T>::contains_key(&output_asset_id)
-        } else if output_asset_id == &T::GetSyntheticBaseAssetId::get() {
-            EnabledSynthetics::<T>::contains_key(&input_asset_id)
-        } else {
-            false
-        }
-    }
-
-    /// Get spot price of synthetic tokens based on desired amount.
-    fn quote(
+    fn inner_quote(
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
+        check_limits: bool,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
@@ -962,9 +954,21 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
         let (input_amount, output_amount, fee_amount) = if input_asset_id == synthetic_base_asset_id
         {
-            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee)?
+            Self::decide_sell_amounts(
+                &input_asset_id,
+                &output_asset_id,
+                amount,
+                deduce_fee,
+                check_limits,
+            )?
         } else {
-            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
+            Self::decide_buy_amounts(
+                &output_asset_id,
+                &input_asset_id,
+                amount,
+                deduce_fee,
+                check_limits,
+            )?
         };
         let fee_amount = if deduce_fee {
             Self::convert_fee(fee_amount)?
@@ -981,6 +985,45 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 Self::quote_weight(),
             )),
         }
+    }
+}
+
+impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
+    for Pallet<T>
+{
+    fn can_exchange(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+    ) -> bool {
+        if *dex_id != DEXId::Polkaswap.into() {
+            return false;
+        }
+        if input_asset_id == &T::GetSyntheticBaseAssetId::get() {
+            Self::is_synthetic(&output_asset_id)
+        } else if output_asset_id == &T::GetSyntheticBaseAssetId::get() {
+            Self::is_synthetic(&input_asset_id)
+        } else {
+            false
+        }
+    }
+
+    /// Get spot price of synthetic tokens based on desired amount.
+    fn quote(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+        Self::inner_quote(
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+            true,
+        )
     }
 
     fn exchange(
@@ -1029,8 +1072,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // no impact, because price is linear
         // TODO: consider optimizing additional call by introducing NoImpact enum variant
-        Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
-            .map(|(outcome, _)| outcome)
+        Self::inner_quote(
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+            false,
+        )
+        .map(|(outcome, _)| outcome)
     }
 
     fn quote_weight() -> Weight {
@@ -1080,5 +1130,15 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
         EnabledSynthetics::<T>::iter()
             .map(|(asset_id, _)| asset_id)
             .collect()
+    }
+}
+
+impl<T: Config> SyntheticInfoProvider<T::AssetId> for Pallet<T> {
+    fn is_synthetic(asset_id: &T::AssetId) -> bool {
+        EnabledSynthetics::<T>::contains_key(asset_id)
+    }
+
+    fn get_synthetic_assets() -> Vec<T::AssetId> {
+        EnabledSynthetics::<T>::iter_keys().collect()
     }
 }
