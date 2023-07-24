@@ -115,8 +115,7 @@ benchmarks! {
     }
 
     new_trivial {
-        // TODO: #392 use DexInfoProvider instead of dex-manager pallet
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&DEX.into())?;
+        let dex_info = <T as trading_pair::Config>::DexInfoProvider::get_dex_info(&DEX.into())?;
         let from_asset: T::AssetId = XSTUSD.into();
         let to_asset: T::AssetId = VAL.into();
     }: {
