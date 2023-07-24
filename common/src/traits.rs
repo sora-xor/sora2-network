@@ -246,6 +246,10 @@ pub trait DataFeed<Symbol, Rate, ResolveTime> {
 
     /// Get all supported symbols and their last update time
     fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError>;
+
+    /// Get rate for the specified symbol without any checks
+    /// - `symbol`: which symbol to query
+    fn quote_unchecked(symbol: &Symbol) -> Option<Rate>;
 }
 
 impl<Symbol, Rate, ResolveTime> DataFeed<Symbol, Rate, ResolveTime> for () {
@@ -255,6 +259,10 @@ impl<Symbol, Rate, ResolveTime> DataFeed<Symbol, Rate, ResolveTime> for () {
 
     fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError> {
         Ok(Vec::new())
+    }
+
+    fn quote_unchecked(_symbol: &Symbol) -> Option<Rate> {
+        None
     }
 }
 
@@ -986,6 +994,22 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
         _who: &AccountId,
         _amount: Balance,
     ) -> DispatchResult {
+        unimplemented!()
+    }
+}
+
+pub trait SyntheticInfoProvider<AssetId> {
+    fn is_synthetic(asset_id: &AssetId) -> bool;
+
+    fn get_synthetic_assets() -> Vec<AssetId>;
+}
+
+impl<AssetId> SyntheticInfoProvider<AssetId> for () {
+    fn is_synthetic(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
+    fn get_synthetic_assets() -> Vec<AssetId> {
         unimplemented!()
     }
 }

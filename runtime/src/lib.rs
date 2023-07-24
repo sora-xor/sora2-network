@@ -128,7 +128,8 @@ pub use common::{
     balance, fixed, fixed_from_basis_points, AssetInfoProvider, AssetName, AssetSymbol,
     BalancePrecision, BasisPoints, ContentSource, CrowdloanTag, DexInfoProvider, FilterMode, Fixed,
     FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned, OnValBurned, TradingPairSourceManager,
+    LiquiditySourceType, OnPswapBurned, OnValBurned, SyntheticInfoProvider,
+    TradingPairSourceManager,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::EthereumHeader;
@@ -934,6 +935,7 @@ impl assets::Config for Runtime {
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -1043,24 +1045,28 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance2> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance3> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl dex_api::Config for Runtime {
@@ -1719,6 +1725,7 @@ impl pswap_distribution::Config for Runtime {
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -2028,6 +2035,10 @@ impl order_book::Config for Runtime {
     const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50); // TODO: order-book clarify
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
+    type Locker = OrderBook;
+    type Unlocker = OrderBook;
+    type Scheduler = OrderBook;
+    type Delegate = OrderBook;
     type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<10000>; // TODO: order-book clarify
@@ -2036,6 +2047,7 @@ impl order_book::Config for Runtime {
     type EnsureTradingPairExists = TradingPair;
     type TradingPairSourceManager = TradingPair;
     type AssetInfoProvider = Assets;
+    type SyntheticInfoProvider = XSTPool;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
     type ParameterUpdateOrigin = EitherOfDiverse<
@@ -2108,6 +2120,7 @@ impl Convert<U256, Balance> for FeeConverter {
 #[cfg(feature = "wip")] // Bridges
 parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
+    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2124,6 +2137,7 @@ impl bridge_inbound_channel::Config for Runtime {
     type OutboundChannel = BridgeOutboundChannel;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2136,6 +2150,7 @@ impl bridge_outbound_channel::Config for Runtime {
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type MessageStatusNotifier = BridgeProxy;
     type AuxiliaryDigestHandler = LeafProvider;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
@@ -2243,6 +2258,7 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type UnsignedLongevity = DataSignerLongevity;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
@@ -2292,6 +2308,7 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type AssetId = AssetId;
     type Balance = Balance;
     type TimepointProvider = GenericTimepointProvider;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 

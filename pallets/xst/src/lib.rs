@@ -55,7 +55,7 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, PriceVariant, Rate,
-    RewardReason, TradingPairSourceManager, DAI, XSTUSD,
+    RewardReason, SyntheticInfoProvider, TradingPairSourceManager, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -271,6 +271,10 @@ pub mod pallet {
             fee_ratio: Fixed,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
+            ensure!(
+                fee_ratio >= fixed!(0) && fee_ratio < fixed!(1),
+                Error::<T>::InvalidFeeRatio
+            );
 
             EnabledSynthetics::<T>::try_mutate(
                 &synthetic_asset,
@@ -618,16 +622,13 @@ impl<T: Config> Pallet<T> {
         deduce_fee: bool,
         check_limits: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
-        let fee_ratio = FixedWrapper::from(
-            EnabledSynthetics::<T>::get(synthetic_asset_id)
-                .ok_or(Error::<T>::SyntheticDoesNotExist)?
-                .fee_ratio,
-        );
+        let fee_ratio = Self::get_aggregated_fee(synthetic_asset_id)?;
 
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 // Calculate how much `main_asset_id` we will buy (get)
                 // if we give `desired_amount_in` of `synthetic_asset_id`
+                ensure!(desired_amount_in != 0, Error::<T>::PriceCalculationFailed);
                 let mut output_amount: Balance = FixedWrapper::from(Self::buy_price(
                     main_asset_id,
                     synthetic_asset_id,
@@ -635,21 +636,25 @@ impl<T: Config> Pallet<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Self::ensure_base_asset_amount_within_limit(output_amount, check_limits)?;
-                if deduce_fee {
+
+                let fee_amount = if deduce_fee {
                     let fee_amount = (fee_ratio * output_amount)
                         .try_into_balance()
                         .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                     output_amount = output_amount.saturating_sub(fee_amount);
-                    (desired_amount_in, output_amount, fee_amount)
+                    fee_amount
                 } else {
-                    (desired_amount_in, output_amount, 0)
-                }
+                    0
+                };
+                Self::ensure_base_asset_amount_within_limit(output_amount, check_limits)?;
+
+                (desired_amount_in, output_amount, fee_amount)
             }
 
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 // Calculate how much `synthetic_asset_id` we need to give to buy (get)
                 // `desired_amount_out` of `main_asset_id`
+                ensure!(desired_amount_out != 0, Error::<T>::PriceCalculationFailed);
                 Self::ensure_base_asset_amount_within_limit(desired_amount_out, check_limits)?;
                 let desired_amount_out_with_fee = if deduce_fee {
                     (FixedWrapper::from(desired_amount_out) / (fixed_wrapper!(1) - fee_ratio))
@@ -693,16 +698,13 @@ impl<T: Config> Pallet<T> {
         deduce_fee: bool,
         check_limits: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
-        let fee_ratio = FixedWrapper::from(
-            EnabledSynthetics::<T>::get(synthetic_asset_id)
-                .ok_or(Error::<T>::SyntheticDoesNotExist)?
-                .fee_ratio,
-        );
+        let fee_ratio = Self::get_aggregated_fee(synthetic_asset_id)?;
 
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 // Calculate how much `synthetic_asset_id` we will get
                 // if we sell `desired_amount_in` of `main_asset_id`
+                ensure!(desired_amount_in != 0, Error::<T>::PriceCalculationFailed);
                 Self::ensure_base_asset_amount_within_limit(desired_amount_in, check_limits)?;
                 let fee_amount = if deduce_fee {
                     (fee_ratio * FixedWrapper::from(desired_amount_in))
@@ -727,6 +729,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 // Calculate how much `main_asset_id` we need to sell to get
                 // `desired_amount_out` of `synthetic_asset_id`
+                ensure!(desired_amount_out != 0, Error::<T>::PriceCalculationFailed);
                 let input_amount: Balance = FixedWrapper::from(Self::sell_price(
                     main_asset_id,
                     synthetic_asset_id,
@@ -734,8 +737,7 @@ impl<T: Config> Pallet<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Self::ensure_base_asset_amount_within_limit(input_amount, check_limits)?;
-                if deduce_fee {
+                let (input_amount_with_fee, fee) = if deduce_fee {
                     let input_amount_with_fee =
                         FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
                     let input_amount_with_fee = input_amount_with_fee
@@ -743,12 +745,13 @@ impl<T: Config> Pallet<T> {
                         .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                     (
                         input_amount_with_fee,
-                        desired_amount_out,
                         input_amount_with_fee.saturating_sub(input_amount),
                     )
                 } else {
-                    (input_amount, desired_amount_out, 0)
-                }
+                    (input_amount, 0)
+                };
+                Self::ensure_base_asset_amount_within_limit(input_amount_with_fee, check_limits)?;
+                (input_amount_with_fee, desired_amount_out, fee)
             }
         })
     }
@@ -821,6 +824,26 @@ impl<T: Config> Pallet<T> {
 
             Ok(result)
         })
+    }
+
+    fn get_aggregated_fee(synthetic_asset_id: &T::AssetId) -> Result<FixedWrapper, DispatchError> {
+        let SyntheticInfo {
+            reference_symbol,
+            fee_ratio,
+        } = EnabledSynthetics::<T>::get(synthetic_asset_id)
+            .ok_or(Error::<T>::SyntheticDoesNotExist)?;
+
+        let dynamic_fee_ratio: FixedWrapper = T::Oracle::quote_unchecked(&reference_symbol)
+            .map_or(fixed_wrapper!(0), |rate| rate.dynamic_fee.into());
+        let fee_ratio: FixedWrapper = fee_ratio.into();
+        let resulting_fee_ratio = fee_ratio + dynamic_fee_ratio;
+
+        ensure!(
+            resulting_fee_ratio < fixed_wrapper!(1),
+            Error::<T>::InvalidFeeRatio
+        );
+
+        return Ok(resulting_fee_ratio);
     }
 
     /// Used for converting XST fee to XOR
@@ -994,9 +1017,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             return false;
         }
         if input_asset_id == &T::GetSyntheticBaseAssetId::get() {
-            EnabledSynthetics::<T>::contains_key(&output_asset_id)
+            Self::is_synthetic(&output_asset_id)
         } else if output_asset_id == &T::GetSyntheticBaseAssetId::get() {
-            EnabledSynthetics::<T>::contains_key(&input_asset_id)
+            Self::is_synthetic(&input_asset_id)
         } else {
             false
         }
@@ -1124,5 +1147,15 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
         EnabledSynthetics::<T>::iter()
             .map(|(asset_id, _)| asset_id)
             .collect()
+    }
+}
+
+impl<T: Config> SyntheticInfoProvider<T::AssetId> for Pallet<T> {
+    fn is_synthetic(asset_id: &T::AssetId) -> bool {
+        EnabledSynthetics::<T>::contains_key(asset_id)
+    }
+
+    fn get_synthetic_assets() -> Vec<T::AssetId> {
+        EnabledSynthetics::<T>::iter_keys().collect()
     }
 }
