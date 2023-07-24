@@ -46,6 +46,7 @@ pub mod pallet {
         AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
     };
     use frame_support::dispatch::DispatchErrorWithPostInfo;
+    use frame_support::sp_runtime::BoundedBTreeSet;
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
@@ -67,7 +68,13 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        type QaToolsWhitelistCapacity: Get<u32>;
     }
+
+    #[pallet::storage]
+    #[pallet::getter(fn whitelisted_callers)]
+    pub type WhitelistedCallers<T: Config> =
+        StorageValue<_, BoundedBTreeSet<T::AccountId, T::QaToolsWhitelistCapacity>>;
 
     #[pallet::error]
     pub enum Error<T> {
