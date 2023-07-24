@@ -78,6 +78,14 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
+        // this pallet errors
+        /// Cannot add an account to the whitelist: it's full
+        WhitelistFull,
+        /// The account is already in the whitelist
+        AlreadyInWhitelist,
+        /// The account intended for removal is not in whitelist
+        NotInWhitelist,
+
         // order_book pallet errors
         /// Did not find an order book with given id to fill. Likely an error with
         /// order book creation.
@@ -86,13 +94,58 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
+        pub fn add_to_whitelist(
+            origin: OriginFor<T>,
+            account: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            WhitelistedCallers::<T>::mutate(|option_whitelist| {
+                let whitelist = match option_whitelist {
+                    Some(w) => w,
+                    None => option_whitelist.insert(BoundedBTreeSet::new()),
+                };
+                whitelist
+                    .try_insert(account)
+                    .map_err(|_| Error::<T>::WhitelistFull)?
+                    .then_some(())
+                    .ok_or(Error::<T>::AlreadyInWhitelist)?;
+                Ok::<(), Error<T>>(())
+            })?;
+            Ok(().into())
+        }
+
+        /// TODO: desc
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
+        pub fn remove_from_whitelist(
+            origin: OriginFor<T>,
+            account: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            WhitelistedCallers::<T>::mutate(|option_whitelist| {
+                let whitelist = match option_whitelist {
+                    Some(w) => w,
+                    None => option_whitelist.insert(BoundedBTreeSet::new()),
+                };
+                let was_not_whitelisted = !whitelist.remove(&account);
+                if was_not_whitelisted {
+                    Err(Error::<T>::NotInWhitelist)
+                } else {
+                    Ok::<(), Error<T>>(())
+                }
+            })?;
+            Ok(().into())
+        }
+
         /// Create multiple order books with default parameters (if do not exist yet).
         ///
         /// Parameters:
         /// - `origin`: caller, should be account because error messages for unsigned txs are unclear,
         /// - `order_book_ids`: ids of the created order books; trading pairs are created
         /// if necessary,
-        #[pallet::call_index(0)]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
         pub fn order_book_create_empty_batch(
             origin: OriginFor<T>,
@@ -133,7 +186,7 @@ pub mod pallet {
         /// - `fill_settings`: Parameters for placing the orders in each order book.
         /// `best_bid_price` should be at least 3 price steps from the lowest accepted price,
         /// and `best_ask_price` - at least 3 steps below maximum price,
-        #[pallet::call_index(1)]
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_batch())]
         pub fn order_book_create_and_fill_batch(
             origin: OriginFor<T>,
