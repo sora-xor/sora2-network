@@ -46,9 +46,10 @@ pub mod pallet {
         AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
     };
     use frame_support::dispatch::DispatchErrorWithPostInfo;
-    use frame_support::sp_runtime::BoundedBTreeSet;
+    use frame_support::sp_runtime::{traits::BadOrigin, BoundedBTreeSet};
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
+    use frame_system::RawOrigin;
     use order_book::{MomentOf, OrderBookId};
     pub use pallets::order_book_tools::OrderBookFillSettings;
     use sp_std::prelude::*;
@@ -155,7 +156,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
         ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
+            let who = Self::ensure_in_whitelist(origin)?;
 
             // replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
@@ -201,7 +202,7 @@ pub mod pallet {
                 OrderBookFillSettings<MomentOf<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
+            let who = Self::ensure_in_whitelist(origin)?;
 
             let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
             pallets::order_book_tools::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
@@ -234,5 +235,25 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        pub fn ensure_in_whitelist<OuterOrigin>(
+            origin: OuterOrigin,
+        ) -> Result<T::AccountId, BadOrigin>
+        where
+            OuterOrigin: Into<Result<RawOrigin<T::AccountId>, OuterOrigin>>,
+        {
+            let who = match origin.into() {
+                Ok(RawOrigin::Signed(w)) => w,
+                _ => return Err(BadOrigin.into()),
+            };
+            let Some(whitelist) = WhitelistedCallers::<T>::get() else {
+                return Err(BadOrigin)
+            };
+            if whitelist.contains(&who) {
+                Ok(who)
+            } else {
+                Err(BadOrigin)
+            }
+        }
+    }
 }
