@@ -71,8 +71,10 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        /// Order book related errors
-        OrderBook(pallets::order_book_tools::Error),
+        // order_book pallet errors
+        /// Did not find an order book with given id to fill. Likely an error with
+        /// order book creation.
+        CannotFillUnknownOrderBook,
     }
 
     #[pallet::call]

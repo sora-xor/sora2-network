@@ -20,12 +20,6 @@ pub struct OrderBookFillSettings<Moment> {
     pub lifespan: Option<Moment>,
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, frame_support::PalletError)]
-pub enum Error {
-    /// Order book does not exist for this trading pair
-    UnknownOrderBook,
-}
-
 /// Does not create an order book if it already exists
 pub fn create_multiple_empty_unchecked<T: Config>(
     who: &T::AccountId,
@@ -134,7 +128,7 @@ fn fill_order_book<T: Config>(
         .lifespan
         .unwrap_or(<T as order_book::Config>::MAX_ORDER_LIFESPAN);
     let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
-        .ok_or(crate::Error::<T>::OrderBook(Error::UnknownOrderBook))?;
+        .ok_or(crate::Error::<T>::CannotFillUnknownOrderBook)?;
 
     // Convert price steps and best price to actual prices
     let buy_orders: Vec<_> = buy_orders_steps
