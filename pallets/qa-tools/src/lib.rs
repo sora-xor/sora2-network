@@ -71,6 +71,9 @@ pub mod pallet {
         type QaToolsWhitelistCapacity: Get<u32>;
     }
 
+    /// In order to prevent breaking testnets/staging with such zero-weight
+    /// extrinsics from this pallet, we restrict `origin`s to root and trusted
+    /// list of accounts (added by root).
     #[pallet::storage]
     #[pallet::getter(fn whitelisted_callers)]
     pub type WhitelistedCallers<T: Config> =
@@ -94,6 +97,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Add the account to the list of allowed callers.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
         pub fn add_to_whitelist(
@@ -116,7 +120,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// TODO: desc
+        /// Remove the account from the list of allowed callers.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
         pub fn remove_from_whitelist(
