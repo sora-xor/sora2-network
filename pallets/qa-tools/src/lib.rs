@@ -244,7 +244,7 @@ pub mod pallet {
         {
             let who = match origin.into() {
                 Ok(RawOrigin::Signed(w)) => w,
-                _ => return Err(BadOrigin.into()),
+                _ => return Err(BadOrigin),
             };
             let Some(whitelist) = WhitelistedCallers::<T>::get() else {
                 return Err(BadOrigin)
