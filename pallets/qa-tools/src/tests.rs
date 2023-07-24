@@ -38,7 +38,7 @@ use common::{
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
-use framenode_runtime::qa_tools::{self, Error, OrderBookFillSettings, WhitelistedCallers};
+use framenode_runtime::qa_tools::{self, OrderBookFillSettings, WhitelistedCallers};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::OrderBookId;
 use sp_runtime::traits::BadOrigin;
@@ -162,5 +162,27 @@ fn create_and_fill_batch_whitelist_only() {
             .map_err(|e| e.error)?;
             Ok(())
         });
+    })
+}
+
+#[test]
+fn whitelist_modification_is_root_only() {
+    ext().execute_with(|| {
+        assert_err!(
+            QAToolsPallet::add_to_whitelist(RuntimeOrigin::none(), alice()),
+            BadOrigin
+        );
+        assert_err!(
+            QAToolsPallet::add_to_whitelist(RuntimeOrigin::signed(alice()), alice()),
+            BadOrigin
+        );
+        assert_err!(
+            QAToolsPallet::add_to_whitelist(RuntimeOrigin::signed(bob()), alice()),
+            BadOrigin
+        );
+        assert_ok!(QAToolsPallet::add_to_whitelist(
+            RuntimeOrigin::root(),
+            alice()
+        ));
     })
 }
