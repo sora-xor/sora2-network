@@ -32,12 +32,7 @@
 
 use assets::AssetIdOf;
 use codec::Decode;
-use common::{balance, AssetInfoProvider, Balance, PriceVariant};
-use frame_support::assert_ok;
-use frame_support::traits::Hooks;
-use frame_support::weights::Weight;
-use frame_system::RawOrigin;
-use sp_std::collections::btree_map::BTreeMap;
+use common::{balance, AssetInfoProvider, Balance};
 
 pub const DEX: common::DEXId = common::DEXId::Polkaswap;
 pub const INIT_BALANCE: Balance = balance!(1000000);
@@ -87,8 +82,14 @@ pub use test_only::*;
 #[cfg(test)]
 mod test_only {
     use super::*;
+    use common::PriceVariant;
+    use frame_support::assert_ok;
+    use frame_support::traits::Hooks;
+    use frame_support::weights::Weight;
+    use frame_system::RawOrigin;
     use framenode_runtime::order_book::{self, Config, OrderBook, OrderBookId, Pallet};
     use framenode_runtime::{Runtime, RuntimeOrigin};
+    use sp_std::collections::btree_map::BTreeMap;
 
     pub type E = order_book::Error<Runtime>;
     pub type OrderBookPallet = Pallet<Runtime>;
