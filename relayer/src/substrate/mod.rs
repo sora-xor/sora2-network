@@ -474,10 +474,12 @@ impl<T: ConfigExt> SignedClient<T> {
         } else {
             debug!("Submitting extrinsic without validation data");
         }
+        // Metadata validation often works incorrectly, so we turn it off for now
+        let xt = UnvalidatedTxPayload(xt);
         let res = self
             .api()
             .tx()
-            .sign_and_submit_then_watch_default(xt, self)
+            .sign_and_submit_then_watch_default(&xt, self)
             .await
             .map_err(|e| {
                 error!("sign and submit then watch error: {:?}", e);

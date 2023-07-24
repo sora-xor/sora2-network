@@ -166,28 +166,13 @@ impl SubstrateMessagesRelay {
                     {
                         let message = self.make_message(log).await?;
                         debug!("Channel: Send {} message", event.nonce);
-                        let ev = self
-                            .sub
-                            .api()
-                            .tx()
-                            .sign_and_submit_then_watch_default(
-                                &runtime::tx().bridge_inbound_channel().submit(
-                                    self.network_id,
-                                    message.data,
-                                    message.proof,
-                                ),
-                                &self.sub,
-                            )
-                            .await?
-                            .wait_for_in_block()
-                            .await?
-                            .wait_for_success()
+                        self.sub
+                            .submit_extrinsic(&runtime::tx().bridge_inbound_channel().submit(
+                                self.network_id,
+                                message.data,
+                                message.proof,
+                            ))
                             .await?;
-                        info!(
-                            "Channel: Message {} included in {:?}",
-                            event.nonce,
-                            ev.block_hash()
-                        );
                         sub_nonce = event.nonce;
                     }
                 }
@@ -244,11 +229,9 @@ impl SubstrateMessagesRelay {
                         ) {
                             debug!("Channel: Send BatchDispatched {}", event.batch_nonce);
                             let message = self.make_message(log).await?;
-                            let ev = self
+                            self
                                 .sub
-                                .api()
-                                .tx()
-                                .sign_and_submit_then_watch_default(
+                                .submit_extrinsic(
                                     &runtime::tx()
                                         .bridge_inbound_channel()
                                         .batch_dispatched(
@@ -256,18 +239,8 @@ impl SubstrateMessagesRelay {
                                             message.data,
                                             message.proof,
                                         ),
-                                    &self.sub,
                                 )
-                                .await?
-                                .wait_for_in_block()
-                                .await?
-                                .wait_for_success()
                                 .await?;
-                            info!(
-                            "Channel: BatchDispatched event from {} submitted in {:?}",
-                            event.relayer,
-                            ev.block_hash()
-                        );
                         sub_inbound_nonce = event.batch_nonce;
                     }
                 }
