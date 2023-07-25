@@ -106,8 +106,8 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
-        const MAX_ORDER_LIFETIME: MomentOf<Self>;
-        const MIN_ORDER_LIFETIME: MomentOf<Self>;
+        const MAX_ORDER_LIFESPAN: MomentOf<Self>;
+        const MIN_ORDER_LIFESPAN: MomentOf<Self>;
         const MILLISECS_PER_BLOCK: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
 
@@ -662,7 +662,7 @@ pub mod pallet {
             let order_id = order_book.next_order_id();
             let now = T::Time::now();
             let current_block = frame_system::Pallet::<T>::block_number();
-            let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFETIME);
+            let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFESPAN);
             let order = LimitOrder::<T>::new(
                 order_id,
                 who.clone(),
@@ -700,6 +700,32 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
 
             order_book.cancel_limit_order(order, &mut data)?;
+            data.commit();
+            Ok(().into())
+        }
+
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order().saturating_mul(limit_orders_to_cancel.iter().fold(0, |count, (_, order_ids)| count + order_ids.len() as u64)))]
+        pub fn cancel_limit_orders_batch(
+            origin: OriginFor<T>,
+            limit_orders_to_cancel: Vec<(OrderBookId<AssetIdOf<T>, T::DEXId>, Vec<T::OrderId>)>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let mut data = CacheDataLayer::<T>::new();
+
+            for (order_book_id, order_ids) in limit_orders_to_cancel {
+                for order_id in order_ids {
+                    let order = data.get_limit_order(&order_book_id, order_id)?;
+
+                    ensure!(order.owner == who, Error::<T>::Unauthorized);
+
+                    let order_book =
+                        <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+
+                    order_book.cancel_limit_order(order, &mut data)?;
+                }
+            }
+
             data.commit();
             Ok(().into())
         }

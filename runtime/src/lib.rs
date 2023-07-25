@@ -937,6 +937,7 @@ impl assets::Config for Runtime {
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -1046,24 +1047,28 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance2> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance3> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl dex_api::Config for Runtime {
@@ -1589,14 +1594,14 @@ impl faucet::Config for Runtime {
 }
 
 parameter_types! {
-    pub QaToolsOrderLifespan: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 1 month
+    pub QaToolsWhitelistCapacity: u32 = 512;
 }
 
 #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 impl qa_tools::Config for Runtime {
     type AssetInfoProvider = Assets;
+    type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
-    type OrderBookOrderLifespan = QaToolsOrderLifespan;
 }
 
 parameter_types! {
@@ -1733,6 +1738,7 @@ impl pswap_distribution::Config for Runtime {
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -2036,8 +2042,8 @@ parameter_types! {
 
 #[cfg(feature = "ready-to-test")] // order-book
 impl order_book::Config for Runtime {
-    const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
-    const MIN_ORDER_LIFETIME: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
+    const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
+    const MIN_ORDER_LIFESPAN: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50); // TODO: order-book clarify
     type RuntimeEvent = RuntimeEvent;
@@ -2127,6 +2133,7 @@ impl Convert<U256, Balance> for FeeConverter {
 #[cfg(feature = "wip")] // Bridges
 parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
+    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2143,6 +2150,7 @@ impl bridge_inbound_channel::Config for Runtime {
     type OutboundChannel = BridgeOutboundChannel;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2155,6 +2163,7 @@ impl bridge_outbound_channel::Config for Runtime {
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type MessageStatusNotifier = BridgeProxy;
     type AuxiliaryDigestHandler = LeafProvider;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
@@ -2262,6 +2271,7 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type UnsignedLongevity = DataSignerLongevity;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
@@ -2311,6 +2321,7 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type AssetId = AssetId;
     type Balance = Balance;
     type TimepointProvider = GenericTimepointProvider;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 

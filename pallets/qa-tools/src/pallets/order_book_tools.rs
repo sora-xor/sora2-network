@@ -1,18 +1,23 @@
-use crate::{Config, OrderBookFillSettings};
+use crate::Config;
 use common::prelude::FixedWrapper;
 use common::{balance, AssetInfoProvider, Balance, PriceVariant};
 use frame_support::pallet_prelude::*;
 use frame_support::sp_runtime::traits::Zero;
-use frame_support::traits::{Get, Time};
+use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use order_book::DataLayer;
 use order_book::{MomentOf, OrderBook, OrderBookId};
 use sp_std::prelude::*;
 
-#[derive(Encode, Decode, scale_info::TypeInfo, frame_support::PalletError)]
-pub enum Error {
-    /// Order book does not exist for this trading pair
-    UnknownOrderBook,
+#[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct OrderBookFillSettings<Moment> {
+    /// Best (highest) price for placed buy orders
+    pub best_bid_price: order_book::types::OrderPrice,
+    /// Best (lowest) price for placed sell orders
+    pub best_ask_price: order_book::types::OrderPrice,
+    /// Lifespan of inserted orders, max by default
+    pub lifespan: Option<Moment>,
 }
 
 /// Does not create an order book if it already exists
@@ -59,7 +64,10 @@ pub fn create_multiple_empty_unchecked<T: Config>(
 pub fn fill_multiple_empty_unchecked<T: Config>(
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
-    fill_settings: Vec<(OrderBookId<T::AssetId, T::DEXId>, OrderBookFillSettings)>,
+    fill_settings: Vec<(
+        OrderBookId<T::AssetId, T::DEXId>,
+        OrderBookFillSettings<MomentOf<T>>,
+    )>,
 ) -> Result<(), DispatchError> {
     let now = <T as order_book::Config>::Time::now();
 
@@ -112,12 +120,15 @@ fn fill_order_book<T: Config>(
     bids_owner: T::AccountId,
     buy_orders_steps: impl Iterator<Item = (u128, Balance)>,
     sell_orders_steps: impl Iterator<Item = (u128, Balance)>,
-    settings: OrderBookFillSettings,
+    settings: OrderBookFillSettings<MomentOf<T>>,
     now: MomentOf<T>,
 ) -> Result<(), DispatchError> {
     let current_block = frame_system::Pallet::<T>::block_number();
+    let lifespan = settings
+        .lifespan
+        .unwrap_or(<T as order_book::Config>::MAX_ORDER_LIFESPAN);
     let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
-        .ok_or(crate::Error::<T>::OrderBook(Error::UnknownOrderBook))?;
+        .ok_or(crate::Error::<T>::CannotFillUnknownOrderBook)?;
 
     // Convert price steps and best price to actual prices
     let buy_orders: Vec<_> = buy_orders_steps
@@ -158,7 +169,7 @@ fn fill_order_book<T: Config>(
         PriceVariant::Buy,
         buy_orders.into_iter(),
         now,
-        T::OrderBookOrderLifespan::get(),
+        lifespan,
         current_block,
     )?;
 
@@ -170,7 +181,7 @@ fn fill_order_book<T: Config>(
         PriceVariant::Sell,
         sell_orders.into_iter(),
         now,
-        T::OrderBookOrderLifespan::get(),
+        lifespan,
         current_block,
     )?;
 

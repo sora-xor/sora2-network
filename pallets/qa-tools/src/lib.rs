@@ -46,10 +46,12 @@ pub mod pallet {
         AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
     };
     use frame_support::dispatch::DispatchErrorWithPostInfo;
-    use frame_support::traits::Get;
+    use frame_support::sp_runtime::{traits::BadOrigin, BoundedBTreeSet};
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
+    use frame_system::RawOrigin;
     use order_book::{MomentOf, OrderBookId};
+    pub use pallets::order_book_tools::OrderBookFillSettings;
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -58,7 +60,6 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + order_book::Config + trading_pair::Config {
         type WeightInfo: WeightInfo;
-        type OrderBookOrderLifespan: Get<MomentOf<Self>>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
@@ -68,50 +69,94 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        type QaToolsWhitelistCapacity: Get<u32>;
     }
+
+    /// In order to prevent breaking testnets/staging with such zero-weight
+    /// extrinsics from this pallet, we restrict `origin`s to root and trusted
+    /// list of accounts (added by root).
+    #[pallet::storage]
+    #[pallet::getter(fn whitelisted_callers)]
+    pub type WhitelistedCallers<T: Config> =
+        StorageValue<_, BoundedBTreeSet<T::AccountId, T::QaToolsWhitelistCapacity>>;
 
     #[pallet::error]
     pub enum Error<T> {
-        /// Order book related errors
-        OrderBook(pallets::order_book_tools::Error),
-    }
+        // this pallet errors
+        /// Cannot add an account to the whitelist: it's full
+        WhitelistFull,
+        /// The account is already in the whitelist
+        AlreadyInWhitelist,
+        /// The account intended for removal is not in whitelist
+        NotInWhitelist,
 
-    #[derive(
-        Encode,
-        Decode,
-        Eq,
-        PartialEq,
-        Copy,
-        Clone,
-        PartialOrd,
-        Ord,
-        RuntimeDebug,
-        Hash,
-        scale_info::TypeInfo,
-        MaxEncodedLen,
-    )]
-    pub struct OrderBookFillSettings {
-        /// Best (highest) price for placed buy orders
-        pub best_bid_price: order_book::types::OrderPrice,
-        /// Best (lowest) price for placed sell orders
-        pub best_ask_price: order_book::types::OrderPrice,
+        // order_book pallet errors
+        /// Did not find an order book with given id to fill. Likely an error with
+        /// order book creation.
+        CannotFillUnknownOrderBook,
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Add the account to the list of allowed callers.
+        #[pallet::call_index(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
+        pub fn add_to_whitelist(
+            origin: OriginFor<T>,
+            account: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            WhitelistedCallers::<T>::mutate(|option_whitelist| {
+                let whitelist = match option_whitelist {
+                    Some(w) => w,
+                    None => option_whitelist.insert(BoundedBTreeSet::new()),
+                };
+                whitelist
+                    .try_insert(account)
+                    .map_err(|_| Error::<T>::WhitelistFull)?
+                    .then_some(())
+                    .ok_or(Error::<T>::AlreadyInWhitelist)?;
+                Ok::<(), Error<T>>(())
+            })?;
+            Ok(().into())
+        }
+
+        /// Remove the account from the list of allowed callers.
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
+        pub fn remove_from_whitelist(
+            origin: OriginFor<T>,
+            account: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            WhitelistedCallers::<T>::mutate(|option_whitelist| {
+                let whitelist = match option_whitelist {
+                    Some(w) => w,
+                    None => option_whitelist.insert(BoundedBTreeSet::new()),
+                };
+                let was_not_whitelisted = !whitelist.remove(&account);
+                if was_not_whitelisted {
+                    Err(Error::<T>::NotInWhitelist)
+                } else {
+                    Ok::<(), Error<T>>(())
+                }
+            })?;
+            Ok(().into())
+        }
+
         /// Create multiple order books with default parameters (if do not exist yet).
         ///
         /// Parameters:
         /// - `origin`: caller, should be account because error messages for unsigned txs are unclear,
         /// - `order_book_ids`: ids of the created order books; trading pairs are created
         /// if necessary,
-        #[pallet::call_index(0)]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
         pub fn order_book_create_empty_batch(
             origin: OriginFor<T>,
             order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
         ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
+            let who = Self::ensure_in_whitelist(origin)?;
 
             // replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
@@ -146,15 +191,18 @@ pub mod pallet {
         /// - `fill_settings`: Parameters for placing the orders in each order book.
         /// `best_bid_price` should be at least 3 price steps from the lowest accepted price,
         /// and `best_ask_price` - at least 3 steps below maximum price,
-        #[pallet::call_index(1)]
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_batch())]
         pub fn order_book_create_and_fill_batch(
             origin: OriginFor<T>,
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
-            fill_settings: Vec<(OrderBookId<T::AssetId, T::DEXId>, OrderBookFillSettings)>,
+            fill_settings: Vec<(
+                OrderBookId<T::AssetId, T::DEXId>,
+                OrderBookFillSettings<MomentOf<T>>,
+            )>,
         ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
+            let who = Self::ensure_in_whitelist(origin)?;
 
             let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
             pallets::order_book_tools::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
@@ -187,5 +235,25 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        pub fn ensure_in_whitelist<OuterOrigin>(
+            origin: OuterOrigin,
+        ) -> Result<T::AccountId, BadOrigin>
+        where
+            OuterOrigin: Into<Result<RawOrigin<T::AccountId>, OuterOrigin>>,
+        {
+            let who = match origin.into() {
+                Ok(RawOrigin::Signed(w)) => w,
+                _ => return Err(BadOrigin),
+            };
+            let Some(whitelist) = WhitelistedCallers::<T>::get() else {
+                return Err(BadOrigin)
+            };
+            if whitelist.contains(&who) {
+                Ok(who)
+            } else {
+                Err(BadOrigin)
+            }
+        }
+    }
 }

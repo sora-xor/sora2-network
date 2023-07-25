@@ -62,7 +62,6 @@ use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
-
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
 
 pub mod weights;
@@ -374,7 +373,7 @@ impl<T: Config> Pallet<T> {
         );
 
         common::with_transaction(|| {
-            let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+            let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
             let maybe_path =
                 ExchangePath::<T>::new_trivial(&dex_info, *input_asset_id, *output_asset_id);
             let total_weight = <T as Config>::WeightInfo::new_trivial();
@@ -666,7 +665,7 @@ impl<T: Config> Pallet<T> {
             input_asset_id != output_asset_id,
             Error::<T>::UnavailableExchangePath
         );
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let maybe_path =
             ExchangePath::<T>::new_trivial(&dex_info, *input_asset_id, *output_asset_id);
         maybe_path.map_or_else(
@@ -1081,7 +1080,7 @@ impl<T: Config> Pallet<T> {
         input_asset_id: T::AssetId,
         output_asset_id: T::AssetId,
     ) -> Result<bool, DispatchError> {
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let maybe_path = ExchangePath::<T>::new_trivial(&dex_info, input_asset_id, output_asset_id);
         maybe_path.map_or(Ok(false), |paths| {
             let paths_flag = paths
@@ -1198,7 +1197,7 @@ impl<T: Config> Pallet<T> {
         swap_variant: SwapVariant,
     ) -> Weight {
         // Get DEX info or return weight that will be rejected
-        let Ok(dex_info) = dex_manager::Pallet::<T>::get_dex_info(dex_id) else {
+        let Ok(dex_info) = T::DexInfoProvider::get_dex_info(dex_id) else {
             return REJECTION_WEIGHT;
         };
 
@@ -1328,7 +1327,7 @@ impl<T: Config> Pallet<T> {
         input_asset_id: T::AssetId,
         output_asset_id: T::AssetId,
     ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let maybe_path = ExchangePath::<T>::new_trivial(&dex_info, input_asset_id, output_asset_id);
         maybe_path.map_or_else(
             || Err(Error::<T>::UnavailableExchangePath.into()),
@@ -2147,7 +2146,6 @@ pub mod pallet {
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
 
-    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
     // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]

@@ -32,14 +32,16 @@
 //! but they make modify-run iterations during development much quicker
 
 use common::{
-    balance, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
+    balance, AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
     PredefinedAssetId, VAL, XOR,
 };
-use frame_support::assert_ok;
+use frame_support::pallet_prelude::DispatchResult;
+use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
-use framenode_runtime::qa_tools::{self, OrderBookFillSettings};
+use framenode_runtime::qa_tools::{self, OrderBookFillSettings, WhitelistedCallers};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::OrderBookId;
+use sp_runtime::traits::BadOrigin;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
 pub type QAToolsPallet = qa_tools::Pallet<Runtime>;
@@ -70,6 +72,7 @@ fn should_create_and_fill_orderbook() {
                 base,
                 quote,
             };
+            let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
             assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::signed(alice()),
                 alice(),
@@ -78,7 +81,8 @@ fn should_create_and_fill_orderbook() {
                     order_book_id,
                     OrderBookFillSettings {
                         best_bid_price,
-                        best_ask_price
+                        best_ask_price,
+                        lifespan: None,
                     }
                 )]
             ));
@@ -122,4 +126,63 @@ fn should_create_and_fill_orderbook() {
         // todo (m.tagirov) enable in #542
         // test_create_and_fill_batch(nft, XOR, balance!(10), balance!(11));
     });
+}
+
+fn test_whitelist<F: Fn(AccountIdOf<Runtime>) -> DispatchResult>(call: F) {
+    let whitelist_before = WhitelistedCallers::<Runtime>::get().clone();
+    let _ = QAToolsPallet::remove_from_whitelist(RuntimeOrigin::root(), alice());
+    assert_err!(call(alice()), BadOrigin);
+    QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice())
+        .expect("just removed from whitelist");
+    assert_ne!(call(alice()), Err(BadOrigin.into()));
+    WhitelistedCallers::<Runtime>::set(whitelist_before);
+}
+
+#[test]
+fn create_empty_batch_whitelist_only() {
+    ext().execute_with(|| {
+        test_whitelist(|caller| {
+            QAToolsPallet::order_book_create_empty_batch(RuntimeOrigin::signed(caller), vec![])
+                .map_err(|e| e.error)?;
+            Ok(())
+        });
+    })
+}
+
+#[test]
+fn create_and_fill_batch_whitelist_only() {
+    ext().execute_with(|| {
+        test_whitelist(|caller| {
+            QAToolsPallet::order_book_create_and_fill_batch(
+                RuntimeOrigin::signed(caller),
+                alice(),
+                alice(),
+                vec![],
+            )
+            .map_err(|e| e.error)?;
+            Ok(())
+        });
+    })
+}
+
+#[test]
+fn whitelist_modification_is_root_only() {
+    ext().execute_with(|| {
+        assert_err!(
+            QAToolsPallet::add_to_whitelist(RuntimeOrigin::none(), alice()),
+            BadOrigin
+        );
+        assert_err!(
+            QAToolsPallet::add_to_whitelist(RuntimeOrigin::signed(alice()), alice()),
+            BadOrigin
+        );
+        assert_err!(
+            QAToolsPallet::add_to_whitelist(RuntimeOrigin::signed(bob()), alice()),
+            BadOrigin
+        );
+        assert_ok!(QAToolsPallet::add_to_whitelist(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+    })
 }

@@ -232,6 +232,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 pub struct FeeConverter<T: Config>(PhantomData<T>);
@@ -254,6 +255,7 @@ impl bridge_inbound_channel::Config for Test {
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
     type OutboundChannel = MockOutboundChannel<Self::AccountId>;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 

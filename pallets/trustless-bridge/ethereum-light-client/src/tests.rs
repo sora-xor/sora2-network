@@ -6,6 +6,7 @@ use crate::mock::{
     ropsten_london_message,
 };
 use bridge_types::network_config::NetworkConfig as EthNetworkConfig;
+use bridge_types::traits::EthereumGasPriceOracle;
 use bridge_types::traits::Verifier as VerifierConfig;
 use bridge_types::{import_digest, EVMChainId, U256};
 use frame_support::pallet_prelude::InvalidTransaction;
@@ -845,6 +846,82 @@ fn it_validates_last_headers_difficulty_multi() {
         header1.difficulty = header1.difficulty * 1002 / 1000;
         assert_ok!(
             mock_verifier_with_pow::Verifier::validate_header_difficulty_test(network_id, &header1)
+        );
+    });
+}
+
+#[test]
+fn test_base_fee_oracle() {
+    new_tester::<Test>().execute_with(|| {
+        let mut header = child_of_genesis_ethereum_header();
+        let base_fee = Some(U256::from(42));
+        header.base_fee = base_fee;
+        let header_hash = header.compute_hash();
+        let ferdie = Keyring::Ferdie;
+
+        let network_id = EthNetworkConfig::Ropsten.chain_id();
+        assert_ok!(Verifier::import_header(
+            RuntimeOrigin::none(),
+            network_id,
+            header.clone(),
+            Default::default(),
+            Default::default(),
+            MultiSigner::from(ferdie.clone()).into_account(),
+            digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &header),
+        ));
+
+        assert_eq!(
+            Verifier::get_base_fee(network_id, header_hash).unwrap(),
+            base_fee
+        );
+        assert_eq!(
+            Verifier::get_best_block_base_fee(network_id).unwrap(),
+            base_fee
+        );
+    });
+}
+
+#[test]
+fn test_base_fee_oracle_no_base_fee() {
+    new_tester::<Test>().execute_with(|| {
+        let mut header = child_of_genesis_ethereum_header();
+        let base_fee = None;
+        header.base_fee = base_fee;
+        let header_hash = header.compute_hash();
+        let ferdie = Keyring::Ferdie;
+
+        let network_id = EthNetworkConfig::Ropsten.chain_id();
+        assert_ok!(Verifier::import_header(
+            RuntimeOrigin::none(),
+            network_id,
+            header.clone(),
+            Default::default(),
+            Default::default(),
+            MultiSigner::from(ferdie.clone()).into_account(),
+            digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &header),
+        ));
+
+        assert_eq!(
+            Verifier::get_base_fee(network_id, header_hash).unwrap(),
+            base_fee
+        );
+        assert_eq!(
+            Verifier::get_best_block_base_fee(network_id).unwrap(),
+            base_fee
+        );
+    });
+}
+
+#[test]
+fn test_base_fee_oracle_no_header() {
+    new_tester::<Test>().execute_with(|| {
+        let header = child_of_genesis_ethereum_header();
+        let header_hash = header.compute_hash();
+        let network_id = EthNetworkConfig::Ropsten.chain_id();
+
+        assert_err!(
+            Verifier::get_base_fee(network_id, header_hash),
+            Error::<Test>::HeaderNotFound
         );
     });
 }

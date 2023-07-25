@@ -55,6 +55,19 @@ impl BeefySyncer {
         self.latest_sent.load(Ordering::Relaxed)
     }
 
+    pub fn update_latest_requested(&self, block: u64) {
+        self.latest_requested
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
+                if v < block {
+                    debug!("Requesting new BEEFY block {}", block);
+                    Some(block)
+                } else {
+                    None
+                }
+            })
+            .ok();
+    }
+
     pub fn update_latest_sent(&self, block: u64) {
         self.latest_sent
             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {

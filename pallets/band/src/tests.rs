@@ -340,7 +340,7 @@ fn relay_should_store_last_duplicated_rate() {
                 value: band_rate_into_balance(4),
                 last_updated: initial_resolve_time,
                 request_id: 0,
-                dynamic_fee: fixed!(0),
+                dynamic_fee: fixed!(1),
             })
         );
     });
@@ -536,7 +536,7 @@ fn should_calculate_dynamic_fee() {
         Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            vec![(symbol_name.clone(), 1_500_000_000)],
+            vec![(symbol_name.clone(), 1_000_000_000)],
             0,
             0,
         )
@@ -548,7 +548,7 @@ fn should_calculate_dynamic_fee() {
 
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            vec![("USD".to_owned(), 1_000_000_000)],
+            vec![("USD".to_owned(), 1_500_000_000)],
             1,
             0,
         )
@@ -560,7 +560,7 @@ fn should_calculate_dynamic_fee() {
 
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            vec![("USD".to_owned(), 1_000_000_000)],
+            vec![("USD".to_owned(), 1_500_000_000)],
             2,
             0,
         )
@@ -570,10 +570,21 @@ fn should_calculate_dynamic_fee() {
             .expect("Expected to get the Ok result from quote")
             .expect("Expected to get the rate of symbol");
 
+        Band::relay(
+            RuntimeOrigin::signed(relayer),
+            vec![("USD".to_owned(), 1_000_000_000_000_000)],
+            2,
+            0,
+        )
+        .expect("Failed to relay rates");
+
+        let rate_d = Band::quote(&symbol_name)
+            .expect("Expected to get the Ok result from quote")
+            .expect("Expected to get the rate of symbol");
+
         assert_eq!(rate_a.dynamic_fee, fixed!(0),);
-
         assert_eq!(rate_b.dynamic_fee, fixed!(0.39));
-
         assert_eq!(rate_c.dynamic_fee, fixed!(0.039));
+        assert_eq!(rate_d.dynamic_fee, fixed!(1));
     })
 }
