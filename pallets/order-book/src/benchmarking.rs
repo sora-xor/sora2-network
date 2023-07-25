@@ -256,7 +256,7 @@ pub fn fill_order_book_worst_case<T: Config>(
     let max_expiring_orders_per_block = T::MaxExpiringOrdersPerBlock::get();
 
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
-    let amount = order_book.step_lot_size;
+    let amount = std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let now = T::Time::now();
     let current_block = frame_system::Pallet::<T>::block_number();
     // to allow mutating with `order_book.next_order_id()` later
