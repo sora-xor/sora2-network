@@ -59,7 +59,7 @@ pub mod weights;
 mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+pub mod benchmarking;
 
 pub mod cache_data_layer;
 mod limit_order;
@@ -67,7 +67,7 @@ mod market_order;
 mod order_book;
 mod scheduler;
 pub mod storage_data_layer;
-mod test_utils;
+pub mod test_utils;
 pub mod traits;
 pub mod types;
 

@@ -33,24 +33,12 @@
 #![cfg(feature = "runtime-benchmarks")]
 // order-book
 #![cfg(feature = "ready-to-test")]
-// now it works only as benchmarks, not as unit tests
-// TODO fix when new approach be developed
-#![cfg(not(test))]
 
 #[cfg(not(test))]
 use crate::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus, OrderBooks, Pallet,
+    traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
+    OrderBookId, OrderBookStatus, OrderBooks, Pallet,
 };
-#[cfg(test)]
-use framenode_runtime::order_book::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus, OrderBooks, Pallet,
-};
-
-#[cfg(test)]
-use crate::tests::test_utils::generate_account;
-use crate::traits::DataLayer;
 use crate::{CacheDataLayer, ExpirationScheduler};
 use assets::AssetIdOf;
 use codec::Decode;
@@ -61,6 +49,11 @@ use frame_support::traits::{Get, Time};
 use frame_support::weights::WeightMeter;
 use frame_support::{assert_err, assert_ok};
 use frame_system::{EventRecord, RawOrigin};
+#[cfg(test)]
+use framenode_runtime::order_book::{
+    test_utils::generate_account, traits::DataLayer, Config, Event, LimitOrder, MarketRole,
+    MomentOf, OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, Pallet,
+};
 use hex_literal::hex;
 use sp_runtime::traits::{SaturatedConversion, Saturating, UniqueSaturatedInto};
 
@@ -253,7 +246,7 @@ fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>
     .unwrap();
 }
 
-fn fill_order_book_worst_case<T: Config>(
+pub fn fill_order_book_worst_case<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     data: &mut impl DataLayer<T>,
 ) {
@@ -321,6 +314,7 @@ fn get_last_order_id<T: Config>(
     }
 }
 
+#[cfg(not(test))]
 benchmarks! {
     where_clause {
         where T: trading_pair::Config + core::fmt::Debug
@@ -692,5 +686,31 @@ benchmarks! {
     }
 
 
-    impl_benchmark_test_suite!(Pallet, framenode_chain_spec::ext(), framenode_runtime::Runtime);
+    // now it works only as benchmarks, not as unit tests
+    // TODO fix when new approach be developed
+    // impl_benchmark_test_suite!(Pallet, framenode_chain_spec::ext(), framenode_runtime::Runtime);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::create_empty_order_book;
+    use framenode_chain_spec::ext;
+    use framenode_runtime::Runtime;
+
+    #[test]
+    fn test_benchmark_fill() {
+        ext().execute_with(|| {
+            let order_book_id = OrderBookId::<AssetIdOf<Runtime>, u32> {
+                dex_id: DEX.into(),
+                base: VAL.into(),
+                quote: XOR.into(),
+            };
+
+            create_empty_order_book(order_book_id);
+            let mut data_layer =
+                framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
+            crate::benchmarking::fill_order_book_worst_case(order_book_id, &mut data_layer);
+        })
+    }
 }
