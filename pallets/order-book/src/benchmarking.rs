@@ -294,7 +294,17 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     });
     let mut current_lifespan = lifespans.next().expect("infinite iterator");
     let mut block_orders = 0;
+    let mut i = 0;
+    let mut start_time = std::time::SystemTime::now();
+    println!(
+        "Starting placement of orders, {} orders per price",
+        max_orders_per_price
+    );
     for bid_price in bid_prices {
+        println!("{}/{}", i, max_side_price_count);
+        println!("this step took {:?}", start_time.elapsed().unwrap());
+        start_time = std::time::SystemTime::now();
+        i += 1;
         for _ in 0..max_orders_per_price {
             let buy_order = LimitOrder::<T>::new(
                 order_book.next_order_id(),
