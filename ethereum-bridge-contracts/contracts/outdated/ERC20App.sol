@@ -4,9 +4,9 @@ pragma solidity 0.8.15;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./libraries/ScaleCodec.sol";
-import "./interfaces/IAssetRegister.sol";
-import "./GenericApp.sol";
+import "../libraries/ScaleCodec.sol";
+import "../interfaces/IAssetRegister.sol";
+import "../GenericApp.sol";
 
 contract ERC20App is GenericApp, IAssetRegister, ReentrancyGuard {
     using ScaleCodec for uint256;

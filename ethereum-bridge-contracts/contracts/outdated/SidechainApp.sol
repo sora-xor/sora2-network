@@ -4,10 +4,10 @@ pragma solidity 0.8.15;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./MasterToken.sol";
-import "./libraries/ScaleCodec.sol";
-import "./interfaces/IAssetRegister.sol";
-import "./GenericApp.sol";
+import "../MasterToken.sol";
+import "../libraries/ScaleCodec.sol";
+import "../interfaces/IAssetRegister.sol";
+import "../GenericApp.sol";
 
 /** 
 * @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken 

@@ -6,23 +6,18 @@ import "./libraries/ScaleCodec.sol";
 import "./interfaces/IEthTokenReceiver.sol";
 import "./GenericApp.sol";
 
-/** 
-* @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken 
-* into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`. 
-*/
-contract ETHApp is
-    GenericApp,
-    IEthTokenReceiver,
-    ReentrancyGuard
-{
+/**
+ * @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken
+ * into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`.
+ */
+contract ETHApp is IEthTokenReceiver, GenericApp, ReentrancyGuard {
     using ScaleCodec for uint256;
 
     event Locked(address sender, bytes32 recipient, uint256 amount);
-
     event Unlocked(bytes32 sender, address recipient, uint256 amount);
+    event MigratedEth(address contractAddress);
 
     bytes2 constant MINT_CALL = 0x6401;
-
     bytes32 public constant REWARD_ROLE = keccak256("REWARD_ROLE");
 
     constructor(
@@ -33,13 +28,18 @@ contract ETHApp is
         _setupRole(REWARD_ROLE, rewarder);
     }
 
+    fallback() external {
+        revert();
+    }
+
+    receive() external payable {
+        revert();
+    }
+
     function lock(bytes32 recipient) external payable {
         require(msg.value > 0, "Value of transaction must be positive");
-
         emit Locked(msg.sender, recipient, msg.value);
-
         bytes memory call = encodeCall(msg.sender, recipient, msg.value);
-
         outbound.submit(msg.sender, call);
     }
 
@@ -57,6 +57,15 @@ contract ETHApp is
         (bool success, ) = recipient.call{value: amount}("");
         require(success, "Transfer failed.");
         emit Unlocked(sender, recipient, amount);
+    }
+
+    function migrateEth(
+        address contractAddress
+    ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
+        IEthTokenReceiver receiver = IEthTokenReceiver(contractAddress);
+        // slither-disable-next-line arbitrary-send
+        receiver.receivePayment{value: address(this).balance}();
+        emit MigratedEth(contractAddress);
     }
 
     // SCALE-encode payload
