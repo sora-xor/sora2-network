@@ -213,7 +213,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
             )
             .await?
             .ok_or(anyhow!(
-                "Connect to substrate server with enabled offhcain indexing"
+                "Connect to substrate server with enabled offchain indexing"
             ))?,
         )
     }
