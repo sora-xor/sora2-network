@@ -5,15 +5,9 @@ import * as contracts from "./tasks/contracts";
 
 dotenv({ path: resolve(__dirname, ".env") });
 
-import "@nomiclabs/hardhat-truffle5";
-import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-web3";
-import "@nomiclabs/hardhat-etherscan";
-import "@nomiclabs/hardhat-solhint";
 import "hardhat-deploy";
 import "hardhat-deploy-ethers";
-import '@typechain/hardhat';
-import '@nomicfoundation/hardhat-chai-matchers';
+import "@nomicfoundation/hardhat-toolbox";
 import { HardhatUserConfig, task } from "hardhat/config";
 
 const getenv = (name: string) => {
@@ -85,7 +79,7 @@ const config: HardhatUserConfig = {
   },
   typechain: {
     outDir: './typechain',
-    target: 'ethers-v5',
+    target: 'ethers-v6',
     dontOverrideCompile: false,
   },
 };
