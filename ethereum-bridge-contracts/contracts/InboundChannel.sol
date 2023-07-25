@@ -82,7 +82,7 @@ contract InboundChannel is AccessControl, ReentrancyGuard {
         bytes32[] calldata s
     ) external nonReentrant {
         uint256 begin_gas_left = gasleft();
-
+        require(peersCount >= 1, "peersCount too low");
         require(
             batch.messages.length < 256,
             "must be < 256 messages in the batch"
@@ -165,11 +165,10 @@ contract InboundChannel is AccessControl, ReentrancyGuard {
      * Private function
      * @param newAddress address of new peer
      */
-    function addPeer(address newAddress) private returns (uint256) {
+    function addPeer(address newAddress) private {
         require(isPeer[newAddress] == false, "peer already added");
         isPeer[newAddress] = true;
         ++peersCount;
-        return peersCount;
     }
 
     /**
@@ -180,7 +179,7 @@ contract InboundChannel is AccessControl, ReentrancyGuard {
     function removePeer(address peerAddress) private {
         require(isPeer[peerAddress] == true, "peer does not exists");
         isPeer[peerAddress] = false;
-        --peersCount;
+        require(--peersCount >= 1, "cannot remove last peer");
     }
 
     /**
@@ -198,7 +197,6 @@ contract InboundChannel is AccessControl, ReentrancyGuard {
         bytes32[] memory r,
         bytes32[] memory s
     ) private returns (bool) {
-        require(peersCount >= 1, "peersCount too low");
         uint256 signatureCount = v.length;
         require(
             signatureCount == r.length,
