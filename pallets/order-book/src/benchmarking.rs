@@ -278,26 +278,36 @@ fn fill_order_book_worst_case<T: Config>(
     let mut current_user = users.next().expect("infinite iterator");
     // # of orders placed by `current_users`
     let mut user_orders = 0;
-
     let mut lifespans = (1..).map(|i| {
         i * T::MILLISECS_PER_BLOCK.saturated_into::<u64>()
             + T::MIN_ORDER_LIFETIME.saturated_into::<u64>()
     });
+    let mut current_lifespan = lifespans.next().expect("infinite iterator");
     let mut block_orders = 0;
     for bid_price in bid_prices {
-        let buy_order = LimitOrder::<T>::new(
-            order_book.next_order_id(),
-            current_user.clone(),
-            PriceVariant::Buy,
-            bid_price,
-            amount,
-            now,
-            lifespans.next().unwrap().saturated_into(),
-            current_block,
-        );
-        order_book.place_limit_order(buy_order, data).unwrap();
-        user_orders += 1;
-        block_orders += 1;
+        for _ in 0..max_orders_per_price {
+            let buy_order = LimitOrder::<T>::new(
+                order_book.next_order_id(),
+                current_user.clone(),
+                PriceVariant::Buy,
+                bid_price,
+                amount,
+                now,
+                current_lifespan.saturated_into(),
+                current_block,
+            );
+            order_book.place_limit_order(buy_order, data).unwrap();
+            user_orders += 1;
+            if user_orders >= max_orders_per_user {
+                current_user = users.next().expect("infinite iterator");
+                user_orders = 0
+            }
+            block_orders += 1;
+            if block_orders >= max_expiring_orders_per_block {
+                current_lifespan = lifespans.next().expect("infinite iterator");
+                block_orders = 0
+            }
+        }
     }
 }
 
