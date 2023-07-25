@@ -37,12 +37,12 @@
 #[cfg(not(test))]
 use crate::{
     traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
-    OrderBookId, OrderBookStatus, OrderBooks, Pallet,
+    OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
 };
 use crate::{CacheDataLayer, ExpirationScheduler};
 use assets::AssetIdOf;
 use codec::Decode;
-use common::prelude::{QuoteAmount, SwapAmount};
+use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount};
 use common::{balance, AssetInfoProvider, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::{Get, Time};
@@ -52,7 +52,8 @@ use frame_system::{EventRecord, RawOrigin};
 #[cfg(test)]
 use framenode_runtime::order_book::{
     test_utils::generate_account, traits::DataLayer, Config, Event, LimitOrder, MarketRole,
-    MomentOf, OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, Pallet,
+    MomentOf, OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderVolume,
+    Pallet,
 };
 use hex_literal::hex;
 use sp_runtime::traits::{SaturatedConversion, Saturating, UniqueSaturatedInto};
@@ -246,13 +247,13 @@ fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>
     .unwrap();
 }
 
-pub fn fill_order_book_worst_case<T: Config>(
+pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     data: &mut impl DataLayer<T>,
 ) {
     let max_side_price_count = T::MaxSidePriceCount::get();
     let max_orders_per_price = T::MaxLimitOrdersForPrice::get();
-    let max_orders_per_user = T::MaxOpenedLimitOrdersPerUser::get();
+    let max_orders_per_user = T::MaxOpenedLimitOrdersPerUser::get() as u128;
     let max_expiring_orders_per_block = T::MaxExpiringOrdersPerBlock::get();
 
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
@@ -261,14 +262,30 @@ pub fn fill_order_book_worst_case<T: Config>(
     let current_block = frame_system::Pallet::<T>::block_number();
     // to allow mutating with `order_book.next_order_id()` later
     let tick_size = order_book.tick_size;
+    let amount_per_user: OrderVolume = max_orders_per_user * amount;
 
     let bid_prices = (1..=max_side_price_count).map(|i| (i as u128) * tick_size);
     let ask_prices = (max_side_price_count + 1..=2 * max_side_price_count)
         .rev()
         .map(|i| (i as u128) * tick_size);
+    let max_price = (2 * max_side_price_count) as u128 * tick_size;
 
-    let mut users = (1..).map(crate::test_utils::generate_account::<T>);
+    let mut users = (1..)
+        .map(crate::test_utils::generate_account::<T>)
+        .inspect(|user| {
+            assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &user, amount_per_user)
+                .unwrap();
+            assets::Pallet::<T>::mint_unchecked(
+                &order_book_id.quote,
+                &user,
+                (FixedWrapper::from(max_price) * FixedWrapper::from(amount_per_user))
+                    .try_into_balance()
+                    .unwrap(),
+            )
+            .unwrap();
+        });
     let mut current_user = users.next().expect("infinite iterator");
+
     // # of orders placed by `current_users`
     let mut user_orders = 0;
     let mut lifespans = (1..).map(|i| {
