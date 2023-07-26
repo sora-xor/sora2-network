@@ -952,7 +952,7 @@ fn should_not_update_order_book_with_wrong_min_deal_amount() {
                 balance!(1),
                 balance!(10000)
             ),
-            E::TickSizeAndStepLotSizeAreTooSmall
+            E::TickSizeAndStepLotSizeLosePrecision
         );
 
         assert_err!(
@@ -964,7 +964,7 @@ fn should_not_update_order_book_with_wrong_min_deal_amount() {
                 balance!(1),
                 balance!(10000)
             ),
-            E::TickSizeAndStepLotSizeAreTooSmall
+            E::TickSizeAndStepLotSizeLosePrecision
         );
 
         assert_err!(
@@ -976,13 +976,49 @@ fn should_not_update_order_book_with_wrong_min_deal_amount() {
                 balance!(1),
                 balance!(10000)
             ),
-            E::TickSizeAndStepLotSizeAreTooSmall
+            E::TickSizeAndStepLotSizeLosePrecision
+        );
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.1),
+                balance!(5.000000000000000001),
+                balance!(10.000000000000000002), // should be a multiple of step_lot_size
+                balance!(10000.000000000000002)  // should be a multiple of step_lot_size
+            ),
+            E::TickSizeAndStepLotSizeLosePrecision
+        );
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(5.000000000000000001),
+                balance!(0.1),
+                balance!(1),
+                balance!(10000)
+            ),
+            E::TickSizeAndStepLotSizeLosePrecision
+        );
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(5.000000001),
+                balance!(5.0000000001),
+                balance!(10.0000000002), // should be a multiple of step_lot_size
+                balance!(10000.0000002)  // should be a multiple of step_lot_size
+            ),
+            E::TickSizeAndStepLotSizeLosePrecision
         );
     });
 }
 
 #[test]
-fn should_not_update_order_book_when_atributes_exceed_total_supply() {
+fn should_not_update_order_book_when_attributes_exceed_total_supply() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
