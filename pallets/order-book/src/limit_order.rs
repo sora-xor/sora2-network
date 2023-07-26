@@ -114,7 +114,7 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
 
     pub fn ensure_valid(&self) -> Result<(), DispatchError> {
         ensure!(
-            T::MIN_ORDER_LIFETIME <= self.lifespan && self.lifespan <= T::MAX_ORDER_LIFETIME,
+            T::MIN_ORDER_LIFESPAN <= self.lifespan && self.lifespan <= T::MAX_ORDER_LIFESPAN,
             Error::<T>::InvalidLifespan
         );
         ensure!(

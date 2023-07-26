@@ -38,6 +38,7 @@ use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::Zero;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
 pub struct CacheDataLayer<T: Config> {
@@ -461,5 +462,15 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>> {
         self.user_limit_orders.get(account, order_book_id).cloned()
+    }
+
+    fn get_all_user_limit_orders(
+        &mut self,
+        account: &T::AccountId,
+    ) -> BTreeMap<
+        OrderBookId<AssetIdOf<T>, T::DEXId>,
+        UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
+    > {
+        self.user_limit_orders.get_by_prefix(account)
     }
 }
