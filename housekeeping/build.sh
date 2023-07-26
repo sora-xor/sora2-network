@@ -9,9 +9,11 @@ RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
 sudoCheckStatus=${sudoCheckStatus}
 
+printf "Tag is %s\n" ${TAG_NAME}
+
 # build
 # If TAG_NAME is defined, build for a specific tag
-if [[ ${TAG_NAME} != '' ]]; then
+if [[ ${TAG_NAME} != '']]; then
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=0
@@ -26,7 +28,6 @@ if [[ ${TAG_NAME} != '' ]]; then
         sudoCheckStatus=101
     fi
 
-    printf "Tag is %s\n" ${TAG_NAME}
     printf "Building with features: %s\n" "$featureList"
     printf "Checking sudo pallet: %s\n" "$sudoCheckStatus"
     
