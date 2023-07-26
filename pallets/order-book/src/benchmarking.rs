@@ -329,7 +329,7 @@ benchmarks! {
         create_and_fill_order_book::<T>(order_book_id);
 
         let tick_size = balance!(0.01);
-        let step_lot_size = balance!(0.001);
+        let step_lot_size = balance!(1); // limit orders should be aligned according to new step_lot_size
         let min_lot_size = balance!(1);
         let max_lot_size = balance!(10000);
     }: {
