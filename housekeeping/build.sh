@@ -8,6 +8,7 @@ RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
 sudoCheckStatus=${sudoCheckStatus}
+buildTag=${buildTag}
 
 printf "Tag is %s\n" ${TAG_NAME}
 printf "BuildTag is %s\n" $buildTag
@@ -21,7 +22,7 @@ if [[ -v ${buildTag} || -v ${TAG_NAME} ]]; then
         elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
         featureList='private-net include-real-files ready-to-test'
         sudoCheckStatus=0
-        elif [[ ${TAG_NAME} =~ 'test*'* ]]; then
+        elif [[ ${TAG_NAME} =~ 'test'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
         elif [[ -v ${TAG_NAME} ]]; then
