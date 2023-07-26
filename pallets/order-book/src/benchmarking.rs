@@ -301,7 +301,12 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         max_orders_per_price
     );
     for bid_price in bid_prices {
-        println!("{}/{}", i, max_side_price_count);
+        println!(
+            "{}/{} ({}%)",
+            i,
+            max_side_price_count,
+            100.0 * (i as f32) / (max_side_price_count as f32)
+        );
         println!("this step took {:?}", start_time.elapsed().unwrap());
         start_time = std::time::SystemTime::now();
         i += 1;
@@ -316,7 +321,8 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
                 current_lifespan.saturated_into(),
                 current_block,
             );
-            order_book.place_limit_order(buy_order, data).unwrap();
+            data.insert_limit_order(&order_book_id, buy_order).unwrap();
+            // order_book.place_limit_order(buy_order, data).unwrap();
             user_orders += 1;
             if user_orders >= max_orders_per_user {
                 current_user = users.next().expect("infinite iterator");
