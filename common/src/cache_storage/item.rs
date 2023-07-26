@@ -43,4 +43,12 @@ impl<Value: PartialEq> Item<Value> {
             Item::Removed => None,
         }
     }
+
+    pub fn value_mut(&mut self) -> Option<&mut Value> {
+        match self {
+            Item::Original(value) => Some(value),
+            Item::Updated(value) => Some(value),
+            Item::Removed => None,
+        }
+    }
 }

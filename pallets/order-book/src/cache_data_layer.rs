@@ -112,13 +112,16 @@ impl<T: Config> CacheDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         limit_order: &LimitOrder<T>,
     ) -> Result<(), ()> {
-        let mut bids = self
-            .bids
-            .get(order_book_id, &limit_order.price)
-            .cloned()
-            .unwrap_or_default();
-        bids.try_push(limit_order.id).map_err(|_| ())?;
-        self.bids.set(order_book_id, &limit_order.price, bids);
+        if let Some(bids) = self.bids.get_mut(order_book_id, &limit_order.price) {
+            bids.try_push(limit_order.id).map_err(|_| ())?;
+        } else {
+            let bids =
+                sp_runtime::BoundedVec::<T::OrderId, T::MaxLimitOrdersForPrice>::try_from(vec![
+                    limit_order.id,
+                ])
+                .map_err(|_| ())?;
+            self.bids.set(order_book_id, &limit_order.price, bids);
+        }
         Ok(())
     }
 
