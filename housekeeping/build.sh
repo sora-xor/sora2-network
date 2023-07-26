@@ -8,12 +8,13 @@ RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
 sudoCheckStatus=${sudoCheckStatus}
+buildTag=${buildTag}
 
 printf "Tag is %s\n" ${TAG_NAME}
-printf "BuildTag is %s\n" ${buildTag}
+printf "BuildTag is %s\n" $buildTag
 # build
 # If TAG_NAME is defined, build for a specific tag
-if [[ -v ${buildTag} || -v ${TAG_NAME} ]]; then
+if [[ -v $buildTag || -v ${TAG_NAME} ]]; then
     if [[ ${TAG_NAME} != '' ]]; then
         if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
             featureList='private-net runtime-benchmarks'
