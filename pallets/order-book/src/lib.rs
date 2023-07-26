@@ -438,8 +438,10 @@ pub mod pallet {
         InvalidMaxLotSize,
         /// Tick size & step lot size are too big and their multiplication overflows Balance
         TickSizeAndStepLotSizeAreTooBig,
-        /// Tick size & step lot size are too small and their multiplication goes out of precision
-        TickSizeAndStepLotSizeAreTooSmall,
+        /// Product of tick and step lot sizes goes out of precision. It must be accurately
+        /// represented by fixed-precision float to prevent rounding errors. I.e. the product
+        /// should not have more than 18 digits after the comma.
+        TickSizeAndStepLotSizeLosePrecision,
         /// Max lot size cannot be more that total supply of base asset
         MaxLotSizeIsMoreThanTotalSupply,
         /// Indicated limit for slippage has not been met during transaction execution.
@@ -589,21 +591,12 @@ pub mod pallet {
             // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
             // The min possible deal amount = `tick_size` * `step_lot_size`.
             // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
-            // and doesn't go out of precision if `tick_size` & `step_lot_size` are too small.
-
-            // Returns error if value overflows.
-            let min_possible_deal_amount = (FixedWrapper::from(tick_size)
-                * FixedWrapper::from(step_lot_size))
-            .try_into_balance()
+            // and doesn't go out of precision.
+            let _min_possible_deal_amount = (FixedWrapper::from(tick_size)
+                .lossless_mul(FixedWrapper::from(step_lot_size))
+                .ok_or(Error::<T>::TickSizeAndStepLotSizeLosePrecision)?)
+            .try_into_balance() // Returns error if value overflows.
             .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
-
-            // 1 is a min non-zero possible value. balance!(0.000000000000000001) == 1
-            // If `tick_size` * `step_lot_size` result goes out of 18 digits precision, the min possible deal amount == 0,
-            // because FixedWrapper::try_into_balance() returns 0 for such cases.
-            ensure!(
-                min_possible_deal_amount >= 1,
-                Error::<T>::TickSizeAndStepLotSizeAreTooSmall
-            );
 
             // `max_lot_size` couldn't be more then total supply of `base` asset
             let total_supply = T::AssetInfoProvider::total_issuance(&order_book_id.base)?;
