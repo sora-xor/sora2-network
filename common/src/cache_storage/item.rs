@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Item<Value: PartialEq> {
     Original(Value),
     Updated(Value),
@@ -43,12 +43,42 @@ impl<Value: PartialEq> Item<Value> {
             Item::Removed => None,
         }
     }
+}
+
+impl<Value: PartialEq + Default> Item<Value> {
+    fn mark_as_updated(&mut self) {
+        *self = match self {
+            Item::Original(v) => Item::Updated(core::mem::take(v)),
+            Item::Updated(v) => Item::Updated(core::mem::take(v)),
+            Item::Removed => Item::Removed,
+        }
+    }
 
     pub fn value_mut(&mut self) -> Option<&mut Value> {
+        self.mark_as_updated();
         match self {
             Item::Original(value) => Some(value),
             Item::Updated(value) => Some(value),
             Item::Removed => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Item;
+
+    #[test]
+    fn enum_variant_switches() {
+        let mut item: Item<i32> = Item::Original(123);
+        item.mark_as_updated();
+        assert_eq!(item, Item::Updated(123));
+        // should be idempotent
+        item.mark_as_updated();
+        assert_eq!(item, Item::Updated(123));
+
+        let mut item: Item<i32> = Item::Removed;
+        item.mark_as_updated();
+        assert_eq!(item, Item::Removed);
     }
 }
