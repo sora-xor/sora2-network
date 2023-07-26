@@ -130,17 +130,13 @@ impl<T: Config> CacheDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         limit_order: &LimitOrder<T>,
     ) {
-        let mut bids = self
-            .bids
-            .get(order_book_id, &limit_order.price)
-            .cloned()
-            .unwrap_or_default();
-        bids.retain(|x| *x != limit_order.id);
-        if bids.is_empty() {
-            self.bids.remove(order_book_id, &limit_order.price);
-        } else {
-            self.bids.set(order_book_id, &limit_order.price, bids);
+        if let Some(bids) = self.bids.get_mut(order_book_id, &limit_order.price) {
+            bids.retain(|x| *x != limit_order.id);
+            if bids.is_empty() {
+                self.bids.remove(order_book_id, &limit_order.price);
+            }
         }
+        // don't need to do anything if `bids` is empty
     }
 
     fn add_to_asks(
