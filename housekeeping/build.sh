@@ -13,7 +13,7 @@ printf "Tag is %s\n" ${TAG_NAME}
 
 # build
 # If TAG_NAME is defined, build for a specific tag
-if [[ -v ${pushTags} ]]; then
+if [[ -v ${buildTag} ]]; then
     if [[ ${TAG_NAME} != '' ]]; then
         if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
             featureList='private-net runtime-benchmarks'
