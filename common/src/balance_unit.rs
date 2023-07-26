@@ -86,6 +86,14 @@ impl BalanceUnit {
         self.inner
     }
 
+    pub fn set(&mut self, value: Balance) {
+        self.inner = value
+    }
+
+    pub fn is_divisible(&self) -> bool {
+        self.is_divisible
+    }
+
     pub fn pow(&self, x: u32) -> Result<Self, ArithmeticError> {
         let balance = if self.is_divisible {
             FixedWrapper::from(self.inner).pow(x).try_into_balance()?
