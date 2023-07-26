@@ -4053,7 +4053,7 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 [[package]]
 name = "fixnum"
 version = "0.6.0"
-source = "git+https://github.com/sora-xor/fixnum?branch=sora-v1.6.0#86284d7819cacb7b02e053dae5d990748a8a5af4"
+source = "git+https://github.com/sora-xor/fixnum?branch=sora-v2.1.0#db1163310fa150ea4d5f5ce5204cf44447ae9a70"
 dependencies = [
  "derive_more",
  "parity-scale-codec",
@@ -15183,7 +15183,7 @@ dependencies = [
 [[package]]
 name = "xcm"
 version = "0.9.38"
-source = "git+https://github.com/paritytech/polkadot.git?branch=release-v0.9.38#097ffd245c42aeff28cf80f8a3568e1bee2e7da7"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.38#097ffd245c42aeff28cf80f8a3568e1bee2e7da7"
 dependencies = [
  "derivative",
  "impl-trait-for-tuples",
@@ -15199,7 +15199,7 @@ dependencies = [
 [[package]]
 name = "xcm-procedural"
 version = "0.9.38"
-source = "git+https://github.com/paritytech/polkadot.git?branch=release-v0.9.38#097ffd245c42aeff28cf80f8a3568e1bee2e7da7"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.38#097ffd245c42aeff28cf80f8a3568e1bee2e7da7"
 dependencies = [
  "Inflector",
  "proc-macro2",
