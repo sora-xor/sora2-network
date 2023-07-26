@@ -13,19 +13,21 @@ printf "Tag is %s\n" ${TAG_NAME}
 
 # build
 # If TAG_NAME is defined, build for a specific tag
-if [[ ${TAG_NAME} != '' ]]; then
-    if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
-        featureList='private-net runtime-benchmarks'
-        sudoCheckStatus=0
-    elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
+if [[ -v ${pushTags} ]]; then
+    if [[ ${TAG_NAME} != '' ]]; then
+        if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
+            featureList='private-net runtime-benchmarks'
+            sudoCheckStatus=0
+        elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
         featureList='private-net include-real-files ready-to-test'
         sudoCheckStatus=0
-    elif [[ ${TAG_NAME} =~ 'test*'* ]]; then
+        elif [[ ${TAG_NAME} =~ 'test*'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
-    elif [[ -v ${TAG_NAME} ]]; then
-        featureList='include-real-files'
-        sudoCheckStatus=101
+        elif [[ -v ${TAG_NAME} ]]; then
+            featureList='include-real-files'
+            sudoCheckStatus=101
+        fi
     fi
 
     printf "Building with features: %s\n" "$featureList"
