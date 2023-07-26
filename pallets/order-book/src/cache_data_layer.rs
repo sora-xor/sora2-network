@@ -144,13 +144,16 @@ impl<T: Config> CacheDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         limit_order: &LimitOrder<T>,
     ) -> Result<(), ()> {
-        let mut asks = self
-            .asks
-            .get(order_book_id, &limit_order.price)
-            .cloned()
-            .unwrap_or_default();
-        asks.try_push(limit_order.id).map_err(|_| ())?;
-        self.asks.set(order_book_id, &limit_order.price, asks);
+        if let Some(asks) = self.asks.get_mut(order_book_id, &limit_order.price) {
+            asks.try_push(limit_order.id).map_err(|_| ())?;
+        } else {
+            let asks =
+                sp_runtime::BoundedVec::<T::OrderId, T::MaxLimitOrdersForPrice>::try_from(vec![
+                    limit_order.id,
+                ])
+                .map_err(|_| ())?;
+            self.asks.set(order_book_id, &limit_order.price, asks);
+        }
         Ok(())
     }
 
@@ -159,17 +162,13 @@ impl<T: Config> CacheDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         limit_order: &LimitOrder<T>,
     ) {
-        let mut asks = self
-            .asks
-            .get(order_book_id, &limit_order.price)
-            .cloned()
-            .unwrap_or_default();
-        asks.retain(|x| *x != limit_order.id);
-        if asks.is_empty() {
-            self.asks.remove(order_book_id, &limit_order.price);
-        } else {
-            self.asks.set(order_book_id, &limit_order.price, asks);
+        if let Some(asks) = self.asks.get_mut(order_book_id, &limit_order.price) {
+            asks.retain(|x| *x != limit_order.id);
+            if asks.is_empty() {
+                self.asks.remove(order_book_id, &limit_order.price);
+            }
         }
+        // don't need to do anything if `asks` is empty
     }
 
     fn add_to_aggregated_bids(
