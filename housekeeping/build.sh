@@ -8,27 +8,24 @@ RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
 sudoCheckStatus=${sudoCheckStatus}
-buildTag=${buildTag}
 
 printf "Tag is %s\n" ${TAG_NAME}
-printf "BuildTag is %s\n" $buildTag
+
 # build
 # If TAG_NAME is defined, build for a specific tag
-if [[ -v ${buildTag} || -v ${TAG_NAME} ]]; then
-    if [[ ${TAG_NAME} != '' ]]; then
-        if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
-            featureList='private-net runtime-benchmarks'
-            sudoCheckStatus=0
-        elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
+if [[ ${TAG_NAME} != '' || -v ${buildTag}]]; then
+    if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
+        featureList='private-net runtime-benchmarks'
+        sudoCheckStatus=0
+    elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
         featureList='private-net include-real-files ready-to-test'
         sudoCheckStatus=0
-        elif [[ ${TAG_NAME} =~ 'test'* ]]; then
+    elif [[ ${TAG_NAME} =~ 'test*'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
-        elif [[ -v ${TAG_NAME} ]]; then
-            featureList='include-real-files'
-            sudoCheckStatus=101
-        fi
+    elif [[ -v ${TAG_NAME} ]]; then
+        featureList='include-real-files'
+        sudoCheckStatus=101
     fi
 
     printf "Building with features: %s\n" "$featureList"
