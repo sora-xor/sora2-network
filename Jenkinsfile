@@ -1,5 +1,5 @@
 @Library('jenkins-library@duty/fix_rust_push') _
-
+def buildTag = steps.getPushVersion(pushTags, steps.env.BRANCH_NAME, steps.env.TAG_NAME)
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
       envImageName: 'docker.soramitsu.co.jp/sora2/env:sub4',
