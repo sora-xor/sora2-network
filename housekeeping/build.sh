@@ -14,7 +14,7 @@ printf "Tag2 is %s\n" $buildTag
 
 # build
 # If TAG_NAME is defined, build for a specific tag
-if [[ ${TAG_NAME} != '' || -v $buildTag ]]; then
+if [[ ${TAG_NAME} != '' || $buildTag = '' ]]; then
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=0
@@ -28,10 +28,8 @@ if [[ ${TAG_NAME} != '' || -v $buildTag ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
-
     printf "Building with features: %s\n" "$featureList"
     printf "Checking sudo pallet: %s\n" "$sudoCheckStatus"
-    
     cargo test --release --features "private-net runtime-benchmarks"
     rm -rf target
     cargo build --release --features "$featureList"
