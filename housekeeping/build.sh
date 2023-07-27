@@ -10,18 +10,18 @@ RUSTC_VERSION=${rustcVersion}
 sudoCheckStatus=${sudoCheckStatus}
 
 printf "Tag is %s\n" ${TAG_NAME}
-printf "Tag2 is %s\n" ${baseImageTag}
+printf "Tag2 is %s\n" ${buildTag}
 
 # build
 # If TAG_NAME is defined, build for a specific tag
-if [[ ${TAG_NAME} != '' || -v ${baseImageTag} ]]; then
+if [[ ${TAG_NAME} != '' || -v ${buildTag} ]]; then
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=0
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
         featureList='private-net include-real-files ready-to-test'
         sudoCheckStatus=0
-    elif [[ ${TAG_NAME} =~ 'test*'* ]]; then
+    elif [[ ${TAG_NAME} =~ 'test'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
     elif [[ -v ${TAG_NAME} ]]; then
