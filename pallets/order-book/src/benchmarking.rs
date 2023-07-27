@@ -251,6 +251,8 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     data: &mut impl DataLayer<T>,
 ) {
+    use std::io::Write;
+
     let max_side_price_count = T::MaxSidePriceCount::get();
     let max_orders_per_price = T::MaxLimitOrdersForPrice::get();
     let max_orders_per_user = T::MaxOpenedLimitOrdersPerUser::get() as u128;
@@ -296,19 +298,19 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     let mut block_orders = 0;
     let mut i = 0;
     let mut start_time = std::time::SystemTime::now();
+    let time_report_interval = std::cmp::min(max_side_price_count, 1000);
     println!(
         "Starting placement of orders, {} orders per price",
         max_orders_per_price
     );
     for bid_price in bid_prices {
-        println!(
-            "{}/{} ({}%)",
+        print!(
+            "\r{}/{} ({}%)",
             i,
             max_side_price_count,
             100.0 * (i as f32) / (max_side_price_count as f32)
         );
-        println!("this step took {:?}", start_time.elapsed().unwrap());
-        start_time = std::time::SystemTime::now();
+        std::io::stdout().flush().unwrap();
         i += 1;
         for _ in 0..max_orders_per_price {
             let buy_order = LimitOrder::<T>::new(
@@ -333,6 +335,14 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
                 current_lifespan = lifespans.next().expect("infinite iterator");
                 block_orders = 0
             }
+        }
+        if i % time_report_interval == 0 {
+            println!(
+                "\nprocessed {} prices in {:?}",
+                time_report_interval,
+                start_time.elapsed().unwrap()
+            );
+            start_time = std::time::SystemTime::now();
         }
     }
 }
