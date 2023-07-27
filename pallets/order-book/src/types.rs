@@ -30,8 +30,8 @@
 
 use crate::traits::{CurrencyLocker, CurrencyUnlocker};
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::prelude::FixedWrapper;
-use common::{Balance, PriceVariant, TradingPair};
+use common::prelude::BalanceUnit;
+use common::{PriceVariant, TradingPair};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::{BoundedBTreeMap, BoundedVec};
@@ -42,8 +42,8 @@ use sp_std::ops::{Add, Sub};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-pub type OrderPrice = Balance;
-pub type OrderVolume = Balance;
+pub type OrderPrice = BalanceUnit;
+pub type OrderVolume = BalanceUnit;
 pub type PriceOrders<OrderId, MaxLimitOrdersForPrice> = BoundedVec<OrderId, MaxLimitOrdersForPrice>;
 pub type MarketSide<MaxSidePriceCount> =
     BoundedBTreeMap<OrderPrice, OrderVolume, MaxSidePriceCount>;
@@ -124,13 +124,9 @@ impl OrderAmount {
 
     pub fn average_price(input: OrderAmount, output: OrderAmount) -> Result<OrderPrice, ()> {
         let average_price = if input.is_quote() {
-            (FixedWrapper::from(*input.value()) / FixedWrapper::from(*output.value()))
-                .try_into_balance()
-                .map_err(|_| ())?
+            (*input.value() / *output.value()).map_err(|_| ())?
         } else {
-            (FixedWrapper::from(*output.value()) / FixedWrapper::from(*input.value()))
-                .try_into_balance()
-                .map_err(|_| ())?
+            (*output.value() / *input.value()).map_err(|_| ())?
         };
         Ok(average_price)
     }
@@ -141,7 +137,7 @@ impl Add for OrderAmount {
 
     fn add(self, other: Self) -> Self::Output {
         ensure!(self.is_same(&other), ());
-        Ok(self.copy_type(self.value().checked_add(*other.value()).ok_or(())?))
+        Ok(self.copy_type(*self.value() + *other.value()))
     }
 }
 
@@ -150,7 +146,7 @@ impl Sub for OrderAmount {
 
     fn sub(self, other: Self) -> Self::Output {
         ensure!(self.is_same(&other), ());
-        Ok(self.copy_type(self.value().checked_sub(*other.value()).ok_or(())?))
+        Ok(self.copy_type(*self.value() - *other.value()))
     }
 }
 
@@ -284,7 +280,7 @@ where
         for (account, volume) in to_merge {
             account_map
                 .entry(account.clone())
-                .and_modify(|current_volune| *current_volune += volume)
+                .and_modify(|current_volune| *current_volune += *volume)
                 .or_insert(*volume);
         }
     }

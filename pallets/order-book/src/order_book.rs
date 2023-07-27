@@ -35,8 +35,8 @@ use crate::{
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::prelude::{FixedWrapper, QuoteAmount};
-use common::{balance, PriceVariant};
+use common::prelude::QuoteAmount;
+use common::{balance, Balance, PriceVariant};
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
@@ -83,20 +83,20 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     pub fn default(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
         Self::new(
             order_book_id,
-            balance!(0.00001), // TODO: order-book clarify
-            balance!(0.00001), // TODO: order-book clarify
-            balance!(1),       // TODO: order-book clarify
-            balance!(100000),  // TODO: order-book clarify
+            OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
+            OrderVolume::divisible(balance!(0.00001)), // TODO: order-book clarify
+            OrderVolume::divisible(balance!(1)),      // TODO: order-book clarify
+            OrderVolume::divisible(balance!(100000)), // TODO: order-book clarify
         )
     }
 
     pub fn default_nft(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
         Self::new(
             order_book_id,
-            balance!(0.00001), // TODO: order-book clarify
-            balance!(1),       // TODO: order-book clarify
-            balance!(1),       // TODO: order-book clarify
-            balance!(100000),  // TODO: order-book clarify
+            OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
+            OrderVolume::indivisible(1),              // TODO: order-book clarify
+            OrderVolume::indivisible(1),              // TODO: order-book clarify
+            OrderVolume::indivisible(100000),         // TODO: order-book clarify
         )
     }
 
@@ -365,7 +365,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .entry(*unlock_asset)
             .or_default()
             .entry(limit_order.owner.clone())
-            .and_modify(|pay| *pay += unlock_amount.value())
+            .and_modify(|pay| *pay += *unlock_amount.value())
             .or_insert(*unlock_amount.value());
 
         limit_orders_to_cancel.insert(limit_order.id, limit_order);
@@ -406,7 +406,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 .entry(*unlock_asset)
                 .or_default()
                 .entry(limit_order.owner.clone())
-                .and_modify(|pay| *pay += unlock_amount.value())
+                .and_modify(|pay| *pay += *unlock_amount.value())
                 .or_insert(*unlock_amount.value());
 
             limit_orders_to_cancel.insert(limit_order.id, limit_order);
@@ -462,7 +462,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
                 if remaining_amount >= limit_order.amount {
                     remaining_amount -= limit_order.amount;
-                    taker_amount += limit_order.deal_amount(MarketRole::Taker, None)?.value();
+                    taker_amount += *limit_order.deal_amount(MarketRole::Taker, None)?.value();
                     let maker_payment = *limit_order.deal_amount(MarketRole::Maker, None)?.value();
                     maker_amount += maker_payment;
                     payment
@@ -478,7 +478,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         break;
                     }
                 } else {
-                    taker_amount += limit_order
+                    taker_amount += *limit_order
                         .deal_amount(MarketRole::Taker, Some(remaining_amount))?
                         .value();
                     let maker_payment = *limit_order
@@ -568,7 +568,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let limit_orders = data.get_all_limit_orders(&self.order_book_id);
 
         for mut limit_order in limit_orders {
-            if limit_order.amount % self.step_lot_size != 0 {
+            if limit_order.amount.get() % self.step_lot_size.get() != 0 {
                 let refund = if limit_order.amount < self.step_lot_size {
                     limit_orders_to_cancel.insert(limit_order.id, limit_order.clone());
                     limit_order.amount
@@ -611,7 +611,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         &self,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
-        amount: QuoteAmount<OrderVolume>,
+        amount: QuoteAmount<Balance>,
         data: &mut impl DataLayer<T>,
     ) -> Result<DealInfo<AssetIdOf<T>>, DispatchError> {
         let direction = self.get_direction(input_asset_id, output_asset_id)?;
@@ -620,21 +620,29 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
                 PriceVariant::Buy => self.sum_market(
                     data.get_aggregated_asks(&self.order_book_id).iter(),
-                    Some(OrderAmount::Quote(desired_amount_in)),
+                    Some(OrderAmount::Quote(
+                        self.tick_size.copy_divisibility(desired_amount_in),
+                    )),
                 )?,
                 PriceVariant::Sell => self.sum_market(
                     data.get_aggregated_bids(&self.order_book_id).iter().rev(),
-                    Some(OrderAmount::Base(desired_amount_in)),
+                    Some(OrderAmount::Base(
+                        self.step_lot_size.copy_divisibility(desired_amount_in),
+                    )),
                 )?,
             },
             QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
                 PriceVariant::Buy => self.sum_market(
                     data.get_aggregated_asks(&self.order_book_id).iter(),
-                    Some(OrderAmount::Base(desired_amount_out)),
+                    Some(OrderAmount::Base(
+                        self.step_lot_size.copy_divisibility(desired_amount_out),
+                    )),
                 )?,
                 PriceVariant::Sell => self.sum_market(
                     data.get_aggregated_bids(&self.order_book_id).iter().rev(),
-                    Some(OrderAmount::Quote(desired_amount_out)),
+                    Some(OrderAmount::Quote(
+                        self.tick_size.copy_divisibility(desired_amount_out),
+                    )),
                 )?,
             },
         };
@@ -676,20 +684,17 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let mut enough_liquidity = false;
 
         for (price, base_volume) in market_data {
-            let quote_volume = (FixedWrapper::from(*price) * FixedWrapper::from(*base_volume))
-                .try_into_balance()
-                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+            let quote_volume =
+                (*price * (*base_volume)).map_err(|_| Error::<T>::AmountCalculationFailed)?;
 
             if let Some(limit) = depth_limit {
                 match limit {
                     OrderAmount::Base(base_limit) => {
-                        if market_base_volume + base_volume > base_limit {
+                        if market_base_volume + *base_volume > base_limit {
                             let delta = self.align_amount(base_limit - market_base_volume);
                             market_base_volume += delta;
-                            market_quote_volume += (FixedWrapper::from(*price)
-                                * FixedWrapper::from(delta))
-                            .try_into_balance()
-                            .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+                            market_quote_volume += (*price * delta)
+                                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
                             enough_liquidity = true;
                             break;
                         }
@@ -698,16 +703,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         if market_quote_volume + quote_volume > quote_limit {
                             // delta in base asset
                             let delta = self.align_amount(
-                                (FixedWrapper::from(quote_limit - market_quote_volume)
-                                    / FixedWrapper::from(*price))
-                                .try_into_balance()
-                                .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                                ((quote_limit - market_quote_volume) / (*price))
+                                    .map_err(|_| Error::<T>::AmountCalculationFailed)?,
                             );
                             market_base_volume += delta;
-                            market_quote_volume += (FixedWrapper::from(*price)
-                                * FixedWrapper::from(delta))
-                            .try_into_balance()
-                            .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+                            market_quote_volume += (*price * delta)
+                                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
                             enough_liquidity = true;
                             break;
                         }
@@ -715,7 +716,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 }
             }
 
-            market_base_volume += base_volume;
+            market_base_volume += *base_volume;
             market_quote_volume += quote_volume;
         }
 
@@ -851,10 +852,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
     }
 
-    pub fn align_amount(&self, amount: OrderVolume) -> OrderVolume {
-        let steps = amount / self.step_lot_size;
-        let aligned = steps * self.step_lot_size;
-        aligned
+    pub fn align_amount(&self, mut amount: OrderVolume) -> OrderVolume {
+        let steps = amount.get() / self.step_lot_size.get();
+        let aligned = steps * self.step_lot_size.get();
+        amount.set(aligned);
+        amount
     }
 
     /// ### `ignore_unschedule_error`
@@ -878,7 +880,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     fn ensure_limit_order_valid(&self, limit_order: &LimitOrder<T>) -> Result<(), DispatchError> {
         limit_order.ensure_valid()?;
         ensure!(
-            limit_order.price % self.tick_size == 0,
+            limit_order.price.get() % self.tick_size.get() == 0,
             Error::<T>::InvalidLimitOrderPrice
         );
         ensure!(
@@ -886,7 +888,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::InvalidOrderAmount
         );
         ensure!(
-            limit_order.amount % self.step_lot_size == 0,
+            limit_order.amount.get() % self.step_lot_size.get() == 0,
             Error::<T>::InvalidOrderAmount
         );
         Ok(())
@@ -902,7 +904,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::InvalidOrderBookId
         );
         ensure!(
-            market_order.amount % self.step_lot_size == 0,
+            market_order.amount.get() % self.step_lot_size.get() == 0,
             Error::<T>::InvalidOrderAmount
         );
         Ok(())
@@ -938,9 +940,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
                 if let Some((best_bid_price, _)) = self.best_bid(data) {
                     if limit_order.price < best_bid_price {
-                        let diff = best_bid_price.abs_diff(limit_order.price);
+                        let diff = best_bid_price.get().abs_diff(*limit_order.price.get());
                         ensure!(
-                            diff <= T::MAX_PRICE_SHIFT * best_bid_price,
+                            diff <= T::MAX_PRICE_SHIFT * (*best_bid_price.get()),
                             Error::<T>::InvalidLimitOrderPrice
                         );
                     }
@@ -962,9 +964,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
                 if let Some((best_ask_price, _)) = self.best_ask(data) {
                     if limit_order.price > best_ask_price {
-                        let diff = best_ask_price.abs_diff(limit_order.price);
+                        let diff = best_ask_price.get().abs_diff(*limit_order.price.get());
                         ensure!(
-                            diff <= T::MAX_PRICE_SHIFT * best_ask_price,
+                            diff <= T::MAX_PRICE_SHIFT * (*best_ask_price.get()),
                             Error::<T>::InvalidLimitOrderPrice
                         );
                     }
@@ -989,12 +991,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             PriceVariant::Buy => {
                 let bids = data.get_aggregated_bids(&self.order_book_id);
                 bids.iter()
-                    .fold(OrderVolume::zero(), |sum, (_, volume)| sum + volume)
+                    .fold(OrderVolume::zero(), |sum, (_, volume)| sum + *volume)
             }
             PriceVariant::Sell => {
                 let asks = data.get_aggregated_asks(&self.order_book_id);
                 asks.iter()
-                    .fold(OrderVolume::zero(), |sum, (_, volume)| sum + volume)
+                    .fold(OrderVolume::zero(), |sum, (_, volume)| sum + *volume)
             }
         };
 
@@ -1079,8 +1081,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
 
             if amount >= *volume {
-                market_amount += volume;
-                amount -= volume;
+                market_amount += *volume;
+                amount -= *volume;
             } else {
                 market_amount += amount;
                 amount = OrderVolume::zero();

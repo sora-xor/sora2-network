@@ -34,6 +34,7 @@ use crate::{
 };
 use assets::AssetIdOf;
 use common::PriceVariant;
+use core::ops::{Add, Sub};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::Zero;
@@ -88,12 +89,7 @@ impl<T: Config> StorageDataLayer<T> {
         value: &OrderVolume,
     ) -> Result<(), ()> {
         let mut bids = <AggregatedBids<T>>::get(order_book_id);
-        let volume = bids
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_add(*value)
-            .ok_or(())?;
+        let volume = bids.get(price).map(|x| *x).unwrap_or_default().add(*value);
         bids.try_insert(*price, volume).map_err(|_| ())?;
         <AggregatedBids<T>>::set(order_book_id, bids);
         Ok(())
@@ -105,12 +101,7 @@ impl<T: Config> StorageDataLayer<T> {
         value: &OrderVolume,
     ) -> Result<(), ()> {
         let mut agg_bids = <AggregatedBids<T>>::try_get(order_book_id).map_err(|_| ())?;
-        let volume = agg_bids
-            .get(price)
-            .map(|x| *x)
-            .ok_or(())?
-            .checked_sub(*value)
-            .ok_or(())?;
+        let volume = agg_bids.get(price).map(|x| *x).ok_or(())?.sub(*value);
         if volume.is_zero() {
             agg_bids.remove(price).ok_or(())?;
         } else {
@@ -126,12 +117,7 @@ impl<T: Config> StorageDataLayer<T> {
         value: &OrderVolume,
     ) -> Result<(), ()> {
         let mut asks = <AggregatedAsks<T>>::get(order_book_id);
-        let volume = asks
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_add(*value)
-            .ok_or(())?;
+        let volume = asks.get(price).map(|x| *x).unwrap_or_default().add(*value);
         asks.try_insert(*price, volume).map_err(|_| ())?;
         <AggregatedAsks<T>>::set(order_book_id, asks);
         Ok(())
@@ -143,12 +129,7 @@ impl<T: Config> StorageDataLayer<T> {
         value: &OrderVolume,
     ) -> Result<(), ()> {
         let mut agg_asks = <AggregatedAsks<T>>::try_get(order_book_id).map_err(|_| ())?;
-        let volume = agg_asks
-            .get(price)
-            .map(|x| *x)
-            .ok_or(())?
-            .checked_sub(*value)
-            .ok_or(())?;
+        let volume = agg_asks.get(price).map(|x| *x).ok_or(())?.sub(*value);
         if volume.is_zero() {
             agg_asks.remove(price).ok_or(())?;
         } else {

@@ -30,7 +30,6 @@
 
 use crate::{Error, MarketRole, MomentOf, OrderAmount, OrderPrice, OrderVolume};
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::prelude::FixedWrapper;
 use common::PriceVariant;
 use core::fmt::Debug;
 use frame_support::ensure;
@@ -158,9 +157,7 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
                 | (MarketRole::Taker, PriceVariant::Sell) => OrderAmount::Base(base_amount),
                 (MarketRole::Maker, PriceVariant::Sell)
                 | (MarketRole::Taker, PriceVariant::Buy) => OrderAmount::Quote(
-                    (FixedWrapper::from(self.price) * FixedWrapper::from(base_amount))
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                    (self.price * base_amount).map_err(|_| Error::<T>::AmountCalculationFailed)?,
                 ),
             };
 

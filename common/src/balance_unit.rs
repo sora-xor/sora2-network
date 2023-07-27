@@ -30,15 +30,25 @@
 
 use crate::prelude::FixedWrapper;
 use crate::{balance, Balance};
-use core::ops::{Add, Div, Mul, Sub};
+use codec::{Decode, Encode, MaxEncodedLen};
+use core::cmp::Ordering;
+use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use fixnum::ArithmeticError;
 use sp_arithmetic::traits::IntegerSquareRoot;
+use sp_runtime::traits::Zero;
 
 #[cfg(feature = "std")]
-use {sp_std::fmt::Display, static_assertions::_core::fmt::Formatter};
+use {
+    serde::{Deserialize, Serialize},
+    sp_std::fmt::Display,
+    static_assertions::_core::fmt::Formatter,
+};
 
 /// BalanceUnit wraps Balance and provides proper math operations between divisible & non-divisible balances that have different precision.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(
+    Encode, Decode, Copy, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BalanceUnit {
     inner: Balance,
 
@@ -48,9 +58,37 @@ pub struct BalanceUnit {
     is_divisible: bool,
 }
 
+impl Ord for BalanceUnit {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let (left, right) = match (self.is_divisible, other.is_divisible) {
+            (false, true) => (balance!(self.inner), other.inner),
+            (true, false) => (self.inner, balance!(other.inner)),
+            _ => (self.inner, other.inner),
+        };
+        left.cmp(&right)
+    }
+}
+
+impl PartialOrd for BalanceUnit {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
 impl Default for BalanceUnit {
     fn default() -> Self {
-        Self::new(0, true)
+        Self::zero()
+    }
+}
+
+impl Zero for BalanceUnit {
+    fn zero() -> Self {
+        // `is_divisible` = false here because if this zero value will have some operations with divisible asset, `is_divisible` is changed to true
+        Self::new(0, false)
+    }
+
+    fn is_zero(&self) -> bool {
+        self.inner.is_zero()
     }
 }
 
@@ -82,8 +120,12 @@ impl BalanceUnit {
         Self::new(balance, false)
     }
 
-    pub fn get(&self) -> Balance {
-        self.inner
+    pub fn copy_divisibility(&self, balance: Balance) -> Self {
+        Self::new(balance, self.is_divisible)
+    }
+
+    pub fn get(&self) -> &Balance {
+        &self.inner
     }
 
     pub fn set(&mut self, value: Balance) {
@@ -125,7 +167,7 @@ impl From<Balance> for BalanceUnit {
 }
 
 impl Add for BalanceUnit {
-    type Output = Result<Self, ArithmeticError>;
+    type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
         let (left, right) = match (self.is_divisible, rhs.is_divisible) {
@@ -133,13 +175,19 @@ impl Add for BalanceUnit {
             (true, false) => (self.inner, balance!(rhs.inner)),
             _ => (self.inner, rhs.inner),
         };
-        let balance = left.checked_add(right).ok_or(ArithmeticError::Overflow)?;
-        Ok(Self::new(balance, self.is_divisible || rhs.is_divisible))
+        let balance = left + right;
+        Self::new(balance, self.is_divisible || rhs.is_divisible)
+    }
+}
+
+impl AddAssign for BalanceUnit {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs
     }
 }
 
 impl Sub for BalanceUnit {
-    type Output = Result<Self, ArithmeticError>;
+    type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
         let (left, right) = match (self.is_divisible, rhs.is_divisible) {
@@ -147,8 +195,14 @@ impl Sub for BalanceUnit {
             (true, false) => (self.inner, balance!(rhs.inner)),
             _ => (self.inner, rhs.inner),
         };
-        let balance = left.checked_sub(right).ok_or(ArithmeticError::Overflow)?;
-        Ok(Self::new(balance, self.is_divisible || rhs.is_divisible))
+        let balance = left - right;
+        Self::new(balance, self.is_divisible || rhs.is_divisible)
+    }
+}
+
+impl SubAssign for BalanceUnit {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs
     }
 }
 
@@ -225,75 +279,106 @@ mod tests {
                 is_divisible: false
             }
         );
+
+        assert_eq!(
+            BalanceUnit::divisible(1).copy_divisibility(13),
+            BalanceUnit {
+                inner: 13,
+                is_divisible: true
+            }
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(1).copy_divisibility(14),
+            BalanceUnit {
+                inner: 14,
+                is_divisible: false
+            }
+        );
     }
 
     #[test]
     fn check_add() {
         assert_eq!(
-            (BalanceUnit::divisible(balance!(1.1)) + BalanceUnit::divisible(balance!(1.2)))
-                .unwrap(),
+            BalanceUnit::divisible(balance!(1.1)) + BalanceUnit::divisible(balance!(1.2)),
             BalanceUnit::divisible(balance!(2.3))
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(2) + BalanceUnit::divisible(balance!(1.1))).unwrap(),
+            BalanceUnit::indivisible(2) + BalanceUnit::divisible(balance!(1.1)),
             BalanceUnit::divisible(balance!(3.1))
         );
 
         assert_eq!(
-            (BalanceUnit::divisible(balance!(1.1)) + BalanceUnit::indivisible(3)).unwrap(),
+            BalanceUnit::divisible(balance!(1.1)) + BalanceUnit::indivisible(3),
             BalanceUnit::divisible(balance!(4.1))
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(2) + BalanceUnit::indivisible(3)).unwrap(),
+            BalanceUnit::indivisible(2) + BalanceUnit::indivisible(3),
             BalanceUnit::indivisible(5)
         );
     }
 
     #[test]
+    fn check_add_assign() {
+        let mut value = BalanceUnit::divisible(balance!(1.1));
+        value += BalanceUnit::divisible(balance!(1.2));
+        assert_eq!(value, BalanceUnit::divisible(balance!(2.3)));
+
+        let mut value = BalanceUnit::indivisible(2);
+        value += BalanceUnit::divisible(balance!(1.1));
+        assert_eq!(value, BalanceUnit::divisible(balance!(3.1)));
+
+        let mut value = BalanceUnit::divisible(balance!(1.1));
+        value += BalanceUnit::indivisible(3);
+        assert_eq!(value, BalanceUnit::divisible(balance!(4.1)));
+
+        let mut value = BalanceUnit::indivisible(2);
+        value += BalanceUnit::indivisible(3);
+        assert_eq!(value, BalanceUnit::indivisible(5));
+    }
+
+    #[test]
     fn check_sub() {
         assert_eq!(
-            (BalanceUnit::divisible(balance!(1.2)) - BalanceUnit::divisible(balance!(1.1)))
-                .unwrap(),
+            BalanceUnit::divisible(balance!(1.2)) - BalanceUnit::divisible(balance!(1.1)),
             BalanceUnit::divisible(balance!(0.1))
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(3) - BalanceUnit::divisible(balance!(1.1))).unwrap(),
+            BalanceUnit::indivisible(3) - BalanceUnit::divisible(balance!(1.1)),
             BalanceUnit::divisible(balance!(1.9))
         );
 
         assert_eq!(
-            (BalanceUnit::divisible(balance!(4.1)) - BalanceUnit::indivisible(3)).unwrap(),
+            BalanceUnit::divisible(balance!(4.1)) - BalanceUnit::indivisible(3),
             BalanceUnit::divisible(balance!(1.1))
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(5) - BalanceUnit::indivisible(3)).unwrap(),
+            BalanceUnit::indivisible(5) - BalanceUnit::indivisible(3),
             BalanceUnit::indivisible(2)
         );
+    }
 
-        // check sub zero
-        assert_err!(
-            BalanceUnit::divisible(balance!(1)) - BalanceUnit::divisible(balance!(1.1)),
-            ArithmeticError::Overflow
-        );
+    #[test]
+    fn check_sub_assign() {
+        let mut value = BalanceUnit::divisible(balance!(1.2));
+        value -= BalanceUnit::divisible(balance!(1.1));
+        assert_eq!(value, BalanceUnit::divisible(balance!(0.1)));
 
-        assert_err!(
-            BalanceUnit::indivisible(3) - BalanceUnit::divisible(balance!(4.1)),
-            ArithmeticError::Overflow
-        );
+        let mut value = BalanceUnit::indivisible(3);
+        value -= BalanceUnit::divisible(balance!(1.1));
+        assert_eq!(value, BalanceUnit::divisible(balance!(1.9)));
 
-        assert_err!(
-            BalanceUnit::divisible(balance!(4.1)) - BalanceUnit::indivisible(5),
-            ArithmeticError::Overflow
-        );
+        let mut value = BalanceUnit::divisible(balance!(4.1));
+        value -= BalanceUnit::indivisible(3);
+        assert_eq!(value, BalanceUnit::divisible(balance!(1.1)));
 
-        assert_err!(
-            BalanceUnit::indivisible(5) - BalanceUnit::indivisible(6),
-            ArithmeticError::Overflow
-        );
+        let mut value = BalanceUnit::indivisible(5);
+        value -= BalanceUnit::indivisible(3);
+        assert_eq!(value, BalanceUnit::indivisible(2));
     }
 
     #[test]

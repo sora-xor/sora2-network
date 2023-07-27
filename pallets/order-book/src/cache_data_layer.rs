@@ -35,6 +35,7 @@ use crate::{
 use assets::AssetIdOf;
 use common::cache_storage::{CacheStorageDoubleMap, CacheStorageMap};
 use common::PriceVariant;
+use core::ops::{Add, Sub};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::Zero;
@@ -189,8 +190,7 @@ impl<T: Config> CacheDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .unwrap_or_default()
-            .checked_add(*value)
-            .ok_or(())?;
+            .add(*value);
         agg_bids.try_insert(*price, volume).map_err(|_| ())?;
         self.aggregated_bids.set(order_book_id.clone(), agg_bids);
         Ok(())
@@ -211,9 +211,8 @@ impl<T: Config> CacheDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .unwrap_or_default()
-            .checked_sub(*value)
-            .ok_or(())?;
-        if volume.is_zero() {
+            .sub(*value);
+        if volume.get().is_zero() {
             agg_bids.remove(price);
         } else {
             agg_bids.try_insert(*price, volume).map_err(|_| ())?;
@@ -237,8 +236,7 @@ impl<T: Config> CacheDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .unwrap_or_default()
-            .checked_add(*value)
-            .ok_or(())?;
+            .add(*value);
         agg_asks.try_insert(*price, volume).map_err(|_| ())?;
         self.aggregated_asks.set(order_book_id.clone(), agg_asks);
         Ok(())
@@ -259,8 +257,7 @@ impl<T: Config> CacheDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .unwrap_or_default()
-            .checked_sub(*value)
-            .ok_or(())?;
+            .sub(*value);
         if volume.is_zero() {
             agg_asks.remove(price);
         } else {
