@@ -6,8 +6,6 @@ wasmReportFile='subwasm_report.json'
 PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
-RUSTC_VERSION=${rustcVersion}
-sudoCheckStatus=${sudoCheckStatus}
 
 printf "Tag is %s\n" ${TAG_NAME}
 printf "Tag2 is %s\n" $buildTag
