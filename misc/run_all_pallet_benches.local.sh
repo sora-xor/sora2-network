@@ -4,9 +4,12 @@
 # Should be run on a reference machine to gain accurate benchmarks
 # current reference machine: https://github.com/paritytech/substrate/pull/5848
 
+echo "[+] Compiling benchmarks..."
+cargo build --release --locked --features runtime-benchmarks,private-net --bin framenode
+
 # Load all pallet names in an array.
 PALLETS=($(
-  /usr/local/bin/framenode benchmark pallet --list --chain="local" |\
+  ./target/release/framenode benchmark pallet --list --chain="local" |\
     tail -n+2 |\
     cut -d',' -f1 |\
     sort |\
@@ -53,7 +56,7 @@ for PALLET in "${PALLETS[@]}"; do
     echo "[+] Benchmarking $PALLET in $pallet_path";
 
     OUTPUT=$(
-      /usr/local/bin/framenode benchmark pallet \
+      ./target/release/framenode benchmark pallet \
       --chain="local" \
       --steps=50 \
       --repeat=20 \
