@@ -7,8 +7,11 @@ PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 
-printf "Tag is %s\n" ${TAG_NAME}
-printf "Tag2 is %s\n" $buildTag
+if [[ ${TAG_NAME} = '' ]]; then
+    printf "Tag is %s\n" $buildTag
+else
+    printf "Tag is %s\n" ${TAG_NAME}
+fi
 
 # build
 # If TAG_NAME is defined, build for a specific tag
