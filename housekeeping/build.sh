@@ -14,7 +14,7 @@ printf "Tag2 is %s\n" $buildTag
 
 # build
 # If TAG_NAME is defined, build for a specific tag
-if [[ ${TAG_NAME} != '' || $buildTag = '' ]]; then
+if [[ ${TAG_NAME} != '' || $buildTag != '' ]]; then
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=0
