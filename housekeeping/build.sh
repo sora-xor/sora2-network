@@ -10,11 +10,11 @@ RUSTC_VERSION=${rustcVersion}
 sudoCheckStatus=${sudoCheckStatus}
 
 printf "Tag is %s\n" ${TAG_NAME}
-printf "Tag2 is %s\n" ${buildTag}
+printf "Tag2 is %s\n" ${baseImageTag}
 
 # build
 # If TAG_NAME is defined, build for a specific tag
-if [[ ${TAG_NAME} != '' || -v ${buildTag} ]]; then
+if [[ ${TAG_NAME} != '' || -v ${baseImageTag} ]]; then
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=0
