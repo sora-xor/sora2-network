@@ -136,7 +136,7 @@ where
         .await?;
         let commitment_hash = commitment.offchain_data.commitment.hash();
         let bridge_types::GenericCommitment::EVM(commitment_inner) = commitment.offchain_data.commitment else {
-            return Err(anyhow::anyhow!("Invalid commitment"));
+            return Err(anyhow::anyhow!("Invalid commitment. EVM commitment is expected"));
         };
         let inbound_channel_nonce = self.inbound_channel_nonce().await?;
         if commitment_inner.nonce <= inbound_channel_nonce {
@@ -184,7 +184,7 @@ where
         let messages_total_gas = batch.total_max_gas;
         let mut call = self
             .inbound_channel
-            .submit(batch, leaf_bytes, proof.clone())
+            .submit(batch, leaf_bytes, proof)
             .legacy();
 
         debug!("Fill submit messages");
@@ -264,12 +264,15 @@ where
                     }
                     std::collections::btree_map::Entry::Occupied(v) => v.get().clone(),
                 };
+                self.syncer.update_latest_requested(block_number.into());
                 let latest_sent = self.syncer.latest_sent();
                 if Into::<u64>::into(block_number) > latest_sent {
-                    debug!("Waiting for BEEFY block {:?}", block_number);
+                    debug!(
+                        "Waiting for BEEFY block {:?}, latest sent {:?}",
+                        block_number, latest_sent
+                    );
                     break;
                 }
-                self.send_commitment(nonce).await?;
                 if let Err(err) = self.send_commitment(nonce).await {
                     return Err(anyhow!("Error sending message commitment: {:?}", err));
                 }

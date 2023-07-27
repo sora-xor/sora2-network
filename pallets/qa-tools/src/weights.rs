@@ -28,56 +28,25 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc,
-};
+#![cfg_attr(rustfmt, rustfmt_skip)]
+#![allow(unused_parens)]
+#![allow(unused_imports)]
 
-#[derive(Clone)]
-pub struct BeefySyncer {
-    latest_requested: Arc<AtomicU64>,
-    latest_sent: Arc<AtomicU64>,
-}
+use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use core::marker::PhantomData;
 
-impl BeefySyncer {
-    pub fn new() -> Self {
-        Self {
-            latest_requested: Default::default(),
-            latest_sent: Default::default(),
-        }
+pub trait WeightInfo {
+	fn order_book_create_empty_batch() -> Weight {
+        Weight::zero()
     }
-
-    pub fn latest_requested(&self) -> u64 {
-        self.latest_requested.load(Ordering::Relaxed)
-    }
-
-    pub fn latest_sent(&self) -> u64 {
-        self.latest_sent.load(Ordering::Relaxed)
-    }
-
-    pub fn update_latest_requested(&self, block: u64) {
-        self.latest_requested
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
-                if v < block {
-                    debug!("Requesting new BEEFY block {}", block);
-                    Some(block)
-                } else {
-                    None
-                }
-            })
-            .ok();
-    }
-
-    pub fn update_latest_sent(&self, block: u64) {
-        self.latest_sent
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
-                if v < block {
-                    debug!("Updating latest sent BEEFY block to {}", block);
-                    Some(block)
-                } else {
-                    None
-                }
-            })
-            .ok();
+	fn order_book_create_and_fill_batch() -> Weight {
+        Weight::zero()
     }
 }
+
+impl WeightInfo for () {}
+
+// This pallet is intended for use only in `private-net`
+// and for testing purposes, thus weights are not important.
+pub struct SubstrateWeight<T>(PhantomData<T>);
+impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {}

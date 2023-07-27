@@ -255,16 +255,19 @@ pub mod pallet {
                             messages,
                         });
 
-                    let commitment_hash = commitment.hash();
                     let digest_item = AuxiliaryDigestItem::Commitment(
                         GenericNetworkId::EVM(network_id),
-                        commitment_hash.clone(),
+                        commitment.hash(),
                     );
                     T::AuxiliaryDigestHandler::add_item(digest_item);
 
                     let key =
                         bridge_types::utils::make_offchain_key(network_id.into(), batch_nonce);
-                    offchain_index::set(&*key, &commitment.encode());
+                    let offchain_data = bridge_types::types::BridgeOffchainData {
+                        commitment,
+                        block_number: <frame_system::Pallet<T>>::block_number(),
+                    };
+                    offchain_index::set(&*key, &offchain_data.encode());
 
                     <T as Config>::WeightInfo::on_initialize(
                         messages_count as u32,

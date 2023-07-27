@@ -156,6 +156,8 @@ use impls::{
 };
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+pub use qa_tools;
 #[cfg(feature = "wip")]
 use sp_runtime::traits::Keccak256;
 pub use {
@@ -1592,6 +1594,17 @@ impl faucet::Config for Runtime {
 }
 
 parameter_types! {
+    pub QaToolsWhitelistCapacity: u32 = 512;
+}
+
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+impl qa_tools::Config for Runtime {
+    type AssetInfoProvider = Assets;
+    type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
+    type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
     pub GetPswapDistributionTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -2029,8 +2042,8 @@ parameter_types! {
 
 #[cfg(feature = "ready-to-test")] // order-book
 impl order_book::Config for Runtime {
-    const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
-    const MIN_ORDER_LIFETIME: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
+    const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
+    const MIN_ORDER_LIFESPAN: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50); // TODO: order-book clarify
     type RuntimeEvent = RuntimeEvent;
@@ -2503,6 +2516,8 @@ construct_runtime! {
         // Available only for test net
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
+        #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+        QATools: qa_tools::{Pallet, Call} = 112,
     }
 }
 

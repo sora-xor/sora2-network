@@ -106,8 +106,8 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
-        const MAX_ORDER_LIFETIME: MomentOf<Self>;
-        const MIN_ORDER_LIFETIME: MomentOf<Self>;
+        const MAX_ORDER_LIFESPAN: MomentOf<Self>;
+        const MIN_ORDER_LIFESPAN: MomentOf<Self>;
         const MILLISECS_PER_BLOCK: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
 
@@ -438,8 +438,10 @@ pub mod pallet {
         InvalidMaxLotSize,
         /// Tick size & step lot size are too big and their multiplication overflows Balance
         TickSizeAndStepLotSizeAreTooBig,
-        /// Tick size & step lot size are too small and their multiplication goes out of precision
-        TickSizeAndStepLotSizeAreTooSmall,
+        /// Product of tick and step lot sizes goes out of precision. It must be accurately
+        /// represented by fixed-precision float to prevent rounding errors. I.e. the product
+        /// should not have more than 18 digits after the comma.
+        TickSizeAndStepLotSizeLosePrecision,
         /// Max lot size cannot be more that total supply of base asset
         MaxLotSizeIsMoreThanTotalSupply,
         /// Indicated limit for slippage has not been met during transaction execution.
@@ -467,59 +469,7 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(
-                order_book_id.base != order_book_id.quote,
-                Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
-            );
-            ensure!(
-                order_book_id.dex_id == common::DEXId::Polkaswap.into(),
-                Error::<T>::NotAllowedDEXId
-            );
-            let dex_info = T::DexInfoProvider::get_dex_info(&order_book_id.dex_id)?;
-            // a quote asset of order book must be the base asset of DEX
-            ensure!(
-                order_book_id.quote == dex_info.base_asset_id,
-                Error::<T>::NotAllowedQuoteAsset
-            );
-
-            // synthetic asset are forbidden
-            ensure!(
-                !T::SyntheticInfoProvider::is_synthetic(&order_book_id.base),
-                Error::<T>::SyntheticAssetIsForbidden
-            );
-
-            T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
-            T::EnsureTradingPairExists::ensure_trading_pair_exists(
-                &order_book_id.dex_id,
-                &order_book_id.quote.into(),
-                &order_book_id.base.into(),
-            )?;
-            ensure!(
-                !<OrderBooks<T>>::contains_key(order_book_id),
-                Error::<T>::OrderBookAlreadyExists
-            );
-
-            let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-                // temp solution for stage env
-                // will be removed in #542
-                // todo (m.tagirov)
-                return Err(Error::<T>::NftOrderBooksAreTemporarilyForbidden.into());
-
-                #[allow(unreachable_code)]
-                {
-                    // nft
-                    // ensure the user has nft
-                    ensure!(
-                        T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
-                            > Balance::zero(),
-                        Error::<T>::UserHasNoNft
-                    );
-                    OrderBook::<T>::default_nft(order_book_id)
-                }
-            } else {
-                // regular asset
-                OrderBook::<T>::default(order_book_id)
-            };
+            Self::verify_create_orderbook_params(&who, &order_book_id)?;
 
             #[cfg(feature = "ready-to-test")] // order-book
             {
@@ -530,10 +480,7 @@ pub mod pallet {
                     LiquiditySourceType::OrderBook,
                 )?;
             }
-
-            <OrderBooks<T>>::insert(order_book_id, order_book);
-            Self::register_tech_account(order_book_id)?;
-
+            Self::create_orderbook_unchecked(&order_book_id)?;
             Self::deposit_event(Event::<T>::OrderBookCreated {
                 order_book_id,
                 creator: who,
@@ -644,21 +591,12 @@ pub mod pallet {
             // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
             // The min possible deal amount = `tick_size` * `step_lot_size`.
             // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
-            // and doesn't go out of precision if `tick_size` & `step_lot_size` are too small.
-
-            // Returns error if value overflows.
-            let min_possible_deal_amount = (FixedWrapper::from(tick_size)
-                * FixedWrapper::from(step_lot_size))
-            .try_into_balance()
+            // and doesn't go out of precision.
+            let _min_possible_deal_amount = (FixedWrapper::from(tick_size)
+                .lossless_mul(FixedWrapper::from(step_lot_size))
+                .ok_or(Error::<T>::TickSizeAndStepLotSizeLosePrecision)?)
+            .try_into_balance() // Returns error if value overflows.
             .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
-
-            // 1 is a min non-zero possible value. balance!(0.000000000000000001) == 1
-            // If `tick_size` * `step_lot_size` result goes out of 18 digits precision, the min possible deal amount == 0,
-            // because FixedWrapper::try_into_balance() returns 0 for such cases.
-            ensure!(
-                min_possible_deal_amount >= 1,
-                Error::<T>::TickSizeAndStepLotSizeAreTooSmall
-            );
 
             // `max_lot_size` couldn't be more then total supply of `base` asset
             let total_supply = T::AssetInfoProvider::total_issuance(&order_book_id.base)?;
@@ -724,7 +662,7 @@ pub mod pallet {
             let order_id = order_book.next_order_id();
             let now = T::Time::now();
             let current_block = frame_system::Pallet::<T>::block_number();
-            let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFETIME);
+            let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFESPAN);
             let order = LimitOrder::<T>::new(
                 order_id,
                 who.clone(),
@@ -980,6 +918,78 @@ impl<T: Config> Pallet<T> {
         };
 
         Some(order_book_id)
+    }
+
+    pub fn verify_create_orderbook_params(
+        _who: &T::AccountId,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Result<(), DispatchError> {
+        ensure!(
+            order_book_id.base != order_book_id.quote,
+            Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
+        );
+        ensure!(
+            order_book_id.dex_id == common::DEXId::Polkaswap.into(),
+            Error::<T>::NotAllowedDEXId
+        );
+
+        // a quote asset of order book must be the base asset of DEX
+        let dex_info = T::DexInfoProvider::get_dex_info(&order_book_id.dex_id)?;
+        ensure!(
+            order_book_id.quote == dex_info.base_asset_id,
+            Error::<T>::NotAllowedQuoteAsset
+        );
+
+        // synthetic asset are forbidden
+        ensure!(
+            !T::SyntheticInfoProvider::is_synthetic(&order_book_id.base),
+            Error::<T>::SyntheticAssetIsForbidden
+        );
+
+        T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
+        T::EnsureTradingPairExists::ensure_trading_pair_exists(
+            &order_book_id.dex_id,
+            &order_book_id.quote.into(),
+            &order_book_id.base.into(),
+        )?;
+
+        ensure!(
+            !<OrderBooks<T>>::contains_key(order_book_id),
+            Error::<T>::OrderBookAlreadyExists
+        );
+
+        if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+            // temp solution for stage env
+            // will be removed in #542
+            // todo (m.tagirov)
+            return Err(Error::<T>::NftOrderBooksAreTemporarilyForbidden.into());
+
+            // todo: rename `_who` to `who`
+            #[allow(unreachable_code)]
+            {
+                // nft
+                // ensure the user has nft
+                ensure!(
+                    T::AssetInfoProvider::total_balance(&order_book_id.base, &_who)?
+                        > Balance::zero(),
+                    Error::<T>::UserHasNoNft
+                );
+            }
+        };
+        Ok(())
+    }
+
+    pub fn create_orderbook_unchecked(
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Result<(), DispatchError> {
+        let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+            OrderBook::<T>::default_nft(*order_book_id)
+        } else {
+            // regular asset
+            OrderBook::<T>::default(*order_book_id)
+        };
+        <OrderBooks<T>>::insert(order_book_id, order_book);
+        Self::register_tech_account(*order_book_id)
     }
 }
 
