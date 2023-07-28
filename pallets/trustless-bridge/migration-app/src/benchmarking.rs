@@ -16,7 +16,7 @@ use crate::Pallet as MigrationApp;
 benchmarks! {
     where_clause {where
         T::AssetId: From<AssetId32<PredefinedAssetId>>,
-        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>,
+        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>,
         erc20_app::AssetIdOf<T>: From<AssetId32<PredefinedAssetId>>,
         eth_app::AssetIdOf<T>: From<AssetId32<PredefinedAssetId>>,
     }

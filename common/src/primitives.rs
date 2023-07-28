@@ -410,7 +410,7 @@ impl Display for AssetSymbol {
 
 impl Default for AssetSymbol {
     fn default() -> Self {
-        Self(Vec::new())
+        Self(b"TEST".to_vec())
     }
 }
 
@@ -456,7 +456,7 @@ impl Display for AssetName {
 
 impl Default for AssetName {
     fn default() -> Self {
-        Self(Vec::new())
+        Self(b"Test".to_vec())
     }
 }
 

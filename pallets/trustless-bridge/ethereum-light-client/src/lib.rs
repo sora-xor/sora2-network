@@ -1092,5 +1092,14 @@ pub mod pallet {
 
             Ok(())
         }
+
+        fn verify_weight(_proof: &Self::Proof) -> Weight {
+            Default::default()
+        }
+
+        #[cfg(feature = "runtime-benchmarks")]
+        fn valid_proof() -> Option<Self::Proof> {
+            None
+        }
     }
 }
