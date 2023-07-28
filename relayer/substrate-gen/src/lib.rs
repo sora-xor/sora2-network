@@ -118,6 +118,8 @@ pub mod runtime {
     use ::bridge_types::HeaderId;
     #[subxt(substitute_type = "bridge_types::SubNetworkId")]
     use ::bridge_types::SubNetworkId;
+    #[subxt(substitute_type = "common::balance_unit::BalanceUnit")]
+    use ::common::prelude::BalanceUnit;
     #[subxt(substitute_type = "common::primitives::AssetId32")]
     use ::common::AssetId32;
     #[subxt(substitute_type = "common::primitives::AssetName")]

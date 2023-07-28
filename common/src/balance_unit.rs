@@ -175,7 +175,7 @@ impl Add for BalanceUnit {
             (true, false) => (self.inner, balance!(rhs.inner)),
             _ => (self.inner, rhs.inner),
         };
-        let balance = left + right;
+        let balance = left.saturating_add(right);
         Self::new(balance, self.is_divisible || rhs.is_divisible)
     }
 }
@@ -195,7 +195,7 @@ impl Sub for BalanceUnit {
             (true, false) => (self.inner, balance!(rhs.inner)),
             _ => (self.inner, rhs.inner),
         };
-        let balance = left - right;
+        let balance = left.saturating_sub(right);
         Self::new(balance, self.is_divisible || rhs.is_divisible)
     }
 }
