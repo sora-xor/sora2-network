@@ -7,7 +7,7 @@ PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 
-if [[ -n $buildTag ]] || [[ -n ${TAG_NAME} ]]; then
+if [[ $buildTag != null ]] || [[ ${TAG_NAME} != null ]]; then
     printf "Tag is %s\n" $buildTag ${TAG_NAME}
 else
     printf "⚡️ There is no tag here, only tests run."
