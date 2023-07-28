@@ -37,8 +37,8 @@ use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::test_utils::assert_last_event;
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId, LiquiditySource,
-    PriceVariant, VAL, XOR, XSTUSD,
+    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant,
+    VAL, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
@@ -68,45 +68,38 @@ fn should_register_technical_account() {
         .unwrap();
 
         let accounts = [
-            (
-                DEX,
-                OrderBookId::<AssetIdOf<Runtime>> {
-                    base: VAL.into(),
-                    quote: XOR.into(),
-                },
-            ),
-            (
-                DEX,
-                OrderBookId::<AssetIdOf<Runtime>> {
-                    base: nft,
-                    quote: XOR.into(),
-                },
-            ),
+            OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+                dex_id: DEX.into(),
+                base: VAL.into(),
+                quote: XOR.into(),
+            },
+            OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+                dex_id: DEX.into(),
+                base: nft,
+                quote: XOR.into(),
+            },
         ];
 
         // register (on order book creation)
-        for (dex_id, order_book_id) in accounts {
-            OrderBookPallet::register_tech_account(dex_id.into(), order_book_id).expect(&format!(
-                "Could not register account for dex_id: {:?}, pair: {:?}",
-                dex_id, order_book_id,
+        for order_book_id in accounts {
+            OrderBookPallet::register_tech_account(order_book_id).expect(&format!(
+                "Could not register account for order_book_id: {:?}",
+                order_book_id,
             ));
         }
 
         // deregister (on order book removal)
-        for (dex_id, order_book_id) in accounts {
-            OrderBookPallet::deregister_tech_account(dex_id.into(), order_book_id).expect(
-                &format!(
-                    "Could not deregister account for dex_id: {:?}, pair: {:?}",
-                    dex_id, order_book_id,
-                ),
-            );
+        for order_book_id in accounts {
+            OrderBookPallet::deregister_tech_account(order_book_id).expect(&format!(
+                "Could not deregister account for order_book_id: {:?}",
+                order_book_id,
+            ));
         }
     });
 }
 
 fn test_lock_unlock_same_account(
-    dex_id: common::DEXId,
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
     asset_id: &AssetIdOf<Runtime>,
     amount_to_lock: Balance,
     account: &<Runtime as frame_system::Config>::AccountId,
@@ -114,7 +107,6 @@ fn test_lock_unlock_same_account(
     let balance_before = free_balance(asset_id, account);
 
     assert_ok!(OrderBookPallet::lock_liquidity(
-        dex_id.into(),
         account,
         order_book_id,
         asset_id,
@@ -125,7 +117,6 @@ fn test_lock_unlock_same_account(
     assert_eq!(balance_after_lock, balance_before - amount_to_lock);
 
     assert_ok!(OrderBookPallet::unlock_liquidity(
-        dex_id.into(),
         account,
         order_book_id,
         asset_id,
@@ -137,8 +128,7 @@ fn test_lock_unlock_same_account(
 }
 
 fn test_lock_unlock_other_account(
-    dex_id: common::DEXId,
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
     asset_id: &AssetIdOf<Runtime>,
     amount_to_lock: Balance,
     lock_account: &<Runtime as frame_system::Config>::AccountId,
@@ -148,7 +138,6 @@ fn test_lock_unlock_other_account(
     let unlock_account_balance_before = free_balance(asset_id, unlock_account);
 
     assert_ok!(OrderBookPallet::lock_liquidity(
-        dex_id.into(),
         lock_account,
         order_book_id,
         asset_id,
@@ -162,7 +151,6 @@ fn test_lock_unlock_other_account(
     );
 
     assert_ok!(OrderBookPallet::unlock_liquidity(
-        dex_id.into(),
         unlock_account,
         order_book_id,
         asset_id,
@@ -177,8 +165,7 @@ fn test_lock_unlock_other_account(
 }
 
 fn test_lock_unlock_other_accounts(
-    dex_id: common::DEXId,
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
     asset_id: &AssetIdOf<Runtime>,
     amount_to_lock: Balance,
     lock_account: &<Runtime as frame_system::Config>::AccountId,
@@ -190,7 +177,6 @@ fn test_lock_unlock_other_accounts(
     let unlock_account_balance_before2 = free_balance(asset_id, unlock_account2);
 
     assert_ok!(OrderBookPallet::lock_liquidity(
-        dex_id.into(),
         lock_account,
         order_book_id,
         asset_id,
@@ -212,7 +198,6 @@ fn test_lock_unlock_other_accounts(
     ]);
 
     assert_ok!(OrderBookPallet::unlock_liquidity_batch(
-        dex_id.into(),
         order_book_id,
         asset_id,
         &unlocks
@@ -243,21 +228,21 @@ fn should_lock_unlock_base_asset() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(DEX, order_book_id, &XOR, amount_to_lock, &alice());
+        test_lock_unlock_same_account(order_book_id, &XOR, amount_to_lock, &alice());
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(DEX, order_book_id, &XOR, amount_to_lock, &alice(), &bob());
+        test_lock_unlock_other_account(order_book_id, &XOR, amount_to_lock, &alice(), &bob());
 
         // Alice -> Bob & Charlie
         test_lock_unlock_other_accounts(
-            DEX,
             order_book_id,
             &XOR,
             amount_to_lock,
@@ -280,17 +265,18 @@ fn should_lock_unlock_other_asset() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(DEX, order_book_id, &VAL, amount_to_lock, &alice());
+        test_lock_unlock_same_account(order_book_id, &VAL, amount_to_lock, &alice());
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(DEX, order_book_id, &VAL, amount_to_lock, &alice(), &bob());
+        test_lock_unlock_other_account(order_book_id, &VAL, amount_to_lock, &alice(), &bob());
     });
 }
 
@@ -311,17 +297,18 @@ fn should_lock_unlock_indivisible_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft.clone(),
             quote: XOR.into(),
         };
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(DEX, order_book_id, &nft, balance!(1), &alice());
+        test_lock_unlock_same_account(order_book_id, &nft, balance!(1), &alice());
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(DEX, order_book_id, &nft, balance!(1), &alice(), &bob());
+        test_lock_unlock_other_account(order_book_id, &nft, balance!(1), &alice(), &bob());
     });
 }
 
@@ -342,15 +329,15 @@ fn should_lock_unlock_multiple_indivisible_nfts() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft.clone(),
             quote: XOR.into(),
         };
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         // Alice -> Bob & Charlie
         test_lock_unlock_other_accounts(
-            DEX,
             order_book_id,
             &nft,
             balance!(4),
@@ -373,20 +360,15 @@ fn should_not_lock_insufficient_base_asset() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_err!(
-            OrderBookPallet::lock_liquidity(
-                DEX.into(),
-                &alice(),
-                order_book_id,
-                &XOR,
-                amount_to_lock
-            ),
+            OrderBookPallet::lock_liquidity(&alice(), order_book_id, &XOR, amount_to_lock),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
     });
@@ -404,20 +386,15 @@ fn should_not_lock_insufficient_other_asset() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_err!(
-            OrderBookPallet::lock_liquidity(
-                DEX.into(),
-                &alice(),
-                order_book_id,
-                &VAL,
-                amount_to_lock
-            ),
+            OrderBookPallet::lock_liquidity(&alice(), order_book_id, &VAL, amount_to_lock),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -442,14 +419,15 @@ fn should_not_lock_insufficient_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft.clone(),
             quote: XOR.into(),
         };
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_err!(
-            OrderBookPallet::lock_liquidity(DEX.into(), &caller, order_book_id, &nft, balance!(1)),
+            OrderBookPallet::lock_liquidity(&caller, order_book_id, &nft, balance!(1)),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -468,14 +446,14 @@ fn should_not_unlock_more_base_that_tech_account_has() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_ok!(OrderBookPallet::lock_liquidity(
-            DEX.into(),
             &alice(),
             order_book_id,
             &XOR,
@@ -483,13 +461,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
         ));
 
         assert_err!(
-            OrderBookPallet::unlock_liquidity(
-                DEX.into(),
-                &alice(),
-                order_book_id,
-                &XOR,
-                amount_to_try_unlock
-            ),
+            OrderBookPallet::unlock_liquidity(&alice(), order_book_id, &XOR, amount_to_try_unlock),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
     });
@@ -508,14 +480,14 @@ fn should_not_unlock_more_other_that_tech_account_has() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_ok!(OrderBookPallet::lock_liquidity(
-            DEX.into(),
             &alice(),
             order_book_id,
             &VAL,
@@ -523,13 +495,7 @@ fn should_not_unlock_more_other_that_tech_account_has() {
         ));
 
         assert_err!(
-            OrderBookPallet::unlock_liquidity(
-                DEX.into(),
-                &alice(),
-                order_book_id,
-                &VAL,
-                amount_to_try_unlock
-            ),
+            OrderBookPallet::unlock_liquidity(&alice(), order_book_id, &VAL, amount_to_try_unlock),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -552,20 +518,15 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: nft.clone(),
             quote: XOR.into(),
         };
-        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_err!(
-            OrderBookPallet::unlock_liquidity(
-                DEX.into(),
-                &alice(),
-                order_book_id,
-                &nft,
-                balance!(1)
-            ),
+            OrderBookPallet::unlock_liquidity(&alice(), order_book_id, &nft, balance!(1)),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -575,7 +536,8 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
 fn should_expire_order() {
     ext().execute_with(|| {
         let caller = alice();
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -646,7 +608,8 @@ fn should_expire_order() {
 fn should_cleanup_on_expiring() {
     ext().execute_with(|| {
         let caller = alice();
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -797,7 +760,8 @@ fn should_cleanup_on_expiring() {
 #[ignore] // it works, but takes a lot of time (~2-120 secs depending on settings)
 fn should_enforce_expiration_and_weight_limits() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -895,6 +859,7 @@ fn should_emit_event_on_expiration_failure() {
         frame_system::Pallet::<Runtime>::set_block_number(1);
 
         let non_existent_order_book_id = OrderBookId {
+            dex_id: DEX.into(),
             base: XOR,
             quote: VAL,
         };
@@ -919,32 +884,44 @@ fn should_emit_event_on_expiration_failure() {
 
 fn should_assemble_order_book_id() {
     ext().execute_with(|| {
-        let polkaswap_order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let polkaswap_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
-        let polkaswap_xstusd_order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let polkaswap_xstusd_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: common::DEXId::PolkaswapXSTUSD.into(),
             base: VAL.into(),
             quote: XSTUSD.into(),
         };
 
         assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &XOR, &VAL).unwrap(),
-            polkaswap_order_book_id
-        );
-        assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &VAL, &XOR).unwrap(),
-            polkaswap_order_book_id
-        );
-        assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::PolkaswapXSTUSD.into(), &XSTUSD, &VAL)
+            OrderBookPallet::assemble_order_book_id(common::DEXId::Polkaswap.into(), &XOR, &VAL)
                 .unwrap(),
+            polkaswap_order_book_id
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(common::DEXId::Polkaswap.into(), &VAL, &XOR)
+                .unwrap(),
+            polkaswap_order_book_id
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(
+                common::DEXId::PolkaswapXSTUSD.into(),
+                &XSTUSD,
+                &VAL
+            )
+            .unwrap(),
             polkaswap_xstusd_order_book_id
         );
         assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::PolkaswapXSTUSD.into(), &VAL, &XSTUSD)
-                .unwrap(),
+            OrderBookPallet::assemble_order_book_id(
+                common::DEXId::PolkaswapXSTUSD.into(),
+                &VAL,
+                &XSTUSD
+            )
+            .unwrap(),
             polkaswap_xstusd_order_book_id
         );
     });
@@ -954,36 +931,52 @@ fn should_assemble_order_book_id() {
 fn should_not_assemble_order_book_id_without_dex_base() {
     ext().execute_with(|| {
         assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &XSTUSD, &VAL),
+            OrderBookPallet::assemble_order_book_id(common::DEXId::Polkaswap.into(), &XSTUSD, &VAL),
             None
         );
         assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &VAL, &XSTUSD),
-            None
-        );
-        assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &XSTUSD, &XSTUSD),
-            None
-        );
-        assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::Polkaswap.into(), &XOR, &XOR),
-            None
-        );
-        assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::PolkaswapXSTUSD.into(), &XOR, &VAL),
-            None
-        );
-        assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::PolkaswapXSTUSD.into(), &VAL, &XOR),
-            None
-        );
-        assert_eq!(
-            OrderBookPallet::assemble_order_book_id(&DEXId::PolkaswapXSTUSD.into(), &XOR, &XOR),
+            OrderBookPallet::assemble_order_book_id(common::DEXId::Polkaswap.into(), &VAL, &XSTUSD),
             None
         );
         assert_eq!(
             OrderBookPallet::assemble_order_book_id(
-                &DEXId::PolkaswapXSTUSD.into(),
+                common::DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XSTUSD
+            ),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(common::DEXId::Polkaswap.into(), &XOR, &XOR),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(
+                common::DEXId::PolkaswapXSTUSD.into(),
+                &XOR,
+                &VAL
+            ),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(
+                common::DEXId::PolkaswapXSTUSD.into(),
+                &VAL,
+                &XOR
+            ),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(
+                common::DEXId::PolkaswapXSTUSD.into(),
+                &XOR,
+                &XOR
+            ),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::assemble_order_book_id(
+                common::DEXId::PolkaswapXSTUSD.into(),
                 &XSTUSD,
                 &XSTUSD
             ),
@@ -995,7 +988,8 @@ fn should_not_assemble_order_book_id_without_dex_base() {
 #[test]
 fn can_exchange() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1018,12 +1012,13 @@ fn cannot_exchange_with_non_existed_order_book() {
 #[test]
 fn cannot_exchange_with_not_trade_status() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
-        let mut order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
+        let mut order_book = OrderBook::<Runtime>::default(order_book_id);
 
         order_book.status = OrderBookStatus::PlaceAndCancel;
         order_book::OrderBooks::<Runtime>::insert(order_book_id, order_book.clone());
@@ -1051,7 +1046,8 @@ fn cannot_exchange_with_not_trade_status() {
 #[test]
 fn should_quote() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1197,7 +1193,8 @@ fn should_not_quote_with_non_existed_order_book() {
 #[test]
 fn should_not_quote_with_empty_side() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1231,7 +1228,8 @@ fn should_not_quote_with_empty_side() {
 #[test]
 fn should_not_quote_with_small_amount() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1287,7 +1285,8 @@ fn should_not_quote_with_small_amount() {
 #[test]
 fn should_not_quote_if_amount_is_greater_than_liquidity() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1321,7 +1320,8 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
 #[test]
 fn should_quote_without_impact() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1459,7 +1459,8 @@ fn should_not_quote_without_impact_with_non_existed_order_book() {
 #[test]
 fn should_not_quote_without_impact_with_empty_side() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1493,7 +1494,8 @@ fn should_not_quote_without_impact_with_empty_side() {
 #[test]
 fn should_not_quote_without_impact_with_small_amount() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1549,7 +1551,8 @@ fn should_not_quote_without_impact_with_small_amount() {
 #[test]
 fn should_exchange_and_transfer_to_owner() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1670,7 +1673,8 @@ fn should_exchange_and_transfer_to_owner() {
 #[test]
 fn should_exchange_and_transfer_to_another_account() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1868,7 +1872,8 @@ fn should_not_exchange_with_non_existed_order_book() {
 #[test]
 fn should_not_exchange_with_invalid_slippage() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };

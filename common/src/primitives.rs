@@ -41,7 +41,7 @@ use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
 
-use crate::IsValid;
+use crate::{Fixed, IsValid};
 #[cfg(feature = "std")]
 use {
     rustc_hex::ToHex,
@@ -1105,6 +1105,7 @@ pub enum Oracle {
 pub struct Rate {
     pub value: Balance,
     pub last_updated: u64,
+    pub dynamic_fee: Fixed,
 }
 
 #[derive(Encode, MaxEncodedLen, Default, TypeInfo)]

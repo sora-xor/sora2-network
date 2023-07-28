@@ -75,6 +75,19 @@ impl<T: Config> DataFeed<T::Symbol, Rate, u64> for Pallet<T> {
             .collect();
         Ok(symbols_rates)
     }
+
+    fn quote_unchecked(symbol: &T::Symbol) -> Option<Rate> {
+        let enabled_oracles = Self::enabled_oracles();
+
+        Self::enabled_symbols(symbol)
+            .into_iter()
+            .filter(|oracle| enabled_oracles.contains(&oracle))
+            .map(|oracle| match oracle {
+                Oracle::BandChainFeed => T::BandChainOracle::quote_unchecked(symbol),
+            })
+            .next()
+            .unwrap_or(None)
+    }
 }
 
 impl<T: Config> OnNewSymbolsRelayed<T::Symbol> for Pallet<T> {
