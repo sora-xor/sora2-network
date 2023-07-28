@@ -38,7 +38,7 @@ use common::prelude::{
 #[cfg(feature = "ready-to-test")] // order-book
 use common::LiquiditySourceType;
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
+    AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
@@ -565,15 +565,6 @@ pub mod pallet {
             // It is possible to set min == max if it necessary, e.g. some NFTs
             ensure!(min_lot_size <= max_lot_size, Error::<T>::InvalidMaxLotSize);
 
-            if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-                // NFT has special bounds as non-divisible asset
-                ensure!(step_lot_size >= balance!(1), Error::<T>::InvalidStepLotSize);
-                ensure!(
-                    step_lot_size % balance!(1) == 0,
-                    Error::<T>::InvalidStepLotSize
-                );
-            }
-
             // min & max couldn't be less then `step_lot_size`
             ensure!(min_lot_size >= step_lot_size, Error::<T>::InvalidMinLotSize);
             ensure!(max_lot_size >= step_lot_size, Error::<T>::InvalidMaxLotSize);
@@ -588,15 +579,17 @@ pub mod pallet {
                 Error::<T>::InvalidMaxLotSize
             );
 
-            // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
-            // The min possible deal amount = `tick_size` * `step_lot_size`.
-            // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
-            // and doesn't go out of precision.
-            let _min_possible_deal_amount = (FixedWrapper::from(tick_size)
-                .lossless_mul(FixedWrapper::from(step_lot_size))
-                .ok_or(Error::<T>::TickSizeAndStepLotSizeLosePrecision)?)
-            .try_into_balance() // Returns error if value overflows.
-            .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
+            if !T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+                // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
+                // The min possible deal amount = `tick_size` * `step_lot_size`.
+                // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
+                // and doesn't go out of precision.
+                let _min_possible_deal_amount = (FixedWrapper::from(tick_size)
+                    .lossless_mul(FixedWrapper::from(step_lot_size))
+                    .ok_or(Error::<T>::TickSizeAndStepLotSizeLosePrecision)?)
+                .try_into_balance() // Returns error if value overflows.
+                .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
+            }
 
             // `max_lot_size` couldn't be more then total supply of `base` asset
             let total_supply = T::AssetInfoProvider::total_issuance(&order_book_id.base)?;
@@ -936,7 +929,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn verify_create_orderbook_params(
-        _who: &T::AccountId,
+        who: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         ensure!(
@@ -974,22 +967,12 @@ impl<T: Config> Pallet<T> {
         );
 
         if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-            // temp solution for stage env
-            // will be removed in #542
-            // todo (m.tagirov)
-            return Err(Error::<T>::NftOrderBooksAreTemporarilyForbidden.into());
-
-            // todo: rename `_who` to `who`
-            #[allow(unreachable_code)]
-            {
-                // nft
-                // ensure the user has nft
-                ensure!(
-                    T::AssetInfoProvider::total_balance(&order_book_id.base, &_who)?
-                        > Balance::zero(),
-                    Error::<T>::UserHasNoNft
-                );
-            }
+            // nft
+            // ensure the user has nft
+            ensure!(
+                T::AssetInfoProvider::total_balance(&order_book_id.base, &who)? > Balance::zero(),
+                Error::<T>::UserHasNoNft
+            );
         };
         Ok(())
     }

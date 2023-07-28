@@ -274,7 +274,6 @@ fn should_not_create_order_book_that_already_exists() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_not_create_order_book_for_user_without_nft() {
     ext().execute_with(|| {
         let caller = alice();
@@ -314,7 +313,6 @@ fn should_not_create_order_book_for_user_without_nft() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_not_create_order_book_for_nft_owner_without_nft() {
     ext().execute_with(|| {
         let caller = alice();
@@ -358,7 +356,6 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_create_order_book_for_nft() {
     ext().execute_with(|| {
         let caller = alice();
@@ -602,7 +599,6 @@ fn should_delete_order_book_with_a_lot_of_orders() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_check_permissions_for_update_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -1032,68 +1028,6 @@ fn should_not_update_order_book_when_attributes_exceed_total_supply() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
-fn should_not_update_order_book_with_nft_bounds() {
-    ext().execute_with(|| {
-        FrameSystem::inc_providers(&alice());
-
-        let nft = Assets::register_from(
-            &alice(),
-            AssetSymbol(b"NFT".to_vec()),
-            AssetName(b"Nft".to_vec()),
-            0,
-            100,
-            false,
-            None,
-            None,
-        )
-        .unwrap();
-
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: nft,
-            quote: XOR.into(),
-        };
-
-        assert_ok!(TradingPair::register(
-            RawOrigin::Signed(alice()).into(),
-            DEX.into(),
-            order_book_id.quote,
-            order_book_id.base
-        ));
-
-        assert_ok!(OrderBookPallet::create_orderbook(
-            RawOrigin::Signed(alice()).into(),
-            order_book_id
-        ));
-
-        assert_err!(
-            OrderBookPallet::update_orderbook(
-                RuntimeOrigin::root(),
-                order_book_id,
-                balance!(0.01),
-                0,
-                1,
-                10
-            ),
-            E::InvalidStepLotSize
-        );
-
-        assert_err!(
-            OrderBookPallet::update_orderbook(
-                RuntimeOrigin::root(),
-                order_book_id,
-                balance!(0.01),
-                11,
-                1,
-                10
-            ),
-            E::InvalidStepLotSize
-        );
-    });
-}
-
-#[test]
 fn should_update_order_book_with_regular_asset() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -1184,7 +1118,6 @@ fn should_update_order_book_with_regular_asset() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_update_order_book_with_nft() {
     ext().execute_with(|| {
         FrameSystem::inc_providers(&alice());
@@ -1607,7 +1540,6 @@ fn should_place_limit_order() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_place_limit_order_with_nft() {
     ext().execute_with(|| {
         let caller = alice();
