@@ -252,7 +252,15 @@ mod tests {
             BalanceUnit::default(),
             BalanceUnit {
                 inner: 0,
-                is_divisible: true
+                is_divisible: false
+            }
+        );
+
+        assert_eq!(
+            BalanceUnit::zero(),
+            BalanceUnit {
+                inner: 0,
+                is_divisible: false
             }
         );
 
