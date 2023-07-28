@@ -351,10 +351,10 @@ benchmarks! {
         );
 
         let order_book = OrderBookPallet::<T>::order_books(order_book_id).unwrap();
-        assert_eq!(order_book.tick_size, tick_size);
-        assert_eq!(order_book.step_lot_size, step_lot_size);
-        assert_eq!(order_book.min_lot_size, min_lot_size);
-        assert_eq!(order_book.max_lot_size, max_lot_size);
+        assert_eq!(order_book.tick_size, tick_size.into());
+        assert_eq!(order_book.step_lot_size, step_lot_size.into());
+        assert_eq!(order_book.min_lot_size, min_lot_size.into());
+        assert_eq!(order_book.max_lot_size, max_lot_size.into());
     }
 
     change_orderbook_status {
@@ -436,8 +436,8 @@ benchmarks! {
             order_id,
             caller.clone(),
             PriceVariant::Buy,
-            price,
-            amount,
+            price.into(),
+            amount.into(),
             now,
             lifespan,
             current_block
@@ -451,7 +451,7 @@ benchmarks! {
         let deal_amount = *expected_limit_order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
-        let expected_balance = balance_before - deal_amount;
+        let expected_balance = balance_before - deal_amount.get();
         assert_eq!(balance, expected_balance);
     }
 
@@ -490,7 +490,7 @@ benchmarks! {
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
-        let expected_balance = balance_before + deal_amount;
+        let expected_balance = balance_before + deal_amount.get();
         assert_eq!(balance, expected_balance);
     }
 
@@ -553,8 +553,8 @@ benchmarks! {
                 order_book_id,
                 owner_id: caller.clone(),
                 direction: PriceVariant::Sell,
-                amount: OrderAmount::Base(balance!(355.13473)),
-                average_price: balance!(9.855414408497867837),
+                amount: OrderAmount::Base(balance!(355.13473).into()),
+                average_price: balance!(9.855414408497867837).into(),
                 to: None,
             }
             .into(),
@@ -625,7 +625,7 @@ benchmarks! {
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
-        let expected_balance = balance_before + deal_amount;
+        let expected_balance = balance_before + deal_amount.get();
         assert_eq!(balance, expected_balance);
     }
 
