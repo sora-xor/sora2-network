@@ -7,15 +7,15 @@ PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 
-if [[ ${TAG_NAME} = '' ]]; then
-    printf "Tag is %s\n" $buildTag
+if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
+    printf "Tag is %s\n" $buildTag ${TAG_NAME}
 else
-    printf "Tag is %s\n" ${TAG_NAME}
+    printf "⚡️ There is no tag here, only tests run."
 fi
 
 # build
 # If TAG_NAME is defined, build for a specific tag
-if [[ ${TAG_NAME} != '' || $buildTag != '' ]]; then
+if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=0
@@ -46,7 +46,7 @@ if [[ ${TAG_NAME} != '' || $buildTag != '' ]]; then
     if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else
     # If TAG_NAME is not defined, run tests and checks
-    echo 'build without tag'
+    echo '⚡️ only tests run'
     rm -rf ~/.cargo/.package-cache
     rm Cargo.lock
     cargo fmt -- --check > /dev/null
