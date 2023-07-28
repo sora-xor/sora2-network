@@ -336,15 +336,11 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
                 block_orders = 0
             }
         }
-        if i % time_report_interval == 0 {
-            println!(
-                "\nprocessed {} prices in {:?}",
-                time_report_interval,
-                start_time.elapsed().unwrap()
-            );
-            start_time = std::time::SystemTime::now();
-        }
     }
+    println!(
+        "\nprocessed all prices in {:?}",
+        start_time.elapsed().unwrap()
+    );
 }
 
 fn get_last_order_id<T: Config>(

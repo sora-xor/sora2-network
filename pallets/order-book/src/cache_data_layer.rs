@@ -39,6 +39,7 @@ use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::Zero;
 use sp_std::vec::Vec;
+use std::collections::BTreeMap;
 
 pub struct CacheDataLayer<T: Config> {
     limit_orders: CacheStorageDoubleMap<
@@ -177,19 +178,23 @@ impl<T: Config> CacheDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut agg_bids = self
-            .aggregated_bids
-            .get(order_book_id)
-            .cloned()
-            .unwrap_or_default();
-        let volume = agg_bids
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_add(*value)
-            .ok_or(())?;
-        agg_bids.try_insert(*price, volume).map_err(|_| ())?;
-        self.aggregated_bids.set(order_book_id.clone(), agg_bids);
+        if let Some(agg_bids) = self.aggregated_bids.get_mut(order_book_id) {
+            let volume = agg_bids
+                .get(price)
+                .map(|x| *x)
+                .unwrap_or_default()
+                .checked_add(*value)
+                .ok_or(())?;
+            agg_bids.try_insert(*price, volume).map_err(|_| ())?;
+        } else {
+            let agg_bids = sp_runtime::BoundedBTreeMap::<
+                OrderPrice,
+                OrderVolume,
+                T::MaxSidePriceCount,
+            >::try_from(BTreeMap::from([(*price, *value)]))
+            .map_err(|_| ())?;
+            self.aggregated_bids.set(*order_book_id, agg_bids);
+        }
         Ok(())
     }
 
@@ -199,24 +204,23 @@ impl<T: Config> CacheDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut agg_bids = self
-            .aggregated_bids
-            .get(order_book_id)
-            .cloned()
-            .unwrap_or_default();
-        let volume = agg_bids
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_sub(*value)
-            .ok_or(())?;
-        if volume.is_zero() {
-            agg_bids.remove(price);
+        if let Some(agg_bids) = self.aggregated_bids.get_mut(order_book_id) {
+            let volume = agg_bids.get(price).map(|x| *x).unwrap_or_default();
+            let volume = volume.checked_sub(*value).ok_or(())?;
+            if volume.is_zero() {
+                agg_bids.remove(price);
+            } else {
+                agg_bids.try_insert(*price, volume).map_err(|_| ())?;
+            }
+            Ok(())
+        } else if *price != 0 {
+            // no aggregated bids for the order_book, thus we assume 0's for all prices
+            // can't subtract non-zero from 0u128
+            return Err(());
         } else {
-            agg_bids.try_insert(*price, volume).map_err(|_| ())?;
+            // 0 - 0 = 0
+            Ok(())
         }
-        self.aggregated_bids.set(order_book_id.clone(), agg_bids);
-        Ok(())
     }
 
     fn add_to_aggregated_asks(
