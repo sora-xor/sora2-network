@@ -1,4 +1,4 @@
-@Library('jenkins-library@develop-to-master') _
+@Library('jenkins-library@duty/update_assing') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
