@@ -822,7 +822,7 @@ fn should_enforce_expiration_and_weight_limits() {
                 PriceVariant::Buy,
                 Some(lifespan)
             ),
-            order_book::Error::<Runtime>::BlockScheduleFull
+            E::BlockScheduleFull
         );
 
         // All orders are indeed placed
@@ -888,7 +888,7 @@ fn should_emit_event_on_expiration_failure() {
             order_book::Event::ExpirationFailure {
                 order_book_id: non_existent_order_book_id,
                 order_id: non_existent_order_id,
-                error: order_book::Error::<Runtime>::UnknownLimitOrder.into(),
+                error: E::UnknownLimitOrder.into(),
             }
             .into(),
         );
