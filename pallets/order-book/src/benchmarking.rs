@@ -272,6 +272,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         .map(|i| (i as u128) * tick_size);
     let max_price = (2 * max_side_price_count) as u128 * tick_size;
 
+    // user generator with minted add quote & base assets
     let mut users = (1..)
         .map(crate::test_utils::generate_account::<T>)
         .inspect(|user| {
@@ -288,7 +289,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         });
     let mut current_user = users.next().expect("infinite iterator");
 
-    // # of orders placed by `current_users`
+    // # of orders placed by `current_user`
     let mut user_orders = 0;
     let mut lifespans = (1..).map(|i| {
         i * T::MILLISECS_PER_BLOCK.saturated_into::<u64>()
@@ -298,9 +299,8 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     let mut block_orders = 0;
     let mut i = 0;
     let mut start_time = std::time::SystemTime::now();
-    let time_report_interval = std::cmp::min(max_side_price_count, 1000);
     println!(
-        "Starting placement of orders, {} orders per price",
+        "Starting placement of bid orders, {} orders per price",
         max_orders_per_price
     );
     for bid_price in bid_prices {
@@ -338,7 +338,52 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         }
     }
     println!(
-        "\nprocessed all prices in {:?}",
+        "\nprocessed all bid prices in {:?}",
+        start_time.elapsed().unwrap()
+    );
+
+    let mut i = 0;
+    let mut start_time = std::time::SystemTime::now();
+    println!(
+        "Starting placement of ask orders, {} orders per price",
+        max_orders_per_price
+    );
+    for ask_price in ask_prices {
+        print!(
+            "\r{}/{} ({}%)",
+            i,
+            max_side_price_count,
+            100.0 * (i as f32) / (max_side_price_count as f32)
+        );
+        std::io::stdout().flush().unwrap();
+        i += 1;
+        for _ in 0..max_orders_per_price {
+            let sell_order = LimitOrder::<T>::new(
+                order_book.next_order_id(),
+                current_user.clone(),
+                PriceVariant::Sell,
+                ask_price,
+                amount,
+                now,
+                current_lifespan.saturated_into(),
+                current_block,
+            );
+            data.insert_limit_order(&order_book_id, buy_order).unwrap();
+            // order_book.place_limit_order(buy_order, data).unwrap();
+            user_orders += 1;
+            if user_orders >= max_orders_per_user {
+                current_user = users.next().expect("infinite iterator");
+                user_orders = 0
+            }
+            block_orders += 1;
+            if block_orders >= max_expiring_orders_per_block {
+                current_lifespan = lifespans.next().expect("infinite iterator");
+                block_orders = 0
+            }
+        }
+    }
+    println!(
+        "\nprocessed all ask prices in {:?}",
         start_time.elapsed().unwrap()
     );
 }
