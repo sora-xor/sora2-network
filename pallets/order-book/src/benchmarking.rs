@@ -43,7 +43,7 @@ use crate::{CacheDataLayer, ExpirationScheduler};
 use assets::AssetIdOf;
 use codec::Decode;
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount};
-use common::{balance, AssetInfoProvider, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
+use common::{balance, AssetInfoProvider, Balance, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::WeightMeter;
@@ -247,6 +247,66 @@ fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>
     .unwrap();
 }
 
+fn fill_order_book_side<T: Config>(
+    data: &mut impl DataLayer<T>,
+    order_book: &mut OrderBook<T>,
+    side: PriceVariant,
+    amount: OrderVolume,
+    now: <<T as Config>::Time as Time>::Moment,
+    prices: &mut impl Iterator<Item = Balance>,
+    max_side_price_count: u32,
+    max_orders_per_price: u32,
+    users: &mut impl Iterator<Item = T::AccountId>,
+    current_user: &mut T::AccountId,
+    user_orders: &mut u64,
+    max_orders_per_user: u128,
+    lifespans: &mut impl Iterator<Item = u64>,
+    current_lifespan: &mut u64,
+    lifespan_orders: &mut u64,
+    max_expiring_orders_per_block: u128,
+) {
+    use std::io::Write;
+
+    let current_block = frame_system::Pallet::<T>::block_number();
+    let mut i = 0;
+    for price in prices {
+        print!(
+            "\r{}/{} ({}%)",
+            i,
+            max_side_price_count,
+            100.0 * (i as f32) / (max_side_price_count as f32)
+        );
+        std::io::stdout().flush().unwrap();
+        i += 1;
+        for _ in 0..max_orders_per_price {
+            let buy_order = LimitOrder::<T>::new(
+                order_book.next_order_id(),
+                current_user.clone(),
+                side,
+                price,
+                amount,
+                now.clone(),
+                (*current_lifespan).saturated_into(),
+                current_block,
+            );
+            data.insert_limit_order(&order_book.order_book_id, buy_order)
+                .unwrap();
+            // order_book.place_limit_order(buy_order, data).unwrap();
+            // todo: make an object for this
+            *user_orders += 1;
+            if *user_orders as u128 >= max_orders_per_user {
+                *current_user = users.next().expect("infinite iterator");
+                *user_orders = 0
+            }
+            *lifespan_orders += 1;
+            if *lifespan_orders as u128 >= max_expiring_orders_per_block {
+                *current_lifespan = lifespans.next().expect("infinite iterator");
+                *lifespan_orders = 0
+            }
+        }
+    }
+}
+
 pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     data: &mut impl DataLayer<T>,
@@ -261,13 +321,12 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let amount = std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let now = T::Time::now();
-    let current_block = frame_system::Pallet::<T>::block_number();
     // to allow mutating with `order_book.next_order_id()` later
     let tick_size = order_book.tick_size;
     let amount_per_user: OrderVolume = max_orders_per_user * amount;
 
-    let bid_prices = (1..=max_side_price_count).map(|i| (i as u128) * tick_size);
-    let ask_prices = (max_side_price_count + 1..=2 * max_side_price_count)
+    let mut bid_prices = (1..=max_side_price_count).map(|i| (i as u128) * tick_size);
+    let mut ask_prices = (max_side_price_count + 1..=2 * max_side_price_count)
         .rev()
         .map(|i| (i as u128) * tick_size);
     let max_price = (2 * max_side_price_count) as u128 * tick_size;
@@ -303,85 +362,52 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         "Starting placement of bid orders, {} orders per price",
         max_orders_per_price
     );
-    for bid_price in bid_prices {
-        print!(
-            "\r{}/{} ({}%)",
-            i,
-            max_side_price_count,
-            100.0 * (i as f32) / (max_side_price_count as f32)
-        );
-        std::io::stdout().flush().unwrap();
-        i += 1;
-        for _ in 0..max_orders_per_price {
-            let buy_order = LimitOrder::<T>::new(
-                order_book.next_order_id(),
-                current_user.clone(),
-                PriceVariant::Buy,
-                bid_price,
-                amount,
-                now,
-                current_lifespan.saturated_into(),
-                current_block,
-            );
-            data.insert_limit_order(&order_book_id, buy_order).unwrap();
-            // order_book.place_limit_order(buy_order, data).unwrap();
-            user_orders += 1;
-            if user_orders >= max_orders_per_user {
-                current_user = users.next().expect("infinite iterator");
-                user_orders = 0
-            }
-            block_orders += 1;
-            if block_orders >= max_expiring_orders_per_block {
-                current_lifespan = lifespans.next().expect("infinite iterator");
-                block_orders = 0
-            }
-        }
-    }
+    fill_order_book_side(
+        data,
+        &mut order_book,
+        PriceVariant::Buy,
+        amount,
+        now,
+        &mut bid_prices,
+        max_side_price_count,
+        max_orders_per_price,
+        &mut users,
+        &mut current_user,
+        &mut user_orders,
+        max_orders_per_user,
+        &mut lifespans,
+        &mut current_lifespan,
+        &mut block_orders,
+        max_expiring_orders_per_block as u128,
+    );
     println!(
         "\nprocessed all bid prices in {:?}",
         start_time.elapsed().unwrap()
     );
 
-    let mut i = 0;
     let mut start_time = std::time::SystemTime::now();
     println!(
         "Starting placement of ask orders, {} orders per price",
         max_orders_per_price
     );
-    for ask_price in ask_prices {
-        print!(
-            "\r{}/{} ({}%)",
-            i,
-            max_side_price_count,
-            100.0 * (i as f32) / (max_side_price_count as f32)
-        );
-        std::io::stdout().flush().unwrap();
-        i += 1;
-        for _ in 0..max_orders_per_price {
-            let sell_order = LimitOrder::<T>::new(
-                order_book.next_order_id(),
-                current_user.clone(),
-                PriceVariant::Sell,
-                ask_price,
-                amount,
-                now,
-                current_lifespan.saturated_into(),
-                current_block,
-            );
-            data.insert_limit_order(&order_book_id, buy_order).unwrap();
-            // order_book.place_limit_order(buy_order, data).unwrap();
-            user_orders += 1;
-            if user_orders >= max_orders_per_user {
-                current_user = users.next().expect("infinite iterator");
-                user_orders = 0
-            }
-            block_orders += 1;
-            if block_orders >= max_expiring_orders_per_block {
-                current_lifespan = lifespans.next().expect("infinite iterator");
-                block_orders = 0
-            }
-        }
-    }
+    fill_order_book_side(
+        data,
+        &mut order_book,
+        PriceVariant::Sell,
+        amount,
+        now,
+        &mut ask_prices,
+        max_side_price_count,
+        max_orders_per_price,
+        &mut users,
+        &mut current_user,
+        &mut user_orders,
+        max_orders_per_user,
+        &mut lifespans,
+        &mut current_lifespan,
+        &mut block_orders,
+        max_expiring_orders_per_block as u128,
+    );
     println!(
         "\nprocessed all ask prices in {:?}",
         start_time.elapsed().unwrap()
