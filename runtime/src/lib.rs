@@ -2013,7 +2013,6 @@ impl order_book::Config for Runtime {
 }
 
 parameter_types! {
-
     pub const ConfigDepositBase: Balance = balance!(5);
     pub const FriendDepositFactor: Balance = balance!(3);
     pub const MaxFriends: u16 = 10;
