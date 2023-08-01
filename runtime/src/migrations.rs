@@ -1,1 +1,1 @@
-pub type Migrations = ();
+pub type Migrations = band::migrations::BandUpdate<crate::Runtime>;

@@ -45,8 +45,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type DEXManager<T> = dex_manager::Pallet<T>;
-
 impl<T: Config>
     LiquiditySource<
         LiquiditySourceId<T::DEXId, LiquiditySourceType>,
@@ -304,7 +302,7 @@ impl<T: Config>
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>, DispatchError> {
         let supported_types = Self::get_supported_types();
-        DEXManager::<T>::ensure_dex_exists(&filter.dex_id)?;
+        T::DexInfoProvider::ensure_dex_exists(&filter.dex_id)?;
         Ok(supported_types
             .iter()
             .filter_map(|source_type| {
@@ -335,10 +333,9 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + common::Config + dex_manager::Config + trading_pair::Config
+        frame_system::Config + common::Config + trading_pair::Config + assets::Config
     {
         type MockLiquiditySource: LiquiditySource<
             Self::DEXId,

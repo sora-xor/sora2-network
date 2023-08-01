@@ -39,13 +39,13 @@
 
 #[cfg(not(test))]
 use crate::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, OrderBookStatus,
-    Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus, Pallet,
 };
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, OrderBookStatus,
-    Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus, Pallet,
 };
 
 use crate::{CacheDataLayer, ExpirationScheduler};
@@ -99,13 +99,9 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 //   9.8 |  139.9 | buy2, buy3
 //   9.5 |  261.3 | buy4, buy5, buy6
 //          Bids
-fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>>) {
-    OrderBookPallet::<T>::create_orderbook(
-        RawOrigin::Signed(bob::<T>()).into(),
-        DEX.into(),
-        order_book_id,
-    )
-    .unwrap();
+fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) {
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
+        .unwrap();
 
     Assets::<T>::update_balance(
         RawOrigin::Root.into(),
@@ -259,7 +255,7 @@ fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>
 }
 
 fn get_last_order_id<T: Config>(
-    order_book_id: OrderBookId<AssetIdOf<T>>,
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
 ) -> Option<<T as Config>::OrderId> {
     if let Some(order_book) = OrderBookPallet::<T>::order_books(order_book_id) {
         Some(order_book.last_order_id)
@@ -289,8 +285,9 @@ benchmarks! {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
-            base: nft,
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
             quote: XOR.into(),
         };
 
@@ -303,7 +300,6 @@ benchmarks! {
     }: {
         OrderBookPallet::<T>::create_orderbook(
             RawOrigin::Signed(caller.clone()).into(),
-            DEX.into(),
             order_book_id
         ).unwrap();
     }
@@ -311,7 +307,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookCreated {
                 order_book_id,
-                dex_id: DEX.into(),
                 creator: caller,
             }
             .into(),
@@ -319,12 +314,13 @@ benchmarks! {
 
         assert_eq!(
             OrderBookPallet::<T>::order_books(order_book_id).unwrap(),
-            OrderBook::<T>::default_nft(order_book_id, DEX.into())
+            OrderBook::<T>::default(order_book_id)
         );
     }
 
     delete_orderbook {
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -340,7 +336,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookDeleted {
                 order_book_id,
-                dex_id: DEX.into(),
                 count_of_canceled_orders: 12,
             }
             .into(),
@@ -350,7 +345,8 @@ benchmarks! {
     }
 
     update_orderbook {
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -358,7 +354,7 @@ benchmarks! {
         create_and_fill_order_book::<T>(order_book_id);
 
         let tick_size = balance!(0.01);
-        let step_lot_size = balance!(0.001);
+        let step_lot_size = balance!(1); // limit orders should be aligned according to new step_lot_size
         let min_lot_size = balance!(1);
         let max_lot_size = balance!(10000);
     }: {
@@ -375,7 +371,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookUpdated {
                 order_book_id,
-                dex_id: DEX.into(),
             }
             .into(),
         );
@@ -388,7 +383,8 @@ benchmarks! {
     }
 
     change_orderbook_status {
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -405,7 +401,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookStatusChanged {
                 order_book_id,
-                dex_id: DEX.into(),
                 new_status: OrderBookStatus::Stop,
             }
             .into(),
@@ -417,7 +412,8 @@ benchmarks! {
     place_limit_order {
         let caller = alice::<T>();
 
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -453,7 +449,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::LimitOrderPlaced {
                 order_book_id,
-                dex_id: DEX.into(),
                 order_id,
                 owner_id: caller.clone(),
             }
@@ -462,7 +457,7 @@ benchmarks! {
 
         let current_block = frame_system::Pallet::<T>::block_number();
 
-        let expected_order = LimitOrder::<T>::new(
+        let expected_limit_order = LimitOrder::<T>::new(
             order_id,
             caller.clone(),
             PriceVariant::Buy,
@@ -475,10 +470,10 @@ benchmarks! {
 
         assert_eq!(
             OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap(),
-            expected_order
+            expected_limit_order
         );
 
-        let deal_amount = *expected_order.deal_amount(MarketRole::Taker, None).unwrap().value();
+        let deal_amount = *expected_limit_order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
         let expected_balance = balance_before - deal_amount;
@@ -486,7 +481,8 @@ benchmarks! {
     }
 
     cancel_limit_order {
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -510,7 +506,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::LimitOrderCanceled {
                 order_book_id,
-                dex_id: DEX.into(),
                 order_id,
                 owner_id: order.owner.clone(),
             }
@@ -525,7 +520,8 @@ benchmarks! {
     }
 
     quote {
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -548,7 +544,8 @@ benchmarks! {
     exchange {
         let caller = alice::<T>();
 
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -576,6 +573,18 @@ benchmarks! {
         .unwrap();
     }
     verify {
+        assert_last_event::<T>(
+            Event::<T>::MarketOrderExecuted {
+                order_book_id,
+                owner_id: caller.clone(),
+                direction: PriceVariant::Sell,
+                amount: OrderAmount::Base(balance!(355.13473)),
+                average_price: balance!(9.855414408497867837),
+                to: None,
+            }
+            .into(),
+        );
+
         assert_eq!(
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
             caller_base_balance - balance!(355.13473)
@@ -607,7 +616,8 @@ benchmarks! {
 
     service_single_expiration {
         // very similar to cancel_limit_order
-        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -625,13 +635,12 @@ benchmarks! {
         // warmed up
         let mut data_layer = CacheDataLayer::<T>::new();
     }: {
-        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, &order_id);
+        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, order_id);
     }
     verify {
         assert_last_event::<T>(
             Event::<T>::LimitOrderExpired {
                 order_book_id,
-                dex_id: DEX.into(),
                 order_id,
                 owner_id: order.owner.clone(),
             }

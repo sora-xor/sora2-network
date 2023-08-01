@@ -194,6 +194,7 @@ impl Config for Runtime {
     type GetParliamentAccountId = GetParliamentAccountId;
     type BuyBackHandler = ();
     type PoolXykPallet = PoolXYK;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -281,6 +282,7 @@ impl dex_manager::Config for Runtime {}
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 

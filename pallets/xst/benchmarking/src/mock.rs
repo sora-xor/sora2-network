@@ -172,6 +172,7 @@ impl dex_manager::Config for Runtime {}
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -179,6 +180,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type GetFee = ();
     type EnsureDEXManager = ();
     type EnsureTradingPairExists = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl xst::Config for Runtime {
@@ -317,6 +319,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type GetXSTAssetId = GetSyntheticBaseAssetId;
     type BuyBackHandler = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl demeter_farming_platform::Config for Runtime {
