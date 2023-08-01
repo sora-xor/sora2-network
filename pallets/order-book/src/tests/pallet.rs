@@ -37,8 +37,7 @@ use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::test_utils::assert_last_event;
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant,
-    VAL, XOR, XSTUSD,
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};

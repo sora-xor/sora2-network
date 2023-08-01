@@ -3,24 +3,22 @@ use crate::{
     traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
     OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
 };
-use crate::{CacheDataLayer, ExpirationScheduler};
+
 use assets::AssetIdOf;
-use codec::Decode;
-use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount};
-use common::{balance, AssetInfoProvider, Balance, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
-use frame_benchmarking::benchmarks;
+
+use common::prelude::FixedWrapper;
+use common::{balance, Balance, LiquiditySource, PriceVariant};
+
 use frame_support::traits::{Get, Time};
-use frame_support::weights::WeightMeter;
-use frame_support::{assert_err, assert_ok};
-use frame_system::{EventRecord, RawOrigin};
+
+use frame_system::RawOrigin;
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    test_utils::generate_account, traits::DataLayer, Config, Event, LimitOrder, MarketRole,
-    MomentOf, OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderVolume,
-    Pallet,
+    traits::DataLayer, Config, LimitOrder, MomentOf, OrderBook, OrderBookId, OrderBooks,
+    OrderVolume, Pallet,
 };
-use hex_literal::hex;
-use sp_runtime::traits::{SaturatedConversion, Saturating, UniqueSaturatedInto};
+
+use sp_runtime::traits::SaturatedConversion;
 
 use crate::benchmarking::bob;
 use assets::Pallet as Assets;
@@ -258,8 +256,6 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     data: &mut impl DataLayer<T>,
 ) {
-    use std::io::Write;
-
     let max_side_price_count = T::MaxSidePriceCount::get();
     let max_orders_per_price = T::MaxLimitOrdersForPrice::get();
     let max_orders_per_user = T::MaxOpenedLimitOrdersPerUser::get() as u128;
@@ -303,8 +299,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     });
     let mut current_lifespan = lifespans.next().expect("infinite iterator");
     let mut block_orders = 0;
-    let mut i = 0;
-    let mut start_time = std::time::SystemTime::now();
+    let start_time = std::time::SystemTime::now();
     println!(
         "Starting placement of bid orders, {} orders per price",
         max_orders_per_price
@@ -332,7 +327,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         start_time.elapsed().unwrap()
     );
 
-    let mut start_time = std::time::SystemTime::now();
+    let start_time = std::time::SystemTime::now();
     println!(
         "Starting placement of ask orders, {} orders per price",
         max_orders_per_price
