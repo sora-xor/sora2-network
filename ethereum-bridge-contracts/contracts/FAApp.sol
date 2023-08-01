@@ -3,17 +3,16 @@ pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MasterToken.sol";
 import "./libraries/ScaleCodec.sol";
 import "./interfaces/IAssetRegister.sol";
 import "./GenericApp.sol";
 
-contract FAApp is GenericApp, IAssetRegister, ReentrancyGuard {
+contract FAApp is GenericApp, IAssetRegister {
     using ScaleCodec for uint256;
     using SafeERC20 for IERC20;
 
-    mapping(address => bool) public tokens;
+    mapping(address => AssetType) public tokens;
 
     bytes2 constant MINT_CALL = 0x6500;
     bytes2 constant REGISTER_ASSET_CALL = 0x6501;
@@ -23,7 +22,7 @@ contract FAApp is GenericApp, IAssetRegister, ReentrancyGuard {
         address sender,
         bytes32 recipient,
         uint256 amount,
-        bool tokenType
+        AssetType tokenType
     );
 
     event Unlocked(
@@ -31,40 +30,49 @@ contract FAApp is GenericApp, IAssetRegister, ReentrancyGuard {
         bytes32 sender,
         address recipient,
         uint256 amount,
-        bool tokenType
+        AssetType tokenType
     );
 
-    event MigratedNativeErc20(address contractAddress);
-    event MigratedSidechain(address contractAddress);
+    event MigratedAssets(address contractAddress);
 
     constructor(
         address _inbound,
         address _outbound, // an address of an IOutboundChannel contract
-        address migrationApp
+        address[] memory evmAssets,
+        address[] memory soraAssets
     ) GenericApp(_inbound, _outbound) {
-        _setupRole(INBOUND_CHANNEL_ROLE, migrationApp);
+        for (uint256 i = 0; i < evmAssets.length; i++) {
+            tokens[evmAssets[i]] = AssetType.Evm;
+        }
+        for (uint256 i = 0; i < soraAssets.length; i++) {
+            tokens[soraAssets[i]] = AssetType.Sora;
+        }
     }
 
-    function lock(
-        address token,
-        bytes32 recipient,
-        uint256 amount,
-        bool native
-    ) external {
-        require(tokens[token], "Token is not registered");
+    function lock(address token, bytes32 recipient, uint256 amount) external {
+        AssetType asset = tokens[token];
         require(amount > 0, "Must lock a positive amount");
         uint256 transferredAmount;
-        if (native) {
+        if (asset == AssetType.Evm) {
             uint256 beforeBalance = IERC20(token).balanceOf(address(this));
             IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-            transferredAmount = IERC20(token).balanceOf(address(this)) - beforeBalance;
-        }
-        else {
+            transferredAmount =
+                IERC20(token).balanceOf(address(this)) -
+                beforeBalance;
+        } else if (asset == AssetType.Sora) {
             MasterToken(token).burnFrom(msg.sender, amount);
             transferredAmount = amount;
+        } else {
+            revert("Unregistered asset type");
         }
-        
-        emit Locked(token, msg.sender, recipient, transferredAmount, native);
+
+        emit Locked(
+            token,
+            msg.sender,
+            recipient,
+            transferredAmount,
+            asset
+        );
 
         bytes memory call = encodeCall(
             token,
@@ -80,23 +88,29 @@ contract FAApp is GenericApp, IAssetRegister, ReentrancyGuard {
         address token,
         bytes32 sender,
         address recipient,
-        uint256 amount,
-        bool native
+        uint256 amount
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
-        require(tokens[token], "Token is not registered");
+        AssetType asset = tokens[token];
         require(
             recipient != address(0x0),
             "Recipient must not be a zero address"
         );
         require(amount > 0, "Must unlock a positive amount");
 
-        if (native) {
+        if (asset == AssetType.Evm) {
             IERC20(token).safeTransfer(recipient, amount);
-        }
-        else {
+        } else if (asset == AssetType.Sora) {
             MasterToken(token).mintTokens(msg.sender, amount);
+        } else {
+            revert("Unregistered asset type");
         }
-        emit Unlocked(token, sender, recipient, amount, native);  
+        emit Unlocked(
+            token,
+            sender,
+            recipient,
+            amount,
+            asset 
+        );
     }
 
     /**
@@ -113,14 +127,10 @@ contract FAApp is GenericApp, IAssetRegister, ReentrancyGuard {
         bytes32 sidechainAssetId
     ) external onlyRole(INBOUND_CHANNEL_ROLE) {
         // Create new instance of the token
-        address tokenInstance = address(new MasterToken(
-            name,
-            symbol,
-            address(this),
-            0,
-            sidechainAssetId
-        ));
-        tokens[tokenInstance] = true;
+        address tokenInstance = address(
+            new MasterToken(name, symbol, address(this), 0, sidechainAssetId)
+        );
+        tokens[tokenInstance] = AssetType.Sora;
         bytes memory call = registerAssetCall(tokenInstance, sidechainAssetId);
         outbound.submit(msg.sender, call);
     }
@@ -143,55 +153,59 @@ contract FAApp is GenericApp, IAssetRegister, ReentrancyGuard {
     }
 
     // SCALE-encode payload
-    function registerAssetCall(address token, bytes32 assetId)
-        private
-        pure
-        returns (bytes memory)
-    {
+    function registerAssetCall(
+        address token,
+        bytes32 assetId
+    ) private pure returns (bytes memory) {
         return abi.encodePacked(REGISTER_ASSET_CALL, assetId, token);
     }
 
     /**
-     * @dev Adds a new token from sidechain to the bridge whitelist.
+     * @dev Adds a new token to the bridge whitelist.
+     * @param token token address
+     * @param assetType type of the token
+     */
+    function addTokenToWhitelist(
+        address token,
+        AssetType assetType
+    ) external onlyRole(INBOUND_CHANNEL_ROLE) {
+        require(tokens[token] == AssetType.Unregistered, "Token is already registered");
+        tokens[token] = assetType;
+    }
+
+    /**
+     * @dev Removes a token from the bridge whitelist.
      * @param token token address
      */
-    function addTokenToWhitelist(address token)
-        external
-        onlyRole(INBOUND_CHANNEL_ROLE)
-    {
-        require(!tokens[token], "Token is already registered");
-        tokens[token] = true;
-    }
-
-    function migrateNativeErc20(
-        address contractAddress,
-        address[] calldata erc20nativeTokens
-    ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
-        IAssetRegister app = IAssetRegister(contractAddress);
-        uint256 length = erc20nativeTokens.length; 
-        for (uint256 i = 0; i < length; i++) {
-            IERC20 token = IERC20(erc20nativeTokens[i]);
-            // slither-disable-next-line calls-loop
-            token.safeTransfer(contractAddress, token.balanceOf(address(this)));
-            // slither-disable-next-line calls-loop
-            app.addTokenToWhitelist(erc20nativeTokens[i]);
-        }
-        emit MigratedNativeErc20(contractAddress);
-    }
-
-    function migrateSidechain(
-        address contractAddress,
-        address[] calldata sidechainTokens
+    function removeTokenFromWhitelist(
+        address token
     ) external onlyRole(INBOUND_CHANNEL_ROLE) {
-        IAssetRegister app = IAssetRegister(contractAddress);
-        uint256 length = sidechainTokens.length; 
+        require(tokens[token] != AssetType.Unregistered, "Token is not registered");
+        tokens[token] = AssetType.Unregistered;
+    }
+
+    function migrateAssets(
+        address contractAddress,
+        address[] calldata assets,
+        AssetType[] calldata assetType
+    ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
+        uint256 length = assets.length;
+        require(length == assetType.length, "Types length mismatch");
         for (uint256 i = 0; i < length; i++) {
-            Ownable token = Ownable(sidechainTokens[i]);
-            // slither-disable-next-line calls-loop
-            token.transferOwnership(contractAddress);
-            // slither-disable-next-line calls-loop
-            app.addTokenToWhitelist(sidechainTokens[i]);
+            if (assetType[i] == AssetType.Evm) {
+                IERC20 token = IERC20(assets[i]);
+                // slither-disable-next-line calls-loop
+                token.safeTransfer(
+                    contractAddress,
+                    token.balanceOf(address(this))
+                );
+            } else if (assetType[i] == AssetType.Sora) {
+                // slither-disable-next-line calls-loop
+                MasterToken(assets[i]).transferOwnership(contractAddress);
+            } else {
+                revert("Unregistered asset type");
+            }
         }
-        emit MigratedSidechain(contractAddress);
+        emit MigratedAssets(contractAddress);
     }
 }

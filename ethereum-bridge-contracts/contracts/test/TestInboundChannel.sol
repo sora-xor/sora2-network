@@ -2,9 +2,8 @@
 pragma solidity 0.8.15;
 
 import "../InboundChannel.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TestInboundChannel is InboundChannel, Ownable {
+contract TestInboundChannel is InboundChannel {
     constructor()
         InboundChannel()
     {}

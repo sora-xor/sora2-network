@@ -6,8 +6,4 @@ import "../interfaces/IOutboundChannel.sol";
 
 contract MockOutboundChannel is IOutboundChannel {
     function submit(address, bytes calldata) external override {}
-
-    function fee() external pure override returns (uint256) {
-        return 0;
-    }
 }

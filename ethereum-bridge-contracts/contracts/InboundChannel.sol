@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.15;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./interfaces/IOutboundChannel.sol";
@@ -11,7 +11,7 @@ import "./libraries/ScaleCodec.sol";
  * @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken
  * into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`.
  */
-contract InboundChannel is AccessControl, ReentrancyGuard {
+contract InboundChannel is Ownable, ReentrancyGuard {
     using ECDSA for bytes32;
 
     IOutboundChannel outboundChannel;
@@ -19,8 +19,6 @@ contract InboundChannel is AccessControl, ReentrancyGuard {
     uint256 public batch_nonce;
     //number of authorized peers
     uint256 public peersCount;
-    // storage for light client verification of logs with gas used
-    mapping(uint256 => bytes32) public gas_proofs;
     //indicates whether address is an authorized peer
     mapping(address => bool) public isPeer;
     //signers of the bath by batch nonce
@@ -58,21 +56,19 @@ contract InboundChannel is AccessControl, ReentrancyGuard {
 
     event ChangePeers(address peerId, bool removal);
 
-    constructor() {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    }
+    constructor() {}
 
     // Once-off post-construction call to set initial configuration.
     function initialize(
         address _outboundChannel,
         address[] calldata initialPeers
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyOwner {
         outboundChannel = IOutboundChannel(_outboundChannel);
         for (uint256 i; i < initialPeers.length; i++) {
             addPeer(initialPeers[i]);
         }
         // drop admin privileges
-        renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        renounceOwnership();
     }
 
     function submit(
@@ -109,15 +105,7 @@ contract InboundChannel is AccessControl, ReentrancyGuard {
         uint256 results = processMessages(batch.messages);
 
         uint256 gas_used = begin_gas_left - gasleft();
-        gas_proofs[batch_nonce] = keccak256(
-            abi.encode(
-                msg.sender,
-                results,
-                batch.messages.length,
-                gas_used,
-                block.basefee
-            )
-        );
+
         emit BatchDispatched(
             batch_nonce,
             msg.sender,

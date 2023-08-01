@@ -15,8 +15,6 @@ contract OutboundChannel is IOutboundChannel, ChannelAccess, AccessControl {
     // Nonce for last submitted message
     uint64 public nonce;
 
-    uint256 private _fee;
-
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -24,8 +22,7 @@ contract OutboundChannel is IOutboundChannel, ChannelAccess, AccessControl {
     // Once-off post-construction call to set initial configuration.
     function initialize(
         address[] calldata configUpdaters,
-        address[] calldata defaultOperatorsSet,
-        uint256 initialFee
+        address[] calldata defaultOperatorsSet
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Set initial configuration
         for (uint256 i = 0; i < configUpdaters.length; i++) {
@@ -34,16 +31,8 @@ contract OutboundChannel is IOutboundChannel, ChannelAccess, AccessControl {
         for (uint256 i = 0; i < defaultOperatorsSet.length; i++) {
             _authorizeDefaultOperator(defaultOperatorsSet[i]);
         }
-        _fee = initialFee;
-
         // drop admin privileges
         renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    }
-
-    // Update message submission fee.
-    function setFee(uint256 amount) external onlyRole(CONFIG_UPDATE_ROLE) {
-        emit FeeChanged(_fee, amount);
-        _fee = amount;
     }
 
     // Authorize an operator/app to submit messages for *all* users.
@@ -73,13 +62,7 @@ contract OutboundChannel is IOutboundChannel, ChannelAccess, AccessControl {
             isOperatorFor(msg.sender, feePayer),
             "Caller is not an operator for fee payer"
         );
-        // TODO: implement fees
-        // require(msg.value >= _fee, "Not enough fee");
         nonce = nonce + 1;
-        emit Message(msg.sender, nonce, _fee, payload);
-    }
-
-    function fee() external view override returns (uint256) {
-        return _fee;
+        emit Message(msg.sender, nonce, payload);
     }
 }

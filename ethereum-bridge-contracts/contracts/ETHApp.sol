@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.15;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./libraries/ScaleCodec.sol";
 import "./interfaces/IEthTokenReceiver.sol";
 import "./GenericApp.sol";
@@ -10,7 +9,7 @@ import "./GenericApp.sol";
  * @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken
  * into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`.
  */
-contract ETHApp is IEthTokenReceiver, GenericApp, ReentrancyGuard {
+contract ETHApp is GenericApp, IEthTokenReceiver {
     using ScaleCodec for uint256;
 
     event Locked(address sender, bytes32 recipient, uint256 amount);
@@ -18,15 +17,11 @@ contract ETHApp is IEthTokenReceiver, GenericApp, ReentrancyGuard {
     event MigratedEth(address contractAddress);
 
     bytes2 constant MINT_CALL = 0x6401;
-    bytes32 public constant REWARD_ROLE = keccak256("REWARD_ROLE");
 
     constructor(
-        address rewarder,
         address inboundChannel,
         address outboundChannel // an address of an IOutboundChannel contract
-    ) GenericApp(inboundChannel, outboundChannel) {
-        _setupRole(REWARD_ROLE, rewarder);
-    }
+    ) GenericApp(inboundChannel, outboundChannel) {}
 
     fallback() external {
         revert();

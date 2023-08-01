@@ -2,5 +2,10 @@
 pragma solidity 0.8.15;
 
 interface IAssetRegister {
-    function addTokenToWhitelist(address) external;
+    enum AssetType {
+        Unregistered,
+        Evm,
+        Sora
+    }
+    function addTokenToWhitelist(address, AssetType) external;
 }
