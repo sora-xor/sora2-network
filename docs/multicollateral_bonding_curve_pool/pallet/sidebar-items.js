@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["GenesisConfig","Pallet"],"trait":["Config"],"type":["AssetsWithOptionalRewardMultiplier","EnabledTargets","FreeReservesAccountId","IncentivesAccountId","IncentivisedCurrenciesNum","Module","PendingFreeReserves","ReferenceAssetId","ReservesAcc","Rewards","TotalRewards"]};

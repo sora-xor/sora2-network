@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["MultisigAccountCreated","MultisigApproval","MultisigCancelled","MultisigExecuted","NewMultisig"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Event"],"fn":["__type_value_for_default_for_fee_multiplier"],"struct":["DefaultForFeeMultiplier","Pallet"],"trait":["Config"],"type":["Module","Multiplier","XorToVal"]};

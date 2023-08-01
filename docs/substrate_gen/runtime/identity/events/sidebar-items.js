@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["IdentityCleared","IdentityKilled","IdentitySet","JudgementGiven","JudgementRequested","JudgementUnrequested","RegistrarAdded","SubIdentityAdded","SubIdentityRemoved","SubIdentityRevoked"]};

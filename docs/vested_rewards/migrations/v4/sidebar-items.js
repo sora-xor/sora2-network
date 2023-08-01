@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["BLOCKS_PER_DAY","CROWDLOAN_TAG","LEASE_START_BLOCK","LEASE_TOTAL_DAYS","PSWAP_CROWDLOAN_REWARDS","VAL_CROWDLOAN_REWARDS","XSTUSD_CROWDLOAN_REWARDS"],"fn":["migrate"],"struct":["CrowdloanClaimHistory_Storage_Instance","CrowdloanReward","CrowdloanRewards_Storage_Instance","Migration"],"type":["CrowdloanClaimHistory","CrowdloanRewards"]};

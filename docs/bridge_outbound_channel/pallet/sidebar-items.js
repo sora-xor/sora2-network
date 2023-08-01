@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_default_fee"],"struct":["DefaultFee","GenesisConfig","Pallet"],"trait":["Config"],"type":["ChannelNonces","Fee","Module"]};

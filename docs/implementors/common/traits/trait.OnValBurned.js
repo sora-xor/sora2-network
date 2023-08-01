@@ -1,0 +1,5 @@
+(function() {var implementors = {
+"common":[],
+"framenode_runtime":[["impl&lt;T&gt; <a class=\"trait\" href=\"framenode_runtime/trait.OnValBurned.html\" title=\"trait framenode_runtime::OnValBurned\">OnValBurned</a> for <a class=\"struct\" href=\"framenode_runtime/struct.ValBurnedAggregator.html\" title=\"struct framenode_runtime::ValBurnedAggregator\">ValBurnedAggregator</a>&lt;T&gt;<span class=\"where fmt-newline\">where\n    T: ValBurnedNotifier&lt;<a class=\"type\" href=\"framenode_runtime/type.Balance.html\" title=\"type framenode_runtime::Balance\">Balance</a>&gt;,</span>"]],
+"rewards":[["impl&lt;T: <a class=\"trait\" href=\"rewards/pallet/trait.Config.html\" title=\"trait rewards::pallet::Config\">Config</a>&gt; OnValBurned for <a class=\"struct\" href=\"rewards/pallet/struct.Pallet.html\" title=\"struct rewards::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

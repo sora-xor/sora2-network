@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Burn","Mint","RegisterAssetInternal","RegisterErc20App","RegisterErc20Asset","RegisterExistingErc20Asset","RegisterNativeApp","RegisterNativeAsset","TransactionApi"]};

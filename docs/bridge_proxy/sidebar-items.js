@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["BRIDGE_TECH_ACC_PREFIX"],"mod":["pallet","weights"],"struct":["BridgeRequest"]};

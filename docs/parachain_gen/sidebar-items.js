@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["config","parachain_runtime"],"type":["MaxU32","UnboundedBridgeMessage","UnboundedGenericCommitment"]};
