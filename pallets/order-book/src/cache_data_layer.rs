@@ -210,6 +210,10 @@ impl<T: Config> CacheDataLayer<T> {
             if volume.is_zero() {
                 agg_bids.remove(price);
             } else {
+                // realistically error should never be triggered;
+                // if there was value at `price` then it should insert at the same key
+                // if there was no value with this key, then subtracting unsigned number from 0
+                //     cannot give non-zero value (thus avoiding this branch).
                 agg_bids.try_insert(*price, volume).map_err(|_| ())?;
             }
             Ok(())
@@ -229,19 +233,23 @@ impl<T: Config> CacheDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut agg_asks = self
-            .aggregated_asks
-            .get(order_book_id)
-            .cloned()
-            .unwrap_or_default();
-        let volume = agg_asks
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_add(*value)
-            .ok_or(())?;
-        agg_asks.try_insert(*price, volume).map_err(|_| ())?;
-        self.aggregated_asks.set(order_book_id.clone(), agg_asks);
+        if let Some(agg_asks) = self.aggregated_asks.get_mut(order_book_id) {
+            let volume = agg_asks
+                .get(price)
+                .map(|x| *x)
+                .unwrap_or_default()
+                .checked_add(*value)
+                .ok_or(())?;
+            agg_asks.try_insert(*price, volume).map_err(|_| ())?;
+        } else {
+            let agg_asks = sp_runtime::BoundedBTreeMap::<
+                OrderPrice,
+                OrderVolume,
+                T::MaxSidePriceCount,
+            >::try_from(BTreeMap::from([(*price, *value)]))
+            .map_err(|_| ())?;
+            self.aggregated_asks.set(*order_book_id, agg_asks);
+        }
         Ok(())
     }
 
@@ -251,24 +259,27 @@ impl<T: Config> CacheDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut agg_asks = self
-            .aggregated_asks
-            .get(order_book_id)
-            .cloned()
-            .unwrap_or_default();
-        let volume = agg_asks
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_sub(*value)
-            .ok_or(())?;
-        if volume.is_zero() {
-            agg_asks.remove(price);
+        if let Some(agg_asks) = self.aggregated_asks.get_mut(order_book_id) {
+            let volume = agg_asks.get(price).map(|x| *x).unwrap_or_default();
+            let volume = volume.checked_sub(*value).ok_or(())?;
+            if volume.is_zero() {
+                agg_asks.remove(price);
+            } else {
+                // realistically error should never be triggered;
+                // if there was value at `price` then it should insert at the same key
+                // if there was no value with this key, then subtracting unsigned number from 0
+                //     cannot give non-zero value (thus avoiding this branch).
+                agg_asks.try_insert(*price, volume).map_err(|_| ())?;
+            }
+            Ok(())
+        } else if *price != 0 {
+            // no aggregated asks for the order_book, thus we assume 0's for all prices
+            // can't subtract non-zero from 0u128
+            return Err(());
         } else {
-            agg_asks.try_insert(*price, volume).map_err(|_| ())?;
+            // 0 - 0 = 0
+            Ok(())
         }
-        self.aggregated_asks.set(order_book_id.clone(), agg_asks);
-        Ok(())
     }
 }
 
