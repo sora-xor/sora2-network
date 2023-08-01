@@ -96,7 +96,10 @@ impl Zero for BalanceUnit {
 impl Display for BalanceUnit {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
         let s = if self.is_divisible {
-            FixedWrapper::from(self.inner).get().unwrap().to_string()
+            FixedWrapper::from(self.inner)
+                .get()
+                .expect("Failed to convert into Fixed")
+                .to_string()
         } else {
             self.inner.to_string()
         };
@@ -124,7 +127,7 @@ impl BalanceUnit {
         Self::new(balance, self.is_divisible)
     }
 
-    pub fn get(&self) -> &Balance {
+    pub fn balance(&self) -> &Balance {
         &self.inner
     }
 
@@ -367,6 +370,27 @@ mod tests {
         assert_eq!(
             BalanceUnit::indivisible(5) - BalanceUnit::indivisible(3),
             BalanceUnit::indivisible(2)
+        );
+
+        // overflow
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.2)) - BalanceUnit::divisible(balance!(1.3)),
+            BalanceUnit::divisible(0)
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(3) - BalanceUnit::divisible(balance!(4.1)),
+            BalanceUnit::divisible(0)
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(4.1)) - BalanceUnit::indivisible(5),
+            BalanceUnit::divisible(0)
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(5) - BalanceUnit::indivisible(7),
+            BalanceUnit::indivisible(0)
         );
     }
 

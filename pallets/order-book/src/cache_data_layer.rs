@@ -212,7 +212,7 @@ impl<T: Config> CacheDataLayer<T> {
             .map(|x| *x)
             .unwrap_or_default()
             .sub(*value);
-        if volume.get().is_zero() {
+        if volume.is_zero() {
             agg_bids.remove(price);
         } else {
             agg_bids.try_insert(*price, volume).map_err(|_| ())?;

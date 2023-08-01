@@ -205,7 +205,7 @@ fn should_place_limit_order() {
         );
 
         let balance = free_balance(&order_book_id.quote, &owner);
-        let expected_balance = balance_before - deal_amount.get();
+        let expected_balance = balance_before - deal_amount.balance();
         assert_eq!(balance, expected_balance);
     });
 }
@@ -708,28 +708,29 @@ fn should_not_place_invalid_limit_order() {
         );
 
         let mut wrong_price_order = order.clone();
-        wrong_price_order.price = (balance!(10) + order_book.tick_size.get() / 100).into();
+        wrong_price_order.price = (balance!(10) + order_book.tick_size.balance() / 100).into();
         assert_err!(
             order_book.place_limit_order(wrong_price_order, &mut data),
             E::InvalidLimitOrderPrice
         );
 
         let mut too_small_amount_order = order.clone();
-        too_small_amount_order.amount = (order_book.min_lot_size.get() / 2).into();
+        too_small_amount_order.amount = (order_book.min_lot_size.balance() / 2).into();
         assert_err!(
             order_book.place_limit_order(too_small_amount_order, &mut data),
             E::InvalidOrderAmount
         );
 
         let mut too_big_amount_order = order.clone();
-        too_big_amount_order.amount = (order_book.max_lot_size.get() + 1).into();
+        too_big_amount_order.amount = (order_book.max_lot_size.balance() + 1).into();
         assert_err!(
             order_book.place_limit_order(too_big_amount_order, &mut data),
             E::InvalidOrderAmount
         );
 
         let mut wrong_amount_order = order.clone();
-        wrong_amount_order.amount = (balance!(100) + order_book.step_lot_size.get() / 100).into();
+        wrong_amount_order.amount =
+            (balance!(100) + order_book.step_lot_size.balance() / 100).into();
         assert_err!(
             order_book.place_limit_order(wrong_amount_order, &mut data),
             E::InvalidOrderAmount
@@ -775,7 +776,7 @@ fn should_not_place_invalid_nft_limit_order() {
         );
 
         let mut wrong_price_order = order.clone();
-        wrong_price_order.price = (balance!(10) + order_book.tick_size.get() / 100).into();
+        wrong_price_order.price = (balance!(10) + order_book.tick_size.balance() / 100).into();
         assert_err!(
             order_book.place_limit_order(wrong_price_order, &mut data),
             E::InvalidLimitOrderPrice
@@ -1009,7 +1010,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
         let best_ask_price = balance!(11);
 
         let wrong_buy_price =
-            best_bid_price - max_price_shift * best_bid_price - order_book.tick_size.get();
+            best_bid_price - max_price_shift * best_bid_price - order_book.tick_size.balance();
         let mut buy_order = LimitOrder::<Runtime>::new(
             101,
             alice(),
@@ -1022,7 +1023,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
         );
 
         let wrong_sell_price =
-            best_ask_price + max_price_shift * best_ask_price + order_book.tick_size.get();
+            best_ask_price + max_price_shift * best_ask_price + order_book.tick_size.balance();
         let mut sell_order = LimitOrder::<Runtime>::new(
             102,
             alice(),
@@ -1052,10 +1053,12 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
 
         buy_order.id = 201;
         buy_order.price =
-            (best_bid_price + max_price_shift * best_bid_price + order_book.tick_size.get()).into();
+            (best_bid_price + max_price_shift * best_bid_price + order_book.tick_size.balance())
+                .into();
         sell_order.id = 202;
         sell_order.price =
-            (best_ask_price - max_price_shift * best_ask_price - order_book.tick_size.get()).into();
+            (best_ask_price - max_price_shift * best_ask_price - order_book.tick_size.balance())
+                .into();
 
         assert_ok!(order_book.place_limit_order(buy_order.clone(), &mut data));
         assert_ok!(order_book.place_limit_order(sell_order.clone(), &mut data));
@@ -1171,7 +1174,7 @@ fn should_cancel_limit_order() {
         );
 
         let balance = free_balance(&order_book_id.quote, &order.owner);
-        let expected_balance = balance_before + deal_amount.get();
+        let expected_balance = balance_before + deal_amount.balance();
         assert_eq!(balance, expected_balance);
     });
 }

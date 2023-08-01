@@ -476,7 +476,7 @@ benchmarks! {
         let deal_amount = *expected_limit_order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
-        let expected_balance = balance_before - deal_amount.get();
+        let expected_balance = balance_before - deal_amount.balance();
         assert_eq!(balance, expected_balance);
     }
 
@@ -515,7 +515,7 @@ benchmarks! {
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
-        let expected_balance = balance_before + deal_amount.get();
+        let expected_balance = balance_before + deal_amount.balance();
         assert_eq!(balance, expected_balance);
     }
 
@@ -759,7 +759,7 @@ benchmarks! {
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
-        let expected_balance = balance_before + deal_amount.get();
+        let expected_balance = balance_before + deal_amount.balance();
         assert_eq!(balance, expected_balance);
     }
 

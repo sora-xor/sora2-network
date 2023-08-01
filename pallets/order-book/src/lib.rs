@@ -609,7 +609,7 @@ pub mod pallet {
             // The amounts of already existed limit orders are aligned if they don't meet the requirements of new `step_lot_size` value.
             // All new limit orders must meet the requirements of new attributes.
 
-            if prev_step_lot_size.get() % step_lot_size != 0 {
+            if prev_step_lot_size.balance() % step_lot_size != 0 {
                 let mut data = CacheDataLayer::<T>::new();
                 order_book.align_limit_orders(&mut data)?;
                 data.commit();
@@ -768,7 +768,7 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError
             asset_id,
             account,
             &tech_account,
-            (*amount.get()).into(),
+            (*amount.balance()).into(),
         )
     }
 }
@@ -785,7 +785,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
             asset_id,
             &tech_account,
             account,
-            (*amount.get()).into(),
+            (*amount.balance()).into(),
         )
     }
 
@@ -796,7 +796,12 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
         for (account, amount) in receivers.iter() {
-            technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, *amount.get())?;
+            technical::Pallet::<T>::transfer_out(
+                asset_id,
+                &tech_account,
+                account,
+                *amount.balance(),
+            )?;
         }
         Ok(())
     }
@@ -1059,11 +1064,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((
-                SwapOutcome::new(*deal_info.output_amount.value().get(), fee),
+                SwapOutcome::new(*deal_info.output_amount.value().balance(), fee),
                 Self::quote_weight(),
             )),
             QuoteAmount::WithDesiredOutput { .. } => Ok((
-                SwapOutcome::new(*deal_info.input_amount.value().get(), fee),
+                SwapOutcome::new(*deal_info.input_amount.value().balance(), fee),
                 Self::quote_weight(),
             )),
         }
@@ -1096,13 +1101,13 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         match desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } => {
                 ensure!(
-                    *deal_info.output_amount.value().get() >= min_amount_out,
+                    *deal_info.output_amount.value().balance() >= min_amount_out,
                     Error::<T>::SlippageLimitExceeded
                 );
             }
             SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
                 ensure!(
-                    *deal_info.input_amount.value().get() <= max_amount_in,
+                    *deal_info.input_amount.value().balance() <= max_amount_in,
                     Error::<T>::SlippageLimitExceeded
                 );
             }
@@ -1128,17 +1133,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let result = match desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } => {
                 ensure!(
-                    *output_amount.value().get() >= min_amount_out,
+                    *output_amount.value().balance() >= min_amount_out,
                     Error::<T>::SlippageLimitExceeded
                 );
-                SwapOutcome::new(*output_amount.value().get(), fee)
+                SwapOutcome::new(*output_amount.value().balance(), fee)
             }
             SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
                 ensure!(
-                    *input_amount.value().get() <= max_amount_in,
+                    *input_amount.value().balance() <= max_amount_in,
                     Error::<T>::SlippageLimitExceeded
                 );
-                SwapOutcome::new(*input_amount.value().get(), fee)
+                SwapOutcome::new(*input_amount.value().balance(), fee)
             }
         };
 
@@ -1228,7 +1233,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let fee = 0; // todo (m.tagirov)
 
-        Ok(SwapOutcome::new(*target_amount.get(), fee))
+        Ok(SwapOutcome::new(*target_amount.balance(), fee))
     }
 
     fn quote_weight() -> Weight {
