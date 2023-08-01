@@ -43,7 +43,7 @@ use bridge_types::ethashproof::{
     DoubleNodeWithMerkleProof as EthashProofData, EthashProver, MixNonce,
 };
 use bridge_types::evm::Proof;
-use bridge_types::traits::Verifier;
+use bridge_types::traits::{EthereumGasPriceOracle, Verifier};
 pub use bridge_types::Header as EthereumHeader;
 use bridge_types::{EVMChainId, HeaderId as EthereumHeaderId, Receipt, H256, U256};
 
@@ -191,6 +191,8 @@ pub mod pallet {
         ConsensusNotSupported,
         /// Signature provided inside unsigned extrinsic is not correct
         InvalidSignature,
+        /// Header not found for block number
+        HeaderNotFound,
     }
 
     #[pallet::hooks]
@@ -414,6 +416,8 @@ pub mod pallet {
                 Error::<T>::InvalidSignature => 14,
                 Error::<T>::DifficultyTooLow => 15,
                 Error::<T>::NetworkStateInvalid => 16,
+                Error::<T>::HeaderNotFound => 17,
+
                 // Everything points to unreachable-ness (e.g. substrate macro definitions)
                 // https://github.com/paritytech/substrate/blob/158cdfd1a43a122f8cfbf70473fcd54a3b418f3d/frame/support/procedural/src/pallet/expand/call.rs#L235
                 Error::<T>::__Ignore(_, _) => unreachable!(),
@@ -1030,6 +1034,23 @@ pub mod pallet {
             hash = header.parent_hash;
             Some((current_hash, header))
         })
+    }
+
+    impl<T: Config> EthereumGasPriceOracle for Pallet<T> {
+        fn get_base_fee(
+            network_id: EVMChainId,
+            header_hash: H256,
+        ) -> Result<Option<U256>, DispatchError> {
+            let header =
+                <Headers<T>>::get(network_id, &header_hash).ok_or(Error::<T>::HeaderNotFound)?;
+            Ok(header.header.base_fee)
+        }
+
+        fn get_best_block_base_fee(network_id: EVMChainId) -> Result<Option<U256>, DispatchError> {
+            let (header_id, _) =
+                <BestBlock<T>>::get(network_id).ok_or(Error::<T>::NetworkNotFound)?;
+            Self::get_base_fee(network_id, header_id.hash)
+        }
     }
 
     impl<T: Config> Verifier for Pallet<T> {

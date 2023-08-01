@@ -60,6 +60,7 @@ benchmarks! {
             value: Band::<T>::raw_rate_into_balance(2).expect("failed to convert value to Balance"),
             last_updated: 100,
             request_id: 1,
+            dynamic_fee: fixed!(0),
         }));
     }
 
@@ -73,6 +74,7 @@ benchmarks! {
             value: Band::<T>::raw_rate_into_balance(2).expect("failed to convert value to Balance"),
             last_updated: 100,
             request_id: 1,
+            dynamic_fee: fixed!(0),
         }));
     }
 
@@ -90,6 +92,11 @@ benchmarks! {
     verify {
         assert_eq!(Band::<T>::trusted_relayers().unwrap().contains(&relayer), false);
     }
+
+    set_dynamic_fee_parameters {
+        let parameters = FeeCalculationParameters::new(fixed!(0), fixed!(0), fixed!(0));
+    }: _(RawOrigin::Root, parameters)
+    verify {}
 
     impl_benchmark_test_suite!(Band, crate::mock::new_test_ext(), crate::mock::Runtime);
 }
