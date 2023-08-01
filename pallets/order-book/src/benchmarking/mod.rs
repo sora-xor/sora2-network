@@ -34,23 +34,46 @@
 // order-book
 #![cfg(feature = "ready-to-test")]
 
+#[allow(unused)]
 #[cfg(not(test))]
 use crate::{
     traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
     OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
 };
+#[allow(unused)]
+#[cfg(test)]
+use framenode_runtime::order_book::{
+    traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
+    OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
+};
+
+#[cfg(not(test))]
+use crate::{CacheDataLayer, ExpirationScheduler};
 
 use assets::AssetIdOf;
 use codec::Decode;
-
+#[cfg(not(test))]
+use common::prelude::{QuoteAmount, SwapAmount};
+#[cfg(not(test))]
+use common::{balance, AssetInfoProvider, LiquiditySource, PriceVariant};
 use common::{DEXId, VAL, XOR};
-
+#[cfg(not(test))]
+use frame_benchmarking::benchmarks;
+#[cfg(not(test))]
+use frame_support::traits::Time;
+#[cfg(not(test))]
+use frame_support::weights::WeightMeter;
 use frame_system::EventRecord;
-#[cfg(test)]
-use framenode_runtime::order_book::{Config, OrderBookId, Pallet};
+#[cfg(not(test))]
+use frame_system::RawOrigin;
 use hex_literal::hex;
-use preparation::fill_order_book_worst_case;
+#[cfg(not(test))]
+use preparation::create_and_populate_order_book;
+#[cfg(not(test))]
+use sp_runtime::traits::UniqueSaturatedInto;
 
+#[cfg(not(test))]
+use assets::Pallet as AssetsPallet;
 use Pallet as OrderBookPallet;
 
 mod preparation;
@@ -220,7 +243,7 @@ benchmarks! {
             quote: XOR.into(),
         };
 
-        Assets::<T>::update_balance(
+        AssetsPallet::<T>::update_balance(
             RawOrigin::Root.into(),
             caller.clone(),
             order_book_id.quote,
@@ -354,7 +377,7 @@ benchmarks! {
 
         create_and_populate_order_book::<T>(order_book_id);
 
-        Assets::<T>::update_balance(
+        AssetsPallet::<T>::update_balance(
             RawOrigin::Root.into(),
             caller.clone(),
             order_book_id.base,
@@ -465,6 +488,7 @@ benchmarks! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::benchmarking::preparation::fill_order_book_worst_case;
     use crate::test_utils::create_empty_order_book;
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
@@ -481,7 +505,7 @@ mod tests {
             create_empty_order_book(order_book_id);
             let mut data_layer =
                 framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
-            crate::benchmarking::fill_order_book_worst_case(order_book_id, &mut data_layer);
+            fill_order_book_worst_case(order_book_id, &mut data_layer);
         })
     }
 }

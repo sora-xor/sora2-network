@@ -1,5 +1,12 @@
+#[allow(unused)]
 #[cfg(not(test))]
 use crate::{
+    traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
+    OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
+};
+#[allow(unused)]
+#[cfg(test)]
+use framenode_runtime::order_book::{
     traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
     OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
 };
@@ -7,16 +14,11 @@ use crate::{
 use assets::AssetIdOf;
 
 use common::prelude::FixedWrapper;
-use common::{balance, Balance, LiquiditySource, PriceVariant};
+use common::{balance, Balance, PriceVariant};
 
 use frame_support::traits::{Get, Time};
 
 use frame_system::RawOrigin;
-#[cfg(test)]
-use framenode_runtime::order_book::{
-    traits::DataLayer, Config, LimitOrder, MomentOf, OrderBook, OrderBookId, OrderBooks,
-    OrderVolume, Pallet,
-};
 
 use sp_runtime::traits::SaturatedConversion;
 
