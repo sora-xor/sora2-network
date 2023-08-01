@@ -127,7 +127,7 @@ impl BalanceUnit {
         Self::new(balance, self.is_divisible)
     }
 
-    pub fn get(&self) -> &Balance {
+    pub fn balance(&self) -> &Balance {
         &self.inner
     }
 

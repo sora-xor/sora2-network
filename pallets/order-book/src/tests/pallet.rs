@@ -573,8 +573,8 @@ fn should_expire_order() {
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
             order_book_id,
-            *price.get(),
-            *amount.get(),
+            *price.balance(),
+            *amount.balance(),
             PriceVariant::Buy,
             Some(lifespan)
         ));
@@ -655,8 +655,8 @@ fn should_cleanup_on_expiring() {
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
             order_book_id,
-            *price.get(),
-            *amount.get(),
+            *price.balance(),
+            *amount.balance(),
             PriceVariant::Buy,
             Some(lifespan)
         ));
@@ -712,7 +712,7 @@ fn should_cleanup_on_expiring() {
         let balance =
             <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
                 .unwrap();
-        let balance_with_order = balance_before - deal_amount.get();
+        let balance_with_order = balance_before - deal_amount.balance();
         assert_eq!(balance, balance_with_order);
 
         // Run to the last block the order should still be available at
@@ -799,7 +799,7 @@ fn should_enforce_expiration_and_weight_limits() {
             // in order to avoid cap on orders from single account
             let caller = generate_account(i);
             // in order to avoid cap on orders for a single price
-            let price = price + order_book.tick_size.get() * i as u128;
+            let price = price + order_book.tick_size.balance() * i as u128;
             fill_balance(caller.clone(), order_book_id);
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),

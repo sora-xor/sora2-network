@@ -568,7 +568,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let limit_orders = data.get_all_limit_orders(&self.order_book_id);
 
         for mut limit_order in limit_orders {
-            if limit_order.amount.get() % self.step_lot_size.get() != 0 {
+            if limit_order.amount.balance() % self.step_lot_size.balance() != 0 {
                 let refund = if limit_order.amount < self.step_lot_size {
                     limit_orders_to_cancel.insert(limit_order.id, limit_order.clone());
                     limit_order.amount
@@ -853,8 +853,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     }
 
     pub fn align_amount(&self, mut amount: OrderVolume) -> OrderVolume {
-        let steps = amount.get() / self.step_lot_size.get();
-        let aligned = steps * self.step_lot_size.get();
+        let steps = amount.balance() / self.step_lot_size.balance();
+        let aligned = steps * self.step_lot_size.balance();
         amount.set(aligned);
         amount
     }
@@ -880,7 +880,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     fn ensure_limit_order_valid(&self, limit_order: &LimitOrder<T>) -> Result<(), DispatchError> {
         limit_order.ensure_valid()?;
         ensure!(
-            limit_order.price.get() % self.tick_size.get() == 0,
+            limit_order.price.balance() % self.tick_size.balance() == 0,
             Error::<T>::InvalidLimitOrderPrice
         );
         ensure!(
@@ -888,7 +888,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::InvalidOrderAmount
         );
         ensure!(
-            limit_order.amount.get() % self.step_lot_size.get() == 0,
+            limit_order.amount.balance() % self.step_lot_size.balance() == 0,
             Error::<T>::InvalidOrderAmount
         );
         Ok(())
@@ -904,7 +904,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::InvalidOrderBookId
         );
         ensure!(
-            market_order.amount.get() % self.step_lot_size.get() == 0,
+            market_order.amount.balance() % self.step_lot_size.balance() == 0,
             Error::<T>::InvalidOrderAmount
         );
         Ok(())
@@ -940,9 +940,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
                 if let Some((best_bid_price, _)) = self.best_bid(data) {
                     if limit_order.price < best_bid_price {
-                        let diff = best_bid_price.get().abs_diff(*limit_order.price.get());
+                        let diff = best_bid_price
+                            .balance()
+                            .abs_diff(*limit_order.price.balance());
                         ensure!(
-                            diff <= T::MAX_PRICE_SHIFT * (*best_bid_price.get()),
+                            diff <= T::MAX_PRICE_SHIFT * (*best_bid_price.balance()),
                             Error::<T>::InvalidLimitOrderPrice
                         );
                     }
@@ -964,9 +966,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
                 if let Some((best_ask_price, _)) = self.best_ask(data) {
                     if limit_order.price > best_ask_price {
-                        let diff = best_ask_price.get().abs_diff(*limit_order.price.get());
+                        let diff = best_ask_price
+                            .balance()
+                            .abs_diff(*limit_order.price.balance());
                         ensure!(
-                            diff <= T::MAX_PRICE_SHIFT * (*best_ask_price.get()),
+                            diff <= T::MAX_PRICE_SHIFT * (*best_ask_price.balance()),
                             Error::<T>::InvalidLimitOrderPrice
                         );
                     }
