@@ -290,6 +290,7 @@ impl eth_bridge::Config for Runtime {
     type WeightInfo = ();
     type WeightToFee = XorFee;
     type MessageStatusNotifier = ();
+    type BridgeAssetLockChecker = ();
 }
 
 impl bridge_multisig::Config for Runtime {

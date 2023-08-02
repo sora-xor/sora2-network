@@ -11,17 +11,23 @@ mod benchmarking;
 pub mod weights;
 
 use bridge_types::{
-    traits::{GasTracker, MessageStatusNotifier, TimepointProvider},
-    types::{MessageDirection, MessageStatus},
+    traits::{
+        BridgeAssetLockChecker, BridgeAssetLocker, GasTracker, MessageStatusNotifier,
+        TimepointProvider,
+    },
+    types::{AssetKind, MessageDirection, MessageStatus},
     Address, GenericAccount, GenericNetworkId, GenericTimepoint, H160, H256,
 };
 use codec::{Decode, Encode};
-use common::Balance;
+use common::ReferencePriceProvider;
+use common::{prelude::FixedWrapper, Balance};
 use frame_support::dispatch::{DispatchResult, RuntimeDebug};
+use frame_support::ensure;
 use frame_support::log;
 use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::DispatchError;
+use sp_runtime::Saturating;
 use sp_std::prelude::*;
 
 pub use weights::WeightInfo;
@@ -41,6 +47,12 @@ pub struct BridgeRequest<AccountId, AssetId> {
     direction: MessageDirection,
 }
 
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
+pub struct TransferLimitSettings<BlockNumber> {
+    max_amount: Balance,
+    period_blocks: BlockNumber,
+}
+
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -51,8 +63,12 @@ pub mod pallet {
         traits::BridgeApp,
         types::{BridgeAppInfo, BridgeAssetInfo},
     };
-    use frame_support::pallet_prelude::{ValueQuery, *};
-    use frame_system::pallet_prelude::*;
+    use frame_support::{
+        pallet_prelude::{ValueQuery, *},
+        traits::{EnsureOrigin, Hooks},
+        weights::Weight,
+    };
+    use frame_system::pallet_prelude::{BlockNumberFor, *};
     use traits::MultiCurrency;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -71,6 +87,10 @@ pub mod pallet {
         type SubstrateApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
 
         type HashiBridge: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+
+        type ReferencePriceProvider: ReferencePriceProvider<Self::AssetId, Balance>;
+
+        type ManagerOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
         type TimepointProvider: TimepointProvider;
 
@@ -120,6 +140,43 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Maximum amount of assets that can be withdrawn during period of time.
+    #[pallet::storage]
+    #[pallet::getter(fn transfer_limit)]
+    pub(super) type TransferLimit<T: Config> = StorageValue<
+        _,
+        TransferLimitSettings<BlockNumberFor<T>>,
+        ValueQuery,
+        TransferLimitDefaultValue<T>,
+    >;
+
+    #[pallet::type_value]
+    pub fn TransferLimitDefaultValue<T: Config>() -> TransferLimitSettings<BlockNumberFor<T>> {
+        TransferLimitSettings {
+            // 50,000 USD
+            max_amount: common::balance!(50000),
+            // 1 hour
+            period_blocks: 600u32.into(),
+        }
+    }
+
+    /// Consumed transfer limit.
+    #[pallet::storage]
+    #[pallet::getter(fn consumed_transfer_limit)]
+    pub(super) type ConsumedTransferLimit<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+    /// Schedule for consumed transfer limit reduce.
+    #[pallet::storage]
+    #[pallet::getter(fn transfer_limit_unlock_schedule)]
+    pub(super) type TransferLimitUnlockSchedule<T: Config> =
+        StorageMap<_, Blake2_128Concat, BlockNumberFor<T>, Balance, ValueQuery>;
+
+    /// Assets with transfer limitation.
+    #[pallet::storage]
+    #[pallet::getter(fn is_asset_limited)]
+    pub(super) type LimitedAssets<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AssetId, bool, ValueQuery>;
+
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -130,7 +187,17 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
+            let unlock_amount = TransferLimitUnlockSchedule::<T>::take(now);
+            if unlock_amount > 0 {
+                ConsumedTransferLimit::<T>::mutate(|v| *v = v.saturating_sub(unlock_amount));
+                <T as frame_system::Config>::DbWeight::get().reads_writes(2, 2)
+            } else {
+                <T as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
+            }
+        }
+    }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -146,6 +213,9 @@ pub mod pallet {
         WrongAccountKind,
         NotEnoughLockedLiquidity,
         Overflow,
+        TransferLimitReached,
+        AssetAlreadyLimited,
+        AssetNotLimited,
     }
 
     #[pallet::call]
@@ -177,6 +247,47 @@ pub mod pallet {
                     return Err(Error::<T>::WrongAccountKind.into())
                 }
             }
+            Ok(().into())
+        }
+
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        pub fn add_limited_asset(
+            origin: OriginFor<T>,
+            asset_id: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            ensure!(
+                !Self::is_asset_limited(asset_id),
+                Error::<T>::AssetAlreadyLimited
+            );
+            LimitedAssets::<T>::insert(asset_id, true);
+            Ok(().into())
+        }
+
+        #[pallet::call_index(2)]
+        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        pub fn remove_limited_asset(
+            origin: OriginFor<T>,
+            asset_id: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            ensure!(
+                Self::is_asset_limited(asset_id),
+                Error::<T>::AssetNotLimited
+            );
+            LimitedAssets::<T>::remove(asset_id);
+            Ok(().into())
+        }
+
+        #[pallet::call_index(3)]
+        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        pub fn update_transfer_limit(
+            origin: OriginFor<T>,
+            settings: TransferLimitSettings<BlockNumberFor<T>>,
+        ) -> DispatchResultWithPostInfo {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            TransferLimit::<T>::set(settings);
             Ok(().into())
         }
     }
@@ -378,7 +489,7 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet<T> {
+impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
     type AssetId = <T as assets::Config>::AssetId;
     type Balance = Balance;
 
@@ -389,25 +500,18 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        let mut locked_amount = LockedAssets::<T>::get(network_id, asset_id);
+        Self::before_asset_lock(network_id, asset_kind, asset_id, amount)?;
         match asset_kind {
             bridge_types::types::AssetKind::Thischain => {
-                locked_amount = locked_amount
-                    .checked_add(*amount)
-                    .ok_or(Error::<T>::Overflow)?;
                 let bridge_account = Self::bridge_tech_account(network_id);
                 technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
             }
             bridge_types::types::AssetKind::Sidechain => {
-                locked_amount = locked_amount
-                    .checked_sub(*amount)
-                    .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
                 let bridge_account = Self::bridge_account(network_id)?;
                 technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
                 assets::Pallet::<T>::burn_from(&asset_id, &bridge_account, who, *amount)?;
             }
         }
-        LockedAssets::<T>::insert(network_id, asset_id, locked_amount);
         Ok(())
     }
 
@@ -418,25 +522,103 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        let mut locked_amount = LockedAssets::<T>::get(network_id, asset_id);
+        Self::before_asset_unlock(network_id, asset_kind, asset_id, amount)?;
         match asset_kind {
             bridge_types::types::AssetKind::Thischain => {
-                locked_amount = locked_amount
-                    .checked_sub(*amount)
-                    .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
                 let bridge_account = Self::bridge_tech_account(network_id);
                 technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
             }
             bridge_types::types::AssetKind::Sidechain => {
-                locked_amount = locked_amount
-                    .checked_add(*amount)
-                    .ok_or(Error::<T>::Overflow)?;
                 let bridge_account = Self::bridge_account(network_id)?;
                 technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
                 assets::Pallet::<T>::mint_to(&asset_id, &bridge_account, who, *amount)?;
             }
         }
-        LockedAssets::<T>::insert(network_id, asset_id, locked_amount);
+        Ok(())
+    }
+}
+
+impl<T: Config> BridgeAssetLockChecker<T::AssetId, Balance> for Pallet<T> {
+    fn before_asset_lock(
+        network_id: GenericNetworkId,
+        asset_kind: bridge_types::types::AssetKind,
+        asset_id: &T::AssetId,
+        amount: &Balance,
+    ) -> DispatchResult {
+        LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
+            network_id,
+            asset_id,
+            |locked_amount| match asset_kind {
+                AssetKind::Thischain => {
+                    *locked_amount = locked_amount
+                        .checked_add(*amount)
+                        .ok_or(Error::<T>::Overflow)?;
+                    Ok(())
+                }
+                AssetKind::Sidechain => {
+                    *locked_amount = locked_amount
+                        .checked_sub(*amount)
+                        .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
+                    Ok(())
+                }
+            },
+        )?;
+        if Self::is_asset_limited(&asset_id) {
+            let reference_price = T::ReferencePriceProvider::get_reference_price(asset_id)?;
+            let reference_amount =
+                FixedWrapper::from(reference_price) * FixedWrapper::from(*amount);
+            let reference_amount = reference_amount
+                .try_into_balance()
+                .map_err(|_| Error::<T>::Overflow)?;
+            let transfer_limit = TransferLimit::<T>::get();
+            ConsumedTransferLimit::<T>::try_mutate(|value| {
+                *value = value
+                    .checked_add(reference_amount)
+                    .ok_or(Error::<T>::Overflow)?;
+                ensure!(
+                    *value < transfer_limit.max_amount,
+                    Error::<T>::TransferLimitReached
+                );
+                DispatchResult::Ok(())
+            })?;
+            TransferLimitUnlockSchedule::<T>::try_mutate(
+                frame_system::Pallet::<T>::block_number()
+                    .saturating_add(transfer_limit.period_blocks),
+                |value| {
+                    *value = value
+                        .checked_add(reference_amount)
+                        .ok_or(Error::<T>::Overflow)?;
+                    DispatchResult::Ok(())
+                },
+            )?;
+        }
+        Ok(())
+    }
+
+    fn before_asset_unlock(
+        network_id: GenericNetworkId,
+        asset_kind: bridge_types::types::AssetKind,
+        asset_id: &T::AssetId,
+        amount: &Balance,
+    ) -> DispatchResult {
+        LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
+            network_id,
+            asset_id,
+            |locked_amount| match asset_kind {
+                AssetKind::Thischain => {
+                    *locked_amount = locked_amount
+                        .checked_sub(*amount)
+                        .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
+                    Ok(())
+                }
+                AssetKind::Sidechain => {
+                    *locked_amount = locked_amount
+                        .checked_add(*amount)
+                        .ok_or(Error::<T>::Overflow)?;
+                    Ok(())
+                }
+            },
+        )?;
         Ok(())
     }
 }

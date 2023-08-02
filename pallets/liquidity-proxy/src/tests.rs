@@ -36,7 +36,8 @@ use common::prelude::{AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
     Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
-    RewardReason, TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    ReferencePriceProvider, RewardReason, TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP,
+    USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
@@ -3622,4 +3623,28 @@ fn test_set_adar_commission_ratio() {
         ));
         assert!(LiquidityProxy::adar_commission_ratio() == balance!(0.5));
     })
+}
+
+#[test]
+fn test_reference_price_provider() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::MulticollateralBondingCurvePool,
+        LiquiditySourceType::XSTPool,
+    ])
+    .with_xyk_pool()
+    .build();
+    ext.execute_with(|| {
+        frame_support::parameter_types! {
+            pub const GetReferenceDexId: DEXId = DEX_A_ID;
+            pub const GetReferenceAssetId: AssetId = USDT;
+        }
+
+        assert_eq!(
+            crate::ReferencePriceProvider::<Runtime, GetReferenceDexId, GetReferenceAssetId>::get_reference_price(
+                &KSM,
+            )
+            .unwrap(),
+            balance!(0.500500500500500501)
+        );
+    });
 }

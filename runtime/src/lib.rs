@@ -1584,10 +1584,16 @@ impl eth_bridge::Config for Runtime {
     type GetEthNetworkId = GetEthNetworkId;
     type WeightInfo = eth_bridge::weights::SubstrateWeight<Runtime>;
     type WeightToFee = XorFee;
-    #[cfg(feature = "pready-to-test")]
+
+    #[cfg(feature = "ready-to-test")]
     type MessageStatusNotifier = BridgeProxy;
-    #[cfg(not(feature = "pready-to-test"))]
+    #[cfg(not(feature = "ready-to-test"))]
     type MessageStatusNotifier = ();
+
+    #[cfg(feature = "ready-to-test")]
+    type BridgeAssetLockChecker = BridgeProxy;
+    #[cfg(not(feature = "ready-to-test"))]
+    type BridgeAssetLockChecker = ();
 }
 
 #[cfg(feature = "private-net")]
@@ -2235,6 +2241,11 @@ impl migration_app::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const GetReferenceAssetId: AssetId = GetXstAssetId::get();
+    pub const GetReferenceDexId: DEXId = 0;
+}
+
 #[cfg(feature = "wip")] // Bridges
 impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -2243,6 +2254,12 @@ impl bridge_proxy::Config for Runtime {
     type HashiBridge = EthBridge;
     type SubstrateApp = SubstrateBridgeApp;
     type TimepointProvider = GenericTimepointProvider;
+    type ReferencePriceProvider =
+        liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
+    type ManagerOrigin = EitherOfDiverse<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 2, 3>,
+        EnsureRoot<AccountId>,
+    >;
     type WeightInfo = ();
 }
 

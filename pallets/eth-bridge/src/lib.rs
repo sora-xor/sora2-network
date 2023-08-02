@@ -326,7 +326,7 @@ pub mod pallet {
     use super::*;
     use crate::offchain::SignatureParams;
     use crate::util::get_bridge_account;
-    use bridge_types::traits::MessageStatusNotifier;
+    use bridge_types::traits::{BridgeAssetLockChecker, MessageStatusNotifier};
     use codec::Codec;
     use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
@@ -373,6 +373,8 @@ pub mod pallet {
         type Mock: tests::mock::Mock;
 
         type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId, Balance>;
+
+        type BridgeAssetLockChecker: BridgeAssetLockChecker<Self::AssetId, Balance>;
 
         type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
     }
