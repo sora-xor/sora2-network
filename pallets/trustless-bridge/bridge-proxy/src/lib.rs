@@ -216,6 +216,7 @@ pub mod pallet {
         TransferLimitReached,
         AssetAlreadyLimited,
         AssetNotLimited,
+        WrongLimitSettings,
     }
 
     #[pallet::call]
@@ -251,7 +252,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        #[pallet::weight(<T as Config>::WeightInfo::add_limited_asset())]
         pub fn add_limited_asset(
             origin: OriginFor<T>,
             asset_id: T::AssetId,
@@ -266,7 +267,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_limited_asset())]
         pub fn remove_limited_asset(
             origin: OriginFor<T>,
             asset_id: T::AssetId,
@@ -281,12 +282,16 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        #[pallet::weight(<T as Config>::WeightInfo::update_transfer_limit())]
         pub fn update_transfer_limit(
             origin: OriginFor<T>,
             settings: TransferLimitSettings<BlockNumberFor<T>>,
         ) -> DispatchResultWithPostInfo {
             T::ManagerOrigin::ensure_origin(origin)?;
+            ensure!(
+                settings.period_blocks > sp_runtime::traits::Zero::zero(),
+                Error::<T>::WrongLimitSettings
+            );
             TransferLimit::<T>::set(settings);
             Ok(().into())
         }
