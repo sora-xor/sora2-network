@@ -40,7 +40,7 @@ use framenode_runtime::order_book::{
 use framenode_runtime::Runtime;
 
 #[test]
-fn should_return_error_for_invalid_limit_order_lifetime() {
+fn should_return_error_for_invalid_limit_order_lifespan() {
     let wrong_lifespan1 = 0;
     let order1 = LimitOrder::<Runtime>::new(
         0,
@@ -54,7 +54,7 @@ fn should_return_error_for_invalid_limit_order_lifetime() {
     );
     assert_err!(order1.ensure_valid(), E::InvalidLifespan);
 
-    let wrong_lifespan2 = Runtime::MAX_ORDER_LIFETIME + 1;
+    let wrong_lifespan2 = Runtime::MAX_ORDER_LIFESPAN + 1;
     let order2 = LimitOrder::<Runtime>::new(
         0,
         alice(),
@@ -123,9 +123,9 @@ fn should_return_error_for_invalid_limit_order_price() {
 fn should_pass_valid_limit_order() {
     let price = balance!(10);
     let amount = balance!(100);
-    let lifespan1 = Runtime::MIN_ORDER_LIFETIME;
-    let lifespan2 = Runtime::MIN_ORDER_LIFETIME + 1000;
-    let lifespan3 = Runtime::MAX_ORDER_LIFETIME;
+    let lifespan1 = Runtime::MIN_ORDER_LIFESPAN;
+    let lifespan2 = Runtime::MIN_ORDER_LIFESPAN + 1000;
+    let lifespan3 = Runtime::MAX_ORDER_LIFESPAN;
 
     let mut order = LimitOrder::<Runtime>::new(
         0,
