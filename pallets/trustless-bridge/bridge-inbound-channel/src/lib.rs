@@ -1,6 +1,8 @@
 //! Channel for passing messages from ethereum to substrate.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use bridge_types::evm::{AdditionalEVMInboundData, AdditionalEVMOutboundData};
 use bridge_types::traits::{MessageDispatch, Verifier};
