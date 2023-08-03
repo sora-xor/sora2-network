@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # environment
 palletListFile='pallet_list.txt'
