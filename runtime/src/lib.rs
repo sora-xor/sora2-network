@@ -756,7 +756,10 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type BenchmarkingConfig = ElectionBenchmarkConfig;
     type ForceOrigin = EitherOfDiverse<
         EnsureRoot<AccountId>,
-        pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
+        EitherOfDiverse<
+            pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
+            pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 2, 3>,
+        >,
     >;
     type WeightInfo = ();
     type MaxElectingVoters = MaxElectingVoters;
@@ -2375,6 +2378,7 @@ impl bridge_data_signer::Config for Runtime {
     type MaxPeers = BridgeMaxPeers;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
+    type WeightInfo = bridge_data_signer::weights::WeightInfo<Runtime>;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
@@ -2387,6 +2391,7 @@ impl multisig_verifier::Config for Runtime {
     >;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type MaxPeers = BridgeMaxPeers;
+    type WeightInfo = multisig_verifier::weights::WeightInfo<Runtime>;
 }
 
 construct_runtime! {
