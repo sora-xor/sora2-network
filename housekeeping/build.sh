@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # environment
 palletListFile='pallet_list.txt'
@@ -37,11 +38,10 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
     mv ./target/release/framenode .
     mv ./target/release/relayer ./relayer.bin
     mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
-    wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
-    subwasm --json info framenode_runtime.compact.wasm > $wasmReportFile
-    subwasm metadata framenode_runtime.compact.wasm > $palletListFile
+    subwasm --json info framenode_runtime.compact.compressed.wasm > $wasmReportFile
+    subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
     set +e
-    subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+    subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
     echo $?
     if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else
