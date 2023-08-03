@@ -43,6 +43,7 @@ use common::{
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 use core::fmt::Debug;
+use frame_support::dispatch::{DispatchResultWithPostInfo, PostDispatchInfo};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
@@ -687,7 +688,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             order_id: T::OrderId,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             let mut data = CacheDataLayer::<T>::new();
             let order = data.get_limit_order(&order_book_id, order_id)?;
@@ -699,7 +700,11 @@ pub mod pallet {
 
             order_book.cancel_limit_order(order, &mut data)?;
             data.commit();
-            Ok(().into())
+
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
         }
 
         #[pallet::call_index(6)]
@@ -707,7 +712,7 @@ pub mod pallet {
         pub fn cancel_limit_orders_batch(
             origin: OriginFor<T>,
             limit_orders_to_cancel: Vec<(OrderBookId<AssetIdOf<T>, T::DEXId>, Vec<T::OrderId>)>,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             let mut data = CacheDataLayer::<T>::new();
 
@@ -725,7 +730,11 @@ pub mod pallet {
             }
 
             data.commit();
-            Ok(().into())
+
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
         }
 
         #[pallet::call_index(7)]
