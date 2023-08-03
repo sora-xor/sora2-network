@@ -3,12 +3,13 @@ pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "./MasterToken.sol";
 import "./libraries/ScaleCodec.sol";
-import "./interfaces/IAssetRegister.sol";
+import "./interfaces/IFAReceiver.sol";
 import "./GenericApp.sol";
 
-contract FAApp is GenericApp, IAssetRegister {
+contract FAApp is ERC165, GenericApp, IFAReceiver {
     using ScaleCodec for uint256;
     using SafeERC20 for IERC20;
 
@@ -47,6 +48,10 @@ contract FAApp is GenericApp, IAssetRegister {
         for (uint256 i = 0; i < soraAssets.length; i++) {
             tokens[soraAssets[i]] = AssetType.Sora;
         }
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControl, ERC165) returns (bool) {
+        return interfaceId == type(IFAReceiver).interfaceId || super.supportsInterface(interfaceId);
     }
 
     function lock(address token, bytes32 recipient, uint256 amount) external {
@@ -191,6 +196,7 @@ contract FAApp is GenericApp, IAssetRegister {
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         uint256 length = assets.length;
         require(length == assetType.length, "Types length mismatch");
+        require(ERC165(contractAddress).supportsInterface(type(IFAReceiver).interfaceId), "Invalid contract address");
         for (uint256 i = 0; i < length; i++) {
             if (assetType[i] == AssetType.Evm) {
                 IERC20 token = IERC20(assets[i]);
