@@ -8,7 +8,7 @@ PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 
-echo "$prBranch"
+echo "Branch IS $prBranch"
 
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
     printf "Tag is %s\n" $buildTag ${TAG_NAME}
