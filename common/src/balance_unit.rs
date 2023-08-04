@@ -44,6 +44,8 @@ use {
     static_assertions::_core::fmt::Formatter,
 };
 
+const RATIO: u128 = 1_000_000_000_000_000_000;
+
 /// BalanceUnit wraps Balance and provides proper math operations between divisible & non-divisible balances that have different precision.
 #[derive(
     Encode, Decode, Copy, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen,
@@ -60,12 +62,12 @@ pub struct BalanceUnit {
 
 impl Ord for BalanceUnit {
     fn cmp(&self, other: &Self) -> Ordering {
-        let (left, right) = match (self.is_divisible, other.is_divisible) {
-            (false, true) => (balance!(self.inner), other.inner),
-            (true, false) => (self.inner, balance!(other.inner)),
-            _ => (self.inner, other.inner),
-        };
-        left.cmp(&right)
+        let result = self.integer().cmp(&other.integer());
+        if result.is_eq() {
+            self.fractional().cmp(&other.fractional())
+        } else {
+            result
+        }
     }
 }
 
@@ -137,6 +139,24 @@ impl BalanceUnit {
 
     pub fn is_divisible(&self) -> bool {
         self.is_divisible
+    }
+
+    /// Returns integer part of balance
+    fn integer(&self) -> Balance {
+        if self.is_divisible {
+            self.inner / RATIO
+        } else {
+            self.inner
+        }
+    }
+
+    /// Returns fractional part of balance
+    fn fractional(&self) -> Balance {
+        if self.is_divisible {
+            self.inner % RATIO
+        } else {
+            Balance::zero()
+        }
     }
 
     pub fn pow(&self, x: u32) -> Result<Self, ArithmeticError> {
@@ -306,6 +326,27 @@ mod tests {
                 is_divisible: false
             }
         );
+    }
+
+    #[test]
+    fn check_parts() {
+        assert_eq!(BalanceUnit::divisible(balance!(0.12)).integer(), 0);
+        assert_eq!(
+            BalanceUnit::divisible(balance!(0.12)).fractional(),
+            balance!(0.12)
+        );
+
+        assert_eq!(BalanceUnit::divisible(balance!(12.34)).integer(), 12);
+        assert_eq!(
+            BalanceUnit::divisible(balance!(12.34)).fractional(),
+            balance!(0.34)
+        );
+
+        assert_eq!(BalanceUnit::divisible(balance!(56)).integer(), 56);
+        assert_eq!(BalanceUnit::divisible(balance!(56)).fractional(), 0);
+
+        assert_eq!(BalanceUnit::indivisible(78).integer(), 78);
+        assert_eq!(BalanceUnit::indivisible(78).fractional(), 0);
     }
 
     #[test]
