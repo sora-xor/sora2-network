@@ -314,7 +314,7 @@ benchmarks! {
 
         assert_eq!(
             OrderBookPallet::<T>::order_books(order_book_id).unwrap(),
-            OrderBook::<T>::default_nft(order_book_id)
+            OrderBook::<T>::default_indivisible(order_book_id)
         );
     }
 

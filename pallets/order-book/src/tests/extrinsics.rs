@@ -396,7 +396,7 @@ fn should_create_order_book_for_nft() {
 
         assert_eq!(
             OrderBookPallet::order_books(order_book_id).unwrap(),
-            OrderBook::default_nft(order_book_id)
+            OrderBook::default_indivisible(order_book_id)
         );
     });
 }

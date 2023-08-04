@@ -1021,7 +1021,7 @@ impl<T: Config> Pallet<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-            OrderBook::<T>::default_nft(*order_book_id)
+            OrderBook::<T>::default_indivisible(*order_book_id)
         } else {
             // regular asset
             OrderBook::<T>::default(*order_book_id)
