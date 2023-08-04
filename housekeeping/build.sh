@@ -8,8 +8,6 @@ PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 
-echo "Branch IS $prBranch"
-
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
     printf "Tag is %s\n" $buildTag ${TAG_NAME}
 else
@@ -50,9 +48,8 @@ else
     # If TAG_NAME is not defined, run tests and checks
     if [[ $prBranch == 'master' ]]; then
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
-        echo "$RUST_LOG"
     fi
-    echo '⚡️ only tests run'
+    printf "⚡️ only tests run %s\n"
     rm -rf ~/.cargo/.package-cache
     rm Cargo.lock
     cargo fmt -- --check > /dev/null
