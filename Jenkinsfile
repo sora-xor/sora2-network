@@ -1,4 +1,4 @@
-@Library('jenkins-library') _
+@Library('jenkins-library@feature/dops-2651') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
@@ -8,7 +8,7 @@ def pipeline = new org.rust.AppPipeline(steps: this,
       cargoDoc: true,
       smartContractScanner: true,
       buildTestCmds: ['housekeeping/build.sh'],
-      buildArtifacts: 'framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, subwasm_report.json, pallet_list.txt',
+      buildArtifacts: 'framenode_runtime.compact.compressed.wasm, subwasm_report.json, pallet_list.txt',
       pushToPublicRegistry: true
 )
 pipeline.runPipeline()
