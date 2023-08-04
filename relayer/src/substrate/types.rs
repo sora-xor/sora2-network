@@ -41,6 +41,7 @@ pub use substrate_gen::{
 };
 pub use subxt::rpc::ChainBlock;
 pub use subxt::rpc::Subscription;
+use subxt::tx::TxPayload;
 use subxt::Config as SubxtConfig;
 use subxt::OnlineClient;
 
@@ -127,5 +128,17 @@ impl From<u32> for BlockNumberOrHash {
 impl From<H256> for BlockNumberOrHash {
     fn from(hash: H256) -> Self {
         BlockNumberOrHash::Hash(hash)
+    }
+}
+
+pub struct UnvalidatedTxPayload<'a, P: TxPayload>(pub &'a P);
+
+impl<'a, P: TxPayload> TxPayload for UnvalidatedTxPayload<'a, P> {
+    fn encode_call_data_to(
+        &self,
+        metadata: &subxt::Metadata,
+        out: &mut Vec<u8>,
+    ) -> Result<(), subxt::Error> {
+        self.0.encode_call_data_to(metadata, out)
     }
 }
