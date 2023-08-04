@@ -50,7 +50,7 @@ else
     # If TAG_NAME is not defined, run tests and checks
     if [[ $prBranch == 'master' ]]; then
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
-        echo $RUST_LOG
+        echo "$RUST_LOG"
     fi
     echo '⚡️ only tests run'
     rm -rf ~/.cargo/.package-cache
