@@ -212,19 +212,24 @@ fn fill_order_book_side<T: Config>(
     lifespan_orders: &mut u64,
     max_expiring_orders_per_block: u128,
 ) {
+    #[cfg(feature = "std")]
     use std::io::Write;
+    #[cfg(feature = "std")]
+    let mut i = 0;
 
     let current_block = frame_system::Pallet::<T>::block_number();
-    let mut i = 0;
     for price in prices {
-        print!(
-            "\r{}/{} ({}%)",
-            i,
-            max_side_price_count,
-            100.0 * (i as f32) / (max_side_price_count as f32)
-        );
-        std::io::stdout().flush().unwrap();
-        i += 1;
+        #[cfg(feature = "std")]
+        {
+            print!(
+                "\r{}/{} ({}%)",
+                i,
+                max_side_price_count,
+                100.0 * (i as f32) / (max_side_price_count as f32)
+            );
+            std::io::stdout().flush().unwrap();
+            i += 1;
+        }
         for _ in 0..max_orders_per_price {
             let buy_order = LimitOrder::<T>::new(
                 order_book.next_order_id(),
@@ -264,7 +269,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     let max_expiring_orders_per_block = T::MaxExpiringOrdersPerBlock::get();
 
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
-    let amount = std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
+    let amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let now = T::Time::now();
     // to allow mutating with `order_book.next_order_id()` later
     let tick_size = order_book.tick_size;
@@ -301,11 +306,15 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     });
     let mut current_lifespan = lifespans.next().expect("infinite iterator");
     let mut block_orders = 0;
+
+    #[cfg(feature = "std")]
     let start_time = std::time::SystemTime::now();
+    #[cfg(feature = "std")]
     println!(
         "Starting placement of bid orders, {} orders per price",
         max_orders_per_price
     );
+
     fill_order_book_side(
         data,
         &mut order_book,
@@ -324,12 +333,16 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         &mut block_orders,
         max_expiring_orders_per_block as u128,
     );
+
+    #[cfg(feature = "std")]
     println!(
         "\nprocessed all bid prices in {:?}",
         start_time.elapsed().unwrap()
     );
 
+    #[cfg(feature = "std")]
     let start_time = std::time::SystemTime::now();
+    #[cfg(feature = "std")]
     println!(
         "Starting placement of ask orders, {} orders per price",
         max_orders_per_price
@@ -352,6 +365,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         &mut block_orders,
         max_expiring_orders_per_block as u128,
     );
+    #[cfg(feature = "std")]
     println!(
         "\nprocessed all ask prices in {:?}",
         start_time.elapsed().unwrap()

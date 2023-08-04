@@ -38,8 +38,8 @@ use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::Zero;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
-use std::collections::BTreeMap;
 
 pub struct CacheDataLayer<T: Config> {
     limit_orders: CacheStorageDoubleMap<
@@ -116,11 +116,10 @@ impl<T: Config> CacheDataLayer<T> {
         if let Some(bids) = self.bids.get_mut(order_book_id, &limit_order.price) {
             bids.try_push(limit_order.id).map_err(|_| ())?;
         } else {
-            let bids =
-                sp_runtime::BoundedVec::<T::OrderId, T::MaxLimitOrdersForPrice>::try_from(vec![
-                    limit_order.id,
-                ])
-                .map_err(|_| ())?;
+            let bids = sp_runtime::BoundedVec::<T::OrderId, T::MaxLimitOrdersForPrice>::try_from(
+                Vec::from([limit_order.id]),
+            )
+            .map_err(|_| ())?;
             self.bids.set(order_book_id, &limit_order.price, bids);
         }
         Ok(())
@@ -148,11 +147,10 @@ impl<T: Config> CacheDataLayer<T> {
         if let Some(asks) = self.asks.get_mut(order_book_id, &limit_order.price) {
             asks.try_push(limit_order.id).map_err(|_| ())?;
         } else {
-            let asks =
-                sp_runtime::BoundedVec::<T::OrderId, T::MaxLimitOrdersForPrice>::try_from(vec![
-                    limit_order.id,
-                ])
-                .map_err(|_| ())?;
+            let asks = sp_runtime::BoundedVec::<T::OrderId, T::MaxLimitOrdersForPrice>::try_from(
+                Vec::from([limit_order.id]),
+            )
+            .map_err(|_| ())?;
             self.asks.set(order_book_id, &limit_order.price, asks);
         }
         Ok(())
