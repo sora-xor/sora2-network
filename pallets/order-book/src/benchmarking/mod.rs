@@ -204,7 +204,8 @@ benchmarks! {
         );
         let mut data_layer =
             crate::cache_data_layer::CacheDataLayer::<T>::new();
-        fill_order_book_worst_case::<T>(fill_settings, &mut data_layer);
+        fill_order_book_worst_case::<T>(fill_settings.clone(), &mut data_layer);
+        data_layer.commit();
     }: {
         OrderBookPallet::<T>::delete_orderbook(
             RawOrigin::Root.into(),
