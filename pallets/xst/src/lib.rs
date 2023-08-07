@@ -255,7 +255,7 @@ pub mod pallet {
 
         /// Entirely remove synthetic asset (including linked symbol info)
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::disable_synthetic_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_synthetic_asset())]
         pub fn remove_synthetic_asset(
             origin: OriginFor<T>,
             synthetic_asset: T::AssetId,

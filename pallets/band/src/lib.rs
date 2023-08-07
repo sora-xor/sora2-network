@@ -369,6 +369,12 @@ pub mod pallet {
                 resolve_time,
                 request_id,
                 |option_old_rate, new_rate, symbol| {
+                    if let Some(rate) = option_old_rate {
+                        SymbolCheckBlock::<T, I>::remove(
+                            Self::calc_expiration_block(rate.last_updated_block),
+                            symbol,
+                        );
+                    }
                     let last_updated_block = new_rate.last_updated_block;
                     _ = option_old_rate.insert(new_rate);
                     SymbolCheckBlock::<T, I>::insert(

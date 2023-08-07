@@ -188,9 +188,7 @@ pub mod v1 {
 }
 
 pub mod v2 {
-    use crate::{
-        BandRate, {Config, Pallet},
-    };
+    use crate::{Config, Pallet};
     use common::fixed;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::OnRuntimeUpgrade;
@@ -227,7 +225,7 @@ pub mod v2 {
                     true,
                 );
                 match band_rate {
-                    Some(band_rate) => Some(Some(BandRate {
+                    Some(band_rate) => Some(Some(BandRateV2 {
                         value: band_rate.value,
                         last_updated: band_rate.last_updated,
                         last_updated_block: now,
@@ -297,7 +295,7 @@ pub mod v2 {
                 BandUpdateV2::<Runtime>::on_runtime_upgrade();
 
                 for symbol in rates_vec.into_iter() {
-                    let last_updated_block = Pallet::<Runtime>::rates(symbol)
+                    let last_updated_block = SymbolRatesV2::<Runtime>::get(symbol)
                         .expect("Expected to get rate for the specified symbol")
                         .last_updated_block;
                     assert_eq!(last_updated_block, 1);
