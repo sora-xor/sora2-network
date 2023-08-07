@@ -28,41 +28,25 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+#![cfg_attr(rustfmt, rustfmt_skip)]
+#![allow(unused_parens)]
+#![allow(unused_imports)]
 
-ethers::contract::abigen!(
-    InboundChannel,
-    "src/bytes/InboundChannel.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    OutboundChannel,
-    "src/bytes/OutboundChannel.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    BeefyLightClient,
-    "src/bytes/BeefyLightClient.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    ETHApp,
-    "src/bytes/ETHApp.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    ERC20App,
-    "src/bytes/ERC20App.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    SidechainApp,
-    "src/bytes/SidechainApp.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    IERC20Metadata,
-    "src/bytes/IERC20Metadata.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    TestToken,
-    "src/bytes/TestToken.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    Bridge,
-    "src/bytes/Bridge.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    Master,
-    "src/bytes/Master.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    MigrationApp,
-    "src/bytes/MigrationApp.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-);
+use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use core::marker::PhantomData;
+
+pub trait WeightInfo {
+	fn order_book_create_empty_batch() -> Weight {
+        Weight::zero()
+    }
+	fn order_book_create_and_fill_batch() -> Weight {
+        Weight::zero()
+    }
+}
+
+impl WeightInfo for () {}
+
+// This pallet is intended for use only in `private-net`
+// and for testing purposes, thus weights are not important.
+pub struct SubstrateWeight<T>(PhantomData<T>);
+impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {}

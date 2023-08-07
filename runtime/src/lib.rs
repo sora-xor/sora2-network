@@ -31,6 +31,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 extern crate alloc;
 use alloc::string::String;
@@ -156,6 +158,8 @@ use impls::{
 };
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+pub use qa_tools;
 #[cfg(feature = "wip")]
 use sp_runtime::traits::Keccak256;
 pub use {
@@ -754,7 +758,10 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type BenchmarkingConfig = ElectionBenchmarkConfig;
     type ForceOrigin = EitherOfDiverse<
         EnsureRoot<AccountId>,
-        pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
+        EitherOfDiverse<
+            pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
+            pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 2, 3>,
+        >,
     >;
     type WeightInfo = ();
     type MaxElectingVoters = MaxElectingVoters;
@@ -1592,6 +1599,17 @@ impl faucet::Config for Runtime {
 }
 
 parameter_types! {
+    pub QaToolsWhitelistCapacity: u32 = 512;
+}
+
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+impl qa_tools::Config for Runtime {
+    type AssetInfoProvider = Assets;
+    type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
+    type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
     pub GetPswapDistributionTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -2032,8 +2050,8 @@ parameter_types! {
 
 #[cfg(feature = "ready-to-test")] // order-book
 impl order_book::Config for Runtime {
-    const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
-    const MIN_ORDER_LIFETIME: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
+    const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
+    const MIN_ORDER_LIFESPAN: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50); // TODO: order-book clarify
     type RuntimeEvent = RuntimeEvent;
@@ -2365,6 +2383,7 @@ impl bridge_data_signer::Config for Runtime {
     type MaxPeers = BridgeMaxPeers;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
+    type WeightInfo = bridge_data_signer::weights::WeightInfo<Runtime>;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
@@ -2377,6 +2396,7 @@ impl multisig_verifier::Config for Runtime {
     >;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type MaxPeers = BridgeMaxPeers;
+    type WeightInfo = multisig_verifier::weights::WeightInfo<Runtime>;
 }
 
 construct_runtime! {
@@ -2506,6 +2526,8 @@ construct_runtime! {
         // Available only for test net
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
+        #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+        QATools: qa_tools::{Pallet, Call} = 112,
     }
 }
 

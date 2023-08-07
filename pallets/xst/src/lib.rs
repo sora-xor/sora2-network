@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 pub mod weights;
 
@@ -875,11 +877,11 @@ impl<T: Config> Pallet<T> {
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 &T::GetSyntheticBaseAssetId::get(),
                 &T::GetBaseAssetId::get(),
-                // Since `Sell` is more expensive in case if we are selling XST
+                // Since `Buy` is more expensive in case if we are buying XOR
                 // (x XST -> y XOR; y XOR -> x' XST, x' < x),
                 // it seems logical to show this amount in order
                 // to not accidentally lie about the price.
-                PriceVariant::Sell,
+                PriceVariant::Buy,
             )?
             .into();
         Ok((fee_amount * output_to_base)
