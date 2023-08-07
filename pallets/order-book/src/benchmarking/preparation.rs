@@ -10,13 +10,14 @@ use framenode_runtime::order_book::{
     traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
     OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
 };
+use sp_std::iter::repeat;
 
 use assets::AssetIdOf;
 
 use common::prelude::FixedWrapper;
 use common::{balance, Balance, PriceVariant};
 
-use frame_support::traits::{Get, Time};
+use frame_support::traits::Time;
 
 use frame_system::RawOrigin;
 
@@ -194,86 +195,101 @@ pub fn create_and_populate_order_book<T: Config>(
     .unwrap();
 }
 
+#[derive(Clone, Debug)]
+pub struct FillSettings<T: Config> {
+    pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    pub amount: OrderVolume,
+    pub now: <<T as Config>::Time as Time>::Moment,
+    pub max_side_price_count: u32,
+    pub max_orders_per_price: u32,
+    pub max_orders_per_user: u32,
+    pub max_expiring_orders_per_block: u32,
+}
+
+impl<T: Config> FillSettings<T> {
+    pub fn new(
+        max_side_price_count: u32,
+        max_orders_per_price: u32,
+        max_orders_per_user: u32,
+        max_expiring_orders_per_block: u32,
+        order_book: &OrderBook<T>,
+    ) -> Self {
+        let amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
+        Self {
+            order_book_id: order_book.order_book_id,
+            amount,
+            now: T::Time::now(),
+            max_side_price_count,
+            max_orders_per_price,
+            max_orders_per_user,
+            max_expiring_orders_per_block,
+        }
+    }
+}
+
 fn fill_order_book_side<T: Config>(
     data: &mut impl DataLayer<T>,
+    settings: FillSettings<T>,
     order_book: &mut OrderBook<T>,
     side: PriceVariant,
-    amount: OrderVolume,
-    now: <<T as Config>::Time as Time>::Moment,
     prices: &mut impl Iterator<Item = Balance>,
-    max_side_price_count: u32,
-    max_orders_per_price: u32,
     users: &mut impl Iterator<Item = T::AccountId>,
-    current_user: &mut T::AccountId,
-    user_orders: &mut u64,
-    max_orders_per_user: u128,
     lifespans: &mut impl Iterator<Item = u64>,
-    current_lifespan: &mut u64,
-    lifespan_orders: &mut u64,
-    max_expiring_orders_per_block: u128,
 ) {
     #[cfg(feature = "std")]
     use std::io::Write;
-    #[cfg(feature = "std")]
-    let mut i = 0;
 
     let current_block = frame_system::Pallet::<T>::block_number();
-    for price in prices {
+    for (i, price) in prices.enumerate() {
         #[cfg(feature = "std")]
         {
             print!(
                 "\r{}/{} ({}%)",
                 i,
-                max_side_price_count,
-                100.0 * (i as f32) / (max_side_price_count as f32)
+                settings.max_side_price_count,
+                100.0 * (i as f32) / (settings.max_side_price_count as f32)
             );
             std::io::stdout().flush().unwrap();
-            i += 1;
         }
-        for _ in 0..max_orders_per_price {
+        for _ in 0..settings.max_orders_per_price {
             let buy_order = LimitOrder::<T>::new(
                 order_book.next_order_id(),
-                current_user.clone(),
+                users.next().expect("infinite iterator"),
                 side,
                 price,
-                amount,
-                now.clone(),
-                (*current_lifespan).saturated_into(),
+                settings.amount,
+                settings.now.clone(),
+                lifespans
+                    .next()
+                    .expect("infinite iterator")
+                    .saturated_into(),
                 current_block,
             );
             data.insert_limit_order(&order_book.order_book_id, buy_order)
                 .unwrap();
             // order_book.place_limit_order(buy_order, data).unwrap();
-            // todo: make an object for this
-            *user_orders += 1;
-            if *user_orders as u128 >= max_orders_per_user {
-                *current_user = users.next().expect("infinite iterator");
-                *user_orders = 0
-            }
-            *lifespan_orders += 1;
-            if *lifespan_orders as u128 >= max_expiring_orders_per_block {
-                *current_lifespan = lifespans.next().expect("infinite iterator");
-                *lifespan_orders = 0
-            }
         }
     }
 }
 
 pub fn fill_order_book_worst_case<T: Config + assets::Config>(
-    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    settings: FillSettings<T>,
     data: &mut impl DataLayer<T>,
 ) {
-    let max_side_price_count = T::MaxSidePriceCount::get();
-    let max_orders_per_price = T::MaxLimitOrdersForPrice::get();
-    let max_orders_per_user = T::MaxOpenedLimitOrdersPerUser::get() as u128;
-    let max_expiring_orders_per_block = T::MaxExpiringOrdersPerBlock::get();
+    let FillSettings {
+        order_book_id,
+        amount,
+        now: _,
+        max_side_price_count,
+        max_orders_per_price,
+        max_orders_per_user,
+        max_expiring_orders_per_block,
+    } = settings;
 
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
-    let amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
-    let now = T::Time::now();
     // to allow mutating with `order_book.next_order_id()` later
     let tick_size = order_book.tick_size;
-    let amount_per_user: OrderVolume = max_orders_per_user * amount;
+    let amount_per_user: OrderVolume = max_orders_per_user as u128 * amount;
 
     let mut bid_prices = (1..=max_side_price_count).map(|i| (i as u128) * tick_size);
     let mut ask_prices = (max_side_price_count + 1..=2 * max_side_price_count)
@@ -281,9 +297,10 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         .map(|i| (i as u128) * tick_size);
     let max_price = (2 * max_side_price_count) as u128 * tick_size;
 
-    // user generator with minted add quote & base assets
+    // Owners for each placed order
     let mut users = (1..)
         .map(crate::test_utils::generate_account::<T>)
+        // each user receives assets that should be enough for placing their orders
         .inspect(|user| {
             assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &user, amount_per_user)
                 .unwrap();
@@ -295,20 +312,23 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
                     .unwrap(),
             )
             .unwrap();
+        })
+        // yield same user for `max_orders_per_user` orders.
+        // `inspect` is still called only once for each user.
+        .flat_map(|user| repeat(user).take(max_orders_per_user.try_into().unwrap()));
+    // Lifespans for each placed order
+    let mut lifespans = (1..)
+        .map(|i| {
+            i * T::MILLISECS_PER_BLOCK.saturated_into::<u64>()
+                + T::MIN_ORDER_LIFETIME.saturated_into::<u64>()
+        })
+        // same lifespan should be yielded for `max_expiring_orders_per_block` orders
+        .flat_map(|lifespan| {
+            repeat(lifespan).take(max_expiring_orders_per_block.try_into().unwrap())
         });
-    let mut current_user = users.next().expect("infinite iterator");
-
-    // # of orders placed by `current_user`
-    let mut user_orders = 0;
-    let mut lifespans = (1..).map(|i| {
-        i * T::MILLISECS_PER_BLOCK.saturated_into::<u64>()
-            + T::MIN_ORDER_LIFETIME.saturated_into::<u64>()
-    });
-    let mut current_lifespan = lifespans.next().expect("infinite iterator");
-    let mut block_orders = 0;
 
     #[cfg(feature = "std")]
-    let start_time = std::time::SystemTime::now();
+    let start_time = std::time::Instant::now();
     #[cfg(feature = "std")]
     println!(
         "Starting placement of bid orders, {} orders per price",
@@ -317,31 +337,19 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
 
     fill_order_book_side(
         data,
+        settings.clone(),
         &mut order_book,
         PriceVariant::Buy,
-        amount,
-        now,
         &mut bid_prices,
-        max_side_price_count,
-        max_orders_per_price,
         &mut users,
-        &mut current_user,
-        &mut user_orders,
-        max_orders_per_user,
         &mut lifespans,
-        &mut current_lifespan,
-        &mut block_orders,
-        max_expiring_orders_per_block as u128,
     );
 
     #[cfg(feature = "std")]
-    println!(
-        "\nprocessed all bid prices in {:?}",
-        start_time.elapsed().unwrap()
-    );
+    println!("\nprocessed all bid prices in {:?}", start_time.elapsed());
 
     #[cfg(feature = "std")]
-    let start_time = std::time::SystemTime::now();
+    let start_time = std::time::Instant::now();
     #[cfg(feature = "std")]
     println!(
         "Starting placement of ask orders, {} orders per price",
@@ -349,25 +357,13 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     );
     fill_order_book_side(
         data,
+        settings,
         &mut order_book,
         PriceVariant::Sell,
-        amount,
-        now,
         &mut ask_prices,
-        max_side_price_count,
-        max_orders_per_price,
         &mut users,
-        &mut current_user,
-        &mut user_orders,
-        max_orders_per_user,
         &mut lifespans,
-        &mut current_lifespan,
-        &mut block_orders,
-        max_expiring_orders_per_block as u128,
     );
     #[cfg(feature = "std")]
-    println!(
-        "\nprocessed all ask prices in {:?}",
-        start_time.elapsed().unwrap()
-    );
+    println!("\nprocessed all ask prices in {:?}", start_time.elapsed());
 }

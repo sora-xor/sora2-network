@@ -488,8 +488,9 @@ benchmarks! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::benchmarking::preparation::fill_order_book_worst_case;
+    use crate::benchmarking::preparation::{fill_order_book_worst_case, FillSettings};
     use crate::test_utils::create_empty_order_book;
+    use frame_support::traits::Get;
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
 
@@ -505,7 +506,16 @@ mod tests {
             create_empty_order_book(order_book_id);
             let mut data_layer =
                 framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
-            fill_order_book_worst_case(order_book_id, &mut data_layer);
+
+            let order_book = <OrderBooks<Runtime>>::get(order_book_id).unwrap();
+            let settings = FillSettings::new(
+                <Runtime as framenode_runtime::order_book::Config>::MaxSidePriceCount::get(),
+                <Runtime as framenode_runtime::order_book::Config>::MaxLimitOrdersForPrice::get(),
+                <Runtime as framenode_runtime::order_book::Config>::MaxOpenedLimitOrdersPerUser::get(),
+                <Runtime as framenode_runtime::order_book::Config>::MaxExpiringOrdersPerBlock::get(),
+                &order_book,
+            );
+            fill_order_book_worst_case(settings, &mut data_layer);
         })
     }
 }
