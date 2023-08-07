@@ -34,6 +34,11 @@
 // order-book
 #![cfg(feature = "ready-to-test")]
 
+#[cfg(not(test))]
+use crate::{
+    benchmarking::preparation::{fill_order_book_worst_case, FillSettings},
+    CacheDataLayer, ExpirationScheduler,
+};
 #[allow(unused)]
 #[cfg(not(test))]
 use crate::{
@@ -47,9 +52,6 @@ use framenode_runtime::order_book::{
     OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
 };
 
-#[cfg(not(test))]
-use crate::{CacheDataLayer, ExpirationScheduler};
-
 use assets::AssetIdOf;
 use codec::Decode;
 #[cfg(not(test))]
@@ -59,8 +61,9 @@ use common::{balance, AssetInfoProvider, LiquiditySource, PriceVariant};
 use common::{DEXId, VAL, XOR};
 #[cfg(not(test))]
 use frame_benchmarking::benchmarks;
+use frame_benchmarking::log::info;
 #[cfg(not(test))]
-use frame_support::traits::Time;
+use frame_support::traits::{Get, Time};
 #[cfg(not(test))]
 use frame_support::weights::WeightMeter;
 use frame_system::EventRecord;
@@ -108,6 +111,31 @@ fn get_last_order_id<T: Config>(
     }
 }
 
+/// Retrieve the parameter from environmental variables and return the default if not possible
+fn get_env_parameter<P: sp_std::str::FromStr>(name: &str, default: P) -> Result<P, P::Err> {
+    #[cfg(feature = "std")]
+    {
+        match std::env::var(name) {
+            Ok(v) => {
+                info!("Read '{}={}' from env", name, v);
+                v.parse()
+            }
+            Err(e) => {
+                info!(
+                    "Couldn't read {} from env, using provided default (error: {:?})",
+                    name, e
+                );
+                Ok(default)
+            }
+        }
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        info!("no-std, using default right away");
+        Ok(default)
+    }
+}
+
 #[cfg(not(test))]
 benchmarks! {
     where_clause {
@@ -149,8 +177,34 @@ benchmarks! {
             base: VAL.into(),
             quote: XOR.into(),
         };
-
-        create_and_populate_order_book::<T>(order_book_id);
+        OrderBookPallet::<T>::create_orderbook(
+            RawOrigin::Signed(bob::<T>()).into(),
+            order_book_id
+        ).expect("failed to create an order book");
+        let order_book = <OrderBooks<T>>::get(order_book_id)
+            .expect("just created the order book");
+        let fill_settings = FillSettings::new(
+            get_env_parameter::<u32>(
+                "MAX_SIDE_PRICE_COUNT",
+                <T as Config>::MaxSidePriceCount::get()
+            ).expect("Could not parse an argument"),
+            get_env_parameter::<u32>(
+                "MAX_LIMIT_ORDERS_FOR_PRICE",
+                <T as Config>::MaxLimitOrdersForPrice::get()
+            ).expect("Could not parse an argument"),
+            get_env_parameter::<u32>(
+                "MAX_OPENED_LIMIT_ORDERS_PER_USER",
+                <T as Config>::MaxOpenedLimitOrdersPerUser::get()
+            ).expect("Could not parse an argument"),
+            get_env_parameter::<u32>(
+                "MAX_EXPIRING_ORDERS_PER_BLOCK",
+                <T as Config>::MaxExpiringOrdersPerBlock::get()
+            ).expect("Could not parse an argument"),
+            &order_book,
+        );
+        let mut data_layer =
+            crate::cache_data_layer::CacheDataLayer::<T>::new();
+        fill_order_book_worst_case::<T>(fill_settings, &mut data_layer);
     }: {
         OrderBookPallet::<T>::delete_orderbook(
             RawOrigin::Root.into(),
@@ -504,11 +558,9 @@ mod tests {
                 quote: XOR.into(),
             };
 
-            create_empty_order_book(order_book_id);
+            let order_book = create_empty_order_book(order_book_id);
             let mut data_layer =
                 framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
-
-            let order_book = <OrderBooks<Runtime>>::get(order_book_id).unwrap();
             let settings = FillSettings::new(
                 <Runtime as framenode_runtime::order_book::Config>::MaxSidePriceCount::get(),
                 <Runtime as framenode_runtime::order_book::Config>::MaxLimitOrdersForPrice::get(),
