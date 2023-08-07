@@ -28,59 +28,77 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod v1 {
+pub mod storages {
     use crate::pallet::{Config, Pallet};
     use codec::Decode;
-    use common::{fixed, Balance, Fixed};
+    use common::{Balance, Fixed};
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::{OnRuntimeUpgrade, StorageInstance};
+
+    mod v0 {
+        use super::*;
+        #[derive(Decode, Encode, Clone, RuntimeDebug, PartialEq, Eq)]
+        pub struct BandRate {
+            pub value: Balance,
+            pub last_updated: u64,
+            pub request_id: u64,
+        }
+
+        #[frame_support::storage_alias]
+        pub type SymbolRates<T: Config> = StorageMap<
+            Pallet<T>,
+            Blake2_128Concat,
+            <T as Config>::Symbol,
+            Option<BandRate>,
+            ValueQuery,
+        >;
+    }
+    pub use v0::BandRate as BandRateV0;
+    pub use v0::SymbolRates as SymbolRatesV0;
+
+    mod v1 {
+        use super::*;
+        #[derive(Decode, Encode, Clone, RuntimeDebug, PartialEq, Eq)]
+        pub struct BandRate {
+            pub value: Balance,
+            pub last_updated: u64,
+            pub request_id: u64,
+            pub dynamic_fee: Fixed,
+        }
+
+        #[frame_support::storage_alias]
+        pub type SymbolRates<T: Config> = StorageMap<
+            Pallet<T>,
+            Blake2_128Concat,
+            <T as Config>::Symbol,
+            Option<BandRate>,
+            ValueQuery,
+        >;
+    }
+    pub use v1::BandRate as BandRateV1;
+    pub use v1::SymbolRates as SymbolRatesV1;
+
+    pub mod v2 {
+        pub use crate::BandRate;
+        pub use crate::SymbolRates;
+    }
+
+    pub use v2::BandRate as BandRateV2;
+    pub use v2::SymbolRates as SymbolRatesV2;
+}
+
+pub mod v1 {
+    use crate::pallet::{Config, Pallet};
+
+    use crate::migrations::storages::*;
+    use common::fixed;
+    use frame_support::pallet_prelude::*;
+    use frame_support::traits::OnRuntimeUpgrade;
     use frame_support::weights::Weight;
 
     #[cfg(feature = "try-runtime")]
     use sp_std::prelude::Vec;
 
     // use crate::SymbolRates;
-
-    #[derive(Decode, Encode, Clone, RuntimeDebug)]
-    pub struct BandRateV0 {
-        pub value: Balance,
-        pub last_updated: u64,
-        pub request_id: u64,
-    }
-
-    #[derive(Decode, Encode, RuntimeDebug)]
-    pub struct BandRateV1 {
-        pub value: Balance,
-        pub last_updated: u64,
-        pub request_id: u64,
-        pub dynamic_fee: Fixed,
-    }
-
-    #[frame_support::storage_alias]
-    pub type SymbolRates<T: Config> = StorageMap<
-        Pallet<T>,
-        Blake2_128Concat,
-        <T as Config>::Symbol,
-        Option<BandRateV1>,
-        ValueQuery,
-    >;
-
-    // used for testing migration
-    pub struct SymbolRatesV0StorageInstance<T: Config>(PhantomData<T>);
-
-    impl<T: Config> StorageInstance for SymbolRatesV0StorageInstance<T> {
-        fn pallet_prefix() -> &'static str {
-            "Band"
-        }
-        const STORAGE_PREFIX: &'static str = "SymbolRates";
-    }
-    pub type SymbolRatesV0<T> = StorageMap<
-        SymbolRatesV0StorageInstance<T>,
-        Blake2_128Concat,
-        <T as Config>::Symbol,
-        Option<BandRateV0>,
-        ValueQuery,
-    >;
 
     pub struct BandUpdateV1<T>(core::marker::PhantomData<T>);
 
@@ -98,7 +116,7 @@ pub mod v1 {
             }
             let mut weight = Weight::zero();
 
-            SymbolRates::<T>::translate::<Option<BandRateV0>, _>(|symbol, band_rate| {
+            SymbolRatesV1::<T>::translate::<Option<BandRateV0>, _>(|_symbol, band_rate| {
                 weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
                 match band_rate {
                     Some(band_rate) => Some(Some(BandRateV1 {
@@ -136,7 +154,7 @@ pub mod v1 {
 
     #[cfg(test)]
     mod tests {
-        use super::{BandRateV0, SymbolRates as SymbolRatesV1, SymbolRatesV0};
+        use crate::migrations::storages::*;
         use crate::{mock::*, pallet::*};
         use common::fixed;
         use frame_support::traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion};
@@ -158,12 +176,8 @@ pub mod v1 {
                 super::BandUpdateV1::<Runtime>::on_runtime_upgrade();
 
                 for symbol in rates_vec.into_iter() {
-                    let dyn_fee_from_storage_map = SymbolRatesV1::<Runtime>::get(symbol)
+                    let dyn_fee = SymbolRatesV1::<Runtime>::get(symbol)
                         .expect("Expected to get entry from SymbolRatesV1")
-                        .dynamic_fee;
-                    println!("dyn_fee_from_storage_map: {:?}", dyn_fee_from_storage_map);
-                    let dyn_fee = Pallet::<Runtime>::rates(symbol)
-                        .expect("Expected to get rate for the specified symbol")
                         .dynamic_fee;
                     assert_eq!(dyn_fee, fixed!(0));
                 }
@@ -177,52 +191,16 @@ pub mod v2 {
     use crate::{
         BandRate, {Config, Pallet},
     };
-    use codec::Decode;
-    use common::{fixed, Balance, Fixed};
+    use common::fixed;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::{OnRuntimeUpgrade, PalletInfoAccess, StorageInstance};
+    use frame_support::traits::OnRuntimeUpgrade;
     use frame_support::weights::Weight;
-    use sp_std::marker::PhantomData;
 
-    use frame_system::pallet_prelude::BlockNumberFor;
+    use crate::migrations::storages::*;
     #[cfg(feature = "try-runtime")]
     use sp_std::prelude::Vec;
 
     use crate::SymbolCheckBlock;
-
-    #[derive(Decode, Encode, Clone)]
-    pub struct BandRateV1 {
-        pub value: Balance,
-        pub last_updated: u64,
-        pub request_id: u64,
-        pub dynamic_fee: Fixed,
-    }
-
-    #[frame_support::storage_alias]
-    pub type SymbolRates<T: Config> = StorageMap<
-        Pallet<T>,
-        Blake2_128Concat,
-        <T as Config>::Symbol,
-        Option<BandRate<BlockNumberFor<T>>>,
-        ValueQuery,
-    >;
-
-    // used for testing migration
-    pub struct SymbolRatesV1StorageInstance<T: Config>(PhantomData<T>);
-
-    impl<T: Config> StorageInstance for SymbolRatesV1StorageInstance<T> {
-        fn pallet_prefix() -> &'static str {
-            <Pallet<T> as PalletInfoAccess>::name()
-        }
-        const STORAGE_PREFIX: &'static str = "SymbolRates";
-    }
-    pub type SymbolRatesV1<T> = StorageMap<
-        SymbolRatesV1StorageInstance<T>,
-        Blake2_128Concat,
-        <T as Config>::Symbol,
-        Option<BandRateV1>,
-        ValueQuery,
-    >;
 
     pub struct BandUpdateV2<T>(core::marker::PhantomData<T>);
 
@@ -241,7 +219,7 @@ pub mod v2 {
             let mut weight = Weight::zero();
             let now = frame_system::Pallet::<T>::block_number();
 
-            SymbolRates::<T>::translate::<Option<BandRateV1>, _>(|symbol, band_rate| {
+            SymbolRatesV2::<T>::translate::<Option<BandRateV1>, _>(|symbol, band_rate| {
                 weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 2));
                 SymbolCheckBlock::<T>::insert(
                     Pallet::<T>::calc_expiration_block(now),
@@ -285,7 +263,8 @@ pub mod v2 {
 
     #[cfg(test)]
     mod tests {
-        use super::{BandRateV1, BandUpdateV2, SymbolRates, SymbolRatesV1};
+        use super::BandUpdateV2;
+        use crate::migrations::storages::*;
         use crate::mock::*;
         use crate::pallet::{Pallet, SymbolCheckBlock};
         use common::fixed;
@@ -303,7 +282,7 @@ pub mod v2 {
                 };
                 let rates_vec = vec!["USD", "RUB"];
                 rates_vec.iter().cloned().for_each(|symbol| {
-                    assert_eq!(SymbolRates::<Runtime>::get(symbol), None);
+                    assert_eq!(SymbolRatesV1::<Runtime>::get(symbol), None);
                     assert_eq!(
                         SymbolCheckBlock::<Runtime>::get(
                             1 + GetRateStaleBlockPeriod::get(),
