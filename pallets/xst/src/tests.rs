@@ -35,6 +35,8 @@ mod tests {
     use common::{self, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, AssetId32};
     use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::Zero;
+    use frame_support::traits::Hooks;
+    use frame_system::pallet_prelude::BlockNumberFor;
 
     type XSTPool = Pallet<Runtime>;
     type PriceTools = price_tools::Pallet<Runtime>;
@@ -663,7 +665,7 @@ mod tests {
                 .expect("Failed to disable synthetic asset");
 
             assert!(XSTPool::enabled_synthetics(&xsteuro).is_none());
-            assert!(XSTPool::enabled_symbols(&euro).is_none());
+            assert!(XSTPool::enabled_symbols(&euro).is_some());
 
             XSTPool::enable_synthetic_asset(
                 RuntimeOrigin::root(),
@@ -1258,6 +1260,97 @@ mod tests {
                     SwapAmount::with_desired_output(0, Balance::max_value()),
                 ),
                 Error::<Runtime>::PriceCalculationFailed
+            );
+        });
+    }
+
+    #[test]
+    fn remove_synthetic_should_work() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let euro = relay_new_symbol("EURO", 2_000_000_000);
+
+            let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
+
+            XSTPool::register_synthetic_asset(
+                RuntimeOrigin::root(),
+                AssetSymbol("XSTEUR".into()),
+                AssetName("XST Euro".into()),
+                euro.clone(),
+                fixed!(0),
+            ).expect("Failed to register synthetic asset");
+
+            let opt_xsteuro = XSTPool::enabled_symbols(&euro);
+            assert!(opt_xsteuro.is_some());
+
+            let xsteuro = opt_xsteuro.unwrap();
+            assert_eq!(
+                XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
+                euro
+            );
+
+            XSTPool::remove_synthetic_asset(RuntimeOrigin::root(), xsteuro.clone())
+                .expect("Failed to disable synthetic asset");
+
+            assert!(XSTPool::enabled_synthetics(&xsteuro).is_none());
+            assert!(XSTPool::enabled_symbols(&euro).is_none());
+
+            XSTPool::enable_synthetic_asset(
+                RuntimeOrigin::root(),
+                asset_id,
+                euro.clone(),
+                fixed!(0),
+            ).expect("Failed to enable synthetic asset");
+
+            let opt_xsteuro = XSTPool::enabled_symbols(&euro);
+            assert!(opt_xsteuro.is_some());
+
+            let xsteuro = opt_xsteuro.unwrap();
+            assert_eq!(
+                XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
+                euro
+            );
+        });
+    }
+
+    #[test]
+    fn disable_symbol_and_enable_synthetic_should_work() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            System::set_block_number(1u64);
+
+            let euro = relay_new_symbol("EURO", 2_000_000_000);
+            let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
+            XSTPool::register_synthetic_asset(
+                RuntimeOrigin::root(),
+                AssetSymbol("XSTEUR".into()),
+                AssetName("XST Euro".into()),
+                euro.clone(),
+                fixed!(0),
+            ).expect("Failed to register synthetic asset");
+            assert!(XSTPool::enabled_synthetics(&asset_id).is_some());
+            assert!(XSTPool::enabled_symbols(&euro).is_some());
+
+            let new_block = 1u64 + GetBandRateStaleBlockPeriod::get();
+            System::set_block_number(new_block);
+            <Band as Hooks<BlockNumberFor<Runtime>>>::on_initialize(new_block);
+
+            assert!(XSTPool::enabled_synthetics(&asset_id).is_none());
+            assert!(XSTPool::enabled_symbols(&euro).is_some());
+
+            XSTPool::enable_synthetic_asset(
+                RuntimeOrigin::root(),
+                asset_id,
+                euro.clone(),
+                fixed!(0),
+            ).expect("Failed to enable synthetic asset");
+
+            let xsteuro = XSTPool::enabled_symbols(&euro)
+                .expect("Expected to get a synthetic asset linked to EURO");
+
+            assert_eq!(
+                XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
+                euro
             );
         });
     }

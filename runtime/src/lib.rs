@@ -1995,6 +1995,7 @@ impl oracle_proxy::Config for Runtime {
 
 parameter_types! {
     pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+    pub const GetBandRateStaleBlockPeriod: u32 = 600; // 1 hour in blocks
 }
 
 impl band::Config for Runtime {
@@ -2004,6 +2005,8 @@ impl band::Config for Runtime {
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
     type Time = Timestamp;
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
+    type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
+    type OnSymbolDisabledHook = xst::Pallet<Runtime>;
 }
 
 parameter_types! {

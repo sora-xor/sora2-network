@@ -54,8 +54,8 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, PriceVariant, Rate,
-    RewardReason, SyntheticInfoProvider, TradingPairSourceManager, DAI, XSTUSD,
+    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
+    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -243,15 +243,33 @@ pub mod pallet {
             synthetic_asset: T::AssetId,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
+            ensure!(
+                Self::enabled_synthetics(synthetic_asset).is_some(),
+                Error::<T>::SyntheticIsNotEnabled
+            );
+            Self::disable_synthetic_asset_unchecked(synthetic_asset);
+            Ok(().into())
+        }
 
+        /// Entirely remove synthetic asset (including linked symbol info)
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::disable_synthetic_asset())]
+        pub fn remove_synthetic_asset(
+            origin: OriginFor<T>,
+            synthetic_asset: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
             let reference_symbol = EnabledSynthetics::<T>::get(synthetic_asset)
                 .ok_or_else(|| Error::<T>::SyntheticIsNotEnabled)?
                 .reference_symbol;
 
             EnabledSynthetics::<T>::remove(synthetic_asset);
-            EnabledSymbols::<T>::remove(reference_symbol);
+            EnabledSymbols::<T>::remove(&reference_symbol);
 
-            Self::deposit_event(Event::SyntheticAssetDisabled(synthetic_asset));
+            Self::deposit_event(Event::SyntheticAssetRemoved(
+                synthetic_asset,
+                reference_symbol,
+            ));
             Ok(().into())
         }
 
@@ -263,7 +281,7 @@ pub mod pallet {
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to set fee for,
         /// - `fee_ratio`: fee ratio with precision = 18, so 1000000000000000000 = 1 = 100% fee.
-        #[pallet::call_index(4)]
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_fee())]
         pub fn set_synthetic_asset_fee(
             origin: OriginFor<T>,
@@ -295,7 +313,7 @@ pub mod pallet {
         ///
         /// - `origin`: root account
         /// - `floor_price`: floor price for the synthetic base asset
-        #[pallet::call_index(5)]
+        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_base_asset_floor_price())]
         pub fn set_synthetic_base_asset_floor_price(
             origin: OriginFor<T>,
@@ -321,6 +339,8 @@ pub mod pallet {
         SyntheticAssetFeeChanged(AssetIdOf<T>, Fixed),
         /// Floor price of the synthetic base asset has been changed. [New Floor Price]
         SyntheticBaseAssetFloorPriceChanged(Balance),
+        /// Synthetic asset has been removed. [Synthetic Asset Id, Reference Symbol]
+        SyntheticAssetRemoved(AssetIdOf<T>, T::Symbol),
     }
 
     #[pallet::error]
@@ -442,8 +462,11 @@ impl<T: Config> Pallet<T> {
         transactional: bool,
     ) -> sp_runtime::DispatchResult {
         let code = || {
-            if EnabledSymbols::<T>::contains_key(&reference_symbol) {
-                return Err(Error::<T>::SymbolAlreadyReferencedToSynthetic.into());
+            if let Some(asset_id) = EnabledSymbols::<T>::get(&reference_symbol) {
+                ensure!(
+                    asset_id == synthetic_asset_id,
+                    Error::<T>::SymbolAlreadyReferencedToSynthetic
+                )
             }
             ensure!(
                 fee_ratio >= fixed!(0) && fee_ratio < fixed!(1),
@@ -915,7 +938,7 @@ impl<T: Config> Pallet<T> {
                 let symbol = EnabledSynthetics::<T>::get(id)
                     .ok_or(Error::<T>::SyntheticDoesNotExist)?
                     .reference_symbol;
-                T::Oracle::quote(&symbol)?
+                T::Oracle::quote_unchecked(&symbol)
                     .map(|rate| rate.value)
                     .ok_or(Error::<T>::OracleQuoteError.into())
             }
@@ -1002,6 +1025,11 @@ impl<T: Config> Pallet<T> {
                 Self::quote_weight(),
             )),
         }
+    }
+
+    fn disable_synthetic_asset_unchecked(synthetic_asset: AssetIdOf<T>) {
+        EnabledSynthetics::<T>::remove(synthetic_asset);
+        Self::deposit_event(Event::SyntheticAssetDisabled(synthetic_asset));
     }
 }
 
@@ -1157,5 +1185,16 @@ impl<T: Config> SyntheticInfoProvider<T::AssetId> for Pallet<T> {
 
     fn get_synthetic_assets() -> Vec<T::AssetId> {
         EnabledSynthetics::<T>::iter_keys().collect()
+    }
+}
+
+impl<T: Config> OnSymbolDisabled<T::Symbol> for Pallet<T> {
+    fn disable_symbol(symbol: &T::Symbol) {
+        // error doesn't matter since we don't
+        // priorly know whether the symbol exists
+        match EnabledSymbols::<T>::get(symbol) {
+            Some(asset_id) => Self::disable_synthetic_asset_unchecked(asset_id),
+            None => (),
+        }
     }
 }

@@ -80,5 +80,5 @@ pub type Migrations = (
     >,
     pswap_distribution::migrations::v2::Migrate<Runtime, XYKSyntheticPoolAccountList<Runtime>>,
     pool_xyk::migrations::v3::XYKPoolUpgrade<Runtime, XYKSyntheticPoolPairs<Runtime>>,
-    band::migrations::BandUpdate<Runtime>,
+    band::migrations::v1::BandUpdateV1<Runtime>,
 );
