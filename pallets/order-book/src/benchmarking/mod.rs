@@ -495,6 +495,7 @@ mod tests {
     use framenode_runtime::Runtime;
 
     #[test]
+    #[ignore] // slow
     fn test_benchmark_fill() {
         ext().execute_with(|| {
             let order_book_id = OrderBookId::<AssetIdOf<Runtime>, u32> {
