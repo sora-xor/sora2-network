@@ -11,7 +11,7 @@ RUNTIME_DIR='runtime'
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
     printf "Tag is %s\n" $buildTag ${TAG_NAME}
 else
-    printf "⚡️ There is no tag here, only tests run."
+    printf "⚡️ There is no tag here. "
 fi
 
 # build
@@ -46,13 +46,13 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
     if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else
     # If TAG_NAME is not defined, run tests and checks
-    echo '⚡️ only tests run'
+    if [[ $prBranch == 'master' ]]; then
+        RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
+    fi
+    printf "⚡️ only tests run %s\n"
     rm -rf ~/.cargo/.package-cache
     rm Cargo.lock
     cargo fmt -- --check > /dev/null
-    SKIP_WASM_BUILD=1 cargo check
-    SKIP_WASM_BUILD=1 cargo check --features private-net,ready-to-test
-    SKIP_WASM_BUILD=1 cargo check --features private-net,ready-to-test,wip
     cargo test
     cargo test --features "private-net wip ready-to-test runtime-benchmarks"
 fi
