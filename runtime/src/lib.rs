@@ -1846,6 +1846,7 @@ impl xst::Config for Runtime {
     type WeightInfo = xst::weights::SubstrateWeight<Runtime>;
     type Oracle = OracleProxy;
     type Symbol = <Runtime as band::Config>::Symbol;
+    type TradingPairSourceManager = TradingPair;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
 }
 
