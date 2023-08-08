@@ -1581,9 +1581,9 @@ impl eth_bridge::Config for Runtime {
     type GetEthNetworkId = GetEthNetworkId;
     type WeightInfo = eth_bridge::weights::SubstrateWeight<Runtime>;
     type WeightToFee = XorFee;
-    #[cfg(feature = "pready-to-test")]
+    #[cfg(feature = "ready-to-test")]
     type MessageStatusNotifier = BridgeProxy;
-    #[cfg(not(feature = "pready-to-test"))]
+    #[cfg(not(feature = "ready-to-test"))]
     type MessageStatusNotifier = ();
 }
 
@@ -1597,7 +1597,7 @@ parameter_types! {
     pub QaToolsWhitelistCapacity: u32 = 512;
 }
 
-#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+#[cfg(all(feature = "private-net", feature = "wip"))] // order-book
 impl qa_tools::Config for Runtime {
     type AssetInfoProvider = Assets;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
