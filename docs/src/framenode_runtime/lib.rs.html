@@ -5016,9 +5016,9 @@
     <span class="kw">type </span>GetEthNetworkId = GetEthNetworkId;
     <span class="kw">type </span>WeightInfo = eth_bridge::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>WeightToFee = XorFee;
-    <span class="attr">#[cfg(feature = <span class="string">&quot;pready-to-test&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
     </span><span class="kw">type </span>MessageStatusNotifier = BridgeProxy;
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;pready-to-test&quot;</span>))]
+    <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
     </span><span class="kw">type </span>MessageStatusNotifier = ();
 }
 
@@ -5032,7 +5032,7 @@
     <span class="kw">pub </span>QaToolsWhitelistCapacity: u32 = <span class="number">512</span>;
 }
 
-<span class="attr">#[cfg(all(feature = <span class="string">&quot;private-net&quot;</span>, feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// order-book
+<span class="attr">#[cfg(all(feature = <span class="string">&quot;private-net&quot;</span>, feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// order-book
 </span><span class="kw">impl </span>qa_tools::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>AssetInfoProvider = Assets;
     <span class="kw">type </span>QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
