@@ -8,7 +8,7 @@ def pipeline = new org.rust.AppPipeline(steps: this,
       cargoDoc: true,
       smartContractScanner: true,
       cargoClippyTag: ':substrate',
-      cargoClippyCmds: ['housekeeping.build.sh'],
+      cargoClippyCmds: ['housekeeping/clippy.sh'],
       buildTestCmds: ['housekeeping/build.sh'],
       buildArtifacts: 'framenode_runtime.compact.compressed.wasm, subwasm_report.json, pallet_list.txt',
       pushToPublicRegistry: true
