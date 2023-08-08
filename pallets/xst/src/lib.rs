@@ -59,6 +59,7 @@ use common::{
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
     Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, DAI, XSTUSD,
 };
+use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
@@ -148,6 +149,7 @@ pub mod pallet {
         /// Maximum tradable amount of XST
         #[pallet::constant]
         type GetSyntheticBaseBuySellLimit: Get<Balance>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -249,7 +251,7 @@ pub mod pallet {
                 Self::enabled_synthetics(synthetic_asset).is_some(),
                 Error::<T>::SyntheticIsNotEnabled
             );
-            Self::disable_synthetic_asset_unchecked(synthetic_asset);
+            Self::disable_synthetic_asset_unchecked(synthetic_asset)?;
             Ok(().into())
         }
 
@@ -464,12 +466,6 @@ impl<T: Config> Pallet<T> {
         transactional: bool,
     ) -> sp_runtime::DispatchResult {
         let code = || {
-            if let Some(asset_id) = EnabledSymbols::<T>::get(&reference_symbol) {
-                ensure!(
-                    asset_id == synthetic_asset_id,
-                    Error::<T>::SymbolAlreadyReferencedToSynthetic
-                )
-            }
             ensure!(
                 fee_ratio >= fixed!(0) && fee_ratio < fixed!(1),
                 Error::<T>::InvalidFeeRatio
@@ -491,7 +487,20 @@ impl<T: Config> Pallet<T> {
                     fee_ratio,
                 },
             );
-            EnabledSymbols::<T>::insert(reference_symbol.clone(), synthetic_asset_id);
+
+            match Self::enabled_symbols(&reference_symbol) {
+                Some(asset_id) => {
+                    if asset_id != synthetic_asset_id {
+                        Err(Error::<T>::SymbolAlreadyReferencedToSynthetic)
+                    } else {
+                        Ok(())
+                    }
+                }
+                None => {
+                    EnabledSymbols::<T>::insert(reference_symbol.clone(), synthetic_asset_id);
+                    Ok(())
+                }
+            }?;
 
             Self::deposit_event(Event::SyntheticAssetEnabled(
                 synthetic_asset_id,
@@ -522,8 +531,7 @@ impl<T: Config> Pallet<T> {
             synthetic_asset_id,
         )?;
 
-        // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-        trading_pair::Pallet::<T>::enable_source_for_trading_pair(
+        T::TradingPairSourceManager::enable_source_for_trading_pair(
             &DEXId::Polkaswap.into(),
             &T::GetSyntheticBaseAssetId::get(),
             &synthetic_asset_id,
@@ -1029,9 +1037,16 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    fn disable_synthetic_asset_unchecked(synthetic_asset: AssetIdOf<T>) {
+    fn disable_synthetic_asset_unchecked(synthetic_asset: AssetIdOf<T>) -> DispatchResult {
         EnabledSynthetics::<T>::remove(synthetic_asset);
+        T::TradingPairSourceManager::disable_source_for_trading_pair(
+            &DEXId::Polkaswap.into(),
+            &T::GetSyntheticBaseAssetId::get(),
+            &synthetic_asset,
+            LiquiditySourceType::XSTPool,
+        )?;
         Self::deposit_event(Event::SyntheticAssetDisabled(synthetic_asset));
+        Ok(())
     }
 }
 
@@ -1194,9 +1209,12 @@ impl<T: Config> OnSymbolDisabled<T::Symbol> for Pallet<T> {
     fn disable_symbol(symbol: &T::Symbol) {
         // error doesn't matter since we don't
         // priorly know whether the symbol exists
-        match EnabledSymbols::<T>::get(symbol) {
-            Some(asset_id) => Self::disable_synthetic_asset_unchecked(asset_id),
-            None => (),
+        if let Some(asset_id) = Self::enabled_symbols(symbol) {
+            if Self::enabled_synthetics(asset_id).is_some() {
+                _ = Self::disable_synthetic_asset_unchecked(asset_id);
+            }
+        } else {
+            ()
         }
     }
 }

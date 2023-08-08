@@ -194,6 +194,7 @@ impl Config for Runtime {
     type Oracle = oracle_proxy::Pallet<Runtime>;
     type Symbol = <Runtime as band::Config>::Symbol;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
