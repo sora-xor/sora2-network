@@ -234,9 +234,8 @@ pub mod pallet {
 
         /// Disable synthetic asset.
         ///
-        /// Just remove synthetic from exchanging.
-        /// Will not unregister trading pair because `trading_pair` pallet does not provide this
-        /// ability. And will not unregister trading synthetic asset because of that.
+        /// Removes synthetic from exchanging
+        /// and removes XSTPool liquidity source for corresponding trading pair.
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to disable.
