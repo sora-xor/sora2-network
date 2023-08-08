@@ -11,7 +11,7 @@ RUNTIME_DIR='runtime'
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
     printf "Tag is %s\n" $buildTag ${TAG_NAME}
 else
-    printf "⚡️ There is no tag here, only tests run."
+    printf "⚡️ There is no tag here. "
 fi
 
 # build
@@ -38,22 +38,21 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
     mv ./target/release/framenode .
     mv ./target/release/relayer ./relayer.bin
     mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
-    wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
-    subwasm --json info framenode_runtime.compact.wasm > $wasmReportFile
-    subwasm metadata framenode_runtime.compact.wasm > $palletListFile
+    subwasm --json info framenode_runtime.compact.compressed.wasm > $wasmReportFile
+    subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
     set +e
-    subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+    subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
     echo $?
     if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else
     # If TAG_NAME is not defined, run tests and checks
-    echo '⚡️ only tests run'
+    if [[ $prBranch == 'master' ]]; then
+        RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
+    fi
+    printf "⚡️ only tests run %s\n"
     rm -rf ~/.cargo/.package-cache
     rm Cargo.lock
     cargo fmt -- --check > /dev/null
-    SKIP_WASM_BUILD=1 cargo clippy
-    SKIP_WASM_BUILD=1 cargo clippy --features private-net,ready-to-test,runtime-benchmarks
-    SKIP_WASM_BUILD=1 cargo clippy --features private-net,ready-to-test,wip,runtime-benchmarks
     cargo test
     cargo test --features "private-net wip ready-to-test runtime-benchmarks"
 fi
