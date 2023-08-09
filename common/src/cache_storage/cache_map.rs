@@ -147,14 +147,7 @@ where
     pub fn reset(&mut self) {
         self.cache.clear();
     }
-}
 
-impl<Key: Ord, Value, Storage> CacheStorageMap<Key, Value, Storage>
-where
-    Key: Ord + FullEncode + Clone,
-    Value: FullCodec + Clone + PartialEq + Default,
-    Storage: StorageMap<Key, Value>,
-{
     /// Returns mutable reference to the cached value if it is,
     /// otherwise tries to get the value from `Storage`.
     /// If `Storage` has the value, CacheStorageDoubleMap caches it and returns

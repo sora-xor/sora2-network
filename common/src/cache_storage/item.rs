@@ -43,13 +43,12 @@ impl<Value: PartialEq> Item<Value> {
             Item::Removed => None,
         }
     }
-}
 
-impl<Value: PartialEq + Default> Item<Value> {
     fn mark_as_updated(&mut self) {
-        *self = match self {
-            Item::Original(v) => Item::Updated(core::mem::take(v)),
-            Item::Updated(v) => Item::Updated(core::mem::take(v)),
+        let value = core::mem::replace(self, Item::Removed);
+        *self = match value {
+            Item::Original(v) => Item::Updated(v),
+            Item::Updated(v) => Item::Updated(v),
             Item::Removed => Item::Removed,
         }
     }

@@ -195,15 +195,7 @@ where
                 .or_insert(Some(Item::Original(value)));
         }
     }
-}
 
-impl<Key1, Key2, Value, Storage> CacheStorageDoubleMap<Key1, Key2, Value, Storage>
-where
-    Key1: Ord + FullCodec + Clone,
-    Key2: Ord + FullCodec + Clone,
-    Value: FullCodec + Clone + PartialEq + Default,
-    Storage: IterableStorageDoubleMap<Key1, Key2, Value>,
-{
     /// Returns mutable reference to the cached value if it is,
     /// otherwise tries to get the value from `Storage`.
     /// If `Storage` has the value, CacheStorageDoubleMap caches it and returns
