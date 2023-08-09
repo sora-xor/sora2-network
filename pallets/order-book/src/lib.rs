@@ -52,6 +52,7 @@ use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
+use sp_runtime::traits::{CheckedDiv, CheckedMul};
 use sp_runtime::{BoundedVec, Perbill};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
@@ -1176,37 +1177,47 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 // Necessary to return `base` amount.
                 // Divide the `quote` amount by the price and align the `base` amount.
                 PriceVariant::Buy => order_book.align_amount(
-                    (order_book.tick_size.copy_divisibility(desired_amount_in) / price)
-                        .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                    order_book
+                        .tick_size
+                        .copy_divisibility(desired_amount_in)
+                        .checked_div(&price)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?,
                 ),
 
                 // User wants to swap a known amount of the `base` asset for the `quote` asset.
                 // Necessary to return `quote` amount.
                 // Align the `base` amount and then multiply by the price.
-                PriceVariant::Sell => (order_book.align_amount(
-                    order_book
-                        .step_lot_size
-                        .copy_divisibility(desired_amount_in),
-                ) * price)
-                    .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                PriceVariant::Sell => order_book
+                    .align_amount(
+                        order_book
+                            .step_lot_size
+                            .copy_divisibility(desired_amount_in),
+                    )
+                    .checked_mul(&price)
+                    .ok_or(Error::<T>::AmountCalculationFailed)?,
             },
 
             QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
                 // User wants to swap the `quote` asset for a known amount of the `base` asset.
                 // Necessary to return `quote` amount.
                 // Align the `base` amount and then multiply by the price.
-                PriceVariant::Buy => (order_book.align_amount(
-                    order_book
-                        .step_lot_size
-                        .copy_divisibility(desired_amount_out),
-                ) * price)
-                    .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                PriceVariant::Buy => order_book
+                    .align_amount(
+                        order_book
+                            .step_lot_size
+                            .copy_divisibility(desired_amount_out),
+                    )
+                    .checked_mul(&price)
+                    .ok_or(Error::<T>::AmountCalculationFailed)?,
 
                 // User wants to swap the `base` asset for a known amount of the `quote` asset.
                 // Necessary to return `base` amount.
                 PriceVariant::Sell => order_book.align_amount(
-                    (order_book.tick_size.copy_divisibility(desired_amount_out) / price)
-                        .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                    order_book
+                        .tick_size
+                        .copy_divisibility(desired_amount_out)
+                        .checked_div(&price)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?,
                 ),
             },
         };

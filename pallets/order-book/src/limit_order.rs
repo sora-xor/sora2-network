@@ -35,7 +35,7 @@ use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{CheckedMul, Zero};
 use sp_runtime::{SaturatedConversion, Saturating};
 
 /// GTC Limit Order
@@ -157,7 +157,8 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
                 | (MarketRole::Taker, PriceVariant::Sell) => OrderAmount::Base(base_amount),
                 (MarketRole::Maker, PriceVariant::Sell)
                 | (MarketRole::Taker, PriceVariant::Buy) => OrderAmount::Quote(
-                    (self.price * base_amount).map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                    (self.price.checked_mul(&base_amount))
+                        .ok_or(Error::<T>::AmountCalculationFailed)?,
                 ),
             };
 

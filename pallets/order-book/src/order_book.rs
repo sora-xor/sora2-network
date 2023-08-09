@@ -41,6 +41,7 @@ use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
+use sp_runtime::traits::{CheckedDiv, CheckedMul, CheckedSub};
 use sp_runtime::traits::{One, Zero};
 use sp_std::cmp::Ordering;
 use sp_std::collections::btree_map::BTreeMap;
@@ -684,8 +685,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let mut enough_liquidity = false;
 
         for (price, base_volume) in market_data {
-            let quote_volume =
-                (*price * (*base_volume)).map_err(|_| Error::<T>::AmountCalculationFailed)?;
+            let quote_volume = price
+                .checked_mul(base_volume)
+                .ok_or(Error::<T>::AmountCalculationFailed)?;
 
             if let Some(limit) = depth_limit {
                 match limit {
@@ -693,8 +695,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         if market_base_volume + *base_volume > base_limit {
                             let delta = self.align_amount(base_limit - market_base_volume);
                             market_base_volume += delta;
-                            market_quote_volume += (*price * delta)
-                                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+                            market_quote_volume += price
+                                .checked_mul(&delta)
+                                .ok_or(Error::<T>::AmountCalculationFailed)?;
                             enough_liquidity = true;
                             break;
                         }
@@ -703,12 +706,16 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         if market_quote_volume + quote_volume > quote_limit {
                             // delta in base asset
                             let delta = self.align_amount(
-                                ((quote_limit - market_quote_volume) / (*price))
-                                    .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                                quote_limit
+                                    .checked_sub(&market_quote_volume)
+                                    .ok_or(Error::<T>::AmountCalculationFailed)?
+                                    .checked_div(price)
+                                    .ok_or(Error::<T>::AmountCalculationFailed)?,
                             );
                             market_base_volume += delta;
-                            market_quote_volume += (*price * delta)
-                                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+                            market_quote_volume += price
+                                .checked_mul(&delta)
+                                .ok_or(Error::<T>::AmountCalculationFailed)?;
                             enough_liquidity = true;
                             break;
                         }
