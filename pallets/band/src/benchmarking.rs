@@ -61,6 +61,7 @@ benchmarks! {
             last_updated: 100,
             request_id: 1,
             dynamic_fee: fixed!(0),
+            last_updated_block: 1u32.into(),
         }));
     }
 
@@ -75,6 +76,7 @@ benchmarks! {
             last_updated: 100,
             request_id: 1,
             dynamic_fee: fixed!(0),
+            last_updated_block: 1u32.into(),
         }));
     }
 

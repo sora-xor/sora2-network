@@ -199,6 +199,16 @@ benchmarks! {
         utils::assert_last_event::<T>(Event::SyntheticAssetDisabled(asset_id).into())
     }
 
+    remove_synthetic_asset {
+        let asset_id = utils::enable_synthetic_asset::<T>()?;
+    }: _(
+        RawOrigin::Root,
+        asset_id
+    )
+    verify {
+        utils::assert_last_event::<T>(Event::SyntheticAssetRemoved(asset_id, utils::symbol::<<T as xst::Config>::Symbol>()).into())
+    }
+
     register_synthetic_asset {
         let permissioned_account_id = utils::permissioned_account_id::<T>();
         let reference_symbol = utils::symbol::<<T as xst::Config>::Symbol>();

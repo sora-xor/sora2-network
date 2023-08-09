@@ -31,10 +31,12 @@
 use codec::alloc::collections::HashSet;
 use common::{fixed, DataFeed, Rate};
 use common::{prelude::FixedWrapper, Balance, Fixed};
+use frame_support::traits::Hooks;
 use frame_support::{assert_noop, error::BadOrigin};
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_std::collections::btree_set::BTreeSet;
 
-use crate::{mock::*, BandRate, Error, FeeCalculationParameters};
+use crate::{mock::*, BandRate, Error, FeeCalculationParameters, SymbolCheckBlock};
 
 pub fn band_rate_into_balance(rate: u64) -> Balance {
     let fixed = Fixed::from_bits(rate as i128 * super::RATE_MULTIPLIER);
@@ -178,6 +180,7 @@ fn relay_should_work() {
                     last_updated: initial_resolve_time,
                     request_id,
                     dynamic_fee: fixed!(0),
+                    last_updated_block: 0u64,
                 })
             );
         }
@@ -220,6 +223,7 @@ fn relay_should_not_update_if_time_is_lower_than_last_stored() {
                 last_updated: initial_resolve_time,
                 request_id,
                 dynamic_fee: fixed!(0),
+                last_updated_block: 0u64,
             })
         );
     });
@@ -263,6 +267,7 @@ fn force_relay_should_rewrite_rates_without_time_check() {
                 last_updated: new_resolve_time,
                 request_id: new_request_id,
                 dynamic_fee: fixed!(0),
+                last_updated_block: 0u64,
             })
         );
     });
@@ -341,6 +346,7 @@ fn relay_should_store_last_duplicated_rate() {
                 last_updated: initial_resolve_time,
                 request_id: 0,
                 dynamic_fee: fixed!(1),
+                last_updated_block: 0u64,
             })
         );
     });
@@ -373,6 +379,7 @@ fn force_relay_should_store_last_duplicated_rate() {
                 last_updated: initial_resolve_time,
                 request_id: 0,
                 dynamic_fee: fixed!(0),
+                last_updated_block: 0u64,
             })
         );
     });
@@ -407,6 +414,7 @@ fn quote_and_list_enabled_symbols_should_work() {
                     last_updated: initial_resolve_time,
                     request_id: 0,
                     dynamic_fee: fixed!(0),
+                    last_updated_block: 0u64,
                 })
             );
         }
@@ -416,6 +424,7 @@ fn quote_and_list_enabled_symbols_should_work() {
             last_updated: initial_resolve_time,
             request_id: 0,
             dynamic_fee: fixed!(0),
+            last_updated_block: 0u64,
         };
 
         assert_eq!(
@@ -476,6 +485,38 @@ fn quote_invalid_rate_should_fail() {
             <Band as DataFeed<String, Rate, u64>>::quote(&"RUB".to_owned()),
             Err(Error::<Runtime>::RateHasInvalidTimestamp.into())
         );
+    })
+}
+
+#[test]
+fn check_block_symbol_should_work() {
+    new_test_ext().execute_with(|| {
+        let relayer = 1;
+
+        assert_eq!(Band::rates("USD".to_owned()), None);
+
+        System::set_block_number(1);
+
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::relay(
+            RuntimeOrigin::signed(relayer),
+            vec![("USD".to_owned(), 1)],
+            0,
+            0,
+        )
+        .expect("Failed to relay rates");
+
+        assert_eq!(
+            SymbolCheckBlock::<Runtime>::get(1 + GetRateStaleBlockPeriod::get(), "USD".to_owned()),
+            true
+        );
+
+        <Band as Hooks<BlockNumberFor<Runtime>>>::on_initialize(601);
+
+        assert_eq!(
+            SymbolCheckBlock::<Runtime>::get(601u64, "USD".to_owned()),
+            false
+        )
     })
 }
 
