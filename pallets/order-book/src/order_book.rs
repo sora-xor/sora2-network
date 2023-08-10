@@ -41,7 +41,7 @@ use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
-use sp_runtime::traits::{One, Zero};
+use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero};
 use sp_std::cmp::Ordering;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::Add;
@@ -328,7 +328,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .entry(*lock_asset)
             .or_default()
             .entry(limit_order.owner.clone())
-            .and_modify(|amount| *amount += *lock_amount.value())
+            .and_modify(|amount| *amount = amount.saturating_add(*lock_amount.value()))
             .or_insert(*lock_amount.value());
 
         Ok(MarketChange {
@@ -365,7 +365,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .entry(*unlock_asset)
             .or_default()
             .entry(limit_order.owner.clone())
-            .and_modify(|pay| *pay += *unlock_amount.value())
+            .and_modify(|pay| *pay = pay.saturating_add(*unlock_amount.value()))
             .or_insert(*unlock_amount.value());
 
         limit_orders_to_cancel.insert(limit_order.id, limit_order);
@@ -406,7 +406,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 .entry(*unlock_asset)
                 .or_default()
                 .entry(limit_order.owner.clone())
-                .and_modify(|pay| *pay += *unlock_amount.value())
+                .and_modify(|pay| *pay = pay.saturating_add(*unlock_amount.value()))
                 .or_insert(*unlock_amount.value());
 
             limit_orders_to_cancel.insert(limit_order.id, limit_order);
@@ -461,16 +461,22 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 let mut limit_order = data.get_limit_order(&self.order_book_id, limit_order_id)?;
 
                 if remaining_amount >= limit_order.amount {
-                    remaining_amount -= limit_order.amount;
-                    taker_amount += *limit_order.deal_amount(MarketRole::Taker, None)?.value();
+                    remaining_amount = remaining_amount
+                        .checked_sub(&limit_order.amount)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?;
+                    taker_amount = taker_amount
+                        .checked_add(limit_order.deal_amount(MarketRole::Taker, None)?.value())
+                        .ok_or(Error::<T>::AmountCalculationFailed)?;
                     let maker_payment = *limit_order.deal_amount(MarketRole::Maker, None)?.value();
-                    maker_amount += maker_payment;
+                    maker_amount = maker_amount
+                        .checked_add(&maker_payment)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?;
                     payment
                         .to_unlock
                         .entry(maker_out_asset)
                         .or_default()
                         .entry(limit_order.owner.clone())
-                        .and_modify(|payment| *payment += maker_payment)
+                        .and_modify(|payment| *payment = payment.saturating_add(maker_payment))
                         .or_insert(maker_payment);
                     limit_orders_to_full_execute.insert(limit_order.id, limit_order);
 
@@ -478,21 +484,30 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         break;
                     }
                 } else {
-                    taker_amount += *limit_order
-                        .deal_amount(MarketRole::Taker, Some(remaining_amount))?
-                        .value();
+                    taker_amount = taker_amount
+                        .checked_add(
+                            limit_order
+                                .deal_amount(MarketRole::Taker, Some(remaining_amount))?
+                                .value(),
+                        )
+                        .ok_or(Error::<T>::AmountCalculationFailed)?;
                     let maker_payment = *limit_order
                         .deal_amount(MarketRole::Maker, Some(remaining_amount))?
                         .value();
-                    maker_amount += maker_payment;
+                    maker_amount = maker_amount
+                        .checked_add(&maker_payment)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?;
                     payment
                         .to_unlock
                         .entry(maker_out_asset)
                         .or_default()
                         .entry(limit_order.owner.clone())
-                        .and_modify(|payment| *payment += maker_payment)
+                        .and_modify(|payment| *payment = payment.saturating_add(maker_payment))
                         .or_insert(maker_payment);
-                    limit_order.amount -= remaining_amount;
+                    limit_order.amount = limit_order
+                        .amount
+                        .checked_sub(&remaining_amount)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?;
                     limit_orders_to_part_execute.insert(
                         limit_order.id,
                         (limit_order, OrderAmount::Base(remaining_amount)),
@@ -517,7 +532,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .entry(maker_out_asset)
             .or_default()
             .entry(taker)
-            .and_modify(|lock_amount| *lock_amount += maker_amount)
+            .and_modify(|lock_amount| *lock_amount = lock_amount.saturating_add(maker_amount))
             .or_insert(maker_amount);
 
         payment
@@ -525,7 +540,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .entry(taker_out_asset)
             .or_default()
             .entry(receiver)
-            .and_modify(|unlock_amount| *unlock_amount += taker_amount)
+            .and_modify(|unlock_amount| *unlock_amount = unlock_amount.saturating_add(taker_amount))
             .or_insert(taker_amount);
 
         let (deal_input, deal_output) = match direction {
@@ -574,7 +589,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     limit_order.amount
                 } else {
                     let amount = self.align_amount(limit_order.amount);
-                    let dust = limit_order.amount - amount;
+                    let dust = limit_order
+                        .amount
+                        .checked_sub(&amount)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?;
                     limit_order.amount = amount;
                     limit_orders_to_force_update.insert(limit_order.id, limit_order.clone());
                     dust
@@ -587,7 +605,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     .entry(*refund.associated_asset(&self.order_book_id))
                     .or_default()
                     .entry(limit_order.owner)
-                    .and_modify(|unlock_amount| *unlock_amount += *refund.value())
+                    .and_modify(|unlock_amount| {
+                        *unlock_amount = unlock_amount.saturating_add(*refund.value())
+                    })
                     .or_insert(*refund.value());
             }
         }
@@ -684,31 +704,61 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let mut enough_liquidity = false;
 
         for (price, base_volume) in market_data {
-            let quote_volume =
-                (*price * (*base_volume)).map_err(|_| Error::<T>::AmountCalculationFailed)?;
+            let quote_volume = price
+                .checked_mul(base_volume)
+                .ok_or(Error::<T>::AmountCalculationFailed)?;
 
             if let Some(limit) = depth_limit {
                 match limit {
                     OrderAmount::Base(base_limit) => {
-                        if market_base_volume + *base_volume > base_limit {
-                            let delta = self.align_amount(base_limit - market_base_volume);
-                            market_base_volume += delta;
-                            market_quote_volume += (*price * delta)
-                                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+                        if market_base_volume
+                            .checked_add(base_volume)
+                            .ok_or(Error::<T>::AmountCalculationFailed)?
+                            > base_limit
+                        {
+                            let delta = self.align_amount(
+                                base_limit
+                                    .checked_sub(&market_base_volume)
+                                    .ok_or(Error::<T>::AmountCalculationFailed)?,
+                            );
+                            market_base_volume = market_base_volume
+                                .checked_add(&delta)
+                                .ok_or(Error::<T>::AmountCalculationFailed)?;
+                            market_quote_volume = market_quote_volume
+                                .checked_add(
+                                    &price
+                                        .checked_mul(&delta)
+                                        .ok_or(Error::<T>::AmountCalculationFailed)?,
+                                )
+                                .ok_or(Error::<T>::AmountCalculationFailed)?;
                             enough_liquidity = true;
                             break;
                         }
                     }
                     OrderAmount::Quote(quote_limit) => {
-                        if market_quote_volume + quote_volume > quote_limit {
+                        if market_quote_volume
+                            .checked_add(&quote_volume)
+                            .ok_or(Error::<T>::AmountCalculationFailed)?
+                            > quote_limit
+                        {
                             // delta in base asset
                             let delta = self.align_amount(
-                                ((quote_limit - market_quote_volume) / (*price))
-                                    .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                                quote_limit
+                                    .checked_sub(&market_quote_volume)
+                                    .ok_or(Error::<T>::AmountCalculationFailed)?
+                                    .checked_div(price)
+                                    .ok_or(Error::<T>::AmountCalculationFailed)?,
                             );
-                            market_base_volume += delta;
-                            market_quote_volume += (*price * delta)
-                                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+                            market_base_volume = market_base_volume
+                                .checked_add(&delta)
+                                .ok_or(Error::<T>::AmountCalculationFailed)?;
+                            market_quote_volume = market_quote_volume
+                                .checked_add(
+                                    &price
+                                        .checked_mul(&delta)
+                                        .ok_or(Error::<T>::AmountCalculationFailed)?,
+                                )
+                                .ok_or(Error::<T>::AmountCalculationFailed)?;
                             enough_liquidity = true;
                             break;
                         }
@@ -716,8 +766,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 }
             }
 
-            market_base_volume += *base_volume;
-            market_quote_volume += quote_volume;
+            market_base_volume = market_base_volume
+                .checked_add(base_volume)
+                .ok_or(Error::<T>::AmountCalculationFailed)?;
+            market_quote_volume = market_quote_volume
+                .checked_add(&quote_volume)
+                .ok_or(Error::<T>::AmountCalculationFailed)?;
         }
 
         ensure!(
@@ -853,8 +907,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     }
 
     pub fn align_amount(&self, mut amount: OrderVolume) -> OrderVolume {
-        let steps = amount.balance() / self.step_lot_size.balance();
-        let aligned = steps * self.step_lot_size.balance();
+        let steps = amount
+            .balance()
+            .saturating_div(*self.step_lot_size.balance());
+        let aligned = steps.saturating_mul(*self.step_lot_size.balance());
         amount.set(aligned);
         amount
     }
@@ -994,13 +1050,15 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let volume = match side {
             PriceVariant::Buy => {
                 let bids = data.get_aggregated_bids(&self.order_book_id);
-                bids.iter()
-                    .fold(OrderVolume::zero(), |sum, (_, volume)| sum + *volume)
+                bids.iter().fold(OrderVolume::zero(), |sum, (_, volume)| {
+                    sum.saturating_add(*volume)
+                })
             }
             PriceVariant::Sell => {
                 let asks = data.get_aggregated_asks(&self.order_book_id);
-                asks.iter()
-                    .fold(OrderVolume::zero(), |sum, (_, volume)| sum + *volume)
+                asks.iter().fold(OrderVolume::zero(), |sum, (_, volume)| {
+                    sum.saturating_add(*volume)
+                })
             }
         };
 
@@ -1032,8 +1090,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         if limit_amout < self.min_lot_size {
             let market_volume = self.market_volume(limit_order.side.switched(), data);
-            if market_volume - market_amount >= limit_amout {
-                market_amount += limit_amout;
+            if market_volume
+                .checked_sub(&market_amount)
+                .ok_or(Error::<T>::AmountCalculationFailed)?
+                >= limit_amout
+            {
+                market_amount = market_amount
+                    .checked_add(&limit_amout)
+                    .ok_or(Error::<T>::AmountCalculationFailed)?;
                 limit_amout = OrderVolume::zero();
             } else {
                 limit_amout = OrderVolume::zero();
@@ -1085,10 +1149,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
 
             if amount >= *volume {
-                market_amount += *volume;
-                amount -= *volume;
+                market_amount = market_amount.saturating_add(*volume);
+                amount = amount.saturating_sub(*volume);
             } else {
-                market_amount += amount;
+                market_amount = market_amount.saturating_add(amount);
                 amount = OrderVolume::zero();
             }
 

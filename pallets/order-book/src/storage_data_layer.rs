@@ -34,10 +34,9 @@ use crate::{
 };
 use assets::AssetIdOf;
 use common::PriceVariant;
-use core::ops::{Add, Sub};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{CheckedAdd, CheckedSub, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
@@ -89,7 +88,12 @@ impl<T: Config> StorageDataLayer<T> {
         value: &OrderVolume,
     ) -> Result<(), ()> {
         let mut bids = <AggregatedBids<T>>::get(order_book_id);
-        let volume = bids.get(price).map(|x| *x).unwrap_or_default().add(*value);
+        let volume = bids
+            .get(price)
+            .map(|x| *x)
+            .unwrap_or_default()
+            .checked_add(value)
+            .ok_or(())?;
         bids.try_insert(*price, volume).map_err(|_| ())?;
         <AggregatedBids<T>>::set(order_book_id, bids);
         Ok(())
@@ -101,7 +105,12 @@ impl<T: Config> StorageDataLayer<T> {
         value: &OrderVolume,
     ) -> Result<(), ()> {
         let mut agg_bids = <AggregatedBids<T>>::try_get(order_book_id).map_err(|_| ())?;
-        let volume = agg_bids.get(price).map(|x| *x).ok_or(())?.sub(*value);
+        let volume = agg_bids
+            .get(price)
+            .map(|x| *x)
+            .ok_or(())?
+            .checked_sub(value)
+            .ok_or(())?;
         if volume.is_zero() {
             agg_bids.remove(price).ok_or(())?;
         } else {
@@ -117,7 +126,12 @@ impl<T: Config> StorageDataLayer<T> {
         value: &OrderVolume,
     ) -> Result<(), ()> {
         let mut asks = <AggregatedAsks<T>>::get(order_book_id);
-        let volume = asks.get(price).map(|x| *x).unwrap_or_default().add(*value);
+        let volume = asks
+            .get(price)
+            .map(|x| *x)
+            .unwrap_or_default()
+            .checked_add(value)
+            .ok_or(())?;
         asks.try_insert(*price, volume).map_err(|_| ())?;
         <AggregatedAsks<T>>::set(order_book_id, asks);
         Ok(())
@@ -129,7 +143,12 @@ impl<T: Config> StorageDataLayer<T> {
         value: &OrderVolume,
     ) -> Result<(), ()> {
         let mut agg_asks = <AggregatedAsks<T>>::try_get(order_book_id).map_err(|_| ())?;
-        let volume = agg_asks.get(price).map(|x| *x).ok_or(())?.sub(*value);
+        let volume = agg_asks
+            .get(price)
+            .map(|x| *x)
+            .ok_or(())?
+            .checked_sub(value)
+            .ok_or(())?;
         if volume.is_zero() {
             agg_asks.remove(price).ok_or(())?;
         } else {
@@ -215,7 +234,10 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         }
         ensure!(order.amount > new_amount, Error::<T>::UpdateLimitOrderError);
 
-        let delta = order.amount - new_amount;
+        let delta = order
+            .amount
+            .checked_sub(&new_amount)
+            .ok_or(Error::<T>::AmountCalculationFailed)?;
 
         match order.side {
             PriceVariant::Buy => {

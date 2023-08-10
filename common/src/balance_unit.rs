@@ -29,13 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::prelude::FixedWrapper;
-use crate::{balance, Balance};
+use crate::Balance;
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::cmp::Ordering;
-use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use fixnum::ArithmeticError;
 use sp_arithmetic::traits::IntegerSquareRoot;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Saturating, Zero};
 
 #[cfg(feature = "std")]
 use {
@@ -194,11 +194,11 @@ impl Add for BalanceUnit {
 
     fn add(self, rhs: Self) -> Self::Output {
         let (left, right) = match (self.is_divisible, rhs.is_divisible) {
-            (false, true) => (balance!(self.inner), rhs.inner),
-            (true, false) => (self.inner, balance!(rhs.inner)),
+            (false, true) => (self.inner * RATIO, rhs.inner),
+            (true, false) => (self.inner, rhs.inner * RATIO),
             _ => (self.inner, rhs.inner),
         };
-        let balance = left.saturating_add(right);
+        let balance = left + right;
         Self::new(balance, self.is_divisible || rhs.is_divisible)
     }
 }
@@ -209,16 +209,32 @@ impl AddAssign for BalanceUnit {
     }
 }
 
+impl CheckedAdd for BalanceUnit {
+    fn checked_add(&self, rhs: &Self) -> Option<Self> {
+        let (Some(left), Some(right)) = (match (self.is_divisible, rhs.is_divisible) {
+            (false, true) => (self.inner.checked_mul(RATIO), Some(rhs.inner)),
+            (true, false) => (Some(self.inner), rhs.inner.checked_mul(RATIO)),
+            _ => (Some(self.inner), Some(rhs.inner)),
+        }) else {
+            return None;
+        };
+        let Some(balance) = left.checked_add(right) else {
+            return None;
+        };
+        Some(Self::new(balance, self.is_divisible || rhs.is_divisible))
+    }
+}
+
 impl Sub for BalanceUnit {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
         let (left, right) = match (self.is_divisible, rhs.is_divisible) {
-            (false, true) => (balance!(self.inner), rhs.inner),
-            (true, false) => (self.inner, balance!(rhs.inner)),
+            (false, true) => (self.inner * RATIO, rhs.inner),
+            (true, false) => (self.inner, rhs.inner * RATIO),
             _ => (self.inner, rhs.inner),
         };
-        let balance = left.saturating_sub(right);
+        let balance = left - right;
         Self::new(balance, self.is_divisible || rhs.is_divisible)
     }
 }
@@ -229,37 +245,141 @@ impl SubAssign for BalanceUnit {
     }
 }
 
+impl CheckedSub for BalanceUnit {
+    fn checked_sub(&self, rhs: &Self) -> Option<Self> {
+        let (Some(left), Some(right)) = (match (self.is_divisible, rhs.is_divisible) {
+            (false, true) => (self.inner.checked_mul(RATIO), Some(rhs.inner)),
+            (true, false) => (Some(self.inner), rhs.inner.checked_mul(RATIO)),
+            _ => (Some(self.inner), Some(rhs.inner)),
+        }) else {
+            return None;
+        };
+        let Some(balance) = left.checked_sub(right) else {
+            return None;
+        };
+        Some(Self::new(balance, self.is_divisible || rhs.is_divisible))
+    }
+}
+
 impl Mul for BalanceUnit {
-    type Output = Result<Self, ArithmeticError>;
+    type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
         let balance = if self.is_divisible && rhs.is_divisible {
-            (FixedWrapper::from(self.inner) * (FixedWrapper::from(rhs.inner))).try_into_balance()?
+            (FixedWrapper::from(self.inner) * (FixedWrapper::from(rhs.inner)))
+                .try_into_balance()
+                .unwrap()
         } else {
-            self.inner
-                .checked_mul(rhs.inner)
-                .ok_or(ArithmeticError::Overflow)?
+            self.inner * rhs.inner
         };
-        Ok(Self::new(balance, self.is_divisible || rhs.is_divisible))
+        Self::new(balance, self.is_divisible || rhs.is_divisible)
+    }
+}
+
+impl MulAssign for BalanceUnit {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs
+    }
+}
+
+impl CheckedMul for BalanceUnit {
+    fn checked_mul(&self, rhs: &Self) -> Option<Self> {
+        let Some(balance) = (if self.is_divisible && rhs.is_divisible {
+            (FixedWrapper::from(self.inner) * (FixedWrapper::from(rhs.inner))).try_into_balance().ok()
+        } else {
+            self.inner.checked_mul(rhs.inner)
+        }) else {
+            return None;
+        };
+        Some(Self::new(balance, self.is_divisible || rhs.is_divisible))
     }
 }
 
 impl Div for BalanceUnit {
-    type Output = Result<Self, ArithmeticError>;
+    type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
         let balance = match (self.is_divisible, rhs.is_divisible) {
-            (false, true) => (FixedWrapper::from(balance!(self.inner))
+            (false, true) => (FixedWrapper::from(self.inner * RATIO)
                 / (FixedWrapper::from(rhs.inner)))
-            .try_into_balance()?,
+            .try_into_balance()
+            .unwrap(),
             (true, true) => (FixedWrapper::from(self.inner) / (FixedWrapper::from(rhs.inner)))
-                .try_into_balance()?,
-            _ => self
-                .inner
-                .checked_div(rhs.inner)
-                .ok_or(ArithmeticError::DivisionByZero)?,
+                .try_into_balance()
+                .unwrap(),
+            _ => self.inner / rhs.inner,
         };
-        Ok(Self::new(balance, self.is_divisible || rhs.is_divisible))
+        Self::new(balance, self.is_divisible || rhs.is_divisible)
+    }
+}
+
+impl DivAssign for BalanceUnit {
+    fn div_assign(&mut self, rhs: Self) {
+        *self = *self / rhs
+    }
+}
+
+impl CheckedDiv for BalanceUnit {
+    fn checked_div(&self, rhs: &Self) -> Option<Self> {
+        let Some(balance) = (match (self.is_divisible, rhs.is_divisible) {
+            (false, true) => {
+                if let Some(left) = self.inner.checked_mul(RATIO) {
+                    (FixedWrapper::from(left) / (FixedWrapper::from(rhs.inner))).try_into_balance().ok()
+                } else {
+                    None
+                }
+            }
+            (true, true) => (FixedWrapper::from(self.inner) / (FixedWrapper::from(rhs.inner))).try_into_balance().ok(),
+            _ => self.inner.checked_div(rhs.inner),
+        }) else {
+            return None;
+        };
+        Some(Self::new(balance, self.is_divisible || rhs.is_divisible))
+    }
+}
+
+impl Saturating for BalanceUnit {
+    fn saturating_add(self, rhs: Self) -> Self {
+        let (left, right) = match (self.is_divisible, rhs.is_divisible) {
+            (false, true) => (self.inner.saturating_mul(RATIO), rhs.inner),
+            (true, false) => (self.inner, rhs.inner.saturating_mul(RATIO)),
+            _ => (self.inner, rhs.inner),
+        };
+        let balance = left.saturating_add(right);
+        Self::new(balance, self.is_divisible || rhs.is_divisible)
+    }
+
+    fn saturating_sub(self, rhs: Self) -> Self {
+        let (left, right) = match (self.is_divisible, rhs.is_divisible) {
+            (false, true) => (self.inner.saturating_mul(RATIO), rhs.inner),
+            (true, false) => (self.inner, rhs.inner.saturating_mul(RATIO)),
+            _ => (self.inner, rhs.inner),
+        };
+        let balance = left.saturating_sub(right);
+        Self::new(balance, self.is_divisible || rhs.is_divisible)
+    }
+
+    fn saturating_mul(self, rhs: Self) -> Self {
+        let balance = if self.is_divisible && rhs.is_divisible {
+            (FixedWrapper::from(self.inner) * (FixedWrapper::from(rhs.inner)))
+                .try_into_balance()
+                .unwrap_or(Balance::MAX)
+        } else {
+            self.inner.saturating_mul(rhs.inner)
+        };
+        Self::new(balance, self.is_divisible || rhs.is_divisible)
+    }
+
+    fn saturating_pow(self, exp: usize) -> Self {
+        let balance = if self.is_divisible {
+            FixedWrapper::from(self.inner)
+                .pow(exp as u32)
+                .try_into_balance()
+                .unwrap_or(Balance::MAX)
+        } else {
+            self.inner.saturating_pow(exp as u32)
+        };
+        Self::new(balance, self.is_divisible)
     }
 }
 
@@ -267,7 +387,6 @@ impl Div for BalanceUnit {
 mod tests {
     use crate::balance;
     use crate::balance_unit::*;
-    use frame_support::assert_err;
 
     #[test]
     fn check_constructors() {
@@ -392,6 +511,100 @@ mod tests {
     }
 
     #[test]
+    fn check_checked_add() {
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.1))
+                .checked_add(&BalanceUnit::divisible(balance!(1.2))),
+            Some(BalanceUnit::divisible(balance!(2.3)))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(2).checked_add(&BalanceUnit::divisible(balance!(1.1))),
+            Some(BalanceUnit::divisible(balance!(3.1)))
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.1)).checked_add(&BalanceUnit::indivisible(3)),
+            Some(BalanceUnit::divisible(balance!(4.1)))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(2).checked_add(&BalanceUnit::indivisible(3)),
+            Some(BalanceUnit::indivisible(5))
+        );
+
+        // overflow
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX)
+                .checked_add(&BalanceUnit::divisible(balance!(1.2))),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX)
+                .checked_add(&BalanceUnit::divisible(balance!(1.1))),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX).checked_add(&BalanceUnit::indivisible(3)),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX).checked_add(&BalanceUnit::indivisible(3)),
+            None
+        );
+    }
+
+    #[test]
+    fn check_saturating_add() {
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.1))
+                .saturating_add(BalanceUnit::divisible(balance!(1.2))),
+            BalanceUnit::divisible(balance!(2.3))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(2).saturating_add(BalanceUnit::divisible(balance!(1.1))),
+            BalanceUnit::divisible(balance!(3.1))
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.1)).saturating_add(BalanceUnit::indivisible(3)),
+            BalanceUnit::divisible(balance!(4.1))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(2).saturating_add(BalanceUnit::indivisible(3)),
+            BalanceUnit::indivisible(5)
+        );
+
+        // overflow
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX)
+                .saturating_add(BalanceUnit::divisible(balance!(1.2))),
+            BalanceUnit::divisible(Balance::MAX)
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX)
+                .saturating_add(BalanceUnit::divisible(balance!(1.1))),
+            BalanceUnit::divisible(Balance::MAX)
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX).saturating_add(BalanceUnit::indivisible(3)),
+            BalanceUnit::divisible(Balance::MAX)
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX).saturating_add(BalanceUnit::indivisible(3)),
+            BalanceUnit::indivisible(Balance::MAX)
+        );
+    }
+
+    #[test]
     fn check_sub() {
         assert_eq!(
             BalanceUnit::divisible(balance!(1.2)) - BalanceUnit::divisible(balance!(1.1)),
@@ -411,27 +624,6 @@ mod tests {
         assert_eq!(
             BalanceUnit::indivisible(5) - BalanceUnit::indivisible(3),
             BalanceUnit::indivisible(2)
-        );
-
-        // overflow
-        assert_eq!(
-            BalanceUnit::divisible(balance!(1.2)) - BalanceUnit::divisible(balance!(1.3)),
-            BalanceUnit::divisible(0)
-        );
-
-        assert_eq!(
-            BalanceUnit::indivisible(3) - BalanceUnit::divisible(balance!(4.1)),
-            BalanceUnit::divisible(0)
-        );
-
-        assert_eq!(
-            BalanceUnit::divisible(balance!(4.1)) - BalanceUnit::indivisible(5),
-            BalanceUnit::divisible(0)
-        );
-
-        assert_eq!(
-            BalanceUnit::indivisible(5) - BalanceUnit::indivisible(7),
-            BalanceUnit::indivisible(0)
         );
     }
 
@@ -455,26 +647,230 @@ mod tests {
     }
 
     #[test]
+    fn check_checked_sub() {
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.2))
+                .checked_sub(&BalanceUnit::divisible(balance!(1.1))),
+            Some(BalanceUnit::divisible(balance!(0.1)))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(3).checked_sub(&BalanceUnit::divisible(balance!(1.1))),
+            Some(BalanceUnit::divisible(balance!(1.9)))
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(4.1)).checked_sub(&BalanceUnit::indivisible(3)),
+            Some(BalanceUnit::divisible(balance!(1.1)))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(5).checked_sub(&BalanceUnit::indivisible(3)),
+            Some(BalanceUnit::indivisible(2))
+        );
+
+        // overflow
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.2))
+                .checked_sub(&BalanceUnit::divisible(balance!(1.3))),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(3).checked_sub(&BalanceUnit::divisible(balance!(4.1))),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(4.1)).checked_sub(&BalanceUnit::indivisible(5)),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(5).checked_sub(&BalanceUnit::indivisible(7)),
+            None
+        );
+    }
+
+    #[test]
+    fn check_saturating_sub() {
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.2))
+                .saturating_sub(BalanceUnit::divisible(balance!(1.1))),
+            BalanceUnit::divisible(balance!(0.1))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(3).saturating_sub(BalanceUnit::divisible(balance!(1.1))),
+            BalanceUnit::divisible(balance!(1.9))
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(4.1)).saturating_sub(BalanceUnit::indivisible(3)),
+            BalanceUnit::divisible(balance!(1.1))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(5).saturating_sub(BalanceUnit::indivisible(3)),
+            BalanceUnit::indivisible(2)
+        );
+
+        // overflow
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.2))
+                .saturating_sub(BalanceUnit::divisible(balance!(1.3))),
+            BalanceUnit::divisible(0)
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(3).saturating_sub(BalanceUnit::divisible(balance!(4.1))),
+            BalanceUnit::divisible(0)
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(4.1)).saturating_sub(BalanceUnit::indivisible(5)),
+            BalanceUnit::divisible(0)
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(5).saturating_sub(BalanceUnit::indivisible(7)),
+            BalanceUnit::indivisible(0)
+        );
+    }
+
+    #[test]
     fn check_mul() {
         assert_eq!(
-            (BalanceUnit::divisible(balance!(1.1)) * BalanceUnit::divisible(balance!(1.2)))
-                .unwrap(),
+            BalanceUnit::divisible(balance!(1.1)) * BalanceUnit::divisible(balance!(1.2)),
             BalanceUnit::divisible(balance!(1.32))
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(2) * BalanceUnit::divisible(balance!(1.1))).unwrap(),
+            BalanceUnit::indivisible(2) * BalanceUnit::divisible(balance!(1.1)),
             BalanceUnit::divisible(balance!(2.2))
         );
 
         assert_eq!(
-            (BalanceUnit::divisible(balance!(1.1)) * BalanceUnit::indivisible(3)).unwrap(),
+            BalanceUnit::divisible(balance!(1.1)) * BalanceUnit::indivisible(3),
             BalanceUnit::divisible(balance!(3.3))
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(2) * BalanceUnit::indivisible(3)).unwrap(),
+            BalanceUnit::indivisible(2) * BalanceUnit::indivisible(3),
             BalanceUnit::indivisible(6)
+        );
+    }
+
+    #[test]
+    fn check_mul_assign() {
+        let mut value = BalanceUnit::divisible(balance!(1.1));
+        value *= BalanceUnit::divisible(balance!(1.2));
+        assert_eq!(value, BalanceUnit::divisible(balance!(1.32)));
+
+        let mut value = BalanceUnit::indivisible(2);
+        value *= BalanceUnit::divisible(balance!(1.1));
+        assert_eq!(value, BalanceUnit::divisible(balance!(2.2)));
+
+        let mut value = BalanceUnit::divisible(balance!(1.1));
+        value *= BalanceUnit::indivisible(3);
+        assert_eq!(value, BalanceUnit::divisible(balance!(3.3)));
+
+        let mut value = BalanceUnit::indivisible(2);
+        value *= BalanceUnit::indivisible(3);
+        assert_eq!(value, BalanceUnit::indivisible(6));
+    }
+
+    #[test]
+    fn check_checked_mul() {
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.1))
+                .checked_mul(&BalanceUnit::divisible(balance!(1.2))),
+            Some(BalanceUnit::divisible(balance!(1.32)))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(2).checked_mul(&BalanceUnit::divisible(balance!(1.1))),
+            Some(BalanceUnit::divisible(balance!(2.2)))
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.1)).checked_mul(&BalanceUnit::indivisible(3)),
+            Some(BalanceUnit::divisible(balance!(3.3)))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(2).checked_mul(&BalanceUnit::indivisible(3)),
+            Some(BalanceUnit::indivisible(6))
+        );
+
+        // overflow
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX - 1)
+                .checked_mul(&BalanceUnit::divisible(balance!(1.2))),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX - 1)
+                .checked_mul(&BalanceUnit::divisible(balance!(1.1))),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX - 1).checked_mul(&BalanceUnit::indivisible(3)),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX - 1).checked_mul(&BalanceUnit::indivisible(3)),
+            None
+        );
+    }
+
+    #[test]
+    fn check_saturating_mul() {
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.1))
+                .saturating_mul(BalanceUnit::divisible(balance!(1.2))),
+            BalanceUnit::divisible(balance!(1.32))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(2).saturating_mul(BalanceUnit::divisible(balance!(1.1))),
+            BalanceUnit::divisible(balance!(2.2))
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.1)).saturating_mul(BalanceUnit::indivisible(3)),
+            BalanceUnit::divisible(balance!(3.3))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(2).saturating_mul(BalanceUnit::indivisible(3)),
+            BalanceUnit::indivisible(6)
+        );
+
+        // overflow
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX - 1)
+                .saturating_mul(BalanceUnit::divisible(balance!(1.2))),
+            BalanceUnit::divisible(Balance::MAX)
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX - 1)
+                .saturating_mul(BalanceUnit::divisible(balance!(1.1))),
+            BalanceUnit::divisible(Balance::MAX)
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX - 1).saturating_mul(BalanceUnit::indivisible(3)),
+            BalanceUnit::divisible(Balance::MAX)
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX - 1).saturating_mul(BalanceUnit::indivisible(3)),
+            BalanceUnit::indivisible(Balance::MAX)
         );
     }
 
@@ -482,76 +878,185 @@ mod tests {
     fn check_div() {
         // check regular cases
         assert_eq!(
-            (BalanceUnit::divisible(balance!(5.55)) / BalanceUnit::divisible(balance!(3.7)))
-                .unwrap(),
+            BalanceUnit::divisible(balance!(5.55)) / BalanceUnit::divisible(balance!(3.7)),
             BalanceUnit::divisible(balance!(1.5))
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(9) / BalanceUnit::divisible(balance!(2))).unwrap(),
+            BalanceUnit::indivisible(9) / BalanceUnit::divisible(balance!(2)),
             BalanceUnit::divisible(balance!(4.5))
         );
 
         assert_eq!(
-            (BalanceUnit::divisible(balance!(3.3)) / BalanceUnit::indivisible(3)).unwrap(),
+            BalanceUnit::divisible(balance!(3.3)) / BalanceUnit::indivisible(3),
             BalanceUnit::divisible(balance!(1.1))
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(6) / BalanceUnit::indivisible(3)).unwrap(),
+            BalanceUnit::indivisible(6) / BalanceUnit::indivisible(3),
             BalanceUnit::indivisible(2)
-        );
-
-        // check div by 0
-        assert_err!(
-            (BalanceUnit::divisible(balance!(1.1)) / BalanceUnit::divisible(0)),
-            ArithmeticError::DivisionByZero
-        );
-
-        assert_err!(
-            (BalanceUnit::divisible(balance!(1.1)) / BalanceUnit::indivisible(0)),
-            ArithmeticError::DivisionByZero
-        );
-
-        assert_err!(
-            (BalanceUnit::indivisible(5) / BalanceUnit::divisible(0)),
-            ArithmeticError::DivisionByZero
-        );
-
-        assert_err!(
-            (BalanceUnit::indivisible(5) / BalanceUnit::indivisible(0)),
-            ArithmeticError::DivisionByZero
         );
 
         // check rounding
         assert_eq!(
-            (BalanceUnit::divisible(balance!(10)) / BalanceUnit::divisible(balance!(3))).unwrap(),
+            BalanceUnit::divisible(balance!(10)) / BalanceUnit::divisible(balance!(3)),
             BalanceUnit::divisible(balance!(3.333333333333333333))
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(10) / BalanceUnit::divisible(balance!(3))).unwrap(),
+            BalanceUnit::indivisible(10) / BalanceUnit::divisible(balance!(3)),
             BalanceUnit::divisible(balance!(3.333333333333333333))
         );
 
         assert_eq!(
-            (BalanceUnit::divisible(balance!(10)) / BalanceUnit::indivisible(3)).unwrap(),
+            BalanceUnit::divisible(balance!(10)) / BalanceUnit::indivisible(3),
             BalanceUnit::divisible(balance!(3.333333333333333333))
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(10) / BalanceUnit::indivisible(3)).unwrap(),
+            BalanceUnit::indivisible(10) / BalanceUnit::indivisible(3),
             BalanceUnit::indivisible(3)
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(14) / BalanceUnit::indivisible(5)).unwrap(),
+            BalanceUnit::indivisible(14) / BalanceUnit::indivisible(5),
             BalanceUnit::indivisible(2)
         );
 
         assert_eq!(
-            (BalanceUnit::indivisible(3) / BalanceUnit::indivisible(4)).unwrap(),
+            BalanceUnit::indivisible(3) / BalanceUnit::indivisible(4),
             BalanceUnit::indivisible(0)
+        );
+    }
+
+    #[test]
+    fn check_div_assign() {
+        // check regular cases
+        let mut value = BalanceUnit::divisible(balance!(5.55));
+        value /= BalanceUnit::divisible(balance!(3.7));
+        assert_eq!(value, BalanceUnit::divisible(balance!(1.5)));
+
+        let mut value = BalanceUnit::indivisible(9);
+        value /= BalanceUnit::divisible(balance!(2));
+        assert_eq!(value, BalanceUnit::divisible(balance!(4.5)));
+
+        let mut value = BalanceUnit::divisible(balance!(3.3));
+        value /= BalanceUnit::indivisible(3);
+        assert_eq!(value, BalanceUnit::divisible(balance!(1.1)));
+
+        let mut value = BalanceUnit::indivisible(6);
+        value /= BalanceUnit::indivisible(3);
+        assert_eq!(value, BalanceUnit::indivisible(2));
+
+        // check rounding
+        let mut value = BalanceUnit::divisible(balance!(10));
+        value /= BalanceUnit::divisible(balance!(3));
+        assert_eq!(
+            value,
+            BalanceUnit::divisible(balance!(3.333333333333333333))
+        );
+
+        let mut value = BalanceUnit::indivisible(10);
+        value /= BalanceUnit::divisible(balance!(3));
+        assert_eq!(
+            value,
+            BalanceUnit::divisible(balance!(3.333333333333333333))
+        );
+
+        let mut value = BalanceUnit::divisible(balance!(10));
+        value /= BalanceUnit::indivisible(3);
+        assert_eq!(
+            value,
+            BalanceUnit::divisible(balance!(3.333333333333333333))
+        );
+
+        let mut value = BalanceUnit::indivisible(10);
+        value /= BalanceUnit::indivisible(3);
+        assert_eq!(value, BalanceUnit::indivisible(3));
+
+        let mut value = BalanceUnit::indivisible(14);
+        value /= BalanceUnit::indivisible(5);
+        assert_eq!(value, BalanceUnit::indivisible(2));
+
+        let mut value = BalanceUnit::indivisible(3);
+        value /= BalanceUnit::indivisible(4);
+        assert_eq!(value, BalanceUnit::indivisible(0));
+    }
+
+    #[test]
+    fn check_checked_div() {
+        // check regular cases
+        assert_eq!(
+            BalanceUnit::divisible(balance!(5.55))
+                .checked_div(&BalanceUnit::divisible(balance!(3.7))),
+            Some(BalanceUnit::divisible(balance!(1.5)))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(9).checked_div(&BalanceUnit::divisible(balance!(2))),
+            Some(BalanceUnit::divisible(balance!(4.5)))
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(3.3)).checked_div(&BalanceUnit::indivisible(3)),
+            Some(BalanceUnit::divisible(balance!(1.1)))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(6).checked_div(&BalanceUnit::indivisible(3)),
+            Some(BalanceUnit::indivisible(2))
+        );
+
+        // check rounding
+        assert_eq!(
+            BalanceUnit::divisible(balance!(10)).checked_div(&BalanceUnit::divisible(balance!(3))),
+            Some(BalanceUnit::divisible(balance!(3.333333333333333333)))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(10).checked_div(&BalanceUnit::divisible(balance!(3))),
+            Some(BalanceUnit::divisible(balance!(3.333333333333333333)))
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(10)).checked_div(&BalanceUnit::indivisible(3)),
+            Some(BalanceUnit::divisible(balance!(3.333333333333333333)))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(10).checked_div(&BalanceUnit::indivisible(3)),
+            Some(BalanceUnit::indivisible(3))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(14).checked_div(&BalanceUnit::indivisible(5)),
+            Some(BalanceUnit::indivisible(2))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(3).checked_div(&BalanceUnit::indivisible(4)),
+            Some(BalanceUnit::indivisible(0))
+        );
+
+        // overflow
+        assert_eq!(
+            BalanceUnit::divisible(balance!(5.55)).checked_div(&BalanceUnit::divisible(0)),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(9).checked_div(&BalanceUnit::divisible(0)),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(3.3)).checked_div(&BalanceUnit::indivisible(0)),
+            None
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(6).checked_div(&BalanceUnit::indivisible(0)),
+            None
         );
     }
 
@@ -579,6 +1084,60 @@ mod tests {
 
         assert_eq!(
             BalanceUnit::indivisible(4).pow(0).unwrap(),
+            BalanceUnit::indivisible(1)
+        );
+    }
+
+    #[test]
+    fn check_saturating_pow() {
+        assert_eq!(
+            BalanceUnit::divisible(balance!(2)).saturating_pow(3),
+            BalanceUnit::divisible(balance!(8))
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(1.2)).saturating_pow(4),
+            BalanceUnit::divisible(balance!(2.0736))
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(balance!(4)).saturating_pow(0),
+            BalanceUnit::divisible(balance!(1))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(2).saturating_pow(3),
+            BalanceUnit::indivisible(8)
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(4).saturating_pow(0),
+            BalanceUnit::indivisible(1)
+        );
+
+        // overflow
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX - 1).saturating_pow(3),
+            BalanceUnit::divisible(Balance::MAX)
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX - 1).saturating_pow(4),
+            BalanceUnit::divisible(Balance::MAX)
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX - 1).saturating_pow(0),
+            BalanceUnit::divisible(balance!(1))
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX - 1).saturating_pow(3),
+            BalanceUnit::indivisible(Balance::MAX)
+        );
+
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX - 1).saturating_pow(0),
             BalanceUnit::indivisible(1)
         );
     }
