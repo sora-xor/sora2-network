@@ -35,7 +35,7 @@ use common::{PriceVariant, TradingPair};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::{BoundedBTreeMap, BoundedVec};
-use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedSub, Zero};
+use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedSub, Saturating, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::{Add, Sub};
 
@@ -285,7 +285,9 @@ where
         for (account, volume) in to_merge {
             account_map
                 .entry(account.clone())
-                .and_modify(|current_volune| *current_volune += *volume)
+                .and_modify(|current_volune| {
+                    *current_volune = current_volune.saturating_add(*volume)
+                })
                 .or_insert(*volume);
         }
     }

@@ -106,7 +106,7 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         //
         // Expirations happen before extrinsic dispatches, so to allow executing
         // the order at the second block, we need to expire it at the initialization of block 3.
-        lifespan_blocks += 1;
+        lifespan_blocks = lifespan_blocks.saturating_add(1);
         let lifespan = lifespan_blocks.saturated_into::<BlockNumberFor<T>>();
         current_block.saturating_add(lifespan)
     }
