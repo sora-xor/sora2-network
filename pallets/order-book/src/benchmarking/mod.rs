@@ -573,4 +573,41 @@ mod tests {
             fill_order_book_worst_case(settings, &mut data_layer);
         })
     }
+
+    #[test]
+    #[ignore] // slow
+    fn test_benchmark_cancel_all() {
+        ext().execute_with(|| {
+            let order_book_id = OrderBookId::<AssetIdOf<Runtime>, u32> {
+                dex_id: DEX.into(),
+                base: VAL.into(),
+                quote: XOR.into(),
+            };
+
+            let order_book = create_empty_order_book(order_book_id);
+            let mut data_layer =
+                framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
+            let settings = FillSettings::new(
+                <Runtime as framenode_runtime::order_book::Config>::MaxSidePriceCount::get(),
+                <Runtime as framenode_runtime::order_book::Config>::MaxLimitOrdersForPrice::get(),
+                <Runtime as framenode_runtime::order_book::Config>::MaxOpenedLimitOrdersPerUser::get(),
+                <Runtime as framenode_runtime::order_book::Config>::MaxExpiringOrdersPerBlock::get(),
+                &order_book,
+            );
+            // let settings = FillSettings::new(10, 10, 1000, 1000, &order_book);
+            fill_order_book_worst_case(settings.clone(), &mut data_layer);
+            let total_orders = data_layer.get_all_limit_orders(&order_book_id).len() as u32;
+            data_layer.commit();
+            println!("total orders: {total_orders}");
+            assert_eq!(
+                (settings.max_side_price_count * settings.max_orders_per_price * 2),
+                total_orders
+            );
+            // let tech_account =
+            //     OrderBookPallet::<Runtime>::tech_account_for_order_book(order_book_id);
+            let count_of_canceled_orders =
+                order_book.cancel_all_limit_orders(&mut data_layer).unwrap() as u32;
+            assert_eq!(count_of_canceled_orders, total_orders);
+        })
+    }
 }
