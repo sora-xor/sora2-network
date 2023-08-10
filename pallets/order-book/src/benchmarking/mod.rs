@@ -216,7 +216,8 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookDeleted {
                 order_book_id,
-                count_of_canceled_orders: 12,
+                count_of_canceled_orders:
+                    fill_settings.max_side_price_count * fill_settings.max_orders_per_price * 2,
             }
             .into(),
         );
