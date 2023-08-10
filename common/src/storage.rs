@@ -1,4 +1,4 @@
-use codec::{Encode, EncodeLike, FullCodec, FullEncode};
+use codec::{EncodeLike, FullCodec, FullEncode};
 use frame_support::storage::generator;
 use frame_support::storage::StorageDecodeLength;
 use frame_support::{StorageDoubleMap, StorageMap, StorageValue};
