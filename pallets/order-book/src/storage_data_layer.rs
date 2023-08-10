@@ -33,6 +33,7 @@ use crate::{
     MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserLimitOrders, UserOrders,
 };
 use assets::AssetIdOf;
+use common::storage::DecodeIsFullDoubleMap;
 use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
@@ -292,12 +293,28 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         <Bids<T>>::get(order_book_id, price)
     }
 
+    fn is_bids_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool> {
+        <Bids<T>>::decode_is_full(order_book_id, price)
+    }
+
     fn get_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
         <Asks<T>>::get(order_book_id, price)
+    }
+
+    fn is_asks_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool> {
+        <Asks<T>>::decode_is_full(order_book_id, price)
     }
 
     fn get_aggregated_bids(
@@ -307,11 +324,45 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         <AggregatedBids<T>>::get(order_book_id)
     }
 
+    fn get_aggregated_bids_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> usize {
+        <AggregatedBids<T>>::decode_len(order_book_id).unwrap_or(0)
+    }
+
+    fn best_bid(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)> {
+        <AggregatedBids<T>>::get(order_book_id)
+            .iter()
+            .max()
+            .map(|(k, v)| (*k, *v))
+    }
+
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount> {
         <AggregatedAsks<T>>::get(order_book_id)
+    }
+
+    fn get_aggregated_asks_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> usize {
+        <AggregatedAsks<T>>::decode_len(order_book_id).unwrap_or(0)
+    }
+
+    fn best_ask(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)> {
+        <AggregatedAsks<T>>::get(order_book_id)
+            .iter()
+            .min()
+            .map(|(k, v)| (*k, *v))
     }
 
     fn get_user_limit_orders(
@@ -320,5 +371,13 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>> {
         <UserLimitOrders<T>>::get(account, order_book_id)
+    }
+
+    fn is_user_limit_orders_full(
+        &mut self,
+        account: &T::AccountId,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<bool> {
+        <UserLimitOrders<T>>::decode_is_full(account, order_book_id)
     }
 }

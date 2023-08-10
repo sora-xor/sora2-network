@@ -104,6 +104,13 @@ where
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>>;
 
+    /// Returns whether there is no place for orders inside the bid price
+    fn is_bids_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool>;
+
     /// Returns order ids of orders inside the ask price
     fn get_asks(
         &mut self,
@@ -111,11 +118,27 @@ where
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>>;
 
+    fn is_asks_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool>;
+
     /// Returns all bid prices with their volumes
     fn get_aggregated_bids(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount>;
+
+    fn get_aggregated_bids_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> usize;
+
+    fn best_bid(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)>;
 
     /// Returns all ask prices with their volumes
     fn get_aggregated_asks(
@@ -123,12 +146,29 @@ where
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount>;
 
+    fn get_aggregated_asks_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> usize;
+
+    fn best_ask(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)>;
+
     /// Returns order ids of user
     fn get_user_limit_orders(
         &mut self,
         account: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>>;
+
+    /// Returns whether there is no place for the user's orders in the order book
+    fn is_user_limit_orders_full(
+        &mut self,
+        account: &T::AccountId,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<bool>;
 }
 
 pub trait CurrencyLocker<AccountId, AssetId, DEXId, Error> {

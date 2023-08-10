@@ -834,26 +834,25 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         limit_order: &LimitOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<(), DispatchError> {
-        if let Some(user_orders) =
-            data.get_user_limit_orders(&limit_order.owner, &self.order_book_id)
+        if let Some(is_user_orders_full) =
+            data.is_user_limit_orders_full(&limit_order.owner, &self.order_book_id)
         {
             ensure!(
-                !user_orders.is_full(),
+                !is_user_orders_full,
                 Error::<T>::UserHasMaxCountOfOpenedOrders
             );
         }
         match limit_order.side {
             PriceVariant::Buy => {
-                if let Some(bids) = data.get_bids(&self.order_book_id, &limit_order.price) {
-                    ensure!(
-                        !bids.is_full(),
-                        Error::<T>::PriceReachedMaxCountOfLimitOrders
-                    );
+                if let Some(is_bids_full) =
+                    data.is_bids_full(&self.order_book_id, &limit_order.price)
+                {
+                    ensure!(!is_bids_full, Error::<T>::PriceReachedMaxCountOfLimitOrders);
                 }
 
-                let agg_bids = data.get_aggregated_bids(&self.order_book_id);
                 ensure!(
-                    agg_bids.len() < T::MaxSidePriceCount::get() as usize,
+                    data.get_aggregated_bids_len(&self.order_book_id)
+                        < T::MaxSidePriceCount::get() as usize,
                     Error::<T>::OrderBookReachedMaxCountOfPricesForSide
                 );
 
@@ -868,16 +867,15 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 }
             }
             PriceVariant::Sell => {
-                if let Some(asks) = data.get_asks(&self.order_book_id, &limit_order.price) {
-                    ensure!(
-                        !asks.is_full(),
-                        Error::<T>::PriceReachedMaxCountOfLimitOrders
-                    );
+                if let Some(is_asks_full) =
+                    data.is_asks_full(&self.order_book_id, &limit_order.price)
+                {
+                    ensure!(!is_asks_full, Error::<T>::PriceReachedMaxCountOfLimitOrders);
                 }
 
-                let agg_asks = data.get_aggregated_asks(&self.order_book_id);
                 ensure!(
-                    agg_asks.len() < T::MaxSidePriceCount::get() as usize,
+                    data.get_aggregated_asks_len(&self.order_book_id)
+                        < T::MaxSidePriceCount::get() as usize,
                     Error::<T>::OrderBookReachedMaxCountOfPricesForSide
                 );
 
@@ -896,13 +894,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     }
 
     pub fn best_bid(&self, data: &mut impl DataLayer<T>) -> Option<(OrderPrice, OrderVolume)> {
-        let bids = data.get_aggregated_bids(&self.order_book_id);
-        bids.iter().max().map(|(k, v)| (*k, *v))
+        data.best_bid(&self.order_book_id)
     }
 
     pub fn best_ask(&self, data: &mut impl DataLayer<T>) -> Option<(OrderPrice, OrderVolume)> {
-        let asks = data.get_aggregated_asks(&self.order_book_id);
-        asks.iter().min().map(|(k, v)| (*k, *v))
+        data.best_ask(&self.order_book_id)
     }
 
     fn market_volume(&self, side: PriceVariant, data: &mut impl DataLayer<T>) -> OrderVolume {

@@ -37,6 +37,7 @@ use common::cache_storage::{CacheStorageDoubleMap, CacheStorageMap};
 use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
+use frame_support::traits::Len;
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
@@ -438,12 +439,32 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         self.bids.get(order_book_id, price).cloned()
     }
 
+    fn is_bids_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool> {
+        self.bids
+            .get(order_book_id, price)
+            .map(|orders| orders.is_full())
+    }
+
     fn get_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
         self.asks.get(order_book_id, price).cloned()
+    }
+
+    fn is_asks_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool> {
+        self.asks
+            .get(order_book_id, price)
+            .map(|orders| orders.is_full())
     }
 
     fn get_aggregated_bids(
@@ -456,6 +477,22 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
             .unwrap_or_default()
     }
 
+    fn get_aggregated_bids_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> usize {
+        self.aggregated_bids.get(order_book_id).len()
+    }
+
+    fn best_bid(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)> {
+        self.aggregated_bids
+            .get(order_book_id)
+            .and_then(|side| side.iter().max().map(|(k, v)| (*k, *v)))
+    }
+
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -466,11 +503,37 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
             .unwrap_or_default()
     }
 
+    fn get_aggregated_asks_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> usize {
+        self.aggregated_asks.get(order_book_id).len()
+    }
+
+    fn best_ask(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)> {
+        self.aggregated_asks
+            .get(order_book_id)
+            .and_then(|side| side.iter().min().map(|(k, v)| (*k, *v)))
+    }
+
     fn get_user_limit_orders(
         &mut self,
         account: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>> {
         self.user_limit_orders.get(account, order_book_id).cloned()
+    }
+
+    fn is_user_limit_orders_full(
+        &mut self,
+        account: &T::AccountId,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<bool> {
+        self.user_limit_orders
+            .get_mut(account, order_book_id)
+            .map(|orders| orders.is_full())
     }
 }

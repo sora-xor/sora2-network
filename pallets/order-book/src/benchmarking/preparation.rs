@@ -265,9 +265,16 @@ fn fill_order_book_side<T: Config>(
                     .saturated_into(),
                 current_block,
             );
-            data.insert_limit_order(&order_book.order_book_id, buy_order)
-                .unwrap();
-            // order_book.place_limit_order(buy_order, data).unwrap();
+            // payments
+            //     .to_lock
+            //     .entry(*lock_asset)
+            //     .or_default()
+            //     .entry(limit_order.owner.clone())
+            //     .and_modify(|amount| *amount += *lock_amount.value())
+            //     .or_insert(*lock_amount.value());
+            // data.insert_limit_order(&order_book.order_book_id, buy_order)
+            //     .unwrap();
+            order_book.place_limit_order(buy_order, data).unwrap();
         }
     }
 }
