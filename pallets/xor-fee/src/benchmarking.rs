@@ -39,10 +39,6 @@ use frame_system::RawOrigin;
 use crate::{Config, Pallet};
 
 benchmarks! {
-    where_clause {
-        where T: Config + pool_xyk::Config + pallet_staking::Config
-    }
-
     update_multiplier {
         let new_multiplier = FixedU128::from(1);
     }: _(RawOrigin::Root, new_multiplier)

@@ -28,12 +28,17 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::mock::*;
+use crate::extension::ChargeTransactionPayment;
+use crate::{mock::*, LiquidityInfo, XorToVal};
 use common::balance;
 
+use common::mock::{alice, bob};
 use frame_support::error::BadOrigin;
+use frame_support::traits::Currency;
 use frame_support::weights::{Weight, WeightToFee};
 use frame_support::{assert_noop, assert_ok};
+use sp_runtime::traits::SignedExtension;
+use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidityError};
 use sp_runtime::{FixedPointNumber, FixedU128};
 
 fn set_weight_to_fee_multiplier(mul: u64) {
@@ -105,7 +110,7 @@ fn non_root_update_fails() {
         // We allow only root
 
         assert_noop!(
-            XorFee::update_multiplier(RuntimeOrigin::signed(1), FixedU128::from(3)),
+            XorFee::update_multiplier(RuntimeOrigin::signed(alice()), FixedU128::from(3)),
             BadOrigin
         );
 
@@ -113,5 +118,376 @@ fn non_root_update_fails() {
             XorFee::update_multiplier(RuntimeOrigin::none(), FixedU128::from(3)),
             BadOrigin
         );
+    });
+}
+
+#[test]
+fn it_works_postpone() {
+    ExtBuilder::build().execute_with(|| {
+        let who = GetPostponeAccountId::get();
+        assert_eq!(Balances::usable_balance_for_fees(&who), 0);
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(
+                &who,
+                &RuntimeCall::Assets(assets::Call::transfer {
+                    to: alice(),
+                    asset_id: common::VAL,
+                    amount: 10,
+                }),
+                &info_from_weight(100.into()),
+                100,
+            )
+            .unwrap();
+        assert_eq!(
+            pre,
+            (
+                0,
+                who.clone(),
+                LiquidityInfo::<Runtime>::Postponed(who.clone()),
+                Some(balance!(0.0007)),
+            )
+        );
+        let _ = Balances::deposit_creating(&who, balance!(1000));
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
+        ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &info_from_weight(100.into()),
+            &post_info_from_weight(100.into()),
+            100,
+            &Ok(()),
+        )
+        .unwrap();
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.3));
+        assert_eq!(XorToVal::<Runtime>::get(), balance!(0.35));
+    });
+}
+
+#[test]
+fn it_fails_postpone() {
+    ExtBuilder::build().execute_with(|| {
+        let who = GetPostponeAccountId::get();
+        assert_eq!(Balances::usable_balance_for_fees(&who), 0);
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(
+                &who,
+                &RuntimeCall::Assets(assets::Call::transfer {
+                    to: alice(),
+                    asset_id: common::VAL,
+                    amount: 10,
+                }),
+                &info_from_weight(100.into()),
+                100,
+            )
+            .unwrap();
+        assert_eq!(
+            ChargeTransactionPayment::<Runtime>::post_dispatch(
+                Some(pre),
+                &info_from_weight(100.into()),
+                &post_info_from_weight(100.into()),
+                100,
+                &Ok(()),
+            ),
+            Err(TransactionValidityError::Invalid(
+                InvalidTransaction::Payment
+            ))
+        );
+        assert_eq!(Balances::usable_balance_for_fees(&who), 0);
+        assert_eq!(XorToVal::<Runtime>::get(), 0);
+    });
+}
+
+#[test]
+fn it_works_should_not_pay() {
+    ExtBuilder::build().execute_with(|| {
+        let who = GetPaysNoAccountId::get();
+        assert_eq!(Balances::usable_balance_for_fees(&who), 0);
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(
+                &who,
+                &RuntimeCall::Assets(assets::Call::transfer {
+                    to: alice(),
+                    asset_id: common::VAL,
+                    amount: 10,
+                }),
+                &info_from_weight(100.into()),
+                100,
+            )
+            .unwrap();
+        assert_eq!(
+            pre,
+            (
+                0,
+                who.clone(),
+                LiquidityInfo::<Runtime>::Paid(who.clone(), None),
+                Some(balance!(0.0007)),
+            )
+        );
+        assert_eq!(
+            ChargeTransactionPayment::<Runtime>::post_dispatch(
+                Some(pre),
+                &info_from_weight(100.into()),
+                &post_info_from_weight(100.into()),
+                100,
+                &Ok(()),
+            ),
+            Ok(())
+        );
+        assert_eq!(Balances::usable_balance_for_fees(&who), 0);
+        assert_eq!(XorToVal::<Runtime>::get(), 0);
+    });
+}
+
+#[test]
+fn it_works_should_pays_no() {
+    ExtBuilder::build().execute_with(|| {
+        let who = bob();
+        assert_eq!(Balances::usable_balance_for_fees(&who), 0);
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(
+                &who,
+                &RuntimeCall::Assets(assets::Call::transfer {
+                    to: alice(),
+                    asset_id: common::VAL,
+                    amount: 10,
+                }),
+                &info_pays_no(100.into()),
+                100,
+            )
+            .unwrap();
+        assert_eq!(
+            pre,
+            (
+                0,
+                who.clone(),
+                LiquidityInfo::<Runtime>::Paid(who.clone(), None),
+                None,
+            )
+        );
+        assert_eq!(
+            ChargeTransactionPayment::<Runtime>::post_dispatch(
+                Some(pre),
+                &info_pays_no(100.into()),
+                &post_info_from_weight(100.into()),
+                100,
+                &Ok(()),
+            ),
+            Ok(())
+        );
+        assert_eq!(Balances::usable_balance_for_fees(&who), 0);
+        assert_eq!(XorToVal::<Runtime>::get(), 0);
+    });
+}
+
+#[test]
+fn it_works_should_post_info_pays_no() {
+    ExtBuilder::build().execute_with(|| {
+        let who = bob();
+        let _ = Balances::deposit_creating(&who, balance!(1000));
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(
+                &who,
+                &RuntimeCall::Assets(assets::Call::transfer {
+                    to: alice(),
+                    asset_id: common::VAL,
+                    amount: 10,
+                }),
+                &info_from_weight(100.into()),
+                100,
+            )
+            .unwrap();
+        assert_eq!(
+            pre,
+            (
+                0,
+                who.clone(),
+                LiquidityInfo::<Runtime>::Paid(
+                    who.clone(),
+                    Some(pallet_balances::NegativeImbalance::new(balance!(0.7)))
+                ),
+                Some(balance!(0.0007)),
+            )
+        );
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.3));
+        assert_eq!(
+            ChargeTransactionPayment::<Runtime>::post_dispatch(
+                Some(pre),
+                &info_from_weight(100.into()),
+                &post_info_pays_no(),
+                100,
+                &Ok(()),
+            ),
+            Ok(())
+        );
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
+        assert_eq!(XorToVal::<Runtime>::get(), 0);
+    });
+}
+
+#[test]
+fn it_works_postpone_with_custom_fee_source() {
+    ExtBuilder::build().execute_with(|| {
+        let who = GetPostponeAccountId::get();
+        let fee_source = GetFeeSourceAccountId::get();
+        let len = 100usize;
+        let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![1] });
+        let info = info_from_weight(100.into());
+        let post_info = post_info_from_weight(100.into());
+        let result = Ok(());
+        assert_eq!(Balances::usable_balance_for_fees(&who), 0);
+        assert_eq!(Balances::usable_balance_for_fees(&fee_source), 0);
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&who, &call, &info, len)
+            .unwrap();
+        let fee = XorFee::compute_fee(len as u32, &call, &info, 0).0;
+        assert_eq!(
+            pre,
+            (
+                0,
+                who.clone(),
+                LiquidityInfo::<Runtime>::Postponed(fee_source.clone()),
+                None,
+            )
+        );
+        let _ = Balances::deposit_creating(&fee_source, balance!(1000));
+        assert_eq!(
+            Balances::usable_balance_for_fees(&fee_source),
+            balance!(1000)
+        );
+        ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &info,
+            &post_info,
+            len,
+            &result,
+        )
+        .unwrap();
+        assert_eq!(
+            Balances::usable_balance_for_fees(&fee_source),
+            balance!(1000) - fee
+        );
+        assert_eq!(XorToVal::<Runtime>::get(), fee / 2);
+    });
+}
+
+#[test]
+fn it_works_custom_fee_source() {
+    ExtBuilder::build().execute_with(|| {
+        let who = alice();
+        let fee_source = GetFeeSourceAccountId::get();
+        let len = 100usize;
+        let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![1] });
+        let info = info_from_weight(100.into());
+        let post_info = post_info_from_weight(100.into());
+        let result = Ok(());
+        assert_eq!(Balances::usable_balance_for_fees(&who), 0);
+        let _ = Balances::deposit_creating(&fee_source, balance!(1000));
+        assert_eq!(
+            Balances::usable_balance_for_fees(&fee_source),
+            balance!(1000)
+        );
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&who, &call, &info, len)
+            .unwrap();
+        let fee = XorFee::compute_fee(len as u32, &call, &info, 0).0;
+        assert_eq!(
+            pre,
+            (
+                0,
+                who.clone(),
+                LiquidityInfo::<Runtime>::Paid(
+                    fee_source.clone(),
+                    Some(pallet_balances::NegativeImbalance::new(fee))
+                ),
+                None,
+            )
+        );
+        assert_eq!(
+            Balances::usable_balance_for_fees(&fee_source),
+            balance!(1000) - fee
+        );
+        ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &info,
+            &post_info,
+            len,
+            &result,
+        )
+        .unwrap();
+        assert_eq!(
+            Balances::usable_balance_for_fees(&fee_source),
+            balance!(1000) - fee
+        );
+        assert_eq!(XorToVal::<Runtime>::get(), fee / 2);
+    });
+}
+
+#[test]
+fn it_fails_custom_fee_source() {
+    ExtBuilder::build().execute_with(|| {
+        let who = alice();
+        let fee_source = GetFeeSourceAccountId::get();
+        let len = 100usize;
+        let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![1] });
+        let info = info_from_weight(100.into());
+        assert_eq!(Balances::usable_balance_for_fees(&fee_source), 0);
+        let _ = Balances::deposit_creating(&who, balance!(1000));
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
+        assert_eq!(
+            ChargeTransactionPayment::<Runtime>::new().pre_dispatch(&who, &call, &info, len),
+            Err(TransactionValidityError::Invalid(
+                InvalidTransaction::Payment
+            ))
+        );
+    });
+}
+
+#[test]
+fn it_works_referrer_refund() {
+    ExtBuilder::build().execute_with(|| {
+        let who = GetReferalAccountId::get();
+        let referrer = GetReferrerAccountId::get();
+        let _ = Balances::deposit_creating(&who, balance!(1000));
+        let _ = Balances::deposit_creating(&referrer, balance!(1000));
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(
+                &who,
+                &RuntimeCall::Assets(assets::Call::transfer {
+                    to: alice(),
+                    asset_id: common::VAL,
+                    amount: 10,
+                }),
+                &info_from_weight(100.into()),
+                100,
+            )
+            .unwrap();
+        assert_eq!(
+            pre,
+            (
+                0,
+                who.clone(),
+                LiquidityInfo::<Runtime>::Paid(
+                    who.clone(),
+                    Some(pallet_balances::NegativeImbalance::new(balance!(0.7)))
+                ),
+                Some(balance!(0.0007)),
+            )
+        );
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.3));
+        ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &info_from_weight(100.into()),
+            &post_info_from_weight(100.into()),
+            100,
+            &Ok(()),
+        )
+        .unwrap();
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.3));
+        assert_eq!(
+            Balances::usable_balance_for_fees(&referrer),
+            balance!(1000.07)
+        );
+        assert_eq!(XorToVal::<Runtime>::get(), balance!(0.35));
     });
 }
