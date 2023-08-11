@@ -54,7 +54,7 @@ benchmarks! {
         let relayer = relayer::<T>();
         let euro = symbol::<T>("EURO");
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])?;
-    }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)], 100, 1)
+    }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)].try_into().unwrap(), 100, 1)
     verify {
         assert_eq!(Band::<T>::rates(euro), Some(BandRate {
             value: Band::<T>::raw_rate_into_balance(2).expect("failed to convert value to Balance"),
@@ -69,7 +69,7 @@ benchmarks! {
         let relayer = relayer::<T>();
         let euro = symbol::<T>("EURO");
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])?;
-    }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)], 100, 1)
+    }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)].try_into().unwrap(), 100, 1)
     verify {
         assert_eq!(Band::<T>::rates(euro), Some(BandRate {
             value: Band::<T>::raw_rate_into_balance(2).expect("failed to convert value to Balance"),
