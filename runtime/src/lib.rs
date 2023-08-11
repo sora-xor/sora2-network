@@ -1236,6 +1236,7 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
                 Some(BIG_FEE)
             }
             RuntimeCall::Assets(..)
+            | RuntimeCall::Band(..)
             | RuntimeCall::EthBridge(..)
             | RuntimeCall::LiquidityProxy(..)
             | RuntimeCall::MulticollateralBondingCurvePool(..)
