@@ -137,7 +137,9 @@ mod utils {
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![alice::<T>()])?;
         Band::<T>::relay(
             RawOrigin::Signed(alice::<T>()).into(),
-            vec![(symbol::<<T as band::Config>::Symbol>(), 1000000000)],
+            vec![(symbol::<<T as band::Config>::Symbol>(), 1000000000)]
+                .try_into()
+                .unwrap(),
             0,
             0,
         )

@@ -292,6 +292,7 @@ impl band::Config for Runtime {
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
     type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
     type OnSymbolDisabledHook = ();
+    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
 }
 
 impl oracle_proxy::Config for Runtime {
