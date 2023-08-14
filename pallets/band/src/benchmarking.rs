@@ -84,7 +84,7 @@ benchmarks! {
         let relayer = relayer::<T>();
     }: _(RawOrigin::Root, vec![relayer.clone()])
     verify {
-        assert_eq!(Band::<T>::trusted_relayers().unwrap().contains(&relayer), true);
+        assert!(Band::<T>::trusted_relayers().unwrap().contains(&relayer));
     }
 
     remove_relayers {
@@ -92,7 +92,7 @@ benchmarks! {
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])?;
     }: _(RawOrigin::Root, vec![relayer.clone()])
     verify {
-        assert_eq!(Band::<T>::trusted_relayers().unwrap().contains(&relayer), false);
+        assert!(!Band::<T>::trusted_relayers().unwrap().contains(&relayer));
     }
 
     set_dynamic_fee_parameters {
