@@ -26,7 +26,7 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
     elif [[ ${TAG_NAME} =~ 'test'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
-    elif [[ -v ${TAG_NAME} ]]; then
+    elif [[ -n ${TAG_NAME} ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
@@ -42,7 +42,6 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
     subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
     set +e
     subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
-    echo $?
     if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else
     # If TAG_NAME is not defined, run tests and checks
