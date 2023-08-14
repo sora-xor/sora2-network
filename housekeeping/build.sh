@@ -42,7 +42,6 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
     subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
     set +e
     subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
-    echo $?
     if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else
     # If TAG_NAME is not defined, run tests and checks
