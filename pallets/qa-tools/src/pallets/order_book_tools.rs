@@ -1,5 +1,4 @@
 use crate::Config;
-use common::prelude::FixedWrapper;
 use common::{balance, AssetInfoProvider, Balance, PriceVariant};
 use frame_support::pallet_prelude::*;
 use frame_support::sp_runtime::traits::Zero;
@@ -7,6 +6,7 @@ use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use order_book::DataLayer;
 use order_book::{MomentOf, OrderBook, OrderBookId};
+use order_book::{OrderPrice, OrderVolume};
 use sp_std::prelude::*;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
@@ -76,22 +76,22 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
 
     // (price_steps_from_best_bid, amount)
     let buy_orders_steps = [
-        (0u128, balance!(168.5)),
-        (1, balance!(95.2)),
-        (1, balance!(44.7)),
-        (3, balance!(56.4)),
-        (3, balance!(89.9)),
-        (3, balance!(115)),
+        (0, OrderVolume::divisible(balance!(168.5))),
+        (1, OrderVolume::divisible(balance!(95.2))),
+        (1, OrderVolume::divisible(balance!(44.7))),
+        (3, OrderVolume::divisible(balance!(56.4))),
+        (3, OrderVolume::divisible(balance!(89.9))),
+        (3, OrderVolume::divisible(balance!(115))),
     ];
 
     // (price_steps_from_best_ask, amount)
     let sell_orders_steps = [
-        (0u128, balance!(176.3)),
-        (1, balance!(85.4)),
-        (1, balance!(93.2)),
-        (3, balance!(36.6)),
-        (3, balance!(205.5)),
-        (3, balance!(13.7)),
+        (0, OrderVolume::divisible(balance!(176.3))),
+        (1, OrderVolume::divisible(balance!(85.4))),
+        (1, OrderVolume::divisible(balance!(93.2))),
+        (3, OrderVolume::divisible(balance!(36.6))),
+        (3, OrderVolume::divisible(balance!(205.5))),
+        (3, OrderVolume::divisible(balance!(13.7))),
     ];
 
     let mut data = order_book::cache_data_layer::CacheDataLayer::<T>::new();
@@ -118,8 +118,8 @@ fn fill_order_book<T: Config>(
     book_id: OrderBookId<T::AssetId, T::DEXId>,
     asks_owner: T::AccountId,
     bids_owner: T::AccountId,
-    buy_orders_steps: impl Iterator<Item = (u128, Balance)>,
-    sell_orders_steps: impl Iterator<Item = (u128, Balance)>,
+    buy_orders_steps: impl Iterator<Item = (u128, OrderVolume)>,
+    sell_orders_steps: impl Iterator<Item = (u128, OrderVolume)>,
     settings: OrderBookFillSettings<MomentOf<T>>,
     now: MomentOf<T>,
 ) -> Result<(), DispatchError> {
@@ -134,7 +134,8 @@ fn fill_order_book<T: Config>(
     let buy_orders: Vec<_> = buy_orders_steps
         .map(|(price_steps, base)| {
             (
-                settings.best_bid_price - price_steps * order_book.tick_size,
+                settings.best_bid_price
+                    - OrderPrice::divisible(price_steps * (*order_book.tick_size.balance())),
                 order_book.align_amount(base + order_book.step_lot_size),
             )
         })
@@ -142,7 +143,8 @@ fn fill_order_book<T: Config>(
     let sell_orders: Vec<_> = sell_orders_steps
         .map(|(price_steps, base)| {
             (
-                settings.best_ask_price + price_steps * order_book.tick_size,
+                settings.best_ask_price
+                    + OrderPrice::divisible(price_steps * (*order_book.tick_size.balance())),
                 order_book.align_amount(base + order_book.step_lot_size),
             )
         })
@@ -150,12 +152,9 @@ fn fill_order_book<T: Config>(
     // Total amount of quote asset to be locked from `bids_owner`
     let buy_quote_locked: Balance = buy_orders
         .iter()
-        .map(|(quote, base)| {
-            let quote_amount_fixed = FixedWrapper::from(*quote) * FixedWrapper::from(*base);
-            quote_amount_fixed.into_balance()
-        })
+        .map(|(quote, base)| *(*quote * (*base)).balance())
         .sum();
-    let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| base).sum();
+    let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| *base.balance()).sum();
 
     // mint required amount to make this extrinsic self-sufficient
     assets::Pallet::<T>::mint_unchecked(&book_id.quote, &bids_owner, buy_quote_locked)?;
@@ -194,7 +193,7 @@ fn place_multiple_orders<T: Config>(
     book: &mut OrderBook<T>,
     owner: T::AccountId,
     side: PriceVariant,
-    orders: impl Iterator<Item = (Balance, Balance)>,
+    orders: impl Iterator<Item = (OrderPrice, OrderVolume)>,
     time: MomentOf<T>,
     lifespan: MomentOf<T>,
     current_block: BlockNumberFor<T>,
