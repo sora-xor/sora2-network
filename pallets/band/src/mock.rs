@@ -104,6 +104,7 @@ impl Config for Runtime {
     type GetBandRateStalePeriod = GetRateStalePeriod;
     type OnSymbolDisabledHook = ();
     type GetBandRateStaleBlockPeriod = GetRateStaleBlockPeriod;
+    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
 }
 
 impl oracle_proxy::Config for Runtime {

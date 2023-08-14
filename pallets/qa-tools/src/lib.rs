@@ -96,10 +96,6 @@ pub mod pallet {
         /// Did not find an order book with given id to fill. Likely an error with
         /// order book creation.
         CannotFillUnknownOrderBook,
-        /// Cannot calculate order's price
-        OrderPriceCalculationFailure,
-        /// Cannot calculate order's amount
-        OrderAmountCalculationFailure,
     }
 
     #[pallet::call]

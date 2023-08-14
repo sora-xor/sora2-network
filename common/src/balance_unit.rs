@@ -211,16 +211,12 @@ impl AddAssign for BalanceUnit {
 
 impl CheckedAdd for BalanceUnit {
     fn checked_add(&self, rhs: &Self) -> Option<Self> {
-        let (Some(left), Some(right)) = (match (self.is_divisible, rhs.is_divisible) {
-            (false, true) => (self.inner.checked_mul(RATIO), Some(rhs.inner)),
-            (true, false) => (Some(self.inner), rhs.inner.checked_mul(RATIO)),
-            _ => (Some(self.inner), Some(rhs.inner)),
-        }) else {
-            return None;
+        let (left, right) = match (self.is_divisible, rhs.is_divisible) {
+            (false, true) => (self.inner.checked_mul(RATIO)?, rhs.inner),
+            (true, false) => (self.inner, rhs.inner.checked_mul(RATIO)?),
+            _ => (self.inner, rhs.inner),
         };
-        let Some(balance) = left.checked_add(right) else {
-            return None;
-        };
+        let balance = left.checked_add(right)?;
         Some(Self::new(balance, self.is_divisible || rhs.is_divisible))
     }
 }
@@ -247,16 +243,12 @@ impl SubAssign for BalanceUnit {
 
 impl CheckedSub for BalanceUnit {
     fn checked_sub(&self, rhs: &Self) -> Option<Self> {
-        let (Some(left), Some(right)) = (match (self.is_divisible, rhs.is_divisible) {
-            (false, true) => (self.inner.checked_mul(RATIO), Some(rhs.inner)),
-            (true, false) => (Some(self.inner), rhs.inner.checked_mul(RATIO)),
-            _ => (Some(self.inner), Some(rhs.inner)),
-        }) else {
-            return None;
+        let (left, right) = match (self.is_divisible, rhs.is_divisible) {
+            (false, true) => (self.inner.checked_mul(RATIO)?, rhs.inner),
+            (true, false) => (self.inner, rhs.inner.checked_mul(RATIO)?),
+            _ => (self.inner, rhs.inner),
         };
-        let Some(balance) = left.checked_sub(right) else {
-            return None;
-        };
+        let balance = left.checked_sub(right)?;
         Some(Self::new(balance, self.is_divisible || rhs.is_divisible))
     }
 }
@@ -284,12 +276,12 @@ impl MulAssign for BalanceUnit {
 
 impl CheckedMul for BalanceUnit {
     fn checked_mul(&self, rhs: &Self) -> Option<Self> {
-        let Some(balance) = (if self.is_divisible && rhs.is_divisible {
-            (FixedWrapper::from(self.inner) * (FixedWrapper::from(rhs.inner))).try_into_balance().ok()
+        let balance = if self.is_divisible && rhs.is_divisible {
+            (FixedWrapper::from(self.inner) * (FixedWrapper::from(rhs.inner)))
+                .try_into_balance()
+                .ok()?
         } else {
-            self.inner.checked_mul(rhs.inner)
-        }) else {
-            return None;
+            self.inner.checked_mul(rhs.inner)?
         };
         Some(Self::new(balance, self.is_divisible || rhs.is_divisible))
     }
@@ -301,10 +293,10 @@ impl Div for BalanceUnit {
     fn div(self, rhs: Self) -> Self::Output {
         let balance = match (self.is_divisible, rhs.is_divisible) {
             (false, true) => (FixedWrapper::from(self.inner * RATIO)
-                / (FixedWrapper::from(rhs.inner)))
+                / FixedWrapper::from(rhs.inner))
             .try_into_balance()
             .unwrap(),
-            (true, true) => (FixedWrapper::from(self.inner) / (FixedWrapper::from(rhs.inner)))
+            (true, true) => (FixedWrapper::from(self.inner) / FixedWrapper::from(rhs.inner))
                 .try_into_balance()
                 .unwrap(),
             _ => self.inner / rhs.inner,
@@ -321,18 +313,17 @@ impl DivAssign for BalanceUnit {
 
 impl CheckedDiv for BalanceUnit {
     fn checked_div(&self, rhs: &Self) -> Option<Self> {
-        let Some(balance) = (match (self.is_divisible, rhs.is_divisible) {
+        let balance = match (self.is_divisible, rhs.is_divisible) {
             (false, true) => {
-                if let Some(left) = self.inner.checked_mul(RATIO) {
-                    (FixedWrapper::from(left) / (FixedWrapper::from(rhs.inner))).try_into_balance().ok()
-                } else {
-                    None
-                }
+                let left = self.inner.checked_mul(RATIO)?;
+                (FixedWrapper::from(left) / FixedWrapper::from(rhs.inner))
+                    .try_into_balance()
+                    .ok()?
             }
-            (true, true) => (FixedWrapper::from(self.inner) / (FixedWrapper::from(rhs.inner))).try_into_balance().ok(),
-            _ => self.inner.checked_div(rhs.inner),
-        }) else {
-            return None;
+            (true, true) => (FixedWrapper::from(self.inner) / FixedWrapper::from(rhs.inner))
+                .try_into_balance()
+                .ok()?,
+            _ => self.inner.checked_div(rhs.inner)?,
         };
         Some(Self::new(balance, self.is_divisible || rhs.is_divisible))
     }
@@ -897,6 +888,20 @@ mod tests {
             BalanceUnit::indivisible(2)
         );
 
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX) / BalanceUnit::indivisible(Balance::MAX),
+            BalanceUnit::indivisible(1)
+        );
+        assert_eq!(
+            BalanceUnit::indivisible(Balance::MAX) / BalanceUnit::indivisible(1),
+            BalanceUnit::indivisible(Balance::MAX)
+        );
+
+        assert_eq!(
+            BalanceUnit::divisible(Balance::MAX) / BalanceUnit::indivisible(1),
+            BalanceUnit::divisible(Balance::MAX)
+        );
+
         // check rounding
         assert_eq!(
             BalanceUnit::divisible(balance!(10)) / BalanceUnit::divisible(balance!(3)),
@@ -1038,7 +1043,7 @@ mod tests {
             Some(BalanceUnit::indivisible(0))
         );
 
-        // overflow
+        // div by zero
         assert_eq!(
             BalanceUnit::divisible(balance!(5.55)).checked_div(&BalanceUnit::divisible(0)),
             None
