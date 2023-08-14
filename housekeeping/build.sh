@@ -28,7 +28,6 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
         sudoCheckStatus=0
     elif [[ -n ${TAG_NAME} ]]; then
         featureList='include-real-files'
-        sudoCheckStatus=101
     fi
     printf "Building with features: %s\n" "$featureList"
     printf "Checking sudo pallet: %s\n" "$sudoCheckStatus"
