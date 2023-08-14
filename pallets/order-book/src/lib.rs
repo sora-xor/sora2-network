@@ -450,8 +450,8 @@ pub mod pallet {
         MaxLotSizeIsMoreThanTotalSupply,
         /// Indicated limit for slippage has not been met during transaction execution.
         SlippageLimitExceeded,
-        /// NFT order books are temporarily forbidden
-        NftOrderBooksAreTemporarilyForbidden,
+        /// Market orders are allowed only for indivisible assets
+        MarketOrdersAllowedOnlyForIndivisibleAssets,
     }
 
     #[pallet::hooks]
@@ -739,6 +739,32 @@ pub mod pallet {
                 pays_fee: Pays::No,
             })
         }
+
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::execute_market_order())]
+        pub fn execute_market_order(
+            origin: OriginFor<T>,
+            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+            direction: PriceVariant,
+            amount: Balance,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            ensure!(
+                T::AssetInfoProvider::is_non_divisible(&order_book_id.base),
+                Error::<T>::MarketOrdersAllowedOnlyForIndivisibleAssets
+            );
+            let order_book =
+                <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+
+            let amount = OrderVolume::indivisible(amount);
+            let mut data = CacheDataLayer::<T>::new();
+
+            let market_order = MarketOrder::<T>::new(who, direction, order_book_id, amount, None);
+            order_book.execute_market_order(market_order, &mut data)?;
+
+            data.commit();
+            Ok(().into())
+        }
     }
 }
 
@@ -998,7 +1024,7 @@ impl<T: Config> Pallet<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-            OrderBook::<T>::default_nft(*order_book_id)
+            OrderBook::<T>::default_indivisible(*order_book_id)
         } else {
             // regular asset
             OrderBook::<T>::default(*order_book_id)

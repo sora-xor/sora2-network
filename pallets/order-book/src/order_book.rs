@@ -90,7 +90,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         )
     }
 
-    pub fn default_nft(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
+    pub fn default_indivisible(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
         Self::new(
             order_book_id,
             OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
