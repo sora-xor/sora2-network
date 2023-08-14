@@ -6,13 +6,15 @@ else
 	awk="awk"
 fi
 
+env_file=/dev/null
+
 # MacOS default getopt doesn't support long args,
 # so installing gnu version should make it work.
 #
 # brew install gnu-getopt
 getopt_code=$($awk -f ./misc/getopt.awk <<EOF
-Usage: sh ./run_with_env.sh [OPTIONS] command
-Run command
+Usage: sh ./run_with_env.sh [-f FILE] command
+Run command with environmental variables defined in $(tput bold)file$(tput sgr0)
   -h, --help                Show usage message
 usage
 exit 0
@@ -21,7 +23,7 @@ EOF
 )
 eval "$getopt_code"
 
-# shellcheck disable=SC2154
-# shellcheck disable=SC1090
-source "$env_file"
-echo "$@"
+set -a
+. "$env_file"
+set +a
+eval "$@"

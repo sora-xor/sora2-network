@@ -43,7 +43,7 @@ destination = Path(args.directory)
 configs: dict[str, BenchmarkConfig] = {}
 for i in range(10, 3, -1):
     n = 2**i
-    configs["2_" + str(i) + ".env"] = BenchmarkConfig(n, n, n, n)
+    configs["2_" + str(i) + ".env"] = BenchmarkConfig(n, n, n*8, n*8)
 
 for name in configs:
     with open(destination.joinpath(Path(name)), "w+") as f:
