@@ -207,6 +207,7 @@ impl band::Config for Runtime {
     type Time = Timestamp;
     type OnSymbolDisabledHook = crate::Pallet<Runtime>;
     type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
+    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
 }
 
 impl oracle_proxy::Config for Runtime {

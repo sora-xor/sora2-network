@@ -112,6 +112,7 @@ impl band::Config for Runtime {
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
     type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
     type OnSymbolDisabledHook = ();
+    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
 }
 
 // Build genesis storage according to the mock runtime.

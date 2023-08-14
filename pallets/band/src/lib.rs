@@ -207,6 +207,9 @@ pub mod pallet {
         /// Rate expiration period in blocks
         #[pallet::constant]
         type GetBandRateStaleBlockPeriod: Get<Self::BlockNumber>;
+        /// Maximum number of symbols that can be relayed within a single call.
+        #[pallet::constant]
+        type MaxRelaySymbols: Get<u32>;
         /// Time used for checking if rate expired
         type Time: Time;
         /// Hook which is being executed when some symbol must be disabled
@@ -316,7 +319,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config<I>>::WeightInfo::relay())]
         pub fn relay(
             origin: OriginFor<T>,
-            rates: Vec<(T::Symbol, u64)>,
+            rates: BoundedVec<(T::Symbol, u64), T::MaxRelaySymbols>,
             resolve_time: u64,
             request_id: u64,
         ) -> DispatchResultWithPostInfo {
@@ -358,7 +361,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config<I>>::WeightInfo::force_relay())]
         pub fn force_relay(
             origin: OriginFor<T>,
-            rates: Vec<(T::Symbol, u64)>,
+            rates: BoundedVec<(T::Symbol, u64), T::MaxRelaySymbols>,
             resolve_time: u64,
             request_id: u64,
         ) -> DispatchResultWithPostInfo {
@@ -509,7 +512,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
     ///
     /// `f` - mutation function which defines the way values should be updated.
     fn update_rates(
-        rates: Vec<(T::Symbol, u64)>,
+        rates: BoundedVec<(T::Symbol, u64), T::MaxRelaySymbols>,
         resolve_time: u64,
         request_id: u64,
         f: impl Fn(
