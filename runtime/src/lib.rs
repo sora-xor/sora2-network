@@ -1589,14 +1589,14 @@ impl eth_bridge::Config for Runtime {
     type WeightInfo = eth_bridge::weights::SubstrateWeight<Runtime>;
     type WeightToFee = XorFee;
 
-    #[cfg(feature = "ready-to-test")]
+    #[cfg(feature = "wip")] // Substrate bridge
     type MessageStatusNotifier = BridgeProxy;
-    #[cfg(not(feature = "ready-to-test"))]
+    #[cfg(not(feature = "wip"))]
     type MessageStatusNotifier = ();
 
-    #[cfg(feature = "ready-to-test")]
+    #[cfg(feature = "wip")] // Substrate bridge
     type BridgeAssetLockChecker = BridgeProxy;
-    #[cfg(not(feature = "ready-to-test"))]
+    #[cfg(not(feature = "wip"))]
     type BridgeAssetLockChecker = ();
 }
 
