@@ -177,6 +177,7 @@ impl Verifier for MockVerifier {
         Ok(())
     }
 
+    #[cfg(feature = "runtime-benchmarks")]
     fn valid_proof() -> Option<Self::Proof> {
         None
     }
