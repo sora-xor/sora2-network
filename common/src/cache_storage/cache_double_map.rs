@@ -109,7 +109,7 @@ where
                 .or_default()
                 .iter()
                 .filter_map(|(key2, maybe_item)| {
-                    if let Some(Some(value)) = maybe_item.clone().map(|item| item.value().cloned())
+                    if let Some(Some(value)) = maybe_item.as_ref().map(|item| item.value().cloned())
                     {
                         Some((key2.clone(), value))
                     } else {

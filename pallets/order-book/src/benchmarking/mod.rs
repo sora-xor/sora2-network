@@ -607,6 +607,7 @@ mod tests {
             //     OrderBookPallet::<Runtime>::tech_account_for_order_book(order_book_id);
             let count_of_canceled_orders =
                 order_book.cancel_all_limit_orders(&mut data_layer).unwrap() as u32;
+            data_layer.commit();
             assert_eq!(count_of_canceled_orders, total_orders);
         })
     }

@@ -1,16 +1,20 @@
 #[allow(unused)]
 #[cfg(not(test))]
 use crate::{
-    traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
-    OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
+    cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event, ExpirationScheduler,
+    ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
 };
 #[allow(unused)]
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
-    OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
+    cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event, ExpirationScheduler,
+    ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
 };
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::iter::repeat;
+use sp_std::vec::Vec;
 
 use assets::AssetIdOf;
 
@@ -240,6 +244,10 @@ fn fill_order_book_side<T: Config>(
     use std::io::Write;
 
     let current_block = frame_system::Pallet::<T>::block_number();
+    let mut total_payment = Payment::new(order_book.order_book_id);
+    let mut to_expire = BTreeMap::<_, Vec<_>>::new();
+    #[cfg(feature = "std")]
+    println!("inserting orders");
     for (i, price) in prices.enumerate() {
         #[cfg(feature = "std")]
         {
@@ -252,9 +260,10 @@ fn fill_order_book_side<T: Config>(
             std::io::stdout().flush().unwrap();
         }
         for _ in 0..settings.max_orders_per_price {
-            let buy_order = LimitOrder::<T>::new(
+            let user = users.next().expect("infinite iterator");
+            let order = LimitOrder::<T>::new(
                 order_book.next_order_id(),
-                users.next().expect("infinite iterator"),
+                user.clone(),
                 side,
                 price,
                 settings.amount,
@@ -265,18 +274,60 @@ fn fill_order_book_side<T: Config>(
                     .saturated_into(),
                 current_block,
             );
-            // payments
-            //     .to_lock
-            //     .entry(*lock_asset)
-            //     .or_default()
-            //     .entry(limit_order.owner.clone())
-            //     .and_modify(|amount| *amount += *lock_amount.value())
-            //     .or_insert(*lock_amount.value());
-            // data.insert_limit_order(&order_book.order_book_id, buy_order)
-            //     .unwrap();
-            order_book.place_limit_order(buy_order, data).unwrap();
+            // Instead of `order_book.place_limit_order(order, data)` we do the same steps manually
+            // in order to avoid overhead on checking various restrictions and other unnecessary
+            // stuff
+
+            let order_id = order.id;
+            let expires_at = order.expires_at;
+            // lock corresponding currency
+            let lock_amount = order.deal_amount(MarketRole::Taker, None).unwrap();
+            let lock_asset = lock_amount.associated_asset(&order_book.order_book_id);
+            total_payment
+                .to_lock
+                .entry(*lock_asset)
+                .or_default()
+                .entry(order.owner.clone())
+                .and_modify(|amount| *amount += *lock_amount.value())
+                .or_insert(*lock_amount.value());
+            // insert the order in storages
+            data.insert_limit_order(&order_book.order_book_id, order)
+                .unwrap();
+            // schedule its expiration
+            to_expire.entry(expires_at).or_default().push(order_id);
         }
     }
+    #[cfg(feature = "std")]
+    println!("\nlocking payments");
+    total_payment
+        .execute_all::<OrderBookPallet<T>, OrderBookPallet<T>>()
+        .unwrap();
+    #[cfg(feature = "std")]
+    println!("scheduling expirations");
+    #[cfg(feature = "std")]
+    let total_expirations = to_expire.len();
+    for (i, (expires_at, orders)) in to_expire.into_iter().enumerate() {
+        #[cfg(feature = "std")]
+        {
+            print!(
+                "\r{}/{} ({}%)",
+                i,
+                total_expirations,
+                100.0 * (i as f32) / (total_expirations as f32)
+            );
+            std::io::stdout().flush().unwrap();
+        }
+        <ExpirationsAgenda<T>>::try_mutate(expires_at, |block_expirations| {
+            block_expirations.try_extend(
+                orders
+                    .into_iter()
+                    .map(|order_id| (order_book.order_book_id, order_id)),
+            )
+        })
+        .expect("Failed to schedule orders for expiration");
+    }
+    #[cfg(feature = "std")]
+    println!();
 }
 
 pub fn fill_order_book_worst_case<T: Config + assets::Config>(
