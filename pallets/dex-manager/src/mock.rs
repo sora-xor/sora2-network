@@ -36,7 +36,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
+
 use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -195,8 +195,8 @@ impl Default for ExtBuilder {
         Self {
             initial_dex_list: Vec::new(),
             endowed_accounts: vec![
-                (ALICE, XOR, 1_000_000_000_000_000_000u128.into()),
-                (BOB, DOT, 1_000_000_000_000_000_000u128.into()),
+                (ALICE, XOR, 1_000_000_000_000_000_000u128),
+                (BOB, DOT, 1_000_000_000_000_000_000u128),
             ],
             initial_permission_owners: Vec::new(),
             initial_permissions: Vec::new(),

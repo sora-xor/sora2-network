@@ -29,8 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use assets::AssetIdOf;
 use common::prelude::EnsureDEXManager;
@@ -63,10 +61,10 @@ impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Pall
     {
         match origin.into() {
             Ok(RawOrigin::Signed(who)) => {
-                let dex_info = Self::get_dex_info(&dex_id)?;
+                let dex_info = Self::get_dex_info(dex_id)?;
                 // If DEX is public, anyone can manage it, otherwise confirm ownership.
                 if !dex_info.is_public || mode != ManagementMode::Public {
-                    Self::ensure_direct_manager(&dex_id, &who)?;
+                    Self::ensure_direct_manager(dex_id, &who)?;
                 }
                 Ok(Some(who))
             }
@@ -77,12 +75,12 @@ impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Pall
 
 impl<T: Config> DexInfoProvider<T::DEXId, DEXInfo<T>> for Pallet<T> {
     fn get_dex_info(dex_id: &T::DEXId) -> Result<DEXInfo<T>, DispatchError> {
-        Ok(DEXInfos::<T>::get(&dex_id).ok_or(Error::<T>::DEXDoesNotExist)?)
+        Ok(DEXInfos::<T>::get(dex_id).ok_or(Error::<T>::DEXDoesNotExist)?)
     }
 
     fn ensure_dex_exists(dex_id: &T::DEXId) -> DispatchResult {
         ensure!(
-            DEXInfos::<T>::contains_key(&dex_id),
+            DEXInfos::<T>::contains_key(dex_id),
             Error::<T>::DEXDoesNotExist
         );
         Ok(())
@@ -161,7 +159,7 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             self.dex_list.iter().for_each(|(dex_id, dex_info)| {
-                DEXInfos::<T>::insert(dex_id.clone(), dex_info);
+                DEXInfos::<T>::insert(*dex_id, dex_info);
             })
         }
     }
