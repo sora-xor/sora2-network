@@ -960,6 +960,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::InvalidOrderBookId
         );
         ensure!(
+            self.min_lot_size <= market_order.amount && market_order.amount <= self.max_lot_size,
+            Error::<T>::InvalidOrderAmount
+        );
+        ensure!(
             market_order.amount.balance() % self.step_lot_size.balance() == 0,
             Error::<T>::InvalidOrderAmount
         );
