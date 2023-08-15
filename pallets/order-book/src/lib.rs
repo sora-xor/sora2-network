@@ -475,7 +475,7 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::verify_create_orderbook_params(&who, &order_book_id)?;
 
-            #[cfg(feature = "ready-to-test")] // order-book
+            #[cfg(feature = "wip")] // order-book
             {
                 T::TradingPairSourceManager::enable_source_for_trading_pair(
                     &order_book_id.dex_id,

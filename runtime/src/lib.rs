@@ -157,9 +157,9 @@ use impls::{
 };
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
-#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+#[cfg(all(feature = "private-net", feature = "wip"))] // order-book
 pub use qa_tools;
-#[cfg(feature = "wip")]
+#[cfg(feature = "ready-to-test")]
 use sp_runtime::traits::Keccak256;
 pub use {
     assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
@@ -1600,7 +1600,7 @@ parameter_types! {
     pub QaToolsWhitelistCapacity: u32 = 512;
 }
 
-#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+#[cfg(all(feature = "private-net", feature = "wip"))] // order-book
 impl qa_tools::Config for Runtime {
     type AssetInfoProvider = Assets;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
@@ -2145,7 +2145,7 @@ impl Convert<U256, Balance> for FeeConverter {
 
 #[cfg(feature = "ready-to-test")] // Bridges
 parameter_types! {
-    pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
+    pub const FeeCurrency: AssetId = XOR;
     pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
@@ -2521,7 +2521,7 @@ construct_runtime! {
         // Available only for test net
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
-        #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
+        #[cfg(all(feature = "private-net", feature = "wip"))] // order-book
         QATools: qa_tools::{Pallet, Call} = 112,
     }
 }

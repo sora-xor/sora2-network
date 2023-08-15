@@ -4709,11 +4709,6 @@ fn should_cross_spread() {
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         let limit_order7 = data.get_limit_order(&order_book_id, 7).unwrap();
 
-        let mut limit_order1_changed = limit_order1.clone();
-        limit_order1_changed.amount = balance!(150);
-        let mut limit_order7_changed = limit_order7.clone();
-        limit_order7_changed.amount = balance!(150);
-
         // buy order 1
         let buy_order_id1 = 101;
         let buy_order1 = LimitOrder::<Runtime>::new(

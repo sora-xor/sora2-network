@@ -252,20 +252,6 @@ pub mod pallet {
     pub type DynamicFeeParameters<T: Config<I>, I: 'static = ()> =
         StorageValue<_, FeeCalculationParameters, ValueQuery, DefaultDynamicFeeParameters<T, I>>;
 
-    #[pallet::type_value]
-    pub fn DefaultDynamicFeeParameters<T: Config<I>, I: 'static>() -> FeeCalculationParameters {
-        FeeCalculationParameters {
-            decay: fixed!(0),
-            min_fee: fixed!(1),
-            deviation: fixed!(0),
-        }
-    }
-
-    #[pallet::storage]
-    #[pallet::getter(fn dynamic_fee_parameters)]
-    pub type DynamicFeeParameters<T: Config<I>, I: 'static = ()> =
-        StorageValue<_, FeeCalculationParameters, ValueQuery, DefaultDynamicFeeParameters<T, I>>;
-
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config<I>, I: 'static = ()> {
