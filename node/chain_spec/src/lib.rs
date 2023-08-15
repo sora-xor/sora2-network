@@ -35,7 +35,7 @@
 
 #![allow(unused_imports, unused_macros, dead_code)]
 // TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+// #![allow(clippy::all)]
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
@@ -94,7 +94,7 @@ type AccountPublic = <Signature as Verify>::Signer;
 
 /// Helper function to generate a crypto pair from seed
 fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
-    TPublic::Pair::from_string(&format!("//{}", seed), None)
+    TPublic::Pair::from_string(&format!("//{seed}"), None)
         .expect("static values are valid; qed")
         .public()
 }
@@ -120,7 +120,7 @@ pub fn authority_keys_from_seed(
     BeefyId,
 ) {
     (
-        get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
+        get_account_id_from_seed::<sr25519::Public>(&format!("{seed}//stash")),
         get_account_id_from_seed::<sr25519::Public>(seed),
         get_from_seed::<AuraId>(seed),
         get_from_seed::<BabeId>(seed),
@@ -179,23 +179,23 @@ struct EthBridgeParams {
 }
 
 fn calculate_reserves(accounts: impl Iterator<Item = Balance>) -> Balance {
-    accounts.fold(0, |sum, balance| sum + balance)
+    accounts.sum()
 }
 
 pub fn staging_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_staging.json")[..])
+    ChainSpec::from_json_bytes(our_include_bytes!("./bytes/chain_spec_staging.json"))
 }
 
 pub fn bridge_staging_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_bridge_staging.json")[..])
+    ChainSpec::from_json_bytes(our_include_bytes!("./bytes/chain_spec_bridge_staging.json"))
 }
 
 pub fn test_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
+    ChainSpec::from_json_bytes(our_include_bytes!("./bytes/chain_spec_test.json"))
 }
 
 pub fn main_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
+    ChainSpec::from_json_bytes(our_include_bytes!("./bytes/chain_spec_main.json"))
 }
 
 #[cfg(feature = "private-net")]
@@ -645,7 +645,7 @@ fn bonding_curve_distribution_accounts(
     let projects_stores_and_shops_coeff = projects_coefficient.clone() * fixed_wrapper!(0.04);
     let projects_parliament_and_development_coeff =
         projects_coefficient.clone() * fixed_wrapper!(0.05);
-    let projects_other_coeff = projects_coefficient.clone() * fixed_wrapper!(0.9);
+    let projects_other_coeff = projects_coefficient * fixed_wrapper!(0.9);
 
     debug_assert_eq!(
         Fixed::ONE,
@@ -653,7 +653,7 @@ fn bonding_curve_distribution_accounts(
             val_holders_xor_alloc_coeff.clone()
                 + projects_sora_citizens_coeff.clone()
                 + projects_stores_and_shops_coeff.clone()
-                + projects_parliament_and_development_coeff.clone()
+                + projects_parliament_and_development_coeff
                 + projects_other_coeff.clone()
                 + val_holders_buy_back_coefficient.clone()
         )
