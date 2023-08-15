@@ -396,7 +396,7 @@ fn should_create_order_book_for_nft() {
 
         assert_eq!(
             OrderBookPallet::order_books(order_book_id).unwrap(),
-            OrderBook::default_nft(order_book_id)
+            OrderBook::default_indivisible(order_book_id)
         );
     });
 }
@@ -2745,6 +2745,162 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
         assert_eq!(
             OrderBookPallet::asks(&order_book_id2, &ask_price3).unwrap(),
             vec![10, 12]
+        );
+    });
+}
+
+#[test]
+fn should_not_execute_market_order_with_divisible_asset() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+        fill_balance(alice(), order_book_id);
+
+        assert_err!(
+            OrderBookPallet::execute_market_order(
+                RawOrigin::Signed(alice()).into(),
+                order_book_id,
+                PriceVariant::Buy,
+                balance!(10)
+            ),
+            E::MarketOrdersAllowedOnlyForIndivisibleAssets
+        );
+
+        assert_err!(
+            OrderBookPallet::execute_market_order(
+                RawOrigin::Signed(alice()).into(),
+                order_book_id,
+                PriceVariant::Sell,
+                balance!(10)
+            ),
+            E::MarketOrdersAllowedOnlyForIndivisibleAssets
+        );
+    });
+}
+
+#[test]
+fn should_execute_market_order_with_indivisible_asset() {
+    ext().execute_with(|| {
+        FrameSystem::inc_providers(&bob());
+
+        let nft = Assets::register_from(
+            &bob(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            100000,
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: nft,
+            quote: XOR.into(),
+        };
+
+        fill_balance(alice(), order_book_id);
+        fill_balance(bob(), order_book_id);
+
+        assert_ok!(TradingPair::register(
+            RawOrigin::Signed(bob()).into(),
+            DEX.into(),
+            order_book_id.quote,
+            order_book_id.base
+        ));
+
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(bob()).into(),
+            order_book_id
+        ));
+
+        let buy_price = balance!(10);
+        let sell_price = balance!(11);
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(bob()).into(),
+            order_book_id,
+            buy_price,
+            100,
+            PriceVariant::Buy,
+            None
+        ));
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(bob()).into(),
+            order_book_id,
+            sell_price,
+            100,
+            PriceVariant::Sell,
+            None
+        ));
+
+        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
+        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        let mut bob_base_balance = free_balance(&order_book_id.base, &bob());
+        let mut bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        let amount = 20;
+
+        // buy market order
+        assert_ok!(OrderBookPallet::execute_market_order(
+            RawOrigin::Signed(alice()).into(),
+            order_book_id,
+            PriceVariant::Buy,
+            amount
+        ));
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance + amount
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance - amount * sell_price
+        );
+        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance + amount * sell_price
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        bob_base_balance = free_balance(&order_book_id.base, &bob());
+        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        // sell market order
+        assert_ok!(OrderBookPallet::execute_market_order(
+            RawOrigin::Signed(alice()).into(),
+            order_book_id,
+            PriceVariant::Sell,
+            amount
+        ));
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance - amount
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance + amount * buy_price
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &bob()),
+            bob_base_balance + amount
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance
         );
     });
 }

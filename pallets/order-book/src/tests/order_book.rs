@@ -99,7 +99,7 @@ fn should_create_default() {
 }
 
 #[test]
-fn should_create_default_nft() {
+fn should_create_default_indivisible() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
         base: VAL.into(),
@@ -116,7 +116,10 @@ fn should_create_default_nft() {
         max_lot_size: OrderVolume::indivisible(100000),
     };
 
-    assert_eq!(OrderBook::<Runtime>::default_nft(order_book_id), expected);
+    assert_eq!(
+        OrderBook::<Runtime>::default_indivisible(order_book_id),
+        expected
+    );
 }
 
 #[test]
@@ -243,7 +246,7 @@ fn should_place_nft_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default_nft(order_book_id);
+        let order_book = OrderBook::<Runtime>::default_indivisible(order_book_id);
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         let order_id = 11;
@@ -762,7 +765,7 @@ fn should_not_place_invalid_nft_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default_nft(order_book_id);
+        let order_book = OrderBook::<Runtime>::default_indivisible(order_book_id);
 
         let order = LimitOrder::<Runtime>::new(
             1,
