@@ -80,8 +80,8 @@ fn should_create_and_fill_orderbook() {
                 vec![(
                     order_book_id,
                     OrderBookFillSettings {
-                        best_bid_price,
-                        best_ask_price,
+                        best_bid_price: best_bid_price.into(),
+                        best_ask_price: best_ask_price.into(),
                         lifespan: None,
                     }
                 )]
@@ -112,19 +112,18 @@ fn should_create_and_fill_orderbook() {
         test_create_and_fill_batch(VAL, XOR, balance!(10), balance!(11));
 
         FrameSystem::inc_providers(&bob());
-        let _nft = assets::Pallet::<Runtime>::register_from(
+        let nft = assets::Pallet::<Runtime>::register_from(
             &bob(),
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(1),
+            1,
             false,
             None,
             None,
         )
         .unwrap();
-        // todo (m.tagirov) enable in #542
-        // test_create_and_fill_batch(nft, XOR, balance!(10), balance!(11));
+        test_create_and_fill_batch(nft, XOR, balance!(10), balance!(11));
     });
 }
 

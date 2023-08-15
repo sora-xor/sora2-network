@@ -15,6 +15,8 @@
 //! - `burn`: Burn an ETH balance.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;

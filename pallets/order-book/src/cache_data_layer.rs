@@ -37,7 +37,7 @@ use common::cache_storage::{CacheStorageDoubleMap, CacheStorageMap};
 use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{CheckedAdd, CheckedSub, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
@@ -189,7 +189,7 @@ impl<T: Config> CacheDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .unwrap_or_default()
-            .checked_add(*value)
+            .checked_add(value)
             .ok_or(())?;
         agg_bids.try_insert(*price, volume).map_err(|_| ())?;
         self.aggregated_bids.set(order_book_id.clone(), agg_bids);
@@ -211,7 +211,7 @@ impl<T: Config> CacheDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .unwrap_or_default()
-            .checked_sub(*value)
+            .checked_sub(value)
             .ok_or(())?;
         if volume.is_zero() {
             agg_bids.remove(price);
@@ -237,7 +237,7 @@ impl<T: Config> CacheDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .unwrap_or_default()
-            .checked_add(*value)
+            .checked_add(value)
             .ok_or(())?;
         agg_asks.try_insert(*price, volume).map_err(|_| ())?;
         self.aggregated_asks.set(order_book_id.clone(), agg_asks);
@@ -259,7 +259,7 @@ impl<T: Config> CacheDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .unwrap_or_default()
-            .checked_sub(*value)
+            .checked_sub(value)
             .ok_or(())?;
         if volume.is_zero() {
             agg_asks.remove(price);
@@ -356,7 +356,10 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         }
         ensure!(order.amount > new_amount, Error::<T>::UpdateLimitOrderError);
 
-        let delta = order.amount - new_amount;
+        let delta = order
+            .amount
+            .checked_sub(&new_amount)
+            .ok_or(Error::<T>::AmountCalculationFailed)?;
 
         match order.side {
             PriceVariant::Buy => {

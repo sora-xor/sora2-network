@@ -95,6 +95,7 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
     pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+    pub const GetBandRateStaleBlockPeriod: u64 = 600;
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -193,6 +194,7 @@ impl Config for Runtime {
     type Oracle = oracle_proxy::Pallet<Runtime>;
     type Symbol = <Runtime as band::Config>::Symbol;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -203,6 +205,9 @@ impl band::Config for Runtime {
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
     type Time = Timestamp;
+    type OnSymbolDisabledHook = crate::Pallet<Runtime>;
+    type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
+    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
 }
 
 impl oracle_proxy::Config for Runtime {
