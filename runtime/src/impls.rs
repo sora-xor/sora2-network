@@ -32,13 +32,13 @@ use core::marker::PhantomData;
 
 #[cfg(feature = "wip")]
 use codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchClass, GetDispatchInfo};
+use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::constants::BlockExecutionWeight;
 use frame_support::weights::Weight;
 #[cfg(feature = "wip")]
 use frame_support::{
-    dispatch::{DispatchInfo, Dispatchable, PostDispatchInfo},
+    dispatch::{DispatchInfo, Dispatchable, GetDispatchInfo, PostDispatchInfo},
     traits::Contains,
     RuntimeDebug,
 };
@@ -294,6 +294,7 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     }
 }
 
+#[cfg(feature = "wip")] // Substrate bridge
 impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
     fn get_dispatch_info(&self) -> DispatchInfo {
         match &self.0 {
@@ -308,7 +309,6 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
             }
             bridge_types::substrate::BridgeCall::MultisigVerifier(msg) => {
                 let call: multisig_verifier::Call<crate::Runtime> = msg.clone().into();
-                let call: crate::RuntimeCall = call.into();
                 call.get_dispatch_info()
             }
         }

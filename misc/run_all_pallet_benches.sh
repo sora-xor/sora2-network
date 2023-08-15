@@ -25,6 +25,8 @@ declare -A PATH_OVERRIDES=(
     [substrate-bridge-channel-inbound]=./runtime/src/weights/substrate_inbound_channel.rs
     [substrate-bridge-channel-outbound]=./runtime/src/weights/substrate_outbound_channel.rs
     [dispatch]=./runtime/src/weights/dispatch.rs
+    [multisig-verifier]=./runtime/src/weights/multisig_verifier.rs
+    [bridge-data-signer]=./runtime/src/weights/bridge_data_signer.rs
 )
 
 

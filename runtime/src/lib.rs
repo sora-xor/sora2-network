@@ -2395,7 +2395,7 @@ impl bridge_data_signer::Config for Runtime {
     type MaxPeers = BridgeMaxPeers;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
-    type WeightInfo = bridge_data_signer::weights::SubstrateWeight<Runtime>;
+    type WeightInfo = crate::weights::bridge_data_signer::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
@@ -2405,7 +2405,7 @@ impl multisig_verifier::Config for Runtime {
         dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type MaxPeers = BridgeMaxPeers;
-    type WeightInfo = multisig_verifier::weights::SubstrateWeight<Runtime>;
+    type WeightInfo = crate::weights::multisig_verifier::SubstrateWeight<Runtime>;
 }
 
 construct_runtime! {
