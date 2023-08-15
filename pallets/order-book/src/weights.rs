@@ -50,6 +50,9 @@ pub trait WeightInfo {
     fn cancel_limit_order() -> Weight {
         Weight::zero()
     }
+    fn execute_market_order() -> Weight {
+        Weight::zero()
+    }
     fn quote() -> Weight {
         Weight::zero()
     }
@@ -87,6 +90,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
         Weight::zero()
     }
     fn cancel_limit_order() -> Weight {
+        Weight::zero()
+    }
+    fn execute_market_order() -> Weight {
         Weight::zero()
     }
     fn quote() -> Weight {

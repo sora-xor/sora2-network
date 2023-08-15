@@ -1,6 +1,8 @@
 //! Channel for passing messages from substrate to ethereum.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use bridge_types::{H256, U256};
 use codec::Encode;
@@ -381,6 +383,10 @@ pub mod pallet {
                 message_id,
             )
             .hash())
+        }
+
+        fn submit_weight() -> Weight {
+            Default::default()
         }
     }
 }

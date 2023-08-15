@@ -28,6 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
+
 #[macro_use]
 extern crate codec;
 
@@ -118,6 +121,8 @@ pub mod runtime {
     use ::bridge_types::HeaderId;
     #[subxt(substitute_type = "bridge_types::SubNetworkId")]
     use ::bridge_types::SubNetworkId;
+    #[subxt(substitute_type = "common::balance_unit::BalanceUnit")]
+    use ::common::prelude::BalanceUnit;
     #[subxt(substitute_type = "common::primitives::AssetId32")]
     use ::common::AssetId32;
     #[subxt(substitute_type = "common::primitives::AssetName")]

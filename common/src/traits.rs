@@ -266,6 +266,16 @@ impl<Symbol, Rate, ResolveTime> DataFeed<Symbol, Rate, ResolveTime> for () {
     }
 }
 
+pub trait OnSymbolDisabled<Symbol> {
+    fn disable_symbol(symbol: &Symbol);
+}
+
+impl<Symbol> OnSymbolDisabled<Symbol> for () {
+    fn disable_symbol(_symbol: &Symbol) {
+        ()
+    }
+}
+
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
     for ()
 {

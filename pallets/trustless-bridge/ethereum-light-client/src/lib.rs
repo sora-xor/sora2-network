@@ -18,6 +18,8 @@
 //!
 #![allow(unused_variables)]
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 mod weights;
 
@@ -1091,6 +1093,15 @@ pub mod pallet {
             }
 
             Ok(())
+        }
+
+        fn verify_weight(_proof: &Self::Proof) -> Weight {
+            Default::default()
+        }
+
+        #[cfg(feature = "runtime-benchmarks")]
+        fn valid_proof() -> Option<Self::Proof> {
+            None
         }
     }
 }

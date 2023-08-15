@@ -36,7 +36,7 @@ use assets::AssetIdOf;
 use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{CheckedAdd, CheckedSub, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
@@ -92,7 +92,7 @@ impl<T: Config> StorageDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .unwrap_or_default()
-            .checked_add(*value)
+            .checked_add(value)
             .ok_or(())?;
         bids.try_insert(*price, volume).map_err(|_| ())?;
         <AggregatedBids<T>>::set(order_book_id, bids);
@@ -109,7 +109,7 @@ impl<T: Config> StorageDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .ok_or(())?
-            .checked_sub(*value)
+            .checked_sub(value)
             .ok_or(())?;
         if volume.is_zero() {
             agg_bids.remove(price).ok_or(())?;
@@ -130,7 +130,7 @@ impl<T: Config> StorageDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .unwrap_or_default()
-            .checked_add(*value)
+            .checked_add(value)
             .ok_or(())?;
         asks.try_insert(*price, volume).map_err(|_| ())?;
         <AggregatedAsks<T>>::set(order_book_id, asks);
@@ -147,7 +147,7 @@ impl<T: Config> StorageDataLayer<T> {
             .get(price)
             .map(|x| *x)
             .ok_or(())?
-            .checked_sub(*value)
+            .checked_sub(value)
             .ok_or(())?;
         if volume.is_zero() {
             agg_asks.remove(price).ok_or(())?;
@@ -234,7 +234,10 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         }
         ensure!(order.amount > new_amount, Error::<T>::UpdateLimitOrderError);
 
-        let delta = order.amount - new_amount;
+        let delta = order
+            .amount
+            .checked_sub(&new_amount)
+            .ok_or(Error::<T>::AmountCalculationFailed)?;
 
         match order.side {
             PriceVariant::Buy => {

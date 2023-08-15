@@ -207,14 +207,13 @@ impl technical::Config for Test {
 
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type NetworkId = EVMChainId;
-    type Additional = AdditionalEVMInboundData;
     type OriginOutput = CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
     type Origin = RuntimeOrigin;
     type MessageId = MessageId;
     type Hashing = Keccak256;
     type Call = RuntimeCall;
     type CallFilter = Everything;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -284,8 +283,6 @@ impl eth_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
@@ -332,8 +329,6 @@ impl erc20_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type MessageStatusNotifier = BridgeProxy;

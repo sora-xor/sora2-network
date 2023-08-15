@@ -41,6 +41,8 @@
 //! - `register` - registers new asset by a given ID.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 #[allow(unused_imports)]
 #[macro_use]
