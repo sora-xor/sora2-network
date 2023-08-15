@@ -2039,17 +2039,32 @@ fn should_not_execute_market_order_with_invalid_amount() {
 
         let order_book = create_and_fill_order_book(order_book_id);
 
-        let wrong_amount = balance!(1.123456).into();
         let order = MarketOrder::<Runtime>::new(
             alice(),
             PriceVariant::Buy,
             order_book_id,
-            wrong_amount,
+            balance!(1).into(),
             None,
         );
 
+        let mut wrong_amount_order = order.clone();
+        wrong_amount_order.amount = balance!(1.123456).into();
         assert_err!(
-            order_book.execute_market_order(order, &mut data),
+            order_book.execute_market_order(wrong_amount_order, &mut data),
+            E::InvalidOrderAmount
+        );
+
+        let mut too_small_amount_order = order.clone();
+        too_small_amount_order.amount = (order_book.min_lot_size.balance() / 2).into();
+        assert_err!(
+            order_book.execute_market_order(too_small_amount_order, &mut data),
+            E::InvalidOrderAmount
+        );
+
+        let mut too_big_amount_order = order.clone();
+        too_big_amount_order.amount = (order_book.max_lot_size.balance() + 1).into();
+        assert_err!(
+            order_book.execute_market_order(too_big_amount_order, &mut data),
             E::InvalidOrderAmount
         );
     });
