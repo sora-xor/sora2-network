@@ -34,6 +34,8 @@
 //   specified, we have to rely on such constructions.
 
 #![allow(unused_imports, unused_macros, dead_code)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{

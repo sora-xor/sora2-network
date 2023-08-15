@@ -31,6 +31,7 @@
 use codec::alloc::collections::HashSet;
 use common::{fixed, DataFeed};
 use frame_support::{assert_err, error::BadOrigin};
+use sp_core::TryCollect;
 
 use crate::{mock::*, Oracle, Rate};
 
@@ -43,7 +44,11 @@ fn relay_symbols() {
     Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
     Band::relay(
         RuntimeOrigin::signed(relayer),
-        symbols.into_iter().zip(rates.into_iter()).collect(),
+        symbols
+            .into_iter()
+            .zip(rates.into_iter())
+            .try_collect()
+            .unwrap(),
         initial_resolve_time,
         0,
     )

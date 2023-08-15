@@ -48,7 +48,7 @@ fn main() {
         .to_str()
         .unwrap()
         .to_string();
-    println!("cargo:rerun-if-changed={}/runtime", workspace_root);
-    println!("cargo:rerun-if-changed={}/pallets", workspace_root);
-    println!("cargo:rerun-if-changed={}/common", workspace_root);
+    println!("cargo:rerun-if-changed={workspace_root}/runtime");
+    println!("cargo:rerun-if-changed={workspace_root}/pallets");
+    println!("cargo:rerun-if-changed={workspace_root}/common");
 }

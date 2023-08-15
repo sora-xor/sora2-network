@@ -41,7 +41,8 @@ use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
-    Config, LimitOrder, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
+    Config, LimitOrder, MarketRole, OrderBook, OrderBookId, OrderBookStatus, OrderPrice,
+    OrderVolume,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use hex_literal::hex;
@@ -273,7 +274,6 @@ fn should_not_create_order_book_that_already_exists() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_not_create_order_book_for_user_without_nft() {
     ext().execute_with(|| {
         let caller = alice();
@@ -285,7 +285,7 @@ fn should_not_create_order_book_for_user_without_nft() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(1),
+            1,
             false,
             None,
             None,
@@ -313,7 +313,6 @@ fn should_not_create_order_book_for_user_without_nft() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_not_create_order_book_for_nft_owner_without_nft() {
     ext().execute_with(|| {
         let caller = alice();
@@ -325,7 +324,7 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(1),
+            1,
             false,
             None,
             None,
@@ -347,13 +346,7 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
 
         // caller creates NFT and then send it to another user.
         // That means they cannot create order book with this NFT even they are NFT asset owner
-        Assets::transfer(
-            RawOrigin::Signed(caller.clone()).into(),
-            nft,
-            user,
-            balance!(1),
-        )
-        .unwrap();
+        Assets::transfer(RawOrigin::Signed(caller.clone()).into(), nft, user, 1).unwrap();
 
         assert_err!(
             OrderBookPallet::create_orderbook(RawOrigin::Signed(caller).into(), order_book_id),
@@ -363,7 +356,6 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_create_order_book_for_nft() {
     ext().execute_with(|| {
         let caller = alice();
@@ -375,20 +367,14 @@ fn should_create_order_book_for_nft() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(1),
+            1,
             false,
             None,
             None,
         )
         .unwrap();
 
-        Assets::transfer(
-            RawOrigin::Signed(creator).into(),
-            nft,
-            caller.clone(),
-            balance!(1),
-        )
-        .unwrap();
+        Assets::transfer(RawOrigin::Signed(creator).into(), nft, caller.clone(), 1).unwrap();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -410,7 +396,7 @@ fn should_create_order_book_for_nft() {
 
         assert_eq!(
             OrderBookPallet::order_books(order_book_id).unwrap(),
-            OrderBook::default_nft(order_book_id)
+            OrderBook::default_indivisible(order_book_id)
         );
     });
 }
@@ -567,9 +553,9 @@ fn should_delete_order_book_with_a_lot_of_orders() {
 
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
 
-        let mut buy_price = balance!(1000);
+        let mut buy_price: OrderPrice = balance!(1000).into();
         let mut buy_lifespan = 10000; // ms
-        let mut sell_price = balance!(1001);
+        let mut sell_price: OrderPrice = balance!(1001).into();
         let mut sell_lifespan = 10000; // ms
 
         let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
@@ -588,7 +574,7 @@ fn should_delete_order_book_with_a_lot_of_orders() {
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(account.clone()).into(),
                 order_book_id,
-                buy_price,
+                *buy_price.balance(),
                 balance!(10),
                 PriceVariant::Buy,
                 Some(buy_lifespan)
@@ -597,7 +583,7 @@ fn should_delete_order_book_with_a_lot_of_orders() {
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(account).into(),
                 order_book_id,
-                sell_price,
+                *sell_price.balance(),
                 balance!(10),
                 PriceVariant::Sell,
                 Some(sell_lifespan)
@@ -613,7 +599,6 @@ fn should_delete_order_book_with_a_lot_of_orders() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_check_permissions_for_update_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -703,7 +688,7 @@ fn should_check_permissions_for_update_order_book() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(100),
+            100,
             false,
             None,
             None,
@@ -728,18 +713,18 @@ fn should_check_permissions_for_update_order_book() {
             RawOrigin::Signed(asset_owner_base).into(),
             order_book_id,
             balance!(0.01),
-            balance!(2),
-            balance!(4),
-            balance!(100),
+            2,
+            4,
+            100,
         ),);
         assert_err!(
             OrderBookPallet::update_orderbook(
                 RawOrigin::Signed(asset_owner_quote).into(),
                 order_book_id,
                 balance!(0.01),
-                balance!(2),
-                balance!(4),
-                balance!(100),
+                2,
+                4,
+                100,
             ),
             BadOrigin
         );
@@ -748,9 +733,9 @@ fn should_check_permissions_for_update_order_book() {
                 RawOrigin::Signed(alice()).into(),
                 order_book_id,
                 balance!(0.01),
-                balance!(2),
-                balance!(4),
-                balance!(100),
+                2,
+                4,
+                100,
             ),
             BadOrigin
         );
@@ -800,7 +785,7 @@ fn should_not_update_order_book_with_zero_attributes() {
             OrderBookPallet::update_orderbook(
                 RuntimeOrigin::root(),
                 order_book_id,
-                balance!(0),
+                0,
                 step_lot_size,
                 min_lot_size,
                 max_lot_size
@@ -813,7 +798,7 @@ fn should_not_update_order_book_with_zero_attributes() {
                 RuntimeOrigin::root(),
                 order_book_id,
                 tick_size,
-                balance!(0),
+                0,
                 min_lot_size,
                 max_lot_size
             ),
@@ -826,7 +811,7 @@ fn should_not_update_order_book_with_zero_attributes() {
                 order_book_id,
                 tick_size,
                 step_lot_size,
-                balance!(0),
+                0,
                 max_lot_size
             ),
             E::InvalidMinLotSize
@@ -839,7 +824,7 @@ fn should_not_update_order_book_with_zero_attributes() {
                 tick_size,
                 step_lot_size,
                 min_lot_size,
-                balance!(0)
+                0
             ),
             E::InvalidMaxLotSize
         );
@@ -1043,68 +1028,6 @@ fn should_not_update_order_book_when_attributes_exceed_total_supply() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
-fn should_not_update_order_book_with_nft_bounds() {
-    ext().execute_with(|| {
-        FrameSystem::inc_providers(&alice());
-
-        let nft = Assets::register_from(
-            &alice(),
-            AssetSymbol(b"NFT".to_vec()),
-            AssetName(b"Nft".to_vec()),
-            0,
-            balance!(100),
-            false,
-            None,
-            None,
-        )
-        .unwrap();
-
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: nft,
-            quote: XOR.into(),
-        };
-
-        assert_ok!(TradingPair::register(
-            RawOrigin::Signed(alice()).into(),
-            DEX.into(),
-            order_book_id.quote,
-            order_book_id.base
-        ));
-
-        assert_ok!(OrderBookPallet::create_orderbook(
-            RawOrigin::Signed(alice()).into(),
-            order_book_id
-        ));
-
-        assert_err!(
-            OrderBookPallet::update_orderbook(
-                RuntimeOrigin::root(),
-                order_book_id,
-                balance!(0.01),
-                balance!(0.5),
-                balance!(1),
-                balance!(10)
-            ),
-            E::InvalidStepLotSize
-        );
-
-        assert_err!(
-            OrderBookPallet::update_orderbook(
-                RuntimeOrigin::root(),
-                order_book_id,
-                balance!(0.01),
-                balance!(1.1),
-                balance!(1),
-                balance!(10)
-            ),
-            E::InvalidStepLotSize
-        );
-    });
-}
-
-#[test]
 fn should_update_order_book_with_regular_asset() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -1129,18 +1052,18 @@ fn should_update_order_book_with_regular_asset() {
         let limit_order12 = OrderBookPallet::limit_orders(order_book_id, 12).unwrap();
 
         // check amounts before update
-        assert_eq!(limit_order1.amount, balance!(168.5));
-        assert_eq!(limit_order2.amount, balance!(95.2));
-        assert_eq!(limit_order3.amount, balance!(44.7));
-        assert_eq!(limit_order4.amount, balance!(56.4));
-        assert_eq!(limit_order5.amount, balance!(89.9));
-        assert_eq!(limit_order6.amount, balance!(115));
-        assert_eq!(limit_order7.amount, balance!(176.3));
-        assert_eq!(limit_order8.amount, balance!(85.4));
-        assert_eq!(limit_order9.amount, balance!(93.2));
-        assert_eq!(limit_order10.amount, balance!(36.6));
-        assert_eq!(limit_order11.amount, balance!(205.5));
-        assert_eq!(limit_order12.amount, balance!(13.7));
+        assert_eq!(limit_order1.amount, balance!(168.5).into());
+        assert_eq!(limit_order2.amount, balance!(95.2).into());
+        assert_eq!(limit_order3.amount, balance!(44.7).into());
+        assert_eq!(limit_order4.amount, balance!(56.4).into());
+        assert_eq!(limit_order5.amount, balance!(89.9).into());
+        assert_eq!(limit_order6.amount, balance!(115).into());
+        assert_eq!(limit_order7.amount, balance!(176.3).into());
+        assert_eq!(limit_order8.amount, balance!(85.4).into());
+        assert_eq!(limit_order9.amount, balance!(93.2).into());
+        assert_eq!(limit_order10.amount, balance!(36.6).into());
+        assert_eq!(limit_order11.amount, balance!(205.5).into());
+        assert_eq!(limit_order12.amount, balance!(13.7).into());
 
         let tick_size = balance!(0.01);
         let step_lot_size = balance!(0.001);
@@ -1159,10 +1082,10 @@ fn should_update_order_book_with_regular_asset() {
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
 
         // check new attributes
-        assert_eq!(order_book.tick_size, tick_size);
-        assert_eq!(order_book.step_lot_size, step_lot_size);
-        assert_eq!(order_book.min_lot_size, min_lot_size);
-        assert_eq!(order_book.max_lot_size, max_lot_size);
+        assert_eq!(order_book.tick_size, tick_size.into());
+        assert_eq!(order_book.step_lot_size, step_lot_size.into());
+        assert_eq!(order_book.min_lot_size, min_lot_size.into());
+        assert_eq!(order_book.max_lot_size, max_lot_size.into());
 
         let limit_order1 = OrderBookPallet::limit_orders(order_book_id, 1).unwrap();
         let limit_order2 = OrderBookPallet::limit_orders(order_book_id, 2).unwrap();
@@ -1179,23 +1102,22 @@ fn should_update_order_book_with_regular_asset() {
 
         // check that amounts are not changed after update
         // because they are suitable for new step_lot_size
-        assert_eq!(limit_order1.amount, balance!(168.5));
-        assert_eq!(limit_order2.amount, balance!(95.2));
-        assert_eq!(limit_order3.amount, balance!(44.7));
-        assert_eq!(limit_order4.amount, balance!(56.4));
-        assert_eq!(limit_order5.amount, balance!(89.9));
-        assert_eq!(limit_order6.amount, balance!(115));
-        assert_eq!(limit_order7.amount, balance!(176.3));
-        assert_eq!(limit_order8.amount, balance!(85.4));
-        assert_eq!(limit_order9.amount, balance!(93.2));
-        assert_eq!(limit_order10.amount, balance!(36.6));
-        assert_eq!(limit_order11.amount, balance!(205.5));
-        assert_eq!(limit_order12.amount, balance!(13.7));
+        assert_eq!(limit_order1.amount, balance!(168.5).into());
+        assert_eq!(limit_order2.amount, balance!(95.2).into());
+        assert_eq!(limit_order3.amount, balance!(44.7).into());
+        assert_eq!(limit_order4.amount, balance!(56.4).into());
+        assert_eq!(limit_order5.amount, balance!(89.9).into());
+        assert_eq!(limit_order6.amount, balance!(115).into());
+        assert_eq!(limit_order7.amount, balance!(176.3).into());
+        assert_eq!(limit_order8.amount, balance!(85.4).into());
+        assert_eq!(limit_order9.amount, balance!(93.2).into());
+        assert_eq!(limit_order10.amount, balance!(36.6).into());
+        assert_eq!(limit_order11.amount, balance!(205.5).into());
+        assert_eq!(limit_order12.amount, balance!(13.7).into());
     });
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_update_order_book_with_nft() {
     ext().execute_with(|| {
         FrameSystem::inc_providers(&alice());
@@ -1205,7 +1127,7 @@ fn should_update_order_book_with_nft() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(100),
+            100,
             false,
             None,
             None,
@@ -1230,18 +1152,18 @@ fn should_update_order_book_with_nft() {
             order_book_id
         ));
 
-        let tick_size = balance!(0.01);
-        let step_lot_size = balance!(2);
-        let min_lot_size = balance!(4);
-        let max_lot_size = balance!(100);
+        let tick_size = OrderPrice::divisible(balance!(0.01));
+        let step_lot_size = OrderVolume::indivisible(2);
+        let min_lot_size = OrderVolume::indivisible(4);
+        let max_lot_size = OrderVolume::indivisible(100);
 
         assert_ok!(OrderBookPallet::update_orderbook(
             RuntimeOrigin::root(),
             order_book_id,
-            tick_size,
-            step_lot_size,
-            min_lot_size,
-            max_lot_size
+            *tick_size.balance(),
+            *step_lot_size.balance(),
+            *min_lot_size.balance(),
+            *max_lot_size.balance()
         ));
 
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
@@ -1278,18 +1200,18 @@ fn should_align_limit_orders_when_update_order_book() {
         let limit_order12 = OrderBookPallet::limit_orders(order_book_id, 12).unwrap();
 
         // check that amounts are original before align
-        assert_eq!(limit_order1.amount, balance!(168.5));
-        assert_eq!(limit_order2.amount, balance!(95.2));
-        assert_eq!(limit_order3.amount, balance!(44.7));
-        assert_eq!(limit_order4.amount, balance!(56.4));
-        assert_eq!(limit_order5.amount, balance!(89.9));
-        assert_eq!(limit_order6.amount, balance!(115));
-        assert_eq!(limit_order7.amount, balance!(176.3));
-        assert_eq!(limit_order8.amount, balance!(85.4));
-        assert_eq!(limit_order9.amount, balance!(93.2));
-        assert_eq!(limit_order10.amount, balance!(36.6));
-        assert_eq!(limit_order11.amount, balance!(205.5));
-        assert_eq!(limit_order12.amount, balance!(13.7));
+        assert_eq!(limit_order1.amount, balance!(168.5).into());
+        assert_eq!(limit_order2.amount, balance!(95.2).into());
+        assert_eq!(limit_order3.amount, balance!(44.7).into());
+        assert_eq!(limit_order4.amount, balance!(56.4).into());
+        assert_eq!(limit_order5.amount, balance!(89.9).into());
+        assert_eq!(limit_order6.amount, balance!(115).into());
+        assert_eq!(limit_order7.amount, balance!(176.3).into());
+        assert_eq!(limit_order8.amount, balance!(85.4).into());
+        assert_eq!(limit_order9.amount, balance!(93.2).into());
+        assert_eq!(limit_order10.amount, balance!(36.6).into());
+        assert_eq!(limit_order11.amount, balance!(205.5).into());
+        assert_eq!(limit_order12.amount, balance!(13.7).into());
 
         // get balances before align
         let bob_base_balance = free_balance(&order_book_id.base, &bob());
@@ -1325,18 +1247,18 @@ fn should_align_limit_orders_when_update_order_book() {
         let limit_order12 = OrderBookPallet::limit_orders(order_book_id, 12).unwrap();
 
         // check that amouts are aligned
-        assert_eq!(limit_order1.amount, balance!(168));
-        assert_eq!(limit_order2.amount, balance!(95));
-        assert_eq!(limit_order3.amount, balance!(44));
-        assert_eq!(limit_order4.amount, balance!(56));
-        assert_eq!(limit_order5.amount, balance!(89));
-        assert_eq!(limit_order6.amount, balance!(115));
-        assert_eq!(limit_order7.amount, balance!(176));
-        assert_eq!(limit_order8.amount, balance!(85));
-        assert_eq!(limit_order9.amount, balance!(93));
-        assert_eq!(limit_order10.amount, balance!(36));
-        assert_eq!(limit_order11.amount, balance!(205));
-        assert_eq!(limit_order12.amount, balance!(13));
+        assert_eq!(limit_order1.amount, balance!(168).into());
+        assert_eq!(limit_order2.amount, balance!(95).into());
+        assert_eq!(limit_order3.amount, balance!(44).into());
+        assert_eq!(limit_order4.amount, balance!(56).into());
+        assert_eq!(limit_order5.amount, balance!(89).into());
+        assert_eq!(limit_order6.amount, balance!(115).into());
+        assert_eq!(limit_order7.amount, balance!(176).into());
+        assert_eq!(limit_order8.amount, balance!(85).into());
+        assert_eq!(limit_order9.amount, balance!(93).into());
+        assert_eq!(limit_order10.amount, balance!(36).into());
+        assert_eq!(limit_order11.amount, balance!(205).into());
+        assert_eq!(limit_order12.amount, balance!(13).into());
 
         // check dust refund
         assert_eq!(
@@ -1540,8 +1462,8 @@ fn should_place_limit_order() {
         create_and_fill_order_book(order_book_id);
         fill_balance(caller.clone(), order_book_id);
 
-        let price = balance!(10);
-        let amount = balance!(100);
+        let price: OrderPrice = balance!(10).into();
+        let amount: OrderVolume = balance!(100).into();
         let lifespan = 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
@@ -1559,8 +1481,8 @@ fn should_place_limit_order() {
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
             order_book_id,
-            price,
-            amount,
+            *price.balance(),
+            *amount.balance(),
             PriceVariant::Buy,
             Some(lifespan)
         ));
@@ -1612,13 +1534,12 @@ fn should_place_limit_order() {
         );
 
         let balance = free_balance(&order_book_id.quote, &caller);
-        let expected_balance = balance_before - deal_amount;
+        let expected_balance = balance_before - deal_amount.balance();
         assert_eq!(balance, expected_balance);
     });
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_place_limit_order_with_nft() {
     ext().execute_with(|| {
         let caller = alice();
@@ -1629,7 +1550,7 @@ fn should_place_limit_order_with_nft() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(1),
+            1,
             false,
             None,
             None,
@@ -1661,8 +1582,8 @@ fn should_place_limit_order_with_nft() {
             order_book_id
         ));
 
-        let price = balance!(10);
-        let amount = balance!(1);
+        let price: OrderPrice = balance!(10).into();
+        let amount = OrderVolume::indivisible(1);
         let lifespan = 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
@@ -1672,8 +1593,8 @@ fn should_place_limit_order_with_nft() {
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
             order_book_id,
-            price,
-            amount,
+            *price.balance(),
+            *amount.balance(),
             PriceVariant::Sell,
             Some(lifespan)
         ));
@@ -1732,15 +1653,15 @@ fn should_place_limit_order_out_of_spread() {
 
         let lifespan = 100000;
 
-        let bid_price1 = balance!(10);
-        let bid_price2 = balance!(9.8);
-        let bid_price3 = balance!(9.5);
-        let new_bid_price = balance!(11.1);
+        let bid_price1: OrderPrice = balance!(10).into();
+        let bid_price2: OrderPrice = balance!(9.8).into();
+        let bid_price3: OrderPrice = balance!(9.5).into();
+        let new_bid_price: OrderPrice = balance!(11.1).into();
 
-        let ask_price1 = balance!(11);
-        let ask_price2 = balance!(11.2);
-        let ask_price3 = balance!(11.5);
-        let new_ask_price = balance!(9.9);
+        let ask_price1: OrderPrice = balance!(11).into();
+        let ask_price2: OrderPrice = balance!(11.2).into();
+        let ask_price3: OrderPrice = balance!(11.5).into();
+        let new_ask_price: OrderPrice = balance!(9.9).into();
 
         // check state before
 
@@ -1773,17 +1694,17 @@ fn should_place_limit_order_out_of_spread() {
         assert_eq!(
             OrderBookPallet::aggregated_bids(&order_book_id),
             BTreeMap::from([
-                (bid_price1, balance!(168.5)),
-                (bid_price2, balance!(139.9)),
-                (bid_price3, balance!(261.3))
+                (bid_price1, balance!(168.5).into()),
+                (bid_price2, balance!(139.9).into()),
+                (bid_price3, balance!(261.3).into())
             ])
         );
         assert_eq!(
             OrderBookPallet::aggregated_asks(&order_book_id),
             BTreeMap::from([
-                (ask_price1, balance!(176.3)),
-                (ask_price2, balance!(178.6)),
-                (ask_price3, balance!(255.8))
+                (ask_price1, balance!(176.3).into()),
+                (ask_price2, balance!(178.6).into()),
+                (ask_price3, balance!(255.8).into())
             ])
         );
 
@@ -1791,7 +1712,7 @@ fn should_place_limit_order_out_of_spread() {
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(alice()).into(),
             order_book_id,
-            new_bid_price,
+            *new_bid_price.balance(),
             balance!(26.3),
             PriceVariant::Buy,
             Some(lifespan)
@@ -1828,17 +1749,17 @@ fn should_place_limit_order_out_of_spread() {
         assert_eq!(
             OrderBookPallet::aggregated_bids(&order_book_id),
             BTreeMap::from([
-                (bid_price1, balance!(168.5)),
-                (bid_price2, balance!(139.9)),
-                (bid_price3, balance!(261.3))
+                (bid_price1, balance!(168.5).into()),
+                (bid_price2, balance!(139.9).into()),
+                (bid_price3, balance!(261.3).into())
             ])
         );
         assert_eq!(
             OrderBookPallet::aggregated_asks(&order_book_id),
             BTreeMap::from([
-                (ask_price1, balance!(150)),
-                (ask_price2, balance!(178.6)),
-                (ask_price3, balance!(255.8))
+                (ask_price1, balance!(150).into()),
+                (ask_price2, balance!(178.6).into()),
+                (ask_price3, balance!(255.8).into())
             ])
         );
 
@@ -1846,7 +1767,7 @@ fn should_place_limit_order_out_of_spread() {
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(alice()).into(),
             order_book_id,
-            new_bid_price,
+            *new_bid_price.balance(),
             balance!(300),
             PriceVariant::Buy,
             Some(lifespan)
@@ -1886,15 +1807,18 @@ fn should_place_limit_order_out_of_spread() {
         assert_eq!(
             OrderBookPallet::aggregated_bids(&order_book_id),
             BTreeMap::from([
-                (new_bid_price, balance!(150)),
-                (bid_price1, balance!(168.5)),
-                (bid_price2, balance!(139.9)),
-                (bid_price3, balance!(261.3))
+                (new_bid_price, balance!(150).into()),
+                (bid_price1, balance!(168.5).into()),
+                (bid_price2, balance!(139.9).into()),
+                (bid_price3, balance!(261.3).into())
             ])
         );
         assert_eq!(
             OrderBookPallet::aggregated_asks(&order_book_id),
-            BTreeMap::from([(ask_price2, balance!(178.6)), (ask_price3, balance!(255.8))])
+            BTreeMap::from([
+                (ask_price2, balance!(178.6).into()),
+                (ask_price3, balance!(255.8).into())
+            ])
         );
 
         // cancel limit order
@@ -1908,7 +1832,7 @@ fn should_place_limit_order_out_of_spread() {
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(alice()).into(),
             order_book_id,
-            new_ask_price,
+            *new_ask_price.balance(),
             balance!(18.5),
             PriceVariant::Sell,
             Some(lifespan)
@@ -1942,21 +1866,24 @@ fn should_place_limit_order_out_of_spread() {
         assert_eq!(
             OrderBookPallet::aggregated_bids(&order_book_id),
             BTreeMap::from([
-                (bid_price1, balance!(150)),
-                (bid_price2, balance!(139.9)),
-                (bid_price3, balance!(261.3))
+                (bid_price1, balance!(150).into()),
+                (bid_price2, balance!(139.9).into()),
+                (bid_price3, balance!(261.3).into())
             ])
         );
         assert_eq!(
             OrderBookPallet::aggregated_asks(&order_book_id),
-            BTreeMap::from([(ask_price2, balance!(178.6)), (ask_price3, balance!(255.8))])
+            BTreeMap::from([
+                (ask_price2, balance!(178.6).into()),
+                (ask_price3, balance!(255.8).into())
+            ])
         );
 
         // sell order 2
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(alice()).into(),
             order_book_id,
-            new_ask_price,
+            *new_ask_price.balance(),
             balance!(300),
             PriceVariant::Sell,
             Some(lifespan)
@@ -1992,14 +1919,17 @@ fn should_place_limit_order_out_of_spread() {
 
         assert_eq!(
             OrderBookPallet::aggregated_bids(&order_book_id),
-            BTreeMap::from([(bid_price2, balance!(139.9)), (bid_price3, balance!(261.3))])
+            BTreeMap::from([
+                (bid_price2, balance!(139.9).into()),
+                (bid_price3, balance!(261.3).into())
+            ])
         );
         assert_eq!(
             OrderBookPallet::aggregated_asks(&order_book_id),
             BTreeMap::from([
-                (new_ask_price, balance!(150)),
-                (ask_price2, balance!(178.6)),
-                (ask_price3, balance!(255.8))
+                (new_ask_price, balance!(150).into()),
+                (ask_price2, balance!(178.6).into()),
+                (ask_price3, balance!(255.8).into())
             ])
         );
     });
@@ -2022,13 +1952,13 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
 
         let lifespan = 100000;
 
-        let bid_price1 = balance!(10);
-        let bid_price2 = balance!(9.8);
-        let bid_price3 = balance!(9.5);
+        let bid_price1 = balance!(10).into();
+        let bid_price2 = balance!(9.8).into();
+        let bid_price3 = balance!(9.5).into();
 
-        let ask_price1 = balance!(11);
-        let ask_price2 = balance!(11.2);
-        let ask_price3 = balance!(11.5);
+        let ask_price1 = balance!(11).into();
+        let ask_price2 = balance!(11.2).into();
+        let ask_price3 = balance!(11.5).into();
 
         // check state before
 
@@ -2061,17 +1991,17 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         assert_eq!(
             OrderBookPallet::aggregated_bids(&order_book_id),
             BTreeMap::from([
-                (bid_price1, balance!(168.5)),
-                (bid_price2, balance!(139.9)),
-                (bid_price3, balance!(261.3))
+                (bid_price1, balance!(168.5).into()),
+                (bid_price2, balance!(139.9).into()),
+                (bid_price3, balance!(261.3).into())
             ])
         );
         assert_eq!(
             OrderBookPallet::aggregated_asks(&order_book_id),
             BTreeMap::from([
-                (ask_price1, balance!(176.3)),
-                (ask_price2, balance!(178.6)),
-                (ask_price3, balance!(255.8))
+                (ask_price1, balance!(176.3).into()),
+                (ask_price2, balance!(178.6).into()),
+                (ask_price3, balance!(255.8).into())
             ])
         );
 
@@ -2114,14 +2044,17 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         assert_eq!(
             OrderBookPallet::aggregated_bids(&order_book_id),
             BTreeMap::from([
-                (bid_price1, balance!(168.5)),
-                (bid_price2, balance!(139.9)),
-                (bid_price3, balance!(261.3))
+                (bid_price1, balance!(168.5).into()),
+                (bid_price2, balance!(139.9).into()),
+                (bid_price3, balance!(261.3).into())
             ])
         );
         assert_eq!(
             OrderBookPallet::aggregated_asks(&order_book_id),
-            BTreeMap::from([(ask_price2, balance!(177.9)), (ask_price3, balance!(255.8))])
+            BTreeMap::from([
+                (ask_price2, balance!(177.9).into()),
+                (ask_price3, balance!(255.8).into())
+            ])
         );
 
         // buy order 2
@@ -2156,9 +2089,9 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         assert_eq!(
             OrderBookPallet::aggregated_bids(&order_book_id),
             BTreeMap::from([
-                (bid_price1, balance!(168.5)),
-                (bid_price2, balance!(139.9)),
-                (bid_price3, balance!(261.3))
+                (bid_price1, balance!(168.5).into()),
+                (bid_price2, balance!(139.9).into()),
+                (bid_price3, balance!(261.3).into())
             ])
         );
         assert_eq!(
@@ -2194,7 +2127,10 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
 
         assert_eq!(
             OrderBookPallet::aggregated_bids(&order_book_id),
-            BTreeMap::from([(bid_price2, balance!(139.4)), (bid_price3, balance!(261.3))])
+            BTreeMap::from([
+                (bid_price2, balance!(139.4).into()),
+                (bid_price3, balance!(261.3).into())
+            ])
         );
         assert_eq!(
             OrderBookPallet::aggregated_asks(&order_book_id),
@@ -2249,9 +2185,9 @@ fn should_place_a_lot_of_orders() {
 
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
 
-        let mut buy_price = balance!(1000);
+        let mut buy_price: OrderPrice = balance!(1000).into();
         let mut buy_lifespan = 10000; // ms
-        let mut sell_price = balance!(1001);
+        let mut sell_price: OrderPrice = balance!(1001).into();
         let mut sell_lifespan = 10000; // ms
 
         let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
@@ -2270,7 +2206,7 @@ fn should_place_a_lot_of_orders() {
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(account.clone()).into(),
                 order_book_id,
-                buy_price,
+                *buy_price.balance(),
                 balance!(10),
                 PriceVariant::Buy,
                 Some(buy_lifespan)
@@ -2279,7 +2215,7 @@ fn should_place_a_lot_of_orders() {
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(account).into(),
                 order_book_id,
-                sell_price,
+                *sell_price.balance(),
                 balance!(10),
                 PriceVariant::Sell,
                 Some(sell_lifespan)
@@ -2397,7 +2333,7 @@ fn should_cancel_limit_order() {
         );
 
         let balance = free_balance(&order_book_id.quote, &order.owner);
-        let expected_balance = balance_before + deal_amount;
+        let expected_balance = balance_before + deal_amount.balance();
         assert_eq!(balance, expected_balance);
     });
 }
@@ -2544,13 +2480,13 @@ fn should_cancel_all_user_limit_orders_batch() {
 
         create_and_fill_order_book(order_book_id2);
 
-        let bid_price1 = balance!(10);
-        let bid_price2 = balance!(9.8);
-        let bid_price3 = balance!(9.5);
+        let bid_price1: OrderPrice = balance!(10).into();
+        let bid_price2: OrderPrice = balance!(9.8).into();
+        let bid_price3: OrderPrice = balance!(9.5).into();
 
-        let ask_price1 = balance!(11);
-        let ask_price2 = balance!(11.2);
-        let ask_price3 = balance!(11.5);
+        let ask_price1: OrderPrice = balance!(11).into();
+        let ask_price2: OrderPrice = balance!(11.2).into();
+        let ask_price3: OrderPrice = balance!(11.5).into();
 
         // check state before
 
@@ -2685,13 +2621,13 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
 
         create_and_fill_order_book(order_book_id2);
 
-        let bid_price1 = balance!(10);
-        let bid_price2 = balance!(9.8);
-        let bid_price3 = balance!(9.5);
+        let bid_price1: OrderPrice = balance!(10).into();
+        let bid_price2: OrderPrice = balance!(9.8).into();
+        let bid_price3: OrderPrice = balance!(9.5).into();
 
-        let ask_price1 = balance!(11);
-        let ask_price2 = balance!(11.2);
-        let ask_price3 = balance!(11.5);
+        let ask_price1: OrderPrice = balance!(11).into();
+        let ask_price2: OrderPrice = balance!(11.2).into();
+        let ask_price3: OrderPrice = balance!(11.5).into();
 
         // check state before
 
@@ -2809,6 +2745,162 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
         assert_eq!(
             OrderBookPallet::asks(&order_book_id2, &ask_price3).unwrap(),
             vec![10, 12]
+        );
+    });
+}
+
+#[test]
+fn should_not_execute_market_order_with_divisible_asset() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+        fill_balance(alice(), order_book_id);
+
+        assert_err!(
+            OrderBookPallet::execute_market_order(
+                RawOrigin::Signed(alice()).into(),
+                order_book_id,
+                PriceVariant::Buy,
+                balance!(10)
+            ),
+            E::MarketOrdersAllowedOnlyForIndivisibleAssets
+        );
+
+        assert_err!(
+            OrderBookPallet::execute_market_order(
+                RawOrigin::Signed(alice()).into(),
+                order_book_id,
+                PriceVariant::Sell,
+                balance!(10)
+            ),
+            E::MarketOrdersAllowedOnlyForIndivisibleAssets
+        );
+    });
+}
+
+#[test]
+fn should_execute_market_order_with_indivisible_asset() {
+    ext().execute_with(|| {
+        FrameSystem::inc_providers(&bob());
+
+        let nft = Assets::register_from(
+            &bob(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            100000,
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: nft,
+            quote: XOR.into(),
+        };
+
+        fill_balance(alice(), order_book_id);
+        fill_balance(bob(), order_book_id);
+
+        assert_ok!(TradingPair::register(
+            RawOrigin::Signed(bob()).into(),
+            DEX.into(),
+            order_book_id.quote,
+            order_book_id.base
+        ));
+
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(bob()).into(),
+            order_book_id
+        ));
+
+        let buy_price = balance!(10);
+        let sell_price = balance!(11);
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(bob()).into(),
+            order_book_id,
+            buy_price,
+            100,
+            PriceVariant::Buy,
+            None
+        ));
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(bob()).into(),
+            order_book_id,
+            sell_price,
+            100,
+            PriceVariant::Sell,
+            None
+        ));
+
+        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
+        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        let mut bob_base_balance = free_balance(&order_book_id.base, &bob());
+        let mut bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        let amount = 20;
+
+        // buy market order
+        assert_ok!(OrderBookPallet::execute_market_order(
+            RawOrigin::Signed(alice()).into(),
+            order_book_id,
+            PriceVariant::Buy,
+            amount
+        ));
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance + amount
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance - amount * sell_price
+        );
+        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance + amount * sell_price
+        );
+
+        alice_base_balance = free_balance(&order_book_id.base, &alice());
+        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+
+        bob_base_balance = free_balance(&order_book_id.base, &bob());
+        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+
+        // sell market order
+        assert_ok!(OrderBookPallet::execute_market_order(
+            RawOrigin::Signed(alice()).into(),
+            order_book_id,
+            PriceVariant::Sell,
+            amount
+        ));
+
+        assert_eq!(
+            free_balance(&order_book_id.base, &alice()),
+            alice_base_balance - amount
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &alice()),
+            alice_quote_balance + amount * buy_price
+        );
+        assert_eq!(
+            free_balance(&order_book_id.base, &bob()),
+            bob_base_balance + amount
+        );
+        assert_eq!(
+            free_balance(&order_book_id.quote, &bob()),
+            bob_quote_balance
         );
     });
 }

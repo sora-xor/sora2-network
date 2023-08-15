@@ -31,6 +31,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 extern crate alloc;
 use alloc::string::String;
@@ -155,9 +157,9 @@ use impls::{
 };
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
-#[cfg(all(feature = "private-net", feature = "wip"))] // order-book
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 pub use qa_tools;
-#[cfg(feature = "ready-to-test")]
+#[cfg(feature = "wip")]
 use sp_runtime::traits::Keccak256;
 pub use {
     assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
@@ -1231,6 +1233,7 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
                 Some(BIG_FEE)
             }
             RuntimeCall::Assets(..)
+            | RuntimeCall::Band(..)
             | RuntimeCall::EthBridge(..)
             | RuntimeCall::LiquidityProxy(..)
             | RuntimeCall::MulticollateralBondingCurvePool(..)
@@ -1597,7 +1600,7 @@ parameter_types! {
     pub QaToolsWhitelistCapacity: u32 = 512;
 }
 
-#[cfg(all(feature = "private-net", feature = "wip"))] // order-book
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 impl qa_tools::Config for Runtime {
     type AssetInfoProvider = Assets;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
@@ -1841,6 +1844,7 @@ impl xst::Config for Runtime {
     type WeightInfo = xst::weights::SubstrateWeight<Runtime>;
     type Oracle = OracleProxy;
     type Symbol = <Runtime as band::Config>::Symbol;
+    type TradingPairSourceManager = TradingPair;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
 }
 
@@ -2008,6 +2012,8 @@ impl oracle_proxy::Config for Runtime {
 
 parameter_types! {
     pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+    pub const GetBandRateStaleBlockPeriod: u32 = 600; // 1 hour in blocks
+    pub const BandMaxRelaySymbols: u32 = 100;
 }
 
 impl band::Config for Runtime {
@@ -2017,6 +2023,9 @@ impl band::Config for Runtime {
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
     type Time = Timestamp;
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
+    type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
+    type OnSymbolDisabledHook = xst::Pallet<Runtime>;
+    type MaxRelaySymbols = BandMaxRelaySymbols;
 }
 
 parameter_types! {
@@ -2058,8 +2067,8 @@ impl order_book::Config for Runtime {
     type Delegate = OrderBook;
     type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
-    type MaxSidePriceCount = ConstU32<100000>; // TODO: order-book clarify
-    type MaxExpiringOrdersPerBlock = ConstU32<10000>; // TODO: order-book clarify
+    type MaxSidePriceCount = ConstU32<10000>; // TODO: order-book clarify
+    type MaxExpiringOrdersPerBlock = ConstU32<1000>; // TODO: order-book clarify
     type MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
     type EnsureTradingPairExists = TradingPair;
     type TradingPairSourceManager = TradingPair;
@@ -2136,7 +2145,7 @@ impl Convert<U256, Balance> for FeeConverter {
 
 #[cfg(feature = "ready-to-test")] // Bridges
 parameter_types! {
-    pub const FeeCurrency: AssetId = XOR;
+    pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
     pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
@@ -2512,7 +2521,7 @@ construct_runtime! {
         // Available only for test net
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
-        #[cfg(all(feature = "private-net", feature = "wip"))] // order-book
+        #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
         QATools: qa_tools::{Pallet, Call} = 112,
     }
 }

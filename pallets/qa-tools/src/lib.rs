@@ -29,11 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 pub use pallet::*;
 
 // private-net to make circular dependencies work
-#[cfg(all(test, feature = "private-net", feature = "wip"))] // order-book
+#[cfg(all(test, feature = "private-net", feature = "ready-to-test"))] // order-book
 mod tests;
 pub mod weights;
 pub use weights::*;
