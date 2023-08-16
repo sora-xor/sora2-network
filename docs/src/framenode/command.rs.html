@@ -545,13 +545,13 @@
             <span class="kw">let </span>runner = cli.create_runner(<span class="kw-2">&amp;</span>cli.run)<span class="question-mark">?</span>;
             set_default_ss58_version();
             runner.run_node_until_exit(|config| <span class="kw">async move </span>{
-                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Bridges
                 </span><span class="kw">return </span>service::new_full(config, cli.disable_beefy, <span class="prelude-val">None</span>)
                     .map_err(sc_cli::Error::Service);
                 <span class="comment">// Disable BEEFY on production.
                 // BEEFY is still work in progress and probably will contain breaking changes, so it&#39;s better to enable it when it&#39;s ready
                 // Also before enabling it we need to ensure that validators updated their session keys
-                </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// Bridges
+                </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Bridges
                 </span>service::new_full(config, <span class="bool-val">true</span>, <span class="prelude-val">None</span>).map_err(sc_cli::Error::Service)
             })
         }

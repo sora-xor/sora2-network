@@ -604,7 +604,11 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
 </pre></div><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">mod </span>benchmarking;
 <span class="kw">pub mod </span>migrations;

@@ -210,6 +210,11 @@
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
 </pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -241,6 +246,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
+
 #[macro_use]
 </span><span class="kw">extern crate </span>alloc;
 
@@ -254,6 +262,7 @@
 <span class="attr">#[cfg(any(feature = <span class="string">&quot;test&quot;</span>, test))]
 </span><span class="kw">pub mod </span>test_utils;
 
+<span class="kw">mod </span>balance_unit;
 <span class="kw">pub mod </span>cache_storage;
 <span class="kw">pub mod </span>eth;
 <span class="kw">mod </span>fixed_wrapper;
@@ -273,6 +282,7 @@
 
 <span class="kw">pub use </span>traits::Config;
 <span class="kw">pub mod </span>prelude {
+    <span class="kw">pub use </span><span class="kw">super</span>::balance_unit::<span class="kw-2">*</span>;
     <span class="kw">pub use </span><span class="kw">super</span>::fixed_wrapper::<span class="kw-2">*</span>;
     <span class="kw">pub use </span><span class="kw">super</span>::primitives::<span class="kw-2">*</span>;
     <span class="kw">pub use </span><span class="kw">super</span>::serialization::<span class="kw-2">*</span>;

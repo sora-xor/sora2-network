@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CancelLimitOrder","CancelLimitOrdersBatch","ChangeOrderbookStatus","CreateOrderbook","DeleteOrderbook","PlaceLimitOrder","TransactionApi","UpdateOrderbook"]};
+window.SIDEBAR_ITEMS = {"struct":["CancelLimitOrder","CancelLimitOrdersBatch","ChangeOrderbookStatus","CreateOrderbook","DeleteOrderbook","ExecuteMarketOrder","PlaceLimitOrder","TransactionApi","UpdateOrderbook"]};

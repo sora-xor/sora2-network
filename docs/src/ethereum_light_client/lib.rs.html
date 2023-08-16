@@ -1109,6 +1109,8 @@
 <a href="#1094" id="1094">1094</a>
 <a href="#1095" id="1095">1095</a>
 <a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Ethereum Light Client Verifier
 //!
 //! The verifier module verifies `Message` objects by verifying the existence
@@ -1129,6 +1131,8 @@
 //!
 </span><span class="attr">#![allow(unused_variables)]
 #![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">mod </span>weights;
 

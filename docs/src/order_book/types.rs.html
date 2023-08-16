@@ -514,6 +514,9 @@
 <a href="#499" id="499">499</a>
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
 </pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -546,20 +549,20 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::traits::{CurrencyLocker, CurrencyUnlocker};
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
-<span class="kw">use </span>common::prelude::FixedWrapper;
-<span class="kw">use </span>common::{Balance, PriceVariant, TradingPair};
+<span class="kw">use </span>common::prelude::BalanceUnit;
+<span class="kw">use </span>common::{PriceVariant, TradingPair};
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
 <span class="kw">use </span>frame_support::{BoundedBTreeMap, BoundedVec};
-<span class="kw">use </span>sp_runtime::traits::Zero;
+<span class="kw">use </span>sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedSub, Saturating, Zero};
 <span class="kw">use </span>sp_std::collections::btree_map::BTreeMap;
 <span class="kw">use </span>sp_std::ops::{Add, Sub};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="kw">pub type </span>OrderPrice = Balance;
-<span class="kw">pub type </span>OrderVolume = Balance;
+<span class="kw">pub type </span>OrderPrice = BalanceUnit;
+<span class="kw">pub type </span>OrderVolume = BalanceUnit;
 <span class="kw">pub type </span>PriceOrders&lt;OrderId, MaxLimitOrdersForPrice&gt; = BoundedVec&lt;OrderId, MaxLimitOrdersForPrice&gt;;
 <span class="kw">pub type </span>MarketSide&lt;MaxSidePriceCount&gt; =
     BoundedBTreeMap&lt;OrderPrice, OrderVolume, MaxSidePriceCount&gt;;
@@ -639,16 +642,11 @@
     }
 
     <span class="kw">pub fn </span>average_price(input: OrderAmount, output: OrderAmount) -&gt; <span class="prelude-ty">Result</span>&lt;OrderPrice, ()&gt; {
-        <span class="kw">let </span>average_price = <span class="kw">if </span>input.is_quote() {
-            (FixedWrapper::from(<span class="kw-2">*</span>input.value()) / FixedWrapper::from(<span class="kw-2">*</span>output.value()))
-                .try_into_balance()
-                .map_err(|<span class="kw">_</span>| ())<span class="question-mark">?
-        </span>} <span class="kw">else </span>{
-            (FixedWrapper::from(<span class="kw-2">*</span>output.value()) / FixedWrapper::from(<span class="kw-2">*</span>input.value()))
-                .try_into_balance()
-                .map_err(|<span class="kw">_</span>| ())<span class="question-mark">?
-        </span>};
-        <span class="prelude-val">Ok</span>(average_price)
+        <span class="kw">if </span>input.is_quote() {
+            input.value().checked_div(output.value()).ok_or(())
+        } <span class="kw">else </span>{
+            output.value().checked_div(input.value()).ok_or(())
+        }
     }
 }
 
@@ -657,7 +655,10 @@
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
         <span class="macro">ensure!</span>(<span class="self">self</span>.is_same(<span class="kw-2">&amp;</span>other), ());
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.copy_type(<span class="self">self</span>.value().checked_add(<span class="kw-2">*</span>other.value()).ok_or(())<span class="question-mark">?</span>))
+        <span class="kw">let </span><span class="prelude-val">Some</span>(result) = <span class="self">self</span>.value().checked_add(other.value()) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(());
+        };
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.copy_type(result))
     }
 }
 
@@ -666,7 +667,10 @@
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
         <span class="macro">ensure!</span>(<span class="self">self</span>.is_same(<span class="kw-2">&amp;</span>other), ());
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.copy_type(<span class="self">self</span>.value().checked_sub(<span class="kw-2">*</span>other.value()).ok_or(())<span class="question-mark">?</span>))
+        <span class="kw">let </span><span class="prelude-val">Some</span>(result) = <span class="self">self</span>.value().checked_sub(other.value()) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(());
+        };
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.copy_type(result))
     }
 }
 
@@ -800,7 +804,9 @@
         <span class="kw">for </span>(account, volume) <span class="kw">in </span>to_merge {
             account_map
                 .entry(account.clone())
-                .and_modify(|current_volune| <span class="kw-2">*</span>current_volune += volume)
+                .and_modify(|current_volune| {
+                    <span class="kw-2">*</span>current_volune = current_volune.saturating_add(<span class="kw-2">*</span>volume)
+                })
                 .or_insert(<span class="kw-2">*</span>volume);
         }
     }

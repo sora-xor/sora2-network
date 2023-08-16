@@ -448,7 +448,11 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
 </pre></div><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
 
 #[cfg(test)]
 </span><span class="kw">mod </span>mock;

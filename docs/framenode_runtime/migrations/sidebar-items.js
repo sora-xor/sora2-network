@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["Migrations"]};
+window.SIDEBAR_ITEMS = {"struct":["EmptyAccountList","FarmingPoolBlocksToInspect","StakingMigrationV11OldPallet","XYKSyntheticPoolAccountList","XYKSyntheticPoolPairs"],"type":["Migrations"]};

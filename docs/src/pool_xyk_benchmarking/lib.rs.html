@@ -288,6 +288,8 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -322,6 +324,8 @@
 
 </span><span class="attr">#![cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
 #![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">use </span>codec::Decode;
 <span class="kw">use </span>common::prelude::{Balance, SwapAmount};

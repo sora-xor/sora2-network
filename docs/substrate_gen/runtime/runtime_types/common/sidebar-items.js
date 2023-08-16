@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["primitives","swap_amount"]};
+window.SIDEBAR_ITEMS = {"mod":["balance_unit","primitives","swap_amount"]};

@@ -1174,6 +1174,64 @@
 <a href="#1159" id="1159">1159</a>
 <a href="#1160" id="1160">1160</a>
 <a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
+<a href="#1171" id="1171">1171</a>
+<a href="#1172" id="1172">1172</a>
+<a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
+<a href="#1183" id="1183">1183</a>
+<a href="#1184" id="1184">1184</a>
+<a href="#1185" id="1185">1185</a>
+<a href="#1186" id="1186">1186</a>
+<a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
 </pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1205,6 +1263,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">pub mod </span>weights;
 
@@ -1230,9 +1290,10 @@
 };
 <span class="kw">use </span>common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, PriceVariant, Rate,
-    RewardReason, SyntheticInfoProvider, TradingPairSourceManager, DAI, XSTUSD,
+    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
+    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
+<span class="kw">use </span>frame_support::pallet_prelude::DispatchResult;
 <span class="kw">use </span>frame_support::traits::Get;
 <span class="kw">use </span>frame_support::weights::Weight;
 <span class="kw">use </span>frame_support::{ensure, fail, RuntimeDebug};
@@ -1322,6 +1383,7 @@
         <span class="doccomment">/// Maximum tradable amount of XST
         </span><span class="attr">#[pallet::constant]
         </span><span class="kw">type </span>GetSyntheticBaseBuySellLimit: Get&lt;Balance&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
     }
@@ -1406,9 +1468,8 @@
 
         <span class="doccomment">/// Disable synthetic asset.
         ///
-        /// Just remove synthetic from exchanging.
-        /// Will not unregister trading pair because `trading_pair` pallet does not provide this
-        /// ability. And will not unregister trading synthetic asset because of that.
+        /// Removes synthetic from exchanging
+        /// and removes XSTPool liquidity source for corresponding trading pair.
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to disable.
@@ -1419,15 +1480,33 @@
             synthetic_asset: T::AssetId,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
+            <span class="macro">ensure!</span>(
+                <span class="self">Self</span>::enabled_synthetics(synthetic_asset).is_some(),
+                Error::&lt;T&gt;::SyntheticIsNotEnabled
+            );
+            <span class="self">Self</span>::disable_synthetic_asset_unchecked(synthetic_asset)<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>(().into())
+        }
 
+        <span class="doccomment">/// Entirely remove synthetic asset (including linked symbol info)
+        </span><span class="attr">#[pallet::call_index(<span class="number">4</span>)]
+        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::remove_synthetic_asset())]
+        </span><span class="kw">pub fn </span>remove_synthetic_asset(
+            origin: OriginFor&lt;T&gt;,
+            synthetic_asset: T::AssetId,
+        ) -&gt; DispatchResultWithPostInfo {
+            ensure_root(origin)<span class="question-mark">?</span>;
             <span class="kw">let </span>reference_symbol = EnabledSynthetics::&lt;T&gt;::get(synthetic_asset)
                 .ok_or_else(|| Error::&lt;T&gt;::SyntheticIsNotEnabled)<span class="question-mark">?
                 </span>.reference_symbol;
 
             EnabledSynthetics::&lt;T&gt;::remove(synthetic_asset);
-            EnabledSymbols::&lt;T&gt;::remove(reference_symbol);
+            EnabledSymbols::&lt;T&gt;::remove(<span class="kw-2">&amp;</span>reference_symbol);
 
-            <span class="self">Self</span>::deposit_event(Event::SyntheticAssetDisabled(synthetic_asset));
+            <span class="self">Self</span>::deposit_event(Event::SyntheticAssetRemoved(
+                synthetic_asset,
+                reference_symbol,
+            ));
             <span class="prelude-val">Ok</span>(().into())
         }
 
@@ -1439,7 +1518,7 @@
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to set fee for,
         /// - `fee_ratio`: fee ratio with precision = 18, so 1000000000000000000 = 1 = 100% fee.
-        </span><span class="attr">#[pallet::call_index(<span class="number">4</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">5</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::set_synthetic_asset_fee())]
         </span><span class="kw">pub fn </span>set_synthetic_asset_fee(
             origin: OriginFor&lt;T&gt;,
@@ -1471,7 +1550,7 @@
         ///
         /// - `origin`: root account
         /// - `floor_price`: floor price for the synthetic base asset
-        </span><span class="attr">#[pallet::call_index(<span class="number">5</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">6</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::set_synthetic_base_asset_floor_price())]
         </span><span class="kw">pub fn </span>set_synthetic_base_asset_floor_price(
             origin: OriginFor&lt;T&gt;,
@@ -1497,6 +1576,8 @@
         </span>SyntheticAssetFeeChanged(AssetIdOf&lt;T&gt;, Fixed),
         <span class="doccomment">/// Floor price of the synthetic base asset has been changed. [New Floor Price]
         </span>SyntheticBaseAssetFloorPriceChanged(Balance),
+        <span class="doccomment">/// Synthetic asset has been removed. [Synthetic Asset Id, Reference Symbol]
+        </span>SyntheticAssetRemoved(AssetIdOf&lt;T&gt;, T::Symbol),
     }
 
     <span class="attr">#[pallet::error]
@@ -1578,7 +1659,7 @@
     </span><span class="kw">impl</span>&lt;T: Config&gt; Default <span class="kw">for </span>GenesisConfig&lt;T&gt; {
         <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
-                reference_asset_id: DAI.into(),
+                reference_asset_id: common::DAI.into(),
                 initial_synthetic_assets: [(
                     XSTUSD.into(),
                     common::SymbolName::usd().into(),
@@ -1618,9 +1699,6 @@
         transactional: bool,
     ) -&gt; sp_runtime::DispatchResult {
         <span class="kw">let </span>code = || {
-            <span class="kw">if </span>EnabledSymbols::&lt;T&gt;::contains_key(<span class="kw-2">&amp;</span>reference_symbol) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::SymbolAlreadyReferencedToSynthetic.into());
-            }
             <span class="macro">ensure!</span>(
                 fee_ratio &gt;= <span class="macro">fixed!</span>(<span class="number">0</span>) &amp;&amp; fee_ratio &lt; <span class="macro">fixed!</span>(<span class="number">1</span>),
                 Error::&lt;T&gt;::InvalidFeeRatio
@@ -1642,7 +1720,20 @@
                     fee_ratio,
                 },
             );
-            EnabledSymbols::&lt;T&gt;::insert(reference_symbol.clone(), synthetic_asset_id);
+
+            <span class="kw">match </span><span class="self">Self</span>::enabled_symbols(<span class="kw-2">&amp;</span>reference_symbol) {
+                <span class="prelude-val">Some</span>(asset_id) =&gt; {
+                    <span class="kw">if </span>asset_id != synthetic_asset_id {
+                        <span class="prelude-val">Err</span>(Error::&lt;T&gt;::SymbolAlreadyReferencedToSynthetic)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Ok</span>(())
+                    }
+                }
+                <span class="prelude-val">None </span>=&gt; {
+                    EnabledSymbols::&lt;T&gt;::insert(reference_symbol.clone(), synthetic_asset_id);
+                    <span class="prelude-val">Ok</span>(())
+                }
+            }<span class="question-mark">?</span>;
 
             <span class="self">Self</span>::deposit_event(Event::SyntheticAssetEnabled(
                 synthetic_asset_id,
@@ -1673,8 +1764,7 @@
             synthetic_asset_id,
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-        </span>trading_pair::Pallet::&lt;T&gt;::enable_source_for_trading_pair(
+        T::TradingPairSourceManager::enable_source_for_trading_pair(
             <span class="kw-2">&amp;</span>DEXId::Polkaswap.into(),
             <span class="kw-2">&amp;</span>T::GetSyntheticBaseAssetId::get(),
             <span class="kw-2">&amp;</span>synthetic_asset_id,
@@ -2091,8 +2181,8 @@
                 <span class="kw">let </span>symbol = EnabledSynthetics::&lt;T&gt;::get(id)
                     .ok_or(Error::&lt;T&gt;::SyntheticDoesNotExist)<span class="question-mark">?
                     </span>.reference_symbol;
-                T::Oracle::quote(<span class="kw-2">&amp;</span>symbol)<span class="question-mark">?
-                    </span>.map(|rate| rate.value)
+                T::Oracle::quote_unchecked(<span class="kw-2">&amp;</span>symbol)
+                    .map(|rate| rate.value)
                     .ok_or(Error::&lt;T&gt;::OracleQuoteError.into())
             }
         }
@@ -2178,6 +2268,18 @@
                 <span class="self">Self</span>::quote_weight(),
             )),
         }
+    }
+
+    <span class="kw">fn </span>disable_synthetic_asset_unchecked(synthetic_asset: AssetIdOf&lt;T&gt;) -&gt; DispatchResult {
+        EnabledSynthetics::&lt;T&gt;::remove(synthetic_asset);
+        T::TradingPairSourceManager::disable_source_for_trading_pair(
+            <span class="kw-2">&amp;</span>DEXId::Polkaswap.into(),
+            <span class="kw-2">&amp;</span>T::GetSyntheticBaseAssetId::get(),
+            <span class="kw-2">&amp;</span>synthetic_asset,
+            LiquiditySourceType::XSTPool,
+        )<span class="question-mark">?</span>;
+        <span class="self">Self</span>::deposit_event(Event::SyntheticAssetDisabled(synthetic_asset));
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
@@ -2333,6 +2435,20 @@
 
     <span class="kw">fn </span>get_synthetic_assets() -&gt; Vec&lt;T::AssetId&gt; {
         EnabledSynthetics::&lt;T&gt;::iter_keys().collect()
+    }
+}
+
+<span class="kw">impl</span>&lt;T: Config&gt; OnSymbolDisabled&lt;T::Symbol&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+    <span class="kw">fn </span>disable_symbol(symbol: <span class="kw-2">&amp;</span>T::Symbol) {
+        <span class="comment">// error doesn&#39;t matter since we don&#39;t
+        // priorly know whether the symbol exists
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(asset_id) = <span class="self">Self</span>::enabled_symbols(symbol) {
+            <span class="kw">if </span><span class="self">Self</span>::enabled_synthetics(asset_id).is_some() {
+                <span class="kw">_ </span>= <span class="self">Self</span>::disable_synthetic_asset_unchecked(asset_id);
+            }
+        } <span class="kw">else </span>{
+            ()
+        }
     }
 }
 </code></pre></div></section></main></body></html>

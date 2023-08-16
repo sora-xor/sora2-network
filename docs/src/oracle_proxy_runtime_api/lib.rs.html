@@ -93,6 +93,8 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
 </pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -128,7 +130,9 @@
 #![allow(clippy::unnecessary_mut_passed)]
 
 </span><span class="kw">use </span>codec::{Codec, Decode, Encode};
-<span class="kw">use </span>common::{utils::string_serialization, Balance};
+<span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
+</span><span class="kw">use </span>common::utils::string_serialization;
+<span class="kw">use </span>common::Balance;
 <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>sp_runtime::DispatchError;

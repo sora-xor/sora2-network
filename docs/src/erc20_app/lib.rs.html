@@ -687,6 +687,8 @@
 <a href="#672" id="672">672</a>
 <a href="#673" id="673">673</a>
 <a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # ERC20
 //!
 //! An application that implements bridged ERC20 token assets.
@@ -703,6 +705,8 @@
 //!
 //! - `burn`: Burn an ERC20 token balance.
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">pub const </span>TRANSFER_MAX_GAS: u64 = <span class="number">100_000</span>;
 

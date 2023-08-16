@@ -229,9 +229,7 @@
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
 <a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::Config;
-<span class="kw">use </span>common::prelude::FixedWrapper;
 <span class="kw">use </span>common::{balance, AssetInfoProvider, Balance, PriceVariant};
 <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>frame_support::sp_runtime::traits::Zero;
@@ -239,6 +237,7 @@
 <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>order_book::DataLayer;
 <span class="kw">use </span>order_book::{MomentOf, OrderBook, OrderBookId};
+<span class="kw">use </span>order_book::{OrderPrice, OrderVolume};
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
 
 <span class="attr">#[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
@@ -308,22 +307,22 @@
 
     // (price_steps_from_best_bid, amount)
     </span><span class="kw">let </span>buy_orders_steps = [
-        (<span class="number">0u128</span>, <span class="macro">balance!</span>(<span class="number">168.5</span>)),
-        (<span class="number">1</span>, <span class="macro">balance!</span>(<span class="number">95.2</span>)),
-        (<span class="number">1</span>, <span class="macro">balance!</span>(<span class="number">44.7</span>)),
-        (<span class="number">3</span>, <span class="macro">balance!</span>(<span class="number">56.4</span>)),
-        (<span class="number">3</span>, <span class="macro">balance!</span>(<span class="number">89.9</span>)),
-        (<span class="number">3</span>, <span class="macro">balance!</span>(<span class="number">115</span>)),
+        (<span class="number">0</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">168.5</span>))),
+        (<span class="number">1</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">95.2</span>))),
+        (<span class="number">1</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">44.7</span>))),
+        (<span class="number">3</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">56.4</span>))),
+        (<span class="number">3</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">89.9</span>))),
+        (<span class="number">3</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">115</span>))),
     ];
 
     <span class="comment">// (price_steps_from_best_ask, amount)
     </span><span class="kw">let </span>sell_orders_steps = [
-        (<span class="number">0u128</span>, <span class="macro">balance!</span>(<span class="number">176.3</span>)),
-        (<span class="number">1</span>, <span class="macro">balance!</span>(<span class="number">85.4</span>)),
-        (<span class="number">1</span>, <span class="macro">balance!</span>(<span class="number">93.2</span>)),
-        (<span class="number">3</span>, <span class="macro">balance!</span>(<span class="number">36.6</span>)),
-        (<span class="number">3</span>, <span class="macro">balance!</span>(<span class="number">205.5</span>)),
-        (<span class="number">3</span>, <span class="macro">balance!</span>(<span class="number">13.7</span>)),
+        (<span class="number">0</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">176.3</span>))),
+        (<span class="number">1</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">85.4</span>))),
+        (<span class="number">1</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">93.2</span>))),
+        (<span class="number">3</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">36.6</span>))),
+        (<span class="number">3</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">205.5</span>))),
+        (<span class="number">3</span>, OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">13.7</span>))),
     ];
 
     <span class="kw">let </span><span class="kw-2">mut </span>data = order_book::cache_data_layer::CacheDataLayer::&lt;T&gt;::new();
@@ -350,8 +349,8 @@
     book_id: OrderBookId&lt;T::AssetId, T::DEXId&gt;,
     asks_owner: T::AccountId,
     bids_owner: T::AccountId,
-    buy_orders_steps: <span class="kw">impl </span>Iterator&lt;Item = (u128, Balance)&gt;,
-    sell_orders_steps: <span class="kw">impl </span>Iterator&lt;Item = (u128, Balance)&gt;,
+    buy_orders_steps: <span class="kw">impl </span>Iterator&lt;Item = (u128, OrderVolume)&gt;,
+    sell_orders_steps: <span class="kw">impl </span>Iterator&lt;Item = (u128, OrderVolume)&gt;,
     settings: OrderBookFillSettings&lt;MomentOf&lt;T&gt;&gt;,
     now: MomentOf&lt;T&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
@@ -366,7 +365,8 @@
     </span><span class="kw">let </span>buy_orders: Vec&lt;<span class="kw">_</span>&gt; = buy_orders_steps
         .map(|(price_steps, base)| {
             (
-                settings.best_bid_price - price_steps * order_book.tick_size,
+                settings.best_bid_price
+                    - OrderPrice::divisible(price_steps * (<span class="kw-2">*</span>order_book.tick_size.balance())),
                 order_book.align_amount(base + order_book.step_lot_size),
             )
         })
@@ -374,7 +374,8 @@
     <span class="kw">let </span>sell_orders: Vec&lt;<span class="kw">_</span>&gt; = sell_orders_steps
         .map(|(price_steps, base)| {
             (
-                settings.best_ask_price + price_steps * order_book.tick_size,
+                settings.best_ask_price
+                    + OrderPrice::divisible(price_steps * (<span class="kw-2">*</span>order_book.tick_size.balance())),
                 order_book.align_amount(base + order_book.step_lot_size),
             )
         })
@@ -382,12 +383,9 @@
     <span class="comment">// Total amount of quote asset to be locked from `bids_owner`
     </span><span class="kw">let </span>buy_quote_locked: Balance = buy_orders
         .iter()
-        .map(|(quote, base)| {
-            <span class="kw">let </span>quote_amount_fixed = FixedWrapper::from(<span class="kw-2">*</span>quote) * FixedWrapper::from(<span class="kw-2">*</span>base);
-            quote_amount_fixed.into_balance()
-        })
+        .map(|(quote, base)| <span class="kw-2">*</span>(<span class="kw-2">*</span>quote * (<span class="kw-2">*</span>base)).balance())
         .sum();
-    <span class="kw">let </span>sell_base_locked: Balance = sell_orders.iter().map(|(<span class="kw">_</span>, base)| base).sum();
+    <span class="kw">let </span>sell_base_locked: Balance = sell_orders.iter().map(|(<span class="kw">_</span>, base)| <span class="kw-2">*</span>base.balance()).sum();
 
     <span class="comment">// mint required amount to make this extrinsic self-sufficient
     </span>assets::Pallet::&lt;T&gt;::mint_unchecked(<span class="kw-2">&amp;</span>book_id.quote, <span class="kw-2">&amp;</span>bids_owner, buy_quote_locked)<span class="question-mark">?</span>;
@@ -426,7 +424,7 @@
     book: <span class="kw-2">&amp;mut </span>OrderBook&lt;T&gt;,
     owner: T::AccountId,
     side: PriceVariant,
-    orders: <span class="kw">impl </span>Iterator&lt;Item = (Balance, Balance)&gt;,
+    orders: <span class="kw">impl </span>Iterator&lt;Item = (OrderPrice, OrderVolume)&gt;,
     time: MomentOf&lt;T&gt;,
     lifespan: MomentOf&lt;T&gt;,
     current_block: BlockNumberFor&lt;T&gt;,

@@ -35,6 +35,6 @@
     <span class="kw">let </span><span class="kw-2">mut </span>bytes = hex::decode(bytes).unwrap();
     bytes.insert(<span class="number">0</span>, <span class="number">0</span>);
     <span class="kw">let </span>ext = UncheckedExtrinsic::decode(<span class="kw-2">&amp;mut &amp;</span>bytes[..]).unwrap();
-    <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, ext);
+    <span class="macro">println!</span>(<span class="string">&quot;{ext:?}&quot;</span>);
 }
 </code></pre></div></section></main></body></html>

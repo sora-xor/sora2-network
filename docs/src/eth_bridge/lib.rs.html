@@ -1945,6 +1945,8 @@
 <a href="#1930" id="1930">1930</a>
 <a href="#1931" id="1931">1931</a>
 <a href="#1932" id="1932">1932</a>
+<a href="#1933" id="1933">1933</a>
+<a href="#1934" id="1934">1934</a>
 </pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2012,6 +2014,8 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
 */
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
 
 #[macro_use]
 </span><span class="kw">extern crate </span>alloc;
@@ -2027,7 +2031,7 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
 <span class="kw">use </span>common::{
     AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
 };
-<span class="kw">use </span>core::{line, stringify};
+<span class="kw">use </span>core::stringify;
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::log::{debug, error, info, warn};
 <span class="kw">use </span>frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};

@@ -319,6 +319,8 @@
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # ETH
 //!
 //! An application that implements a bridged ETH asset.
@@ -336,6 +338,8 @@
 //! - `burn`: Burn an ETH balance.
 //!
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">use </span>frame_support::dispatch::DispatchResult;
 <span class="kw">use </span>frame_support::weights::Weight;

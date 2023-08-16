@@ -568,6 +568,84 @@
 <a href="#553" id="553">553</a>
 <a href="#554" id="554">554</a>
 <a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
 </pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -599,6 +677,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">use </span>common::prelude::FixedWrapper;
 <span class="kw">use </span>common::{fixed, fixed_wrapper, Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
@@ -636,6 +716,8 @@
     <span class="kw">pub </span>deviation: Fixed,
 }
 
+<span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
+
 <span class="kw">impl </span>FeeCalculationParameters {
     <span class="kw">pub fn </span>validate&lt;T: Config&lt;I&gt;, I: <span class="lifetime">&#39;static</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="macro">ensure!</span>(
@@ -664,11 +746,13 @@
 
 <span class="doccomment">/// Symbol rate
 </span><span class="attr">#[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
-</span><span class="kw">pub struct </span>BandRate {
+</span><span class="kw">pub struct </span>BandRate&lt;BlockNumber&gt; {
     <span class="doccomment">/// Rate value in USD.
     </span><span class="kw">pub </span>value: Balance,
     <span class="doccomment">/// Last updated timestamp.
     </span><span class="kw">pub </span>last_updated: u64,
+    <span class="doccomment">/// Last updated block number
+    </span><span class="kw">pub </span>last_updated_block: BlockNumber,
     <span class="doccomment">/// Request identifier in the *Band* protocol.
     /// Useful for debugging and in emergency cases.
     </span><span class="kw">pub </span>request_id: u64,
@@ -676,23 +760,8 @@
     </span><span class="kw">pub </span>dynamic_fee: Fixed,
 }
 
-<span class="kw">impl </span>BandRate {
-    <span class="kw">pub fn </span>update_if_outdated&lt;T: Config&lt;I&gt;, I: <span class="lifetime">&#39;static</span>&gt;(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        <span class="kw-2">mut </span>new: BandRate,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
-        <span class="kw">if </span><span class="self">self</span>.last_updated &lt;= new.last_updated {
-            new.dynamic_fee =
-                Pallet::&lt;T, I&gt;::calculate_dynamic_fee(<span class="self">self</span>.dynamic_fee, <span class="self">self</span>.value, new.value)<span class="question-mark">?</span>;
-
-            <span class="kw-2">*</span><span class="self">self </span>= new;
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="kw">impl </span>From&lt;BandRate&gt; <span class="kw">for </span>Rate {
-    <span class="kw">fn </span>from(value: BandRate) -&gt; Rate {
+<span class="kw">impl</span>&lt;BlockNumber&gt; From&lt;BandRate&lt;BlockNumber&gt;&gt; <span class="kw">for </span>Rate {
+    <span class="kw">fn </span>from(value: BandRate&lt;BlockNumber&gt;) -&gt; Rate {
         Rate {
             value: value.value,
             last_updated: value.last_updated,
@@ -700,8 +769,6 @@
         }
     }
 }
-
-<span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
 
 <span class="kw">impl</span>&lt;T: Config&lt;I&gt;, I: <span class="lifetime">&#39;static</span>&gt; DataFeed&lt;T::Symbol, Rate, u64&gt; <span class="kw">for </span>Pallet&lt;T, I&gt; {
     <span class="kw">fn </span>quote(symbol: <span class="kw-2">&amp;</span>T::Symbol) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Rate&gt;, DispatchError&gt; {
@@ -750,6 +817,7 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>common::OnSymbolDisabled;
     <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
 
     <span class="doccomment">/// The current storage version.
@@ -784,8 +852,16 @@
         <span class="doccomment">/// Rate expiration period in seconds.
         </span><span class="attr">#[pallet::constant]
         </span><span class="kw">type </span>GetBandRateStalePeriod: Get&lt;&lt;&lt;<span class="self">Self </span><span class="kw">as </span>pallet::Config&lt;I&gt;&gt;::Time <span class="kw">as </span>Time&gt;::Moment&gt;;
+        <span class="doccomment">/// Rate expiration period in blocks
+        </span><span class="attr">#[pallet::constant]
+        </span><span class="kw">type </span>GetBandRateStaleBlockPeriod: Get&lt;<span class="self">Self</span>::BlockNumber&gt;;
+        <span class="doccomment">/// Maximum number of symbols that can be relayed within a single call.
+        </span><span class="attr">#[pallet::constant]
+        </span><span class="kw">type </span>MaxRelaySymbols: Get&lt;u32&gt;;
         <span class="doccomment">/// Time used for checking if rate expired
         </span><span class="kw">type </span>Time: Time;
+        <span class="doccomment">/// Hook which is being executed when some symbol must be disabled
+        </span><span class="kw">type </span>OnSymbolDisabledHook: OnSymbolDisabled&lt;<span class="self">Self</span>::Symbol&gt;;
     }
 
     <span class="attr">#[pallet::storage]
@@ -796,7 +872,19 @@
     <span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>rates)]
     </span><span class="kw">pub type </span>SymbolRates&lt;T: Config&lt;I&gt;, I: <span class="lifetime">&#39;static </span>= ()&gt; =
-        StorageMap&lt;<span class="kw">_</span>, Blake2_128Concat, T::Symbol, <span class="prelude-ty">Option</span>&lt;BandRate&gt;, ValueQuery&gt;;
+        StorageMap&lt;<span class="kw">_</span>, Blake2_128Concat, T::Symbol, <span class="prelude-ty">Option</span>&lt;BandRate&lt;BlockNumberFor&lt;T&gt;&gt;&gt;, ValueQuery&gt;;
+
+    <span class="attr">#[pallet::storage]
+    #[pallet::getter(<span class="kw">fn </span>check_blocks)]
+    </span><span class="kw">pub type </span>SymbolCheckBlock&lt;T: Config&lt;I&gt;, I: <span class="lifetime">&#39;static </span>= ()&gt; = StorageDoubleMap&lt;
+        <span class="kw">_</span>,
+        Blake2_128Concat,
+        T::BlockNumber,
+        Blake2_128Concat,
+        T::Symbol,
+        bool,
+        ValueQuery,
+    &gt;;
 
     <span class="attr">#[pallet::type_value]
     </span><span class="kw">pub fn </span>DefaultDynamicFeeParameters&lt;T: Config&lt;I&gt;, I: <span class="lifetime">&#39;static</span>&gt;() -&gt; FeeCalculationParameters {
@@ -843,6 +931,24 @@
         </span>InvalidDynamicFeeParameters,
     }
 
+    <span class="attr">#[pallet::hooks]
+    </span><span class="kw">impl</span>&lt;T: Config&lt;I&gt;, I: <span class="lifetime">&#39;static</span>&gt; Hooks&lt;T::BlockNumber&gt; <span class="kw">for </span>Pallet&lt;T, I&gt; {
+        <span class="kw">fn </span>on_initialize(now: T::BlockNumber) -&gt; Weight {
+            <span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::zero();
+            <span class="kw">let </span><span class="kw-2">mut </span>obsolete_symbols: Vec&lt;T::Symbol&gt; = Vec::new();
+            <span class="kw">for </span>(symbol, <span class="kw">_</span>) <span class="kw">in </span>SymbolCheckBlock::&lt;T, I&gt;::iter_prefix(now) {
+                weight = weight.saturating_add(T::DbWeight::get().reads_writes(<span class="number">1</span>, <span class="number">1</span>));
+                T::OnSymbolDisabledHook::disable_symbol(<span class="kw-2">&amp;</span>symbol);
+                obsolete_symbols.push(symbol);
+            }
+            <span class="kw">for </span>symbol <span class="kw">in </span>obsolete_symbols.iter() {
+                SymbolCheckBlock::&lt;T, I&gt;::remove(now, symbol);
+                weight = weight.saturating_add(T::DbWeight::get().reads_writes(<span class="number">0</span>, <span class="number">1</span>));
+            }
+            weight
+        }
+    }
+
     <span class="attr">#[pallet::call]
     </span><span class="kw">impl</span>&lt;T: Config&lt;I&gt;, I: <span class="lifetime">&#39;static</span>&gt; Pallet&lt;T, I&gt; {
         <span class="doccomment">/// Relay a list of symbols and their associated rates along with the resolve time and request id on `BandChain`.
@@ -861,7 +967,7 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&lt;I&gt;&gt;::WeightInfo::relay())]
         </span><span class="kw">pub fn </span>relay(
             origin: OriginFor&lt;T&gt;,
-            rates: Vec&lt;(T::Symbol, u64)&gt;,
+            rates: BoundedVec&lt;(T::Symbol, u64), T::MaxRelaySymbols&gt;,
             resolve_time: u64,
             request_id: u64,
         ) -&gt; DispatchResultWithPostInfo {
@@ -871,10 +977,16 @@
                 rates,
                 resolve_time,
                 request_id,
-                |option_old_rate, new_rate| <span class="kw">match </span>option_old_rate {
-                    <span class="prelude-val">Some</span>(rate) =&gt; rate.update_if_outdated::&lt;T, I&gt;(new_rate),
+                |option_old_rate, new_rate, symbol| <span class="kw">match </span>option_old_rate {
+                    <span class="prelude-val">Some</span>(rate) =&gt; <span class="self">Self</span>::update_rate_if_outdated(rate, new_rate, symbol),
                     <span class="prelude-val">None </span>=&gt; {
+                        <span class="kw">let </span>last_updated_block = new_rate.last_updated_block;
                         <span class="kw">_ </span>= option_old_rate.insert(new_rate);
+                        SymbolCheckBlock::&lt;T, I&gt;::insert(
+                            <span class="self">Self</span>::calc_expiration_block(last_updated_block),
+                            symbol,
+                            <span class="bool-val">true</span>,
+                        );
                         <span class="prelude-val">Ok</span>(())
                     }
                 },
@@ -897,7 +1009,7 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&lt;I&gt;&gt;::WeightInfo::force_relay())]
         </span><span class="kw">pub fn </span>force_relay(
             origin: OriginFor&lt;T&gt;,
-            rates: Vec&lt;(T::Symbol, u64)&gt;,
+            rates: BoundedVec&lt;(T::Symbol, u64), T::MaxRelaySymbols&gt;,
             resolve_time: u64,
             request_id: u64,
         ) -&gt; DispatchResultWithPostInfo {
@@ -907,8 +1019,20 @@
                 rates,
                 resolve_time,
                 request_id,
-                |option_old_rate, new_rate| {
-                    <span class="kw">let _ </span>= option_old_rate.insert(new_rate);
+                |option_old_rate, new_rate, symbol| {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(rate) = option_old_rate {
+                        SymbolCheckBlock::&lt;T, I&gt;::remove(
+                            <span class="self">Self</span>::calc_expiration_block(rate.last_updated_block),
+                            symbol,
+                        );
+                    }
+                    <span class="kw">let </span>last_updated_block = new_rate.last_updated_block;
+                    <span class="kw">_ </span>= option_old_rate.insert(new_rate);
+                    SymbolCheckBlock::&lt;T, I&gt;::insert(
+                        <span class="self">Self</span>::calc_expiration_block(last_updated_block),
+                        symbol,
+                        <span class="bool-val">true</span>,
+                    );
                     <span class="prelude-val">Ok</span>(())
                 },
             )<span class="question-mark">?</span>;
@@ -1036,10 +1160,14 @@
     ///
     /// `f` - mutation function which defines the way values should be updated.
     </span><span class="kw">fn </span>update_rates(
-        rates: Vec&lt;(T::Symbol, u64)&gt;,
+        rates: BoundedVec&lt;(T::Symbol, u64), T::MaxRelaySymbols&gt;,
         resolve_time: u64,
         request_id: u64,
-        f: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;BandRate&gt;, BandRate) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt;,
+        f: <span class="kw">impl </span>Fn(
+            <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;BandRate&lt;BlockNumberFor&lt;T&gt;&gt;&gt;,
+            BandRate&lt;BlockNumberFor&lt;T&gt;&gt;,
+            <span class="kw-2">&amp;</span>T::Symbol,
+        ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(T::Symbol, Balance)&gt;, DispatchError&gt; {
         <span class="kw">let </span>converted_rates: Vec&lt;(T::Symbol, Balance)&gt; =
             fallible_iterator::convert(rates.into_iter().map(
@@ -1049,6 +1177,7 @@
                 },
             ))
             .collect()<span class="question-mark">?</span>;
+        <span class="kw">let </span>now = frame_system::Pallet::&lt;T&gt;::block_number();
         <span class="kw">let </span>new_symbols = fallible_iterator::convert(
             converted_rates
                 .iter()
@@ -1062,13 +1191,13 @@
                     last_updated: resolve_time,
                     request_id,
                     dynamic_fee: <span class="macro">fixed!</span>(<span class="number">0</span>),
+                    last_updated_block: now,
                 };
-
                 SymbolRates::&lt;T, I&gt;::mutate(symbol, |option_old_rate| {
                     <span class="kw">if </span>option_old_rate.is_none() {
                         new_symbols_acc.insert(symbol.clone());
                     }
-                    f(option_old_rate, new_rate)
+                    f(option_old_rate, new_rate, symbol)
                 })<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(new_symbols_acc)
             },
@@ -1121,6 +1250,33 @@
             .get()
             .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::DynamicFeeCalculationError.into())
             .map(|fee| <span class="kw">if </span>fee &gt;= <span class="macro">fixed!</span>(<span class="number">1</span>) { <span class="macro">fixed!</span>(<span class="number">1</span>) } <span class="kw">else </span>{ fee })
+    }
+
+    <span class="kw">pub fn </span>update_rate_if_outdated(
+        rate: <span class="kw-2">&amp;mut </span>BandRate&lt;T::BlockNumber&gt;,
+        new_rate: BandRate&lt;T::BlockNumber&gt;,
+        symbol: <span class="kw-2">&amp;</span>T::Symbol,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        <span class="kw">if </span>rate.last_updated &lt;= new_rate.last_updated {
+            SymbolCheckBlock::&lt;T, I&gt;::remove(
+                <span class="self">Self</span>::calc_expiration_block(rate.last_updated_block),
+                symbol,
+            );
+            <span class="kw">let </span>dynamic_fee =
+                <span class="self">Self</span>::calculate_dynamic_fee(rate.dynamic_fee, rate.value, new_rate.value)<span class="question-mark">?</span>;
+            <span class="kw-2">*</span>rate = new_rate;
+            rate.dynamic_fee = dynamic_fee;
+            SymbolCheckBlock::&lt;T, I&gt;::insert(
+                <span class="self">Self</span>::calc_expiration_block(rate.last_updated_block),
+                symbol,
+                <span class="bool-val">true</span>,
+            );
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">pub fn </span>calc_expiration_block(block_number: T::BlockNumber) -&gt; T::BlockNumber {
+        block_number + T::GetBandRateStaleBlockPeriod::get()
     }
 }
 </code></pre></div></section></main></body></html>

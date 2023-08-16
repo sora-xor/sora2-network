@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BandRateV0","BandUpdate"]};
+window.SIDEBAR_ITEMS = {"mod":["storages","v1","v2"]};

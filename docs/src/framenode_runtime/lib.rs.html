@@ -3433,6 +3433,15 @@
 <a href="#3418" id="3418">3418</a>
 <a href="#3419" id="3419">3419</a>
 <a href="#3420" id="3420">3420</a>
+<a href="#3421" id="3421">3421</a>
+<a href="#3422" id="3422">3422</a>
+<a href="#3423" id="3423">3423</a>
+<a href="#3424" id="3424">3424</a>
+<a href="#3425" id="3425">3425</a>
+<a href="#3426" id="3426">3426</a>
+<a href="#3427" id="3427">3427</a>
+<a href="#3428" id="3428">3428</a>
+<a href="#3429" id="3429">3429</a>
 </pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3466,6 +3475,8 @@
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 </span><span class="comment">// `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 </span><span class="attr">#![recursion_limit = <span class="string">&quot;256&quot;</span>]
+</span><span class="comment">// TODO #167: fix clippy warnings
+</span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">extern crate </span>alloc;
 <span class="kw">use </span>alloc::string::String;
@@ -3690,10 +3701,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">59</span>,
+    spec_version: <span class="number">60</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">59</span>,
+    transaction_version: <span class="number">60</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4666,6 +4677,7 @@
                 <span class="prelude-val">Some</span>(BIG_FEE)
             }
             RuntimeCall::Assets(..)
+            | RuntimeCall::Band(..)
             | RuntimeCall::EthBridge(..)
             | RuntimeCall::LiquidityProxy(..)
             | RuntimeCall::MulticollateralBondingCurvePool(..)
@@ -5276,6 +5288,7 @@
     <span class="kw">type </span>WeightInfo = xst::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>Oracle = OracleProxy;
     <span class="kw">type </span>Symbol = &lt;Runtime <span class="kw">as </span>band::Config&gt;::Symbol;
+    <span class="kw">type </span>TradingPairSourceManager = TradingPair;
     <span class="kw">type </span>GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
 }
 
@@ -5443,7 +5456,9 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>GetBandRateStalePeriod: Moment = <span class="number">60</span><span class="kw-2">*</span><span class="number">5</span><span class="kw-2">*</span><span class="number">1000</span>; <span class="comment">// 5 minutes
-</span>}
+    </span><span class="kw">pub const </span>GetBandRateStaleBlockPeriod: u32 = <span class="number">600</span>; <span class="comment">// 1 hour in blocks
+    </span><span class="kw">pub const </span>BandMaxRelaySymbols: u32 = <span class="number">100</span>;
+}
 
 <span class="kw">impl </span>band::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
@@ -5452,6 +5467,9 @@
     <span class="kw">type </span>OnNewSymbolsRelayedHook = oracle_proxy::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>Time = Timestamp;
     <span class="kw">type </span>GetBandRateStalePeriod = GetBandRateStalePeriod;
+    <span class="kw">type </span>GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
+    <span class="kw">type </span>OnSymbolDisabledHook = xst::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>MaxRelaySymbols = BandMaxRelaySymbols;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -5493,8 +5511,8 @@
     <span class="kw">type </span>Delegate = OrderBook;
     <span class="kw">type </span>MaxOpenedLimitOrdersPerUser = ConstU32&lt;<span class="number">1000</span>&gt;; <span class="comment">// TODO: order-book clarify
     </span><span class="kw">type </span>MaxLimitOrdersForPrice = ConstU32&lt;<span class="number">10000</span>&gt;; <span class="comment">// TODO: order-book clarify
-    </span><span class="kw">type </span>MaxSidePriceCount = ConstU32&lt;<span class="number">100000</span>&gt;; <span class="comment">// TODO: order-book clarify
-    </span><span class="kw">type </span>MaxExpiringOrdersPerBlock = ConstU32&lt;<span class="number">10000</span>&gt;; <span class="comment">// TODO: order-book clarify
+    </span><span class="kw">type </span>MaxSidePriceCount = ConstU32&lt;<span class="number">10000</span>&gt;; <span class="comment">// TODO: order-book clarify
+    </span><span class="kw">type </span>MaxExpiringOrdersPerBlock = ConstU32&lt;<span class="number">1000</span>&gt;; <span class="comment">// TODO: order-book clarify
     </span><span class="kw">type </span>MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
     <span class="kw">type </span>EnsureTradingPairExists = TradingPair;
     <span class="kw">type </span>TradingPairSourceManager = TradingPair;

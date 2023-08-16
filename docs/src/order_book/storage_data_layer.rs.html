@@ -350,6 +350,9 @@
 <a href="#335" id="335">335</a>
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
 </pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -388,7 +391,7 @@
 <span class="kw">use </span>common::PriceVariant;
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
-<span class="kw">use </span>sp_runtime::traits::Zero;
+<span class="kw">use </span>sp_runtime::traits::{CheckedAdd, CheckedSub, Zero};
 <span class="kw">use </span>sp_std::collections::btree_map::BTreeMap;
 <span class="kw">use </span>sp_std::marker::PhantomData;
 <span class="kw">use </span>sp_std::vec::Vec;
@@ -444,7 +447,7 @@
             .get(price)
             .map(|x| <span class="kw-2">*</span>x)
             .unwrap_or_default()
-            .checked_add(<span class="kw-2">*</span>value)
+            .checked_add(value)
             .ok_or(())<span class="question-mark">?</span>;
         bids.try_insert(<span class="kw-2">*</span>price, volume).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
         &lt;AggregatedBids&lt;T&gt;&gt;::set(order_book_id, bids);
@@ -461,7 +464,7 @@
             .get(price)
             .map(|x| <span class="kw-2">*</span>x)
             .ok_or(())<span class="question-mark">?
-            </span>.checked_sub(<span class="kw-2">*</span>value)
+            </span>.checked_sub(value)
             .ok_or(())<span class="question-mark">?</span>;
         <span class="kw">if </span>volume.is_zero() {
             agg_bids.remove(price).ok_or(())<span class="question-mark">?</span>;
@@ -482,7 +485,7 @@
             .get(price)
             .map(|x| <span class="kw-2">*</span>x)
             .unwrap_or_default()
-            .checked_add(<span class="kw-2">*</span>value)
+            .checked_add(value)
             .ok_or(())<span class="question-mark">?</span>;
         asks.try_insert(<span class="kw-2">*</span>price, volume).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
         &lt;AggregatedAsks&lt;T&gt;&gt;::set(order_book_id, asks);
@@ -499,7 +502,7 @@
             .get(price)
             .map(|x| <span class="kw-2">*</span>x)
             .ok_or(())<span class="question-mark">?
-            </span>.checked_sub(<span class="kw-2">*</span>value)
+            </span>.checked_sub(value)
             .ok_or(())<span class="question-mark">?</span>;
         <span class="kw">if </span>volume.is_zero() {
             agg_asks.remove(price).ok_or(())<span class="question-mark">?</span>;
@@ -586,7 +589,10 @@
         }
         <span class="macro">ensure!</span>(order.amount &gt; new_amount, Error::&lt;T&gt;::UpdateLimitOrderError);
 
-        <span class="kw">let </span>delta = order.amount - new_amount;
+        <span class="kw">let </span>delta = order
+            .amount
+            .checked_sub(<span class="kw-2">&amp;</span>new_amount)
+            .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
 
         <span class="kw">match </span>order.side {
             PriceVariant::Buy =&gt; {

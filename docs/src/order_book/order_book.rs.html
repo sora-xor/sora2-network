@@ -1109,6 +1109,80 @@
 <a href="#1094" id="1094">1094</a>
 <a href="#1095" id="1095">1095</a>
 <a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
+<a href="#1131" id="1131">1131</a>
+<a href="#1132" id="1132">1132</a>
+<a href="#1133" id="1133">1133</a>
+<a href="#1134" id="1134">1134</a>
+<a href="#1135" id="1135">1135</a>
+<a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
+<a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
+<a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
+<a href="#1159" id="1159">1159</a>
+<a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
 </pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1146,13 +1220,13 @@
 };
 <span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
-<span class="kw">use </span>common::prelude::{FixedWrapper, QuoteAmount};
-<span class="kw">use </span>common::{balance, PriceVariant};
+<span class="kw">use </span>common::prelude::QuoteAmount;
+<span class="kw">use </span>common::{balance, Balance, PriceVariant};
 <span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
 <span class="kw">use </span>frame_support::traits::Get;
-<span class="kw">use </span>sp_runtime::traits::{One, Zero};
+<span class="kw">use </span>sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero};
 <span class="kw">use </span>sp_std::cmp::Ordering;
 <span class="kw">use </span>sp_std::collections::btree_map::BTreeMap;
 <span class="kw">use </span>sp_std::ops::Add;
@@ -1194,20 +1268,20 @@
     <span class="kw">pub fn </span>default(order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new(
             order_book_id,
-            <span class="macro">balance!</span>(<span class="number">0.00001</span>), <span class="comment">// TODO: order-book clarify
-            </span><span class="macro">balance!</span>(<span class="number">0.00001</span>), <span class="comment">// TODO: order-book clarify
-            </span><span class="macro">balance!</span>(<span class="number">1</span>),       <span class="comment">// TODO: order-book clarify
-            </span><span class="macro">balance!</span>(<span class="number">100000</span>),  <span class="comment">// TODO: order-book clarify
+            OrderPrice::divisible(<span class="macro">balance!</span>(<span class="number">0.00001</span>)), <span class="comment">// TODO: order-book clarify
+            </span>OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">0.00001</span>)), <span class="comment">// TODO: order-book clarify
+            </span>OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">1</span>)),      <span class="comment">// TODO: order-book clarify
+            </span>OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">100000</span>)), <span class="comment">// TODO: order-book clarify
         </span>)
     }
 
-    <span class="kw">pub fn </span>default_nft(order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>default_indivisible(order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new(
             order_book_id,
-            <span class="macro">balance!</span>(<span class="number">0.00001</span>), <span class="comment">// TODO: order-book clarify
-            </span><span class="macro">balance!</span>(<span class="number">1</span>),       <span class="comment">// TODO: order-book clarify
-            </span><span class="macro">balance!</span>(<span class="number">1</span>),       <span class="comment">// TODO: order-book clarify
-            </span><span class="macro">balance!</span>(<span class="number">100000</span>),  <span class="comment">// TODO: order-book clarify
+            OrderPrice::divisible(<span class="macro">balance!</span>(<span class="number">0.00001</span>)), <span class="comment">// TODO: order-book clarify
+            </span>OrderVolume::indivisible(<span class="number">1</span>),              <span class="comment">// TODO: order-book clarify
+            </span>OrderVolume::indivisible(<span class="number">1</span>),              <span class="comment">// TODO: order-book clarify
+            </span>OrderVolume::indivisible(<span class="number">100000</span>),         <span class="comment">// TODO: order-book clarify
         </span>)
     }
 
@@ -1439,7 +1513,7 @@
             .entry(<span class="kw-2">*</span>lock_asset)
             .or_default()
             .entry(limit_order.owner.clone())
-            .and_modify(|amount| <span class="kw-2">*</span>amount += <span class="kw-2">*</span>lock_amount.value())
+            .and_modify(|amount| <span class="kw-2">*</span>amount = amount.saturating_add(<span class="kw-2">*</span>lock_amount.value()))
             .or_insert(<span class="kw-2">*</span>lock_amount.value());
 
         <span class="prelude-val">Ok</span>(MarketChange {
@@ -1476,7 +1550,7 @@
             .entry(<span class="kw-2">*</span>unlock_asset)
             .or_default()
             .entry(limit_order.owner.clone())
-            .and_modify(|pay| <span class="kw-2">*</span>pay += unlock_amount.value())
+            .and_modify(|pay| <span class="kw-2">*</span>pay = pay.saturating_add(<span class="kw-2">*</span>unlock_amount.value()))
             .or_insert(<span class="kw-2">*</span>unlock_amount.value());
 
         limit_orders_to_cancel.insert(limit_order.id, limit_order);
@@ -1517,7 +1591,7 @@
                 .entry(<span class="kw-2">*</span>unlock_asset)
                 .or_default()
                 .entry(limit_order.owner.clone())
-                .and_modify(|pay| <span class="kw-2">*</span>pay += unlock_amount.value())
+                .and_modify(|pay| <span class="kw-2">*</span>pay = pay.saturating_add(<span class="kw-2">*</span>unlock_amount.value()))
                 .or_insert(<span class="kw-2">*</span>unlock_amount.value());
 
             limit_orders_to_cancel.insert(limit_order.id, limit_order);
@@ -1572,16 +1646,22 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>limit_order = data.get_limit_order(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, limit_order_id)<span class="question-mark">?</span>;
 
                 <span class="kw">if </span>remaining_amount &gt;= limit_order.amount {
-                    remaining_amount -= limit_order.amount;
-                    taker_amount += limit_order.deal_amount(MarketRole::Taker, <span class="prelude-val">None</span>)<span class="question-mark">?</span>.value();
+                    remaining_amount = remaining_amount
+                        .checked_sub(<span class="kw-2">&amp;</span>limit_order.amount)
+                        .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
+                    taker_amount = taker_amount
+                        .checked_add(limit_order.deal_amount(MarketRole::Taker, <span class="prelude-val">None</span>)<span class="question-mark">?</span>.value())
+                        .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
                     <span class="kw">let </span>maker_payment = <span class="kw-2">*</span>limit_order.deal_amount(MarketRole::Maker, <span class="prelude-val">None</span>)<span class="question-mark">?</span>.value();
-                    maker_amount += maker_payment;
+                    maker_amount = maker_amount
+                        .checked_add(<span class="kw-2">&amp;</span>maker_payment)
+                        .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
                     payment
                         .to_unlock
                         .entry(maker_out_asset)
                         .or_default()
                         .entry(limit_order.owner.clone())
-                        .and_modify(|payment| <span class="kw-2">*</span>payment += maker_payment)
+                        .and_modify(|payment| <span class="kw-2">*</span>payment = payment.saturating_add(maker_payment))
                         .or_insert(maker_payment);
                     limit_orders_to_full_execute.insert(limit_order.id, limit_order);
 
@@ -1589,21 +1669,30 @@
                         <span class="kw">break</span>;
                     }
                 } <span class="kw">else </span>{
-                    taker_amount += limit_order
-                        .deal_amount(MarketRole::Taker, <span class="prelude-val">Some</span>(remaining_amount))<span class="question-mark">?
-                        </span>.value();
+                    taker_amount = taker_amount
+                        .checked_add(
+                            limit_order
+                                .deal_amount(MarketRole::Taker, <span class="prelude-val">Some</span>(remaining_amount))<span class="question-mark">?
+                                </span>.value(),
+                        )
+                        .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
                     <span class="kw">let </span>maker_payment = <span class="kw-2">*</span>limit_order
                         .deal_amount(MarketRole::Maker, <span class="prelude-val">Some</span>(remaining_amount))<span class="question-mark">?
                         </span>.value();
-                    maker_amount += maker_payment;
+                    maker_amount = maker_amount
+                        .checked_add(<span class="kw-2">&amp;</span>maker_payment)
+                        .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
                     payment
                         .to_unlock
                         .entry(maker_out_asset)
                         .or_default()
                         .entry(limit_order.owner.clone())
-                        .and_modify(|payment| <span class="kw-2">*</span>payment += maker_payment)
+                        .and_modify(|payment| <span class="kw-2">*</span>payment = payment.saturating_add(maker_payment))
                         .or_insert(maker_payment);
-                    limit_order.amount -= remaining_amount;
+                    limit_order.amount = limit_order
+                        .amount
+                        .checked_sub(<span class="kw-2">&amp;</span>remaining_amount)
+                        .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
                     limit_orders_to_part_execute.insert(
                         limit_order.id,
                         (limit_order, OrderAmount::Base(remaining_amount)),
@@ -1628,7 +1717,7 @@
             .entry(maker_out_asset)
             .or_default()
             .entry(taker)
-            .and_modify(|lock_amount| <span class="kw-2">*</span>lock_amount += maker_amount)
+            .and_modify(|lock_amount| <span class="kw-2">*</span>lock_amount = lock_amount.saturating_add(maker_amount))
             .or_insert(maker_amount);
 
         payment
@@ -1636,7 +1725,7 @@
             .entry(taker_out_asset)
             .or_default()
             .entry(receiver)
-            .and_modify(|unlock_amount| <span class="kw-2">*</span>unlock_amount += taker_amount)
+            .and_modify(|unlock_amount| <span class="kw-2">*</span>unlock_amount = unlock_amount.saturating_add(taker_amount))
             .or_insert(taker_amount);
 
         <span class="kw">let </span>(deal_input, deal_output) = <span class="kw">match </span>direction {
@@ -1679,13 +1768,16 @@
         <span class="kw">let </span>limit_orders = data.get_all_limit_orders(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id);
 
         <span class="kw">for </span><span class="kw-2">mut </span>limit_order <span class="kw">in </span>limit_orders {
-            <span class="kw">if </span>limit_order.amount % <span class="self">self</span>.step_lot_size != <span class="number">0 </span>{
+            <span class="kw">if </span>limit_order.amount.balance() % <span class="self">self</span>.step_lot_size.balance() != <span class="number">0 </span>{
                 <span class="kw">let </span>refund = <span class="kw">if </span>limit_order.amount &lt; <span class="self">self</span>.step_lot_size {
                     limit_orders_to_cancel.insert(limit_order.id, limit_order.clone());
                     limit_order.amount
                 } <span class="kw">else </span>{
                     <span class="kw">let </span>amount = <span class="self">self</span>.align_amount(limit_order.amount);
-                    <span class="kw">let </span>dust = limit_order.amount - amount;
+                    <span class="kw">let </span>dust = limit_order
+                        .amount
+                        .checked_sub(<span class="kw-2">&amp;</span>amount)
+                        .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
                     limit_order.amount = amount;
                     limit_orders_to_force_update.insert(limit_order.id, limit_order.clone());
                     dust
@@ -1698,7 +1790,9 @@
                     .entry(<span class="kw-2">*</span>refund.associated_asset(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id))
                     .or_default()
                     .entry(limit_order.owner)
-                    .and_modify(|unlock_amount| <span class="kw-2">*</span>unlock_amount += <span class="kw-2">*</span>refund.value())
+                    .and_modify(|unlock_amount| {
+                        <span class="kw-2">*</span>unlock_amount = unlock_amount.saturating_add(<span class="kw-2">*</span>refund.value())
+                    })
                     .or_insert(<span class="kw-2">*</span>refund.value());
             }
         }
@@ -1722,7 +1816,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
-        amount: QuoteAmount&lt;OrderVolume&gt;,
+        amount: QuoteAmount&lt;Balance&gt;,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;DealInfo&lt;AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         <span class="kw">let </span>direction = <span class="self">self</span>.get_direction(input_asset_id, output_asset_id)<span class="question-mark">?</span>;
@@ -1731,21 +1825,29 @@
             QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; <span class="kw">match </span>direction {
                 PriceVariant::Buy =&gt; <span class="self">self</span>.sum_market(
                     data.get_aggregated_asks(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id).iter(),
-                    <span class="prelude-val">Some</span>(OrderAmount::Quote(desired_amount_in)),
+                    <span class="prelude-val">Some</span>(OrderAmount::Quote(
+                        <span class="self">self</span>.tick_size.copy_divisibility(desired_amount_in),
+                    )),
                 )<span class="question-mark">?</span>,
                 PriceVariant::Sell =&gt; <span class="self">self</span>.sum_market(
                     data.get_aggregated_bids(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id).iter().rev(),
-                    <span class="prelude-val">Some</span>(OrderAmount::Base(desired_amount_in)),
+                    <span class="prelude-val">Some</span>(OrderAmount::Base(
+                        <span class="self">self</span>.step_lot_size.copy_divisibility(desired_amount_in),
+                    )),
                 )<span class="question-mark">?</span>,
             },
             QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; <span class="kw">match </span>direction {
                 PriceVariant::Buy =&gt; <span class="self">self</span>.sum_market(
                     data.get_aggregated_asks(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id).iter(),
-                    <span class="prelude-val">Some</span>(OrderAmount::Base(desired_amount_out)),
+                    <span class="prelude-val">Some</span>(OrderAmount::Base(
+                        <span class="self">self</span>.step_lot_size.copy_divisibility(desired_amount_out),
+                    )),
                 )<span class="question-mark">?</span>,
                 PriceVariant::Sell =&gt; <span class="self">self</span>.sum_market(
                     data.get_aggregated_bids(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id).iter().rev(),
-                    <span class="prelude-val">Some</span>(OrderAmount::Quote(desired_amount_out)),
+                    <span class="prelude-val">Some</span>(OrderAmount::Quote(
+                        <span class="self">self</span>.tick_size.copy_divisibility(desired_amount_out),
+                    )),
                 )<span class="question-mark">?</span>,
             },
         };
@@ -1787,38 +1889,61 @@
         <span class="kw">let </span><span class="kw-2">mut </span>enough_liquidity = <span class="bool-val">false</span>;
 
         <span class="kw">for </span>(price, base_volume) <span class="kw">in </span>market_data {
-            <span class="kw">let </span>quote_volume = (FixedWrapper::from(<span class="kw-2">*</span>price) * FixedWrapper::from(<span class="kw-2">*</span>base_volume))
-                .try_into_balance()
-                .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
+            <span class="kw">let </span>quote_volume = price
+                .checked_mul(base_volume)
+                .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(limit) = depth_limit {
                 <span class="kw">match </span>limit {
                     OrderAmount::Base(base_limit) =&gt; {
-                        <span class="kw">if </span>market_base_volume + base_volume &gt; base_limit {
-                            <span class="kw">let </span>delta = <span class="self">self</span>.align_amount(base_limit - market_base_volume);
-                            market_base_volume += delta;
-                            market_quote_volume += (FixedWrapper::from(<span class="kw-2">*</span>price)
-                                * FixedWrapper::from(delta))
-                            .try_into_balance()
-                            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
+                        <span class="kw">if </span>market_base_volume
+                            .checked_add(base_volume)
+                            .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?
+                            </span>&gt; base_limit
+                        {
+                            <span class="kw">let </span>delta = <span class="self">self</span>.align_amount(
+                                base_limit
+                                    .checked_sub(<span class="kw-2">&amp;</span>market_base_volume)
+                                    .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>,
+                            );
+                            market_base_volume = market_base_volume
+                                .checked_add(<span class="kw-2">&amp;</span>delta)
+                                .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
+                            market_quote_volume = market_quote_volume
+                                .checked_add(
+                                    <span class="kw-2">&amp;</span>price
+                                        .checked_mul(<span class="kw-2">&amp;</span>delta)
+                                        .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>,
+                                )
+                                .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
                             enough_liquidity = <span class="bool-val">true</span>;
                             <span class="kw">break</span>;
                         }
                     }
                     OrderAmount::Quote(quote_limit) =&gt; {
-                        <span class="kw">if </span>market_quote_volume + quote_volume &gt; quote_limit {
+                        <span class="kw">if </span>market_quote_volume
+                            .checked_add(<span class="kw-2">&amp;</span>quote_volume)
+                            .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?
+                            </span>&gt; quote_limit
+                        {
                             <span class="comment">// delta in base asset
                             </span><span class="kw">let </span>delta = <span class="self">self</span>.align_amount(
-                                (FixedWrapper::from(quote_limit - market_quote_volume)
-                                    / FixedWrapper::from(<span class="kw-2">*</span>price))
-                                .try_into_balance()
-                                .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>,
+                                quote_limit
+                                    .checked_sub(<span class="kw-2">&amp;</span>market_quote_volume)
+                                    .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?
+                                    </span>.checked_div(price)
+                                    .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>,
                             );
-                            market_base_volume += delta;
-                            market_quote_volume += (FixedWrapper::from(<span class="kw-2">*</span>price)
-                                * FixedWrapper::from(delta))
-                            .try_into_balance()
-                            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
+                            market_base_volume = market_base_volume
+                                .checked_add(<span class="kw-2">&amp;</span>delta)
+                                .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
+                            market_quote_volume = market_quote_volume
+                                .checked_add(
+                                    <span class="kw-2">&amp;</span>price
+                                        .checked_mul(<span class="kw-2">&amp;</span>delta)
+                                        .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>,
+                                )
+                                .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
                             enough_liquidity = <span class="bool-val">true</span>;
                             <span class="kw">break</span>;
                         }
@@ -1826,8 +1951,12 @@
                 }
             }
 
-            market_base_volume += base_volume;
-            market_quote_volume += quote_volume;
+            market_base_volume = market_base_volume
+                .checked_add(base_volume)
+                .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
+            market_quote_volume = market_quote_volume
+                .checked_add(<span class="kw-2">&amp;</span>quote_volume)
+                .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
         }
 
         <span class="macro">ensure!</span>(
@@ -1962,10 +2091,13 @@
         }
     }
 
-    <span class="kw">pub fn </span>align_amount(<span class="kw-2">&amp;</span><span class="self">self</span>, amount: OrderVolume) -&gt; OrderVolume {
-        <span class="kw">let </span>steps = amount / <span class="self">self</span>.step_lot_size;
-        <span class="kw">let </span>aligned = steps * <span class="self">self</span>.step_lot_size;
-        aligned
+    <span class="kw">pub fn </span>align_amount(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>amount: OrderVolume) -&gt; OrderVolume {
+        <span class="kw">let </span>steps = amount
+            .balance()
+            .saturating_div(<span class="kw-2">*</span><span class="self">self</span>.step_lot_size.balance());
+        <span class="kw">let </span>aligned = steps.saturating_mul(<span class="kw-2">*</span><span class="self">self</span>.step_lot_size.balance());
+        amount.set(aligned);
+        amount
     }
 
     <span class="doccomment">/// ### `ignore_unschedule_error`
@@ -1989,7 +2121,7 @@
     <span class="kw">fn </span>ensure_limit_order_valid(<span class="kw-2">&amp;</span><span class="self">self</span>, limit_order: <span class="kw-2">&amp;</span>LimitOrder&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         limit_order.ensure_valid()<span class="question-mark">?</span>;
         <span class="macro">ensure!</span>(
-            limit_order.price % <span class="self">self</span>.tick_size == <span class="number">0</span>,
+            limit_order.price.balance() % <span class="self">self</span>.tick_size.balance() == <span class="number">0</span>,
             Error::&lt;T&gt;::InvalidLimitOrderPrice
         );
         <span class="macro">ensure!</span>(
@@ -1997,7 +2129,7 @@
             Error::&lt;T&gt;::InvalidOrderAmount
         );
         <span class="macro">ensure!</span>(
-            limit_order.amount % <span class="self">self</span>.step_lot_size == <span class="number">0</span>,
+            limit_order.amount.balance() % <span class="self">self</span>.step_lot_size.balance() == <span class="number">0</span>,
             Error::&lt;T&gt;::InvalidOrderAmount
         );
         <span class="prelude-val">Ok</span>(())
@@ -2013,7 +2145,11 @@
             Error::&lt;T&gt;::InvalidOrderBookId
         );
         <span class="macro">ensure!</span>(
-            market_order.amount % <span class="self">self</span>.step_lot_size == <span class="number">0</span>,
+            <span class="self">self</span>.min_lot_size &lt;= market_order.amount &amp;&amp; market_order.amount &lt;= <span class="self">self</span>.max_lot_size,
+            Error::&lt;T&gt;::InvalidOrderAmount
+        );
+        <span class="macro">ensure!</span>(
+            market_order.amount.balance() % <span class="self">self</span>.step_lot_size.balance() == <span class="number">0</span>,
             Error::&lt;T&gt;::InvalidOrderAmount
         );
         <span class="prelude-val">Ok</span>(())
@@ -2049,9 +2185,11 @@
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>((best_bid_price, <span class="kw">_</span>)) = <span class="self">self</span>.best_bid(data) {
                     <span class="kw">if </span>limit_order.price &lt; best_bid_price {
-                        <span class="kw">let </span>diff = best_bid_price.abs_diff(limit_order.price);
+                        <span class="kw">let </span>diff = best_bid_price
+                            .balance()
+                            .abs_diff(<span class="kw-2">*</span>limit_order.price.balance());
                         <span class="macro">ensure!</span>(
-                            diff &lt;= T::MAX_PRICE_SHIFT * best_bid_price,
+                            diff &lt;= T::MAX_PRICE_SHIFT * (<span class="kw-2">*</span>best_bid_price.balance()),
                             Error::&lt;T&gt;::InvalidLimitOrderPrice
                         );
                     }
@@ -2073,9 +2211,11 @@
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>((best_ask_price, <span class="kw">_</span>)) = <span class="self">self</span>.best_ask(data) {
                     <span class="kw">if </span>limit_order.price &gt; best_ask_price {
-                        <span class="kw">let </span>diff = best_ask_price.abs_diff(limit_order.price);
+                        <span class="kw">let </span>diff = best_ask_price
+                            .balance()
+                            .abs_diff(<span class="kw-2">*</span>limit_order.price.balance());
                         <span class="macro">ensure!</span>(
-                            diff &lt;= T::MAX_PRICE_SHIFT * best_ask_price,
+                            diff &lt;= T::MAX_PRICE_SHIFT * (<span class="kw-2">*</span>best_ask_price.balance()),
                             Error::&lt;T&gt;::InvalidLimitOrderPrice
                         );
                     }
@@ -2099,13 +2239,15 @@
         <span class="kw">let </span>volume = <span class="kw">match </span>side {
             PriceVariant::Buy =&gt; {
                 <span class="kw">let </span>bids = data.get_aggregated_bids(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id);
-                bids.iter()
-                    .fold(OrderVolume::zero(), |sum, (<span class="kw">_</span>, volume)| sum + volume)
+                bids.iter().fold(OrderVolume::zero(), |sum, (<span class="kw">_</span>, volume)| {
+                    sum.saturating_add(<span class="kw-2">*</span>volume)
+                })
             }
             PriceVariant::Sell =&gt; {
                 <span class="kw">let </span>asks = data.get_aggregated_asks(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id);
-                asks.iter()
-                    .fold(OrderVolume::zero(), |sum, (<span class="kw">_</span>, volume)| sum + volume)
+                asks.iter().fold(OrderVolume::zero(), |sum, (<span class="kw">_</span>, volume)| {
+                    sum.saturating_add(<span class="kw-2">*</span>volume)
+                })
             }
         };
 
@@ -2137,8 +2279,14 @@
 
         <span class="kw">if </span>limit_amout &lt; <span class="self">self</span>.min_lot_size {
             <span class="kw">let </span>market_volume = <span class="self">self</span>.market_volume(limit_order.side.switched(), data);
-            <span class="kw">if </span>market_volume - market_amount &gt;= limit_amout {
-                market_amount += limit_amout;
+            <span class="kw">if </span>market_volume
+                .checked_sub(<span class="kw-2">&amp;</span>market_amount)
+                .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?
+                </span>&gt;= limit_amout
+            {
+                market_amount = market_amount
+                    .checked_add(<span class="kw-2">&amp;</span>limit_amout)
+                    .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
                 limit_amout = OrderVolume::zero();
             } <span class="kw">else </span>{
                 limit_amout = OrderVolume::zero();
@@ -2190,10 +2338,10 @@
             }
 
             <span class="kw">if </span>amount &gt;= <span class="kw-2">*</span>volume {
-                market_amount += volume;
-                amount -= volume;
+                market_amount = market_amount.saturating_add(<span class="kw-2">*</span>volume);
+                amount = amount.saturating_sub(<span class="kw-2">*</span>volume);
             } <span class="kw">else </span>{
-                market_amount += amount;
+                market_amount = market_amount.saturating_add(amount);
                 amount = OrderVolume::zero();
             }
 
