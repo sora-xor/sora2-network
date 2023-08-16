@@ -1,6 +1,8 @@
 //! Channel for passing messages from substrate to ethereum.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use bridge_types::{H256, U256};
 use codec::Encode;
@@ -8,7 +10,6 @@ use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_io::offchain_index;
-use sp_std::prelude::*;
 use sp_std::vec;
 use traits::MultiCurrency;
 

@@ -280,15 +280,19 @@ parameter_types! {
     pub GetSyntheticBaseAssetId: AssetId = BatteryForMusicPlayer.into();
     pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000000);
     pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+    pub const GetBandRateStaleBlockPeriod: u64 = 600; // 1 hour
 }
 
 impl band::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type Symbol = common::SymbolName;
+    type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
-    type GetBandRateStalePeriod = GetBandRateStalePeriod;
     type Time = Timestamp;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
+    type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
+    type OnSymbolDisabledHook = ();
+    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
 }
 
 impl oracle_proxy::Config for Runtime {
@@ -308,6 +312,7 @@ impl xst::Config for Runtime {
     type Oracle = OracleProxy;
     type Symbol = SymbolName;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
 }
 
 parameter_type_with_key! {

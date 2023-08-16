@@ -52,21 +52,12 @@ impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let sub = self.sub.get_signed_substrate().await?;
 
-        sub.api()
-            .tx()
-            .sign_and_submit_then_watch_default(
-                &runtime::tx().eth_bridge().register_bridge(
-                    self.contract,
-                    self.peers.clone(),
-                    BridgeSignatureVersion::V2,
-                ),
-                &sub,
-            )
-            .await?
-            .wait_for_in_block()
-            .await?
-            .wait_for_success()
-            .await?;
+        sub.submit_extrinsic(&runtime::tx().eth_bridge().register_bridge(
+            self.contract,
+            self.peers.clone(),
+            BridgeSignatureVersion::V2,
+        ))
+        .await?;
         Ok(())
     }
 }

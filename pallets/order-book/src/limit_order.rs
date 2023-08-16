@@ -30,13 +30,12 @@
 
 use crate::{Error, MarketRole, MomentOf, OrderAmount, OrderPrice, OrderVolume};
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::prelude::FixedWrapper;
 use common::PriceVariant;
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{CheckedMul, Zero};
 use sp_runtime::{SaturatedConversion, Saturating};
 
 /// GTC Limit Order
@@ -107,7 +106,7 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         //
         // Expirations happen before extrinsic dispatches, so to allow executing
         // the order at the second block, we need to expire it at the initialization of block 3.
-        lifespan_blocks += 1;
+        lifespan_blocks = lifespan_blocks.saturating_add(1);
         let lifespan = lifespan_blocks.saturated_into::<BlockNumberFor<T>>();
         current_block.saturating_add(lifespan)
     }
@@ -158,9 +157,8 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
                 | (MarketRole::Taker, PriceVariant::Sell) => OrderAmount::Base(base_amount),
                 (MarketRole::Maker, PriceVariant::Sell)
                 | (MarketRole::Taker, PriceVariant::Buy) => OrderAmount::Quote(
-                    (FixedWrapper::from(self.price) * FixedWrapper::from(base_amount))
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                    (self.price.checked_mul(&base_amount))
+                        .ok_or(Error::<T>::AmountCalculationFailed)?,
                 ),
             };
 

@@ -31,10 +31,13 @@
 use codec::alloc::collections::HashSet;
 use common::{fixed, DataFeed, Rate};
 use common::{prelude::FixedWrapper, Balance, Fixed};
+use frame_support::traits::Hooks;
 use frame_support::{assert_noop, error::BadOrigin};
+use frame_system::pallet_prelude::BlockNumberFor;
+use sp_core::TryCollect;
 use sp_std::collections::btree_set::BTreeSet;
 
-use crate::{mock::*, BandRate, Error, FeeCalculationParameters};
+use crate::{mock::*, BandRate, Error, FeeCalculationParameters, SymbolCheckBlock};
 
 pub fn band_rate_into_balance(rate: u64) -> Balance {
     let fixed = Fixed::from_bits(rate as i128 * super::RATE_MULTIPLIER);
@@ -164,7 +167,7 @@ fn relay_should_work() {
         Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            rates.clone(),
+            rates.clone().try_into().unwrap(),
             initial_resolve_time,
             request_id,
         )
@@ -178,6 +181,7 @@ fn relay_should_work() {
                     last_updated: initial_resolve_time,
                     request_id,
                     dynamic_fee: fixed!(0),
+                    last_updated_block: 0u64,
                 })
             );
         }
@@ -198,7 +202,9 @@ fn relay_should_not_update_if_time_is_lower_than_last_stored() {
                 ("USD".to_owned(), 1),
                 ("RUB".to_owned(), 2),
                 ("YEN".to_owned(), 3),
-            ],
+            ]
+            .try_into()
+            .unwrap(),
             initial_resolve_time,
             request_id,
         )
@@ -207,7 +213,7 @@ fn relay_should_not_update_if_time_is_lower_than_last_stored() {
         let new_request_id = 1;
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            vec![("RUB".to_owned(), 4)],
+            vec![("RUB".to_owned(), 4)].try_into().unwrap(),
             initial_resolve_time - 1,
             new_request_id,
         )
@@ -220,6 +226,7 @@ fn relay_should_not_update_if_time_is_lower_than_last_stored() {
                 last_updated: initial_resolve_time,
                 request_id,
                 dynamic_fee: fixed!(0),
+                last_updated_block: 0u64,
             })
         );
     });
@@ -239,7 +246,9 @@ fn force_relay_should_rewrite_rates_without_time_check() {
                 ("USD".to_owned(), 1),
                 ("RUB".to_owned(), 2),
                 ("YEN".to_owned(), 3),
-            ],
+            ]
+            .try_into()
+            .unwrap(),
             initial_resolve_time,
             request_id,
         )
@@ -250,7 +259,7 @@ fn force_relay_should_rewrite_rates_without_time_check() {
         let new_request_id = 1;
         Band::force_relay(
             RuntimeOrigin::signed(relayer),
-            vec![("RUB".to_owned(), new_rub_rate)],
+            vec![("RUB".to_owned(), new_rub_rate)].try_into().unwrap(),
             new_resolve_time,
             new_request_id,
         )
@@ -263,6 +272,7 @@ fn force_relay_should_rewrite_rates_without_time_check() {
                 last_updated: new_resolve_time,
                 request_id: new_request_id,
                 dynamic_fee: fixed!(0),
+                last_updated_block: 0u64,
             })
         );
     });
@@ -282,7 +292,9 @@ fn relay_should_check_for_trusted_relayer() {
                     ("USD".to_owned(), 1),
                     ("RUB".to_owned(), 2),
                     ("YEN".to_owned(), 3),
-                ],
+                ]
+                .try_into()
+                .unwrap(),
                 initial_resolve_time,
                 0,
             ),
@@ -305,7 +317,9 @@ fn force_relay_should_check_for_trusted_relayer() {
                     ("USD".to_owned(), 1),
                     ("RUB".to_owned(), 2),
                     ("YEN".to_owned(), 3),
-                ],
+                ]
+                .try_into()
+                .unwrap(),
                 initial_resolve_time,
                 0,
             ),
@@ -328,7 +342,9 @@ fn relay_should_store_last_duplicated_rate() {
                 ("RUB".to_owned(), 2),
                 ("YEN".to_owned(), 3),
                 ("USD".to_owned(), 4),
-            ],
+            ]
+            .try_into()
+            .unwrap(),
             initial_resolve_time,
             0,
         )
@@ -341,6 +357,7 @@ fn relay_should_store_last_duplicated_rate() {
                 last_updated: initial_resolve_time,
                 request_id: 0,
                 dynamic_fee: fixed!(1),
+                last_updated_block: 0u64,
             })
         );
     });
@@ -360,7 +377,9 @@ fn force_relay_should_store_last_duplicated_rate() {
                 ("RUB".to_owned(), 2),
                 ("YEN".to_owned(), 3),
                 ("USD".to_owned(), 4),
-            ],
+            ]
+            .try_into()
+            .unwrap(),
             initial_resolve_time,
             0,
         )
@@ -373,6 +392,7 @@ fn force_relay_should_store_last_duplicated_rate() {
                 last_updated: initial_resolve_time,
                 request_id: 0,
                 dynamic_fee: fixed!(0),
+                last_updated_block: 0u64,
             })
         );
     });
@@ -393,7 +413,12 @@ fn quote_and_list_enabled_symbols_should_work() {
         Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            symbols.iter().cloned().zip(rates.iter().cloned()).collect(),
+            symbols
+                .iter()
+                .cloned()
+                .zip(rates.iter().cloned())
+                .try_collect()
+                .unwrap(),
             initial_resolve_time,
             0,
         )
@@ -407,6 +432,7 @@ fn quote_and_list_enabled_symbols_should_work() {
                     last_updated: initial_resolve_time,
                     request_id: 0,
                     dynamic_fee: fixed!(0),
+                    last_updated_block: 0u64,
                 })
             );
         }
@@ -416,6 +442,7 @@ fn quote_and_list_enabled_symbols_should_work() {
             last_updated: initial_resolve_time,
             request_id: 0,
             dynamic_fee: fixed!(0),
+            last_updated_block: 0u64,
         };
 
         assert_eq!(
@@ -451,7 +478,7 @@ fn quote_invalid_rate_should_fail() {
         Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            vec![("USD".to_owned(), 1)],
+            vec![("USD".to_owned(), 1)].try_into().unwrap(),
             0,
             0,
         )
@@ -466,7 +493,7 @@ fn quote_invalid_rate_should_fail() {
 
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            vec![("RUB".to_owned(), 1)],
+            vec![("RUB".to_owned(), 1)].try_into().unwrap(),
             60 * 5 + 1,
             0,
         )
@@ -476,6 +503,38 @@ fn quote_invalid_rate_should_fail() {
             <Band as DataFeed<String, Rate, u64>>::quote(&"RUB".to_owned()),
             Err(Error::<Runtime>::RateHasInvalidTimestamp.into())
         );
+    })
+}
+
+#[test]
+fn check_block_symbol_should_work() {
+    new_test_ext().execute_with(|| {
+        let relayer = 1;
+
+        assert_eq!(Band::rates("USD".to_owned()), None);
+
+        System::set_block_number(1);
+
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::relay(
+            RuntimeOrigin::signed(relayer),
+            vec![("USD".to_owned(), 1)].try_into().unwrap(),
+            0,
+            0,
+        )
+        .expect("Failed to relay rates");
+
+        assert_eq!(
+            SymbolCheckBlock::<Runtime>::get(1 + GetRateStaleBlockPeriod::get(), "USD".to_owned()),
+            true
+        );
+
+        <Band as Hooks<BlockNumberFor<Runtime>>>::on_initialize(601);
+
+        assert_eq!(
+            SymbolCheckBlock::<Runtime>::get(601u64, "USD".to_owned()),
+            false
+        )
     })
 }
 
@@ -536,7 +595,9 @@ fn should_calculate_dynamic_fee() {
         Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            vec![(symbol_name.clone(), 1_000_000_000)],
+            vec![(symbol_name.clone(), 1_000_000_000)]
+                .try_into()
+                .unwrap(),
             0,
             0,
         )
@@ -548,7 +609,7 @@ fn should_calculate_dynamic_fee() {
 
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            vec![("USD".to_owned(), 1_500_000_000)],
+            vec![("USD".to_owned(), 1_500_000_000)].try_into().unwrap(),
             1,
             0,
         )
@@ -560,7 +621,7 @@ fn should_calculate_dynamic_fee() {
 
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            vec![("USD".to_owned(), 1_500_000_000)],
+            vec![("USD".to_owned(), 1_500_000_000)].try_into().unwrap(),
             2,
             0,
         )
@@ -572,7 +633,9 @@ fn should_calculate_dynamic_fee() {
 
         Band::relay(
             RuntimeOrigin::signed(relayer),
-            vec![("USD".to_owned(), 1_000_000_000_000_000)],
+            vec![("USD".to_owned(), 1_000_000_000_000_000)]
+                .try_into()
+                .unwrap(),
             2,
             0,
         )

@@ -30,6 +30,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(dead_code)] // todo (m.tagirov) remove
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use assets::AssetIdOf;
 use common::prelude::{
@@ -38,17 +40,19 @@ use common::prelude::{
 #[cfg(feature = "wip")] // order-book
 use common::LiquiditySourceType;
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
+    AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 use core::fmt::Debug;
+use frame_support::dispatch::{DispatchResultWithPostInfo, PostDispatchInfo};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
+use sp_runtime::traits::{CheckedDiv, CheckedMul};
 use sp_runtime::{BoundedVec, Perbill};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
@@ -446,8 +450,8 @@ pub mod pallet {
         MaxLotSizeIsMoreThanTotalSupply,
         /// Indicated limit for slippage has not been met during transaction execution.
         SlippageLimitExceeded,
-        /// NFT order books are temporarily forbidden
-        NftOrderBooksAreTemporarilyForbidden,
+        /// Market orders are allowed only for indivisible assets
+        MarketOrdersAllowedOnlyForIndivisibleAssets,
     }
 
     #[pallet::hooks]
@@ -528,10 +532,10 @@ pub mod pallet {
         pub fn update_orderbook(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            tick_size: OrderPrice,
-            step_lot_size: OrderVolume,
-            min_lot_size: OrderVolume,
-            max_lot_size: OrderVolume,
+            tick_size: Balance,
+            step_lot_size: Balance,
+            min_lot_size: Balance,
+            max_lot_size: Balance,
         ) -> DispatchResult {
             let origin_check_result = T::ParameterUpdateOrigin::ensure_origin(origin)?;
             match origin_check_result {
@@ -547,32 +551,23 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
 
             // Check that values are non-zero
-            ensure!(tick_size > OrderPrice::zero(), Error::<T>::InvalidTickSize);
+            ensure!(tick_size > Balance::zero(), Error::<T>::InvalidTickSize);
             ensure!(
-                step_lot_size > OrderVolume::zero(),
+                step_lot_size > Balance::zero(),
                 Error::<T>::InvalidStepLotSize
             );
             ensure!(
-                min_lot_size > OrderVolume::zero(),
+                min_lot_size > Balance::zero(),
                 Error::<T>::InvalidMinLotSize
             );
             ensure!(
-                max_lot_size > OrderVolume::zero(),
+                max_lot_size > Balance::zero(),
                 Error::<T>::InvalidMaxLotSize
             );
 
             // min <= max
             // It is possible to set min == max if it necessary, e.g. some NFTs
             ensure!(min_lot_size <= max_lot_size, Error::<T>::InvalidMaxLotSize);
-
-            if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-                // NFT has special bounds as non-divisible asset
-                ensure!(step_lot_size >= balance!(1), Error::<T>::InvalidStepLotSize);
-                ensure!(
-                    step_lot_size % balance!(1) == 0,
-                    Error::<T>::InvalidStepLotSize
-                );
-            }
 
             // min & max couldn't be less then `step_lot_size`
             ensure!(min_lot_size >= step_lot_size, Error::<T>::InvalidMinLotSize);
@@ -588,15 +583,17 @@ pub mod pallet {
                 Error::<T>::InvalidMaxLotSize
             );
 
-            // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
-            // The min possible deal amount = `tick_size` * `step_lot_size`.
-            // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
-            // and doesn't go out of precision.
-            let _min_possible_deal_amount = (FixedWrapper::from(tick_size)
-                .lossless_mul(FixedWrapper::from(step_lot_size))
-                .ok_or(Error::<T>::TickSizeAndStepLotSizeLosePrecision)?)
-            .try_into_balance() // Returns error if value overflows.
-            .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
+            if !T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+                // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
+                // The min possible deal amount = `tick_size` * `step_lot_size`.
+                // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
+                // and doesn't go out of precision.
+                let _min_possible_deal_amount = (FixedWrapper::from(tick_size)
+                    .lossless_mul(FixedWrapper::from(step_lot_size))
+                    .ok_or(Error::<T>::TickSizeAndStepLotSizeLosePrecision)?)
+                .try_into_balance() // Returns error if value overflows.
+                .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
+            }
 
             // `max_lot_size` couldn't be more then total supply of `base` asset
             let total_supply = T::AssetInfoProvider::total_issuance(&order_book_id.base)?;
@@ -607,16 +604,16 @@ pub mod pallet {
 
             let prev_step_lot_size = order_book.step_lot_size;
 
-            order_book.tick_size = tick_size;
-            order_book.step_lot_size = step_lot_size;
-            order_book.min_lot_size = min_lot_size;
-            order_book.max_lot_size = max_lot_size;
+            order_book.tick_size.set(tick_size);
+            order_book.step_lot_size.set(step_lot_size);
+            order_book.min_lot_size.set(min_lot_size);
+            order_book.max_lot_size.set(max_lot_size);
 
             // Note:
             // The amounts of already existed limit orders are aligned if they don't meet the requirements of new `step_lot_size` value.
             // All new limit orders must meet the requirements of new attributes.
 
-            if prev_step_lot_size % order_book.step_lot_size != 0 {
+            if prev_step_lot_size.balance() % step_lot_size != 0 {
                 let mut data = CacheDataLayer::<T>::new();
                 order_book.align_limit_orders(&mut data)?;
                 data.commit();
@@ -651,8 +648,8 @@ pub mod pallet {
         pub fn place_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            price: OrderPrice,
-            amount: OrderVolume,
+            price: Balance,
+            amount: Balance,
             side: PriceVariant,
             lifespan: Option<MomentOf<T>>,
         ) -> DispatchResult {
@@ -663,11 +660,16 @@ pub mod pallet {
             let now = T::Time::now();
             let current_block = frame_system::Pallet::<T>::block_number();
             let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFESPAN);
+            let amount = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+                OrderVolume::indivisible(amount)
+            } else {
+                OrderVolume::divisible(amount)
+            };
             let order = LimitOrder::<T>::new(
                 order_id,
                 who.clone(),
                 side,
-                price,
+                OrderPrice::divisible(price),
                 amount,
                 now,
                 lifespan,
@@ -689,7 +691,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             order_id: T::OrderId,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             let mut data = CacheDataLayer::<T>::new();
             let order = data.get_limit_order(&order_book_id, order_id)?;
@@ -701,15 +703,19 @@ pub mod pallet {
 
             order_book.cancel_limit_order(order, &mut data)?;
             data.commit();
-            Ok(().into())
+
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
         }
 
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order().saturating_mul(limit_orders_to_cancel.iter().fold(0, |count, (_, order_ids)| count + order_ids.len() as u64)))]
+        #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order().saturating_mul(limit_orders_to_cancel.iter().fold(0, |count, (_, order_ids)| count.saturating_add(order_ids.len() as u64))))]
         pub fn cancel_limit_orders_batch(
             origin: OriginFor<T>,
             limit_orders_to_cancel: Vec<(OrderBookId<AssetIdOf<T>, T::DEXId>, Vec<T::OrderId>)>,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             let mut data = CacheDataLayer::<T>::new();
 
@@ -727,6 +733,36 @@ pub mod pallet {
             }
 
             data.commit();
+
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::execute_market_order())]
+        pub fn execute_market_order(
+            origin: OriginFor<T>,
+            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+            direction: PriceVariant,
+            amount: Balance,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            ensure!(
+                T::AssetInfoProvider::is_non_divisible(&order_book_id.base),
+                Error::<T>::MarketOrdersAllowedOnlyForIndivisibleAssets
+            );
+            let order_book =
+                <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+
+            let amount = OrderVolume::indivisible(amount);
+            let mut data = CacheDataLayer::<T>::new();
+
+            let market_order = MarketOrder::<T>::new(who, direction, order_book_id, amount, None);
+            order_book.execute_market_order(market_order, &mut data)?;
+
+            data.commit();
             Ok(().into())
         }
     }
@@ -740,7 +776,12 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
-        technical::Pallet::<T>::transfer_in(asset_id, account, &tech_account, amount.into())
+        technical::Pallet::<T>::transfer_in(
+            asset_id,
+            account,
+            &tech_account,
+            (*amount.balance()).into(),
+        )
     }
 }
 
@@ -752,7 +793,12 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
-        technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, amount.into())
+        technical::Pallet::<T>::transfer_out(
+            asset_id,
+            &tech_account,
+            account,
+            (*amount.balance()).into(),
+        )
     }
 
     fn unlock_liquidity_batch(
@@ -762,7 +808,12 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
         for (account, amount) in receivers.iter() {
-            technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, *amount)?;
+            technical::Pallet::<T>::transfer_out(
+                asset_id,
+                &tech_account,
+                account,
+                *amount.balance(),
+            )?;
         }
         Ok(())
     }
@@ -921,7 +972,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn verify_create_orderbook_params(
-        _who: &T::AccountId,
+        who: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         ensure!(
@@ -959,22 +1010,12 @@ impl<T: Config> Pallet<T> {
         );
 
         if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-            // temp solution for stage env
-            // will be removed in #542
-            // todo (m.tagirov)
-            return Err(Error::<T>::NftOrderBooksAreTemporarilyForbidden.into());
-
-            // todo: rename `_who` to `who`
-            #[allow(unreachable_code)]
-            {
-                // nft
-                // ensure the user has nft
-                ensure!(
-                    T::AssetInfoProvider::total_balance(&order_book_id.base, &_who)?
-                        > Balance::zero(),
-                    Error::<T>::UserHasNoNft
-                );
-            }
+            // nft
+            // ensure the user has nft
+            ensure!(
+                T::AssetInfoProvider::total_balance(&order_book_id.base, &who)? > Balance::zero(),
+                Error::<T>::UserHasNoNft
+            );
         };
         Ok(())
     }
@@ -983,7 +1024,7 @@ impl<T: Config> Pallet<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-            OrderBook::<T>::default_nft(*order_book_id)
+            OrderBook::<T>::default_indivisible(*order_book_id)
         } else {
             // regular asset
             OrderBook::<T>::default(*order_book_id)
@@ -1035,11 +1076,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((
-                SwapOutcome::new(*deal_info.output_amount.value(), fee),
+                SwapOutcome::new(*deal_info.output_amount.value().balance(), fee),
                 Self::quote_weight(),
             )),
             QuoteAmount::WithDesiredOutput { .. } => Ok((
-                SwapOutcome::new(*deal_info.input_amount.value(), fee),
+                SwapOutcome::new(*deal_info.input_amount.value().balance(), fee),
                 Self::quote_weight(),
             )),
         }
@@ -1072,13 +1113,13 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         match desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } => {
                 ensure!(
-                    *deal_info.output_amount.value() >= min_amount_out,
+                    *deal_info.output_amount.value().balance() >= min_amount_out,
                     Error::<T>::SlippageLimitExceeded
                 );
             }
             SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
                 ensure!(
-                    *deal_info.input_amount.value() <= max_amount_in,
+                    *deal_info.input_amount.value().balance() <= max_amount_in,
                     Error::<T>::SlippageLimitExceeded
                 );
             }
@@ -1104,17 +1145,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let result = match desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } => {
                 ensure!(
-                    *output_amount.value() >= min_amount_out,
+                    *output_amount.value().balance() >= min_amount_out,
                     Error::<T>::SlippageLimitExceeded
                 );
-                SwapOutcome::new(*output_amount.value(), fee)
+                SwapOutcome::new(*output_amount.value().balance(), fee)
             }
             SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
                 ensure!(
-                    *input_amount.value() <= max_amount_in,
+                    *input_amount.value().balance() <= max_amount_in,
                     Error::<T>::SlippageLimitExceeded
                 );
-                SwapOutcome::new(*input_amount.value(), fee)
+                SwapOutcome::new(*input_amount.value().balance(), fee)
             }
         };
 
@@ -1162,39 +1203,47 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 // Necessary to return `base` amount.
                 // Divide the `quote` amount by the price and align the `base` amount.
                 PriceVariant::Buy => order_book.align_amount(
-                    (FixedWrapper::from(desired_amount_in) / FixedWrapper::from(price))
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                    order_book
+                        .tick_size
+                        .copy_divisibility(desired_amount_in)
+                        .checked_div(&price)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?,
                 ),
 
                 // User wants to swap a known amount of the `base` asset for the `quote` asset.
                 // Necessary to return `quote` amount.
                 // Align the `base` amount and then multiply by the price.
-                PriceVariant::Sell => {
-                    (FixedWrapper::from(order_book.align_amount(desired_amount_in))
-                        * FixedWrapper::from(price))
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::AmountCalculationFailed)?
-                }
+                PriceVariant::Sell => order_book
+                    .align_amount(
+                        order_book
+                            .step_lot_size
+                            .copy_divisibility(desired_amount_in),
+                    )
+                    .checked_mul(&price)
+                    .ok_or(Error::<T>::AmountCalculationFailed)?,
             },
 
             QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
                 // User wants to swap the `quote` asset for a known amount of the `base` asset.
                 // Necessary to return `quote` amount.
                 // Align the `base` amount and then multiply by the price.
-                PriceVariant::Buy => {
-                    (FixedWrapper::from(order_book.align_amount(desired_amount_out))
-                        * FixedWrapper::from(price))
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::AmountCalculationFailed)?
-                }
+                PriceVariant::Buy => order_book
+                    .align_amount(
+                        order_book
+                            .step_lot_size
+                            .copy_divisibility(desired_amount_out),
+                    )
+                    .checked_mul(&price)
+                    .ok_or(Error::<T>::AmountCalculationFailed)?,
 
                 // User wants to swap the `base` asset for a known amount of the `quote` asset.
                 // Necessary to return `base` amount.
                 PriceVariant::Sell => order_book.align_amount(
-                    (FixedWrapper::from(desired_amount_out) / FixedWrapper::from(price))
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                    order_book
+                        .tick_size
+                        .copy_divisibility(desired_amount_out)
+                        .checked_div(&price)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?,
                 ),
             },
         };
@@ -1206,7 +1255,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let fee = 0; // todo (m.tagirov)
 
-        Ok(SwapOutcome::new(target_amount, fee))
+        Ok(SwapOutcome::new(*target_amount.balance(), fee))
     }
 
     fn quote_weight() -> Weight {

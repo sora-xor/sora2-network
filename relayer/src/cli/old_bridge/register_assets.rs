@@ -103,13 +103,7 @@ impl Command {
 
         info!("Send batch");
         sub.load_nonce().await?;
-        sub.api()
-            .tx()
-            .sign_and_submit_then_watch_default(&runtime::tx().utility().batch(calls), &sub)
-            .await?
-            .wait_for_in_block()
-            .await?
-            .wait_for_success()
+        sub.submit_extrinsic(&runtime::tx().utility().batch(calls))
             .await?;
         Ok(())
     }
