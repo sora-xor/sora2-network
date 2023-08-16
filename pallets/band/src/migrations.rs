@@ -28,98 +28,287 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use super::{
-    pallet::{Config, Pallet},
-    BandRate,
-};
-use codec::Decode;
-use common::{fixed, Balance};
-use frame_support::pallet_prelude::{Get, StorageVersion};
-use frame_support::traits::OnRuntimeUpgrade;
-use frame_support::weights::Weight;
+pub mod storages {
+    use crate::pallet::{Config, Pallet};
+    use codec::Decode;
+    use common::{Balance, Fixed};
+    use frame_support::pallet_prelude::*;
 
-#[cfg(feature = "try-runtime")]
-use sp_std::prelude::Vec;
-
-use crate::SymbolRates;
-
-#[derive(Decode)]
-pub struct BandRateV0 {
-    pub value: Balance,
-    pub last_updated: u64,
-    pub request_id: u64,
-}
-
-pub struct BandUpdate<T>(core::marker::PhantomData<T>);
-
-/// Migration which migrates `XSTUSD` synthetic to the new format.
-impl<T> OnRuntimeUpgrade for BandUpdate<T>
-where
-    T: Config,
-{
-    fn on_runtime_upgrade() -> Weight {
-        if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(0) {
-            frame_support::log::error!(
-                "Expected storage version 0, found {:?}, skipping migration",
-                StorageVersion::get::<Pallet<T>>()
-            );
+    mod v0 {
+        use super::*;
+        #[derive(Decode, Encode, Clone, RuntimeDebug, PartialEq, Eq)]
+        pub struct BandRate {
+            pub value: Balance,
+            pub last_updated: u64,
+            pub request_id: u64,
         }
-        let mut weight = Weight::zero();
 
-        SymbolRates::<T>::translate::<Option<BandRateV0>, _>(|_, band_rate| {
-            weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
-            match band_rate {
-                Some(band_rate) => Some(Some(BandRate {
-                    value: band_rate.value,
-                    last_updated: band_rate.last_updated,
-                    request_id: band_rate.request_id,
-                    dynamic_fee: fixed!(0),
-                })),
-                None => None,
+        #[frame_support::storage_alias]
+        pub type SymbolRates<T: Config> = StorageMap<
+            Pallet<T>,
+            Blake2_128Concat,
+            <T as Config>::Symbol,
+            Option<BandRate>,
+            ValueQuery,
+        >;
+    }
+    pub use v0::BandRate as BandRateV0;
+    pub use v0::SymbolRates as SymbolRatesV0;
+
+    mod v1 {
+        use super::*;
+        #[derive(Decode, Encode, Clone, RuntimeDebug, PartialEq, Eq)]
+        pub struct BandRate {
+            pub value: Balance,
+            pub last_updated: u64,
+            pub request_id: u64,
+            pub dynamic_fee: Fixed,
+        }
+
+        #[frame_support::storage_alias]
+        pub type SymbolRates<T: Config> = StorageMap<
+            Pallet<T>,
+            Blake2_128Concat,
+            <T as Config>::Symbol,
+            Option<BandRate>,
+            ValueQuery,
+        >;
+    }
+    pub use v1::BandRate as BandRateV1;
+    pub use v1::SymbolRates as SymbolRatesV1;
+
+    pub mod v2 {
+        pub use crate::BandRate;
+        pub use crate::SymbolRates;
+    }
+
+    pub use v2::BandRate as BandRateV2;
+    pub use v2::SymbolRates as SymbolRatesV2;
+}
+
+pub mod v1 {
+    use crate::pallet::{Config, Pallet};
+
+    use crate::migrations::storages::*;
+    use common::fixed;
+    use frame_support::pallet_prelude::*;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use frame_support::weights::Weight;
+
+    #[cfg(feature = "try-runtime")]
+    use sp_std::prelude::Vec;
+
+    // use crate::SymbolRates;
+
+    pub struct BandUpdateV1<T>(core::marker::PhantomData<T>);
+
+    /// Migration which migrates `XSTUSD` synthetic to the new format.
+    impl<T> OnRuntimeUpgrade for BandUpdateV1<T>
+    where
+        T: Config,
+    {
+        fn on_runtime_upgrade() -> Weight {
+            if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(0) {
+                frame_support::log::error!(
+                    "Expected storage version 0, found {:?}, skipping migration",
+                    StorageVersion::get::<Pallet<T>>()
+                );
             }
-        });
+            let mut weight = Weight::zero();
 
-        StorageVersion::new(1).put::<Pallet<T>>();
-        weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))
+            SymbolRatesV1::<T>::translate::<Option<BandRateV0>, _>(|_symbol, band_rate| {
+                weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+                match band_rate {
+                    Some(band_rate) => Some(Some(BandRateV1 {
+                        value: band_rate.value,
+                        last_updated: band_rate.last_updated,
+                        request_id: band_rate.request_id,
+                        dynamic_fee: fixed!(0),
+                    })),
+                    None => None,
+                }
+            });
+
+            StorageVersion::new(1).put::<Pallet<T>>();
+            weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+            frame_support::ensure!(
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(0),
+                "must upgrade linearly"
+            );
+            Ok(Vec::new())
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+            frame_support::ensure!(
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
+                "should be upgraded to version 1"
+            );
+            Ok(())
+        }
     }
 
-    #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-        frame_support::ensure!(
-            StorageVersion::get::<Pallet<T>>() == StorageVersion::new(0),
-            "must upgrade linearly"
-        );
-        Ok(Vec::new())
-    }
+    #[cfg(test)]
+    mod tests {
+        use crate::migrations::storages::*;
+        use crate::{mock::*, pallet::*};
+        use common::fixed;
+        use frame_support::traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion};
+        #[test]
+        fn test() {
+            new_test_ext().execute_with(|| {
+                StorageVersion::new(0).put::<Pallet<Runtime>>();
 
-    #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-        frame_support::ensure!(
-            StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
-            "should be upgraded to version 1"
-        );
-        Ok(())
+                let sample_rate = BandRateV0 {
+                    value: 0,
+                    last_updated: 0,
+                    request_id: 0,
+                };
+                let rates_vec = vec!["USD", "RUB"];
+                rates_vec.iter().cloned().for_each(|symbol| {
+                    SymbolRatesV0::<Runtime>::insert(symbol, Some(sample_rate.clone()));
+                });
+
+                super::BandUpdateV1::<Runtime>::on_runtime_upgrade();
+
+                for symbol in rates_vec.into_iter() {
+                    let dyn_fee = SymbolRatesV1::<Runtime>::get(symbol)
+                        .expect("Expected to get entry from SymbolRatesV1")
+                        .dynamic_fee;
+                    assert_eq!(dyn_fee, fixed!(0));
+                }
+                assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 1);
+            });
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{mock::*, pallet::*};
+pub mod v2 {
+    use crate::{Config, Pallet};
     use common::fixed;
-    use frame_support::traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion};
-    #[test]
-    fn test() {
-        new_test_ext().execute_with(|| {
-            StorageVersion::new(0).put::<Pallet<Runtime>>();
+    use frame_support::pallet_prelude::*;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use frame_support::weights::Weight;
 
-            super::BandUpdate::<Runtime>::on_runtime_upgrade();
+    use crate::migrations::storages::*;
+    #[cfg(feature = "try-runtime")]
+    use sp_std::prelude::Vec;
 
-            for band_rate in SymbolRates::<Runtime>::iter_values() {
-                if let Some(band_rate) = band_rate {
-                    assert_eq!(band_rate.dynamic_fee, fixed!(0));
-                }
+    use crate::SymbolCheckBlock;
+
+    pub struct BandUpdateV2<T>(core::marker::PhantomData<T>);
+
+    /// Migration which migrates `XSTUSD` synthetic to the new format.
+    impl<T> OnRuntimeUpgrade for BandUpdateV2<T>
+    where
+        T: Config,
+    {
+        fn on_runtime_upgrade() -> Weight {
+            if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(1) {
+                frame_support::log::error!(
+                    "Expected storage version 1, found {:?}, skipping migration",
+                    StorageVersion::get::<Pallet<T>>()
+                );
             }
-            assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 1);
-        });
+            let mut weight = Weight::zero();
+            let now = frame_system::Pallet::<T>::block_number();
+
+            SymbolRatesV2::<T>::translate::<Option<BandRateV1>, _>(|symbol, band_rate| {
+                weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 2));
+                SymbolCheckBlock::<T>::insert(
+                    Pallet::<T>::calc_expiration_block(now),
+                    symbol,
+                    true,
+                );
+                match band_rate {
+                    Some(band_rate) => Some(Some(BandRateV2 {
+                        value: band_rate.value,
+                        last_updated: band_rate.last_updated,
+                        last_updated_block: now,
+                        request_id: band_rate.request_id,
+                        dynamic_fee: fixed!(0),
+                    })),
+                    None => None,
+                }
+            });
+
+            StorageVersion::new(2).put::<Pallet<T>>();
+            weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+            frame_support::ensure!(
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
+                "must upgrade linearly"
+            );
+            Ok(Vec::new())
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+            frame_support::ensure!(
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
+                "should be upgraded to version 1"
+            );
+            Ok(())
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::BandUpdateV2;
+        use crate::migrations::storages::*;
+        use crate::mock::*;
+        use crate::pallet::{Pallet, SymbolCheckBlock};
+        use common::fixed;
+        use frame_support::traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion};
+        #[test]
+        fn test() {
+            new_test_ext().execute_with(|| {
+                StorageVersion::new(1).put::<Pallet<Runtime>>();
+
+                let sample_rate = BandRateV1 {
+                    value: 0,
+                    last_updated: 0,
+                    request_id: 0,
+                    dynamic_fee: fixed!(0),
+                };
+                let rates_vec = vec!["USD", "RUB"];
+                rates_vec.iter().cloned().for_each(|symbol| {
+                    assert_eq!(SymbolRatesV1::<Runtime>::get(symbol), None);
+                    assert_eq!(
+                        SymbolCheckBlock::<Runtime>::get(
+                            1 + GetRateStaleBlockPeriod::get(),
+                            symbol
+                        ),
+                        false,
+                    );
+                    SymbolRatesV1::<Runtime>::insert(symbol, Some(sample_rate.clone()));
+                });
+
+                System::set_block_number(1);
+                BandUpdateV2::<Runtime>::on_runtime_upgrade();
+
+                for symbol in rates_vec.into_iter() {
+                    let last_updated_block = SymbolRatesV2::<Runtime>::get(symbol)
+                        .expect("Expected to get rate for the specified symbol")
+                        .last_updated_block;
+                    assert_eq!(last_updated_block, 1);
+                    assert_eq!(
+                        SymbolCheckBlock::<Runtime>::get(
+                            1 + GetRateStaleBlockPeriod::get(),
+                            symbol
+                        ),
+                        true,
+                    );
+                }
+                assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
+            });
+        }
     }
 }

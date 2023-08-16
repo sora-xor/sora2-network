@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use common::prelude::FixedWrapper;
 use common::{fixed, fixed_wrapper, Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
@@ -66,6 +68,8 @@ pub struct FeeCalculationParameters {
     pub deviation: Fixed,
 }
 
+pub use pallet::*;
+
 impl FeeCalculationParameters {
     pub fn validate<T: Config<I>, I: 'static>(&self) -> Result<(), DispatchError> {
         ensure!(
@@ -94,11 +98,13 @@ impl FeeCalculationParameters {
 
 /// Symbol rate
 #[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
-pub struct BandRate {
+pub struct BandRate<BlockNumber> {
     /// Rate value in USD.
     pub value: Balance,
     /// Last updated timestamp.
     pub last_updated: u64,
+    /// Last updated block number
+    pub last_updated_block: BlockNumber,
     /// Request identifier in the *Band* protocol.
     /// Useful for debugging and in emergency cases.
     pub request_id: u64,
@@ -106,23 +112,8 @@ pub struct BandRate {
     pub dynamic_fee: Fixed,
 }
 
-impl BandRate {
-    pub fn update_if_outdated<T: Config<I>, I: 'static>(
-        &mut self,
-        mut new: BandRate,
-    ) -> Result<(), DispatchError> {
-        if self.last_updated <= new.last_updated {
-            new.dynamic_fee =
-                Pallet::<T, I>::calculate_dynamic_fee(self.dynamic_fee, self.value, new.value)?;
-
-            *self = new;
-        }
-        Ok(())
-    }
-}
-
-impl From<BandRate> for Rate {
-    fn from(value: BandRate) -> Rate {
+impl<BlockNumber> From<BandRate<BlockNumber>> for Rate {
+    fn from(value: BandRate<BlockNumber>) -> Rate {
         Rate {
             value: value.value,
             last_updated: value.last_updated,
@@ -130,8 +121,6 @@ impl From<BandRate> for Rate {
         }
     }
 }
-
-pub use pallet::*;
 
 impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
     fn quote(symbol: &T::Symbol) -> Result<Option<Rate>, DispatchError> {
@@ -180,6 +169,7 @@ impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::OnSymbolDisabled;
     use sp_std::collections::btree_set::BTreeSet;
 
     /// The current storage version.
@@ -214,8 +204,16 @@ pub mod pallet {
         /// Rate expiration period in seconds.
         #[pallet::constant]
         type GetBandRateStalePeriod: Get<<<Self as pallet::Config<I>>::Time as Time>::Moment>;
+        /// Rate expiration period in blocks
+        #[pallet::constant]
+        type GetBandRateStaleBlockPeriod: Get<Self::BlockNumber>;
+        /// Maximum number of symbols that can be relayed within a single call.
+        #[pallet::constant]
+        type MaxRelaySymbols: Get<u32>;
         /// Time used for checking if rate expired
         type Time: Time;
+        /// Hook which is being executed when some symbol must be disabled
+        type OnSymbolDisabledHook: OnSymbolDisabled<Self::Symbol>;
     }
 
     #[pallet::storage]
@@ -226,7 +224,19 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn rates)]
     pub type SymbolRates<T: Config<I>, I: 'static = ()> =
-        StorageMap<_, Blake2_128Concat, T::Symbol, Option<BandRate>, ValueQuery>;
+        StorageMap<_, Blake2_128Concat, T::Symbol, Option<BandRate<BlockNumberFor<T>>>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn check_blocks)]
+    pub type SymbolCheckBlock<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::BlockNumber,
+        Blake2_128Concat,
+        T::Symbol,
+        bool,
+        ValueQuery,
+    >;
 
     #[pallet::type_value]
     pub fn DefaultDynamicFeeParameters<T: Config<I>, I: 'static>() -> FeeCalculationParameters {
@@ -273,6 +283,24 @@ pub mod pallet {
         InvalidDynamicFeeParameters,
     }
 
+    #[pallet::hooks]
+    impl<T: Config<I>, I: 'static> Hooks<T::BlockNumber> for Pallet<T, I> {
+        fn on_initialize(now: T::BlockNumber) -> Weight {
+            let mut weight = Weight::zero();
+            let mut obsolete_symbols: Vec<T::Symbol> = Vec::new();
+            for (symbol, _) in SymbolCheckBlock::<T, I>::iter_prefix(now) {
+                weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+                T::OnSymbolDisabledHook::disable_symbol(&symbol);
+                obsolete_symbols.push(symbol);
+            }
+            for symbol in obsolete_symbols.iter() {
+                SymbolCheckBlock::<T, I>::remove(now, symbol);
+                weight = weight.saturating_add(T::DbWeight::get().reads_writes(0, 1));
+            }
+            weight
+        }
+    }
+
     #[pallet::call]
     impl<T: Config<I>, I: 'static> Pallet<T, I> {
         /// Relay a list of symbols and their associated rates along with the resolve time and request id on `BandChain`.
@@ -291,7 +319,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config<I>>::WeightInfo::relay())]
         pub fn relay(
             origin: OriginFor<T>,
-            rates: Vec<(T::Symbol, u64)>,
+            rates: BoundedVec<(T::Symbol, u64), T::MaxRelaySymbols>,
             resolve_time: u64,
             request_id: u64,
         ) -> DispatchResultWithPostInfo {
@@ -301,10 +329,16 @@ pub mod pallet {
                 rates,
                 resolve_time,
                 request_id,
-                |option_old_rate, new_rate| match option_old_rate {
-                    Some(rate) => rate.update_if_outdated::<T, I>(new_rate),
+                |option_old_rate, new_rate, symbol| match option_old_rate {
+                    Some(rate) => Self::update_rate_if_outdated(rate, new_rate, symbol),
                     None => {
+                        let last_updated_block = new_rate.last_updated_block;
                         _ = option_old_rate.insert(new_rate);
+                        SymbolCheckBlock::<T, I>::insert(
+                            Self::calc_expiration_block(last_updated_block),
+                            symbol,
+                            true,
+                        );
                         Ok(())
                     }
                 },
@@ -327,7 +361,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config<I>>::WeightInfo::force_relay())]
         pub fn force_relay(
             origin: OriginFor<T>,
-            rates: Vec<(T::Symbol, u64)>,
+            rates: BoundedVec<(T::Symbol, u64), T::MaxRelaySymbols>,
             resolve_time: u64,
             request_id: u64,
         ) -> DispatchResultWithPostInfo {
@@ -337,8 +371,20 @@ pub mod pallet {
                 rates,
                 resolve_time,
                 request_id,
-                |option_old_rate, new_rate| {
-                    let _ = option_old_rate.insert(new_rate);
+                |option_old_rate, new_rate, symbol| {
+                    if let Some(rate) = option_old_rate {
+                        SymbolCheckBlock::<T, I>::remove(
+                            Self::calc_expiration_block(rate.last_updated_block),
+                            symbol,
+                        );
+                    }
+                    let last_updated_block = new_rate.last_updated_block;
+                    _ = option_old_rate.insert(new_rate);
+                    SymbolCheckBlock::<T, I>::insert(
+                        Self::calc_expiration_block(last_updated_block),
+                        symbol,
+                        true,
+                    );
                     Ok(())
                 },
             )?;
@@ -466,10 +512,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
     ///
     /// `f` - mutation function which defines the way values should be updated.
     fn update_rates(
-        rates: Vec<(T::Symbol, u64)>,
+        rates: BoundedVec<(T::Symbol, u64), T::MaxRelaySymbols>,
         resolve_time: u64,
         request_id: u64,
-        f: impl Fn(&mut Option<BandRate>, BandRate) -> Result<(), DispatchError>,
+        f: impl Fn(
+            &mut Option<BandRate<BlockNumberFor<T>>>,
+            BandRate<BlockNumberFor<T>>,
+            &T::Symbol,
+        ) -> Result<(), DispatchError>,
     ) -> Result<Vec<(T::Symbol, Balance)>, DispatchError> {
         let converted_rates: Vec<(T::Symbol, Balance)> =
             fallible_iterator::convert(rates.into_iter().map(
@@ -479,6 +529,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
                 },
             ))
             .collect()?;
+        let now = frame_system::Pallet::<T>::block_number();
         let new_symbols = fallible_iterator::convert(
             converted_rates
                 .iter()
@@ -492,13 +543,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
                     last_updated: resolve_time,
                     request_id,
                     dynamic_fee: fixed!(0),
+                    last_updated_block: now,
                 };
-
                 SymbolRates::<T, I>::mutate(symbol, |option_old_rate| {
                     if option_old_rate.is_none() {
                         new_symbols_acc.insert(symbol.clone());
                     }
-                    f(option_old_rate, new_rate)
+                    f(option_old_rate, new_rate, symbol)
                 })?;
                 Ok(new_symbols_acc)
             },
@@ -551,5 +602,32 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
             .get()
             .map_err(|_| Error::<T, I>::DynamicFeeCalculationError.into())
             .map(|fee| if fee >= fixed!(1) { fixed!(1) } else { fee })
+    }
+
+    pub fn update_rate_if_outdated(
+        rate: &mut BandRate<T::BlockNumber>,
+        new_rate: BandRate<T::BlockNumber>,
+        symbol: &T::Symbol,
+    ) -> Result<(), DispatchError> {
+        if rate.last_updated <= new_rate.last_updated {
+            SymbolCheckBlock::<T, I>::remove(
+                Self::calc_expiration_block(rate.last_updated_block),
+                symbol,
+            );
+            let dynamic_fee =
+                Self::calculate_dynamic_fee(rate.dynamic_fee, rate.value, new_rate.value)?;
+            *rate = new_rate;
+            rate.dynamic_fee = dynamic_fee;
+            SymbolCheckBlock::<T, I>::insert(
+                Self::calc_expiration_block(rate.last_updated_block),
+                symbol,
+                true,
+            );
+        }
+        Ok(())
+    }
+
+    pub fn calc_expiration_block(block_number: T::BlockNumber) -> T::BlockNumber {
+        block_number + T::GetBandRateStaleBlockPeriod::get()
     }
 }

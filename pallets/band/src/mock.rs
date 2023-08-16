@@ -57,6 +57,7 @@ frame_support::construct_runtime!(
 
 frame_support::parameter_types! {
     pub const GetRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+    pub const GetRateStaleBlockPeriod: u64 = 600;
     pub const MinimumPeriod: u64 = 5;
 }
 
@@ -101,6 +102,9 @@ impl Config for Runtime {
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
     type Time = Timestamp;
     type GetBandRateStalePeriod = GetRateStalePeriod;
+    type OnSymbolDisabledHook = ();
+    type GetBandRateStaleBlockPeriod = GetRateStaleBlockPeriod;
+    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
 }
 
 impl oracle_proxy::Config for Runtime {

@@ -65,6 +65,8 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
 */
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 #[macro_use]
 extern crate alloc;
@@ -80,7 +82,7 @@ use common::prelude::Balance;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
 };
-use core::{line, stringify};
+use core::stringify;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::log::{debug, error, info, warn};
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};

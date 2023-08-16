@@ -31,6 +31,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 extern crate alloc;
 use alloc::string::String;
@@ -255,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 59,
+    spec_version: 60,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 59,
+    transaction_version: 60,
     state_version: 0,
 };
 
@@ -1231,6 +1233,7 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
                 Some(BIG_FEE)
             }
             RuntimeCall::Assets(..)
+            | RuntimeCall::Band(..)
             | RuntimeCall::EthBridge(..)
             | RuntimeCall::LiquidityProxy(..)
             | RuntimeCall::MulticollateralBondingCurvePool(..)
@@ -1841,6 +1844,7 @@ impl xst::Config for Runtime {
     type WeightInfo = xst::weights::SubstrateWeight<Runtime>;
     type Oracle = OracleProxy;
     type Symbol = <Runtime as band::Config>::Symbol;
+    type TradingPairSourceManager = TradingPair;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
 }
 
@@ -2008,6 +2012,8 @@ impl oracle_proxy::Config for Runtime {
 
 parameter_types! {
     pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+    pub const GetBandRateStaleBlockPeriod: u32 = 600; // 1 hour in blocks
+    pub const BandMaxRelaySymbols: u32 = 100;
 }
 
 impl band::Config for Runtime {
@@ -2017,6 +2023,9 @@ impl band::Config for Runtime {
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
     type Time = Timestamp;
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
+    type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
+    type OnSymbolDisabledHook = xst::Pallet<Runtime>;
+    type MaxRelaySymbols = BandMaxRelaySymbols;
 }
 
 parameter_types! {
@@ -2058,8 +2067,8 @@ impl order_book::Config for Runtime {
     type Delegate = OrderBook;
     type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
-    type MaxSidePriceCount = ConstU32<100000>; // TODO: order-book clarify
-    type MaxExpiringOrdersPerBlock = ConstU32<10000>; // TODO: order-book clarify
+    type MaxSidePriceCount = ConstU32<10000>; // TODO: order-book clarify
+    type MaxExpiringOrdersPerBlock = ConstU32<1000>; // TODO: order-book clarify
     type MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
     type EnsureTradingPairExists = TradingPair;
     type TradingPairSourceManager = TradingPair;
