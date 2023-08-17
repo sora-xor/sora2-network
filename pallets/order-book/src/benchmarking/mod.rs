@@ -49,7 +49,7 @@ use framenode_runtime::order_book::{
     OrderBooks, OrderVolume, Pallet,
 };
 
-// `#[cfg(not(test))]`s are so that "unused_imports" warnings are not emitted
+// `#[cfg(not(test))]`'s are so that `unused_imports` warnings are not emitted
 use assets::AssetIdOf;
 use codec::Decode;
 #[cfg(not(test))]
@@ -485,6 +485,194 @@ benchmarks! {
     // now it works only as benchmarks, not as unit tests
     // TODO fix when new approach be developed
     // impl_benchmark_test_suite!(Pallet, framenode_chain_spec::ext(), framenode_runtime::Runtime);
+
+    // attributes benchmarks
+
+    // macros are executed outside-in, therefore implementing such codegen within Rust requires
+    // modifying `benchmarks!` macro from substrate (which is quite challenging)
+
+    #[extra]
+    delete_orderbook_2_4 {
+        let (order_book_id, fill_settings) = prepare_delete_orderbook_benchmark::<T>(
+            16,
+            16,
+            16,
+            128,
+        );
+    }: {
+        OrderBookPallet::<T>::delete_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookDeleted {
+                order_book_id,
+                count_of_canceled_orders:
+                    fill_settings.max_side_price_count * fill_settings.max_orders_per_price * 2,
+            }
+            .into(),
+        );
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
+    }
+
+    #[extra]
+    delete_orderbook_2_5 {
+        let (order_book_id, fill_settings) = prepare_delete_orderbook_benchmark::<T>(
+            32,
+            32,
+            32,
+            256,
+        );
+    }: {
+        OrderBookPallet::<T>::delete_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookDeleted {
+                order_book_id,
+                count_of_canceled_orders:
+                    fill_settings.max_side_price_count * fill_settings.max_orders_per_price * 2,
+            }
+            .into(),
+        );
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
+    }
+
+    #[extra]
+    delete_orderbook_2_6 {
+        let (order_book_id, fill_settings) = prepare_delete_orderbook_benchmark::<T>(
+            64,
+            64,
+            64,
+            512,
+        );
+    }: {
+        OrderBookPallet::<T>::delete_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookDeleted {
+                order_book_id,
+                count_of_canceled_orders:
+                    fill_settings.max_side_price_count * fill_settings.max_orders_per_price * 2,
+            }
+            .into(),
+        );
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
+    }
+
+    #[extra]
+    delete_orderbook_2_7 {
+        let (order_book_id, fill_settings) = prepare_delete_orderbook_benchmark::<T>(
+            128,
+            128,
+            128,
+            1024,
+        );
+    }: {
+        OrderBookPallet::<T>::delete_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookDeleted {
+                order_book_id,
+                count_of_canceled_orders:
+                    fill_settings.max_side_price_count * fill_settings.max_orders_per_price * 2,
+            }
+            .into(),
+        );
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
+    }
+
+    #[extra]
+    delete_orderbook_2_8 {
+        let (order_book_id, fill_settings) = prepare_delete_orderbook_benchmark::<T>(
+            256,
+            256,
+            256,
+            2048,
+        );
+    }: {
+        OrderBookPallet::<T>::delete_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookDeleted {
+                order_book_id,
+                count_of_canceled_orders:
+                    fill_settings.max_side_price_count * fill_settings.max_orders_per_price * 2,
+            }
+            .into(),
+        );
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
+    }
+
+    #[extra]
+    delete_orderbook_2_9 {
+        let (order_book_id, fill_settings) = prepare_delete_orderbook_benchmark::<T>(
+            512,
+            512,
+            512,
+            4096,
+        );
+    }: {
+        OrderBookPallet::<T>::delete_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookDeleted {
+                order_book_id,
+                count_of_canceled_orders:
+                    fill_settings.max_side_price_count * fill_settings.max_orders_per_price * 2,
+            }
+            .into(),
+        );
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
+    }
+
+    #[extra]
+    delete_orderbook_2_10 {
+        let (order_book_id, fill_settings) = prepare_delete_orderbook_benchmark::<T>(
+            1024,
+            1024,
+            1024,
+            8192,
+        );
+    }: {
+        OrderBookPallet::<T>::delete_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookDeleted {
+                order_book_id,
+                count_of_canceled_orders:
+                    fill_settings.max_side_price_count * fill_settings.max_orders_per_price * 2,
+            }
+            .into(),
+        );
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
+    }
+
 }
 
 #[cfg(test)]

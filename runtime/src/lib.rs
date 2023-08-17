@@ -2041,7 +2041,7 @@ impl order_book::Config for Runtime {
 
     // this limit is mostly because of requirement to use bounded vectors.
     // a person can create multiple accounts at any time.
-    type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
+    type MaxOpenedLimitOrdersPerUser = ConstU32<1024>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<10000>; // TODO: order-book clarify
     type MaxExpiringOrdersPerBlock = ConstU32<10000>; // TODO: order-book clarify
