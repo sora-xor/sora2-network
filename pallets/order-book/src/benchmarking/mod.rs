@@ -34,24 +34,22 @@
 // order-book
 #![cfg(feature = "ready-to-test")]
 
-#[cfg(not(test))]
-use crate::{
-    benchmarking::preparation::{fill_order_book_worst_case, FillSettings},
-    CacheDataLayer, ExpirationScheduler,
-};
 #[allow(unused)]
 #[cfg(not(test))]
 use crate::{
-    traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
-    OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
+    cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event, ExpirationScheduler,
+    LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId, OrderBookStatus,
+    OrderBooks, OrderVolume, Pallet,
 };
 #[allow(unused)]
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    traits::DataLayer, Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook,
-    OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet,
+    cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event, ExpirationScheduler,
+    LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId, OrderBookStatus,
+    OrderBooks, OrderVolume, Pallet,
 };
 
+// `#[cfg(not(test))]`s are so that "unused_imports" warnings are not emitted
 use assets::AssetIdOf;
 use codec::Decode;
 #[cfg(not(test))]
@@ -61,7 +59,6 @@ use common::{balance, AssetInfoProvider, LiquiditySource, PriceVariant};
 use common::{DEXId, VAL, XOR};
 #[cfg(not(test))]
 use frame_benchmarking::benchmarks;
-use frame_benchmarking::log::info;
 #[cfg(not(test))]
 use frame_support::traits::{Get, Time};
 #[cfg(not(test))]
@@ -74,6 +71,9 @@ use hex_literal::hex;
 use preparation::create_and_populate_order_book;
 #[cfg(not(test))]
 use sp_runtime::traits::UniqueSaturatedInto;
+
+#[cfg(not(test))]
+use crate::benchmarking::preparation::prepare_delete_orderbook_benchmark;
 
 #[cfg(not(test))]
 use assets::Pallet as AssetsPallet;
@@ -108,31 +108,6 @@ fn get_last_order_id<T: Config>(
         Some(order_book.last_order_id)
     } else {
         None
-    }
-}
-
-/// Retrieve the parameter from environmental variables and return the default if not possible
-fn get_env_parameter<P: sp_std::str::FromStr>(name: &str, default: P) -> Result<P, P::Err> {
-    #[cfg(feature = "std")]
-    {
-        match std::env::var(name) {
-            Ok(v) => {
-                info!("Read '{}={}' from env", name, v);
-                v.parse()
-            }
-            Err(e) => {
-                info!(
-                    "Couldn't read {} from env, using provided default (error: {:?})",
-                    name, e
-                );
-                Ok(default)
-            }
-        }
-    }
-    #[cfg(not(feature = "std"))]
-    {
-        info!("no-std, using default right away");
-        Ok(default)
     }
 }
 
@@ -172,40 +147,12 @@ benchmarks! {
     }
 
     delete_orderbook {
-        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
-            dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
-        };
-        OrderBookPallet::<T>::create_orderbook(
-            RawOrigin::Signed(bob::<T>()).into(),
-            order_book_id
-        ).expect("failed to create an order book");
-        let order_book = <OrderBooks<T>>::get(order_book_id)
-            .expect("just created the order book");
-        let fill_settings = FillSettings::new(
-            get_env_parameter::<u32>(
-                "MAX_SIDE_PRICE_COUNT",
-                <T as Config>::MaxSidePriceCount::get()
-            ).expect("Could not parse an argument"),
-            get_env_parameter::<u32>(
-                "MAX_LIMIT_ORDERS_FOR_PRICE",
-                <T as Config>::MaxLimitOrdersForPrice::get()
-            ).expect("Could not parse an argument"),
-            get_env_parameter::<u32>(
-                "MAX_OPENED_LIMIT_ORDERS_PER_USER",
-                <T as Config>::MaxOpenedLimitOrdersPerUser::get()
-            ).expect("Could not parse an argument"),
-            get_env_parameter::<u32>(
-                "MAX_EXPIRING_ORDERS_PER_BLOCK",
-                <T as Config>::MaxExpiringOrdersPerBlock::get()
-            ).expect("Could not parse an argument"),
-            &order_book,
+        let (order_book_id, fill_settings) = prepare_delete_orderbook_benchmark::<T>(
+            <T as Config>::MaxSidePriceCount::get(),
+            <T as Config>::MaxLimitOrdersForPrice::get(),
+            <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
+            <T as Config>::MaxExpiringOrdersPerBlock::get()
         );
-        let mut data_layer =
-            crate::cache_data_layer::CacheDataLayer::<T>::new();
-        fill_order_book_worst_case::<T>(fill_settings.clone(), &mut data_layer);
-        data_layer.commit();
     }: {
         OrderBookPallet::<T>::delete_orderbook(
             RawOrigin::Root.into(),
@@ -221,7 +168,6 @@ benchmarks! {
             }
             .into(),
         );
-
         assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
     }
 

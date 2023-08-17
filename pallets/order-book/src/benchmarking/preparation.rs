@@ -12,22 +12,20 @@ use framenode_runtime::order_book::{
     ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
     OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
 };
+
+use assets::AssetIdOf;
+use common::prelude::FixedWrapper;
+use common::{balance, Balance, PriceVariant, VAL, XOR};
+#[allow(unused)]
+use frame_support::traits::{Get, Time};
+use frame_system::RawOrigin;
+use sp_runtime::traits::SaturatedConversion;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::iter::repeat;
 use sp_std::vec::Vec;
 
-use assets::AssetIdOf;
+use crate::benchmarking::{bob, DEX};
 
-use common::prelude::FixedWrapper;
-use common::{balance, Balance, PriceVariant};
-
-use frame_support::traits::Time;
-
-use frame_system::RawOrigin;
-
-use sp_runtime::traits::SaturatedConversion;
-
-use crate::benchmarking::bob;
 use assets::Pallet as Assets;
 use Pallet as OrderBookPallet;
 
@@ -197,6 +195,33 @@ pub fn create_and_populate_order_book<T: Config>(
         lifespan,
     )
     .unwrap();
+}
+
+pub fn prepare_delete_orderbook_benchmark<T: Config>(
+    max_side_price_count: u32,
+    max_orders_per_price: u32,
+    max_orders_per_user: u32,
+    max_expiring_orders_per_block: u32,
+) -> (OrderBookId<AssetIdOf<T>, T::DEXId>, FillSettings<T>) {
+    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        dex_id: DEX.into(),
+        base: VAL.into(),
+        quote: XOR.into(),
+    };
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
+        .expect("failed to create an order book");
+    let order_book = <OrderBooks<T>>::get(order_book_id).expect("just created the order book");
+    let fill_settings = FillSettings::new(
+        max_side_price_count,
+        max_orders_per_price,
+        max_orders_per_user,
+        max_expiring_orders_per_block,
+        &order_book,
+    );
+    let mut data_layer = CacheDataLayer::<T>::new();
+    fill_order_book_worst_case::<T>(fill_settings.clone(), &mut data_layer);
+    data_layer.commit();
+    (order_book_id, fill_settings)
 }
 
 #[derive(Clone, Debug)]
