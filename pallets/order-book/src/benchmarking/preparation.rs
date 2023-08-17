@@ -202,7 +202,7 @@ pub fn prepare_delete_orderbook_benchmark<T: Config>(
     max_orders_per_price: u32,
     max_orders_per_user: u32,
     max_expiring_orders_per_block: u32,
-) -> (OrderBookId<AssetIdOf<T>, T::DEXId>, FillSettings<T>) {
+) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
     let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
         dex_id: DEX.into(),
         base: VAL.into(),
@@ -221,7 +221,7 @@ pub fn prepare_delete_orderbook_benchmark<T: Config>(
     let mut data_layer = CacheDataLayer::<T>::new();
     fill_order_book_worst_case::<T>(fill_settings.clone(), &mut data_layer);
     data_layer.commit();
-    (order_book_id, fill_settings)
+    order_book_id
 }
 
 #[derive(Clone, Debug)]
