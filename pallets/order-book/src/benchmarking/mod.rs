@@ -241,12 +241,19 @@ benchmarks! {
 
     place_limit_order {
         let caller = alice::<T>();
-
         let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
             dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
+
+
+        // let order_book_id = prepare_delete_orderbook_benchmark::<T>(FillSettings::new(
+        //     <T as Config>::MaxSidePriceCount::get(),
+        //     <T as Config>::MaxLimitOrdersForPrice::get(),
+        //     <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
+        //     <T as Config>::MaxExpiringOrdersPerBlock::get()
+        // ));
 
         AssetsPallet::<T>::update_balance(
             RawOrigin::Root.into(),
@@ -549,7 +556,7 @@ mod tests {
                 quote: XOR.into(),
             };
 
-            let order_book = create_empty_order_book(order_book_id);
+            create_empty_order_book(order_book_id);
             let mut data_layer =
                 framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
             let settings = FillSettings::new(
@@ -558,7 +565,7 @@ mod tests {
                 <Runtime as framenode_runtime::order_book::Config>::MaxOpenedLimitOrdersPerUser::get(),
                 <Runtime as framenode_runtime::order_book::Config>::MaxExpiringOrdersPerBlock::get(),
             );
-            fill_order_book_worst_case(settings, &order_book, &mut data_layer);
+            fill_order_book_worst_case(settings, &order_book_id, &mut data_layer, None);
         })
     }
 }

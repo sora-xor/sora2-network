@@ -5,6 +5,7 @@ use crate::{
     ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
     OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
 };
+use frame_benchmarking::log::info;
 #[allow(unused)]
 #[cfg(test)]
 use framenode_runtime::order_book::{
@@ -26,6 +27,7 @@ use sp_std::vec::Vec;
 
 use crate::benchmarking::{bob, DEX};
 
+use crate::OrderPrice;
 use assets::Pallet as Assets;
 use Pallet as OrderBookPallet;
 
@@ -207,9 +209,33 @@ pub fn prepare_delete_orderbook_benchmark<T: Config>(
     };
     OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
         .expect("failed to create an order book");
-    let order_book = <OrderBooks<T>>::get(order_book_id).expect("just created the order book");
     let mut data_layer = CacheDataLayer::<T>::new();
-    fill_order_book_worst_case::<T>(fill_settings.clone(), &order_book, &mut data_layer);
+    fill_order_book_worst_case::<T>(fill_settings.clone(), &order_book_id, &mut data_layer, None);
+    data_layer.commit();
+    order_book_id
+}
+
+pub fn prepare_place_orderbook_benchmark<T: Config>(
+    fill_settings: FillSettings<T>,
+    author: T::AccountId,
+) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        dex_id: DEX.into(),
+        base: VAL.into(),
+        quote: XOR.into(),
+    };
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
+        .expect("failed to create an order book");
+    let mut data_layer = CacheDataLayer::<T>::new();
+    // Place only buy orders
+    fill_order_book_worst_case::<T>(
+        fill_settings.clone(),
+        &order_book_id,
+        &mut data_layer,
+        Some(PriceVariant::Sell),
+    );
+    // fill user orders of the author
+
     data_layer.commit();
     order_book_id
 }
@@ -374,10 +400,64 @@ fn fill_order_book_side<T: Config>(
     println!();
 }
 
+fn bid_prices_iterator(
+    tick_size: OrderPrice,
+    max_side_price_count: u32,
+) -> impl Iterator<Item = Balance> {
+    (1..=max_side_price_count).map(move |i| (i as u128) * tick_size)
+}
+
+fn ask_prices_iterator(
+    tick_size: OrderPrice,
+    max_side_price_count: u32,
+) -> impl Iterator<Item = Balance> {
+    (max_side_price_count + 1..=2 * max_side_price_count)
+        .rev()
+        .map(move |i| (i as u128) * tick_size)
+}
+
+fn users_iterator<T: Config>(
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    mint_per_user: Balance,
+    max_price: Balance,
+    max_orders_per_user: u32,
+) -> impl Iterator<Item = T::AccountId> {
+    (1..)
+        .map(crate::test_utils::generate_account::<T>)
+        // each user receives assets that should be enough for placing their orders
+        .inspect(move |user| {
+            assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &user, mint_per_user).unwrap();
+            assets::Pallet::<T>::mint_unchecked(
+                &order_book_id.quote,
+                &user,
+                (FixedWrapper::from(max_price) * FixedWrapper::from(mint_per_user))
+                    .try_into_balance()
+                    .unwrap(),
+            )
+            .unwrap();
+        })
+        // yield same user for `max_orders_per_user` orders.
+        // `inspect` is still called only once for each user.
+        .flat_map(move |user| repeat(user).take(max_orders_per_user.try_into().unwrap()))
+}
+
+fn lifespans_iterator<T: Config>(max_expiring_orders_per_block: u32) -> impl Iterator<Item = u64> {
+    (1..)
+        .map(|i| {
+            i * T::MILLISECS_PER_BLOCK.saturated_into::<u64>()
+                + T::MIN_ORDER_LIFETIME.saturated_into::<u64>()
+        })
+        // same lifespan should be yielded for `max_expiring_orders_per_block` orders
+        .flat_map(move |lifespan| {
+            repeat(lifespan).take(max_expiring_orders_per_block.try_into().unwrap())
+        })
+}
+
 pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     settings: FillSettings<T>,
-    order_book: &OrderBook<T>,
+    order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     data: &mut impl DataLayer<T>,
+    skip_side: Option<PriceVariant>,
 ) {
     let FillSettings {
         now: _,
@@ -387,89 +467,69 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         max_expiring_orders_per_block,
     } = settings;
 
-    let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
-    let order_book_id = order_book.order_book_id;
-
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
-    // to allow mutating with `order_book.next_order_id()` later
-    let tick_size = order_book.tick_size;
-    let amount_per_user: OrderVolume = max_orders_per_user as u128 * order_amount;
-
-    let mut bid_prices = (1..=max_side_price_count).map(|i| (i as u128) * tick_size);
-    let mut ask_prices = (max_side_price_count + 1..=2 * max_side_price_count)
-        .rev()
-        .map(|i| (i as u128) * tick_size);
-    let max_price = (2 * max_side_price_count) as u128 * tick_size;
+    let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
+    let max_price = (2 * max_side_price_count) as u128 * order_book.tick_size;
 
     // Owners for each placed order
-    let mut users = (1..)
-        .map(crate::test_utils::generate_account::<T>)
-        // each user receives assets that should be enough for placing their orders
-        .inspect(|user| {
-            assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &user, amount_per_user)
-                .unwrap();
-            assets::Pallet::<T>::mint_unchecked(
-                &order_book_id.quote,
-                &user,
-                (FixedWrapper::from(max_price) * FixedWrapper::from(amount_per_user))
-                    .try_into_balance()
-                    .unwrap(),
-            )
-            .unwrap();
-        })
-        // yield same user for `max_orders_per_user` orders.
-        // `inspect` is still called only once for each user.
-        .flat_map(|user| repeat(user).take(max_orders_per_user.try_into().unwrap()));
+    let mut users = users_iterator::<T>(
+        order_book.order_book_id,
+        max_orders_per_user as u128 * order_amount,
+        max_price,
+        max_orders_per_user,
+    );
     // Lifespans for each placed order
-    let mut lifespans = (1..)
-        .map(|i| {
-            i * T::MILLISECS_PER_BLOCK.saturated_into::<u64>()
-                + T::MIN_ORDER_LIFETIME.saturated_into::<u64>()
-        })
-        // same lifespan should be yielded for `max_expiring_orders_per_block` orders
-        .flat_map(|lifespan| {
-            repeat(lifespan).take(max_expiring_orders_per_block.try_into().unwrap())
-        });
+    let mut lifespans = lifespans_iterator::<T>(max_expiring_orders_per_block);
 
-    #[cfg(feature = "std")]
-    let start_time = std::time::Instant::now();
-    #[cfg(feature = "std")]
-    println!(
-        "Starting placement of bid orders, {} orders per price",
-        max_orders_per_price
-    );
+    if !matches!(skip_side, Some(PriceVariant::Buy)) {
+        let mut bid_prices = bid_prices_iterator(order_book.tick_size, max_side_price_count);
+        #[cfg(feature = "std")]
+        let start_time = std::time::Instant::now();
+        #[cfg(feature = "std")]
+        println!(
+            "Starting placement of bid orders, {} orders per price",
+            max_orders_per_price
+        );
+        info!("Placing bids...");
+        fill_order_book_side(
+            data,
+            settings.clone(),
+            &mut order_book,
+            PriceVariant::Buy,
+            order_amount,
+            &mut bid_prices,
+            &mut users,
+            &mut lifespans,
+        );
 
-    fill_order_book_side(
-        data,
-        settings.clone(),
-        &mut order_book,
-        PriceVariant::Buy,
-        order_amount,
-        &mut bid_prices,
-        &mut users,
-        &mut lifespans,
-    );
+        info!("Placed all bids");
+        #[cfg(feature = "std")]
+        println!("\nprocessed all bid prices in {:?}", start_time.elapsed());
+    }
 
-    #[cfg(feature = "std")]
-    println!("\nprocessed all bid prices in {:?}", start_time.elapsed());
-
-    #[cfg(feature = "std")]
-    let start_time = std::time::Instant::now();
-    #[cfg(feature = "std")]
-    println!(
-        "Starting placement of ask orders, {} orders per price",
-        max_orders_per_price
-    );
-    fill_order_book_side(
-        data,
-        settings,
-        &mut order_book,
-        PriceVariant::Sell,
-        order_amount,
-        &mut ask_prices,
-        &mut users,
-        &mut lifespans,
-    );
-    #[cfg(feature = "std")]
-    println!("\nprocessed all ask prices in {:?}", start_time.elapsed());
+    if !matches!(skip_side, Some(PriceVariant::Sell)) {
+        let mut ask_prices = ask_prices_iterator(order_book.tick_size, max_side_price_count);
+        #[cfg(feature = "std")]
+        let start_time = std::time::Instant::now();
+        #[cfg(feature = "std")]
+        println!(
+            "Starting placement of ask orders, {} orders per price",
+            max_orders_per_price
+        );
+        info!("Placing asks...");
+        fill_order_book_side(
+            data,
+            settings,
+            &mut order_book,
+            PriceVariant::Sell,
+            order_amount,
+            &mut ask_prices,
+            &mut users,
+            &mut lifespans,
+        );
+        info!("Placed all asks");
+        #[cfg(feature = "std")]
+        println!("\nprocessed all ask prices in {:?}", start_time.elapsed());
+    }
+    <OrderBooks<T>>::insert(order_book_id, order_book);
 }
