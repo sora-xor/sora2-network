@@ -215,10 +215,10 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
 
     fn get_fee_source(who: &AccountId, call: &RuntimeCall, _fee: Balance) -> AccountId {
         match call {
-            RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
+            RuntimeCall::Referrals(referrals::Call::set_referrer { .. })
                 if Referrals::can_set_referrer(who) =>
             {
-                referrer.clone()
+                ReferralsReservesAcc::get()
             }
             _ => who.clone(),
         }
@@ -238,11 +238,13 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
             RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
                 // Fee source should be set to referrer by `get_fee_source` method, if not 
                 // it means that user can't set referrer
-                if referrer == fee_source && Referrals::can_set_referrer(who) =>
+                if Referrals::can_set_referrer(who) =>
             {
                 Referrals::withdraw_fee(referrer, fee)?;
             }
-            _ => {}
+            _ => {
+
+            }
         }
         Ok((
             fee_source.clone(),
