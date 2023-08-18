@@ -45,6 +45,7 @@ pub mod mock;
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
 
+mod balance_unit;
 pub mod cache_storage;
 pub mod eth;
 mod fixed_wrapper;
@@ -64,6 +65,7 @@ use sp_runtime::TransactionOutcome;
 
 pub use traits::Config;
 pub mod prelude {
+    pub use super::balance_unit::*;
     pub use super::fixed_wrapper::*;
     pub use super::primitives::*;
     pub use super::serialization::*;

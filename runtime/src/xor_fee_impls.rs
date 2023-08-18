@@ -92,6 +92,7 @@ impl CustomFees {
             | RuntimeCall::Rewards(..)
             | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
             | RuntimeCall::TradingPair(..)
+            | RuntimeCall::Band(..)
             | RuntimeCall::Referrals(..) => Some(SMALL_FEE),
             _ => None,
         }
@@ -104,8 +105,8 @@ pub enum CustomFeeDetails {
     Regular(Balance),
 }
 
-// Multiplied flat fees implementation for the selected extrinsics.
-// Returns a value (* multiplier) if the extrinsic is subject to manual fee
+// Flat fees implementation for the selected extrinsics.
+// Returns a value if the extrinsic is subject to manual fee
 // adjustment and `None` otherwise
 impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     type FeeDetails = CustomFeeDetails;
