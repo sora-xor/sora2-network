@@ -198,10 +198,7 @@ pub fn create_and_populate_order_book<T: Config>(
 }
 
 pub fn prepare_delete_orderbook_benchmark<T: Config>(
-    max_side_price_count: u32,
-    max_orders_per_price: u32,
-    max_orders_per_user: u32,
-    max_expiring_orders_per_block: u32,
+    fill_settings: FillSettings<T>,
 ) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
     let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
         dex_id: DEX.into(),
@@ -211,23 +208,48 @@ pub fn prepare_delete_orderbook_benchmark<T: Config>(
     OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
         .expect("failed to create an order book");
     let order_book = <OrderBooks<T>>::get(order_book_id).expect("just created the order book");
-    let fill_settings = FillSettings::new(
-        max_side_price_count,
-        max_orders_per_price,
-        max_orders_per_user,
-        max_expiring_orders_per_block,
-        &order_book,
-    );
     let mut data_layer = CacheDataLayer::<T>::new();
-    fill_order_book_worst_case::<T>(fill_settings.clone(), &mut data_layer);
+    fill_order_book_worst_case::<T>(fill_settings.clone(), &order_book, &mut data_layer);
     data_layer.commit();
     order_book_id
 }
 
+#[cfg(not(test))]
+pub mod presets {
+    use crate::benchmarking::preparation::FillSettings;
+    use crate::Config;
+
+    pub fn preset_1<T: Config>() -> FillSettings<T> {
+        FillSettings::<T>::new(16, 16, 16, 128)
+    }
+
+    pub fn preset_2<T: Config>() -> FillSettings<T> {
+        FillSettings::<T>::new(32, 32, 32, 256)
+    }
+
+    pub fn preset_3<T: Config>() -> FillSettings<T> {
+        FillSettings::<T>::new(64, 64, 64, 512)
+    }
+
+    pub fn preset_4<T: Config>() -> FillSettings<T> {
+        FillSettings::<T>::new(128, 128, 128, 1024)
+    }
+
+    pub fn preset_5<T: Config>() -> FillSettings<T> {
+        FillSettings::<T>::new(256, 256, 256, 2048)
+    }
+
+    pub fn preset_6<T: Config>() -> FillSettings<T> {
+        FillSettings::<T>::new(512, 512, 512, 4096)
+    }
+
+    pub fn preset_7<T: Config>() -> FillSettings<T> {
+        FillSettings::<T>::new(1024, 1024, 1024, 8192)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct FillSettings<T: Config> {
-    pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-    pub amount: OrderVolume,
     pub now: <<T as Config>::Time as Time>::Moment,
     pub max_side_price_count: u32,
     pub max_orders_per_price: u32,
@@ -241,12 +263,8 @@ impl<T: Config> FillSettings<T> {
         max_orders_per_price: u32,
         max_orders_per_user: u32,
         max_expiring_orders_per_block: u32,
-        order_book: &OrderBook<T>,
     ) -> Self {
-        let amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
         Self {
-            order_book_id: order_book.order_book_id,
-            amount,
             now: T::Time::now(),
             max_side_price_count,
             max_orders_per_price,
@@ -261,6 +279,7 @@ fn fill_order_book_side<T: Config>(
     settings: FillSettings<T>,
     order_book: &mut OrderBook<T>,
     side: PriceVariant,
+    orders_amount: OrderVolume,
     prices: &mut impl Iterator<Item = Balance>,
     users: &mut impl Iterator<Item = T::AccountId>,
     lifespans: &mut impl Iterator<Item = u64>,
@@ -291,7 +310,7 @@ fn fill_order_book_side<T: Config>(
                 user.clone(),
                 side,
                 price,
-                settings.amount,
+                orders_amount,
                 settings.now.clone(),
                 lifespans
                     .next()
@@ -357,11 +376,10 @@ fn fill_order_book_side<T: Config>(
 
 pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     settings: FillSettings<T>,
+    order_book: &OrderBook<T>,
     data: &mut impl DataLayer<T>,
 ) {
     let FillSettings {
-        order_book_id,
-        amount,
         now: _,
         max_side_price_count,
         max_orders_per_price,
@@ -369,10 +387,13 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         max_expiring_orders_per_block,
     } = settings;
 
+    let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
+    let order_book_id = order_book.order_book_id;
+
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     // to allow mutating with `order_book.next_order_id()` later
     let tick_size = order_book.tick_size;
-    let amount_per_user: OrderVolume = max_orders_per_user as u128 * amount;
+    let amount_per_user: OrderVolume = max_orders_per_user as u128 * order_amount;
 
     let mut bid_prices = (1..=max_side_price_count).map(|i| (i as u128) * tick_size);
     let mut ask_prices = (max_side_price_count + 1..=2 * max_side_price_count)
@@ -423,6 +444,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         settings.clone(),
         &mut order_book,
         PriceVariant::Buy,
+        order_amount,
         &mut bid_prices,
         &mut users,
         &mut lifespans,
@@ -443,6 +465,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         settings,
         &mut order_book,
         PriceVariant::Sell,
+        order_amount,
         &mut ask_prices,
         &mut users,
         &mut lifespans,
