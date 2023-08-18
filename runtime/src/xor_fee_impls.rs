@@ -1,4 +1,5 @@
 use pallet_utility::Call as UtilityCall;
+use sp_runtime::DispatchResult;
 
 use crate::*;
 
@@ -97,12 +98,36 @@ impl CustomFees {
             _ => None,
         }
     }
+
+    fn payout_stakers_batch_successful(result: &DispatchResult) -> bool {
+        if result.is_err() {
+            return false;
+        }
+        let Some(xt_index) = frame_system::Pallet::<Runtime>::extrinsic_index() else {
+            return false;
+        };
+
+        if frame_system::Pallet::<Runtime>::events()
+            .iter()
+            .filter(|ev| ev.phase == frame_system::Phase::ApplyExtrinsic(xt_index))
+            .any(|ev| {
+                matches!(
+                    ev.event,
+                    RuntimeEvent::Utility(pallet_utility::Event::BatchCompleted)
+                )
+            })
+        {
+            return true;
+        }
+        false
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CustomFeeDetails {
     /// Regular call with custom fee without any additional logic
     Regular(Balance),
+    PayoutStakers(Balance),
 }
 
 // Flat fees implementation for the selected extrinsics.
@@ -112,8 +137,26 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     type FeeDetails = CustomFeeDetails;
 
     fn compute_fee(call: &RuntimeCall) -> Option<(Balance, CustomFeeDetails)> {
-        let fee = Self::base_fee(call)?;
-        Some((fee, CustomFeeDetails::Regular(fee)))
+        let fee = Self::base_fee(call);
+        if let Some(fee) = fee {
+            Some((fee, CustomFeeDetails::Regular(fee)))
+        } else {
+            match call {
+                RuntimeCall::Utility(pallet_utility::Call::batch { calls })
+                | RuntimeCall::Utility(pallet_utility::Call::batch_all { calls })
+                    if calls.iter().all(|call| {
+                        matches!(
+                            call,
+                            RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
+                        )
+                    }) =>
+                {
+                    let fee = calls.len() as Balance * SMALL_FEE;
+                    Some((fee, CustomFeeDetails::PayoutStakers(fee)))
+                }
+                _ => None,
+            }
+        }
     }
 
     fn should_be_postponed(
@@ -204,12 +247,19 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     fn compute_actual_fee(
         _post_info: &sp_runtime::traits::PostDispatchInfoOf<RuntimeCall>,
         _info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
-        _result: &sp_runtime::DispatchResult,
+        result: &DispatchResult,
         fee_details: Option<CustomFeeDetails>,
     ) -> Option<Balance> {
         let fee_details = fee_details?;
         match fee_details {
             CustomFeeDetails::Regular(fee) => Some(fee),
+            CustomFeeDetails::PayoutStakers(fee) => {
+                if Self::payout_stakers_batch_successful(result) {
+                    Some(0)
+                } else {
+                    Some(fee)
+                }
+            }
         }
     }
 
