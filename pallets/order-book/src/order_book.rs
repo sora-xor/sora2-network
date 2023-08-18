@@ -926,7 +926,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
-        let (mut market_amount, mut limit_amout) = match limit_order.side {
+        let (mut market_amount, mut limit_amount) = match limit_order.side {
             PriceVariant::Buy => Self::calculate_market_depth_to_price(
                 limit_order.side.switched(),
                 limit_order.price,
@@ -941,13 +941,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             ),
         };
 
-        if limit_amout < self.min_lot_size {
+        if limit_amount < self.min_lot_size {
             let market_volume = self.market_volume(limit_order.side.switched(), data);
-            if market_volume - market_amount >= limit_amout {
-                market_amount += limit_amout;
-                limit_amout = OrderVolume::zero();
+            if market_volume - market_amount >= limit_amount {
+                market_amount += limit_amount;
+                limit_amount = OrderVolume::zero();
             } else {
-                limit_amout = OrderVolume::zero();
+                limit_amount = OrderVolume::zero();
             }
         }
 
@@ -964,9 +964,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             market_change = self.calculate_market_order_impact(market_order, data)?;
         }
 
-        if !limit_amout.is_zero() {
+        if !limit_amount.is_zero() {
             let mut new_limit_order = limit_order.clone();
-            new_limit_order.amount = limit_amout;
+            new_limit_order.amount = limit_amount;
             market_change
                 .merge(self.calculate_limit_order_impact(new_limit_order)?)
                 .map_err(|_| Error::<T>::AmountCalculationFailed)?;
