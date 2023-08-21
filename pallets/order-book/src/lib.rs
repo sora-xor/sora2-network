@@ -93,7 +93,7 @@ pub mod pallet {
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
         traits::Hooks,
-        Blake2_128Concat, Twox128,
+        Blake2_128Concat,
     };
     use frame_system::pallet_prelude::*;
     use sp_runtime::Either;

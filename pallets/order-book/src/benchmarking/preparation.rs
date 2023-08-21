@@ -242,8 +242,6 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         false,
     );
 
-    let mut fill_settings_sell = fill_settings.clone();
-    // fill user orders of the author
     let FillSettings {
         now: _,
         max_side_price_count,
@@ -251,34 +249,20 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         max_orders_per_user,
         max_expiring_orders_per_block,
     } = fill_settings;
-
-    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
-    let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
-    let max_price = (2 * max_side_price_count) as u128 * order_book.tick_size;
-
-    // Since we fill orders of the user, it is the only author
-    assets::Pallet::<T>::mint_unchecked(
-        &order_book_id.base,
-        &author,
-        order_amount * (max_orders_per_user - 1) as u128,
-    )
-    .unwrap();
-    let mut users = repeat(author).take((max_orders_per_user - 1).try_into().unwrap());
     // Lifespans for each placed order (start from a block with an empty schedule)
     let mut lifespans = lifespans_iterator::<T>(
         max_expiring_orders_per_block,
         (max_side_price_count * max_orders_per_price / max_expiring_orders_per_block + 2).into(),
     );
-
-    let mut ask_prices = ask_prices_iterator(order_book.tick_size, max_side_price_count);
-    fill_order_book_side(
+    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
+    let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
+    fill_user_orders(
         &mut data_layer,
         fill_settings,
         &mut order_book,
         PriceVariant::Sell,
         order_amount,
-        &mut ask_prices,
-        &mut users,
+        author,
         &mut lifespans,
     );
 
@@ -345,6 +329,55 @@ impl<T: Config> FillSettings<T> {
             max_expiring_orders_per_block,
         }
     }
+}
+
+fn fill_user_orders<T: Config>(
+    data: &mut impl DataLayer<T>,
+    settings: FillSettings<T>,
+    order_book: &mut OrderBook<T>,
+    side: PriceVariant,
+    order_amount: OrderVolume,
+    author: T::AccountId,
+    lifespans: &mut impl Iterator<Item = u64>,
+) {
+    // fill user orders of the author
+    let FillSettings {
+        now: _,
+        max_side_price_count,
+        max_orders_per_price: _,
+        max_orders_per_user,
+        max_expiring_orders_per_block: _,
+    } = settings;
+    // Since we fill orders of the user, it is the only author
+    assets::Pallet::<T>::mint_unchecked(
+        &order_book.order_book_id.base,
+        &author,
+        order_amount * (max_orders_per_user - 1) as u128,
+    )
+    .unwrap();
+    let mut users = repeat(author).take((max_orders_per_user - 1).try_into().unwrap());
+    match side {
+        PriceVariant::Buy => fill_order_book_side(
+            data,
+            settings,
+            order_book,
+            side,
+            order_amount,
+            &mut bid_prices_iterator(order_book.tick_size, max_side_price_count),
+            &mut users,
+            lifespans,
+        ),
+        PriceVariant::Sell => fill_order_book_side(
+            data,
+            settings,
+            order_book,
+            side,
+            order_amount,
+            &mut ask_prices_iterator(order_book.tick_size, max_side_price_count),
+            &mut users,
+            lifespans,
+        ),
+    };
 }
 
 /// Fill `side` of an `order_book` according to `settings`.
