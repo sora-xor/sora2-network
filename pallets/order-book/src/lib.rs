@@ -249,7 +249,7 @@ pub mod pallet {
     #[pallet::getter(fn expired_orders_at)]
     pub type ExpirationsAgenda<T: Config> = StorageMap<
         _,
-        Twox128,
+        Identity,
         T::BlockNumber,
         BoundedVec<(OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId), T::MaxExpiringOrdersPerBlock>,
         ValueQuery,

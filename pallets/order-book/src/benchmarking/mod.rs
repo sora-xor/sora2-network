@@ -540,7 +540,9 @@ benchmarks! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::benchmarking::preparation::{fill_order_book_worst_case, FillSettings};
+    use crate::benchmarking::preparation::{
+        fill_order_book_worst_case, prepare_place_orderbook_benchmark, FillSettings,
+    };
     use crate::test_utils::create_empty_order_book;
     use frame_support::traits::Get;
     use framenode_chain_spec::ext;
@@ -565,7 +567,36 @@ mod tests {
                 <Runtime as framenode_runtime::order_book::Config>::MaxOpenedLimitOrdersPerUser::get(),
                 <Runtime as framenode_runtime::order_book::Config>::MaxExpiringOrdersPerBlock::get(),
             );
-            fill_order_book_worst_case(settings, &order_book_id, &mut data_layer, None);
+            fill_order_book_worst_case(settings, &order_book_id, &mut data_layer, true, true);
+        })
+    }
+
+    #[test]
+    fn test_benchmark_prepare_place() {
+        ext().execute_with(|| {
+            let settings = FillSettings::<Runtime>::new(4, 2, 4, 1);
+            let alice = alice::<Runtime>();
+            let order_book_id = prepare_place_orderbook_benchmark(settings, alice.clone());
+            println!(
+                "bids:\n{:#?}",
+                framenode_runtime::order_book::Bids::<Runtime>::iter_prefix(order_book_id)
+                    .collect::<Vec<_>>()
+            );
+            println!(
+                "asks:\n{:#?}",
+                framenode_runtime::order_book::Asks::<Runtime>::iter_prefix(order_book_id)
+                    .collect::<Vec<_>>()
+            );
+            println!(
+                "alice orders:\n{:#?}",
+                framenode_runtime::order_book::UserLimitOrders::<Runtime>::iter_prefix(alice)
+                    .collect::<Vec<_>>()
+            );
+            println!(
+                "expirations:\n{:#?}",
+                framenode_runtime::order_book::ExpirationsAgenda::<Runtime>::iter()
+                    .collect::<Vec<_>>()
+            );
         })
     }
 }
