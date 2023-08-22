@@ -259,6 +259,8 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     );
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
+    let mut fill_user_settings = fill_settings.clone();
+    fill_user_settings.max_orders_per_user -= 1;
     fill_user_orders(
         &mut data_layer,
         fill_settings.clone(),
@@ -418,13 +420,27 @@ fn fill_user_orders<T: Config>(
         max_expiring_orders_per_block: _,
     } = settings;
     // Since we fill orders of the user, it is the only author
-    assets::Pallet::<T>::mint_unchecked(
-        &order_book.order_book_id.base,
-        &author,
-        order_amount * (max_orders_per_user - 1) as u128,
-    )
-    .unwrap();
-    let mut users = repeat(author).take((max_orders_per_user - 1).try_into().unwrap());
+    match side {
+        PriceVariant::Buy => {
+            let max_price = max_side_price_count as u128 * order_book.tick_size;
+            assets::Pallet::<T>::mint_unchecked(
+                &order_book.order_book_id.quote,
+                &author,
+                (FixedWrapper::from(max_price)
+                    * FixedWrapper::from(order_amount * max_orders_per_user as u128))
+                .try_into_balance()
+                .unwrap(),
+            )
+            .unwrap()
+        }
+        PriceVariant::Sell => assets::Pallet::<T>::mint_unchecked(
+            &order_book.order_book_id.base,
+            &author,
+            order_amount * max_orders_per_user as u128,
+        )
+        .unwrap(),
+    }
+    let mut users = repeat(author).take(max_orders_per_user.try_into().unwrap());
     match side {
         PriceVariant::Buy => fill_order_book_side(
             data,
