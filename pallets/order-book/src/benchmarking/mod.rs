@@ -76,7 +76,6 @@ use preparation::create_and_populate_order_book;
 #[cfg(not(test))]
 use sp_runtime::traits::UniqueSaturatedInto;
 
-#[cfg(not(test))]
 use crate::benchmarking::preparation::{
     prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark, presets::*, FillSettings,
 };
@@ -654,6 +653,7 @@ mod tests {
         fill_order_book_worst_case, prepare_place_orderbook_benchmark, FillSettings,
     };
     use crate::test_utils::create_empty_order_book;
+    use common::prelude::FixedWrapper;
     use frame_support::traits::Get;
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
@@ -711,7 +711,8 @@ mod tests {
         use frame_system::RawOrigin;
         ext().execute_with(|| {
             // let settings = FillSettings::<Runtime>::new(4, 2, 4, 2);
-            let settings = FillSettings::<Runtime>::new(100, 100, 100, 10);
+            // let settings = FillSettings::<Runtime>::new(100, 100, 100, 10);
+            let settings = preset_6::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, price, amount, side, lifespan) =
                 prepare_place_orderbook_benchmark(settings.clone(), caller.clone());

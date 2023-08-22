@@ -243,6 +243,22 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     };
     OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
         .expect("failed to create an order book");
+    // allow to execute all orders at once
+    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
+    let max_side_orders =
+        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
+    OrderBookPallet::<T>::update_orderbook(
+        RawOrigin::Root.into(),
+        order_book_id,
+        order_book.tick_size,
+        order_book.step_lot_size,
+        order_book.min_lot_size,
+        sp_std::cmp::max(
+            order_book.min_lot_size * (max_side_orders + 1),
+            order_book.max_lot_size,
+        ),
+    )
+    .unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
     // Place only buy orders
     let mut buy_settings = fill_settings.clone();
@@ -259,7 +275,9 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     // Lifespans for each placed order (start from a block with an empty schedule)
     let mut lifespans = lifespans_iterator::<T>(
         max_expiring_orders_per_block,
-        (max_side_price_count * max_orders_per_price / max_expiring_orders_per_block + 2).into(),
+        (max_side_orders / max_expiring_orders_per_block as u128 + 2)
+            .try_into()
+            .unwrap(),
     );
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
@@ -323,7 +341,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
 
     assert_orders_numbers::<T>(
         order_book_id,
-        Some((fill_settings.max_side_price_count * fill_settings.max_orders_per_price) as usize),
+        Some(max_side_orders as usize),
         None,
         author.clone(),
         (fill_settings.max_orders_per_user - 1) as usize,
@@ -334,10 +352,12 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     (order_book_id, price, amount, side, lifespan)
 }
 
-#[cfg(not(test))]
 pub mod presets {
     use crate::benchmarking::preparation::FillSettings;
+    #[cfg(not(test))]
     use crate::Config;
+    #[cfg(test)]
+    use framenode_runtime::order_book::Config;
 
     pub fn preset_1<T: Config>() -> FillSettings<T> {
         FillSettings::<T>::new(16, 16, 16, 128)
