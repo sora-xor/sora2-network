@@ -263,7 +263,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     fill_user_settings.max_orders_per_user -= 1;
     fill_user_orders(
         &mut data_layer,
-        fill_settings.clone(),
+        fill_user_settings,
         &mut order_book,
         PriceVariant::Sell,
         order_amount,
