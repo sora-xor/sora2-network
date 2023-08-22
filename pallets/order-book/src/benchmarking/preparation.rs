@@ -16,7 +16,7 @@ use framenode_runtime::order_book::{
 
 use assets::AssetIdOf;
 use common::prelude::FixedWrapper;
-use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
+use common::{balance, AssetInfoProvider, Balance, PriceVariant, ETH, VAL, XOR};
 #[allow(unused)]
 use frame_support::traits::{Get, Time};
 use frame_system::RawOrigin;
@@ -280,6 +280,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id_2)
         .expect("failed to create an order book");
     let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
+    let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
     let free_lifespan = lifespans.next().unwrap() + T::MILLISECS_PER_BLOCK.saturated_into::<u64>();
     let mut fill_expiration_settings = fill_settings.clone();
     fill_expiration_settings.max_orders_per_user -= 1; // 1 was placed already
@@ -289,10 +290,10 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         fill_expiration_settings.clone(),
         &mut order_book_2,
         PriceVariant::Sell,
-        order_amount,
+        order_amount_2,
         &mut users_iterator::<T>(
             order_book_id_2,
-            order_amount,
+            order_amount_2,
             1,
             fill_expiration_settings.max_orders_per_user,
         ),
@@ -388,18 +389,29 @@ fn fill_expiration_schedule<T: Config>(
     users: &mut impl Iterator<Item = T::AccountId>,
     lifespan: u64,
 ) {
-    let mut prices = bid_prices_iterator(order_book.tick_size, settings.max_side_price_count);
     let mut lifespans = repeat(lifespan).take(settings.max_expiring_orders_per_block as usize);
-    fill_order_book_side(
-        data,
-        settings,
-        order_book,
-        side,
-        order_amount,
-        &mut prices,
-        users,
-        &mut lifespans,
-    )
+    match side {
+        PriceVariant::Buy => fill_order_book_side(
+            data,
+            settings.clone(),
+            order_book,
+            side,
+            order_amount,
+            &mut bid_prices_iterator(order_book.tick_size, settings.max_side_price_count),
+            users,
+            &mut lifespans,
+        ),
+        PriceVariant::Sell => fill_order_book_side(
+            data,
+            settings.clone(),
+            order_book,
+            side,
+            order_amount,
+            &mut ask_prices_iterator(order_book.tick_size, settings.max_side_price_count),
+            users,
+            &mut lifespans,
+        ),
+    }
 }
 
 fn fill_user_orders<T: Config>(
@@ -586,10 +598,11 @@ fn ask_prices_iterator(
 
 fn users_iterator<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-    mint_per_user: Balance,
+    max_order_amount: Balance,
     max_price: Balance,
     max_orders_per_user: u32,
 ) -> impl Iterator<Item = T::AccountId> {
+    let mint_per_user = max_order_amount * max_orders_per_user as u128;
     (1..)
         .map(crate::test_utils::generate_account::<T>)
         // each user receives assets that should be enough for placing their orders
@@ -646,7 +659,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     // Owners for each placed order
     let mut users = users_iterator::<T>(
         order_book.order_book_id,
-        max_orders_per_user as u128 * order_amount,
+        order_amount,
         max_price,
         max_orders_per_user,
     );
