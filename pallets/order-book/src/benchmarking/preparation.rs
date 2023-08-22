@@ -16,7 +16,7 @@ use framenode_runtime::order_book::{
 
 use assets::AssetIdOf;
 use common::prelude::FixedWrapper;
-use common::{balance, Balance, PriceVariant, VAL, XOR};
+use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
 #[allow(unused)]
 use frame_support::traits::{Get, Time};
 use frame_system::RawOrigin;
@@ -221,10 +221,17 @@ pub fn prepare_delete_orderbook_benchmark<T: Config>(
     order_book_id
 }
 
+/// Returns parameters for placing a limit order
 pub fn prepare_place_orderbook_benchmark<T: Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
-) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
+) -> (
+    OrderBookId<AssetIdOf<T>, T::DEXId>,
+    OrderPrice,
+    OrderVolume,
+    PriceVariant,
+    MomentOf<T>,
+) {
     let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
         dex_id: DEX.into(),
         base: VAL.into(),
@@ -234,19 +241,15 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         .expect("failed to create an order book");
     let mut data_layer = CacheDataLayer::<T>::new();
     // Place only buy orders
-    fill_order_book_worst_case::<T>(
-        fill_settings.clone(),
-        &order_book_id,
-        &mut data_layer,
-        true,
-        false,
-    );
+    let mut buy_settings = fill_settings.clone();
+    buy_settings.max_orders_per_user = 1;
+    fill_order_book_worst_case::<T>(buy_settings, &order_book_id, &mut data_layer, true, false);
 
     let FillSettings {
         now: _,
         max_side_price_count,
         max_orders_per_price,
-        max_orders_per_user,
+        max_orders_per_user: _,
         max_expiring_orders_per_block,
     } = fill_settings;
     // Lifespans for each placed order (start from a block with an empty schedule)
@@ -258,17 +261,57 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     fill_user_orders(
         &mut data_layer,
-        fill_settings,
+        fill_settings.clone(),
         &mut order_book,
         PriceVariant::Sell,
         order_amount,
-        author,
+        author.clone(),
         &mut lifespans,
     );
 
-    <OrderBooks<T>>::insert(order_book_id, order_book);
+    // other order book because we just affect expirations
+    let order_book_id_2 = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        dex_id: DEX.into(),
+        base: ETH.into(),
+        quote: XOR.into(),
+    };
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id_2)
+        .expect("failed to create an order book");
+    let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
+    let free_lifespan = lifespans.next().unwrap() + T::MILLISECS_PER_BLOCK.saturated_into::<u64>();
+    let mut fill_expiration_settings = fill_settings.clone();
+    fill_expiration_settings.max_orders_per_user -= 1; // 1 was placed already
+    fill_expiration_settings.max_expiring_orders_per_block -= 1; // leave a room for 1
+    fill_expiration_schedule(
+        &mut data_layer,
+        fill_expiration_settings.clone(),
+        &mut order_book_2,
+        PriceVariant::Sell,
+        order_amount,
+        &mut users_iterator::<T>(
+            order_book_id_2,
+            order_amount,
+            1,
+            fill_expiration_settings.max_orders_per_user,
+        ),
+        free_lifespan,
+    );
+
+    <OrderBooks<T>>::insert(order_book_id, order_book.clone());
+    <OrderBooks<T>>::insert(order_book_id_2, order_book_2);
     data_layer.commit();
-    order_book_id
+
+    let order_book_id = order_book_id;
+    let price = order_book.tick_size;
+    let amount: OrderVolume = data_layer
+        .get_aggregated_bids(&order_book_id)
+        .iter()
+        .map(|(_p, v)| *v)
+        .sum();
+    let side = PriceVariant::Sell;
+    let lifespan = free_lifespan.saturated_into::<MomentOf<T>>();
+    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, amount).unwrap();
+    (order_book_id, price, amount, side, lifespan)
 }
 
 #[cfg(not(test))]
@@ -329,6 +372,29 @@ impl<T: Config> FillSettings<T> {
             max_expiring_orders_per_block,
         }
     }
+}
+
+fn fill_expiration_schedule<T: Config>(
+    data: &mut impl DataLayer<T>,
+    settings: FillSettings<T>,
+    order_book: &mut OrderBook<T>,
+    side: PriceVariant,
+    order_amount: OrderVolume,
+    users: &mut impl Iterator<Item = T::AccountId>,
+    lifespan: u64,
+) {
+    let mut prices = bid_prices_iterator(order_book.tick_size, settings.max_side_price_count);
+    let mut lifespans = repeat(lifespan).take(settings.max_expiring_orders_per_block as usize);
+    fill_order_book_side(
+        data,
+        settings,
+        order_book,
+        side,
+        order_amount,
+        &mut prices,
+        users,
+        &mut lifespans,
+    )
 }
 
 fn fill_user_orders<T: Config>(
