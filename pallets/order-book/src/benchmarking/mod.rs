@@ -295,7 +295,8 @@ benchmarks! {
             <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
             <T as Config>::MaxExpiringOrdersPerBlock::get()
         );
-        let (order_book_id, price, amount, side, lifespan) = prepare_place_orderbook_benchmark::<T>(settings.clone(), caller.clone());
+        let (order_book_id, price, amount, side, lifespan) =
+            prepare_place_orderbook_benchmark::<T>(settings.clone(), caller.clone());
     }: {
         OrderBookPallet::<T>::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
@@ -347,11 +348,6 @@ benchmarks! {
             OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap(),
             expected_limit_order
         );
-        // let deal_amount = *expected_limit_order.deal_amount(MarketRole::Taker, None).unwrap().value();
-        // let balance =
-        //     <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
-        // let expected_balance = balance_before - deal_amount;
-        // assert_eq!(balance, expected_balance);
     }
 
     cancel_limit_order {
@@ -572,6 +568,83 @@ benchmarks! {
     delete_orderbook_7 {
         let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_7());
     } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
+
+    #[extra]
+    place_limit_order_1 {
+        let signer = RawOrigin::Signed(alice::<T>()).into();
+        let (order_book_id, price, amount, side, lifespan) =
+            prepare_place_orderbook_benchmark::<T>(preset_1(), alice::<T>());
+    }: {
+        OrderBookPallet::<T>::place_limit_order(
+            signer, order_book_id, price, amount, side, Some(lifespan),
+        ).unwrap();
+    }
+
+    #[extra]
+    place_limit_order_2 {
+        let signer = RawOrigin::Signed(alice::<T>()).into();
+        let (order_book_id, price, amount, side, lifespan) =
+            prepare_place_orderbook_benchmark::<T>(preset_2(), alice::<T>());
+    }: {
+        OrderBookPallet::<T>::place_limit_order(
+            signer, order_book_id, price, amount, side, Some(lifespan),
+        ).unwrap();
+    }
+
+    #[extra]
+    place_limit_order_3 {
+        let signer = RawOrigin::Signed(alice::<T>()).into();
+        let (order_book_id, price, amount, side, lifespan) =
+            prepare_place_orderbook_benchmark::<T>(preset_3(), alice::<T>());
+    }: {
+        OrderBookPallet::<T>::place_limit_order(
+            signer, order_book_id, price, amount, side, Some(lifespan),
+        ).unwrap();
+    }
+
+    #[extra]
+    place_limit_order_4 {
+        let signer = RawOrigin::Signed(alice::<T>()).into();
+        let (order_book_id, price, amount, side, lifespan) =
+            prepare_place_orderbook_benchmark::<T>(preset_4(), alice::<T>());
+    }: {
+        OrderBookPallet::<T>::place_limit_order(
+            signer, order_book_id, price, amount, side, Some(lifespan),
+        ).unwrap();
+    }
+
+    #[extra]
+    place_limit_order_5 {
+        let signer = RawOrigin::Signed(alice::<T>()).into();
+        let (order_book_id, price, amount, side, lifespan) =
+            prepare_place_orderbook_benchmark::<T>(preset_5(), alice::<T>());
+    }: {
+        OrderBookPallet::<T>::place_limit_order(
+            signer, order_book_id, price, amount, side, Some(lifespan),
+        ).unwrap();
+    }
+
+    #[extra]
+    place_limit_order_6 {
+        let signer = RawOrigin::Signed(alice::<T>()).into();
+        let (order_book_id, price, amount, side, lifespan) =
+            prepare_place_orderbook_benchmark::<T>(preset_6(), alice::<T>());
+    }: {
+        OrderBookPallet::<T>::place_limit_order(
+            signer, order_book_id, price, amount, side, Some(lifespan),
+        ).unwrap();
+    }
+
+    #[extra]
+    place_limit_order_7 {
+        let signer = RawOrigin::Signed(alice::<T>()).into();
+        let (order_book_id, price, amount, side, lifespan) =
+            prepare_place_orderbook_benchmark::<T>(preset_7(), alice::<T>());
+    }: {
+        OrderBookPallet::<T>::place_limit_order(
+            signer, order_book_id, price, amount, side, Some(lifespan),
+        ).unwrap();
+    }
 }
 
 #[cfg(test)]
