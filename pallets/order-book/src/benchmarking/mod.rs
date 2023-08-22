@@ -117,6 +117,50 @@ fn get_last_order_id<T: Config>(
     }
 }
 
+pub fn assert_orders_numbers<T: Config>(
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    expected_bids: Option<usize>,
+    expected_asks: Option<usize>,
+    author: T::AccountId,
+    expected_user_limit_orders: usize,
+    lifespan: MomentOf<T>,
+    expected_expirations: usize,
+) {
+    // # of bids should be max to execute max # of orders and payments
+    if let Some(expected_bids) = expected_bids {
+        assert_eq!(
+            order_book::Bids::<T>::iter_prefix(order_book_id)
+                .flat_map(|(_price, orders)| orders.into_iter())
+                .count(),
+            expected_bids
+        );
+    }
+    if let Some(expected_asks) = expected_asks {
+        assert_eq!(
+            order_book::Asks::<T>::iter_prefix(order_book_id)
+                .flat_map(|(_price, orders)| orders.into_iter())
+                .count(),
+            expected_asks
+        );
+    }
+    // user orders of `caller` should be almost full
+    assert_eq!(
+        order_book::UserLimitOrders::<T>::get(author.clone(), order_book_id)
+            .unwrap()
+            .len(),
+        expected_user_limit_orders
+    );
+    // expiration schedule for the block should be almost full
+    assert_eq!(
+        order_book::ExpirationsAgenda::<T>::get(LimitOrder::<T>::resolve_lifespan(
+            frame_system::Pallet::<T>::block_number(),
+            lifespan
+        ))
+        .len(),
+        expected_expirations
+    );
+}
+
 #[cfg(not(test))]
 benchmarks! {
     where_clause {
@@ -265,6 +309,16 @@ benchmarks! {
     verify {
         let order_id = get_last_order_id::<T>(order_book_id).unwrap();
 
+        assert_orders_numbers::<T>(
+            order_book_id,
+            Some(0),
+            None,
+            caller.clone(),
+            settings.max_orders_per_user as usize,
+            lifespan,
+            settings.max_expiring_orders_per_block as usize,
+        );
+
         assert_last_event::<T>(
             Event::<T>::LimitOrderPlaced {
                 order_book_id,
@@ -276,13 +330,14 @@ benchmarks! {
 
         let current_block = frame_system::Pallet::<T>::block_number();
 
+        let order_book = order_book::OrderBooks::<T>::get(order_book_id).unwrap();
         let now = <<T as Config>::Time as Time>::now();
         let expected_limit_order = LimitOrder::<T>::new(
             order_id,
             caller.clone(),
             PriceVariant::Buy,
             price,
-            amount,
+            order_book.min_lot_size,
             now,
             lifespan,
             current_block
@@ -292,7 +347,6 @@ benchmarks! {
             OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap(),
             expected_limit_order
         );
-        //
         // let deal_amount = *expected_limit_order.deal_amount(MarketRole::Taker, None).unwrap().value();
         // let balance =
         //     <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();

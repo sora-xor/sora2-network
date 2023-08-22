@@ -29,7 +29,7 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::iter::repeat;
 use sp_std::vec::Vec;
 
-use crate::benchmarking::{bob, DEX};
+use crate::benchmarking::{assert_orders_numbers, bob, DEX};
 
 use crate::OrderPrice;
 use assets::Pallet as Assets;
@@ -321,45 +321,17 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     let lifespan = free_lifespan.saturated_into::<MomentOf<T>>();
     assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, amount).unwrap();
 
-    verify_prepare_place(
-        fill_settings.clone(),
-        author.clone(),
+    assert_orders_numbers::<T>(
         order_book_id,
+        Some((fill_settings.max_side_price_count * fill_settings.max_orders_per_price) as usize),
+        None,
+        author.clone(),
+        (fill_settings.max_orders_per_user - 1) as usize,
         lifespan,
+        (fill_settings.max_expiring_orders_per_block - 1) as usize,
     );
 
     (order_book_id, price, amount, side, lifespan)
-}
-
-fn verify_prepare_place<T: Config>(
-    fill_settings: FillSettings<T>,
-    author: T::AccountId,
-    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-    lifespan: MomentOf<T>,
-) {
-    // # of bids should be max to execute max # of orders and payments
-    assert_eq!(
-        order_book::Bids::<T>::iter_prefix(order_book_id)
-            .flat_map(|(_price, orders)| orders.into_iter())
-            .count(),
-        (fill_settings.max_side_price_count * fill_settings.max_orders_per_price) as usize
-    );
-    // user orders of `caller` should be almost full
-    assert_eq!(
-        order_book::UserLimitOrders::<T>::get(author.clone(), order_book_id)
-            .unwrap()
-            .len(),
-        (fill_settings.max_orders_per_user - 1) as usize
-    );
-    // expiration schedule for the block should be almost full
-    assert_eq!(
-        order_book::ExpirationsAgenda::<T>::get(LimitOrder::<T>::resolve_lifespan(
-            frame_system::Pallet::<T>::block_number(),
-            lifespan
-        ))
-        .len(),
-        (fill_settings.max_expiring_orders_per_block - 1) as usize
-    );
 }
 
 #[cfg(not(test))]
