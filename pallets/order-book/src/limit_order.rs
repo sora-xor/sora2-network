@@ -91,7 +91,7 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
 
     /// Returns block number at which to expire the order.
     /// Aims to expire no earlier than provided lifespan (in ms)
-    fn resolve_lifespan(
+    pub fn resolve_lifespan(
         current_block: BlockNumberFor<T>,
         lifespan: MomentOf<T>,
     ) -> BlockNumberFor<T> {

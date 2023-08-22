@@ -303,11 +303,14 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
 
     let order_book_id = order_book_id;
     let price = order_book.tick_size;
+    // to execute all bids
     let amount: OrderVolume = data_layer
         .get_aggregated_bids(&order_book_id)
         .iter()
         .map(|(_p, v)| *v)
         .sum();
+    // to place remaining amount as limit order
+    let amount = amount + order_book.min_lot_size;
     let side = PriceVariant::Sell;
     let lifespan = free_lifespan.saturated_into::<MomentOf<T>>();
     assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, amount).unwrap();

@@ -579,10 +579,40 @@ mod tests {
     fn test_benchmark_place() {
         use frame_system::RawOrigin;
         ext().execute_with(|| {
-            let settings = FillSettings::<Runtime>::new(4, 2, 4, 2);
+            // let settings = FillSettings::<Runtime>::new(4, 2, 4, 2);
+            let settings = FillSettings::<Runtime>::new(100, 100, 100, 10);
             let caller = alice::<Runtime>();
             let (order_book_id, price, amount, side, lifespan) =
-                prepare_place_orderbook_benchmark(settings, caller.clone());
+                prepare_place_orderbook_benchmark(settings.clone(), caller.clone());
+
+            // # of bids should be max to execute max # of orders and payments
+            assert_eq!(
+                framenode_runtime::order_book::Bids::<Runtime>::iter_prefix(order_book_id)
+                    .flat_map(|(_price, orders)| orders.into_iter())
+                    .count(),
+                (settings.max_side_price_count * settings.max_orders_per_price) as usize
+            );
+            // user orders of `caller` should be almost full
+            assert_eq!(
+                framenode_runtime::order_book::UserLimitOrders::<Runtime>::get(
+                    caller.clone(),
+                    order_book_id
+                )
+                .unwrap()
+                .len(),
+                (settings.max_orders_per_user - 1) as usize
+            );
+            // expiration schedule for the block should be almost full
+            assert_eq!(
+                framenode_runtime::order_book::ExpirationsAgenda::<Runtime>::get(LimitOrder::<
+                    Runtime,
+                >::resolve_lifespan(
+                    frame_system::Pallet::<Runtime>::block_number(),
+                    lifespan
+                ))
+                .len(),
+                (settings.max_expiring_orders_per_block - 1) as usize
+            );
 
             // print_order_book::<Runtime>(order_book_id, caller.clone());
             // println!("#####################################################################");
