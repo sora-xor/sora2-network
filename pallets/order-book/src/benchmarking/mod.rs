@@ -252,33 +252,6 @@ benchmarks! {
             <T as Config>::MaxExpiringOrdersPerBlock::get()
         );
         let (order_book_id, price, amount, side, lifespan) = prepare_place_orderbook_benchmark::<T>(settings.clone(), caller.clone());
-
-        // # of bids should be max to execute max # of orders and payments
-        assert_eq!(
-            order_book::Bids::<T>::iter_prefix(order_book_id)
-                .flat_map(|(_price, orders)| orders.into_iter())
-                .count(),
-            (settings.max_side_price_count * settings.max_orders_per_price) as usize
-        );
-        // user orders of `caller` should be almost full
-        assert_eq!(
-            order_book::UserLimitOrders::<T>::get(
-                caller.clone(),
-                order_book_id
-            )
-            .unwrap()
-            .len(),
-            (settings.max_orders_per_user - 1) as usize
-        );
-        // expiration schedule for the block should be almost full
-        assert_eq!(
-            order_book::ExpirationsAgenda::<T>::get(LimitOrder::<T>::resolve_lifespan(
-                frame_system::Pallet::<T>::block_number(),
-                lifespan
-            ))
-            .len(),
-            (settings.max_expiring_orders_per_block - 1) as usize
-        );
     }: {
         OrderBookPallet::<T>::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
@@ -616,34 +589,6 @@ mod tests {
             let (order_book_id, price, amount, side, lifespan) =
                 prepare_place_orderbook_benchmark(settings.clone(), caller.clone());
 
-            // # of bids should be max to execute max # of orders and payments
-            assert_eq!(
-                framenode_runtime::order_book::Bids::<Runtime>::iter_prefix(order_book_id)
-                    .flat_map(|(_price, orders)| orders.into_iter())
-                    .count(),
-                (settings.max_side_price_count * settings.max_orders_per_price) as usize
-            );
-            // user orders of `caller` should be almost full
-            assert_eq!(
-                framenode_runtime::order_book::UserLimitOrders::<Runtime>::get(
-                    caller.clone(),
-                    order_book_id
-                )
-                .unwrap()
-                .len(),
-                (settings.max_orders_per_user - 1) as usize
-            );
-            // expiration schedule for the block should be almost full
-            assert_eq!(
-                framenode_runtime::order_book::ExpirationsAgenda::<Runtime>::get(LimitOrder::<
-                    Runtime,
-                >::resolve_lifespan(
-                    frame_system::Pallet::<Runtime>::block_number(),
-                    lifespan
-                ))
-                .len(),
-                (settings.max_expiring_orders_per_block - 1) as usize
-            );
             OrderBookPallet::<Runtime>::place_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
                 order_book_id,

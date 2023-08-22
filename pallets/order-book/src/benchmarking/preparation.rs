@@ -1,3 +1,5 @@
+#[cfg(not(test))]
+use crate as order_book;
 #[allow(unused)]
 #[cfg(not(test))]
 use crate::{
@@ -5,7 +7,8 @@ use crate::{
     ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
     OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
 };
-use frame_benchmarking::log::info;
+#[cfg(test)]
+use framenode_runtime::order_book;
 #[allow(unused)]
 #[cfg(test)]
 use framenode_runtime::order_book::{
@@ -17,6 +20,7 @@ use framenode_runtime::order_book::{
 use assets::AssetIdOf;
 use common::prelude::FixedWrapper;
 use common::{balance, AssetInfoProvider, Balance, PriceVariant, ETH, VAL, XOR};
+use frame_benchmarking::log::info;
 #[allow(unused)]
 use frame_support::traits::{Get, Time};
 use frame_system::RawOrigin;
@@ -271,7 +275,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         &mut lifespans,
     );
 
-    // other order book because we just affect expirations
+    // different order book because we just want to fill expirations
     let order_book_id_2 = OrderBookId::<AssetIdOf<T>, T::DEXId> {
         dex_id: DEX.into(),
         base: ETH.into(),
@@ -304,7 +308,6 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     <OrderBooks<T>>::insert(order_book_id_2, order_book_2);
     data_layer.commit();
 
-    let order_book_id = order_book_id;
     let price = order_book.tick_size;
     // to execute all bids
     let amount: OrderVolume = data_layer
@@ -317,7 +320,46 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     let side = PriceVariant::Sell;
     let lifespan = free_lifespan.saturated_into::<MomentOf<T>>();
     assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, amount).unwrap();
+
+    verify_prepare_place(
+        fill_settings.clone(),
+        author.clone(),
+        order_book_id,
+        lifespan,
+    );
+
     (order_book_id, price, amount, side, lifespan)
+}
+
+fn verify_prepare_place<T: Config>(
+    fill_settings: FillSettings<T>,
+    author: T::AccountId,
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    lifespan: MomentOf<T>,
+) {
+    // # of bids should be max to execute max # of orders and payments
+    assert_eq!(
+        order_book::Bids::<T>::iter_prefix(order_book_id)
+            .flat_map(|(_price, orders)| orders.into_iter())
+            .count(),
+        (fill_settings.max_side_price_count * fill_settings.max_orders_per_price) as usize
+    );
+    // user orders of `caller` should be almost full
+    assert_eq!(
+        order_book::UserLimitOrders::<T>::get(author.clone(), order_book_id)
+            .unwrap()
+            .len(),
+        (fill_settings.max_orders_per_user - 1) as usize
+    );
+    // expiration schedule for the block should be almost full
+    assert_eq!(
+        order_book::ExpirationsAgenda::<T>::get(LimitOrder::<T>::resolve_lifespan(
+            frame_system::Pallet::<T>::block_number(),
+            lifespan
+        ))
+        .len(),
+        (fill_settings.max_expiring_orders_per_block - 1) as usize
+    );
 }
 
 #[cfg(not(test))]
