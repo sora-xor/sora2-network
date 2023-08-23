@@ -646,7 +646,7 @@ mod benchmarks_inner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::create_empty_order_book;
+    use crate::test_utils::{create_empty_order_book, run_to_block};
     use frame_support::traits::Get;
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
@@ -679,6 +679,7 @@ mod tests {
         })
     }
 
+    #[test]
     #[ignore] // slow
     fn test_benchmark_delete_orderbook() {
         ext().execute_with(|| {
@@ -692,6 +693,7 @@ mod tests {
                 (settings.max_side_price_count * settings.max_orders_per_price * 2),
                 total_orders
             );
+            run_to_block(1);
             OrderBookPallet::<Runtime>::delete_orderbook(RawOrigin::Root.into(), order_book_id)
                 .unwrap();
             assert_last_event::<Runtime>(

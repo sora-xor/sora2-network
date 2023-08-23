@@ -17,8 +17,7 @@ use assets::AssetIdOf;
 use common::prelude::FixedWrapper;
 use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::info;
-#[allow(unused)]
-use frame_support::traits::{Get, Time};
+use frame_support::traits::Time;
 use frame_system::RawOrigin;
 use sp_runtime::traits::SaturatedConversion;
 use sp_std::collections::btree_map::BTreeMap;
