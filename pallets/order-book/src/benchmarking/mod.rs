@@ -655,6 +655,7 @@ mod tests {
     use crate::test_utils::create_empty_order_book;
     use common::prelude::FixedWrapper;
     use frame_support::traits::Get;
+    use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
 
@@ -672,12 +673,47 @@ mod tests {
             let mut data_layer =
                 framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
             let settings = FillSettings::new(
-                <Runtime as framenode_runtime::order_book::Config>::MaxSidePriceCount::get(),
-                <Runtime as framenode_runtime::order_book::Config>::MaxLimitOrdersForPrice::get(),
-                <Runtime as framenode_runtime::order_book::Config>::MaxOpenedLimitOrdersPerUser::get(),
-                <Runtime as framenode_runtime::order_book::Config>::MaxExpiringOrdersPerBlock::get(),
+                <Runtime as Config>::MaxSidePriceCount::get(),
+                <Runtime as Config>::MaxLimitOrdersForPrice::get(),
+                <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get(),
+                <Runtime as Config>::MaxExpiringOrdersPerBlock::get(),
             );
             fill_order_book_worst_case(settings, &order_book_id, &mut data_layer, true, true);
+        })
+    }
+
+    #[ignore] // slow
+    fn test_benchmark_delete_orderbook() {
+        ext().execute_with(|| {
+            let settings = preset_3();
+            let order_book_id = prepare_delete_orderbook_benchmark::<Runtime>(settings.clone());
+            let mut data_layer =
+                framenode_runtime::order_book::storage_data_layer::StorageDataLayer::<Runtime>::new(
+                );
+            let total_orders = data_layer.get_all_limit_orders(&order_book_id).len() as u32;
+            assert_eq!(
+                (settings.max_side_price_count * settings.max_orders_per_price * 2),
+                total_orders
+            );
+            OrderBookPallet::<Runtime>::delete_orderbook(RawOrigin::Root.into(), order_book_id)
+                .unwrap();
+            assert_last_event::<Runtime>(
+                Event::<Runtime>::OrderBookDeleted {
+                    order_book_id,
+                    count_of_canceled_orders: settings.max_side_price_count
+                        * settings.max_orders_per_price
+                        * 2,
+                }
+                .into(),
+            );
+            assert_eq!(OrderBookPallet::<Runtime>::order_books(order_book_id), None);
+            assert_eq!(
+                <framenode_runtime::order_book::LimitOrders<Runtime>>::iter_prefix_values(
+                    order_book_id
+                )
+                .next(),
+                None,
+            );
         })
     }
 
