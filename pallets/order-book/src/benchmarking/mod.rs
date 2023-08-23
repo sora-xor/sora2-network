@@ -666,7 +666,7 @@ mod tests {
                 quote: XOR.into(),
             };
 
-            create_empty_order_book(order_book_id);
+            let mut order_book = create_empty_order_book(order_book_id);
             let mut data_layer =
                 framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
             let settings = FillSettings::new(
@@ -675,7 +675,9 @@ mod tests {
                 <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get(),
                 <Runtime as Config>::MaxExpiringOrdersPerBlock::get(),
             );
-            fill_order_book_worst_case(settings, &order_book_id, &mut data_layer, true, true);
+            let _ =
+                fill_order_book_worst_case(settings, &mut order_book, &mut data_layer, true, true);
+            <OrderBooks<Runtime>>::insert(order_book_id, order_book);
         })
     }
 

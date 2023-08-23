@@ -198,6 +198,7 @@ pub fn create_and_populate_order_book<T: Config>(
     .unwrap();
 }
 
+/// Returns id of order book to delete.
 pub fn prepare_delete_orderbook_benchmark<T: Config>(
     fill_settings: FillSettings<T>,
 ) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
@@ -208,19 +209,22 @@ pub fn prepare_delete_orderbook_benchmark<T: Config>(
     };
     OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
         .expect("failed to create an order book");
+    let mut order_book = OrderBookPallet::<T>::order_books(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
-    fill_order_book_worst_case::<T>(
+    let _ = fill_order_book_worst_case::<T>(
         fill_settings.clone(),
-        &order_book_id,
+        &mut order_book,
         &mut data_layer,
         true,
         true,
     );
+    <OrderBooks<T>>::insert(order_book_id, order_book);
     data_layer.commit();
     order_book_id
 }
 
-/// Returns parameters for placing a limit order
+/// Returns parameters for placing a limit order;
+/// `author` should not be from `test_utils::generate_account`
 pub fn prepare_place_orderbook_benchmark<T: Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
@@ -239,7 +243,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
         .expect("failed to create an order book");
     // allow to execute all orders at once
-    let order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
+    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let max_side_orders =
         fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
     OrderBookPallet::<T>::update_orderbook(
@@ -258,7 +262,13 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     // Place only buy orders
     let mut buy_settings = fill_settings.clone();
     buy_settings.max_orders_per_user = 1;
-    fill_order_book_worst_case::<T>(buy_settings, &order_book_id, &mut data_layer, true, false);
+    let _ = fill_order_book_worst_case::<T>(
+        buy_settings,
+        &mut order_book,
+        &mut data_layer,
+        true,
+        false,
+    );
 
     // Lifespans for each placed order (start from a block with an empty schedule)
     let mut lifespans = lifespans_iterator::<T>(
@@ -267,7 +277,6 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
             .try_into()
             .unwrap(),
     );
-    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let mut fill_user_settings = fill_settings.clone();
     fill_user_settings.max_orders_per_user -= 1;
@@ -338,6 +347,114 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     );
 
     (order_book_id, price, amount, side, lifespan)
+}
+
+pub struct CancelParameters {}
+
+/// Returns parameters for cancelling a limit order.
+/// `expirations_first` switches between two cases; it's not clear which one is heavier.
+/// `author` should not be from `test_utils::generate_account`.
+pub fn prepare_cancel_orderbook_benchmark<T: Config>(
+    fill_settings: FillSettings<T>,
+    author: T::AccountId,
+    place_first_expiring: bool,
+) -> (OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId) {
+    // fill `aggregated_bids`
+    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        dex_id: DEX.into(),
+        base: VAL.into(),
+        quote: XOR.into(),
+    };
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
+        .expect("failed to create an order book");
+    // allow to execute all orders at once
+    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
+    let mut data_layer = CacheDataLayer::<T>::new();
+    let mut buy_settings = fill_settings.clone();
+    buy_settings.max_orders_per_price = 1;
+    let (mut users, mut lifespans) = fill_order_book_worst_case::<T>(
+        buy_settings,
+        &mut order_book,
+        &mut data_layer,
+        true,
+        false,
+    );
+
+    // fill price of the cancelled order
+    let mut fill_price_settings = fill_settings.clone();
+    // account for previous fill + room for order to cancel
+    fill_price_settings.max_orders_per_price -= 2;
+    let target_price = order_book.tick_size;
+    let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
+    fill_price(
+        &mut data_layer,
+        fill_price_settings,
+        &mut order_book,
+        PriceVariant::Buy,
+        order_amount,
+        target_price,
+        &mut users,
+        &mut lifespans,
+    );
+
+    // fill user orders (leave a room for cancelled which will be inserted later)
+    let mut fill_user_settings = fill_settings.clone();
+    fill_user_settings.max_orders_per_user -= 1;
+    fill_user_orders(
+        &mut data_layer,
+        fill_user_settings,
+        &mut order_book,
+        PriceVariant::Sell,
+        order_amount,
+        author.clone(),
+        &mut lifespans,
+    );
+
+    // skip to an empty block
+    let filled_block = lifespans.next().unwrap();
+    let mut lifespans = lifespans.skip_while(|b| *b == filled_block);
+    let to_fill = lifespans.next().unwrap();
+    let place_to_cancel = |order_book: &mut OrderBook<T>, data_layer: &mut CacheDataLayer<T>| {
+        let id = order_book.next_order_id();
+        let order = LimitOrder::<T>::new(
+            id,
+            author.clone(),
+            PriceVariant::Buy,
+            target_price,
+            order_amount,
+            T::Time::now(),
+            to_fill.saturated_into(),
+            frame_system::Pallet::<T>::block_number(),
+        );
+        order_book.place_limit_order(order, data_layer).unwrap();
+        id
+    };
+
+    let mut to_cancel_id = T::OrderId::from(0u8);
+    if place_first_expiring {
+        to_cancel_id = place_to_cancel(&mut order_book, &mut data_layer);
+    }
+
+    let mut fill_expiration_settings = fill_settings.clone();
+    fill_expiration_settings.max_expiring_orders_per_block -= 1; // we add one more separately
+    fill_expiration_schedule(
+        &mut data_layer,
+        fill_expiration_settings.clone(),
+        &mut order_book,
+        PriceVariant::Sell,
+        order_amount,
+        &mut users,
+        to_fill,
+    );
+
+    if !place_first_expiring {
+        to_cancel_id = place_to_cancel(&mut order_book, &mut data_layer);
+    }
+
+    data_layer.commit();
+    <OrderBooks<T>>::insert(order_book_id, order_book.clone());
+
+    (order_book_id, to_cancel_id)
 }
 
 pub mod presets {
@@ -533,7 +650,7 @@ fn fill_order_book_side<T: Config>(
             );
             std::io::stdout().flush().unwrap();
         }
-        fill_price(
+        fill_price_inner(
             data,
             settings.clone(),
             order_book,
@@ -580,8 +697,52 @@ fn fill_order_book_side<T: Config>(
     println!();
 }
 
-#[inline]
 fn fill_price<T: Config>(
+    data: &mut impl DataLayer<T>,
+    settings: FillSettings<T>,
+    order_book: &mut OrderBook<T>,
+    side: PriceVariant,
+    orders_amount: OrderVolume,
+    price: Balance,
+    users: &mut impl Iterator<Item = T::AccountId>,
+    lifespans: &mut impl Iterator<Item = u64>,
+) {
+    let current_block = frame_system::Pallet::<T>::block_number();
+    let mut total_payment = Payment::new(order_book.order_book_id);
+    let mut to_expire = BTreeMap::<_, Vec<_>>::new();
+    fill_price_inner(
+        data,
+        settings,
+        order_book,
+        side,
+        orders_amount,
+        price,
+        users,
+        lifespans,
+        current_block,
+        &mut total_payment,
+        &mut to_expire,
+    );
+    total_payment
+        .execute_all::<OrderBookPallet<T>, OrderBookPallet<T>>()
+        .unwrap();
+    // should avoid duplicating with `fill_order_book_worst_case` somehow
+    for (expires_at, orders) in to_expire.into_iter() {
+        <ExpirationsAgenda<T>>::try_mutate(expires_at, |block_expirations| {
+            block_expirations.try_extend(
+                orders
+                    .into_iter()
+                    .map(|order_id| (order_book.order_book_id, order_id)),
+            )
+        })
+        .expect("Failed to schedule orders for expiration");
+    }
+}
+
+#[inline]
+/// Version of `fill_price` for optimized execution that aggregates payments/expirations (and
+/// avoids multiple calls to retrieve block #)
+fn fill_price_inner<T: Config>(
     data: &mut impl DataLayer<T>,
     settings: FillSettings<T>,
     order_book: &mut OrderBook<T>,
@@ -688,12 +849,18 @@ fn lifespans_iterator<T: Config>(
         })
 }
 
+/// Returns per-order iterators for users and lifespans. They can be used for proceeding with
+/// filling respective storages (user orders and expiration schedules respectively). Can be seen
+/// as cursors.
 pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     settings: FillSettings<T>,
-    order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    order_book: &mut OrderBook<T>,
     data: &mut impl DataLayer<T>,
     place_buy: bool,
     place_sell: bool,
+) -> (
+    impl Iterator<Item = T::AccountId>,
+    impl Iterator<Item = u64>,
 ) {
     let FillSettings {
         now: _,
@@ -703,7 +870,6 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         max_expiring_orders_per_block,
     } = settings;
 
-    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let max_price = (2 * max_side_price_count) as u128 * order_book.tick_size;
 
@@ -730,7 +896,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         fill_order_book_side(
             data,
             settings.clone(),
-            &mut order_book,
+            order_book,
             PriceVariant::Buy,
             order_amount,
             &mut bid_prices,
@@ -756,7 +922,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         fill_order_book_side(
             data,
             settings,
-            &mut order_book,
+            order_book,
             PriceVariant::Sell,
             order_amount,
             &mut ask_prices,
@@ -767,5 +933,5 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         #[cfg(feature = "std")]
         println!("\nprocessed all ask prices in {:?}", start_time.elapsed());
     }
-    <OrderBooks<T>>::insert(order_book_id, order_book);
+    (users, lifespans)
 }
