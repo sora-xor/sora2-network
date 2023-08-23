@@ -1,25 +1,21 @@
-#[cfg(not(test))]
-use crate as order_book;
 #[allow(unused)]
 #[cfg(not(test))]
 use crate::{
-    cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event, ExpirationScheduler,
-    ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
+    self as order_book, cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event,
+    ExpirationScheduler, ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount,
+    OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
 };
-#[cfg(test)]
-use framenode_runtime::order_book;
 #[allow(unused)]
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event, ExpirationScheduler,
-    ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
+    self as order_book, cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event,
+    ExpirationScheduler, ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount,
+    OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
 };
 
 use assets::AssetIdOf;
 use common::prelude::FixedWrapper;
-use common::{balance, AssetInfoProvider, Balance, PriceVariant, ETH, VAL, XOR};
+use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::info;
 #[allow(unused)]
 use frame_support::traits::{Get, Time};
@@ -244,7 +240,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
         .expect("failed to create an order book");
     // allow to execute all orders at once
-    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
+    let order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let max_side_orders =
         fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
     OrderBookPallet::<T>::update_orderbook(
@@ -265,17 +261,10 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     buy_settings.max_orders_per_user = 1;
     fill_order_book_worst_case::<T>(buy_settings, &order_book_id, &mut data_layer, true, false);
 
-    let FillSettings {
-        now: _,
-        max_side_price_count,
-        max_orders_per_price,
-        max_orders_per_user: _,
-        max_expiring_orders_per_block,
-    } = fill_settings;
     // Lifespans for each placed order (start from a block with an empty schedule)
     let mut lifespans = lifespans_iterator::<T>(
-        max_expiring_orders_per_block,
-        (max_side_orders / max_expiring_orders_per_block as u128 + 2)
+        fill_settings.max_expiring_orders_per_block,
+        (max_side_orders / fill_settings.max_expiring_orders_per_block as u128 + 2)
             .try_into()
             .unwrap(),
     );

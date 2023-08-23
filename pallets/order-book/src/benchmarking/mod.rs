@@ -76,6 +76,7 @@ use preparation::create_and_populate_order_book;
 #[cfg(not(test))]
 use sp_runtime::traits::UniqueSaturatedInto;
 
+#[allow(unused)]
 use crate::benchmarking::preparation::{
     prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark, presets::*, FillSettings,
 };
@@ -653,7 +654,6 @@ mod tests {
         fill_order_book_worst_case, prepare_place_orderbook_benchmark, FillSettings,
     };
     use crate::test_utils::create_empty_order_book;
-    use common::prelude::FixedWrapper;
     use frame_support::traits::Get;
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
@@ -685,7 +685,7 @@ mod tests {
     #[ignore] // slow
     fn test_benchmark_delete_orderbook() {
         ext().execute_with(|| {
-            let settings = preset_3();
+            let settings = preset_3::<Runtime>();
             let order_book_id = prepare_delete_orderbook_benchmark::<Runtime>(settings.clone());
             let mut data_layer =
                 framenode_runtime::order_book::storage_data_layer::StorageDataLayer::<Runtime>::new(
