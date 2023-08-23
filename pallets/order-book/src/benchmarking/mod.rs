@@ -708,11 +708,8 @@ mod tests {
 
     #[test]
     fn test_benchmark_place() {
-        use frame_system::RawOrigin;
         ext().execute_with(|| {
-            // let settings = FillSettings::<Runtime>::new(4, 2, 4, 2);
-            // let settings = FillSettings::<Runtime>::new(100, 100, 100, 10);
-            let settings = preset_6::<Runtime>();
+            let settings = preset_3::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, price, amount, side, lifespan) =
                 prepare_place_orderbook_benchmark(settings.clone(), caller.clone());

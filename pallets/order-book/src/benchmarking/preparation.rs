@@ -545,41 +545,19 @@ fn fill_order_book_side<T: Config>(
             );
             std::io::stdout().flush().unwrap();
         }
-        for _ in 0..settings.max_orders_per_price {
-            let Some(user) = users.next() else { break };
-            let Some(lifespan) = lifespans.next() else { break };
-            let order = LimitOrder::<T>::new(
-                order_book.next_order_id(),
-                user.clone(),
-                side,
-                price,
-                orders_amount,
-                settings.now.clone(),
-                lifespan.saturated_into(),
-                current_block,
-            );
-            // Instead of `order_book.place_limit_order(order, data)` we do the same steps manually
-            // in order to avoid overhead on checking various restrictions and other unnecessary
-            // stuff
-
-            let order_id = order.id;
-            let expires_at = order.expires_at;
-            // lock corresponding currency
-            let lock_amount = order.deal_amount(MarketRole::Taker, None).unwrap();
-            let lock_asset = lock_amount.associated_asset(&order_book.order_book_id);
-            total_payment
-                .to_lock
-                .entry(*lock_asset)
-                .or_default()
-                .entry(order.owner.clone())
-                .and_modify(|amount| *amount += *lock_amount.value())
-                .or_insert(*lock_amount.value());
-            // insert the order in storages
-            data.insert_limit_order(&order_book.order_book_id, order)
-                .unwrap();
-            // schedule its expiration
-            to_expire.entry(expires_at).or_default().push(order_id);
-        }
+        fill_price(
+            data,
+            settings.clone(),
+            order_book,
+            side,
+            orders_amount,
+            price,
+            users,
+            lifespans,
+            current_block,
+            &mut total_payment,
+            &mut to_expire,
+        );
     }
     #[cfg(feature = "std")]
     println!("\nlocking payments");
@@ -612,6 +590,57 @@ fn fill_order_book_side<T: Config>(
     }
     #[cfg(feature = "std")]
     println!();
+}
+
+#[inline]
+fn fill_price<T: Config>(
+    data: &mut impl DataLayer<T>,
+    settings: FillSettings<T>,
+    order_book: &mut OrderBook<T>,
+    side: PriceVariant,
+    orders_amount: OrderVolume,
+    price: Balance,
+    users: &mut impl Iterator<Item = T::AccountId>,
+    lifespans: &mut impl Iterator<Item = u64>,
+    current_block: T::BlockNumber,
+    total_payment: &mut Payment<T::AssetId, T::AccountId, T::DEXId>,
+    to_expire: &mut BTreeMap<T::BlockNumber, Vec<T::OrderId>>,
+) {
+    for _ in 0..settings.max_orders_per_price {
+        let Some(user) = users.next() else { break };
+        let Some(lifespan) = lifespans.next() else { break };
+        let order = LimitOrder::<T>::new(
+            order_book.next_order_id(),
+            user.clone(),
+            side,
+            price,
+            orders_amount,
+            settings.now.clone(),
+            lifespan.saturated_into(),
+            current_block,
+        );
+        // Instead of `order_book.place_limit_order(order, data)` we do the same steps manually
+        // in order to avoid overhead on checking various restrictions and other unnecessary
+        // stuff
+
+        let order_id = order.id;
+        let expires_at = order.expires_at;
+        // lock corresponding currency
+        let lock_amount = order.deal_amount(MarketRole::Taker, None).unwrap();
+        let lock_asset = lock_amount.associated_asset(&order_book.order_book_id);
+        total_payment
+            .to_lock
+            .entry(*lock_asset)
+            .or_default()
+            .entry(order.owner.clone())
+            .and_modify(|amount| *amount += *lock_amount.value())
+            .or_insert(*lock_amount.value());
+        // insert the order in storages
+        data.insert_limit_order(&order_book.order_book_id, order)
+            .unwrap();
+        // schedule its expiration
+        to_expire.entry(expires_at).or_default().push(order_id);
+    }
 }
 
 fn bid_prices_iterator(
