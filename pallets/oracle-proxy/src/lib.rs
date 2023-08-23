@@ -29,11 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use common::{DataFeed, OnNewSymbolsRelayed, Oracle, Rate};
-use frame_support;
+
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
@@ -57,7 +55,7 @@ impl<T: Config> DataFeed<T::Symbol, Rate, u64> for Pallet<T> {
 
         Self::enabled_symbols(symbol)
             .into_iter()
-            .filter(|oracle| enabled_oracles.contains(&oracle))
+            .filter(|oracle| enabled_oracles.contains(oracle))
             .map(|oracle| match oracle {
                 Oracle::BandChainFeed => T::BandChainOracle::quote(symbol),
             })
@@ -83,7 +81,7 @@ impl<T: Config> DataFeed<T::Symbol, Rate, u64> for Pallet<T> {
 
         Self::enabled_symbols(symbol)
             .into_iter()
-            .filter(|oracle| enabled_oracles.contains(&oracle))
+            .filter(|oracle| enabled_oracles.contains(oracle))
             .map(|oracle| match oracle {
                 Oracle::BandChainFeed => T::BandChainOracle::quote_unchecked(symbol),
             })
@@ -167,7 +165,7 @@ pub mod pallet {
                 Error::<T>::OracleAlreadyEnabled
             );
 
-            EnabledOracles::<T>::mutate(|enabled_oracles| enabled_oracles.insert(oracle.clone()));
+            EnabledOracles::<T>::mutate(|enabled_oracles| enabled_oracles.insert(oracle));
 
             Self::deposit_event(Event::OracleEnabled(oracle));
 
@@ -198,19 +196,12 @@ pub mod pallet {
     }
 
     #[pallet::genesis_config]
+    #[derive(Default)]
     pub struct GenesisConfig {
         pub enabled_oracles: BTreeSet<Oracle>,
     }
 
     #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
-        fn default() -> Self {
-            Self {
-                enabled_oracles: Default::default(),
-            }
-        }
-    }
-
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {

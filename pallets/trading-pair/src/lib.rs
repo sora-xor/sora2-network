@@ -29,8 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 #[allow(unused_imports)]
 #[macro_use]
@@ -87,10 +85,10 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
             target_asset_id,
         };
         let mut sources =
-            Self::enabled_sources(dex_id, &pair).ok_or(Error::<T>::TradingPairDoesntExist)?;
+            Self::enabled_sources(dex_id, pair).ok_or(Error::<T>::TradingPairDoesntExist)?;
         let locked = LockedLiquiditySources::<T>::get();
         for locked_source in &locked {
-            sources.remove(&locked_source);
+            sources.remove(locked_source);
         }
         Ok(sources)
     }
@@ -120,7 +118,7 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
         };
         // This logic considers Ok if source is already enabled.
         // unwrap() is safe, check done in `ensure_trading_pair_exists`.
-        EnabledSources::<T>::mutate(dex_id, &pair, |opt_set| {
+        EnabledSources::<T>::mutate(dex_id, pair, |opt_set| {
             opt_set.as_mut().unwrap().insert(source_type)
         });
         Ok(())
@@ -139,7 +137,7 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
         };
         // This logic considers Ok if source is already enabled.
         // unwrap() is safe, check done in `ensure_trading_pair_exists`.
-        EnabledSources::<T>::mutate(dex_id, &pair, |opt_set| {
+        EnabledSources::<T>::mutate(dex_id, pair, |opt_set| {
             opt_set.as_mut().unwrap().remove(&source_type)
         });
         Ok(())
@@ -171,16 +169,12 @@ impl<T: Config> Pallet<T> {
             target_asset_id,
         };
         ensure!(
-            Self::enabled_sources(&dex_id, &trading_pair).is_none(),
+            Self::enabled_sources(dex_id, trading_pair).is_none(),
             Error::<T>::TradingPairExists
         );
-        EnabledSources::<T>::insert(
-            &dex_id,
-            &trading_pair,
-            BTreeSet::<LiquiditySourceType>::new(),
-        );
+        EnabledSources::<T>::insert(dex_id, trading_pair, BTreeSet::<LiquiditySourceType>::new());
         Self::deposit_event(Event::TradingPairStored(dex_id, trading_pair));
-        Ok(().into())
+        Ok(())
     }
 
     pub fn list_trading_pairs(dex_id: &T::DEXId) -> Result<Vec<TradingPair<T>>, DispatchError> {
@@ -200,7 +194,7 @@ impl<T: Config> Pallet<T> {
             base_asset_id,
             target_asset_id,
         };
-        Ok(Self::enabled_sources(dex_id, &pair).is_some())
+        Ok(Self::enabled_sources(dex_id, pair).is_some())
     }
 }
 
@@ -311,7 +305,7 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             self.trading_pairs.iter().for_each(|(dex_id, pair)| {
-                EnabledSources::<T>::insert(&dex_id, &pair, BTreeSet::<LiquiditySourceType>::new());
+                EnabledSources::<T>::insert(dex_id, pair, BTreeSet::<LiquiditySourceType>::new());
             })
         }
     }

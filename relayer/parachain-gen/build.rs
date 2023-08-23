@@ -28,9 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
-
 extern crate reqwest;
 
 use std::path::PathBuf;
@@ -42,8 +39,8 @@ fn main() {
         .join("src/bytes");
 
     let branch = &std::env::var("PARACHAIN_METADATA_BRANCH").unwrap_or("develop".to_string());
-    let target = format!("https://github.com/sora-xor/sora2-parachain/raw/{}/parachain-gen/src/bytes/parachain_metadata.scale", branch);
+    let target = format!("https://github.com/sora-xor/sora2-parachain/raw/{branch}/parachain-gen/src/bytes/parachain_metadata.scale");
     let response = reqwest::blocking::get(target).unwrap().bytes().unwrap();
     std::fs::create_dir_all(&out_dir).unwrap();
-    std::fs::write(out_dir.join("parachain_metadata.scale"), response.to_vec()).unwrap();
+    std::fs::write(out_dir.join("parachain_metadata.scale"), &response).unwrap();
 }

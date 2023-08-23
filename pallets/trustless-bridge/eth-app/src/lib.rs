@@ -15,8 +15,6 @@
 //! - `burn`: Burn an ETH balance.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
@@ -234,7 +232,7 @@ pub mod pallet {
             Self::deposit_event(Event::Minted(
                 network_id,
                 sender,
-                recipient.clone(),
+                recipient,
                 thischain_amount,
             ));
 
@@ -258,7 +256,7 @@ pub mod pallet {
             );
             let asset_id = T::AssetRegistry::register_asset(network_id.into(), name, symbol)?;
             Self::register_network_inner(network_id, asset_id, contract, sidechain_precision)?;
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(3)]
@@ -276,7 +274,7 @@ pub mod pallet {
                 Error::<T>::AppAlreadyExists
             );
             Self::register_network_inner(network_id, asset_id, contract, sidechain_precision)?;
-            Ok(().into())
+            Ok(())
         }
     }
 
@@ -319,7 +317,7 @@ pub mod pallet {
 
             let message = OutboundPayload::<T> {
                 sender: who.clone(),
-                recipient: recipient.clone(),
+                recipient,
                 amount: sidechain_amount,
             };
 
@@ -341,7 +339,7 @@ pub mod pallet {
                 amount.clone(),
                 MessageStatus::InQueue,
             );
-            Self::deposit_event(Event::Burned(network_id, who, recipient, amount.into()));
+            Self::deposit_event(Event::Burned(network_id, who, recipient, amount));
 
             Ok(message_id)
         }

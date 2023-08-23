@@ -45,8 +45,6 @@
     variant_size_differences
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use frame_support::codec::{Decode, Encode};
 use frame_support::{ensure, RuntimeDebug};
@@ -126,7 +124,7 @@ impl<T: Config> Pallet<T> {
         scope: Scope,
     ) -> Result<(), Error<T>> {
         let (permission_found, owns_permission) = {
-            let owners = Owners::<T>::get(permission_id, &scope);
+            let owners = Owners::<T>::get(permission_id, scope);
             if owners.contains(&who) {
                 (true, true)
             } else if scope != Scope::Unlimited {
@@ -141,7 +139,7 @@ impl<T: Config> Pallet<T> {
                 frame_system::Pallet::<T>::inc_consumers(&account_id)
                     .map_err(|_| Error::<T>::IncRefError)?;
             }
-            Permissions::<T>::mutate(&account_id, &scope, |permissions| {
+            Permissions::<T>::mutate(&account_id, scope, |permissions| {
                 if let Err(index) = permissions.binary_search(&permission_id) {
                     permissions.insert(index, permission_id);
                 }
@@ -222,11 +220,11 @@ impl<T: Config> Pallet<T> {
                 false
             }
         });
-        if Permissions::<T>::iter_prefix_values(&holder_id).count() == 0 {
-            frame_system::Pallet::<T>::inc_consumers(&holder_id)
+        if Permissions::<T>::iter_prefix_values(holder_id).count() == 0 {
+            frame_system::Pallet::<T>::inc_consumers(holder_id)
                 .map_err(|_| Error::<T>::IncRefError)?;
         }
-        let granted_permission = Permissions::<T>::mutate(&holder_id, scope, |permissions| {
+        let granted_permission = Permissions::<T>::mutate(holder_id, scope, |permissions| {
             if let Err(index) = permissions.binary_search(&permission_id) {
                 permissions.insert(index, permission_id);
                 true
@@ -363,7 +361,7 @@ pub mod pallet {
                 .for_each(|(holder_id, scope, permissions)| {
                     let mut permissions = permissions.clone();
                     permissions.sort();
-                    frame_system::Pallet::<T>::inc_consumers(&holder_id).unwrap();
+                    frame_system::Pallet::<T>::inc_consumers(holder_id).unwrap();
                     Permissions::<T>::insert(holder_id, scope, permissions);
                 });
         }

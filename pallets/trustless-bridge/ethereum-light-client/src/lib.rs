@@ -18,8 +18,6 @@
 //!
 #![allow(unused_variables)]
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 mod weights;
 
@@ -836,7 +834,7 @@ pub mod pallet {
                     // finalized block
                     if header.number > finalized_block_id.number {
                         return Ok(EthereumHeaderId {
-                            hash: hash,
+                            hash,
                             number: header.number,
                         });
                     }

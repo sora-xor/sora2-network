@@ -29,8 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
@@ -126,7 +124,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         let amount_in_with_fee = base_amount_in - fee_amount.clone();
         let X: FixedWrapper = base_reserve.into();
         let Y: FixedWrapper = target_reserve.into();
-        let d_X: FixedWrapper = amount_in_with_fee.into();
+        let d_X: FixedWrapper = amount_in_with_fee;
         let amount_out = (Y * d_X.clone() / (X + d_X))
             .get()
             .map_err(|_| Error::<T, I>::InsufficientLiquidity)?;
@@ -244,7 +242,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         let account_id = technical::Pallet::<T>::tech_account_id_to_account_id(&account)?;
         frame_system::Pallet::<T>::inc_consumers(&account_id)
             .map_err(|_| Error::<T, I>::IncRefError)?;
-        ReservesAcc::<T, I>::set(account.clone());
+        ReservesAcc::<T, I>::set(account);
         let permissions = [BURN, MINT];
         for permission in &permissions {
             permissions::Pallet::<T>::assign_permission(

@@ -36,8 +36,6 @@
 //! * PSWAP NFT waifus
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use frame_support::codec::{Decode, Encode};
 use frame_support::dispatch::DispatchErrorWithPostInfo;

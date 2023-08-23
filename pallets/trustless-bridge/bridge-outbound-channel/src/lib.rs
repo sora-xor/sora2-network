@@ -1,8 +1,6 @@
 //! Channel for passing messages from substrate to ethereum.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use bridge_types::{H256, U256};
 use codec::Encode;
@@ -269,7 +267,7 @@ pub mod pallet {
                         commitment,
                         block_number: <frame_system::Pallet<T>>::block_number(),
                     };
-                    offchain_index::set(&*key, &offchain_data.encode());
+                    offchain_index::set(&key, &offchain_data.encode());
 
                     <T as Config>::WeightInfo::on_initialize(
                         messages_count as u32,
@@ -277,7 +275,7 @@ pub mod pallet {
                     )
                 } else {
                     warn!("Batch nonce overflow");
-                    return <T as Config>::WeightInfo::on_initialize_no_messages();
+                    <T as Config>::WeightInfo::on_initialize_no_messages()
                 }
             })
         }
@@ -309,8 +307,8 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            Fee::<T>::set(self.fee.clone());
-            Interval::<T>::set(self.interval.clone());
+            Fee::<T>::set(self.fee);
+            Interval::<T>::set(self.interval);
         }
     }
 
@@ -356,7 +354,7 @@ pub mod pallet {
                     )?;
                     fee
                 }
-                _ => 0u128.into(),
+                _ => 0u128,
             };
 
             // batch nonce

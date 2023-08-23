@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::alloc::string::ToString;
 use crate::types::{H256, U64};
 use alloc::string::String;
 use codec::{Decode, Encode};
@@ -57,11 +58,11 @@ impl<'a> serde::Deserialize<'a> for OpaqueExtrinsic {
         D: serde::Deserializer<'a>,
     {
         let s: String = Deserialize::deserialize(de)?;
-        let r = common::utils::parse_hex_string(&s).ok_or(serde::de::Error::custom(format!(
-            "Expected hex string \"0x..\""
-        )))?;
+        let r = common::utils::parse_hex_string(&s).ok_or(serde::de::Error::custom(
+            "Expected hex string \"0x..\"".to_string(),
+        ))?;
         Decode::decode(&mut &r[..])
-            .map_err(|e| serde::de::Error::custom(format!("Decode error: {}", e)))
+            .map_err(|e| serde::de::Error::custom(format!("Decode error: {e}")))
     }
 }
 

@@ -29,8 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -51,7 +49,7 @@ impl<T: Config> Pallet<T> {
         referral: &T::AccountId,
         referrer: T::AccountId,
     ) -> Result<(), DispatchError> {
-        Referrers::<T>::mutate(&referral, |r| {
+        Referrers::<T>::mutate(referral, |r| {
             ensure!(r.is_none(), Error::<T>::AlreadyHasReferrer);
             frame_system::Pallet::<T>::inc_providers(referral);
             frame_system::Pallet::<T>::inc_providers(&referrer);
@@ -152,7 +150,7 @@ pub mod pallet {
             common::with_transaction(|| {
                 ReferrerBalances::<T>::mutate(&referrer, |b| {
                     if let Some(balance) = b.unwrap_or(0).checked_sub(balance) {
-                        *b = (balance != 0).then(|| balance);
+                        *b = (balance != 0).then_some(balance);
                         Ok(())
                     } else {
                         Err(Error::<T>::ReferrerInsufficientBalance)

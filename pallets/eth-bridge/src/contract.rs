@@ -51,8 +51,7 @@ pub const METHOD_ID_SIZE: usize = 4;
 pub type MethodId = [u8; METHOD_ID_SIZE];
 
 pub fn calculate_method_id(function: &Function) -> MethodId {
-    let id = function.short_signature();
-    id
+    function.short_signature()
 }
 
 pub static ADD_ETH_NATIVE_TOKEN_FN: OnceBox<Function> = OnceBox::new();
@@ -98,13 +97,13 @@ pub static FUNCTIONS: OnceBox<BTreeMap<MethodId, FunctionMeta>> = OnceBox::new()
 pub fn init_add_peer_by_peer_fn() -> Box<MethodId> {
     let add_peer_by_peer_fn = ADD_PEER_BY_PEER_FN
         .get_or_init(|| Box::new(eth_bridge_contract::functions::add_peer_by_peer::function()));
-    Box::new(calculate_method_id(&add_peer_by_peer_fn))
+    Box::new(calculate_method_id(add_peer_by_peer_fn))
 }
 
 pub fn init_remove_peer_by_peer_fn() -> Box<MethodId> {
     let remove_peer_by_peer_fn = REMOVE_PEER_BY_PEER_FN
         .get_or_init(|| Box::new(eth_bridge_contract::functions::remove_peer_by_peer::function()));
-    Box::new(calculate_method_id(&remove_peer_by_peer_fn))
+    Box::new(calculate_method_id(remove_peer_by_peer_fn))
 }
 
 pub fn functions() -> Box<BTreeMap<MethodId, FunctionMeta>> {
@@ -126,7 +125,7 @@ pub fn functions() -> Box<BTreeMap<MethodId, FunctionMeta>> {
     let map = vec![
         (
             *ADD_ETH_NATIVE_TOKEN_ID
-                .get_or_init(|| Box::new(calculate_method_id(&add_eth_native_token_fn))),
+                .get_or_init(|| Box::new(calculate_method_id(add_eth_native_token_fn))),
             FunctionMeta::new(
                 add_eth_native_token_fn.clone(),
                 ADD_ETH_NATIVE_TOKEN_TX_HASH_ARG_POS,
@@ -134,7 +133,7 @@ pub fn functions() -> Box<BTreeMap<MethodId, FunctionMeta>> {
         ),
         (
             *ADD_NEW_SIDECHAIN_TOKEN_ID
-                .get_or_init(|| Box::new(calculate_method_id(&add_new_sidechain_token_fn))),
+                .get_or_init(|| Box::new(calculate_method_id(add_new_sidechain_token_fn))),
             FunctionMeta::new(
                 add_new_sidechain_token_fn.clone(),
                 ADD_NEW_SIDECHAIN_TOKEN_TX_HASH_ARG_POS,
@@ -156,7 +155,7 @@ pub fn functions() -> Box<BTreeMap<MethodId, FunctionMeta>> {
         ),
         (
             *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID
-                .get_or_init(|| Box::new(calculate_method_id(&receive_by_eth_asset_address_fn))),
+                .get_or_init(|| Box::new(calculate_method_id(receive_by_eth_asset_address_fn))),
             FunctionMeta::new(
                 receive_by_eth_asset_address_fn.clone(),
                 RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_TX_HASH_ARG_POS,
@@ -164,7 +163,7 @@ pub fn functions() -> Box<BTreeMap<MethodId, FunctionMeta>> {
         ),
         (
             *RECEIVE_BY_SIDECHAIN_ASSET_ID_ID
-                .get_or_init(|| Box::new(calculate_method_id(&receive_by_sidechain_asset_id_fn))),
+                .get_or_init(|| Box::new(calculate_method_id(receive_by_sidechain_asset_id_fn))),
             FunctionMeta::new(
                 receive_by_sidechain_asset_id_fn.clone(),
                 RECEIVE_BY_SIDECHAIN_ASSET_ID_TX_HASH_ARG_POS,

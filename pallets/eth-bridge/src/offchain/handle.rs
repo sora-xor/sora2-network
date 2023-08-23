@@ -488,7 +488,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn handle_ethereum(network_id: T::NetworkId) -> Result<u64, Error<T>> {
-        let string = format!("eth-bridge-ocw::eth-height-{:?}", network_id);
+        let string = format!("eth-bridge-ocw::eth-height-{network_id:?}");
         let s_eth_height = StorageValueRef::persistent(string.as_bytes());
         let current_eth_height = match Self::load_current_height(network_id) {
             Ok(v) => v,
@@ -502,7 +502,7 @@ impl<T: Config> Pallet<T> {
         };
         s_eth_height.set(&current_eth_height);
 
-        let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
+        let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{network_id:?}");
         let s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
         let from_block_opt = s_eth_to_handle_from_height.get::<u64>().ok().flatten();
         if from_block_opt.is_none() {
@@ -623,14 +623,14 @@ impl<T: Config> Pallet<T> {
                 continue;
             }
             let request_submission_height: T::BlockNumber =
-                Self::request_submission_height(network_id, &request_hash);
+                Self::request_submission_height(network_id, request_hash);
             let number = T::BlockNumber::from(MAX_PENDING_TX_BLOCKS_PERIOD);
             let diff = substrate_finalized_height.saturating_sub(request_submission_height);
             let should_reapprove = diff >= number && diff % number == T::BlockNumber::zero();
             if !should_reapprove && substrate_finalized_height < request_submission_height {
                 continue;
             }
-            let handled_key = format!("eth-bridge-ocw::handled-request-{:?}", request_hash);
+            let handled_key = format!("eth-bridge-ocw::handled-request-{request_hash:?}");
             let s_handled_request = StorageValueRef::persistent(handled_key.as_bytes());
             let height_opt = s_handled_request.get::<T::BlockNumber>().ok().flatten();
 
