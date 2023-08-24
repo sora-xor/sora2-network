@@ -82,12 +82,15 @@ pub use test_only::*;
 #[cfg(test)]
 mod test_only {
     use super::*;
+    use common::prelude::FixedWrapper;
     use common::PriceVariant;
     use frame_support::assert_ok;
     use frame_support::traits::Hooks;
     use frame_support::weights::Weight;
     use frame_system::RawOrigin;
-    use framenode_runtime::order_book::{self, Config, OrderBook, OrderBookId, Pallet};
+    use framenode_runtime::order_book::{
+        self, Config, LimitOrder, OrderBook, OrderBookId, OrderVolume, Pallet,
+    };
     use framenode_runtime::{Runtime, RuntimeOrigin};
     use sp_std::collections::btree_map::BTreeMap;
 
@@ -338,5 +341,87 @@ mod test_only {
             total_init_weight += OrderBookPallet::on_initialize(System::block_number());
         }
         total_init_weight
+    }
+
+    fn print_side<T: Config>(
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        side: PriceVariant,
+        column_width: usize,
+    ) {
+        let side_orders: Vec<(
+            crate::OrderPrice,
+            crate::PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>,
+        )> = match side {
+            PriceVariant::Buy => {
+                let mut side_orders: Vec<_> =
+                    framenode_runtime::order_book::Bids::<T>::iter_prefix(order_book_id).collect();
+                side_orders.sort_by_key(|value| value.0);
+                side_orders.reverse();
+                side_orders
+            }
+            PriceVariant::Sell => {
+                let mut side_orders: Vec<_> =
+                    framenode_runtime::order_book::Asks::<T>::iter_prefix(order_book_id).collect();
+                side_orders.sort_by_key(|value| value.0);
+                side_orders
+            }
+        };
+        let order_data: BTreeMap<T::OrderId, LimitOrder<T>> =
+            framenode_runtime::order_book::LimitOrders::<T>::iter_prefix(order_book_id).collect();
+        for (price, price_order_ids) in side_orders {
+            let price_orders: Vec<_> = price_order_ids
+                .iter()
+                .map(|id| order_data.get(id).unwrap())
+                .collect();
+            let volume: OrderVolume = price_orders.iter().map(|order| order.amount).sum();
+            print!(
+                "{:>1$} |",
+                FixedWrapper::from(price).get().unwrap().to_string(),
+                column_width - 1
+            );
+            print!(
+                "{:>1$} |",
+                FixedWrapper::from(volume).get().unwrap().to_string(),
+                column_width - 1
+            );
+            println!(
+                " {}",
+                price_order_ids
+                    .iter()
+                    .fold("".to_owned(), |s, id| s + &id.to_string() + ", ")
+            );
+        }
+    }
+
+    /// Print in the following form:
+    ///
+    /// price | volume | orders
+    ///          Asks
+    ///  11.5 |  255.8 | sell4, sell5, sell6
+    ///  11.2 |  178.6 | sell2, sell3
+    ///  11.0 |  176.3 | sell1
+    ///  spread
+    ///  10.0 |  168.5 | buy1
+    ///   9.8 |  139.9 | buy2, buy3
+    ///   9.5 |  261.3 | buy4, buy5, buy6
+    ///          Bids
+    pub fn pretty_print_order_book<T: Config>(
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        author: T::AccountId,
+        column_width: Option<usize>,
+    ) {
+        let column_width = column_width.unwrap_or(8);
+        println!(
+            "{0:>3$} |{1:>3$} |{2:>3$} ",
+            "price",
+            "volume",
+            "orders",
+            column_width - 1
+        );
+        println!("\tAsks");
+        print_side::<T>(order_book_id, PriceVariant::Sell, column_width);
+        println!(") spread");
+        print_side::<T>(order_book_id, PriceVariant::Buy, column_width);
+        println!("\tBids\n");
     }
 }

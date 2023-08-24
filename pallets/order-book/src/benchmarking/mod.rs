@@ -644,7 +644,7 @@ mod benchmarks_inner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{create_empty_order_book, run_to_block};
+    use crate::test_utils::{create_empty_order_book, pretty_print_order_book, run_to_block};
     use frame_support::traits::Get;
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
@@ -717,31 +717,6 @@ mod tests {
         })
     }
 
-    fn print_order_book<T: Config>(
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        author: T::AccountId,
-    ) {
-        println!(
-            "bids:\n{:#?}",
-            framenode_runtime::order_book::Bids::<T>::iter_prefix(order_book_id)
-                .collect::<Vec<_>>()
-        );
-        println!(
-            "asks:\n{:#?}",
-            framenode_runtime::order_book::Asks::<T>::iter_prefix(order_book_id)
-                .collect::<Vec<_>>()
-        );
-        println!(
-            "alice orders:\n{:#?}",
-            framenode_runtime::order_book::UserLimitOrders::<T>::iter_prefix(author)
-                .collect::<Vec<_>>()
-        );
-        println!(
-            "expirations:\n{:#?}",
-            framenode_runtime::order_book::ExpirationsAgenda::<T>::iter().collect::<Vec<_>>()
-        );
-    }
-
     #[test]
     fn test_benchmark_place() {
         ext().execute_with(|| {
@@ -772,7 +747,7 @@ mod tests {
                 prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);
 
             println!("1;");
-            print_order_book::<Runtime>(order_book_id.clone(), caller.clone());
+            pretty_print_order_book::<Runtime>(order_book_id.clone(), caller.clone(), Some(9));
             OrderBookPallet::<Runtime>::cancel_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
                 order_book_id.clone(),
@@ -780,7 +755,7 @@ mod tests {
             )
             .unwrap();
             println!("2;");
-            print_order_book::<Runtime>(order_book_id.clone(), caller.clone());
+            pretty_print_order_book::<Runtime>(order_book_id.clone(), caller.clone(), Some(9));
         })
     }
 }
