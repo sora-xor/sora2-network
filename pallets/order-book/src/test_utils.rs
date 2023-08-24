@@ -84,9 +84,9 @@ mod test_only {
     use super::*;
     use common::prelude::FixedWrapper;
     use common::PriceVariant;
-    use frame_support::assert_ok;
     use frame_support::traits::Hooks;
     use frame_support::weights::Weight;
+    use frame_support::{assert_ok, BoundedVec};
     use frame_system::RawOrigin;
     use framenode_runtime::order_book::{
         self, Config, LimitOrder, OrderBook, OrderBookId, OrderVolume, Pallet,
@@ -394,7 +394,7 @@ mod test_only {
     }
 
     /// Print in the following form:
-    ///
+    /// ```text
     /// price | volume | orders
     ///          Asks
     ///  11.5 |  255.8 | sell4, sell5, sell6
@@ -405,6 +405,7 @@ mod test_only {
     ///   9.8 |  139.9 | buy2, buy3
     ///   9.5 |  261.3 | buy4, buy5, buy6
     ///          Bids
+    /// ```
     pub fn pretty_print_order_book<T: Config>(
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         author: T::AccountId,
@@ -423,5 +424,37 @@ mod test_only {
         println!(") spread");
         print_side::<T>(order_book_id, PriceVariant::Buy, column_width);
         println!("\tBids\n");
+    }
+
+    fn print_block_expirations<T: Config>(block: u32)
+    where
+        T::BlockNumber: TryFrom<u32>,
+    {
+        let block = T::BlockNumber::from(block);
+        let expirations: BoundedVec<
+            (OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId),
+            T::MaxExpiringOrdersPerBlock,
+        > = framenode_runtime::order_book::ExpirationsAgenda::<T>::get(block);
+        for (order_book_id, order_id) in expirations {
+            println!(
+                "{:>5} | base: {:?}; quote: {:?} |{:>4} ",
+                block, order_book_id.base, order_book_id.quote, order_id
+            );
+        }
+    }
+
+    /// Print expirations agenda in the form:
+    ///
+    /// ```text
+    /// block number | order book id | order id
+    /// ```
+    pub fn pretty_print_expirations<T: Config>(blocks: sp_std::ops::Range<u32>)
+    where
+        T::BlockNumber: TryFrom<u32>,
+    {
+        println!("block |{:>148} | order id", "order book id");
+        for block in blocks {
+            print_block_expirations::<T>(block)
+        }
     }
 }

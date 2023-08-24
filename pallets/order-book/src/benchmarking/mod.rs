@@ -644,7 +644,9 @@ mod benchmarks_inner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{create_empty_order_book, pretty_print_order_book, run_to_block};
+    use crate::test_utils::{
+        create_empty_order_book, pretty_print_expirations, pretty_print_order_book, run_to_block,
+    };
     use frame_support::traits::Get;
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
@@ -748,6 +750,7 @@ mod tests {
 
             println!("1;");
             pretty_print_order_book::<Runtime>(order_book_id.clone(), caller.clone(), Some(9));
+            pretty_print_expirations::<Runtime>(0..10);
             OrderBookPallet::<Runtime>::cancel_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
                 order_book_id.clone(),
@@ -756,6 +759,7 @@ mod tests {
             .unwrap();
             println!("2;");
             pretty_print_order_book::<Runtime>(order_book_id.clone(), caller.clone(), Some(9));
+            pretty_print_expirations::<Runtime>(0..10);
         })
     }
 }
