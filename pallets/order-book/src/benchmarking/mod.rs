@@ -346,7 +346,7 @@ mod benchmarks_inner {
             );
         }
 
-        cancel_limit_order {
+        cancel_limit_order_first_expiration {
             let caller = alice::<T>();
             let settings = FillSettings::<T>::new(
                 <T as Config>::MaxSidePriceCount::get(),
@@ -355,6 +355,42 @@ mod benchmarks_inner {
                 <T as Config>::MaxExpiringOrdersPerBlock::get()
             );
             let (order_book_id, order_id) = prepare_cancel_orderbook_benchmark(settings, caller.clone(), true);
+            let order = OrderBookPallet::<T>::limit_orders::<_, T::OrderId>(order_book_id, order_id).unwrap();
+            let balance_before =
+                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(
+                RawOrigin::Signed(caller.clone()).into(),
+                order_book_id.clone(),
+                order_id.clone()
+            ).unwrap();
+        }
+        verify {
+            assert_last_event::<T>(
+                Event::<T>::LimitOrderCanceled {
+                    order_book_id,
+                    order_id,
+                    owner_id: order.owner.clone(),
+                }
+                .into(),
+            );
+
+            let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
+            let balance =
+                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
+            let expected_balance = balance_before + deal_amount;
+            assert_eq!(balance, expected_balance);
+        }
+
+        cancel_limit_order_last_expiration {
+            let caller = alice::<T>();
+            let settings = FillSettings::<T>::new(
+                <T as Config>::MaxSidePriceCount::get(),
+                <T as Config>::MaxLimitOrdersForPrice::get(),
+                <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
+                <T as Config>::MaxExpiringOrdersPerBlock::get()
+            );
+            let (order_book_id, order_id) = prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);
             let order = OrderBookPallet::<T>::limit_orders::<_, T::OrderId>(order_book_id, order_id).unwrap();
             let balance_before =
                 <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
@@ -637,6 +673,69 @@ mod benchmarks_inner {
             OrderBookPallet::<T>::place_limit_order(
                 signer, order_book_id, price, amount, side, Some(lifespan),
             ).unwrap();
+        }
+
+        #[extra]
+        cancel_limit_order_1 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_1::<T>(), alice::<T>(), true);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+        }
+
+        #[extra]
+        cancel_limit_order_2 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_2::<T>(), alice::<T>(), true);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+        }
+
+        #[extra]
+        cancel_limit_order_3 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_3::<T>(), alice::<T>(), true);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+        }
+
+        #[extra]
+        cancel_limit_order_4 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_4::<T>(), alice::<T>(), true);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+        }
+
+        #[extra]
+        cancel_limit_order_5 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_5::<T>(), alice::<T>(), true);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+        }
+
+        #[extra]
+        cancel_limit_order_6 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_6::<T>(), alice::<T>(), true);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+        }
+
+        #[extra]
+        cancel_limit_order_7 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_7::<T>(), alice::<T>(), true);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
     }
 }
