@@ -742,8 +742,8 @@ mod tests {
     #[test]
     fn test_benchmark_cancel() {
         ext().execute_with(|| {
-            let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            // let settings = preset_3::<Runtime>();
+            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
+            let settings = preset_3::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, order_id) =
                 prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);

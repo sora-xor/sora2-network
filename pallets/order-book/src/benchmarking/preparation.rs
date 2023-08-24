@@ -367,9 +367,10 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
     };
     OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
         .expect("failed to create an order book");
-    // allow to execute all orders at once
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
+
+    // fill aggregated bids
     let mut buy_settings = fill_settings.clone();
     buy_settings.max_orders_per_price = 1;
     let (mut users, mut lifespans) = fill_order_book_worst_case::<T>(
@@ -380,11 +381,12 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
         false,
     );
 
-    // fill price of the cancelled order
+    // fill the price of the cancelled order
     let mut fill_price_settings = fill_settings.clone();
     // account for previous fill + room for order to cancel
     fill_price_settings.max_orders_per_price -= 2;
-    let target_price = order_book.tick_size;
+    // we don't want to face `MAX_PRICE_SHIFT`
+    let target_price = data_layer.best_bid(&order_book_id).unwrap().0;
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     fill_price(
         &mut data_layer,
