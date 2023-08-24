@@ -650,8 +650,9 @@ mod tests {
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
     use preparation::{
-        fill_order_book_worst_case, prepare_delete_orderbook_benchmark,
-        prepare_place_orderbook_benchmark, presets::*, FillSettings,
+        fill_order_book_worst_case, prepare_cancel_orderbook_benchmark,
+        prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark, presets::*,
+        FillSettings,
     };
 
     #[test]
@@ -758,6 +759,28 @@ mod tests {
                 Some(lifespan),
             )
             .unwrap();
+        })
+    }
+
+    #[test]
+    fn test_benchmark_cancel() {
+        ext().execute_with(|| {
+            let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
+            // let settings = preset_3::<Runtime>();
+            let caller = alice::<Runtime>();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);
+
+            println!("1;");
+            print_order_book::<Runtime>(order_book_id.clone(), caller.clone());
+            OrderBookPallet::<Runtime>::cancel_limit_order(
+                RawOrigin::Signed(caller.clone()).into(),
+                order_book_id.clone(),
+                order_id.clone(),
+            )
+            .unwrap();
+            println!("2;");
+            print_order_book::<Runtime>(order_book_id.clone(), caller.clone());
         })
     }
 }

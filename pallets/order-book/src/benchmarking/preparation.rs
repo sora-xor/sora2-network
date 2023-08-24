@@ -414,6 +414,15 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
     let filled_block = lifespans.next().unwrap();
     let mut lifespans = lifespans.skip_while(|b| *b == filled_block);
     let to_fill = lifespans.next().unwrap();
+
+    assets::Pallet::<T>::mint_unchecked(
+        &order_book.order_book_id.quote,
+        &author,
+        (FixedWrapper::from(target_price) * FixedWrapper::from(order_amount))
+            .try_into_balance()
+            .unwrap(),
+    )
+    .unwrap();
     let place_to_cancel = |order_book: &mut OrderBook<T>, data_layer: &mut CacheDataLayer<T>| {
         let id = order_book.next_order_id();
         let order = LimitOrder::<T>::new(
@@ -435,14 +444,30 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
         to_cancel_id = place_to_cancel(&mut order_book, &mut data_layer);
     }
 
+    // different order book because we just want to fill expirations and don't face restrictions
+    // from the first one
+    let order_book_id_2 = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        dex_id: DEX.into(),
+        base: ETH.into(),
+        quote: XOR.into(),
+    };
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id_2)
+        .expect("failed to create an order book");
+    let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
+    let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
     let mut fill_expiration_settings = fill_settings.clone();
-    fill_expiration_settings.max_expiring_orders_per_block -= 1; // we add one more separately
+    // we add one more separately
+    fill_expiration_settings.max_expiring_orders_per_block -= 1;
+    // mint other base asset as well
+    let mut users = users.inspect(move |user| {
+        assets::Pallet::<T>::mint_unchecked(&order_book_id_2.base, &user, order_amount_2).unwrap();
+    });
     fill_expiration_schedule(
         &mut data_layer,
         fill_expiration_settings.clone(),
-        &mut order_book,
+        &mut order_book_2,
         PriceVariant::Sell,
-        order_amount,
+        order_amount_2,
         &mut users,
         to_fill,
     );
