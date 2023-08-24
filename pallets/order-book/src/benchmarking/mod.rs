@@ -155,6 +155,7 @@ mod benchmarks_inner {
         prepare_place_orderbook_benchmark, presets::*, FillSettings,
     };
 
+    use crate::benchmarking::preparation::prepare_cancel_orderbook_benchmark;
     use assets::Pallet as AssetsPallet;
 
     benchmarks! {
@@ -346,25 +347,22 @@ mod benchmarks_inner {
         }
 
         cancel_limit_order {
-            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
-                dex_id: DEX.into(),
-                base: VAL.into(),
-                quote: XOR.into(),
-            };
-
-            create_and_populate_order_book::<T>(order_book_id);
-
-            let order_id = 5u128.unique_saturated_into();
-
-            let order = OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap();
-
+            let caller = alice::<T>();
+            let settings = FillSettings::<T>::new(
+                <T as Config>::MaxSidePriceCount::get(),
+                <T as Config>::MaxLimitOrdersForPrice::get(),
+                <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
+                <T as Config>::MaxExpiringOrdersPerBlock::get()
+            );
+            let (order_book_id, order_id) = prepare_cancel_orderbook_benchmark(settings, caller.clone(), true);
+            let order = OrderBookPallet::<T>::limit_orders::<_, T::OrderId>(order_book_id, order_id).unwrap();
             let balance_before =
                 <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
-                RawOrigin::Signed(order.owner.clone()).into(),
-                order_book_id,
-                order_id
+                RawOrigin::Signed(caller.clone()).into(),
+                order_book_id.clone(),
+                order_id.clone()
             ).unwrap();
         }
         verify {
