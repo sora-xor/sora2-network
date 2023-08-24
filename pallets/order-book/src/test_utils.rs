@@ -89,7 +89,7 @@ mod test_only {
     use frame_support::{assert_ok, BoundedVec};
     use frame_system::RawOrigin;
     use framenode_runtime::order_book::{
-        self, Config, LimitOrder, OrderBook, OrderBookId, OrderVolume, Pallet,
+        self, Config, LimitOrder, OrderBook, OrderBookId, OrderPrice, OrderVolume, Pallet,
     };
     use framenode_runtime::{Runtime, RuntimeOrigin};
     use sp_std::collections::btree_map::BTreeMap;
@@ -265,45 +265,45 @@ mod test_only {
 
         // check
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bp1).unwrap(),
+            OrderBookPallet::bids(order_book_id, OrderPrice::divisible(bp1)).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bp2).unwrap(),
+            OrderBookPallet::bids(order_book_id, OrderPrice::divisible(bp2)).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bp3).unwrap(),
+            OrderBookPallet::bids(order_book_id, OrderPrice::divisible(bp3)).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &sp1).unwrap(),
+            OrderBookPallet::asks(order_book_id, OrderPrice::divisible(sp1)).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &sp2).unwrap(),
+            OrderBookPallet::asks(order_book_id, OrderPrice::divisible(sp2)).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &sp3).unwrap(),
+            OrderBookPallet::asks(order_book_id, OrderPrice::divisible(sp3)).unwrap(),
             vec![10, 11, 12]
         );
 
         assert_eq!(
             OrderBookPallet::aggregated_bids(&order_book_id),
             BTreeMap::from([
-                (bp1, amount1),
-                (bp2, amount2 + amount3),
-                (bp3, amount4 + amount5 + amount6)
+                (bp1.into(), amount1.into()),
+                (bp2.into(), (amount2 + amount3).into()),
+                (bp3.into(), (amount4 + amount5 + amount6).into())
             ])
         );
         assert_eq!(
             OrderBookPallet::aggregated_asks(&order_book_id),
             BTreeMap::from([
-                (sp1, amount7),
-                (sp2, amount8 + amount9),
-                (sp3, amount10 + amount11 + amount12)
+                (sp1.into(), amount7.into()),
+                (sp2.into(), (amount8 + amount9).into()),
+                (sp3.into(), (amount10 + amount11 + amount12).into())
             ])
         );
 

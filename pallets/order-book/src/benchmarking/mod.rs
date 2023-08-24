@@ -55,6 +55,8 @@ use common::{DEXId, VAL, XOR};
 use frame_system::EventRecord;
 use hex_literal::hex;
 
+use frame_system::Pallet as FrameSystem;
+use trading_pair::Pallet as TradingPair;
 use Pallet as OrderBookPallet;
 
 mod preparation;
@@ -156,7 +158,7 @@ mod benchmarks_inner {
     };
 
     use crate::benchmarking::preparation::prepare_cancel_orderbook_benchmark;
-    use assets::Pallet as AssetsPallet;
+    use assets::Pallet as Assets;
 
     benchmarks! {
         where_clause {
@@ -165,12 +167,32 @@ mod benchmarks_inner {
 
         create_orderbook {
             let caller = alice::<T>();
+            FrameSystem::<T>::inc_providers(&caller);
+
+            let nft = Assets::<T>::register_from(
+                &caller,
+                AssetSymbol(b"NFT".to_vec()),
+                AssetName(b"Nft".to_vec()),
+                0,
+                balance!(1),
+                false,
+                None,
+                None,
+            )
+            .unwrap();
 
             let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
                 dex_id: DEX.into(),
-                base: VAL.into(),
+                base: nft,
                 quote: XOR.into(),
             };
+
+            TradingPair::<T>::register(
+                RawOrigin::Signed(caller.clone()).into(),
+                DEX.into(),
+                order_book_id.quote,
+                order_book_id.base
+            ).unwrap();
         }: {
             OrderBookPallet::<T>::create_orderbook(
                 RawOrigin::Signed(caller.clone()).into(),
@@ -188,7 +210,7 @@ mod benchmarks_inner {
 
             assert_eq!(
                 OrderBookPallet::<T>::order_books(order_book_id).unwrap(),
-                OrderBook::<T>::default(order_book_id)
+                OrderBook::<T>::default_indivisible(order_book_id)
             );
         }
 
@@ -228,7 +250,7 @@ mod benchmarks_inner {
             create_and_populate_order_book::<T>(order_book_id);
 
             let tick_size = balance!(0.01);
-            let step_lot_size = balance!(0.001);
+            let step_lot_size = balance!(1); // limit orders should be aligned according to new step_lot_size
             let min_lot_size = balance!(1);
             let max_lot_size = balance!(10000);
         }: {
@@ -250,10 +272,10 @@ mod benchmarks_inner {
             );
 
             let order_book = OrderBookPallet::<T>::order_books(order_book_id).unwrap();
-            assert_eq!(order_book.tick_size, tick_size);
-            assert_eq!(order_book.step_lot_size, step_lot_size);
-            assert_eq!(order_book.min_lot_size, min_lot_size);
-            assert_eq!(order_book.max_lot_size, max_lot_size);
+            assert_eq!(order_book.tick_size, tick_size.into());
+            assert_eq!(order_book.step_lot_size, step_lot_size.into());
+            assert_eq!(order_book.min_lot_size, min_lot_size.into());
+            assert_eq!(order_book.max_lot_size, max_lot_size.into());
         }
 
         change_orderbook_status {
@@ -333,8 +355,8 @@ mod benchmarks_inner {
                 order_id,
                 caller.clone(),
                 PriceVariant::Buy,
-                price,
-                order_book.min_lot_size,
+                price.into(),
+                order_book.min_lot_size.into(),
                 now,
                 lifespan,
                 current_block
@@ -378,7 +400,7 @@ mod benchmarks_inner {
             let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
             let balance =
                 <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
-            let expected_balance = balance_before + deal_amount;
+            let expected_balance = balance_before + deal_amount.balance();
             assert_eq!(balance, expected_balance);
         }
 
@@ -414,8 +436,117 @@ mod benchmarks_inner {
             let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
             let balance =
                 <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
-            let expected_balance = balance_before + deal_amount;
+            let expected_balance = balance_before + deal_amount.balance();
             assert_eq!(balance, expected_balance);
+        }
+
+        execute_market_order {
+            let caller = alice::<T>();
+            let creator = bob::<T>();
+
+            FrameSystem::<T>::inc_providers(&creator);
+
+            let nft = Assets::<T>::register_from(
+                &creator,
+                AssetSymbol(b"NFT".to_vec()),
+                AssetName(b"Nft".to_vec()),
+                0,
+                100000,
+                false,
+                None,
+                None,
+            )
+            .unwrap();
+
+            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+                dex_id: DEX.into(),
+                base: nft,
+                quote: XOR.into(),
+            };
+
+            Assets::<T>::update_balance(
+                RawOrigin::Root.into(),
+                creator.clone(),
+                order_book_id.quote,
+                balance!(1000000).try_into().unwrap()
+            ).unwrap();
+
+            Assets::<T>::update_balance(
+                RawOrigin::Root.into(),
+                caller.clone(),
+                order_book_id.base,
+                1000000
+            ).unwrap();
+            Assets::<T>::update_balance(
+                RawOrigin::Root.into(),
+                caller.clone(),
+                order_book_id.quote,
+                balance!(1000000).try_into().unwrap()
+            ).unwrap();
+
+            TradingPair::<T>::register(
+                RawOrigin::Signed(creator.clone()).into(),
+                DEX.into(),
+                order_book_id.quote,
+                order_book_id.base
+            ).unwrap();
+
+            OrderBookPallet::<T>::create_orderbook(
+                RawOrigin::Signed(creator.clone()).into(),
+                order_book_id
+            ).unwrap();
+
+            OrderBookPallet::<T>::place_limit_order(
+                RawOrigin::Signed(creator.clone()).into(),
+                order_book_id,
+                balance!(10),
+                100,
+                PriceVariant::Buy,
+                None
+            ).unwrap();
+
+            OrderBookPallet::<T>::place_limit_order(
+                RawOrigin::Signed(creator.clone()).into(),
+                order_book_id,
+                balance!(11),
+                100,
+                PriceVariant::Sell,
+                None
+            ).unwrap();
+
+            let amount = 20;
+
+            let caller_base_balance = <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap();
+            let caller_quote_balance = <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
+        }: {
+            OrderBookPallet::<T>::execute_market_order(
+                RawOrigin::Signed(caller.clone()).into(),
+                order_book_id,
+                PriceVariant::Buy,
+                amount
+            ).unwrap();
+        }
+        verify {
+            assert_last_event::<T>(
+                Event::<T>::MarketOrderExecuted {
+                    order_book_id,
+                    owner_id: caller.clone(),
+                    direction: PriceVariant::Buy,
+                    amount: OrderAmount::Base(OrderVolume::indivisible(amount)),
+                    average_price: balance!(11).into(),
+                    to: None,
+                }
+                .into(),
+            );
+
+            assert_eq!(
+                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
+                caller_base_balance + amount
+            );
+            assert_eq!(
+                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
+                caller_quote_balance - balance!(220)
+            );
         }
 
         quote {
@@ -451,7 +582,7 @@ mod benchmarks_inner {
 
             create_and_populate_order_book::<T>(order_book_id);
 
-            AssetsPallet::<T>::update_balance(
+            Assets::<T>::update_balance(
                 RawOrigin::Root.into(),
                 caller.clone(),
                 order_book_id.base,
@@ -477,8 +608,8 @@ mod benchmarks_inner {
                     order_book_id,
                     owner_id: caller.clone(),
                     direction: PriceVariant::Sell,
-                    amount: OrderAmount::Base(balance!(355.13473)),
-                    average_price: balance!(9.855414408497867837),
+                    amount: OrderAmount::Base(balance!(355.13473).into()),
+                    average_price: balance!(9.855414408497867837).into(),
                     to: None,
                 }
                 .into(),
@@ -549,7 +680,7 @@ mod benchmarks_inner {
             let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
             let balance =
                 <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
-            let expected_balance = balance_before + deal_amount;
+            let expected_balance = balance_before + deal_amount.balance();
             assert_eq!(balance, expected_balance);
         }
 

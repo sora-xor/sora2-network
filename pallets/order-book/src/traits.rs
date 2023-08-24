@@ -156,12 +156,21 @@ where
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<(OrderPrice, OrderVolume)>;
 
-    /// Returns order ids of user
+    /// Returns order ids of user from the order book with `order_book_id`
     fn get_user_limit_orders(
         &mut self,
         account: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>>;
+
+    /// Returns order ids of user from all order books
+    fn get_all_user_limit_orders(
+        &mut self,
+        account: &T::AccountId,
+    ) -> BTreeMap<
+        OrderBookId<AssetIdOf<T>, T::DEXId>,
+        UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
+    >;
 
     /// Returns whether there is no place for the user's orders in the order book
     fn is_user_limit_orders_full(

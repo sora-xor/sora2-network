@@ -32,7 +32,7 @@
 
 use crate::test_utils::*;
 use assets::AssetIdOf;
-use common::{balance, PriceVariant, VAL, XOR};
+use common::{balance, PriceVariant, ETH, PSWAP, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
@@ -40,6 +40,7 @@ use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{Config, DataLayer, LimitOrder, OrderBookId};
 use framenode_runtime::Runtime;
 use sp_core::Get;
+use sp_runtime::BoundedVec;
 use sp_std::collections::btree_map::BTreeMap;
 
 trait StoragePush {
@@ -75,8 +76,8 @@ fn should_work_as_cache() {
 
         let order_id = 1;
         let owner = alice::<Runtime>();
-        let price = balance!(12);
-        let amount = balance!(100);
+        let price = balance!(12).into();
+        let amount = balance!(100).into();
 
         let order = LimitOrder::<Runtime>::new(
             order_id,
@@ -166,8 +167,8 @@ fn should_work_as_storage() {
 
         let order_id = 1;
         let owner = alice::<Runtime>();
-        let price = balance!(12);
-        let amount = balance!(100);
+        let price = balance!(12).into();
+        let amount = balance!(100).into();
 
         let order = LimitOrder::<Runtime>::new(
             order_id,
@@ -251,9 +252,9 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
         let order_sell_id2 = 4;
         let order_sell_id3 = 5;
         let owner = alice::<Runtime>();
-        let price1 = balance!(12);
-        let price2 = balance!(13);
-        let amount = balance!(10);
+        let price1 = balance!(12).into();
+        let price2 = balance!(13).into();
+        let amount = balance!(10).into();
 
         let order_buy1 = LimitOrder::<Runtime>::new(
             order_buy_id1,
@@ -358,8 +359,8 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         let order_buy_id = 1;
         let order_sell_id = 2;
         let owner = alice::<Runtime>();
-        let price = balance!(12);
-        let amount = balance!(10);
+        let price = balance!(12).into();
+        let amount = balance!(10).into();
 
         let order_buy = LimitOrder::<Runtime>::new(
             order_buy_id,
@@ -501,8 +502,8 @@ fn should_not_insert_limit_order(data: &mut impl DataLayer<Runtime>) {
         };
 
         let owner = alice::<Runtime>();
-        let price = balance!(12);
-        let amount = balance!(10);
+        let price = balance!(12).into();
+        let amount = balance!(10).into();
 
         let mut order = LimitOrder::<Runtime>::new(
             0,
@@ -559,9 +560,10 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         let order_sell_id2 = 4;
         let order_sell_id3 = 5;
         let owner = alice::<Runtime>();
-        let price1 = balance!(12);
-        let price2 = balance!(13);
-        let amount = balance!(10);
+        let price1 = balance!(12).into();
+        let price2 = balance!(13).into();
+        let amount = balance!(10).into();
+        let double_amount = balance!(20).into();
 
         let order_buy1 = LimitOrder::<Runtime>::new(
             order_buy_id1,
@@ -655,7 +657,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         );
         assert_eq!(
             data.get_aggregated_bids(&order_book_id),
-            BTreeMap::from([(price1, 2 * amount)])
+            BTreeMap::from([(price1, double_amount)])
         );
         assert_eq!(
             data.get_asks(&order_book_id, &price1).unwrap(),
@@ -667,7 +669,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         );
         assert_eq!(
             data.get_aggregated_asks(&order_book_id),
-            BTreeMap::from([(price1, 2 * amount), (price2, amount)])
+            BTreeMap::from([(price1, double_amount), (price2, amount)])
         );
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
@@ -709,7 +711,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         );
         assert_eq!(
             OrderBookPallet::aggregated_bids(order_book_id),
-            BTreeMap::from([(price1, 2 * amount)])
+            BTreeMap::from([(price1, double_amount)])
         );
         assert_eq!(
             OrderBookPallet::asks(order_book_id, price1).unwrap(),
@@ -721,7 +723,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         );
         assert_eq!(
             OrderBookPallet::aggregated_asks(order_book_id),
-            BTreeMap::from([(price1, 2 * amount), (price2, amount)])
+            BTreeMap::from([(price1, double_amount), (price2, amount)])
         );
         assert_eq!(
             OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
@@ -746,7 +748,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         );
         assert_eq!(
             data.get_aggregated_bids(&order_book_id),
-            BTreeMap::from([(price1, 2 * amount)])
+            BTreeMap::from([(price1, double_amount)])
         );
         assert_eq!(
             data.get_asks(&order_book_id, &price1).unwrap(),
@@ -777,7 +779,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         );
         assert_eq!(
             OrderBookPallet::aggregated_bids(order_book_id),
-            BTreeMap::from([(price1, 2 * amount)])
+            BTreeMap::from([(price1, double_amount)])
         );
         assert_eq!(
             OrderBookPallet::asks(order_book_id, price1).unwrap(),
@@ -1050,9 +1052,9 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         let order_id = 1;
         let owner = alice::<Runtime>();
-        let price = balance!(10);
-        let amount = balance!(100);
-        let new_amount = balance!(80);
+        let price = balance!(10).into();
+        let amount = balance!(100).into();
+        let new_amount = balance!(80).into();
 
         let mut order = LimitOrder::<Runtime>::new(
             order_id,
@@ -1183,9 +1185,9 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
 
         let order_id = 1;
         let owner = alice::<Runtime>();
-        let price = balance!(10);
-        let amount = balance!(100);
-        let new_amount = balance!(0);
+        let price = balance!(10).into();
+        let amount = balance!(100).into();
+        let new_amount = balance!(0).into();
 
         let order = LimitOrder::<Runtime>::new(
             order_id,
@@ -1299,7 +1301,7 @@ fn should_not_update_unknown_limit_order(data: &mut impl DataLayer<Runtime>) {
         };
 
         let order_id = 1;
-        let amount = balance!(100);
+        let amount = balance!(100).into();
 
         assert_err!(
             data.update_limit_order_amount(&order_book_id, order_id, amount),
@@ -1329,13 +1331,13 @@ fn should_not_update_equal_limit_order(data: &mut impl DataLayer<Runtime>) {
         };
 
         let order_id = 1;
-        let amount = balance!(100);
+        let amount = balance!(100).into();
 
         let order = LimitOrder::<Runtime>::new(
             order_id,
             alice::<Runtime>(),
             PriceVariant::Buy,
-            balance!(12),
+            balance!(12).into(),
             amount,
             10,
             1000,
@@ -1375,14 +1377,14 @@ fn should_not_update_limit_order_with_bigger_amount(data: &mut impl DataLayer<Ru
         };
 
         let order_id = 1;
-        let amount = balance!(100);
-        let new_amount = balance!(110);
+        let amount = balance!(100).into();
+        let new_amount = balance!(110).into();
 
         let order = LimitOrder::<Runtime>::new(
             order_id,
             alice::<Runtime>(),
             PriceVariant::Buy,
-            balance!(12),
+            balance!(12).into(),
             amount,
             10,
             1000,
@@ -1405,7 +1407,7 @@ fn cache_should_get_limit_orders_by_price() {
 }
 
 #[test]
-fn storag_should_get_limit_orders_by_price() {
+fn storage_should_get_limit_orders_by_price() {
     let mut storage = StorageDataLayer::<Runtime>::new();
     get_limit_orders_by_price(&mut storage);
 }
@@ -1418,8 +1420,8 @@ fn get_limit_orders_by_price(data: &mut impl DataLayer<Runtime>) {
             quote: XOR.into(),
         };
 
-        let buy_price = balance!(10);
-        let sell_price = balance!(11);
+        let buy_price = balance!(10).into();
+        let sell_price = balance!(11).into();
 
         assert_eq!(
             data.get_bids(&order_book_id, &buy_price),
@@ -1428,6 +1430,103 @@ fn get_limit_orders_by_price(data: &mut impl DataLayer<Runtime>) {
         assert_eq!(
             data.get_asks(&order_book_id, &sell_price),
             data.get_limit_orders_by_price(&order_book_id, PriceVariant::Sell, &sell_price)
+        );
+    });
+}
+
+#[test]
+fn cache_should_get_user_limit_orders() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    get_user_limit_orders(&mut cache);
+}
+
+#[test]
+fn storage_should_get_user_limit_orders() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    get_user_limit_orders(&mut storage);
+}
+
+fn get_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+
+        let empty_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(empty_order_book_id);
+
+        assert_eq!(
+            data.get_user_limit_orders(&bob(), &empty_order_book_id),
+            None
+        );
+
+        assert_eq!(
+            data.get_user_limit_orders(&bob(), &order_book_id).unwrap(),
+            vec![1, 3, 5, 7, 9, 11]
+        );
+    });
+}
+
+#[test]
+fn cache_should_get_all_user_limit_orders() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    get_all_user_limit_orders(&mut cache);
+}
+
+#[test]
+fn storage_should_get_all_user_limit_orders() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    get_all_user_limit_orders(&mut storage);
+}
+
+fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
+    ext().execute_with(|| {
+        let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id1);
+
+        let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id2);
+
+        let empty_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: ETH.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book(empty_order_book_id);
+
+        // no orders from empty_order_book_id
+        assert_eq!(
+            data.get_all_user_limit_orders(&bob()),
+            BTreeMap::from([
+                (
+                    order_book_id1,
+                    BoundedVec::try_from(vec![1, 3, 5, 7, 9, 11]).unwrap()
+                ),
+                (
+                    order_book_id2,
+                    BoundedVec::try_from(vec![1, 3, 5, 7, 9, 11]).unwrap()
+                )
+            ])
         );
     });
 }

@@ -38,7 +38,7 @@ use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Len;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{CheckedAdd, CheckedSub, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
@@ -182,7 +182,7 @@ impl<T: Config> CacheDataLayer<T> {
                 .get(price)
                 .map(|x| *x)
                 .unwrap_or_default()
-                .checked_add(*value)
+                .checked_add(value)
                 .ok_or(())?;
             agg_bids.try_insert(*price, volume).map_err(|_| ())?;
         } else {
@@ -205,7 +205,7 @@ impl<T: Config> CacheDataLayer<T> {
     ) -> Result<(), ()> {
         if let Some(agg_bids) = self.aggregated_bids.get_mut(order_book_id) {
             let volume = agg_bids.get(price).map(|x| *x).unwrap_or_default();
-            let volume = volume.checked_sub(*value).ok_or(())?;
+            let volume = volume.checked_sub(value).ok_or(())?;
             if volume.is_zero() {
                 agg_bids.remove(price);
             } else {
@@ -237,7 +237,7 @@ impl<T: Config> CacheDataLayer<T> {
                 .get(price)
                 .map(|x| *x)
                 .unwrap_or_default()
-                .checked_add(*value)
+                .checked_add(value)
                 .ok_or(())?;
             agg_asks.try_insert(*price, volume).map_err(|_| ())?;
         } else {
@@ -260,7 +260,7 @@ impl<T: Config> CacheDataLayer<T> {
     ) -> Result<(), ()> {
         if let Some(agg_asks) = self.aggregated_asks.get_mut(order_book_id) {
             let volume = agg_asks.get(price).map(|x| *x).unwrap_or_default();
-            let volume = volume.checked_sub(*value).ok_or(())?;
+            let volume = volume.checked_sub(value).ok_or(())?;
             if volume.is_zero() {
                 agg_asks.remove(price);
             } else {
@@ -367,7 +367,10 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         }
         ensure!(order.amount > new_amount, Error::<T>::UpdateLimitOrderError);
 
-        let delta = order.amount - new_amount;
+        let delta = order
+            .amount
+            .checked_sub(&new_amount)
+            .ok_or(Error::<T>::AmountCalculationFailed)?;
 
         match order.side {
             PriceVariant::Buy => {
@@ -535,5 +538,15 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         self.user_limit_orders
             .get_mut(account, order_book_id)
             .map(|orders| orders.is_full())
+    }
+
+    fn get_all_user_limit_orders(
+        &mut self,
+        account: &T::AccountId,
+    ) -> BTreeMap<
+        OrderBookId<AssetIdOf<T>, T::DEXId>,
+        UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
+    > {
+        self.user_limit_orders.get_by_prefix(account)
     }
 }

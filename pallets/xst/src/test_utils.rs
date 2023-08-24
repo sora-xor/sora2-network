@@ -15,7 +15,7 @@ pub fn relay_new_symbol(symbol_name: &str, rate: u64) -> SymbolName {
     // precision in band::relay is 10^9
     Band::relay(
         RuntimeOrigin::signed(alice.clone()),
-        vec![(symbol.clone(), rate)],
+        vec![(symbol.clone(), rate)].try_into().unwrap(),
         0,
         0,
     )
@@ -28,7 +28,7 @@ pub fn relay_symbol(symbol: SymbolName, rate: u64) {
 
     Band::relay(
         RuntimeOrigin::signed(alice.clone()),
-        vec![(symbol, rate)],
+        vec![(symbol, rate)].try_into().unwrap(),
         0,
         0,
     )

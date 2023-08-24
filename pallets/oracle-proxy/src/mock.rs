@@ -92,6 +92,7 @@ impl Config for Runtime {
 
 frame_support::parameter_types! {
     pub const GetBandRateStalePeriod: Moment = 5*60*1000; // 5 minutes
+    pub const GetBandRateStaleBlockPeriod: u64 = 600; // 1 hour in blocks
     pub const MinimumPeriod: u64 = 5;
 }
 
@@ -109,6 +110,9 @@ impl band::Config for Runtime {
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
     type Time = Timestamp;
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
+    type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
+    type OnSymbolDisabledHook = ();
+    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
 }
 
 // Build genesis storage according to the mock runtime.

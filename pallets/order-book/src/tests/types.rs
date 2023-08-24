@@ -43,8 +43,8 @@ use sp_std::collections::btree_map::BTreeMap;
 
 #[test]
 fn check_order_amount() {
-    let base_balance = balance!(10);
-    let quote_balance = balance!(11);
+    let base_balance = balance!(10).into();
+    let quote_balance = balance!(11).into();
 
     let base = OrderAmount::Base(base_balance);
     let quote = OrderAmount::Quote(quote_balance);
@@ -64,12 +64,12 @@ fn check_order_amount() {
     assert!(!quote.is_same(&base));
 
     assert_eq!(
-        base.copy_type(balance!(100)),
-        OrderAmount::Base(balance!(100))
+        base.copy_type(balance!(100).into()),
+        OrderAmount::Base(balance!(100).into())
     );
     assert_eq!(
-        quote.copy_type(balance!(110)),
-        OrderAmount::Quote(balance!(110))
+        quote.copy_type(balance!(110).into()),
+        OrderAmount::Quote(balance!(110).into())
     );
 
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -81,8 +81,8 @@ fn check_order_amount() {
     assert_eq!(*base.associated_asset(&order_book_id), VAL);
     assert_eq!(*quote.associated_asset(&order_book_id), XOR);
 
-    let base_balance2 = balance!(5);
-    let quote_balance2 = balance!(6);
+    let base_balance2 = balance!(5).into();
+    let quote_balance2 = balance!(6).into();
 
     let base2 = OrderAmount::Base(base_balance2);
     let quote2 = OrderAmount::Quote(quote_balance2);
@@ -115,20 +115,20 @@ fn check_deal_info_valid() {
     // zero input amount
     assert!(!DealInfo {
         input_asset_id: XOR,
-        input_amount: OrderAmount::Quote(balance!(0)),
+        input_amount: OrderAmount::Quote(balance!(0).into()),
         output_asset_id: VAL,
-        output_amount: OrderAmount::Base(balance!(2)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Base(balance!(2).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Buy
     }
     .is_valid());
 
     assert!(!DealInfo {
         input_asset_id: VAL,
-        input_amount: OrderAmount::Base(balance!(0)),
+        input_amount: OrderAmount::Base(balance!(0).into()),
         output_asset_id: XOR,
-        output_amount: OrderAmount::Quote(balance!(2)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Quote(balance!(2).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Sell
     }
     .is_valid());
@@ -136,20 +136,20 @@ fn check_deal_info_valid() {
     // zero output amount
     assert!(!DealInfo {
         input_asset_id: XOR,
-        input_amount: OrderAmount::Quote(balance!(1)),
+        input_amount: OrderAmount::Quote(balance!(1).into()),
         output_asset_id: VAL,
-        output_amount: OrderAmount::Base(balance!(0)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Base(balance!(0).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Buy
     }
     .is_valid());
 
     assert!(!DealInfo {
         input_asset_id: VAL,
-        input_amount: OrderAmount::Base(balance!(1)),
+        input_amount: OrderAmount::Base(balance!(1).into()),
         output_asset_id: XOR,
-        output_amount: OrderAmount::Quote(balance!(0)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Quote(balance!(0).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Sell
     }
     .is_valid());
@@ -157,20 +157,20 @@ fn check_deal_info_valid() {
     // zero average price
     assert!(!DealInfo {
         input_asset_id: XOR,
-        input_amount: OrderAmount::Quote(balance!(1)),
+        input_amount: OrderAmount::Quote(balance!(1).into()),
         output_asset_id: VAL,
-        output_amount: OrderAmount::Base(balance!(2)),
-        average_price: balance!(0),
+        output_amount: OrderAmount::Base(balance!(2).into()),
+        average_price: balance!(0).into(),
         direction: PriceVariant::Buy
     }
     .is_valid());
 
     assert!(!DealInfo {
         input_asset_id: VAL,
-        input_amount: OrderAmount::Base(balance!(1)),
+        input_amount: OrderAmount::Base(balance!(1).into()),
         output_asset_id: XOR,
-        output_amount: OrderAmount::Quote(balance!(2)),
-        average_price: balance!(0),
+        output_amount: OrderAmount::Quote(balance!(2).into()),
+        average_price: balance!(0).into(),
         direction: PriceVariant::Sell
     }
     .is_valid());
@@ -178,20 +178,20 @@ fn check_deal_info_valid() {
     // equal assets
     assert!(!DealInfo {
         input_asset_id: XOR,
-        input_amount: OrderAmount::Quote(balance!(1)),
+        input_amount: OrderAmount::Quote(balance!(1).into()),
         output_asset_id: XOR,
-        output_amount: OrderAmount::Base(balance!(2)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Base(balance!(2).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Buy
     }
     .is_valid());
 
     assert!(!DealInfo {
         input_asset_id: VAL,
-        input_amount: OrderAmount::Base(balance!(1)),
+        input_amount: OrderAmount::Base(balance!(1).into()),
         output_asset_id: VAL,
-        output_amount: OrderAmount::Quote(balance!(2)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Quote(balance!(2).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Sell
     }
     .is_valid());
@@ -199,20 +199,20 @@ fn check_deal_info_valid() {
     // both are base
     assert!(!DealInfo {
         input_asset_id: XOR,
-        input_amount: OrderAmount::Base(balance!(1)),
+        input_amount: OrderAmount::Base(balance!(1).into()),
         output_asset_id: VAL,
-        output_amount: OrderAmount::Base(balance!(2)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Base(balance!(2).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Buy
     }
     .is_valid());
 
     assert!(!DealInfo {
         input_asset_id: VAL,
-        input_amount: OrderAmount::Base(balance!(1)),
+        input_amount: OrderAmount::Base(balance!(1).into()),
         output_asset_id: XOR,
-        output_amount: OrderAmount::Base(balance!(2)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Base(balance!(2).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Sell
     }
     .is_valid());
@@ -220,20 +220,20 @@ fn check_deal_info_valid() {
     // both are quote
     assert!(!DealInfo {
         input_asset_id: XOR,
-        input_amount: OrderAmount::Quote(balance!(1)),
+        input_amount: OrderAmount::Quote(balance!(1).into()),
         output_asset_id: VAL,
-        output_amount: OrderAmount::Quote(balance!(2)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Quote(balance!(2).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Buy
     }
     .is_valid());
 
     assert!(!DealInfo {
         input_asset_id: VAL,
-        input_amount: OrderAmount::Quote(balance!(1)),
+        input_amount: OrderAmount::Quote(balance!(1).into()),
         output_asset_id: XOR,
-        output_amount: OrderAmount::Quote(balance!(2)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Quote(balance!(2).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Sell
     }
     .is_valid());
@@ -241,20 +241,20 @@ fn check_deal_info_valid() {
     // valid
     assert!(DealInfo {
         input_asset_id: XOR,
-        input_amount: OrderAmount::Quote(balance!(1)),
+        input_amount: OrderAmount::Quote(balance!(1).into()),
         output_asset_id: VAL,
-        output_amount: OrderAmount::Base(balance!(2)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Base(balance!(2).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Buy
     }
     .is_valid());
 
     assert!(DealInfo {
         input_asset_id: VAL,
-        input_amount: OrderAmount::Base(balance!(1)),
+        input_amount: OrderAmount::Base(balance!(1).into()),
         output_asset_id: XOR,
-        output_amount: OrderAmount::Quote(balance!(2)),
-        average_price: balance!(0.5),
+        output_amount: OrderAmount::Quote(balance!(2).into()),
+        average_price: balance!(0.5).into(),
         direction: PriceVariant::Sell
     }
     .is_valid());
@@ -265,53 +265,53 @@ fn check_deal_info_amounts() {
     assert_eq!(
         DealInfo {
             input_asset_id: XOR,
-            input_amount: OrderAmount::Quote(balance!(1)),
+            input_amount: OrderAmount::Quote(balance!(1).into()),
             output_asset_id: VAL,
-            output_amount: OrderAmount::Base(balance!(2)),
-            average_price: balance!(0.5),
+            output_amount: OrderAmount::Base(balance!(2).into()),
+            average_price: balance!(0.5).into(),
             direction: PriceVariant::Buy
         }
         .base_amount(),
-        balance!(2)
+        balance!(2).into()
     );
 
     assert_eq!(
         DealInfo {
             input_asset_id: VAL,
-            input_amount: OrderAmount::Base(balance!(1)),
+            input_amount: OrderAmount::Base(balance!(1).into()),
             output_asset_id: XOR,
-            output_amount: OrderAmount::Quote(balance!(2)),
-            average_price: balance!(0.5),
+            output_amount: OrderAmount::Quote(balance!(2).into()),
+            average_price: balance!(0.5).into(),
             direction: PriceVariant::Sell
         }
         .base_amount(),
-        balance!(1)
+        balance!(1).into()
     );
 
     assert_eq!(
         DealInfo {
             input_asset_id: XOR,
-            input_amount: OrderAmount::Quote(balance!(1)),
+            input_amount: OrderAmount::Quote(balance!(1).into()),
             output_asset_id: VAL,
-            output_amount: OrderAmount::Base(balance!(2)),
-            average_price: balance!(0.5),
+            output_amount: OrderAmount::Base(balance!(2).into()),
+            average_price: balance!(0.5).into(),
             direction: PriceVariant::Buy
         }
         .quote_amount(),
-        balance!(1)
+        balance!(1).into()
     );
 
     assert_eq!(
         DealInfo {
             input_asset_id: VAL,
-            input_amount: OrderAmount::Base(balance!(1)),
+            input_amount: OrderAmount::Base(balance!(1).into()),
             output_asset_id: XOR,
-            output_amount: OrderAmount::Quote(balance!(2)),
-            average_price: balance!(0.5),
+            output_amount: OrderAmount::Quote(balance!(2).into()),
+            average_price: balance!(0.5).into(),
             direction: PriceVariant::Sell
         }
         .quote_amount(),
-        balance!(2)
+        balance!(2).into()
     );
 }
 
@@ -332,13 +332,25 @@ fn should_fail_payment_merge() {
     assert_err!(
         Payment {
             order_book_id,
-            to_lock: BTreeMap::from([(XOR, BTreeMap::from([(alice::<Runtime>(), balance!(100))]))]),
-            to_unlock: BTreeMap::from([(VAL, BTreeMap::from([(bob::<Runtime>(), balance!(50))]))])
+            to_lock: BTreeMap::from([(
+                XOR,
+                BTreeMap::from([(alice::<Runtime>(), balance!(100).into())])
+            )]),
+            to_unlock: BTreeMap::from([(
+                VAL,
+                BTreeMap::from([(bob::<Runtime>(), balance!(50).into())])
+            )])
         }
         .merge(&Payment {
             order_book_id: other_order_book_id,
-            to_lock: BTreeMap::from([(XOR, BTreeMap::from([(alice::<Runtime>(), balance!(100))]))]),
-            to_unlock: BTreeMap::from([(DAI, BTreeMap::from([(bob::<Runtime>(), balance!(50))]))])
+            to_lock: BTreeMap::from([(
+                XOR,
+                BTreeMap::from([(alice::<Runtime>(), balance!(100).into())])
+            )]),
+            to_unlock: BTreeMap::from([(
+                DAI,
+                BTreeMap::from([(bob::<Runtime>(), balance!(50).into())])
+            )])
         }),
         ()
     );
@@ -358,15 +370,15 @@ fn check_payment_merge() {
             (
                 XOR,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(10)),
-                    (bob::<Runtime>(), balance!(20)),
+                    (alice::<Runtime>(), balance!(10).into()),
+                    (bob::<Runtime>(), balance!(20).into()),
                 ]),
             ),
             (
                 VAL,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(30)),
-                    (charlie::<Runtime>(), balance!(40)),
+                    (alice::<Runtime>(), balance!(30).into()),
+                    (charlie::<Runtime>(), balance!(40).into()),
                 ]),
             ),
         ]),
@@ -374,15 +386,15 @@ fn check_payment_merge() {
             (
                 VAL,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(50)),
-                    (charlie::<Runtime>(), balance!(60)),
+                    (bob::<Runtime>(), balance!(50).into()),
+                    (charlie::<Runtime>(), balance!(60).into()),
                 ]),
             ),
             (
                 XOR,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(70)),
-                    (dave::<Runtime>(), balance!(80)),
+                    (bob::<Runtime>(), balance!(70).into()),
+                    (dave::<Runtime>(), balance!(80).into()),
                 ]),
             ),
         ]),
@@ -394,15 +406,15 @@ fn check_payment_merge() {
             (
                 XOR,
                 BTreeMap::from([
-                    (charlie::<Runtime>(), balance!(100)),
-                    (dave::<Runtime>(), balance!(110)),
+                    (charlie::<Runtime>(), balance!(100).into()),
+                    (dave::<Runtime>(), balance!(110).into()),
                 ]),
             ),
             (
                 VAL,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(120)),
-                    (dave::<Runtime>(), balance!(130)),
+                    (bob::<Runtime>(), balance!(120).into()),
+                    (dave::<Runtime>(), balance!(130).into()),
                 ]),
             ),
         ]),
@@ -410,15 +422,15 @@ fn check_payment_merge() {
             (
                 VAL,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(140)),
-                    (dave::<Runtime>(), balance!(150)),
+                    (alice::<Runtime>(), balance!(140).into()),
+                    (dave::<Runtime>(), balance!(150).into()),
                 ]),
             ),
             (
                 XOR,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(160)),
-                    (charlie::<Runtime>(), balance!(170)),
+                    (alice::<Runtime>(), balance!(160).into()),
+                    (charlie::<Runtime>(), balance!(170).into()),
                 ]),
             ),
         ]),
@@ -434,19 +446,19 @@ fn check_payment_merge() {
                 (
                     XOR,
                     BTreeMap::from([
-                        (alice::<Runtime>(), balance!(10)),
-                        (bob::<Runtime>(), balance!(20)),
-                        (charlie::<Runtime>(), balance!(100)),
-                        (dave::<Runtime>(), balance!(110))
+                        (alice::<Runtime>(), balance!(10).into()),
+                        (bob::<Runtime>(), balance!(20).into()),
+                        (charlie::<Runtime>(), balance!(100).into()),
+                        (dave::<Runtime>(), balance!(110).into())
                     ]),
                 ),
                 (
                     VAL,
                     BTreeMap::from([
-                        (alice::<Runtime>(), balance!(30)),
-                        (bob::<Runtime>(), balance!(120)),
-                        (charlie::<Runtime>(), balance!(40)),
-                        (dave::<Runtime>(), balance!(130))
+                        (alice::<Runtime>(), balance!(30).into()),
+                        (bob::<Runtime>(), balance!(120).into()),
+                        (charlie::<Runtime>(), balance!(40).into()),
+                        (dave::<Runtime>(), balance!(130).into())
                     ]),
                 ),
             ]),
@@ -454,19 +466,19 @@ fn check_payment_merge() {
                 (
                     VAL,
                     BTreeMap::from([
-                        (alice::<Runtime>(), balance!(140)),
-                        (bob::<Runtime>(), balance!(50)),
-                        (charlie::<Runtime>(), balance!(60)),
-                        (dave::<Runtime>(), balance!(150))
+                        (alice::<Runtime>(), balance!(140).into()),
+                        (bob::<Runtime>(), balance!(50).into()),
+                        (charlie::<Runtime>(), balance!(60).into()),
+                        (dave::<Runtime>(), balance!(150).into())
                     ]),
                 ),
                 (
                     XOR,
                     BTreeMap::from([
-                        (alice::<Runtime>(), balance!(160)),
-                        (bob::<Runtime>(), balance!(70)),
-                        (charlie::<Runtime>(), balance!(170)),
-                        (dave::<Runtime>(), balance!(80))
+                        (alice::<Runtime>(), balance!(160).into()),
+                        (bob::<Runtime>(), balance!(70).into()),
+                        (charlie::<Runtime>(), balance!(170).into()),
+                        (dave::<Runtime>(), balance!(80).into())
                     ]),
                 ),
             ]),
@@ -479,15 +491,15 @@ fn check_payment_merge() {
             (
                 XOR,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(200)),
-                    (charlie::<Runtime>(), balance!(210)),
+                    (alice::<Runtime>(), balance!(200).into()),
+                    (charlie::<Runtime>(), balance!(210).into()),
                 ]),
             ),
             (
                 VAL,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(220)),
-                    (charlie::<Runtime>(), balance!(230)),
+                    (bob::<Runtime>(), balance!(220).into()),
+                    (charlie::<Runtime>(), balance!(230).into()),
                 ]),
             ),
         ]),
@@ -495,15 +507,15 @@ fn check_payment_merge() {
             (
                 VAL,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(240)),
-                    (dave::<Runtime>(), balance!(250)),
+                    (bob::<Runtime>(), balance!(240).into()),
+                    (dave::<Runtime>(), balance!(250).into()),
                 ]),
             ),
             (
                 XOR,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(260)),
-                    (dave::<Runtime>(), balance!(270)),
+                    (alice::<Runtime>(), balance!(260).into()),
+                    (dave::<Runtime>(), balance!(270).into()),
                 ]),
             ),
         ]),
@@ -519,17 +531,17 @@ fn check_payment_merge() {
                 (
                     XOR,
                     BTreeMap::from([
-                        (alice::<Runtime>(), balance!(210)),
-                        (bob::<Runtime>(), balance!(20)),
-                        (charlie::<Runtime>(), balance!(210))
+                        (alice::<Runtime>(), balance!(210).into()),
+                        (bob::<Runtime>(), balance!(20).into()),
+                        (charlie::<Runtime>(), balance!(210).into())
                     ]),
                 ),
                 (
                     VAL,
                     BTreeMap::from([
-                        (alice::<Runtime>(), balance!(30)),
-                        (bob::<Runtime>(), balance!(220)),
-                        (charlie::<Runtime>(), balance!(270))
+                        (alice::<Runtime>(), balance!(30).into()),
+                        (bob::<Runtime>(), balance!(220).into()),
+                        (charlie::<Runtime>(), balance!(270).into())
                     ]),
                 ),
             ]),
@@ -537,17 +549,17 @@ fn check_payment_merge() {
                 (
                     VAL,
                     BTreeMap::from([
-                        (bob::<Runtime>(), balance!(290)),
-                        (charlie::<Runtime>(), balance!(60)),
-                        (dave::<Runtime>(), balance!(250))
+                        (bob::<Runtime>(), balance!(290).into()),
+                        (charlie::<Runtime>(), balance!(60).into()),
+                        (dave::<Runtime>(), balance!(250).into())
                     ]),
                 ),
                 (
                     XOR,
                     BTreeMap::from([
-                        (alice::<Runtime>(), balance!(260)),
-                        (bob::<Runtime>(), balance!(70)),
-                        (dave::<Runtime>(), balance!(350))
+                        (alice::<Runtime>(), balance!(260).into()),
+                        (bob::<Runtime>(), balance!(70).into()),
+                        (dave::<Runtime>(), balance!(350).into())
                     ]),
                 ),
             ]),
@@ -560,15 +572,15 @@ fn check_payment_merge() {
             (
                 XOR,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(300)),
-                    (bob::<Runtime>(), balance!(310)),
+                    (alice::<Runtime>(), balance!(300).into()),
+                    (bob::<Runtime>(), balance!(310).into()),
                 ]),
             ),
             (
                 VAL,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(320)),
-                    (charlie::<Runtime>(), balance!(330)),
+                    (alice::<Runtime>(), balance!(320).into()),
+                    (charlie::<Runtime>(), balance!(330).into()),
                 ]),
             ),
         ]),
@@ -576,15 +588,15 @@ fn check_payment_merge() {
             (
                 VAL,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(340)),
-                    (charlie::<Runtime>(), balance!(350)),
+                    (bob::<Runtime>(), balance!(340).into()),
+                    (charlie::<Runtime>(), balance!(350).into()),
                 ]),
             ),
             (
                 XOR,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(360)),
-                    (dave::<Runtime>(), balance!(370)),
+                    (bob::<Runtime>(), balance!(360).into()),
+                    (dave::<Runtime>(), balance!(370).into()),
                 ]),
             ),
         ]),
@@ -600,15 +612,15 @@ fn check_payment_merge() {
                 (
                     XOR,
                     BTreeMap::from([
-                        (alice::<Runtime>(), balance!(310)),
-                        (bob::<Runtime>(), balance!(330))
+                        (alice::<Runtime>(), balance!(310).into()),
+                        (bob::<Runtime>(), balance!(330).into())
                     ]),
                 ),
                 (
                     VAL,
                     BTreeMap::from([
-                        (alice::<Runtime>(), balance!(350)),
-                        (charlie::<Runtime>(), balance!(370))
+                        (alice::<Runtime>(), balance!(350).into()),
+                        (charlie::<Runtime>(), balance!(370).into())
                     ]),
                 ),
             ]),
@@ -616,15 +628,15 @@ fn check_payment_merge() {
                 (
                     VAL,
                     BTreeMap::from([
-                        (bob::<Runtime>(), balance!(390)),
-                        (charlie::<Runtime>(), balance!(410))
+                        (bob::<Runtime>(), balance!(390).into()),
+                        (charlie::<Runtime>(), balance!(410).into())
                     ]),
                 ),
                 (
                     XOR,
                     BTreeMap::from([
-                        (bob::<Runtime>(), balance!(430)),
-                        (dave::<Runtime>(), balance!(450))
+                        (bob::<Runtime>(), balance!(430).into()),
+                        (dave::<Runtime>(), balance!(450).into())
                     ]),
                 ),
             ]),
@@ -677,21 +689,21 @@ fn check_payment_execute_all() {
             to_lock: BTreeMap::from([
                 (
                     order_book_id.base,
-                    BTreeMap::from([(alice::<Runtime>(), balance_diff)]),
+                    BTreeMap::from([(alice::<Runtime>(), balance_diff.into())]),
                 ),
                 (
                     order_book_id.quote,
-                    BTreeMap::from([(bob::<Runtime>(), balance_diff)]),
+                    BTreeMap::from([(bob::<Runtime>(), balance_diff.into())]),
                 ),
             ]),
             to_unlock: BTreeMap::from([
                 (
                     order_book_id.base,
-                    BTreeMap::from([(charlie::<Runtime>(), balance_diff)]),
+                    BTreeMap::from([(charlie::<Runtime>(), balance_diff.into())]),
                 ),
                 (
                     order_book_id.quote,
-                    BTreeMap::from([(dave::<Runtime>(), balance_diff)]),
+                    BTreeMap::from([(dave::<Runtime>(), balance_diff.into())]),
                 ),
             ]),
         };
@@ -747,15 +759,15 @@ fn should_fail_market_change_merge() {
             (
                 XOR,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(10)),
-                    (bob::<Runtime>(), balance!(20)),
+                    (alice::<Runtime>(), balance!(10).into()),
+                    (bob::<Runtime>(), balance!(20).into()),
                 ]),
             ),
             (
                 VAL,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(30)),
-                    (charlie::<Runtime>(), balance!(40)),
+                    (alice::<Runtime>(), balance!(30).into()),
+                    (charlie::<Runtime>(), balance!(40).into()),
                 ]),
             ),
         ]),
@@ -763,15 +775,15 @@ fn should_fail_market_change_merge() {
             (
                 VAL,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(50)),
-                    (charlie::<Runtime>(), balance!(60)),
+                    (bob::<Runtime>(), balance!(50).into()),
+                    (charlie::<Runtime>(), balance!(60).into()),
                 ]),
             ),
             (
                 XOR,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(70)),
-                    (dave::<Runtime>(), balance!(80)),
+                    (bob::<Runtime>(), balance!(70).into()),
+                    (dave::<Runtime>(), balance!(80).into()),
                 ]),
             ),
         ]),
@@ -783,55 +795,68 @@ fn should_fail_market_change_merge() {
         market_input: None,
         market_output: None,
         to_place: BTreeMap::from([(
-            4,
+            5,
             LimitOrder::<Runtime>::new(
-                4,
+                5,
                 alice::<Runtime>(),
                 PriceVariant::Buy,
-                balance!(10),
-                balance!(100),
+                balance!(10).into(),
+                balance!(100).into(),
                 1000,
                 10000,
                 100,
             ),
         )]),
         to_part_execute: BTreeMap::from([(
-            3,
+            4,
             (
                 LimitOrder::<Runtime>::new(
-                    3,
+                    4,
                     alice::<Runtime>(),
                     PriceVariant::Buy,
-                    balance!(20),
-                    balance!(100),
+                    balance!(20).into(),
+                    balance!(100).into(),
                     1000,
                     10000,
                     100,
                 ),
-                OrderAmount::Base(balance!(10)),
+                OrderAmount::Base(balance!(10).into()),
             ),
         )]),
         to_full_execute: BTreeMap::from([(
-            2,
+            3,
             LimitOrder::<Runtime>::new(
-                2,
+                3,
                 alice::<Runtime>(),
                 PriceVariant::Buy,
-                balance!(20),
-                balance!(100),
+                balance!(20).into(),
+                balance!(100).into(),
                 1000,
                 10000,
                 100,
             ),
         )]),
         to_cancel: BTreeMap::from([(
+            2,
+            LimitOrder::<Runtime>::new(
+                2,
+                alice::<Runtime>(),
+                PriceVariant::Buy,
+                balance!(10).into(),
+                balance!(100).into(),
+                1000,
+                10000,
+                100,
+            ),
+        )]),
+        to_force_update: BTreeMap::from([(
             1,
             LimitOrder::<Runtime>::new(
                 1,
-                alice::<Runtime>(),
+                alice(),
                 PriceVariant::Buy,
-                balance!(10),
-                balance!(100),
+                balance!(10).into(),
+                balance!(100).into(),
                 1000,
                 10000,
                 100,
@@ -842,25 +867,25 @@ fn should_fail_market_change_merge() {
     };
 
     let mut market_change = origin.clone();
-    market_change.deal_input = Some(OrderAmount::Base(balance!(100)));
-    market_change.deal_output = Some(OrderAmount::Quote(balance!(200)));
-    market_change.market_input = Some(OrderAmount::Base(balance!(300)));
-    market_change.market_output = Some(OrderAmount::Quote(balance!(400)));
+    market_change.deal_input = Some(OrderAmount::Base(balance!(100).into()));
+    market_change.deal_output = Some(OrderAmount::Quote(balance!(200).into()));
+    market_change.market_input = Some(OrderAmount::Base(balance!(300).into()));
+    market_change.market_output = Some(OrderAmount::Quote(balance!(400).into()));
 
     let mut diff_deal_input = origin.clone();
-    diff_deal_input.deal_input = Some(OrderAmount::Quote(balance!(50)));
+    diff_deal_input.deal_input = Some(OrderAmount::Quote(balance!(50).into()));
     assert_err!(market_change.merge(diff_deal_input), ());
 
     let mut diff_deal_output = origin.clone();
-    diff_deal_output.deal_output = Some(OrderAmount::Base(balance!(50)));
+    diff_deal_output.deal_output = Some(OrderAmount::Base(balance!(50).into()));
     assert_err!(market_change.merge(diff_deal_output), ());
 
     let mut diff_market_input = origin.clone();
-    diff_market_input.market_input = Some(OrderAmount::Quote(balance!(50)));
+    diff_market_input.market_input = Some(OrderAmount::Quote(balance!(50).into()));
     assert_err!(market_change.merge(diff_market_input), ());
 
     let mut diff_market_output = origin.clone();
-    diff_market_output.market_output = Some(OrderAmount::Base(balance!(50)));
+    diff_market_output.market_output = Some(OrderAmount::Base(balance!(50).into()));
     assert_err!(market_change.merge(diff_market_output), ());
 }
 
@@ -878,15 +903,15 @@ fn check_market_change_merge() {
             (
                 XOR,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(10)),
-                    (bob::<Runtime>(), balance!(20)),
+                    (alice::<Runtime>(), balance!(10).into()),
+                    (bob::<Runtime>(), balance!(20).into()),
                 ]),
             ),
             (
                 VAL,
                 BTreeMap::from([
-                    (alice::<Runtime>(), balance!(30)),
-                    (charlie::<Runtime>(), balance!(40)),
+                    (alice::<Runtime>(), balance!(30).into()),
+                    (charlie::<Runtime>(), balance!(40).into()),
                 ]),
             ),
         ]),
@@ -894,15 +919,15 @@ fn check_market_change_merge() {
             (
                 VAL,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(50)),
-                    (charlie::<Runtime>(), balance!(60)),
+                    (bob::<Runtime>(), balance!(50).into()),
+                    (charlie::<Runtime>(), balance!(60).into()),
                 ]),
             ),
             (
                 XOR,
                 BTreeMap::from([
-                    (bob::<Runtime>(), balance!(70)),
-                    (dave::<Runtime>(), balance!(80)),
+                    (bob::<Runtime>(), balance!(70).into()),
+                    (dave::<Runtime>(), balance!(80).into()),
                 ]),
             ),
         ]),
@@ -924,8 +949,8 @@ fn check_market_change_merge() {
         order_id1,
         alice::<Runtime>(),
         PriceVariant::Buy,
-        balance!(10),
-        balance!(100),
+        balance!(10).into(),
+        balance!(100).into(),
         1000,
         10000,
         100,
@@ -935,8 +960,8 @@ fn check_market_change_merge() {
         order_id1,
         alice::<Runtime>(),
         PriceVariant::Buy,
-        balance!(9),
-        balance!(1000),
+        balance!(9).into(),
+        balance!(1000).into(),
         1000,
         10000,
         100,
@@ -946,8 +971,8 @@ fn check_market_change_merge() {
         order_id2,
         bob::<Runtime>(),
         PriceVariant::Sell,
-        balance!(15),
-        balance!(100),
+        balance!(15).into(),
+        balance!(100).into(),
         1000,
         10000,
         100,
@@ -957,8 +982,8 @@ fn check_market_change_merge() {
         order_id2,
         bob::<Runtime>(),
         PriceVariant::Buy,
-        balance!(14),
-        balance!(200),
+        balance!(14).into(),
+        balance!(200).into(),
         1000,
         10000,
         100,
@@ -968,8 +993,8 @@ fn check_market_change_merge() {
         order_id3,
         charlie::<Runtime>(),
         PriceVariant::Buy,
-        balance!(11),
-        balance!(100),
+        balance!(11).into(),
+        balance!(100).into(),
         1000,
         10000,
         100,
@@ -979,8 +1004,8 @@ fn check_market_change_merge() {
         order_id3,
         charlie::<Runtime>(),
         PriceVariant::Buy,
-        balance!(12),
-        balance!(1000),
+        balance!(12).into(),
+        balance!(1000).into(),
         1000,
         10000,
         100,
@@ -990,8 +1015,8 @@ fn check_market_change_merge() {
         order_id4,
         dave::<Runtime>(),
         PriceVariant::Sell,
-        balance!(16),
-        balance!(100),
+        balance!(16).into(),
+        balance!(100).into(),
         1000,
         10000,
         100,
@@ -1001,18 +1026,18 @@ fn check_market_change_merge() {
         order_id5,
         alice::<Runtime>(),
         PriceVariant::Buy,
-        balance!(12),
-        balance!(100),
+        balance!(12).into(),
+        balance!(100).into(),
         1000,
         10000,
         100,
     );
 
     let origin = MarketChange {
-        deal_input: Some(OrderAmount::Base(balance!(1000))),
-        deal_output: Some(OrderAmount::Quote(balance!(2000))),
-        market_input: Some(OrderAmount::Base(balance!(3000))),
-        market_output: Some(OrderAmount::Quote(balance!(4000))),
+        deal_input: Some(OrderAmount::Base(balance!(1000).into())),
+        deal_output: Some(OrderAmount::Quote(balance!(2000).into())),
+        market_input: Some(OrderAmount::Base(balance!(3000).into())),
+        market_output: Some(OrderAmount::Quote(balance!(4000).into())),
         to_place: BTreeMap::from([
             (order_id1, order1_origin.clone()),
             (order_id2, order2_origin.clone()),
@@ -1021,15 +1046,24 @@ fn check_market_change_merge() {
         to_part_execute: BTreeMap::from([
             (
                 order_id1,
-                (order1_origin.clone(), OrderAmount::Base(balance!(20))),
+                (
+                    order1_origin.clone(),
+                    OrderAmount::Base(balance!(20).into()),
+                ),
             ),
             (
                 order_id2,
-                (order2_origin.clone(), OrderAmount::Base(balance!(30))),
+                (
+                    order2_origin.clone(),
+                    OrderAmount::Base(balance!(30).into()),
+                ),
             ),
             (
                 order_id3,
-                (order3_origin.clone(), OrderAmount::Base(balance!(40))),
+                (
+                    order3_origin.clone(),
+                    OrderAmount::Base(balance!(40).into()),
+                ),
             ),
         ]),
         to_full_execute: BTreeMap::from([
@@ -1038,6 +1072,11 @@ fn check_market_change_merge() {
             (order_id3, order3_origin.clone()),
         ]),
         to_cancel: BTreeMap::from([
+            (order_id1, order1_origin.clone()),
+            (order_id2, order2_origin.clone()),
+            (order_id3, order3_origin.clone()),
+        ]),
+        to_force_update: BTreeMap::from([
             (order_id1, order1_origin.clone()),
             (order_id2, order2_origin.clone()),
             (order_id3, order3_origin.clone()),
@@ -1058,11 +1097,17 @@ fn check_market_change_merge() {
         to_part_execute: BTreeMap::from([
             (
                 order_id4,
-                (order4_origin.clone(), OrderAmount::Base(balance!(50))),
+                (
+                    order4_origin.clone(),
+                    OrderAmount::Base(balance!(50).into()),
+                ),
             ),
             (
                 order_id5,
-                (order5_origin.clone(), OrderAmount::Base(balance!(60))),
+                (
+                    order5_origin.clone(),
+                    OrderAmount::Base(balance!(60).into()),
+                ),
             ),
         ]),
         to_full_execute: BTreeMap::from([
@@ -1070,6 +1115,10 @@ fn check_market_change_merge() {
             (order_id5, order5_origin.clone()),
         ]),
         to_cancel: BTreeMap::from([
+            (order_id4, order4_origin.clone()),
+            (order_id5, order5_origin.clone()),
+        ]),
+        to_force_update: BTreeMap::from([
             (order_id4, order4_origin.clone()),
             (order_id5, order5_origin.clone()),
         ]),
@@ -1082,10 +1131,10 @@ fn check_market_change_merge() {
     assert_eq!(
         market_change,
         MarketChange {
-            deal_input: Some(OrderAmount::Base(balance!(1000))),
-            deal_output: Some(OrderAmount::Quote(balance!(2000))),
-            market_input: Some(OrderAmount::Base(balance!(3000))),
-            market_output: Some(OrderAmount::Quote(balance!(4000))),
+            deal_input: Some(OrderAmount::Base(balance!(1000).into())),
+            deal_output: Some(OrderAmount::Quote(balance!(2000).into())),
+            market_input: Some(OrderAmount::Base(balance!(3000).into())),
+            market_output: Some(OrderAmount::Quote(balance!(4000).into())),
             to_place: BTreeMap::from([
                 (order_id1, order1_origin.clone()),
                 (order_id2, order2_origin.clone()),
@@ -1096,23 +1145,38 @@ fn check_market_change_merge() {
             to_part_execute: BTreeMap::from([
                 (
                     order_id1,
-                    (order1_origin.clone(), OrderAmount::Base(balance!(20)))
+                    (
+                        order1_origin.clone(),
+                        OrderAmount::Base(balance!(20).into())
+                    )
                 ),
                 (
                     order_id2,
-                    (order2_origin.clone(), OrderAmount::Base(balance!(30)))
+                    (
+                        order2_origin.clone(),
+                        OrderAmount::Base(balance!(30).into())
+                    )
                 ),
                 (
                     order_id3,
-                    (order3_origin.clone(), OrderAmount::Base(balance!(40)))
+                    (
+                        order3_origin.clone(),
+                        OrderAmount::Base(balance!(40).into())
+                    )
                 ),
                 (
                     order_id4,
-                    (order4_origin.clone(), OrderAmount::Base(balance!(50)))
+                    (
+                        order4_origin.clone(),
+                        OrderAmount::Base(balance!(50).into())
+                    )
                 ),
                 (
                     order_id5,
-                    (order5_origin.clone(), OrderAmount::Base(balance!(60)))
+                    (
+                        order5_origin.clone(),
+                        OrderAmount::Base(balance!(60).into())
+                    )
                 ),
             ]),
             to_full_execute: BTreeMap::from([
@@ -1129,14 +1193,21 @@ fn check_market_change_merge() {
                 (order_id4, order4_origin.clone()),
                 (order_id5, order5_origin.clone()),
             ]),
+            to_force_update: BTreeMap::from([
+                (order_id1, order1_origin.clone()),
+                (order_id2, order2_origin.clone()),
+                (order_id3, order3_origin.clone()),
+                (order_id4, order4_origin.clone()),
+                (order_id5, order5_origin.clone()),
+            ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
         }
     );
 
     let partial_match = MarketChange {
-        deal_input: Some(OrderAmount::Base(balance!(7000))),
-        deal_output: Some(OrderAmount::Quote(balance!(8000))),
+        deal_input: Some(OrderAmount::Base(balance!(7000).into())),
+        deal_output: Some(OrderAmount::Quote(balance!(8000).into())),
         market_input: None,
         market_output: None,
         to_place: BTreeMap::from([
@@ -1147,15 +1218,24 @@ fn check_market_change_merge() {
         to_part_execute: BTreeMap::from([
             (
                 order_id1,
-                (order1_other.clone(), OrderAmount::Base(balance!(120))),
+                (
+                    order1_other.clone(),
+                    OrderAmount::Base(balance!(120).into()),
+                ),
             ),
             (
                 order_id2,
-                (order2_origin.clone(), OrderAmount::Base(balance!(30))),
+                (
+                    order2_origin.clone(),
+                    OrderAmount::Base(balance!(30).into()),
+                ),
             ),
             (
                 order_id5,
-                (order5_origin.clone(), OrderAmount::Base(balance!(60))),
+                (
+                    order5_origin.clone(),
+                    OrderAmount::Base(balance!(60).into()),
+                ),
             ),
         ]),
         to_full_execute: BTreeMap::from([
@@ -1164,6 +1244,11 @@ fn check_market_change_merge() {
             (order_id5, order5_origin.clone()),
         ]),
         to_cancel: BTreeMap::from([
+            (order_id1, order1_other.clone()),
+            (order_id2, order2_origin.clone()),
+            (order_id5, order5_origin.clone()),
+        ]),
+        to_force_update: BTreeMap::from([
             (order_id1, order1_other.clone()),
             (order_id2, order2_origin.clone()),
             (order_id5, order5_origin.clone()),
@@ -1177,10 +1262,10 @@ fn check_market_change_merge() {
     assert_eq!(
         market_change,
         MarketChange {
-            deal_input: Some(OrderAmount::Base(balance!(8000))),
-            deal_output: Some(OrderAmount::Quote(balance!(10000))),
-            market_input: Some(OrderAmount::Base(balance!(3000))),
-            market_output: Some(OrderAmount::Quote(balance!(4000))),
+            deal_input: Some(OrderAmount::Base(balance!(8000).into())),
+            deal_output: Some(OrderAmount::Quote(balance!(10000).into())),
+            market_input: Some(OrderAmount::Base(balance!(3000).into())),
+            market_output: Some(OrderAmount::Quote(balance!(4000).into())),
             to_place: BTreeMap::from([
                 (order_id1, order1_other.clone()),
                 (order_id2, order2_origin.clone()),
@@ -1190,19 +1275,31 @@ fn check_market_change_merge() {
             to_part_execute: BTreeMap::from([
                 (
                     order_id1,
-                    (order1_other.clone(), OrderAmount::Base(balance!(120)))
+                    (
+                        order1_other.clone(),
+                        OrderAmount::Base(balance!(120).into())
+                    )
                 ),
                 (
                     order_id2,
-                    (order2_origin.clone(), OrderAmount::Base(balance!(30)))
+                    (
+                        order2_origin.clone(),
+                        OrderAmount::Base(balance!(30).into())
+                    )
                 ),
                 (
                     order_id3,
-                    (order3_origin.clone(), OrderAmount::Base(balance!(40)))
+                    (
+                        order3_origin.clone(),
+                        OrderAmount::Base(balance!(40).into())
+                    )
                 ),
                 (
                     order_id5,
-                    (order5_origin.clone(), OrderAmount::Base(balance!(60)))
+                    (
+                        order5_origin.clone(),
+                        OrderAmount::Base(balance!(60).into())
+                    )
                 ),
             ]),
             to_full_execute: BTreeMap::from([
@@ -1217,16 +1314,22 @@ fn check_market_change_merge() {
                 (order_id3, order3_origin.clone()),
                 (order_id5, order5_origin.clone()),
             ]),
+            to_force_update: BTreeMap::from([
+                (order_id1, order1_other.clone()),
+                (order_id2, order2_origin.clone()),
+                (order_id3, order3_origin.clone()),
+                (order_id5, order5_origin.clone()),
+            ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
         }
     );
 
     let full_match = MarketChange {
-        deal_input: Some(OrderAmount::Base(balance!(1000))),
-        deal_output: Some(OrderAmount::Quote(balance!(2000))),
-        market_input: Some(OrderAmount::Base(balance!(3000))),
-        market_output: Some(OrderAmount::Quote(balance!(4000))),
+        deal_input: Some(OrderAmount::Base(balance!(1000).into())),
+        deal_output: Some(OrderAmount::Quote(balance!(2000).into())),
+        market_input: Some(OrderAmount::Base(balance!(3000).into())),
+        market_output: Some(OrderAmount::Quote(balance!(4000).into())),
         to_place: BTreeMap::from([
             (order_id1, order1_other.clone()),
             (order_id2, order2_other.clone()),
@@ -1235,15 +1338,24 @@ fn check_market_change_merge() {
         to_part_execute: BTreeMap::from([
             (
                 order_id1,
-                (order1_other.clone(), OrderAmount::Base(balance!(120))),
+                (
+                    order1_other.clone(),
+                    OrderAmount::Base(balance!(120).into()),
+                ),
             ),
             (
                 order_id2,
-                (order2_other.clone(), OrderAmount::Base(balance!(130))),
+                (
+                    order2_other.clone(),
+                    OrderAmount::Base(balance!(130).into()),
+                ),
             ),
             (
                 order_id3,
-                (order3_other.clone(), OrderAmount::Base(balance!(140))),
+                (
+                    order3_other.clone(),
+                    OrderAmount::Base(balance!(140).into()),
+                ),
             ),
         ]),
         to_full_execute: BTreeMap::from([
@@ -1252,6 +1364,11 @@ fn check_market_change_merge() {
             (order_id3, order3_other.clone()),
         ]),
         to_cancel: BTreeMap::from([
+            (order_id1, order1_other.clone()),
+            (order_id2, order2_other.clone()),
+            (order_id3, order3_other.clone()),
+        ]),
+        to_force_update: BTreeMap::from([
             (order_id1, order1_other.clone()),
             (order_id2, order2_other.clone()),
             (order_id3, order3_other.clone()),
@@ -1265,10 +1382,10 @@ fn check_market_change_merge() {
     assert_eq!(
         market_change,
         MarketChange {
-            deal_input: Some(OrderAmount::Base(balance!(2000))),
-            deal_output: Some(OrderAmount::Quote(balance!(4000))),
-            market_input: Some(OrderAmount::Base(balance!(6000))),
-            market_output: Some(OrderAmount::Quote(balance!(8000))),
+            deal_input: Some(OrderAmount::Base(balance!(2000).into())),
+            deal_output: Some(OrderAmount::Quote(balance!(4000).into())),
+            market_input: Some(OrderAmount::Base(balance!(6000).into())),
+            market_output: Some(OrderAmount::Quote(balance!(8000).into())),
             to_place: BTreeMap::from([
                 (order_id1, order1_other.clone()),
                 (order_id2, order2_other.clone()),
@@ -1277,15 +1394,24 @@ fn check_market_change_merge() {
             to_part_execute: BTreeMap::from([
                 (
                     order_id1,
-                    (order1_other.clone(), OrderAmount::Base(balance!(120)))
+                    (
+                        order1_other.clone(),
+                        OrderAmount::Base(balance!(120).into())
+                    )
                 ),
                 (
                     order_id2,
-                    (order2_other.clone(), OrderAmount::Base(balance!(130)))
+                    (
+                        order2_other.clone(),
+                        OrderAmount::Base(balance!(130).into())
+                    )
                 ),
                 (
                     order_id3,
-                    (order3_other.clone(), OrderAmount::Base(balance!(140)))
+                    (
+                        order3_other.clone(),
+                        OrderAmount::Base(balance!(140).into())
+                    )
                 ),
             ]),
             to_full_execute: BTreeMap::from([
@@ -1294,6 +1420,11 @@ fn check_market_change_merge() {
                 (order_id3, order3_other.clone()),
             ]),
             to_cancel: BTreeMap::from([
+                (order_id1, order1_other.clone()),
+                (order_id2, order2_other.clone()),
+                (order_id3, order3_other.clone()),
+            ]),
+            to_force_update: BTreeMap::from([
                 (order_id1, order1_other.clone()),
                 (order_id2, order2_other.clone()),
                 (order_id3, order3_other.clone()),
@@ -1312,6 +1443,7 @@ fn check_market_change_merge() {
         to_part_execute: BTreeMap::new(),
         to_full_execute: BTreeMap::new(),
         to_cancel: BTreeMap::new(),
+        to_force_update: BTreeMap::new(),
         payment: empty_payment.clone(),
         ignore_unschedule_error: false,
     };

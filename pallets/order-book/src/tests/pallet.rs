@@ -45,7 +45,7 @@ use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
     self, Config, CurrencyLocker, CurrencyUnlocker, ExpirationScheduler, LimitOrder, MarketRole,
-    OrderBook, OrderBookId, OrderBookStatus, WeightInfo,
+    OrderBook, OrderBookId, OrderBookStatus, OrderPrice, OrderVolume, WeightInfo,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_runtime::traits::UniqueSaturatedInto;
@@ -59,7 +59,7 @@ fn should_register_technical_account() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(1),
+            1,
             false,
             None,
             None,
@@ -109,7 +109,7 @@ fn test_lock_unlock_same_account(
         account,
         order_book_id,
         asset_id,
-        amount_to_lock
+        amount_to_lock.into()
     ));
 
     let balance_after_lock = free_balance::<Runtime>(asset_id, account);
@@ -119,7 +119,7 @@ fn test_lock_unlock_same_account(
         account,
         order_book_id,
         asset_id,
-        amount_to_lock
+        amount_to_lock.into()
     ));
 
     let balance_after_unlock = free_balance::<Runtime>(asset_id, account);
@@ -140,7 +140,7 @@ fn test_lock_unlock_other_account(
         lock_account,
         order_book_id,
         asset_id,
-        amount_to_lock
+        amount_to_lock.into()
     ));
 
     let lock_account_balance_after_lock = free_balance::<Runtime>(asset_id, lock_account);
@@ -153,7 +153,7 @@ fn test_lock_unlock_other_account(
         unlock_account,
         order_book_id,
         asset_id,
-        amount_to_lock
+        amount_to_lock.into()
     ));
 
     let unlock_account_balance_after_unlock = free_balance::<Runtime>(asset_id, unlock_account);
@@ -179,7 +179,7 @@ fn test_lock_unlock_other_accounts(
         lock_account,
         order_book_id,
         asset_id,
-        amount_to_lock
+        amount_to_lock.into()
     ));
 
     let lock_account_balance_after_lock = free_balance::<Runtime>(asset_id, lock_account);
@@ -192,8 +192,8 @@ fn test_lock_unlock_other_accounts(
     let unlock_amount2: Balance = amount_to_lock / 4;
 
     let unlocks = BTreeMap::from([
-        (unlock_account1.clone(), unlock_amount1),
-        (unlock_account2.clone(), unlock_amount2),
+        (unlock_account1.clone(), unlock_amount1.into()),
+        (unlock_account2.clone(), unlock_amount2.into()),
     ]);
 
     assert_ok!(OrderBookPallet::unlock_liquidity_batch(
@@ -301,7 +301,7 @@ fn should_lock_unlock_indivisible_nft() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(1),
+            1,
             false,
             None,
             None,
@@ -316,13 +316,13 @@ fn should_lock_unlock_indivisible_nft() {
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(order_book_id, &nft, balance!(1), &alice::<Runtime>());
+        test_lock_unlock_same_account(order_book_id, &nft, 1, &alice::<Runtime>());
 
         // Alice -> Bob (expected exchange mechanism)
         test_lock_unlock_other_account(
             order_book_id,
             &nft,
-            balance!(1),
+            1,
             &alice::<Runtime>(),
             &bob::<Runtime>(),
         );
@@ -339,7 +339,7 @@ fn should_lock_unlock_multiple_indivisible_nfts() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(4),
+            4,
             false,
             None,
             None,
@@ -357,7 +357,7 @@ fn should_lock_unlock_multiple_indivisible_nfts() {
         test_lock_unlock_other_accounts(
             order_book_id,
             &nft,
-            balance!(4),
+            4,
             &alice::<Runtime>(),
             &bob::<Runtime>(),
             &charlie::<Runtime>(),
@@ -389,7 +389,7 @@ fn should_not_lock_insufficient_base_asset() {
                 &alice::<Runtime>(),
                 order_book_id,
                 &XOR,
-                amount_to_lock
+                amount_to_lock.into()
             ),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
@@ -420,7 +420,7 @@ fn should_not_lock_insufficient_other_asset() {
                 &alice::<Runtime>(),
                 order_book_id,
                 &VAL,
-                amount_to_lock
+                amount_to_lock.into()
             ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
@@ -439,7 +439,7 @@ fn should_not_lock_insufficient_nft() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(1),
+            1,
             false,
             None,
             None,
@@ -454,7 +454,12 @@ fn should_not_lock_insufficient_nft() {
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_err!(
-            OrderBookPallet::lock_liquidity(&caller, order_book_id, &nft, balance!(1)),
+            OrderBookPallet::lock_liquidity(
+                &caller,
+                order_book_id,
+                &nft,
+                OrderVolume::indivisible(1)
+            ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -484,7 +489,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
             &alice::<Runtime>(),
             order_book_id,
             &XOR,
-            amount_to_lock
+            amount_to_lock.into()
         ));
 
         assert_err!(
@@ -492,7 +497,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
                 &alice::<Runtime>(),
                 order_book_id,
                 &XOR,
-                amount_to_try_unlock
+                amount_to_try_unlock.into()
             ),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
@@ -523,7 +528,7 @@ fn should_not_unlock_more_other_that_tech_account_has() {
             &alice::<Runtime>(),
             order_book_id,
             &VAL,
-            amount_to_lock
+            amount_to_lock.into()
         ));
 
         assert_err!(
@@ -531,7 +536,7 @@ fn should_not_unlock_more_other_that_tech_account_has() {
                 &alice::<Runtime>(),
                 order_book_id,
                 &VAL,
-                amount_to_try_unlock
+                amount_to_try_unlock.into()
             ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
@@ -548,7 +553,7 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            balance!(1),
+            1,
             false,
             None,
             None,
@@ -567,7 +572,7 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
                 &alice::<Runtime>(),
                 order_book_id,
                 &nft,
-                balance!(1)
+                OrderVolume::indivisible(1)
             ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
@@ -587,8 +592,8 @@ fn should_expire_order() {
         create_empty_order_book(order_book_id);
         fill_balance(caller.clone(), order_book_id);
 
-        let price = balance!(10);
-        let amount = balance!(100);
+        let price: OrderPrice = balance!(10).into();
+        let amount: OrderVolume = balance!(100).into();
         let lifespan = 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
@@ -602,8 +607,8 @@ fn should_expire_order() {
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
             order_book_id,
-            price,
-            amount,
+            *price.balance(),
+            *amount.balance(),
             PriceVariant::Buy,
             Some(lifespan)
         ));
@@ -659,8 +664,8 @@ fn should_cleanup_on_expiring() {
         create_empty_order_book(order_book_id);
         fill_balance(caller.clone(), order_book_id);
 
-        let price = balance!(10);
-        let amount = balance!(100);
+        let price: OrderPrice = balance!(10).into();
+        let amount: OrderVolume = balance!(100).into();
         let lifespan = 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
@@ -682,8 +687,8 @@ fn should_cleanup_on_expiring() {
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
             order_book_id,
-            price,
-            amount,
+            *price.balance(),
+            *amount.balance(),
             PriceVariant::Buy,
             Some(lifespan)
         ));
@@ -736,8 +741,10 @@ fn should_cleanup_on_expiring() {
             user_orders_with_order
         );
 
-        let balance = free_balance::<Runtime>(&order_book_id.quote, &caller);
-        let balance_with_order = balance_before - deal_amount;
+        let balance =
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                .unwrap();
+        let balance_with_order = balance_before - deal_amount.balance();
         assert_eq!(balance, balance_with_order);
 
         // Run to the last block the order should still be available at
@@ -822,7 +829,7 @@ fn should_enforce_expiration_and_weight_limits() {
             // in order to avoid cap on orders from single account
             let caller = generate_account::<Runtime>(i);
             // in order to avoid cap on orders for a single price
-            let price = price + order_book.tick_size * i as u128;
+            let price = price + order_book.tick_size.balance() * i as u128;
             fill_balance(caller.clone(), order_book_id);
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
@@ -845,7 +852,7 @@ fn should_enforce_expiration_and_weight_limits() {
                 PriceVariant::Buy,
                 Some(lifespan)
             ),
-            order_book::Error::<Runtime>::BlockScheduleFull
+            E::BlockScheduleFull
         );
 
         // All orders are indeed placed
@@ -911,7 +918,7 @@ fn should_emit_event_on_expiration_failure() {
             order_book::Event::ExpirationFailure {
                 order_book_id: non_existent_order_book_id,
                 order_id: non_existent_order_id,
-                error: order_book::Error::<Runtime>::UnknownLimitOrder.into(),
+                error: E::UnknownLimitOrder.into(),
             }
             .into(),
         );
@@ -1096,12 +1103,12 @@ fn should_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(3000)),
+                QuoteAmount::with_desired_input(balance!(3000).into()),
                 false
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(271.00535), 0)
+            SwapOutcome::new(balance!(271.00535).into(), 0)
         );
 
         assert_eq!(
@@ -1109,12 +1116,12 @@ fn should_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200)),
+                QuoteAmount::with_desired_output(balance!(200).into()),
                 false
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74).into(), 0)
         );
 
         assert_eq!(
@@ -1122,12 +1129,12 @@ fn should_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(200)),
+                QuoteAmount::with_desired_input(balance!(200).into()),
                 false
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1993.7), 0)
+            SwapOutcome::new(balance!(1993.7).into(), 0)
         );
 
         assert_eq!(
@@ -1135,12 +1142,12 @@ fn should_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2500)),
+                QuoteAmount::with_desired_output(balance!(2500).into()),
                 false
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(251.66326), 0)
+            SwapOutcome::new(balance!(251.66326).into(), 0)
         );
 
         // todo (m.tagirov) remake when fee introduced
@@ -1150,12 +1157,12 @@ fn should_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(3000)),
+                QuoteAmount::with_desired_input(balance!(3000).into()),
                 true
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(271.00535), 0)
+            SwapOutcome::new(balance!(271.00535).into(), 0)
         );
 
         assert_eq!(
@@ -1163,12 +1170,12 @@ fn should_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200)),
+                QuoteAmount::with_desired_output(balance!(200).into()),
                 true
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74).into(), 0)
         );
 
         assert_eq!(
@@ -1176,12 +1183,12 @@ fn should_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(200)),
+                QuoteAmount::with_desired_input(balance!(200).into()),
                 true
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1993.7), 0)
+            SwapOutcome::new(balance!(1993.7).into(), 0)
         );
 
         assert_eq!(
@@ -1189,12 +1196,12 @@ fn should_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2500)),
+                QuoteAmount::with_desired_output(balance!(2500).into()),
                 true
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(251.66326), 0)
+            SwapOutcome::new(balance!(251.66326).into(), 0)
         );
     });
 }
@@ -1207,7 +1214,7 @@ fn should_not_quote_with_non_existed_order_book() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200)),
+                QuoteAmount::with_desired_output(balance!(200).into()),
                 true
             ),
             E::UnknownOrderBook
@@ -1218,7 +1225,7 @@ fn should_not_quote_with_non_existed_order_book() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2500)),
+                QuoteAmount::with_desired_output(balance!(2500).into()),
                 true
             ),
             E::UnknownOrderBook
@@ -1242,7 +1249,7 @@ fn should_not_quote_with_empty_side() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200)),
+                QuoteAmount::with_desired_output(balance!(200).into()),
                 true
             ),
             E::NotEnoughLiquidityInOrderBook
@@ -1253,7 +1260,7 @@ fn should_not_quote_with_empty_side() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2500)),
+                QuoteAmount::with_desired_output(balance!(2500).into()),
                 true
             ),
             E::NotEnoughLiquidityInOrderBook
@@ -1277,7 +1284,7 @@ fn should_not_quote_with_small_amount() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(0.000001)),
+                QuoteAmount::with_desired_output(balance!(0.000001).into()),
                 true
             ),
             E::InvalidOrderAmount
@@ -1288,7 +1295,7 @@ fn should_not_quote_with_small_amount() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(0)),
+                QuoteAmount::with_desired_output(balance!(0).into()),
                 true
             ),
             E::InvalidOrderAmount
@@ -1299,7 +1306,7 @@ fn should_not_quote_with_small_amount() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(0.000001)),
+                QuoteAmount::with_desired_output(balance!(0.000001).into()),
                 true
             ),
             E::InvalidOrderAmount
@@ -1310,7 +1317,7 @@ fn should_not_quote_with_small_amount() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(0)),
+                QuoteAmount::with_desired_output(balance!(0).into()),
                 true
             ),
             E::InvalidOrderAmount
@@ -1334,7 +1341,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(1000)),
+                QuoteAmount::with_desired_output(balance!(1000).into()),
                 true
             ),
             E::NotEnoughLiquidityInOrderBook
@@ -1345,7 +1352,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(10000)),
+                QuoteAmount::with_desired_output(balance!(10000).into()),
                 true
             ),
             E::NotEnoughLiquidityInOrderBook
@@ -1370,11 +1377,11 @@ fn should_quote_without_impact() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(3000)),
+                QuoteAmount::with_desired_input(balance!(3000).into()),
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(272.72727), 0)
+            SwapOutcome::new(balance!(272.72727).into(), 0)
         );
 
         assert_eq!(
@@ -1382,11 +1389,11 @@ fn should_quote_without_impact() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200)),
+                QuoteAmount::with_desired_output(balance!(200).into()),
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2200), 0)
+            SwapOutcome::new(balance!(2200).into(), 0)
         );
 
         assert_eq!(
@@ -1394,11 +1401,11 @@ fn should_quote_without_impact() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(200)),
+                QuoteAmount::with_desired_input(balance!(200).into()),
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2000), 0)
+            SwapOutcome::new(balance!(2000).into(), 0)
         );
 
         assert_eq!(
@@ -1406,11 +1413,11 @@ fn should_quote_without_impact() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2500)),
+                QuoteAmount::with_desired_output(balance!(2500).into()),
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(250), 0)
+            SwapOutcome::new(balance!(250).into(), 0)
         );
 
         // todo (m.tagirov) remake when fee introduced
@@ -1420,11 +1427,11 @@ fn should_quote_without_impact() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(3000)),
+                QuoteAmount::with_desired_input(balance!(3000).into()),
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(272.72727), 0)
+            SwapOutcome::new(balance!(272.72727).into(), 0)
         );
 
         assert_eq!(
@@ -1432,11 +1439,11 @@ fn should_quote_without_impact() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200)),
+                QuoteAmount::with_desired_output(balance!(200).into()),
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2200), 0)
+            SwapOutcome::new(balance!(2200).into(), 0)
         );
 
         assert_eq!(
@@ -1444,11 +1451,11 @@ fn should_quote_without_impact() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(200)),
+                QuoteAmount::with_desired_input(balance!(200).into()),
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2000), 0)
+            SwapOutcome::new(balance!(2000).into(), 0)
         );
 
         assert_eq!(
@@ -1456,11 +1463,11 @@ fn should_quote_without_impact() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2500)),
+                QuoteAmount::with_desired_output(balance!(2500).into()),
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(250), 0)
+            SwapOutcome::new(balance!(250).into(), 0)
         );
     });
 }
@@ -1473,7 +1480,7 @@ fn should_not_quote_without_impact_with_non_existed_order_book() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200)),
+                QuoteAmount::with_desired_output(balance!(200).into()),
                 true
             ),
             E::UnknownOrderBook
@@ -1484,7 +1491,7 @@ fn should_not_quote_without_impact_with_non_existed_order_book() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2500)),
+                QuoteAmount::with_desired_output(balance!(2500).into()),
                 true
             ),
             E::UnknownOrderBook
@@ -1508,7 +1515,7 @@ fn should_not_quote_without_impact_with_empty_side() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200)),
+                QuoteAmount::with_desired_output(balance!(200).into()),
                 true
             ),
             E::NotEnoughLiquidityInOrderBook
@@ -1519,7 +1526,7 @@ fn should_not_quote_without_impact_with_empty_side() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2500)),
+                QuoteAmount::with_desired_output(balance!(2500).into()),
                 true
             ),
             E::NotEnoughLiquidityInOrderBook
@@ -1543,7 +1550,7 @@ fn should_not_quote_without_impact_with_small_amount() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(0.000001)),
+                QuoteAmount::with_desired_output(balance!(0.000001).into()),
                 true
             ),
             E::InvalidOrderAmount
@@ -1554,7 +1561,7 @@ fn should_not_quote_without_impact_with_small_amount() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(0)),
+                QuoteAmount::with_desired_output(balance!(0).into()),
                 true
             ),
             E::InvalidOrderAmount
@@ -1565,7 +1572,7 @@ fn should_not_quote_without_impact_with_small_amount() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(0.000001)),
+                QuoteAmount::with_desired_output(balance!(0.000001).into()),
                 true
             ),
             E::InvalidOrderAmount
@@ -1576,7 +1583,7 @@ fn should_not_quote_without_impact_with_small_amount() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(0)),
+                QuoteAmount::with_desired_output(balance!(0).into()),
                 true
             ),
             E::InvalidOrderAmount
@@ -1609,11 +1616,11 @@ fn should_exchange_and_transfer_to_owner() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_output(balance!(200), balance!(2500)),
+                SwapAmount::with_desired_output(balance!(200).into(), balance!(2500).into()),
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74).into(), 0)
         );
 
         assert_eq!(
@@ -1636,11 +1643,11 @@ fn should_exchange_and_transfer_to_owner() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_input(balance!(2000), balance!(150)),
+                SwapAmount::with_desired_input(balance!(2000).into(), balance!(150).into()),
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(177.95391), 0)
+            SwapOutcome::new(balance!(177.95391).into(), 0)
         );
 
         assert_eq!(
@@ -1663,11 +1670,11 @@ fn should_exchange_and_transfer_to_owner() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(balance!(2000), balance!(210)),
+                SwapAmount::with_desired_output(balance!(2000).into(), balance!(210).into()),
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(200.64285), 0)
+            SwapOutcome::new(balance!(200.64285).into(), 0)
         );
 
         assert_eq!(
@@ -1690,11 +1697,11 @@ fn should_exchange_and_transfer_to_owner() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(200), balance!(210)),
+                SwapAmount::with_desired_input(balance!(200).into(), balance!(210).into()),
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1932.327145), 0)
+            SwapOutcome::new(balance!(1932.327145).into(), 0)
         );
 
         assert_eq!(
@@ -1738,11 +1745,11 @@ fn should_exchange_and_transfer_to_another_account() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_output(balance!(200), balance!(2500)),
+                SwapAmount::with_desired_output(balance!(200).into(), balance!(2500).into()),
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74).into(), 0)
         );
 
         assert_eq!(
@@ -1777,11 +1784,11 @@ fn should_exchange_and_transfer_to_another_account() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_input(balance!(2000), balance!(150)),
+                SwapAmount::with_desired_input(balance!(2000).into(), balance!(150).into()),
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(177.95391), 0)
+            SwapOutcome::new(balance!(177.95391).into(), 0)
         );
 
         assert_eq!(
@@ -1816,11 +1823,11 @@ fn should_exchange_and_transfer_to_another_account() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(balance!(2000), balance!(210)),
+                SwapAmount::with_desired_output(balance!(2000).into(), balance!(210).into()),
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(200.64285), 0)
+            SwapOutcome::new(balance!(200.64285).into(), 0)
         );
 
         assert_eq!(
@@ -1855,11 +1862,11 @@ fn should_exchange_and_transfer_to_another_account() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(200), balance!(210)),
+                SwapAmount::with_desired_input(balance!(200).into(), balance!(210).into()),
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1932.327145), 0)
+            SwapOutcome::new(balance!(1932.327145).into(), 0)
         );
 
         assert_eq!(
@@ -1892,7 +1899,7 @@ fn should_not_exchange_with_non_existed_order_book() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_output(balance!(200), balance!(1800)),
+                SwapAmount::with_desired_output(balance!(200).into(), balance!(1800).into()),
             ),
             E::UnknownOrderBook
         );
@@ -1904,7 +1911,7 @@ fn should_not_exchange_with_non_existed_order_book() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(balance!(2500), balance!(200)),
+                SwapAmount::with_desired_output(balance!(2500).into(), balance!(200).into()),
             ),
             E::UnknownOrderBook
         );
@@ -1930,7 +1937,7 @@ fn should_not_exchange_with_invalid_slippage() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_output(balance!(200), balance!(1800)),
+                SwapAmount::with_desired_output(balance!(200).into(), balance!(1800).into()),
             ),
             E::SlippageLimitExceeded
         );
@@ -1942,7 +1949,7 @@ fn should_not_exchange_with_invalid_slippage() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_input(balance!(2000), balance!(210)),
+                SwapAmount::with_desired_input(balance!(2000).into(), balance!(210).into()),
             ),
             E::SlippageLimitExceeded
         );
@@ -1954,7 +1961,7 @@ fn should_not_exchange_with_invalid_slippage() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(balance!(2000), balance!(180)),
+                SwapAmount::with_desired_output(balance!(2000).into(), balance!(180).into()),
             ),
             E::SlippageLimitExceeded
         );
@@ -1966,7 +1973,7 @@ fn should_not_exchange_with_invalid_slippage() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(200), balance!(2100)),
+                SwapAmount::with_desired_input(balance!(200).into(), balance!(2100).into()),
             ),
             E::SlippageLimitExceeded
         );

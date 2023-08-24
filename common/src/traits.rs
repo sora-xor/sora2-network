@@ -266,6 +266,16 @@ impl<Symbol, Rate, ResolveTime> DataFeed<Symbol, Rate, ResolveTime> for () {
     }
 }
 
+pub trait OnSymbolDisabled<Symbol> {
+    fn disable_symbol(symbol: &Symbol);
+}
+
+impl<Symbol> OnSymbolDisabled<Symbol> for () {
+    fn disable_symbol(_symbol: &Symbol) {
+        ()
+    }
+}
+
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
     for ()
 {
@@ -994,6 +1004,22 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
         _who: &AccountId,
         _amount: Balance,
     ) -> DispatchResult {
+        unimplemented!()
+    }
+}
+
+pub trait SyntheticInfoProvider<AssetId> {
+    fn is_synthetic(asset_id: &AssetId) -> bool;
+
+    fn get_synthetic_assets() -> Vec<AssetId>;
+}
+
+impl<AssetId> SyntheticInfoProvider<AssetId> for () {
+    fn is_synthetic(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
+    fn get_synthetic_assets() -> Vec<AssetId> {
         unimplemented!()
     }
 }

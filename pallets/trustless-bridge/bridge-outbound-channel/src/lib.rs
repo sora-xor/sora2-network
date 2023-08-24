@@ -1,6 +1,8 @@
 //! Channel for passing messages from substrate to ethereum.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use bridge_types::{H256, U256};
 use codec::Encode;
@@ -77,6 +79,9 @@ pub mod pallet {
             Self::AccountId,
             BalanceOf<Self>,
         >;
+
+        #[pallet::constant]
+        type ThisNetworkId: Get<GenericNetworkId>;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -216,10 +221,6 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn make_message_id(batch_nonce: u64, message_id: u64) -> H256 {
-            MessageId::outbound_batched(batch_nonce, message_id).hash()
-        }
-
         fn commit(network_id: EVMChainId) -> Weight {
             debug!("Commit messages");
             let (messages, total_max_gas) = take_message_queue::<T>(network_id);
@@ -234,7 +235,13 @@ pub mod pallet {
                     for i in 0..messages.len() {
                         T::MessageStatusNotifier::update_status(
                             GenericNetworkId::EVM(network_id),
-                            Self::make_message_id(batch_nonce, i as u64),
+                            MessageId::batched(
+                                T::ThisNetworkId::get(),
+                                network_id.into(),
+                                batch_nonce,
+                                i as u64,
+                            )
+                            .hash(),
                             MessageStatus::Committed,
                             GenericTimepoint::Pending,
                         );
@@ -250,16 +257,19 @@ pub mod pallet {
                             messages,
                         });
 
-                    let commitment_hash = commitment.hash();
                     let digest_item = AuxiliaryDigestItem::Commitment(
                         GenericNetworkId::EVM(network_id),
-                        commitment_hash.clone(),
+                        commitment.hash(),
                     );
                     T::AuxiliaryDigestHandler::add_item(digest_item);
 
                     let key =
                         bridge_types::utils::make_offchain_key(network_id.into(), batch_nonce);
-                    offchain_index::set(&*key, &commitment.encode());
+                    let offchain_data = bridge_types::types::BridgeOffchainData {
+                        commitment,
+                        block_number: <frame_system::Pallet<T>>::block_number(),
+                    };
+                    offchain_index::set(&*key, &offchain_data.encode());
 
                     <T as Config>::WeightInfo::on_initialize(
                         messages_count as u32,
@@ -366,7 +376,13 @@ pub mod pallet {
                 },
             )?;
             Self::deposit_event(Event::MessageAccepted(network_id, batch_nonce, message_id));
-            Ok(Self::make_message_id(batch_nonce, message_id))
+            Ok(MessageId::batched(
+                T::ThisNetworkId::get(),
+                network_id.into(),
+                batch_nonce,
+                message_id,
+            )
+            .hash())
         }
     }
 }
