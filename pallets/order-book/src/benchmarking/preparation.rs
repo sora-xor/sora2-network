@@ -14,7 +14,7 @@ use framenode_runtime::order_book::{
 };
 
 use assets::AssetIdOf;
-use common::prelude::FixedWrapper;
+use common::prelude::{BalanceUnit, FixedWrapper, Scalar};
 use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::info;
 use frame_support::traits::Time;
@@ -822,17 +822,17 @@ fn fill_price_inner<T: Config>(
 fn bid_prices_iterator(
     tick_size: OrderPrice,
     max_side_price_count: u32,
-) -> impl Iterator<Item = Balance> {
-    (1..=max_side_price_count).map(move |i| (i as u128) * tick_size)
+) -> impl Iterator<Item = BalanceUnit> {
+    (1..=max_side_price_count).map(move |i| tick_size * Scalar(i))
 }
 
 fn ask_prices_iterator(
     tick_size: OrderPrice,
     max_side_price_count: u32,
-) -> impl Iterator<Item = Balance> {
+) -> impl Iterator<Item = BalanceUnit> {
     (max_side_price_count + 1..=2 * max_side_price_count)
         .rev()
-        .map(move |i| (i as u128) * tick_size)
+        .map(move |i| tick_size * Scalar(i))
 }
 
 fn users_iterator<T: Config>(
@@ -898,7 +898,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     } = settings;
 
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
-    let max_price = (2 * max_side_price_count) as u128 * order_book.tick_size;
+    let max_price = order_book.tick_size * Scalar(2 * max_side_price_count);
 
     // Owners for each placed order
     let mut users = users_iterator::<T>(
