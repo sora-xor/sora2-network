@@ -4143,12 +4143,12 @@ fn should_calculate_align_limit_orders_impact() {
         };
 
         let mut order_book = create_and_fill_order_book(order_book_id);
-        fill_balance(alice(), order_book_id);
+        fill_balance(alice::<Runtime>(), order_book_id);
 
         assert_ok!(order_book.place_limit_order(
             LimitOrder::<Runtime>::new(
                 13,
-                alice(),
+                alice::<Runtime>(),
                 PriceVariant::Buy,
                 balance!(10.1).into(),
                 balance!(1.1).into(),
@@ -4162,7 +4162,7 @@ fn should_calculate_align_limit_orders_impact() {
         // the remaining balance of limit order 13 becomes 0.1 after that
         assert_ok!(order_book.execute_market_order(
             MarketOrder::<Runtime>::new(
-                alice(),
+                alice::<Runtime>(),
                 PriceVariant::Sell,
                 order_book_id,
                 balance!(1).into(),
@@ -4174,7 +4174,7 @@ fn should_calculate_align_limit_orders_impact() {
         assert_ok!(order_book.place_limit_order(
             LimitOrder::<Runtime>::new(
                 14,
-                alice(),
+                alice::<Runtime>(),
                 PriceVariant::Buy,
                 balance!(10.1).into(),
                 balance!(1).into(),
@@ -4188,7 +4188,7 @@ fn should_calculate_align_limit_orders_impact() {
         assert_ok!(order_book.place_limit_order(
             LimitOrder::<Runtime>::new(
                 15,
-                alice(),
+                alice::<Runtime>(),
                 PriceVariant::Sell,
                 balance!(10.9).into(),
                 balance!(1.1).into(),
@@ -4202,7 +4202,7 @@ fn should_calculate_align_limit_orders_impact() {
         // the remaining balance of limit order 15 becomes 0.1 after that
         assert_ok!(order_book.execute_market_order(
             MarketOrder::<Runtime>::new(
-                alice(),
+                alice::<Runtime>(),
                 PriceVariant::Buy,
                 order_book_id,
                 balance!(1).into(),
@@ -4214,7 +4214,7 @@ fn should_calculate_align_limit_orders_impact() {
         assert_ok!(order_book.place_limit_order(
             LimitOrder::<Runtime>::new(
                 16,
-                alice(),
+                alice::<Runtime>(),
                 PriceVariant::Sell,
                 balance!(10.9).into(),
                 balance!(1).into(),
@@ -4313,17 +4313,17 @@ fn should_calculate_align_limit_orders_impact() {
                         (
                             order_book_id.base,
                             BTreeMap::from([
-                                (alice(), balance!(0.1).into()),
-                                (bob(), balance!(1).into()),
-                                (charlie(), balance!(1.7).into())
+                                (alice::<Runtime>(), balance!(0.1).into()),
+                                (bob::<Runtime>(), balance!(1).into()),
+                                (charlie::<Runtime>(), balance!(1.7).into())
                             ])
                         ),
                         (
                             order_book_id.quote,
                             BTreeMap::from([
-                                (alice(), balance!(1.01).into()),
-                                (bob(), balance!(20.41).into()),
-                                (charlie(), balance!(5.76).into())
+                                (alice::<Runtime>(), balance!(1.01).into()),
+                                (bob::<Runtime>(), balance!(20.41).into()),
+                                (charlie::<Runtime>(), balance!(5.76).into())
                             ])
                         )
                     ]),

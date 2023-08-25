@@ -84,6 +84,7 @@ mod test_only {
     use super::*;
     use common::prelude::FixedWrapper;
     use common::PriceVariant;
+    use frame_benchmarking::Zero;
     use frame_support::traits::Hooks;
     use frame_support::weights::Weight;
     use frame_support::{assert_ok, BoundedVec};
@@ -92,6 +93,7 @@ mod test_only {
         self, Config, LimitOrder, OrderBook, OrderBookId, OrderPrice, OrderVolume, Pallet,
     };
     use framenode_runtime::{Runtime, RuntimeOrigin};
+    use sp_runtime::traits::CheckedAdd;
     use sp_std::collections::btree_map::BTreeMap;
 
     pub type E = order_book::Error<Runtime>;
@@ -373,15 +375,26 @@ mod test_only {
                 .iter()
                 .map(|id| order_data.get(id).unwrap())
                 .collect();
-            let volume: OrderVolume = price_orders.iter().map(|order| order.amount).sum();
+            let volume: OrderVolume = price_orders
+                .iter()
+                .map(|order| order.amount)
+                .fold(OrderVolume::zero(), |acc, item| {
+                    acc.checked_add(&item).unwrap()
+                });
             print!(
                 "{:>1$} |",
-                FixedWrapper::from(price).get().unwrap().to_string(),
+                FixedWrapper::from(*price.balance())
+                    .get()
+                    .unwrap()
+                    .to_string(),
                 column_width - 1
             );
             print!(
                 "{:>1$} |",
-                FixedWrapper::from(volume).get().unwrap().to_string(),
+                FixedWrapper::from(*volume.balance())
+                    .get()
+                    .unwrap()
+                    .to_string(),
                 column_width - 1
             );
             println!(

@@ -741,9 +741,7 @@ fn should_cleanup_on_expiring() {
             user_orders_with_order
         );
 
-        let balance =
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                .unwrap();
+        let balance = free_balance::<Runtime>(&order_book_id.quote, &caller);
         let balance_with_order = balance_before - deal_amount.balance();
         assert_eq!(balance, balance_with_order);
 

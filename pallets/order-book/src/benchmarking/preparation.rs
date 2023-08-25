@@ -17,9 +17,10 @@ use assets::AssetIdOf;
 use common::prelude::{BalanceUnit, FixedWrapper, Scalar};
 use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::info;
+use frame_benchmarking::Zero;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
-use sp_runtime::traits::SaturatedConversion;
+use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::iter::repeat;
 use sp_std::vec::Vec;
@@ -230,8 +231,8 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     author: T::AccountId,
 ) -> (
     OrderBookId<AssetIdOf<T>, T::DEXId>,
-    OrderPrice,
-    OrderVolume,
+    Balance,
+    Balance,
     PriceVariant,
     MomentOf<T>,
 ) {
@@ -249,13 +250,17 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     OrderBookPallet::<T>::update_orderbook(
         RawOrigin::Root.into(),
         order_book_id,
-        order_book.tick_size,
-        order_book.step_lot_size,
-        order_book.min_lot_size,
-        sp_std::cmp::max(
-            order_book.min_lot_size * (max_side_orders + 1),
+        *order_book.tick_size.balance(),
+        *order_book.step_lot_size.balance(),
+        *order_book.min_lot_size.balance(),
+        *sp_std::cmp::max(
+            order_book
+                .min_lot_size
+                .checked_mul_by_scalar(Scalar(max_side_orders + 1))
+                .unwrap(),
             order_book.max_lot_size,
-        ),
+        )
+        .balance(),
     )
     .unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
@@ -313,7 +318,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         &mut users_iterator::<T>(
             order_book_id_2,
             order_amount_2,
-            1,
+            BalanceUnit::from(1), // won't be used
             fill_expiration_settings.max_orders_per_user,
         ),
         free_lifespan,
@@ -329,12 +334,14 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         .get_aggregated_bids(&order_book_id)
         .iter()
         .map(|(_p, v)| *v)
-        .sum();
+        .fold(BalanceUnit::zero(), |acc, item| {
+            acc.checked_add(&item).unwrap()
+        });
     // to place remaining amount as limit order
     let amount = amount + order_book.min_lot_size;
     let side = PriceVariant::Sell;
     let lifespan = free_lifespan.saturated_into::<MomentOf<T>>();
-    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, amount).unwrap();
+    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *amount.balance()).unwrap();
 
     assert_orders_numbers::<T>(
         order_book_id,
@@ -346,7 +353,13 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         (fill_settings.max_expiring_orders_per_block - 1) as usize,
     );
 
-    (order_book_id, price, amount, side, lifespan)
+    (
+        order_book_id,
+        *price.balance(),
+        *amount.balance(),
+        side,
+        lifespan,
+    )
 }
 
 pub struct CancelParameters {}
@@ -420,9 +433,7 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
     assets::Pallet::<T>::mint_unchecked(
         &order_book.order_book_id.quote,
         &author,
-        (FixedWrapper::from(target_price) * FixedWrapper::from(order_amount))
-            .try_into_balance()
-            .unwrap(),
+        *target_price.checked_mul(&order_amount).unwrap().balance(),
     )
     .unwrap();
     let place_to_cancel = |order_book: &mut OrderBook<T>, data_layer: &mut CacheDataLayer<T>| {
@@ -462,7 +473,12 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
     fill_expiration_settings.max_expiring_orders_per_block -= 1;
     // mint other base asset as well
     let mut users = users.inspect(move |user| {
-        assets::Pallet::<T>::mint_unchecked(&order_book_id_2.base, &user, order_amount_2).unwrap();
+        assets::Pallet::<T>::mint_unchecked(
+            &order_book_id_2.base,
+            &user,
+            *order_amount_2.balance(),
+        )
+        .unwrap();
     });
     fill_expiration_schedule(
         &mut data_layer,
@@ -600,21 +616,29 @@ fn fill_user_orders<T: Config>(
     // Since we fill orders of the user, it is the only author
     match side {
         PriceVariant::Buy => {
-            let max_price = max_side_price_count as u128 * order_book.tick_size;
+            let max_price = order_book
+                .tick_size
+                .checked_mul_by_scalar(Scalar(max_side_price_count))
+                .unwrap();
             assets::Pallet::<T>::mint_unchecked(
                 &order_book.order_book_id.quote,
                 &author,
-                (FixedWrapper::from(max_price)
-                    * FixedWrapper::from(order_amount * max_orders_per_user as u128))
-                .try_into_balance()
-                .unwrap(),
+                *max_price
+                    .checked_mul(&order_amount)
+                    .unwrap()
+                    .checked_mul_by_scalar(Scalar(max_orders_per_user))
+                    .unwrap()
+                    .balance(),
             )
             .unwrap()
         }
         PriceVariant::Sell => assets::Pallet::<T>::mint_unchecked(
             &order_book.order_book_id.base,
             &author,
-            order_amount * max_orders_per_user as u128,
+            *order_amount
+                .checked_mul_by_scalar(Scalar(max_orders_per_user))
+                .unwrap()
+                .balance(),
         )
         .unwrap(),
     }
@@ -654,7 +678,7 @@ fn fill_order_book_side<T: Config>(
     order_book: &mut OrderBook<T>,
     side: PriceVariant,
     orders_amount: OrderVolume,
-    prices: &mut impl Iterator<Item = Balance>,
+    prices: &mut impl Iterator<Item = OrderPrice>,
     users: &mut impl Iterator<Item = T::AccountId>,
     lifespans: &mut impl Iterator<Item = u64>,
 ) {
@@ -730,7 +754,7 @@ fn fill_price<T: Config>(
     order_book: &mut OrderBook<T>,
     side: PriceVariant,
     orders_amount: OrderVolume,
-    price: Balance,
+    price: OrderPrice,
     users: &mut impl Iterator<Item = T::AccountId>,
     lifespans: &mut impl Iterator<Item = u64>,
 ) {
@@ -775,7 +799,7 @@ fn fill_price_inner<T: Config>(
     order_book: &mut OrderBook<T>,
     side: PriceVariant,
     orders_amount: OrderVolume,
-    price: Balance,
+    price: OrderPrice,
     users: &mut impl Iterator<Item = T::AccountId>,
     lifespans: &mut impl Iterator<Item = u64>,
     current_block: T::BlockNumber,
@@ -837,22 +861,25 @@ fn ask_prices_iterator(
 
 fn users_iterator<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-    max_order_amount: Balance,
-    max_price: Balance,
+    max_order_amount: OrderVolume,
+    max_price: OrderPrice,
     max_orders_per_user: u32,
 ) -> impl Iterator<Item = T::AccountId> {
-    let mint_per_user = max_order_amount * max_orders_per_user as u128;
+    let mint_per_user = max_order_amount * Scalar(max_orders_per_user);
     (1..)
         .map(crate::test_utils::generate_account::<T>)
         // each user receives assets that should be enough for placing their orders
         .inspect(move |user| {
-            assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &user, mint_per_user).unwrap();
+            assets::Pallet::<T>::mint_unchecked(
+                &order_book_id.base,
+                &user,
+                *mint_per_user.balance(),
+            )
+            .unwrap();
             assets::Pallet::<T>::mint_unchecked(
                 &order_book_id.quote,
                 &user,
-                (FixedWrapper::from(max_price) * FixedWrapper::from(mint_per_user))
-                    .try_into_balance()
-                    .unwrap(),
+                *max_price.checked_mul(&mint_per_user).unwrap().balance(),
             )
             .unwrap();
         })
@@ -868,7 +895,7 @@ fn lifespans_iterator<T: Config>(
     (start_from_block..)
         .map(|i| {
             i * T::MILLISECS_PER_BLOCK.saturated_into::<u64>()
-                + T::MIN_ORDER_LIFETIME.saturated_into::<u64>()
+                + T::MIN_ORDER_LIFESPAN.saturated_into::<u64>()
         })
         // same lifespan should be yielded for `max_expiring_orders_per_block` orders
         .flat_map(move |lifespan| {

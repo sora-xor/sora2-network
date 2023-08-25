@@ -853,7 +853,7 @@ fn should_fail_market_change_merge() {
             1,
             LimitOrder::<Runtime>::new(
                 1,
-                alice(),
+                alice::<Runtime>(),
                 PriceVariant::Buy,
                 balance!(10).into(),
                 balance!(100).into(),

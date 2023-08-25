@@ -157,7 +157,7 @@ fn should_not_create_order_book_with_synthetic_base_asset() {
 
         assert_err!(
             OrderBookPallet::create_orderbook(
-                RawOrigin::Signed(alice()).into(),
+                RawOrigin::Signed(alice::<Runtime>()).into(),
                 xstusd_order_book_id
             ),
             E::SyntheticAssetIsForbidden
@@ -178,7 +178,7 @@ fn should_not_create_order_book_with_synthetic_base_asset() {
         .unwrap()
         {
             assert_ok!(TradingPair::register(
-                RawOrigin::Signed(alice()).into(),
+                RawOrigin::Signed(alice::<Runtime>()).into(),
                 xst_order_book_id.dex_id,
                 xst_order_book_id.quote,
                 xst_order_book_id.base
@@ -186,7 +186,7 @@ fn should_not_create_order_book_with_synthetic_base_asset() {
         }
 
         assert_ok!(OrderBookPallet::create_orderbook(
-            RawOrigin::Signed(alice()).into(),
+            RawOrigin::Signed(alice::<Runtime>()).into(),
             xst_order_book_id
         ));
     });
@@ -1248,10 +1248,12 @@ fn should_align_limit_orders_when_update_order_book() {
         assert_eq!(limit_order12.amount, balance!(13.7).into());
 
         // get balances before align
-        let bob_base_balance = free_balance(&order_book_id.base, &bob());
-        let bob_quote_balance = free_balance(&order_book_id.quote, &bob());
-        let charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        let charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        let bob_base_balance = free_balance::<Runtime>(&order_book_id.base, &bob::<Runtime>());
+        let bob_quote_balance = free_balance::<Runtime>(&order_book_id.quote, &bob::<Runtime>());
+        let charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &charlie::<Runtime>());
+        let charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &charlie::<Runtime>());
 
         let tick_size = balance!(0.01);
         let step_lot_size = balance!(1); // change lot size precision
@@ -1296,19 +1298,19 @@ fn should_align_limit_orders_when_update_order_book() {
 
         // check dust refund
         assert_eq!(
-            free_balance(&order_book_id.base, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &bob::<Runtime>()),
             bob_base_balance + balance!(1)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.quote, &bob::<Runtime>()),
             bob_quote_balance + balance!(20.41)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &charlie::<Runtime>()),
             charlie_base_balance + balance!(1.7)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &charlie::<Runtime>()),
             charlie_quote_balance + balance!(5.76)
         );
     });
@@ -2398,7 +2400,10 @@ fn should_not_cancel_not_own_limit_orders_batch() {
         ];
 
         assert_err!(
-            OrderBookPallet::cancel_limit_orders_batch(RawOrigin::Signed(bob()).into(), to_cancel),
+            OrderBookPallet::cancel_limit_orders_batch(
+                RawOrigin::Signed(bob::<Runtime>()).into(),
+                to_cancel
+            ),
             E::Unauthorized
         );
     });
@@ -2430,7 +2435,10 @@ fn should_not_cancel_unknown_limit_orders_batch() {
         ];
 
         assert_err!(
-            OrderBookPallet::cancel_limit_orders_batch(RawOrigin::Signed(bob()).into(), to_cancel),
+            OrderBookPallet::cancel_limit_orders_batch(
+                RawOrigin::Signed(bob::<Runtime>()).into(),
+                to_cancel
+            ),
             E::UnknownLimitOrder
         );
     });
@@ -2489,7 +2497,10 @@ fn should_not_cancel_limit_orders_batch_in_stopped_order_book() {
         ];
 
         assert_err!(
-            OrderBookPallet::cancel_limit_orders_batch(RawOrigin::Signed(bob()).into(), to_cancel),
+            OrderBookPallet::cancel_limit_orders_batch(
+                RawOrigin::Signed(bob::<Runtime>()).into(),
+                to_cancel
+            ),
             E::CancellationOfLimitOrdersIsForbidden
         );
     });
@@ -2586,7 +2597,7 @@ fn should_cancel_all_user_limit_orders_batch() {
         ];
 
         assert_ok!(OrderBookPallet::cancel_limit_orders_batch(
-            RawOrigin::Signed(bob()).into(),
+            RawOrigin::Signed(bob::<Runtime>()).into(),
             to_cancel
         ));
 
@@ -2727,7 +2738,7 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
         ];
 
         assert_ok!(OrderBookPallet::cancel_limit_orders_batch(
-            RawOrigin::Signed(bob()).into(),
+            RawOrigin::Signed(bob::<Runtime>()).into(),
             to_cancel
         ));
 
@@ -2793,11 +2804,11 @@ fn should_not_execute_market_order_with_divisible_asset() {
         };
 
         create_and_fill_order_book(order_book_id);
-        fill_balance(alice(), order_book_id);
+        fill_balance(alice::<Runtime>(), order_book_id);
 
         assert_err!(
             OrderBookPallet::execute_market_order(
-                RawOrigin::Signed(alice()).into(),
+                RawOrigin::Signed(alice::<Runtime>()).into(),
                 order_book_id,
                 PriceVariant::Buy,
                 balance!(10)
@@ -2807,7 +2818,7 @@ fn should_not_execute_market_order_with_divisible_asset() {
 
         assert_err!(
             OrderBookPallet::execute_market_order(
-                RawOrigin::Signed(alice()).into(),
+                RawOrigin::Signed(alice::<Runtime>()).into(),
                 order_book_id,
                 PriceVariant::Sell,
                 balance!(10)
@@ -2820,10 +2831,10 @@ fn should_not_execute_market_order_with_divisible_asset() {
 #[test]
 fn should_execute_market_order_with_indivisible_asset() {
     ext().execute_with(|| {
-        FrameSystem::inc_providers(&bob());
+        FrameSystem::inc_providers(&bob::<Runtime>());
 
         let nft = Assets::register_from(
-            &bob(),
+            &bob::<Runtime>(),
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
@@ -2840,18 +2851,18 @@ fn should_execute_market_order_with_indivisible_asset() {
             quote: XOR.into(),
         };
 
-        fill_balance(alice(), order_book_id);
-        fill_balance(bob(), order_book_id);
+        fill_balance(alice::<Runtime>(), order_book_id);
+        fill_balance(bob::<Runtime>(), order_book_id);
 
         assert_ok!(TradingPair::register(
-            RawOrigin::Signed(bob()).into(),
+            RawOrigin::Signed(bob::<Runtime>()).into(),
             DEX.into(),
             order_book_id.quote,
             order_book_id.base
         ));
 
         assert_ok!(OrderBookPallet::create_orderbook(
-            RawOrigin::Signed(bob()).into(),
+            RawOrigin::Signed(bob::<Runtime>()).into(),
             order_book_id
         ));
 
@@ -2859,7 +2870,7 @@ fn should_execute_market_order_with_indivisible_asset() {
         let sell_price = balance!(11);
 
         assert_ok!(OrderBookPallet::place_limit_order(
-            RawOrigin::Signed(bob()).into(),
+            RawOrigin::Signed(bob::<Runtime>()).into(),
             order_book_id,
             buy_price,
             100,
@@ -2868,7 +2879,7 @@ fn should_execute_market_order_with_indivisible_asset() {
         ));
 
         assert_ok!(OrderBookPallet::place_limit_order(
-            RawOrigin::Signed(bob()).into(),
+            RawOrigin::Signed(bob::<Runtime>()).into(),
             order_book_id,
             sell_price,
             100,
@@ -2876,64 +2887,70 @@ fn should_execute_market_order_with_indivisible_asset() {
             None
         ));
 
-        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
-        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        let mut alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &alice::<Runtime>());
+        let mut alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &alice::<Runtime>());
 
-        let mut bob_base_balance = free_balance(&order_book_id.base, &bob());
-        let mut bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        let mut bob_base_balance = free_balance::<Runtime>(&order_book_id.base, &bob::<Runtime>());
+        let mut bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &bob::<Runtime>());
 
         let amount = 20;
 
         // buy market order
         assert_ok!(OrderBookPallet::execute_market_order(
-            RawOrigin::Signed(alice()).into(),
+            RawOrigin::Signed(alice::<Runtime>()).into(),
             order_book_id,
             PriceVariant::Buy,
             amount
         ));
 
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &alice::<Runtime>()),
             alice_base_balance + amount
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &alice::<Runtime>()),
             alice_quote_balance - amount * sell_price
         );
-        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &bob::<Runtime>()),
+            bob_base_balance
+        );
+        assert_eq!(
+            free_balance::<Runtime>(&order_book_id.quote, &bob::<Runtime>()),
             bob_quote_balance + amount * sell_price
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance = free_balance::<Runtime>(&order_book_id.base, &alice::<Runtime>());
+        alice_quote_balance = free_balance::<Runtime>(&order_book_id.quote, &alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance = free_balance::<Runtime>(&order_book_id.base, &bob::<Runtime>());
+        bob_quote_balance = free_balance::<Runtime>(&order_book_id.quote, &bob::<Runtime>());
 
         // sell market order
         assert_ok!(OrderBookPallet::execute_market_order(
-            RawOrigin::Signed(alice()).into(),
+            RawOrigin::Signed(alice::<Runtime>()).into(),
             order_book_id,
             PriceVariant::Sell,
             amount
         ));
 
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &alice::<Runtime>()),
             alice_base_balance - amount
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &alice::<Runtime>()),
             alice_quote_balance + amount * buy_price
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &bob::<Runtime>()),
             bob_base_balance + amount
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.quote, &bob::<Runtime>()),
             bob_quote_balance
         );
     });

@@ -216,7 +216,7 @@ impl<T: Config> CacheDataLayer<T> {
                 agg_bids.try_insert(*price, volume).map_err(|_| ())?;
             }
             Ok(())
-        } else if *price != 0 {
+        } else if !price.is_zero() {
             // no aggregated bids for the order_book, thus we assume 0's for all prices
             // can't subtract non-zero from 0u128
             return Err(());
@@ -271,7 +271,7 @@ impl<T: Config> CacheDataLayer<T> {
                 agg_asks.try_insert(*price, volume).map_err(|_| ())?;
             }
             Ok(())
-        } else if *price != 0 {
+        } else if !price.is_zero() {
             // no aggregated asks for the order_book, thus we assume 0's for all prices
             // can't subtract non-zero from 0u128
             return Err(());

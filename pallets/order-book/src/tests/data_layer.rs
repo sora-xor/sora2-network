@@ -1465,12 +1465,13 @@ fn get_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
         create_empty_order_book(empty_order_book_id);
 
         assert_eq!(
-            data.get_user_limit_orders(&bob(), &empty_order_book_id),
+            data.get_user_limit_orders(&bob::<Runtime>(), &empty_order_book_id),
             None
         );
 
         assert_eq!(
-            data.get_user_limit_orders(&bob(), &order_book_id).unwrap(),
+            data.get_user_limit_orders(&bob::<Runtime>(), &order_book_id)
+                .unwrap(),
             vec![1, 3, 5, 7, 9, 11]
         );
     });
@@ -1516,7 +1517,7 @@ fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
 
         // no orders from empty_order_book_id
         assert_eq!(
-            data.get_all_user_limit_orders(&bob()),
+            data.get_all_user_limit_orders(&bob::<Runtime>()),
             BTreeMap::from([
                 (
                     order_book_id1,

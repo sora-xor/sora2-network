@@ -140,7 +140,9 @@ pub use benchmarks_inner::*;
 #[cfg(not(test))]
 mod benchmarks_inner {
     use common::prelude::{QuoteAmount, SwapAmount};
-    use common::{balance, AssetInfoProvider, LiquiditySource, PriceVariant};
+    use common::{
+        balance, AssetInfoProvider, AssetName, AssetSymbol, LiquiditySource, PriceVariant,
+    };
     use frame_benchmarking::benchmarks;
     use frame_support::traits::{Get, Time};
     use frame_support::weights::WeightMeter;

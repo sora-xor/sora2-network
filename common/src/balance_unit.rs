@@ -376,6 +376,7 @@ impl Saturating for BalanceUnit {
 }
 
 /// `BalanceUnit` can be multiplied by scalars using this type.
+#[derive(Copy, Clone)]
 pub struct Scalar<N>(pub N);
 
 impl<N: Unsigned + Into<u128>> Mul<Scalar<N>> for BalanceUnit {
@@ -397,7 +398,7 @@ impl<N: Unsigned + Into<u128>> MulAssign<Scalar<N>> for BalanceUnit {
 impl BalanceUnit {
     pub fn checked_mul_by_scalar<N: Unsigned + Into<u128> + Copy>(
         &self,
-        rhs: &Scalar<N>,
+        rhs: Scalar<N>,
     ) -> Option<Self> {
         Some(Self::new(
             self.inner.checked_mul(rhs.0.into())?,
