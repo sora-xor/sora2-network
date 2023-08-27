@@ -819,7 +819,7 @@ fn withdraw_fee_set_referrer() {
         assert_eq!(
             result,
             Ok(LiquidityInfo::Paid(
-                bob(),
+                crate::ReferralsReservesAcc::get(),
                 Some(NegativeImbalance::new(SMALL_FEE))
             ))
         );
