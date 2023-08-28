@@ -1,6 +1,7 @@
 use pallet_utility::Call as UtilityCall;
 
 use crate::*;
+use common::LiquidityProxyTrait;
 
 impl RuntimeCall {
     pub fn swap_count(&self) -> u32 {

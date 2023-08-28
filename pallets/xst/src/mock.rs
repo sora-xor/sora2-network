@@ -280,7 +280,7 @@ impl dex_api::Config for Runtime {
     type XSTPool = XSTPool;
     type MulticollateralBondingCurvePool = ();
 
-    #[cfg(feature = "ready-to-test")] // order-book
+    #[cfg(feature = "wip")] // order-book
     type OrderBook = ();
 }
 
@@ -331,7 +331,7 @@ impl pswap_distribution::Config for Runtime {
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
-    type WeightInfo = ();
+    type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
 }
 
 impl demeter_farming_platform::Config for Runtime {

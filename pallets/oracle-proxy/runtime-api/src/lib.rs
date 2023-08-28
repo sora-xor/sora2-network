@@ -33,7 +33,9 @@
 #![allow(clippy::unnecessary_mut_passed)]
 
 use codec::{Codec, Decode, Encode};
-use common::{utils::string_serialization, Balance};
+#[cfg(feature = "std")]
+use common::utils::string_serialization;
+use common::Balance;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::DispatchError;
