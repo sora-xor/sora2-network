@@ -14,7 +14,7 @@ use framenode_runtime::order_book::{
 };
 
 use assets::AssetIdOf;
-use common::prelude::{BalanceUnit, Scalar};
+use common::prelude::{BalanceUnit, QuoteAmount, Scalar};
 use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::info;
 use frame_benchmarking::Zero;
@@ -501,6 +501,52 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
     <OrderBooks<T>>::insert(order_book_id, order_book.clone());
 
     (order_book_id, to_cancel_id)
+}
+
+pub fn prepare_quote_benchmark<T: Config>(
+    fill_settings: FillSettings<T>,
+) -> (T::DEXId, T::AssetId, T::AssetId, QuoteAmount<Balance>, bool) {
+    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        dex_id: DEX.into(),
+        base: VAL.into(),
+        quote: XOR.into(),
+    };
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
+        .expect("failed to create an order book");
+    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
+    let mut data_layer = CacheDataLayer::<T>::new();
+
+    // fill aggregated bids
+    let mut buy_settings = fill_settings.clone();
+    buy_settings.max_orders_per_price = 1;
+    let _ = fill_order_book_worst_case::<T>(
+        buy_settings,
+        &mut order_book,
+        &mut data_layer,
+        true,
+        false,
+    );
+
+    let (total_bids_amount, _) = order_book
+        .sum_market(
+            data_layer
+                .get_aggregated_bids(&order_book.order_book_id)
+                .iter(),
+            None,
+        )
+        .unwrap();
+    assert!(total_bids_amount.is_base());
+    let total_bids_base_amount = total_bids_amount.value();
+
+    <OrderBooks<T>>::insert(order_book_id, order_book);
+    data_layer.commit();
+
+    let dex_id = order_book_id.dex_id;
+    let input_asset_id = order_book_id.base;
+    let output_asset_id = order_book_id.quote;
+    let amount = QuoteAmount::with_desired_input(*total_bids_base_amount.balance());
+    let deduce_fee = true;
+    (dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
 }
 
 pub mod presets {

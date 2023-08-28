@@ -154,8 +154,8 @@ mod benchmarks_inner {
     };
     use preparation::{
         create_and_populate_order_book, prepare_cancel_orderbook_benchmark,
-        prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark, presets::*,
-        FillSettings,
+        prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark,
+        prepare_quote_benchmark, presets::*, FillSettings,
     };
 
     use assets::Pallet as Assets;
@@ -552,20 +552,21 @@ mod benchmarks_inner {
         }
 
         quote {
-            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
-                dex_id: DEX.into(),
-                base: VAL.into(),
-                quote: XOR.into(),
-            };
-
-            create_and_populate_order_book::<T>(order_book_id);
+            let settings = FillSettings::<T>::new(
+                <T as Config>::MaxSidePriceCount::get(),
+                <T as Config>::MaxLimitOrdersForPrice::get(),
+                <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
+                <T as Config>::MaxExpiringOrdersPerBlock::get()
+            );
+            let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
+                prepare_quote_benchmark::<T>(settings);
         }: {
             OrderBookPallet::<T>::quote(
-                &DEX.into(),
-                &VAL.into(),
-                &XOR.into(),
-                QuoteAmount::with_desired_output(balance!(2500)),
-                true
+                &dex_id,
+                &input_asset_id,
+                &output_asset_id,
+                amount,
+                deduce_fee,
             )
             .unwrap();
         }
@@ -885,8 +886,8 @@ mod tests {
     use framenode_runtime::Runtime;
     use preparation::{
         fill_order_book_worst_case, prepare_cancel_orderbook_benchmark,
-        prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark, presets::*,
-        FillSettings,
+        prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark,
+        prepare_quote_benchmark, presets::*, FillSettings,
     };
 
     #[test]
@@ -992,6 +993,40 @@ mod tests {
             println!("2;");
             pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
             pretty_print_expirations::<Runtime>(0..10);
+        })
+    }
+
+    #[test]
+    fn test_benchmark_quote() {
+        ext().execute_with(|| {
+            use common::LiquiditySource;
+
+            // let settings = FillSettings::<T>::new(
+            //     <T as Config>::MaxSidePriceCount::get(),
+            //     <T as Config>::MaxLimitOrdersForPrice::get(),
+            //     <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
+            //     <T as Config>::MaxExpiringOrdersPerBlock::get()
+            // );
+            let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
+            // let settings = preset_1::<Runtime>();
+            let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
+                prepare_quote_benchmark::<Runtime>(settings);
+            dbg!(amount);
+            let order_book_id = OrderBookId {
+                dex_id,
+                base: input_asset_id,
+                quote: output_asset_id,
+            };
+            pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            let (outcome, _) = OrderBookPallet::<Runtime>::quote(
+                &dex_id,
+                &input_asset_id,
+                &output_asset_id,
+                amount,
+                deduce_fee,
+            )
+            .unwrap();
+            dbg!(outcome);
         })
     }
 }
