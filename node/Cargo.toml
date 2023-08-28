@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "1.10.0"
+version = "2.0.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -134,20 +134,20 @@ private-net = [
 wip = [
     "framenode-chain-spec/wip",
     "framenode-runtime/wip",
+    "common/wip",
+    "dex-api-rpc/wip",
+    "liquidity-proxy-rpc/wip",
+]
+
+ready-to-test = [
+    "framenode-chain-spec/ready-to-test",
+    "framenode-runtime/ready-to-test",
     "beefy-light-client",
     "beefy-light-client-rpc",
     "bridge-channel-rpc",
     "bridge-proxy-rpc",
     "leaf-provider-rpc",
     "bridge-types"
-]
-
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-    "framenode-runtime/ready-to-test",
-    "common/ready-to-test",
-    "dex-api-rpc/ready-to-test",
-    "liquidity-proxy-rpc/ready-to-test",
 ]
 
 runtime-benchmarks = [
