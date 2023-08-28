@@ -2341,7 +2341,7 @@ fn initialize_pool_with_synthetics() {
         Band::add_relayers(RuntimeOrigin::root(), vec![ALICE()]).expect("Failed to add relayers");
         Band::relay(
             RuntimeOrigin::signed(ALICE()),
-            vec![(euro.clone(), 1)],
+            vec![(euro.clone(), 1)].try_into().unwrap(),
             0,
             0,
         )

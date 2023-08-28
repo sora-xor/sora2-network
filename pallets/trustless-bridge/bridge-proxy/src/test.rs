@@ -45,7 +45,6 @@ use frame_support::assert_noop;
 use frame_support::traits::Hooks;
 use frame_system::RawOrigin;
 use sp_keyring::AccountKeyring as Keyring;
-use sp_runtime::traits::Hash;
 
 use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::types::{AssetKind, MessageDirection, MessageId, MessageStatus};
@@ -80,7 +79,13 @@ fn burn_successfull() {
             crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),
             1000
         );
-        let message_id = BridgeOutboundChannel::make_message_id(1, 0);
+        let message_id = MessageId::batched(
+            bridge_types::SubNetworkId::Mainnet.into(),
+            BASE_EVM_NETWORK_ID.into(),
+            1,
+            0,
+        )
+        .hash();
         assert_eq!(
             Transactions::<Test>::get(
                 (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), &caller),
@@ -152,7 +157,11 @@ fn mint_successfull() {
         let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
-            MessageId::inbound(0),
+            MessageId::basic(
+                BASE_EVM_NETWORK_ID.into(),
+                bridge_types::SubNetworkId::Mainnet.into(),
+                0,
+            ),
             GenericTimepoint::Parachain(1),
             &RuntimeCall::ERC20App(erc20_app::Call::mint {
                 token,
@@ -167,8 +176,12 @@ fn mint_successfull() {
             crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), DAI),
             1000
         );
-        let message_id =
-            MessageId::inbound(0).using_encoded(<Test as dispatch::Config>::Hashing::hash);
+        let message_id = MessageId::basic(
+            BASE_EVM_NETWORK_ID.into(),
+            bridge_types::SubNetworkId::Mainnet.into(),
+            0,
+        )
+        .hash();
         assert_eq!(
             Transactions::<Test>::get(
                 (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), &recipient),
@@ -197,7 +210,11 @@ fn mint_failed() {
         let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
-            MessageId::inbound(0),
+            MessageId::basic(
+                BASE_EVM_NETWORK_ID.into(),
+                bridge_types::SubNetworkId::Mainnet.into(),
+                0,
+            ),
             Default::default(),
             &RuntimeCall::ERC20App(erc20_app::Call::mint {
                 token,
@@ -225,7 +242,11 @@ fn mint_not_enough_locked() {
         let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, XOR).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
-            MessageId::inbound(0),
+            MessageId::basic(
+                BASE_EVM_NETWORK_ID.into(),
+                bridge_types::SubNetworkId::Mainnet.into(),
+                0,
+            ),
             GenericTimepoint::Parachain(1),
             &RuntimeCall::ERC20App(erc20_app::Call::mint {
                 token,
@@ -242,7 +263,11 @@ fn mint_not_enough_locked() {
         );
         assert_event(
             dispatch::Event::<Test>::MessageDispatched(
-                MessageId::inbound(0),
+                MessageId::basic(
+                    BASE_EVM_NETWORK_ID.into(),
+                    bridge_types::SubNetworkId::Mainnet.into(),
+                    0,
+                ),
                 Err(crate::Error::<Test>::NotEnoughLockedLiquidity.into()),
             )
             .into(),

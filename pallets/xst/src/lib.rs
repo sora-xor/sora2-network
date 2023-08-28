@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 pub mod weights;
 
@@ -54,9 +56,10 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, PriceVariant, Rate,
-    RewardReason, SyntheticInfoProvider, TradingPairSourceManager, DAI, XSTUSD,
+    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
+    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
+use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
@@ -146,6 +149,7 @@ pub mod pallet {
         /// Maximum tradable amount of XST
         #[pallet::constant]
         type GetSyntheticBaseBuySellLimit: Get<Balance>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -230,9 +234,8 @@ pub mod pallet {
 
         /// Disable synthetic asset.
         ///
-        /// Just remove synthetic from exchanging.
-        /// Will not unregister trading pair because `trading_pair` pallet does not provide this
-        /// ability. And will not unregister trading synthetic asset because of that.
+        /// Removes synthetic from exchanging
+        /// and removes XSTPool liquidity source for corresponding trading pair.
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to disable.
@@ -243,15 +246,33 @@ pub mod pallet {
             synthetic_asset: T::AssetId,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
+            ensure!(
+                Self::enabled_synthetics(synthetic_asset).is_some(),
+                Error::<T>::SyntheticIsNotEnabled
+            );
+            Self::disable_synthetic_asset_unchecked(synthetic_asset)?;
+            Ok(().into())
+        }
 
+        /// Entirely remove synthetic asset (including linked symbol info)
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_synthetic_asset())]
+        pub fn remove_synthetic_asset(
+            origin: OriginFor<T>,
+            synthetic_asset: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
             let reference_symbol = EnabledSynthetics::<T>::get(synthetic_asset)
                 .ok_or_else(|| Error::<T>::SyntheticIsNotEnabled)?
                 .reference_symbol;
 
             EnabledSynthetics::<T>::remove(synthetic_asset);
-            EnabledSymbols::<T>::remove(reference_symbol);
+            EnabledSymbols::<T>::remove(&reference_symbol);
 
-            Self::deposit_event(Event::SyntheticAssetDisabled(synthetic_asset));
+            Self::deposit_event(Event::SyntheticAssetRemoved(
+                synthetic_asset,
+                reference_symbol,
+            ));
             Ok(().into())
         }
 
@@ -263,7 +284,7 @@ pub mod pallet {
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to set fee for,
         /// - `fee_ratio`: fee ratio with precision = 18, so 1000000000000000000 = 1 = 100% fee.
-        #[pallet::call_index(4)]
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_fee())]
         pub fn set_synthetic_asset_fee(
             origin: OriginFor<T>,
@@ -271,6 +292,10 @@ pub mod pallet {
             fee_ratio: Fixed,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
+            ensure!(
+                fee_ratio >= fixed!(0) && fee_ratio < fixed!(1),
+                Error::<T>::InvalidFeeRatio
+            );
 
             EnabledSynthetics::<T>::try_mutate(
                 &synthetic_asset,
@@ -291,7 +316,7 @@ pub mod pallet {
         ///
         /// - `origin`: root account
         /// - `floor_price`: floor price for the synthetic base asset
-        #[pallet::call_index(5)]
+        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_base_asset_floor_price())]
         pub fn set_synthetic_base_asset_floor_price(
             origin: OriginFor<T>,
@@ -317,6 +342,8 @@ pub mod pallet {
         SyntheticAssetFeeChanged(AssetIdOf<T>, Fixed),
         /// Floor price of the synthetic base asset has been changed. [New Floor Price]
         SyntheticBaseAssetFloorPriceChanged(Balance),
+        /// Synthetic asset has been removed. [Synthetic Asset Id, Reference Symbol]
+        SyntheticAssetRemoved(AssetIdOf<T>, T::Symbol),
     }
 
     #[pallet::error]
@@ -398,7 +425,7 @@ pub mod pallet {
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                reference_asset_id: DAI.into(),
+                reference_asset_id: common::DAI.into(),
                 initial_synthetic_assets: [(
                     XSTUSD.into(),
                     common::SymbolName::usd().into(),
@@ -438,9 +465,6 @@ impl<T: Config> Pallet<T> {
         transactional: bool,
     ) -> sp_runtime::DispatchResult {
         let code = || {
-            if EnabledSymbols::<T>::contains_key(&reference_symbol) {
-                return Err(Error::<T>::SymbolAlreadyReferencedToSynthetic.into());
-            }
             ensure!(
                 fee_ratio >= fixed!(0) && fee_ratio < fixed!(1),
                 Error::<T>::InvalidFeeRatio
@@ -462,7 +486,20 @@ impl<T: Config> Pallet<T> {
                     fee_ratio,
                 },
             );
-            EnabledSymbols::<T>::insert(reference_symbol.clone(), synthetic_asset_id);
+
+            match Self::enabled_symbols(&reference_symbol) {
+                Some(asset_id) => {
+                    if asset_id != synthetic_asset_id {
+                        Err(Error::<T>::SymbolAlreadyReferencedToSynthetic)
+                    } else {
+                        Ok(())
+                    }
+                }
+                None => {
+                    EnabledSymbols::<T>::insert(reference_symbol.clone(), synthetic_asset_id);
+                    Ok(())
+                }
+            }?;
 
             Self::deposit_event(Event::SyntheticAssetEnabled(
                 synthetic_asset_id,
@@ -493,8 +530,7 @@ impl<T: Config> Pallet<T> {
             synthetic_asset_id,
         )?;
 
-        // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-        trading_pair::Pallet::<T>::enable_source_for_trading_pair(
+        T::TradingPairSourceManager::enable_source_for_trading_pair(
             &DEXId::Polkaswap.into(),
             &T::GetSyntheticBaseAssetId::get(),
             &synthetic_asset_id,
@@ -624,6 +660,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 // Calculate how much `main_asset_id` we will buy (get)
                 // if we give `desired_amount_in` of `synthetic_asset_id`
+                ensure!(desired_amount_in != 0, Error::<T>::PriceCalculationFailed);
                 let mut output_amount: Balance = FixedWrapper::from(Self::buy_price(
                     main_asset_id,
                     synthetic_asset_id,
@@ -631,21 +668,25 @@ impl<T: Config> Pallet<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Self::ensure_base_asset_amount_within_limit(output_amount, check_limits)?;
-                if deduce_fee {
+
+                let fee_amount = if deduce_fee {
                     let fee_amount = (fee_ratio * output_amount)
                         .try_into_balance()
                         .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                     output_amount = output_amount.saturating_sub(fee_amount);
-                    (desired_amount_in, output_amount, fee_amount)
+                    fee_amount
                 } else {
-                    (desired_amount_in, output_amount, 0)
-                }
+                    0
+                };
+                Self::ensure_base_asset_amount_within_limit(output_amount, check_limits)?;
+
+                (desired_amount_in, output_amount, fee_amount)
             }
 
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 // Calculate how much `synthetic_asset_id` we need to give to buy (get)
                 // `desired_amount_out` of `main_asset_id`
+                ensure!(desired_amount_out != 0, Error::<T>::PriceCalculationFailed);
                 Self::ensure_base_asset_amount_within_limit(desired_amount_out, check_limits)?;
                 let desired_amount_out_with_fee = if deduce_fee {
                     (FixedWrapper::from(desired_amount_out) / (fixed_wrapper!(1) - fee_ratio))
@@ -695,6 +736,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 // Calculate how much `synthetic_asset_id` we will get
                 // if we sell `desired_amount_in` of `main_asset_id`
+                ensure!(desired_amount_in != 0, Error::<T>::PriceCalculationFailed);
                 Self::ensure_base_asset_amount_within_limit(desired_amount_in, check_limits)?;
                 let fee_amount = if deduce_fee {
                     (fee_ratio * FixedWrapper::from(desired_amount_in))
@@ -719,6 +761,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 // Calculate how much `main_asset_id` we need to sell to get
                 // `desired_amount_out` of `synthetic_asset_id`
+                ensure!(desired_amount_out != 0, Error::<T>::PriceCalculationFailed);
                 let input_amount: Balance = FixedWrapper::from(Self::sell_price(
                     main_asset_id,
                     synthetic_asset_id,
@@ -726,8 +769,7 @@ impl<T: Config> Pallet<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Self::ensure_base_asset_amount_within_limit(input_amount, check_limits)?;
-                if deduce_fee {
+                let (input_amount_with_fee, fee) = if deduce_fee {
                     let input_amount_with_fee =
                         FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
                     let input_amount_with_fee = input_amount_with_fee
@@ -735,12 +777,13 @@ impl<T: Config> Pallet<T> {
                         .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                     (
                         input_amount_with_fee,
-                        desired_amount_out,
                         input_amount_with_fee.saturating_sub(input_amount),
                     )
                 } else {
-                    (input_amount, desired_amount_out, 0)
-                }
+                    (input_amount, 0)
+                };
+                Self::ensure_base_asset_amount_within_limit(input_amount_with_fee, check_limits)?;
+                (input_amount_with_fee, desired_amount_out, fee)
             }
         })
     }
@@ -822,11 +865,17 @@ impl<T: Config> Pallet<T> {
         } = EnabledSynthetics::<T>::get(synthetic_asset_id)
             .ok_or(Error::<T>::SyntheticDoesNotExist)?;
 
-        let dynamic_fee: FixedWrapper = T::Oracle::quote_unchecked(&reference_symbol)
+        let dynamic_fee_ratio: FixedWrapper = T::Oracle::quote_unchecked(&reference_symbol)
             .map_or(fixed_wrapper!(0), |rate| rate.dynamic_fee.into());
         let fee_ratio: FixedWrapper = fee_ratio.into();
+        let resulting_fee_ratio = fee_ratio + dynamic_fee_ratio;
 
-        return Ok(fee_ratio + dynamic_fee);
+        ensure!(
+            resulting_fee_ratio < fixed_wrapper!(1),
+            Error::<T>::InvalidFeeRatio
+        );
+
+        return Ok(resulting_fee_ratio);
     }
 
     /// Used for converting XST fee to XOR
@@ -835,11 +884,11 @@ impl<T: Config> Pallet<T> {
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 &T::GetSyntheticBaseAssetId::get(),
                 &T::GetBaseAssetId::get(),
-                // Since `Sell` is more expensive in case if we are selling XST
+                // Since `Buy` is more expensive in case if we are buying XOR
                 // (x XST -> y XOR; y XOR -> x' XST, x' < x),
                 // it seems logical to show this amount in order
                 // to not accidentally lie about the price.
-                PriceVariant::Sell,
+                PriceVariant::Buy,
             )?
             .into();
         Ok((fee_amount * output_to_base)
@@ -898,7 +947,7 @@ impl<T: Config> Pallet<T> {
                 let symbol = EnabledSynthetics::<T>::get(id)
                     .ok_or(Error::<T>::SyntheticDoesNotExist)?
                     .reference_symbol;
-                T::Oracle::quote(&symbol)?
+                T::Oracle::quote_unchecked(&symbol)
                     .map(|rate| rate.value)
                     .ok_or(Error::<T>::OracleQuoteError.into())
             }
@@ -985,6 +1034,18 @@ impl<T: Config> Pallet<T> {
                 Self::quote_weight(),
             )),
         }
+    }
+
+    fn disable_synthetic_asset_unchecked(synthetic_asset: AssetIdOf<T>) -> DispatchResult {
+        EnabledSynthetics::<T>::remove(synthetic_asset);
+        T::TradingPairSourceManager::disable_source_for_trading_pair(
+            &DEXId::Polkaswap.into(),
+            &T::GetSyntheticBaseAssetId::get(),
+            &synthetic_asset,
+            LiquiditySourceType::XSTPool,
+        )?;
+        Self::deposit_event(Event::SyntheticAssetDisabled(synthetic_asset));
+        Ok(())
     }
 }
 
@@ -1140,5 +1201,19 @@ impl<T: Config> SyntheticInfoProvider<T::AssetId> for Pallet<T> {
 
     fn get_synthetic_assets() -> Vec<T::AssetId> {
         EnabledSynthetics::<T>::iter_keys().collect()
+    }
+}
+
+impl<T: Config> OnSymbolDisabled<T::Symbol> for Pallet<T> {
+    fn disable_symbol(symbol: &T::Symbol) {
+        // error doesn't matter since we don't
+        // priorly know whether the symbol exists
+        if let Some(asset_id) = Self::enabled_symbols(symbol) {
+            if Self::enabled_synthetics(asset_id).is_some() {
+                _ = Self::disable_synthetic_asset_unchecked(asset_id);
+            }
+        } else {
+            ()
+        }
     }
 }
