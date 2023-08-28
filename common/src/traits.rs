@@ -1067,3 +1067,13 @@ impl<AssetId, AccountId> BuyBackHandler<AccountId, AssetId> for () {
         Ok(0)
     }
 }
+
+pub trait ReferrerAccountProvider<AccountId> {
+    fn get_referrer_account(who: &AccountId) -> Option<AccountId>;
+}
+
+impl<AccountId> ReferrerAccountProvider<AccountId> for () {
+    fn get_referrer_account(_who: &AccountId) -> Option<AccountId> {
+        None
+    }
+}

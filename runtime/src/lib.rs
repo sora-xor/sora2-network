@@ -42,9 +42,9 @@ use bridge_types::traits::Verifier;
 mod bags_thresholds;
 /// Constant values used within the runtime.
 pub mod constants;
-mod extensions;
 mod impls;
 pub mod migrations;
+mod xor_fee_impls;
 
 #[cfg(test)]
 pub mod mock;
@@ -76,7 +76,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
-use extensions::ChargeTransactionPayment;
 use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
@@ -109,7 +108,7 @@ use sp_runtime::transaction_validity::{
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
+    MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
@@ -118,7 +117,8 @@ use sp_std::vec::Vec;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::assert_eq_size;
-use traits::parameter_type_with_key;
+use traits::{parameter_type_with_key, MultiCurrency};
+use xor_fee::extension::ChargeTransactionPayment;
 
 // A few exports that help ease life for downstream crates.
 pub use common::prelude::{
@@ -137,7 +137,7 @@ pub use ethereum_light_client::EthereumHeader;
 pub use frame_support::dispatch::DispatchClass;
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
-    KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
+    Contains, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
 };
 pub use frame_support::weights::constants::{BlockExecutionWeight, RocksDbWeight};
 pub use frame_support::weights::Weight;
@@ -359,8 +359,25 @@ parameter_types! {
     pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 
+pub struct BaseCallFilter;
+
+impl Contains<RuntimeCall> for BaseCallFilter {
+    fn contains(call: &RuntimeCall) -> bool {
+        if call.swap_count() > 1 {
+            return false;
+        }
+        if matches!(
+            call,
+            RuntimeCall::BridgeMultisig(bridge_multisig::Call::register_multisig { .. })
+        ) {
+            return false;
+        }
+        true
+    }
+}
+
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
+    type BaseCallFilter = BaseCallFilter;
     type BlockWeights = BlockWeights;
     /// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
     type BlockLength = BlockLength;
@@ -1205,137 +1222,6 @@ impl rewards::Config for Runtime {
     type WeightInfo = rewards::weights::SubstrateWeight<Runtime>;
 }
 
-// Multiplied flat fees implementation for the selected extrinsics.
-// Returns a value (* multiplier) if the extrinsic is subject to manual fee
-// adjustment and `None` otherwise
-impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
-    fn compute_fee(call: &RuntimeCall) -> Option<Balance> {
-        let result = match call {
-            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
-                swap_batches,
-                ..
-            }) => Some(
-                swap_batches
-                    .iter()
-                    .map(|x| x.receivers.len() as Balance)
-                    .sum::<Balance>()
-                    .max(1)
-                    * SMALL_FEE,
-            ),
-            RuntimeCall::Assets(assets::Call::register { .. })
-            | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
-            | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
-            | RuntimeCall::Rewards(rewards::Call::claim { .. })
-            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
-                ..
-            })
-            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => {
-                Some(BIG_FEE)
-            }
-            RuntimeCall::Assets(..)
-            | RuntimeCall::Band(..)
-            | RuntimeCall::EthBridge(..)
-            | RuntimeCall::LiquidityProxy(..)
-            | RuntimeCall::MulticollateralBondingCurvePool(..)
-            | RuntimeCall::PoolXYK(..)
-            | RuntimeCall::Rewards(..)
-            | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
-            | RuntimeCall::TradingPair(..)
-            | RuntimeCall::Referrals(..) => Some(SMALL_FEE),
-            _ => None,
-        };
-        result.map(|fee| XorFee::multiplier().saturating_mul_int(fee))
-    }
-}
-
-impl xor_fee::ExtractProxySwap for RuntimeCall {
-    type AccountId = AccountId;
-    type DexId = DEXId;
-    type AssetId = AssetId;
-    type Amount = SwapAmount<u128>;
-    fn extract(
-        &self,
-    ) -> Option<xor_fee::SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>> {
-        match self {
-            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap {
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-                selected_source_types,
-                filter_mode,
-            }) => Some(xor_fee::SwapInfo {
-                fee_source: None,
-                dex_id: *dex_id,
-                input_asset_id: *input_asset_id,
-                output_asset_id: *output_asset_id,
-                amount: *swap_amount,
-                selected_source_types: selected_source_types.to_vec(),
-                filter_mode: filter_mode.clone(),
-            }),
-            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer {
-                receiver,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-                selected_source_types,
-                filter_mode,
-                ..
-            }) => Some(xor_fee::SwapInfo {
-                fee_source: Some(receiver.clone()),
-                dex_id: *dex_id,
-                input_asset_id: *input_asset_id,
-                output_asset_id: *output_asset_id,
-                amount: *swap_amount,
-                selected_source_types: selected_source_types.to_vec(),
-                filter_mode: filter_mode.clone(),
-            }),
-            _ => None,
-        }
-    }
-}
-
-impl xor_fee::IsCalledByBridgePeer<AccountId> for RuntimeCall {
-    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
-        match self {
-            RuntimeCall::BridgeMultisig(call) => match call {
-                bridge_multisig::Call::as_multi {
-                    id: multisig_id, ..
-                }
-                | bridge_multisig::Call::as_multi_threshold_1 {
-                    id: multisig_id, ..
-                } => bridge_multisig::Accounts::<Runtime>::get(multisig_id)
-                    .map(|acc| acc.is_signatory(&who)),
-                _ => None,
-            },
-            RuntimeCall::EthBridge(call) => match call {
-                eth_bridge::Call::approve_request { network_id, .. } => {
-                    Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
-                }
-                eth_bridge::Call::register_incoming_request { incoming_request } => {
-                    let net_id = incoming_request.network_id();
-                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
-                }
-                eth_bridge::Call::import_incoming_request {
-                    load_incoming_request,
-                    ..
-                } => {
-                    let net_id = load_incoming_request.network_id();
-                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
-                }
-                eth_bridge::Call::finalize_incoming_request { network_id, .. }
-                | eth_bridge::Call::abort_request { network_id, .. } => {
-                    eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
-                }
-                _ => None,
-            },
-            _ => None,
-        }
-        .unwrap_or(false)
-    }
-}
-
 pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
 
 impl<T> OnValBurned for ValBurnedAggregator<T>
@@ -1345,42 +1231,6 @@ where
     fn on_val_burned(amount: Balance) {
         Rewards::on_val_burned(amount);
         T::notify_val_burned(amount);
-    }
-}
-
-pub struct WithdrawFee;
-
-impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
-    fn withdraw_fee(
-        who: &AccountId,
-        call: &RuntimeCall,
-        fee: Balance,
-    ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
-        match call {
-            RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
-                if Referrals::can_set_referrer(who) =>
-            {
-                Referrals::withdraw_fee(referrer, fee)?;
-                Ok((
-                    referrer.clone(),
-                    Some(Balances::withdraw(
-                        &ReferralsReservesAcc::get(),
-                        fee,
-                        WithdrawReasons::TRANSACTION_PAYMENT,
-                        ExistenceRequirement::KeepAlive,
-                    )?),
-                ))
-            }
-            _ => Ok((
-                who.clone(),
-                Some(Balances::withdraw(
-                    who,
-                    fee,
-                    WithdrawReasons::TRANSACTION_PAYMENT,
-                    ExistenceRequirement::KeepAlive,
-                )?),
-            )),
-        }
     }
 }
 
@@ -1402,12 +1252,14 @@ impl xor_fee::Config for Runtime {
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
-    type CustomFees = XorFee;
+    type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type SessionManager = Staking;
+    type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
-    type WithdrawFee = WithdrawFee;
+    type WithdrawFee = xor_fee_impls::WithdrawFee;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
+    type ReferrerAccountProvider = Referrals;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -2657,21 +2509,13 @@ impl_runtime_apis! {
         Balance,
     > for Runtime {
         fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
-            let maybe_dispatch_info = XorFee::query_info(&uxt, len);
-            let output = match maybe_dispatch_info {
-                Some(dispatch_info) => dispatch_info,
-                _ => TransactionPayment::query_info(uxt, len),
-            };
-            output
+            let call = &uxt.function;
+            XorFee::query_info(&uxt, call, len)
         }
 
         fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::FeeDetails<Balance> {
-            let maybe_fee_details = XorFee::query_fee_details(&uxt, len);
-            let output = match maybe_fee_details {
-                Some(fee_details) => fee_details,
-                _ => TransactionPayment::query_fee_details(uxt, len),
-            };
-            output
+            let call = &uxt.function;
+            XorFee::query_fee_details(&uxt, call, len)
         }
 
         fn query_weight_to_fee(weight: Weight) -> Balance {
