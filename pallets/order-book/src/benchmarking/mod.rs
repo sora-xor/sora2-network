@@ -91,15 +91,15 @@ fn get_last_order_id<T: Config>(
 
 pub fn assert_orders_numbers<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-    expected_bids: Option<usize>,
-    expected_asks: Option<usize>,
+    assert_bids: Option<usize>,
+    assert_asks: Option<usize>,
     author: T::AccountId,
     expected_user_limit_orders: usize,
     lifespan: MomentOf<T>,
     expected_expirations: usize,
 ) {
     // # of bids should be max to execute max # of orders and payments
-    if let Some(expected_bids) = expected_bids {
+    if let Some(expected_bids) = assert_bids {
         assert_eq!(
             order_book::Bids::<T>::iter_prefix(order_book_id)
                 .flat_map(|(_price, orders)| orders.into_iter())
@@ -107,7 +107,7 @@ pub fn assert_orders_numbers<T: Config>(
             expected_bids
         );
     }
-    if let Some(expected_asks) = expected_asks {
+    if let Some(expected_asks) = assert_asks {
         assert_eq!(
             order_book::Asks::<T>::iter_prefix(order_book_id)
                 .flat_map(|(_price, orders)| orders.into_iter())
@@ -356,18 +356,16 @@ mod benchmarks_inner {
             let expected_limit_order = LimitOrder::<T>::new(
                 order_id,
                 caller.clone(),
-                PriceVariant::Buy,
+                PriceVariant::Sell,
                 price.into(),
                 order_book.min_lot_size.into(),
                 now,
                 lifespan,
-                current_block
+                current_block,
             );
-
-            assert_eq!(
-                OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap(),
-                expected_limit_order
-            );
+            let mut order = OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap();
+            order.original_amount = order.amount;
+            assert_eq!(order, expected_limit_order);
         }
 
         cancel_limit_order_first_expiration {
@@ -880,7 +878,9 @@ mod tests {
     use crate::test_utils::{
         create_empty_order_book, pretty_print_expirations, pretty_print_order_book, run_to_block,
     };
-    use frame_support::traits::Get;
+
+    use common::PriceVariant;
+    use frame_support::traits::{Get, Time};
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
@@ -969,6 +969,37 @@ mod tests {
                 Some(lifespan),
             )
             .unwrap();
+
+            let order_id = get_last_order_id::<Runtime>(order_book_id).unwrap();
+
+            assert_orders_numbers::<Runtime>(
+                order_book_id,
+                Some(0),
+                None,
+                caller.clone(),
+                settings.max_orders_per_user as usize,
+                lifespan,
+                settings.max_expiring_orders_per_block as usize,
+            );
+
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+
+            let order_book = order_book::OrderBooks::<Runtime>::get(order_book_id).unwrap();
+            let now = <<Runtime as Config>::Time as Time>::now();
+            let expected_limit_order = LimitOrder::<Runtime>::new(
+                order_id,
+                caller.clone(),
+                PriceVariant::Sell,
+                price.into(),
+                order_book.min_lot_size.into(),
+                now,
+                lifespan,
+                current_block,
+            );
+            let mut order =
+                OrderBookPallet::<Runtime>::limit_orders(order_book_id, order_id).unwrap();
+            order.original_amount = order.amount;
+            assert_eq!(order, expected_limit_order);
         })
     }
 

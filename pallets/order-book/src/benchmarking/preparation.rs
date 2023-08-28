@@ -224,6 +224,43 @@ pub fn prepare_delete_orderbook_benchmark<T: Config>(
     order_book_id
 }
 
+/// Places buy orders for worst-case execution
+///
+/// Returns iterators in the same way as `fill_order_book_worst_case`
+fn prepare_order_execute_worst_case<T: Config>(
+    data: &mut impl DataLayer<T>,
+    order_book: &mut OrderBook<T>,
+    fill_settings: FillSettings<T>,
+) -> (
+    impl Iterator<Item = T::AccountId>,
+    impl Iterator<Item = u64>,
+) {
+    // allow to execute all orders at once
+    let max_side_orders =
+        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
+    OrderBookPallet::<T>::update_orderbook(
+        RawOrigin::Root.into(),
+        order_book.order_book_id,
+        *order_book.tick_size.balance(),
+        *order_book.step_lot_size.balance(),
+        *order_book.min_lot_size.balance(),
+        *sp_std::cmp::max(
+            order_book
+                .min_lot_size
+                .checked_mul_by_scalar(Scalar(max_side_orders + 1))
+                .unwrap(),
+            order_book.max_lot_size,
+        )
+        .balance(),
+    )
+    .unwrap();
+
+    // Place only buy orders
+    let mut buy_settings = fill_settings.clone();
+    buy_settings.max_orders_per_user = 1;
+    fill_order_book_worst_case::<T>(buy_settings, order_book, data, true, false)
+}
+
 /// Returns parameters for placing a limit order;
 /// `author` should not be from `test_utils::generate_account`
 pub fn prepare_place_orderbook_benchmark<T: Config>(
@@ -243,38 +280,16 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     };
     OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
         .expect("failed to create an order book");
-    // allow to execute all orders at once
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
-    let max_side_orders =
-        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
-    OrderBookPallet::<T>::update_orderbook(
-        RawOrigin::Root.into(),
-        order_book_id,
-        *order_book.tick_size.balance(),
-        *order_book.step_lot_size.balance(),
-        *order_book.min_lot_size.balance(),
-        *sp_std::cmp::max(
-            order_book
-                .min_lot_size
-                .checked_mul_by_scalar(Scalar(max_side_orders + 1))
-                .unwrap(),
-            order_book.max_lot_size,
-        )
-        .balance(),
-    )
-    .unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
-    // Place only buy orders
-    let mut buy_settings = fill_settings.clone();
-    buy_settings.max_orders_per_user = 1;
-    let (mut users, mut lifespans) = fill_order_book_worst_case::<T>(
-        buy_settings,
-        &mut order_book,
+    let (users, mut lifespans) = prepare_order_execute_worst_case::<T>(
         &mut data_layer,
-        true,
-        false,
+        &mut order_book,
+        fill_settings.clone(),
     );
+    let max_side_orders =
+        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
 
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let mut fill_user_settings = fill_settings.clone();
@@ -547,6 +562,12 @@ pub fn prepare_quote_benchmark<T: Config>(
     let amount = QuoteAmount::with_desired_input(*total_bids_base_amount.balance());
     let deduce_fee = true;
     (dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
+}
+
+pub fn prepare_market_order_benchmark<T: Config>(
+    fill_settings: FillSettings<T>,
+    is_divisible: bool,
+) -> () {
 }
 
 pub mod presets {
