@@ -14,7 +14,7 @@ use framenode_runtime::order_book::{
 };
 
 use assets::AssetIdOf;
-use common::prelude::{BalanceUnit, FixedWrapper, Scalar};
+use common::prelude::{BalanceUnit, Scalar};
 use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::info;
 use frame_benchmarking::Zero;

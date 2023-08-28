@@ -55,8 +55,6 @@ use common::{DEXId, VAL, XOR};
 use frame_system::EventRecord;
 use hex_literal::hex;
 
-use frame_system::Pallet as FrameSystem;
-use trading_pair::Pallet as TradingPair;
 use Pallet as OrderBookPallet;
 
 mod preparation;
@@ -155,12 +153,14 @@ mod benchmarks_inner {
         LimitOrder, MarketRole, OrderAmount, OrderBook, OrderBookId, OrderBookStatus, Pallet,
     };
     use preparation::{
-        create_and_populate_order_book, prepare_delete_orderbook_benchmark,
-        prepare_place_orderbook_benchmark, presets::*, FillSettings,
+        create_and_populate_order_book, prepare_cancel_orderbook_benchmark,
+        prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark, presets::*,
+        FillSettings,
     };
 
-    use crate::benchmarking::preparation::prepare_cancel_orderbook_benchmark;
     use assets::Pallet as Assets;
+    use frame_system::Pallet as FrameSystem;
+    use trading_pair::Pallet as TradingPair;
 
     benchmarks! {
         where_clause {
@@ -981,7 +981,7 @@ mod tests {
                 prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);
 
             println!("1;");
-            pretty_print_order_book::<Runtime>(order_book_id.clone(), caller.clone(), Some(9));
+            pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
             pretty_print_expirations::<Runtime>(0..10);
             OrderBookPallet::<Runtime>::cancel_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
@@ -990,7 +990,7 @@ mod tests {
             )
             .unwrap();
             println!("2;");
-            pretty_print_order_book::<Runtime>(order_book_id.clone(), caller.clone(), Some(9));
+            pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
             pretty_print_expirations::<Runtime>(0..10);
         })
     }

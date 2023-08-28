@@ -421,7 +421,6 @@ mod test_only {
     /// ```
     pub fn pretty_print_order_book<T: Config>(
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        author: T::AccountId,
         column_width: Option<usize>,
     ) {
         let column_width = column_width.unwrap_or(8);
