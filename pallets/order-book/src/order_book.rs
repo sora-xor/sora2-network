@@ -691,12 +691,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     }
 
     /// Summarizes and returns `base` and `quote` volumes of market depth.
-    /// If `depth_limit` is defined, it counts the maximum possible `base` and `quote` volumes under the limit,
+    /// If `target_depth` is defined, it counts `base` and `quote` volumes under the limit and
+    /// checks if there is enough volume,
     /// Otherwise returns the sum of whole market depth.
     pub fn sum_market<'a>(
         &self,
         market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
-        depth_limit: Option<OrderAmount>,
+        target_depth: Option<OrderAmount>,
     ) -> Result<(OrderAmount, OrderAmount), DispatchError> {
         let mut market_base_volume = OrderVolume::zero();
         let mut market_quote_volume = OrderVolume::zero();
@@ -708,16 +709,16 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 .checked_mul(base_volume)
                 .ok_or(Error::<T>::AmountCalculationFailed)?;
 
-            if let Some(limit) = depth_limit {
-                match limit {
-                    OrderAmount::Base(base_limit) => {
+            if let Some(target_depth) = target_depth {
+                match target_depth {
+                    OrderAmount::Base(base_target) => {
                         if market_base_volume
                             .checked_add(base_volume)
                             .ok_or(Error::<T>::AmountCalculationFailed)?
-                            > base_limit
+                            > base_target
                         {
                             let delta = self.align_amount(
-                                base_limit
+                                base_target
                                     .checked_sub(&market_base_volume)
                                     .ok_or(Error::<T>::AmountCalculationFailed)?,
                             );
@@ -735,15 +736,15 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                             break;
                         }
                     }
-                    OrderAmount::Quote(quote_limit) => {
+                    OrderAmount::Quote(quote_target) => {
                         if market_quote_volume
                             .checked_add(&quote_volume)
                             .ok_or(Error::<T>::AmountCalculationFailed)?
-                            > quote_limit
+                            > quote_target
                         {
                             // delta in base asset
                             let delta = self.align_amount(
-                                quote_limit
+                                quote_target
                                     .checked_sub(&market_quote_volume)
                                     .ok_or(Error::<T>::AmountCalculationFailed)?
                                     .checked_div(price)
@@ -774,8 +775,20 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 .ok_or(Error::<T>::AmountCalculationFailed)?;
         }
 
+        // if we exactly match the limit, it means there is enough liquidity
+        if let Some(target_depth) = target_depth {
+            match target_depth {
+                OrderAmount::Base(base_target) if market_base_volume == base_target => {
+                    enough_liquidity = true;
+                }
+                OrderAmount::Quote(quote_target) if market_quote_volume == quote_target => {
+                    enough_liquidity = true;
+                }
+                _ => {} // leave as is
+            }
+        };
         ensure!(
-            depth_limit.is_none() || enough_liquidity,
+            target_depth.is_none() || enough_liquidity,
             Error::<T>::NotEnoughLiquidityInOrderBook
         );
 
