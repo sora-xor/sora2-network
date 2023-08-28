@@ -891,18 +891,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
     ) -> Result<PriceVariant, DispatchError> {
-        match self.order_book_id {
-            OrderBookId::<AssetIdOf<T>, _> { base, quote, .. }
-                if base == *output_asset_id && quote == *input_asset_id =>
-            {
-                Ok(PriceVariant::Buy)
-            }
-            OrderBookId::<AssetIdOf<T>, _> { base, quote, .. }
-                if base == *input_asset_id && quote == *output_asset_id =>
-            {
-                Ok(PriceVariant::Sell)
-            }
-            _ => Err(Error::<T>::InvalidAsset.into()),
+        let OrderBookId::<AssetIdOf<T>, _> { base, quote, .. } = self.order_book_id;
+        if base == *output_asset_id && quote == *input_asset_id {
+            Ok(PriceVariant::Buy)
+        } else if base == *input_asset_id && quote == *output_asset_id {
+            Ok(PriceVariant::Sell)
+        } else {
+            Err(Error::<T>::InvalidAsset.into())
         }
     }
 

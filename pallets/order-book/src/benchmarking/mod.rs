@@ -646,6 +646,7 @@ mod benchmarks_inner {
         }
         verify {}
 
+        // TODO: benchmark worst case
         service_single_expiration {
             // very similar to cancel_limit_order
             let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
@@ -663,8 +664,7 @@ mod benchmarks_inner {
             let balance_before =
                 <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
 
-            // should be the slower layer because cache is not
-            // warmed up
+            // should be the slower layer because cache is not warmed up
             let mut data_layer = CacheDataLayer::<T>::new();
         }: {
             OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, order_id);

@@ -365,8 +365,6 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     )
 }
 
-pub struct CancelParameters {}
-
 /// Returns parameters for cancelling a limit order.
 /// `expirations_first` switches between two cases; it's not clear which one is heavier.
 /// `author` should not be from `test_utils::generate_account`.
@@ -375,7 +373,6 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
     author: T::AccountId,
     place_first_expiring: bool,
 ) -> (OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId) {
-    // fill `aggregated_bids`
     let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
         dex_id: DEX.into(),
         base: VAL.into(),
