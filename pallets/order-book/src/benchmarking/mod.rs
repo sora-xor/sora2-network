@@ -1001,17 +1001,10 @@ mod tests {
         ext().execute_with(|| {
             use common::LiquiditySource;
 
-            // let settings = FillSettings::<T>::new(
-            //     <T as Config>::MaxSidePriceCount::get(),
-            //     <T as Config>::MaxLimitOrdersForPrice::get(),
-            //     <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
-            //     <T as Config>::MaxExpiringOrdersPerBlock::get()
-            // );
-            let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            // let settings = preset_1::<Runtime>();
+            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
+            let settings = preset_3::<Runtime>();
             let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
                 prepare_quote_benchmark::<Runtime>(settings);
-            dbg!(amount);
             let order_book_id = OrderBookId {
                 dex_id,
                 base: input_asset_id,
