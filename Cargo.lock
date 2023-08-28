@@ -1786,12 +1786,29 @@ dependencies = [
 
 [[package]]
 name = "clap"
+version = "3.2.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86447ad904c7fb335a790c9d7fe3d0d971dc523b8ccd1561a520de9a85302750"
+dependencies = [
+ "atty",
+ "bitflags 1.3.2",
+ "clap_derive 3.2.18",
+ "clap_lex 0.2.4",
+ "indexmap 1.9.3",
+ "once_cell",
+ "strsim",
+ "termcolor",
+ "textwrap",
+]
+
+[[package]]
+name = "clap"
 version = "4.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b0827b011f6f8ab38590295339817b0d26f344aa4932c3ced71b45b0c54b4a9"
 dependencies = [
  "clap_builder",
- "clap_derive",
+ "clap_derive 4.3.12",
  "once_cell",
 ]
 
@@ -1803,8 +1820,21 @@ checksum = "9441b403be87be858db6a23edb493e7f694761acdc3343d5a0fcaafd304cbc9e"
 dependencies = [
  "anstream",
  "anstyle",
- "clap_lex",
+ "clap_lex 0.5.0",
  "strsim",
+]
+
+[[package]]
+name = "clap_derive"
+version = "3.2.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea0c8bce528c4be4da13ea6fead8965e95b6073585a2f05204bd8f4119f82a65"
+dependencies = [
+ "heck",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1821,9 +1851,18 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.5.1"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd7cc57abe963c6d3b9d8be5b06ba7c8957a930305ca90304f24ef040aa6f961"
+checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
+dependencies = [
+ "os_str_bytes",
+]
+
+[[package]]
+name = "clap_lex"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
 name = "cloudabi"
@@ -4156,7 +4195,7 @@ dependencies = [
  "Inflector",
  "array-bytes",
  "chrono",
- "clap",
+ "clap 4.3.17",
  "comfy-table",
  "frame-benchmarking",
  "frame-support",
@@ -4405,7 +4444,8 @@ dependencies = [
  "bridge-channel-rpc",
  "bridge-proxy-rpc",
  "bridge-types",
- "clap",
+ "clap 4.3.17",
+ "clap_lex 0.5.0",
  "common",
  "derive_more",
  "dex-api-rpc",
@@ -4838,7 +4878,7 @@ name = "generate-bags"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "clap",
+ "clap 4.3.17",
  "frame-election-provider-support",
  "frame-support",
  "frame-system",
@@ -7801,6 +7841,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "os_str_bytes"
+version = "6.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d5d9eb14b174ee9aa2ef96dc2b94637a2d4b6e7cb873c7e171f0c20c6cf3eac"
+
+[[package]]
 name = "p256"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9825,7 +9871,7 @@ dependencies = [
  "bridge-common",
  "bridge-types",
  "ckb-merkle-mountain-range",
- "clap",
+ "clap 3.2.22",
  "common",
  "env_logger 0.9.3",
  "eth-bridge",
@@ -9874,7 +9920,7 @@ name = "remote-ext"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap",
+ "clap 4.3.17",
  "common",
  "dex-manager",
  "env_logger 0.9.3",
@@ -10443,7 +10489,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#
 dependencies = [
  "array-bytes",
  "chrono",
- "clap",
+ "clap 4.3.17",
  "fdlimit",
  "futures 0.3.28",
  "libp2p",
@@ -11263,7 +11309,7 @@ name = "sc-storage-monitor"
 version = "0.1.0"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "clap",
+ "clap 4.3.17",
  "futures 0.3.28",
  "log",
  "nix 0.26.2",
@@ -13276,6 +13322,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
 
 [[package]]
+name = "textwrap"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7b3e525a49ec206798b40326a44121291b530c963cfb01018f63e135bac543d"
+
+[[package]]
 name = "thiserror"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13823,7 +13875,7 @@ name = "try-runtime-cli"
 version = "0.10.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "clap",
+ "clap 4.3.17",
  "frame-remote-externalities",
  "frame-try-runtime",
  "hex",

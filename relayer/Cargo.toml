@@ -29,7 +29,7 @@ jsonrpsee = { version = "0.16.2", features = [
   "ws-client",
   "http-client",
 ] }
-clap = { version = "=4.3.17", features = ["derive"] }
+clap = { version = "=3.2.22", features = ["derive"] }
 async-trait = "0.1.56"
 rlp = "0.5.2"
 triehash = "0.8.4"
