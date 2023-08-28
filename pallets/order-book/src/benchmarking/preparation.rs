@@ -264,10 +264,11 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     )
     .unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
+
     // Place only buy orders
     let mut buy_settings = fill_settings.clone();
     buy_settings.max_orders_per_user = 1;
-    let _ = fill_order_book_worst_case::<T>(
+    let (mut users, mut lifespans) = fill_order_book_worst_case::<T>(
         buy_settings,
         &mut order_book,
         &mut data_layer,
@@ -275,13 +276,6 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         false,
     );
 
-    // Lifespans for each placed order (start from a block with an empty schedule)
-    let mut lifespans = lifespans_iterator::<T>(
-        fill_settings.max_expiring_orders_per_block,
-        (max_side_orders / fill_settings.max_expiring_orders_per_block as u128 + 2)
-            .try_into()
-            .unwrap(),
-    );
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let mut fill_user_settings = fill_settings.clone();
     fill_user_settings.max_orders_per_user -= 1;
@@ -295,6 +289,12 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         &mut lifespans,
     );
 
+    // skip to an empty block
+    let filled_block = lifespans.next().unwrap();
+    let mut lifespans = lifespans.skip_while(|b| *b == filled_block);
+    let to_fill = lifespans.next().unwrap();
+    // we are going to fill this lifespan, so skipping it for possible future use of the iter
+    let mut _lifespans = lifespans.skip_while(|b| *b == to_fill);
     // different order book because we just want to fill expirations
     let order_book_id_2 = OrderBookId::<AssetIdOf<T>, T::DEXId> {
         dex_id: DEX.into(),
@@ -305,23 +305,26 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         .expect("failed to create an order book");
     let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
     let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
-    let free_lifespan = lifespans.next().unwrap() + T::MILLISECS_PER_BLOCK.saturated_into::<u64>();
     let mut fill_expiration_settings = fill_settings.clone();
-    fill_expiration_settings.max_orders_per_user -= 1; // 1 was placed already
-    fill_expiration_settings.max_expiring_orders_per_block -= 1; // leave a room for 1
+    // leave a room for 1
+    fill_expiration_settings.max_expiring_orders_per_block -= 1;
+    // mint other base asset as well
+    let mut users = users.inspect(move |user| {
+        assets::Pallet::<T>::mint_unchecked(
+            &order_book_id_2.base,
+            &user,
+            *order_amount_2.balance(),
+        )
+        .unwrap();
+    });
     fill_expiration_schedule(
         &mut data_layer,
         fill_expiration_settings.clone(),
         &mut order_book_2,
         PriceVariant::Sell,
         order_amount_2,
-        &mut users_iterator::<T>(
-            order_book_id_2,
-            order_amount_2,
-            BalanceUnit::from(1), // won't be used
-            fill_expiration_settings.max_orders_per_user,
-        ),
-        free_lifespan,
+        &mut users,
+        to_fill,
     );
 
     <OrderBooks<T>>::insert(order_book_id, order_book.clone());
@@ -340,7 +343,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     // to place remaining amount as limit order
     let amount = amount + order_book.min_lot_size;
     let side = PriceVariant::Sell;
-    let lifespan = free_lifespan.saturated_into::<MomentOf<T>>();
+    let lifespan = to_fill.saturated_into::<MomentOf<T>>();
     assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *amount.balance()).unwrap();
 
     assert_orders_numbers::<T>(
@@ -429,6 +432,8 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
     let filled_block = lifespans.next().unwrap();
     let mut lifespans = lifespans.skip_while(|b| *b == filled_block);
     let to_fill = lifespans.next().unwrap();
+    // we are going to fill this lifespan, so skipping it for possible future use of the iter
+    let mut _lifespans = lifespans.skip_while(|b| *b == to_fill);
 
     assets::Pallet::<T>::mint_unchecked(
         &order_book.order_book_id.quote,
@@ -436,6 +441,7 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
         *target_price.checked_mul(&order_amount).unwrap().balance(),
     )
     .unwrap();
+    // don't repeat this code for both `place_first_expiring` cases
     let place_to_cancel = |order_book: &mut OrderBook<T>, data_layer: &mut CacheDataLayer<T>| {
         let id = order_book.next_order_id();
         let order = LimitOrder::<T>::new(
