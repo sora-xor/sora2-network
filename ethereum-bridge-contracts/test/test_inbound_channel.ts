@@ -13,9 +13,10 @@ describe("Inbound channel", function () {
   let outboundFactory: OutboundChannel__factory;
   let outboundChannel: OutboundChannel;
   const coder = ethers.AbiCoder.defaultAbiCoder()
+  const hhChainIdReversed = "47708404443145933667408199115060285764373720183435463107199610647303319191552";
 
   before(async function () {
-    peers = await ethers.getSigners();
+    peers = await ethers.getSigners();   
     inboundFactory = await ethers.getContractFactory('InboundChannel');
     outboundFactory = await ethers.getContractFactory('OutboundChannel');
     inboundChannel = await (await inboundFactory.deploy()).waitForDeployment()
@@ -44,8 +45,8 @@ describe("Inbound channel", function () {
       }]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     await expect(inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s])).to.be.revertedWith("invalid batch nonce")
   });
@@ -71,8 +72,8 @@ describe("Inbound channel", function () {
       }]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     await inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s]);
     await expect(inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s])).to.be.revertedWith("invalid batch nonce");
@@ -99,8 +100,8 @@ describe("Inbound channel", function () {
       }]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     await inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s]);
     batch.nonce = 3;
@@ -128,8 +129,8 @@ describe("Inbound channel", function () {
       }]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     await expect(inboundChannel.submit(batch, [signature.v + 3], [signature.r], [signature.s])).to.be.revertedWith("ECDSA: invalid signature 'v' value");
   });
@@ -155,8 +156,8 @@ describe("Inbound channel", function () {
       }]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     await expect(inboundChannel.submit(batch, [signature.v, signature.v], [signature.r], [signature.s])).to.be.revertedWith("v and r length mismatch");
   });
@@ -182,8 +183,8 @@ describe("Inbound channel", function () {
       }]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     await expect(inboundChannel.submit(batch, [signature.v, signature.v], [signature.r, signature.r], [signature.s])).to.be.revertedWith("v and s length mismatch");
   });
@@ -209,8 +210,8 @@ describe("Inbound channel", function () {
       }]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     await inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s])
   });
@@ -228,8 +229,8 @@ describe("Inbound channel", function () {
       ]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     expect(await inboundChannel.peersCount()).to.be.equal(1);
     await inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s]);
@@ -250,8 +251,8 @@ describe("Inbound channel", function () {
       ]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     let signature2 = ethers.Signature.from(await peers[1].signMessage(ethers.getBytes(encodedMessage)));
     expect(await inboundChannel.peersCount()).to.be.equal(2);
@@ -273,8 +274,8 @@ describe("Inbound channel", function () {
       ]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     let signature2 = ethers.Signature.from(await peers[1].signMessage(ethers.getBytes(encodedMessage)));
     let signature3 = ethers.Signature.from(await peers[2].signMessage(ethers.getBytes(encodedMessage)));
@@ -297,11 +298,11 @@ describe("Inbound channel", function () {
       ]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     let signature2 = ethers.Signature.from(await peers[1].signMessage(ethers.getBytes(encodedMessage)));
-    await expect(inboundChannel.submit(batch, [signature.v, signature2.v], [signature.r, signature2.r], [signature.s, signature2.s])).to.emit(inboundChannel, "BatchDispatched");
+    let tx = await(await inboundChannel.submit(batch, [signature.v, signature2.v], [signature.r, signature2.r], [signature.s, signature2.s])).wait();
     expect(await inboundChannel.peersCount()).to.be.equal(2);
   });
 
@@ -318,12 +319,13 @@ describe("Inbound channel", function () {
       ]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     let signature2 = ethers.Signature.from(await peers[1].signMessage(ethers.getBytes(encodedMessage)));
     let tx = await(await inboundChannel.submit(batch, [signature.v, signature2.v], [signature.r, signature2.r], [signature.s, signature2.s])).wait();
-    console.log("tx log", tx.logs)
+    let decoder = inboundChannel.interface.decodeEventLog("BatchDispatched(uint256, address, uint256, uint256, uint256, uint256)", tx.logs[0].data);
+    expect(decoder[2]).to.be.equal(0); // false result 
   });
 
   it("should_revert_on_add_a_peer", async function () {
@@ -347,8 +349,8 @@ describe("Inbound channel", function () {
       ]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     await expect(inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s])).to.be.revertedWith('not enough signatures');
   });
@@ -366,8 +368,8 @@ describe("Inbound channel", function () {
       ]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     let signature2 = ethers.Signature.from(await peers[1].signMessage(ethers.getBytes(encodedMessage)));
     expect(await inboundChannel.peersCount()).to.be.equal(2);
@@ -389,8 +391,8 @@ describe("Inbound channel", function () {
       ]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     expect(await inboundChannel.peersCount()).to.be.equal(1);
     await inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s]);
@@ -419,8 +421,8 @@ describe("Inbound channel", function () {
       }]
     }
 
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     await expect(inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s])).to.be.rejectedWith('insufficient gas for delivery of all messages')
   });
@@ -448,8 +450,8 @@ describe("Inbound channel", function () {
     for (let i = 0; i < 256; i++) {
       batch.messages.push(batch.messages[0])
     }
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     await expect(inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s])).to.be.rejectedWith('must be < 256 messages in the batch')
   });
@@ -477,11 +479,13 @@ describe("Inbound channel", function () {
     for (let i = 0; i < 250; i++) {
       batch.messages.push(batch.messages[0])
     }
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     let tx = await(await inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s])).wait();
-    console.log("tx log:", tx.logs)
+    let decoder = inboundChannel.interface.decodeEventLog("BatchDispatched(uint256, address, uint256, uint256, uint256, uint256)", tx.logs[0].data)
+    console.log("dispatch result:", decoder[2]);
+    console.log("gas spent:", decoder[4]);
   });
 
   it("should_submit_signed_random_data(huge chunk all failed)", async function () {
@@ -507,11 +511,14 @@ describe("Inbound channel", function () {
     for (let i = 0; i < 250; i++) {
       batch.messages.push(batch.messages[0])
     }
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
+    console.log("encodedMessage:", encodedMessage);
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     let tx = await (await inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s])).wait();
-    console.log("tx log:", tx.logs)
+    let decoder = inboundChannel.interface.decodeEventLog("BatchDispatched(uint256, address, uint256, uint256, uint256, uint256)", tx.logs[0].data)
+    expect(decoder[2]).to.be.equal(0); // false result 
+    console.log("gas spent:", decoder[4]);
   });
 
   it("submit_signed_random_data(Transaction gas limit does not exceed block gas limit of 30000000 after update)", async function () {
@@ -537,12 +544,14 @@ describe("Inbound channel", function () {
     for (let i = 0; i < 250; i++) {
       batch.messages.push(batch.messages[0])
     }
-    let encodedMessage = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    // console.log("packedMessage:", coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]))
-    console.log("encodedMessage:", encodedMessage)
+    let commitment = ethers.keccak256(coder.encode(["tuple(uint nonce, uint total_max_gas, tuple(address target, uint max_gas, bytes payload)[] messages)"], [batch]));
+    let encodedMessage = ethers.keccak256(coder.encode(["uint",  "bytes32"], [hhChainIdReversed, commitment]));
+    console.log("encodedMessage:", encodedMessage);
     let signature = ethers.Signature.from(await peers[0].signMessage(ethers.getBytes(encodedMessage)));
     let tx = await(await inboundChannel.submit(batch, [signature.v], [signature.r], [signature.s])).wait();
-    console.log("tx log:", tx.logs);
+    let decoder = inboundChannel.interface.decodeEventLog("BatchDispatched(uint256, address, uint256, uint256, uint256, uint256)", tx.logs[0].data);
+    expect(decoder[2]).to.be.equal(0); // false result 
+    console.log("gas spent:", decoder[4]);
     console.log("gas used:", tx.gasUsed);
   });
 

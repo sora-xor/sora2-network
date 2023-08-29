@@ -8,6 +8,7 @@ dotenv({ path: resolve(__dirname, ".env") });
 import "hardhat-deploy";
 import "hardhat-deploy-ethers";
 import "@nomicfoundation/hardhat-toolbox";
+import "hardhat-gas-reporter";
 import { HardhatUserConfig, task } from "hardhat/config";
 
 const getenv = (name: string) => {
@@ -87,6 +88,10 @@ const config: HardhatUserConfig = {
     outDir: './typechain',
     target: 'ethers-v6',
     dontOverrideCompile: false,
+  },
+  gasReporter: {
+    enabled: true,
+    currency: 'USD',
   },
 };
 

@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 library ScaleCodec {
     // Decodes a SCALE encoded uint256 by converting bytes (big endian) to little endian format
-    function decodeUint256(bytes memory data) external pure returns (uint256) {
+    function decodeUint256(bytes memory data) internal pure returns (uint256) {
         uint256 number;
         for (uint256 i = data.length; i > 0; i--) {
             number = number + uint256(uint8(data[i - 1])) * (2**(8 * (i - 1)));
@@ -13,7 +13,7 @@ library ScaleCodec {
 
     // Decodes a SCALE encoded compact unsigned integer
     function decodeUintCompact(bytes calldata data)
-        external
+        internal
         pure
         returns (uint256 v)
     {
@@ -173,27 +173,27 @@ library ScaleCodec {
         v = (v >> 8) | (v << 8);
     }
 
-    function encode256(uint256 input) external pure returns (bytes32) {
+    function encode256(uint256 input) internal pure returns (bytes32) {
         return bytes32(reverse256(input));
     }
 
-    function encode128(uint128 input) external pure returns (bytes16) {
+    function encode128(uint128 input) internal pure returns (bytes16) {
         return bytes16(reverse128(input));
     }
 
-    function encode64(uint64 input) external pure returns (bytes8) {
+    function encode64(uint64 input) internal pure returns (bytes8) {
         return bytes8(reverse64(input));
     }
 
-    function encode32(uint32 input) external pure returns (bytes4) {
+    function encode32(uint32 input) internal pure returns (bytes4) {
         return bytes4(reverse32(input));
     }
 
-    function encode16(uint16 input) external pure returns (bytes2) {
+    function encode16(uint16 input) internal pure returns (bytes2) {
         return bytes2(reverse16(input));
     }
 
-    function encode8(uint8 input) external pure returns (bytes1) {
+    function encode8(uint8 input) internal pure returns (bytes1) {
         return bytes1(input);
     }
 }
