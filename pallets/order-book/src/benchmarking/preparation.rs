@@ -224,13 +224,17 @@ pub fn prepare_delete_orderbook_benchmark<T: Config>(
     order_book_id
 }
 
-/// Places buy orders for worst-case execution
+/// Places buy orders for worst-case execution.
+///
+/// If `double_cheapest_order_amount` is true, one order in the lowest price is set for twice of the
+/// amount; it allows partial execution.
 ///
 /// Returns iterators in the same way as `fill_order_book_worst_case`
 fn prepare_order_execute_worst_case<T: Config>(
     data: &mut impl DataLayer<T>,
     order_book: &mut OrderBook<T>,
     fill_settings: FillSettings<T>,
+    double_cheapest_order_amount: bool,
 ) -> (
     impl Iterator<Item = T::AccountId>,
     impl Iterator<Item = u64>,
@@ -258,7 +262,42 @@ fn prepare_order_execute_worst_case<T: Config>(
     // Place only buy orders
     let mut buy_settings = fill_settings.clone();
     buy_settings.max_orders_per_user = 1;
-    fill_order_book_worst_case::<T>(buy_settings, order_book, data, true, false)
+    let (users, lifespans) =
+        fill_order_book_worst_case::<T>(buy_settings, order_book, data, true, false);
+
+    // Double amount of the last `buy` order (at the cheapest price)
+    if double_cheapest_order_amount {
+        // we rely that the cheapest one is the smallest possible
+        let double_order_price = order_book.tick_size;
+        let order_id_to_double = data
+            .get_limit_orders_by_price(
+                &order_book.order_book_id,
+                PriceVariant::Buy,
+                &double_order_price,
+            )
+            .and_then(|price_orders| price_orders.last().cloned())
+            .expect("the price is assumed to be just filled");
+        let mut order_to_double = data
+            .get_limit_order(&order_book.order_book_id, order_id_to_double)
+            .expect("state must be consistent");
+        order_book
+            .cancel_limit_order(order_to_double.clone(), data)
+            .unwrap();
+        assets::Pallet::<T>::mint_unchecked(
+            &order_book.order_book_id.quote,
+            &order_to_double.owner,
+            *order_to_double
+                .price
+                .checked_mul(&order_to_double.amount)
+                .unwrap()
+                .balance(),
+        )
+        .unwrap();
+        order_to_double.amount *= Scalar(2u32);
+        order_book.place_limit_order(order_to_double, data).unwrap();
+    }
+
+    (users, lifespans)
 }
 
 /// Returns parameters for placing a limit order;
@@ -287,6 +326,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         &mut data_layer,
         &mut order_book,
         fill_settings.clone(),
+        false,
     );
     let max_side_orders =
         fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
