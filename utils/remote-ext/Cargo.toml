@@ -11,7 +11,7 @@ repository = "https://github.com/sora-xor/sora2-network"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0" }
-clap = { version = "3.1", features = ["derive", "env"] }
+clap = { version = "=4.3.17", features = ["derive"] }
 jsonrpsee = { version = "0.16.2", features = ["ws-client", "macros"] }
 log = "0.4.17"
 serde = "1.0.137"
@@ -43,8 +43,8 @@ xst = { path = "../../pallets/xst" }
 common = { path = "../../common" }
 
 [features]
-ready-to-test = [
-    "common/ready-to-test",
-    "liquidity-proxy/ready-to-test",
-    "framenode-runtime/ready-to-test",
+wip = [
+    "common/wip",
+    "liquidity-proxy/wip",
+    "framenode-runtime/wip",
 ]
