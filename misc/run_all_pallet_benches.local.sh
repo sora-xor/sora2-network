@@ -24,6 +24,8 @@ declare -A PATH_OVERRIDES=(
     [ethereum_light_client]=./pallets/trustless-bridge/ethereum-light-client
     [evm_bridge_proxy]=./pallets/trustless-bridge/bridge-proxy
     [migration_app]=./pallets/trustless-bridge/migration-app
+    [multisig-verifier]=./runtime/src/weights/multisig_verifier.rs
+    [bridge-data-signer]=./runtime/src/weights/bridge_data_signer.rs
 )
 
 

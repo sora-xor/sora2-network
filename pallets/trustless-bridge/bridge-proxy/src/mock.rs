@@ -52,6 +52,7 @@ use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
 use sp_runtime::{AccountId32, DispatchResult, MultiSignature};
+use system::EnsureRoot;
 
 use crate as proxy;
 
@@ -206,14 +207,13 @@ impl technical::Config for Test {
 
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type NetworkId = EVMChainId;
-    type Additional = AdditionalEVMInboundData;
     type OriginOutput = CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
     type Origin = RuntimeOrigin;
     type MessageId = MessageId;
     type Hashing = Keccak256;
     type Call = RuntimeCall;
     type CallFilter = Everything;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -283,8 +283,6 @@ impl eth_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
@@ -331,8 +329,6 @@ impl erc20_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type MessageStatusNotifier = BridgeProxy;
@@ -352,6 +348,16 @@ impl TimepointProvider for GenericTimepointProvider {
     }
 }
 
+pub struct ReferencePriceProvider;
+
+impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider {
+    fn get_reference_price(
+        _asset_id: &AssetId,
+    ) -> Result<Balance, frame_support::dispatch::DispatchError> {
+        Ok(common::balance!(2.5))
+    }
+}
+
 impl proxy::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type EthApp = EthApp;
@@ -359,6 +365,8 @@ impl proxy::Config for Test {
     type SubstrateApp = ();
     type HashiBridge = ();
     type TimepointProvider = GenericTimepointProvider;
+    type ReferencePriceProvider = ReferencePriceProvider;
+    type ManagerOrigin = EnsureRoot<AccountId>;
     type WeightInfo = ();
 }
 

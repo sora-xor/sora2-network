@@ -26,7 +26,7 @@ benchmarks! {
         AssetSymbolOf<T>: From<common::AssetSymbol>,
         BalanceOf<T>: From<u128>,
         <T as assets::Config>::AssetId: From<AssetIdOf<T>>,
-        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>
+        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>
     }
     // Benchmark `burn` extrinsic under worst case conditions:
     // * `burn` successfully substracts amount from caller account

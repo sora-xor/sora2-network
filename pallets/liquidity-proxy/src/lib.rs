@@ -2140,6 +2140,32 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId
     }
 }
 
+pub struct ReferencePriceProvider<T, GetDEXId, GetReferenceAssetId>(
+    PhantomData<(T, GetDEXId, GetReferenceAssetId)>,
+);
+
+impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<T::AssetId>>
+    common::ReferencePriceProvider<T::AssetId, Balance>
+    for ReferencePriceProvider<T, GetDEXId, GetReferenceAssetId>
+{
+    fn get_reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+        let dex_id = GetDEXId::get();
+        let reference_asset_id = GetReferenceAssetId::get();
+        let outcome = Pallet::<T>::quote(
+            dex_id,
+            &reference_asset_id,
+            asset_id,
+            QuoteAmount::with_desired_output(balance!(1)),
+            LiquiditySourceFilter::with_forbidden(
+                dex_id,
+                vec![LiquiditySourceType::MulticollateralBondingCurvePool],
+            ),
+            false,
+        )?;
+        Ok(outcome.amount)
+    }
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;

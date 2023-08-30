@@ -51,6 +51,7 @@ pub mod mock;
 
 #[cfg(test)]
 pub mod tests;
+pub mod weights;
 
 use crate::impls::PreimageWeightInfo;
 #[cfg(feature = "ready-to-test")]
@@ -1436,10 +1437,15 @@ impl eth_bridge::Config for Runtime {
     type GetEthNetworkId = GetEthNetworkId;
     type WeightInfo = eth_bridge::weights::SubstrateWeight<Runtime>;
     type WeightToFee = XorFee;
-    #[cfg(feature = "ready-to-test")]
+    #[cfg(feature = "ready-to-test")] // Substrate bridge
     type MessageStatusNotifier = BridgeProxy;
     #[cfg(not(feature = "ready-to-test"))]
     type MessageStatusNotifier = ();
+
+    #[cfg(feature = "ready-to-test")] // Substrate bridge
+    type BridgeAssetLockChecker = BridgeProxy;
+    #[cfg(not(feature = "ready-to-test"))]
+    type BridgeAssetLockChecker = ();
 }
 
 #[cfg(feature = "private-net")]
@@ -1962,8 +1968,6 @@ parameter_types! {
 #[cfg(feature = "ready-to-test")] // EVM bridge
 impl dispatch::Config<dispatch::Instance1> for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type NetworkId = EVMChainId;
-    type Additional = AdditionalEVMInboundData;
     type OriginOutput =
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
     type Origin = RuntimeOrigin;
@@ -1971,6 +1975,7 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
     type Hashing = Keccak256;
     type Call = RuntimeCall;
     type CallFilter = EVMBridgeCallFilter;
+    type WeightInfo = dispatch::weights::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")]
@@ -2060,8 +2065,6 @@ impl eth_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type MessageStatusNotifier = BridgeProxy;
@@ -2077,8 +2080,6 @@ impl erc20_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
@@ -2097,6 +2098,11 @@ impl migration_app::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const GetReferenceAssetId: AssetId = GetDaiAssetId::get();
+    pub const GetReferenceDexId: DEXId = 0;
+}
+
 #[cfg(feature = "ready-to-test")] // Bridges
 impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -2105,6 +2111,12 @@ impl bridge_proxy::Config for Runtime {
     type HashiBridge = EthBridge;
     type SubstrateApp = SubstrateBridgeApp;
     type TimepointProvider = GenericTimepointProvider;
+    type ReferencePriceProvider =
+        liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
+    type ManagerOrigin = EitherOfDiverse<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 2, 3>,
+        EnsureRoot<AccountId>,
+    >;
     type WeightInfo = ();
 }
 
@@ -2117,14 +2129,13 @@ impl beefy_light_client::Config for Runtime {
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl dispatch::Config<dispatch::Instance2> for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type NetworkId = SubNetworkId;
-    type Additional = ();
     type OriginOutput = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>;
     type Origin = RuntimeOrigin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
     type Call = DispatchableSubstrateBridgeCall;
     type CallFilter = SubstrateBridgeCallFilter;
+    type WeightInfo = crate::weights::dispatch::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -2137,7 +2148,7 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type ThisNetworkId = ThisNetworkId;
-    type WeightInfo = ();
+    type WeightInfo = crate::weights::substrate_inbound_channel::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -2148,6 +2159,9 @@ pub struct MultiVerifier;
 pub enum MultiProof {
     Beefy(<BeefyLightClient as Verifier>::Proof),
     Multisig(<MultisigVerifier as Verifier>::Proof),
+    /// This proof is only used for benchmarking purposes
+    #[cfg(feature = "runtime-benchmarks")]
+    Empty,
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -2162,7 +2176,23 @@ impl Verifier for MultiVerifier {
         match proof {
             MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
             MultiProof::Multisig(proof) => MultisigVerifier::verify(network_id, message, proof),
+            #[cfg(feature = "runtime-benchmarks")]
+            MultiProof::Empty => Ok(()),
         }
+    }
+
+    fn verify_weight(proof: &Self::Proof) -> Weight {
+        match proof {
+            MultiProof::Beefy(proof) => BeefyLightClient::verify_weight(proof),
+            MultiProof::Multisig(proof) => MultisigVerifier::verify_weight(proof),
+            #[cfg(feature = "runtime-benchmarks")]
+            MultiProof::Empty => Default::default(),
+        }
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof> {
+        Some(MultiProof::Empty)
     }
 }
 
@@ -2187,25 +2217,22 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type Balance = Balance;
     type TimepointProvider = GenericTimepointProvider;
     type ThisNetworkId = ThisNetworkId;
-    type WeightInfo = ();
+    type WeightInfo = crate::weights::substrate_outbound_channel::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl substrate_bridge_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
-    type CallOrigin = dispatch::EnsureAccount<
-        SubNetworkId,
-        (),
-        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
-    >;
+    type CallOrigin =
+        dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
     type MessageStatusNotifier = BridgeProxy;
     type AssetRegistry = BridgeProxy;
     type AccountIdConverter = sp_runtime::traits::Identity;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
-    type WeightInfo = ();
     type BridgeAssetLocker = BridgeProxy;
+    type WeightInfo = crate::weights::substrate_bridge_app::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -2222,28 +2249,22 @@ parameter_types! {
 impl bridge_data_signer::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
-    type CallOrigin = dispatch::EnsureAccount<
-        SubNetworkId,
-        (),
-        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
-    >;
+    type CallOrigin =
+        dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
     type MaxPeers = BridgeMaxPeers;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
-    type WeightInfo = bridge_data_signer::weights::WeightInfo<Runtime>;
+    type WeightInfo = crate::weights::bridge_data_signer::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl multisig_verifier::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type CallOrigin = dispatch::EnsureAccount<
-        SubNetworkId,
-        (),
-        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
-    >;
+    type CallOrigin =
+        dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type MaxPeers = BridgeMaxPeers;
-    type WeightInfo = multisig_verifier::weights::WeightInfo<Runtime>;
+    type WeightInfo = crate::weights::multisig_verifier::SubstrateWeight<Runtime>;
 }
 
 construct_runtime! {
@@ -3132,7 +3153,19 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // EVM bridge
             list_benchmark!(list, extra, migration_app, MigrationApp);
             #[cfg(feature = "ready-to-test")] // Bridges
-            list_benchmark!(list, extra, bridge_proxy, BridgeProxy);
+            list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, dispatch, Dispatch);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3219,7 +3252,19 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // EVM bridge
             add_benchmark!(params, batches, migration_app, MigrationApp);
             #[cfg(feature = "ready-to-test")] // Bridges
-            add_benchmark!(params, batches, bridge_proxy, BridgeProxy);
+            add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, dispatch, Dispatch);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

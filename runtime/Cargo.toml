@@ -388,6 +388,10 @@ runtime-benchmarks = [
     "xor-fee/runtime-benchmarks",
     "xst-benchmarking",
     "xst-benchmarking/runtime-benchmarks",
+    "dispatch/runtime-benchmarks",
+    "beefy-light-client/runtime-benchmarks",
+    "multisig-verifier/runtime-benchmarks",
+    "bridge-data-signer/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []

@@ -22,7 +22,7 @@ pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 benchmarks! {
     where_clause {where
         T: bridge_outbound_channel::Config + assets::Config,
-        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>,
+        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>,
         AssetIdOf<T>: From<AssetId32<PredefinedAssetId>> + From<<T as assets::Config>::AssetId>,
         <T as assets::Config>::AssetId: From<AssetIdOf<T>>,
         AssetNameOf<T>: From<common::AssetName>,
