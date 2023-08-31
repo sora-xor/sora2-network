@@ -912,15 +912,8 @@ mod tests {
                 <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get(),
                 <Runtime as Config>::MaxExpiringOrdersPerBlock::get(),
             );
-            let _ = fill_order_book_worst_case(
-                settings,
-                &mut order_book,
-                &mut data_layer,
-                true,
-                true,
-                None,
-                None,
-            );
+            let _ =
+                fill_order_book_worst_case(settings, &mut order_book, &mut data_layer, true, true);
             <OrderBooks<Runtime>>::insert(order_book_id, order_book);
         })
     }
