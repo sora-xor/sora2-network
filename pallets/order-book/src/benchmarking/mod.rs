@@ -875,6 +875,7 @@ mod benchmarks_inner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused)]
     use crate::test_utils::{
         create_empty_order_book, pretty_print_expirations, pretty_print_order_book, run_to_block,
     };
@@ -883,14 +884,14 @@ mod tests {
     use crate::benchmarking::preparation::prepare_market_order_benchmark;
     use common::prelude::SwapAmount;
     use common::{balance, PriceVariant};
-    use frame_support::traits::{Get, Time};
+    use frame_support::traits::Time;
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
     use preparation::{
         fill_order_book_worst_case, prepare_cancel_orderbook_benchmark,
         prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark,
-        prepare_quote_benchmark, presets::*, FillSettings,
+        prepare_quote_benchmark, presets::*,
     };
 
     #[test]
@@ -1038,13 +1039,13 @@ mod tests {
             let settings = preset_3::<Runtime>();
             let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
                 prepare_quote_benchmark::<Runtime>(settings);
-            let order_book_id = OrderBookId {
+            let _order_book_id = OrderBookId {
                 dex_id,
                 base: input_asset_id,
                 quote: output_asset_id,
             };
-            // pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
-            let (outcome, _) = OrderBookPallet::<Runtime>::quote(
+            // pretty_print_order_book::<Runtime>(_order_book_id.clone(), None);
+            let _ = OrderBookPallet::<Runtime>::quote(
                 &dex_id,
                 &input_asset_id,
                 &output_asset_id,

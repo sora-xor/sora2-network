@@ -16,7 +16,7 @@ use framenode_runtime::order_book::{
 use assets::AssetIdOf;
 use common::prelude::{BalanceUnit, QuoteAmount, Scalar};
 use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
-use frame_benchmarking::log::info;
+use frame_benchmarking::log::debug;
 use frame_benchmarking::Zero;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
@@ -220,7 +220,9 @@ pub fn prepare_delete_orderbook_benchmark<T: Config>(
         true,
     );
     <OrderBooks<T>>::insert(order_book_id, order_book);
+    debug!("Committing data...");
     data_layer.commit();
+    debug!("Data committed!");
     order_book_id
 }
 
@@ -239,7 +241,8 @@ fn prepare_order_execute_worst_case<T: Config>(
     impl Iterator<Item = T::AccountId>,
     impl Iterator<Item = u64>,
 ) {
-    // allow to execute all orders at once
+    debug!("Update order book to allow to execute all orders at once");
+
     let max_side_orders =
         fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
     OrderBookPallet::<T>::update_orderbook(
@@ -277,6 +280,7 @@ fn prepare_order_execute_worst_case<T: Config>(
     // The cheapest price is a special case:
     // the last order in the price has double of the amount to allow partial execution
     if double_cheapest_order_amount {
+        debug!("Filling cheapest price to allow partial execution of one order");
         let min_price = bid_prices.next().unwrap();
 
         let mut fill_price_settings = fill_settings.clone();
@@ -313,6 +317,7 @@ fn prepare_order_execute_worst_case<T: Config>(
         .unwrap();
         order_book.place_limit_order(order, data).unwrap();
     }
+    debug!("Filling whole side of the order book");
     fill_order_book_side(
         data,
         fill_settings.clone(),
@@ -408,9 +413,11 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         to_fill,
     );
 
+    debug!("Committing data...");
     <OrderBooks<T>>::insert(order_book_id, order_book.clone());
     <OrderBooks<T>>::insert(order_book_id_2, order_book_2);
     data_layer.commit();
+    debug!("Data committed!");
 
     let price = order_book.tick_size;
     // to execute all bids
@@ -468,7 +475,7 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
-    // fill aggregated bids
+    debug!("Filling aggregated bids");
     let mut buy_settings = fill_settings.clone();
     buy_settings.max_orders_per_price = 1;
     let (mut users, mut lifespans) = fill_order_book_worst_case::<T>(
@@ -479,7 +486,7 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
         false,
     );
 
-    // fill the price of the cancelled order
+    debug!("Filling the price of the cancelled order");
     let mut fill_price_settings = fill_settings.clone();
     // account for previous fill + room for order to cancel
     fill_price_settings.max_orders_per_price -= 2;
@@ -497,7 +504,7 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
         &mut lifespans,
     );
 
-    // fill user orders (leave a room for cancelled which will be inserted later)
+    debug!("Fill user orders (leave a room for cancelled which will be inserted later)");
     let mut fill_user_settings = fill_settings.clone();
     fill_user_settings.max_orders_per_user -= 1;
     fill_user_orders(
@@ -525,6 +532,7 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
     .unwrap();
     // don't repeat this code for both `place_first_expiring` cases
     let place_to_cancel = |order_book: &mut OrderBook<T>, data_layer: &mut CacheDataLayer<T>| {
+        debug!("Inserting order to cancel");
         let id = order_book.next_order_id();
         let order = LimitOrder::<T>::new(
             id,
@@ -582,8 +590,10 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
         to_cancel_id = place_to_cancel(&mut order_book, &mut data_layer);
     }
 
-    data_layer.commit();
+    debug!("Committing data...");
     <OrderBooks<T>>::insert(order_book_id, order_book.clone());
+    data_layer.commit();
+    debug!("Data committed!");
 
     (order_book_id, to_cancel_id)
 }
@@ -623,8 +633,10 @@ pub fn prepare_quote_benchmark<T: Config>(
     assert!(total_bids_amount.is_base());
     let total_bids_base_amount = total_bids_amount.value();
 
+    debug!("Committing data...");
     <OrderBooks<T>>::insert(order_book_id, order_book);
     data_layer.commit();
+    debug!("Data committed!");
 
     let dex_id = order_book_id.dex_id;
     let input_asset_id = order_book_id.base;
@@ -708,8 +720,10 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
     assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *combined_amount.balance())
         .unwrap();
 
+    debug!("Committing data...");
     <OrderBooks<T>>::insert(order_book_id, order_book);
     data_layer.commit();
+    debug!("Data committed!");
 
     (order_book_id, combined_amount)
 }
@@ -785,6 +799,7 @@ fn fill_expiration_schedule<T: Config>(
     users: &mut impl Iterator<Item = T::AccountId>,
     lifespan: u64,
 ) {
+    debug!("Filling expiration schedule for lifespan {}", lifespan);
     let mut lifespans = repeat(lifespan).take(settings.max_expiring_orders_per_block as usize);
     match side {
         PriceVariant::Buy => fill_order_book_side(
@@ -819,7 +834,7 @@ fn fill_user_orders<T: Config>(
     author: T::AccountId,
     lifespans: &mut impl Iterator<Item = u64>,
 ) {
-    // fill user orders of the author
+    debug!("Filling user orders");
     let FillSettings {
         now: _,
         max_side_price_count,
@@ -896,25 +911,10 @@ fn fill_order_book_side<T: Config>(
     users: &mut impl Iterator<Item = T::AccountId>,
     lifespans: &mut impl Iterator<Item = u64>,
 ) {
-    #[cfg(feature = "std")]
-    use std::io::Write;
-
     let current_block = frame_system::Pallet::<T>::block_number();
     let mut total_payment = Payment::new(order_book.order_book_id);
     let mut to_expire = BTreeMap::<_, Vec<_>>::new();
-    #[cfg(feature = "std")]
-    println!("inserting orders");
-    for (i, price) in prices.enumerate() {
-        #[cfg(feature = "std")]
-        {
-            print!(
-                "\r{}/{} ({}%)",
-                i,
-                settings.max_side_price_count,
-                100.0 * (i as f32) / (settings.max_side_price_count as f32)
-            );
-            std::io::stdout().flush().unwrap();
-        }
+    for price in prices {
         fill_price_inner(
             data,
             settings.clone(),
@@ -929,26 +929,10 @@ fn fill_order_book_side<T: Config>(
             &mut to_expire,
         );
     }
-    #[cfg(feature = "std")]
-    println!("\nlocking payments");
     total_payment
         .execute_all::<OrderBookPallet<T>, OrderBookPallet<T>>()
         .unwrap();
-    #[cfg(feature = "std")]
-    println!("scheduling expirations");
-    #[cfg(feature = "std")]
-    let total_expirations = to_expire.len();
-    for (i, (expires_at, orders)) in to_expire.into_iter().enumerate() {
-        #[cfg(feature = "std")]
-        {
-            print!(
-                "\r{}/{} ({}%)",
-                i,
-                total_expirations,
-                100.0 * (i as f32) / (total_expirations as f32)
-            );
-            std::io::stdout().flush().unwrap();
-        }
+    for (expires_at, orders) in to_expire.into_iter() {
         <ExpirationsAgenda<T>>::try_mutate(expires_at, |block_expirations| {
             block_expirations.try_extend(
                 orders
@@ -958,8 +942,6 @@ fn fill_order_book_side<T: Config>(
         })
         .expect("Failed to schedule orders for expiration");
     }
-    #[cfg(feature = "std")]
-    println!();
 }
 
 fn fill_price<T: Config>(
@@ -1146,14 +1128,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     if place_buy {
         let mut bid_prices =
             bid_prices_iterator(order_book.tick_size, settings.max_side_price_count);
-        #[cfg(feature = "std")]
-        let start_time = std::time::Instant::now();
-        #[cfg(feature = "std")]
-        println!(
-            "Starting placement of bid orders, {} orders per price",
-            settings.max_orders_per_price
-        );
-        info!("Placing bids...");
+        debug!("Placing bids...");
         fill_order_book_side(
             data,
             settings.clone(),
@@ -1164,23 +1139,13 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
             &mut users,
             &mut lifespans,
         );
-
-        info!("Placed all bids");
-        #[cfg(feature = "std")]
-        println!("\nprocessed all bid prices in {:?}", start_time.elapsed());
+        debug!("Placed all bids");
     }
 
     if place_sell {
         let mut ask_prices =
             ask_prices_iterator(order_book.tick_size, settings.max_side_price_count);
-        #[cfg(feature = "std")]
-        let start_time = std::time::Instant::now();
-        #[cfg(feature = "std")]
-        println!(
-            "Starting placement of ask orders, {} orders per price",
-            settings.max_orders_per_price
-        );
-        info!("Placing asks...");
+        debug!("Placing asks...");
         fill_order_book_side(
             data,
             settings,
@@ -1191,9 +1156,7 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
             &mut users,
             &mut lifespans,
         );
-        info!("Placed all asks");
-        #[cfg(feature = "std")]
-        println!("\nprocessed all ask prices in {:?}", start_time.elapsed());
+        debug!("Placed all asks");
     }
     (users, lifespans)
 }
