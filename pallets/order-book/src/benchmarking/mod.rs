@@ -1069,8 +1069,8 @@ mod tests {
         ext().execute_with(|| {
             use common::LiquiditySource;
 
-            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            let settings = preset_3::<Runtime>();
+            let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
+            // let settings = preset_3::<Runtime>();
             let (author, order_book_id, amount) = prepare_market_order_benchmark(settings, true);
             pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
             let (outcome, _) = OrderBookPallet::<Runtime>::exchange(
