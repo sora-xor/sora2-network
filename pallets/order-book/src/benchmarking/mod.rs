@@ -91,15 +91,13 @@ fn get_last_order_id<T: Config>(
 
 pub fn assert_orders_numbers<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-    assert_bids: Option<usize>,
-    assert_asks: Option<usize>,
-    author: T::AccountId,
-    expected_user_limit_orders: usize,
-    lifespan: MomentOf<T>,
-    expected_expirations: usize,
+    bids: Option<usize>,
+    asks: Option<usize>,
+    user_orders: Option<(T::AccountId, usize)>,
+    expirations: Option<(MomentOf<T>, usize)>,
 ) {
     // # of bids should be max to execute max # of orders and payments
-    if let Some(expected_bids) = assert_bids {
+    if let Some(expected_bids) = bids {
         assert_eq!(
             order_book::Bids::<T>::iter_prefix(order_book_id)
                 .flat_map(|(_price, orders)| orders.into_iter())
@@ -107,7 +105,7 @@ pub fn assert_orders_numbers<T: Config>(
             expected_bids
         );
     }
-    if let Some(expected_asks) = assert_asks {
+    if let Some(expected_asks) = asks {
         assert_eq!(
             order_book::Asks::<T>::iter_prefix(order_book_id)
                 .flat_map(|(_price, orders)| orders.into_iter())
@@ -115,22 +113,26 @@ pub fn assert_orders_numbers<T: Config>(
             expected_asks
         );
     }
-    // user orders of `caller` should be almost full
-    assert_eq!(
-        order_book::UserLimitOrders::<T>::get(author.clone(), order_book_id)
-            .unwrap()
+    if let Some((user, count)) = user_orders {
+        // user orders of `caller` should be almost full
+        assert_eq!(
+            order_book::UserLimitOrders::<T>::get(user.clone(), order_book_id)
+                .unwrap()
+                .len(),
+            count
+        );
+    }
+    if let Some((lifespan, count)) = expirations {
+        // expiration schedule for the block should be almost full
+        assert_eq!(
+            order_book::ExpirationsAgenda::<T>::get(LimitOrder::<T>::resolve_lifespan(
+                frame_system::Pallet::<T>::block_number(),
+                lifespan
+            ))
             .len(),
-        expected_user_limit_orders
-    );
-    // expiration schedule for the block should be almost full
-    assert_eq!(
-        order_book::ExpirationsAgenda::<T>::get(LimitOrder::<T>::resolve_lifespan(
-            frame_system::Pallet::<T>::block_number(),
-            lifespan
-        ))
-        .len(),
-        expected_expirations
-    );
+            count
+        );
+    }
 }
 
 #[cfg(not(test))]
@@ -334,10 +336,8 @@ mod benchmarks_inner {
                 order_book_id,
                 Some(0),
                 None,
-                caller.clone(),
-                settings.max_orders_per_user as usize,
-                lifespan,
-                settings.max_expiring_orders_per_block as usize,
+                Some((caller.clone(), settings.max_orders_per_user as usize)),
+                Some((lifespan, settings.max_expiring_orders_per_block as usize)),
             );
 
             assert_last_event::<T>(
@@ -979,10 +979,8 @@ mod tests {
                 order_book_id,
                 Some(0),
                 None,
-                caller.clone(),
-                settings.max_orders_per_user as usize,
-                lifespan,
-                settings.max_expiring_orders_per_block as usize,
+                Some((caller.clone(), settings.max_orders_per_user as usize)),
+                Some((lifespan, settings.max_expiring_orders_per_block as usize)),
             );
 
             let current_block = frame_system::Pallet::<Runtime>::block_number();
@@ -1067,10 +1065,9 @@ mod tests {
             // let settings = preset_3::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, amount) =
-                prepare_market_order_benchmark(settings, caller.clone(), true);
-            pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
-            dbg!(assets::Pallet::<Runtime>::total_balance(&order_book_id.base, &caller).unwrap());
-            let (outcome, _) = OrderBookPallet::<Runtime>::exchange(
+                prepare_market_order_benchmark(settings.clone(), caller.clone(), true);
+            // pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
                 &caller,
                 &caller,
                 &order_book_id.dex_id,
@@ -1079,8 +1076,8 @@ mod tests {
                 SwapAmount::with_desired_input(*amount.balance(), balance!(0)),
             )
             .unwrap();
-            dbg!(outcome);
-            pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            // pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            assert_orders_numbers::<Runtime>(order_book_id, Some(1), Some(0), None, None);
         })
     }
 
@@ -1092,13 +1089,15 @@ mod tests {
             let caller = alice::<Runtime>();
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings, caller.clone(), false);
-            pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(20));
             assert_ok!(OrderBookPallet::<Runtime>::execute_market_order(
                 RawOrigin::Signed(caller.clone()).into(),
                 order_book_id,
                 PriceVariant::Sell,
                 *amount.balance(),
             ));
+            // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(20));
+            assert_orders_numbers::<Runtime>(order_book_id, Some(1), Some(0), None, None);
         })
     }
 }

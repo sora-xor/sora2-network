@@ -431,10 +431,14 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         order_book_id,
         Some(max_side_orders as usize),
         None,
-        author.clone(),
-        (fill_settings.max_orders_per_user - 1) as usize,
-        lifespan,
-        (fill_settings.max_expiring_orders_per_block - 1) as usize,
+        Some((
+            author.clone(),
+            (fill_settings.max_orders_per_user - 1) as usize,
+        )),
+        Some((
+            lifespan,
+            (fill_settings.max_expiring_orders_per_block - 1) as usize,
+        )),
     );
 
     (
