@@ -906,12 +906,13 @@ mod tests {
             let mut order_book = create_empty_order_book(order_book_id);
             let mut data_layer =
                 framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
-            let settings = FillSettings::new(
-                <Runtime as Config>::MaxSidePriceCount::get(),
-                <Runtime as Config>::MaxLimitOrdersForPrice::get(),
-                <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get(),
-                <Runtime as Config>::MaxExpiringOrdersPerBlock::get(),
-            );
+            // let settings = FillSettings::new(
+            //     <Runtime as Config>::MaxSidePriceCount::get(),
+            //     <Runtime as Config>::MaxLimitOrdersForPrice::get(),
+            //     <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get(),
+            //     <Runtime as Config>::MaxExpiringOrdersPerBlock::get(),
+            // );
+            let settings = preset_3::<Runtime>();
             let _ =
                 fill_order_book_worst_case(settings, &mut order_book, &mut data_layer, true, true);
             <OrderBooks<Runtime>>::insert(order_book_id, order_book);
@@ -1013,18 +1014,18 @@ mod tests {
             let (order_book_id, order_id) =
                 prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);
 
-            println!("1;");
-            pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
-            pretty_print_expirations::<Runtime>(0..10);
+            // println!("1;");
+            // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
+            // pretty_print_expirations::<Runtime>(0..10);
             OrderBookPallet::<Runtime>::cancel_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
                 order_book_id.clone(),
                 order_id.clone(),
             )
             .unwrap();
-            println!("2;");
-            pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
-            pretty_print_expirations::<Runtime>(0..10);
+            // println!("2;");
+            // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
+            // pretty_print_expirations::<Runtime>(0..10);
         })
     }
 
@@ -1042,7 +1043,7 @@ mod tests {
                 base: input_asset_id,
                 quote: output_asset_id,
             };
-            pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            // pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
             let (outcome, _) = OrderBookPallet::<Runtime>::quote(
                 &dex_id,
                 &input_asset_id,
@@ -1051,18 +1052,16 @@ mod tests {
                 deduce_fee,
             )
             .unwrap();
-            dbg!(outcome);
         })
     }
 
     #[test]
     fn test_benchmark_exchange() {
         ext().execute_with(|| {
-            use common::AssetInfoProvider;
             use common::LiquiditySource;
 
-            let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            // let settings = preset_3::<Runtime>();
+            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
+            let settings = preset_3::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings.clone(), caller.clone(), true);
@@ -1084,8 +1083,8 @@ mod tests {
     #[test]
     fn test_benchmark_execute_market_order() {
         ext().execute_with(|| {
-            let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            // let settings = preset_3::<Runtime>();
+            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
+            let settings = preset_3::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings, caller.clone(), false);
