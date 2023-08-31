@@ -218,6 +218,8 @@ pub fn prepare_delete_orderbook_benchmark<T: Config>(
         &mut data_layer,
         true,
         true,
+        None,
+        None,
     );
     <OrderBooks<T>>::insert(order_book_id, order_book);
     data_layer.commit();
@@ -259,45 +261,74 @@ fn prepare_order_execute_worst_case<T: Config>(
     )
     .unwrap();
 
+    let mut users = None;
+    let mut lifespans = None;
+
+    // The cheapest price is a special case:
+    // the last order in the price has double of the amount to allow partial execution
+    if double_cheapest_order_amount {
+        let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
+        let max_price = order_book.tick_size * Scalar(2 * fill_settings.max_side_price_count);
+        let min_price = order_book.tick_size;
+
+        // Owners for each placed order
+        let mut users_local = users_iterator::<T>(
+            order_book.order_book_id,
+            order_amount,
+            max_price, // still mint max to reuse the iter later
+            fill_settings.max_orders_per_user,
+        );
+        let mut lifespans_local =
+            lifespans_iterator::<T>(fill_settings.max_expiring_orders_per_block, 1);
+        let mut fill_price_settings = fill_settings.clone();
+        fill_price_settings.max_orders_per_price -= 1;
+        fill_price(
+            data,
+            fill_price_settings,
+            order_book,
+            PriceVariant::Buy,
+            order_amount,
+            min_price,
+            &mut users_local,
+            &mut lifespans_local,
+        );
+
+        // place double amount order
+        let id = order_book.next_order_id();
+        let order = LimitOrder::<T>::new(
+            id,
+            users_local.next().unwrap(),
+            PriceVariant::Buy,
+            min_price,
+            order_amount,
+            T::Time::now(),
+            lifespans_local.next().unwrap().saturated_into(),
+            frame_system::Pallet::<T>::block_number(),
+        );
+        // just in case
+        assets::Pallet::<T>::mint_unchecked(
+            &order_book.order_book_id.quote,
+            &order.owner,
+            *order.price.checked_mul(&order.amount).unwrap().balance(),
+        )
+        .unwrap();
+        order_book.place_limit_order(order, data).unwrap();
+        users = Some(users_local);
+        lifespans = Some(lifespans_local);
+    }
+
     // Place only buy orders
     let mut buy_settings = fill_settings.clone();
     buy_settings.max_orders_per_user = 1;
-    let (users, lifespans) =
-        fill_order_book_worst_case::<T>(buy_settings, order_book, data, true, false);
-
-    // Double amount of the last `buy` order (at the cheapest price)
-    if double_cheapest_order_amount {
-        // we rely that the cheapest one is the smallest possible
-        let double_order_price = order_book.tick_size;
-        let order_id_to_double = data
-            .get_limit_orders_by_price(
-                &order_book.order_book_id,
-                PriceVariant::Buy,
-                &double_order_price,
-            )
-            .and_then(|price_orders| price_orders.last().cloned())
-            .expect("the price is assumed to be just filled");
-        let mut order_to_double = data
-            .get_limit_order(&order_book.order_book_id, order_id_to_double)
-            .expect("state must be consistent");
-        order_book
-            .cancel_limit_order(order_to_double.clone(), data)
-            .unwrap();
-        assets::Pallet::<T>::mint_unchecked(
-            &order_book.order_book_id.quote,
-            &order_to_double.owner,
-            *order_to_double
-                .price
-                .checked_mul(&order_to_double.amount)
-                .unwrap()
-                .balance(),
-        )
-        .unwrap();
-        order_to_double.amount *= Scalar(2u32);
-        order_book.place_limit_order(order_to_double, data).unwrap();
-    }
-
-    (users, lifespans)
+    fill_order_book_worst_case::<T>(
+        buy_settings,
+        order_book,
+        data,
+        true,
+        false,
+        users,
+        lifespans,
+    )
 }
 
 /// Returns parameters for placing a limit order;
@@ -447,6 +478,8 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
         &mut data_layer,
         true,
         false,
+        None,
+        None,
     );
 
     // fill the price of the cancelled order
@@ -580,6 +613,8 @@ pub fn prepare_quote_benchmark<T: Config>(
         &mut data_layer,
         true,
         false,
+        None,
+        None,
     );
 
     let (total_bids_amount, _) = order_book
@@ -1056,45 +1091,46 @@ fn lifespans_iterator<T: Config>(
 /// Returns per-order iterators for users and lifespans. They can be used for proceeding with
 /// filling respective storages (user orders and expiration schedules respectively). Can be seen
 /// as cursors.
+///
+/// If given existing cursors, it ignores settings `max_orders_per_user` and
+/// `max_expiring_orders_per_block`, using values from the iterators for each new order.
 pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     settings: FillSettings<T>,
     order_book: &mut OrderBook<T>,
     data: &mut impl DataLayer<T>,
     place_buy: bool,
     place_sell: bool,
+    users: Option<impl Iterator<Item = T::AccountId>>,
+    lifespans: Option<impl Iterator<Item = u64>>,
 ) -> (
     impl Iterator<Item = T::AccountId>,
     impl Iterator<Item = u64>,
 ) {
-    let FillSettings {
-        now: _,
-        max_side_price_count,
-        max_orders_per_price,
-        max_orders_per_user,
-        max_expiring_orders_per_block,
-    } = settings;
-
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
-    let max_price = order_book.tick_size * Scalar(2 * max_side_price_count);
+    let max_price = order_book.tick_size * Scalar(2 * settings.max_side_price_count);
 
     // Owners for each placed order
-    let mut users = users_iterator::<T>(
-        order_book.order_book_id,
-        order_amount,
-        max_price,
-        max_orders_per_user,
-    );
+    let mut users = users.unwrap_or_else(|| {
+        users_iterator::<T>(
+            order_book.order_book_id,
+            order_amount,
+            max_price,
+            settings.max_orders_per_user,
+        )
+    });
     // Lifespans for each placed order
-    let mut lifespans = lifespans_iterator::<T>(max_expiring_orders_per_block, 1);
+    let mut lifespans = lifespans
+        .unwrap_or_else(|| lifespans_iterator::<T>(settings.max_expiring_orders_per_block, 1));
 
     if place_buy {
-        let mut bid_prices = bid_prices_iterator(order_book.tick_size, max_side_price_count);
+        let mut bid_prices =
+            bid_prices_iterator(order_book.tick_size, settings.max_side_price_count);
         #[cfg(feature = "std")]
         let start_time = std::time::Instant::now();
         #[cfg(feature = "std")]
         println!(
             "Starting placement of bid orders, {} orders per price",
-            max_orders_per_price
+            settings.max_orders_per_price
         );
         info!("Placing bids...");
         fill_order_book_side(
@@ -1114,13 +1150,14 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     }
 
     if place_sell {
-        let mut ask_prices = ask_prices_iterator(order_book.tick_size, max_side_price_count);
+        let mut ask_prices =
+            ask_prices_iterator(order_book.tick_size, settings.max_side_price_count);
         #[cfg(feature = "std")]
         let start_time = std::time::Instant::now();
         #[cfg(feature = "std")]
         println!(
             "Starting placement of ask orders, {} orders per price",
-            max_orders_per_price
+            settings.max_orders_per_price
         );
         info!("Placing asks...");
         fill_order_book_side(
