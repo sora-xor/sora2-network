@@ -137,7 +137,7 @@ pub fn assert_orders_numbers<T: Config>(
 pub use benchmarks_inner::*;
 #[cfg(not(test))]
 mod benchmarks_inner {
-    use common::prelude::{QuoteAmount, SwapAmount};
+    use common::prelude::SwapAmount;
     use common::{
         balance, AssetInfoProvider, AssetName, AssetSymbol, LiquiditySource, PriceVariant,
     };
