@@ -637,17 +637,17 @@ pub fn prepare_market_order_benchmark<T: Config>(
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
-    let (users, mut lifespans) = prepare_order_execute_worst_case::<T>(
+    let _ = prepare_order_execute_worst_case::<T>(
         &mut data_layer,
         &mut order_book,
         fill_settings.clone(),
         true,
     );
 
-    let owner = bob::<T>();
+    let author = bob::<T>();
     let amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size)
         * Scalar(fill_settings.max_side_price_count * fill_settings.max_orders_per_price);
-    (owner, order_book_id, amount)
+    (author, order_book_id, amount)
 }
 
 pub mod presets {

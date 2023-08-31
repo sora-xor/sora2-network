@@ -878,8 +878,11 @@ mod tests {
     use crate::test_utils::{
         create_empty_order_book, pretty_print_expirations, pretty_print_order_book, run_to_block,
     };
+    use frame_support::assert_ok;
 
-    use common::PriceVariant;
+    use crate::benchmarking::preparation::prepare_market_order_benchmark;
+    use common::prelude::SwapAmount;
+    use common::{balance, PriceVariant};
     use frame_support::traits::{Get, Time};
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
@@ -1051,6 +1054,44 @@ mod tests {
             )
             .unwrap();
             dbg!(outcome);
+        })
+    }
+
+    #[test]
+    fn test_benchmark_exchange() {
+        ext().execute_with(|| {
+            use common::LiquiditySource;
+
+            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
+            let settings = preset_3::<Runtime>();
+            let (author, order_book_id, amount) = prepare_market_order_benchmark(settings, true);
+            pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            let (outcome, _) = OrderBookPallet::<Runtime>::exchange(
+                &author,
+                &author,
+                &order_book_id.dex_id,
+                &order_book_id.base,
+                &order_book_id.quote,
+                SwapAmount::with_desired_input(*amount.balance(), balance!(0)),
+            )
+            .unwrap();
+            dbg!(outcome);
+        })
+    }
+
+    #[test]
+    fn test_benchmark_execute_market_order() {
+        ext().execute_with(|| {
+            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
+            let settings = preset_3::<Runtime>();
+            let (author, order_book_id, amount) = prepare_market_order_benchmark(settings, false);
+            pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            assert_ok!(OrderBookPallet::<Runtime>::execute_market_order(
+                RawOrigin::Signed(author).into(),
+                order_book_id,
+                PriceVariant::Sell,
+                *amount.balance(),
+            ));
         })
     }
 }
