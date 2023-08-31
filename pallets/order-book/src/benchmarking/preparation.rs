@@ -604,10 +604,50 @@ pub fn prepare_quote_benchmark<T: Config>(
     (dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
 }
 
+/// Direction is `PriceVariant::Sell`, meaning the input is order book's base asset. and output is
+/// quote.
+///
+/// Returns `owner` of the order; it's both receiver and sender (if applicable)
+///
+/// `amount` is in base asset; It implies that `desired_amount` (if applicable) should be
+/// `WithDesiredInput` (bc it corresponds to the base)
 pub fn prepare_market_order_benchmark<T: Config>(
     fill_settings: FillSettings<T>,
     is_divisible: bool,
-) -> () {
+) -> (
+    T::AccountId,
+    OrderBookId<AssetIdOf<T>, T::DEXId>,
+    OrderVolume,
+) {
+    let order_book_id = if is_divisible {
+        OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        }
+    } else {
+        OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        }
+    };
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
+        .expect("failed to create an order book");
+    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
+    let mut data_layer = CacheDataLayer::<T>::new();
+
+    let (users, mut lifespans) = prepare_order_execute_worst_case::<T>(
+        &mut data_layer,
+        &mut order_book,
+        fill_settings.clone(),
+        true,
+    );
+
+    let owner = bob::<T>();
+    let amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size)
+        * Scalar(fill_settings.max_side_price_count * fill_settings.max_orders_per_price);
+    (owner, order_book_id, amount)
 }
 
 pub mod presets {
