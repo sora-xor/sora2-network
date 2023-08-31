@@ -1060,15 +1060,19 @@ mod tests {
     #[test]
     fn test_benchmark_exchange() {
         ext().execute_with(|| {
+            use common::AssetInfoProvider;
             use common::LiquiditySource;
 
             let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
             // let settings = preset_3::<Runtime>();
-            let (author, order_book_id, amount) = prepare_market_order_benchmark(settings, true);
+            let caller = alice::<Runtime>();
+            let (order_book_id, amount) =
+                prepare_market_order_benchmark(settings, caller.clone(), true);
             pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            dbg!(assets::Pallet::<Runtime>::total_balance(&order_book_id.base, &caller).unwrap());
             let (outcome, _) = OrderBookPallet::<Runtime>::exchange(
-                &author,
-                &author,
+                &caller,
+                &caller,
                 &order_book_id.dex_id,
                 &order_book_id.base,
                 &order_book_id.quote,
@@ -1084,10 +1088,12 @@ mod tests {
         ext().execute_with(|| {
             // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
             let settings = preset_3::<Runtime>();
-            let (author, order_book_id, amount) = prepare_market_order_benchmark(settings, false);
+            let caller = alice::<Runtime>();
+            let (order_book_id, amount) =
+                prepare_market_order_benchmark(settings, caller.clone(), false);
             pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
             assert_ok!(OrderBookPallet::<Runtime>::execute_market_order(
-                RawOrigin::Signed(author).into(),
+                RawOrigin::Signed(caller.clone()).into(),
                 order_book_id,
                 PriceVariant::Sell,
                 *amount.balance(),

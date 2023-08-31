@@ -639,12 +639,9 @@ pub fn prepare_quote_benchmark<T: Config>(
 /// `WithDesiredInput` (bc it corresponds to the base)
 pub fn prepare_market_order_benchmark<T: Config>(
     fill_settings: FillSettings<T>,
+    author: T::AccountId,
     is_divisible: bool,
-) -> (
-    T::AccountId,
-    OrderBookId<AssetIdOf<T>, T::DEXId>,
-    OrderVolume,
-) {
+) -> (OrderBookId<AssetIdOf<T>, T::DEXId>, OrderVolume) {
     let order_book_id = if is_divisible {
         OrderBookId::<AssetIdOf<T>, T::DEXId> {
             dex_id: DEX.into(),
@@ -670,15 +667,17 @@ pub fn prepare_market_order_benchmark<T: Config>(
         true,
     );
 
-    let author = bob::<T>();
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let combined_amount = order_amount
         * Scalar(fill_settings.max_side_price_count * fill_settings.max_orders_per_price);
 
+    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *order_amount.balance())
+        .unwrap();
+
     <OrderBooks<T>>::insert(order_book_id, order_book);
     data_layer.commit();
 
-    (author, order_book_id, combined_amount)
+    (order_book_id, combined_amount)
 }
 
 pub mod presets {
