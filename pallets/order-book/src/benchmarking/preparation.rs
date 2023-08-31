@@ -299,7 +299,7 @@ fn prepare_order_execute_worst_case<T: Config>(
             users.next().unwrap(),
             PriceVariant::Buy,
             min_price,
-            order_amount,
+            order_amount * Scalar(2u64),
             T::Time::now(),
             lifespans.next().unwrap().saturated_into(),
             frame_system::Pallet::<T>::block_number(),
@@ -637,7 +637,7 @@ pub fn prepare_quote_benchmark<T: Config>(
 ///
 /// `amount` is in base asset; It implies that `desired_amount` (if applicable) should be
 /// `WithDesiredInput` (bc it corresponds to the base)
-pub fn prepare_market_order_benchmark<T: Config>(
+pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
     is_divisible: bool,
@@ -649,16 +649,46 @@ pub fn prepare_market_order_benchmark<T: Config>(
             quote: XOR.into(),
         }
     } else {
-        OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        let creator = bob::<T>();
+        frame_system::Pallet::<T>::inc_providers(&creator);
+
+        let nft = assets::Pallet::<T>::register_from(
+            &bob::<T>(),
+            common::AssetSymbol(b"NFT".to_vec()),
+            common::AssetName(b"Nft".to_vec()),
+            0,
+            1,
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
+            base: nft.clone(),
             quote: XOR.into(),
-        }
+        };
+        trading_pair::Pallet::<T>::register(
+            RawOrigin::Signed(creator.clone()).into(),
+            DEX.into(),
+            id.quote,
+            id.base,
+        )
+        .unwrap();
+        id
     };
     OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
         .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
+
+    if !is_divisible {
+        // to allow order book update
+        let needed_supply = *order_book.max_lot_size.balance();
+        assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &bob::<T>(), needed_supply)
+            .unwrap();
+    }
 
     let _ = prepare_order_execute_worst_case::<T>(
         &mut data_layer,
@@ -671,7 +701,7 @@ pub fn prepare_market_order_benchmark<T: Config>(
     let combined_amount = order_amount
         * Scalar(fill_settings.max_side_price_count * fill_settings.max_orders_per_price);
 
-    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *order_amount.balance())
+    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *combined_amount.balance())
         .unwrap();
 
     <OrderBooks<T>>::insert(order_book_id, order_book);

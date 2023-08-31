@@ -1080,14 +1080,15 @@ mod tests {
             )
             .unwrap();
             dbg!(outcome);
+            pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
         })
     }
 
     #[test]
     fn test_benchmark_execute_market_order() {
         ext().execute_with(|| {
-            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            let settings = preset_3::<Runtime>();
+            let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
+            // let settings = preset_3::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings, caller.clone(), false);
