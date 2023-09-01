@@ -32,6 +32,8 @@
 #![allow(dead_code)] // todo (m.tagirov) remove
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
+// too many benchmarks, doesn't compile otherwise
+#![recursion_limit = "256"]
 
 use assets::AssetIdOf;
 use common::prelude::{
