@@ -20,7 +20,7 @@ benchmarks! {
         let p in 0 .. T::MaxMessagePayloadSize::get() as u32;
 
         for _ in 0 .. m {
-            let payload: Vec<u8> = (0..).take(p as usize).collect();
+            let payload: sp_std::vec::Vec<u8> = (0..).take(p as usize).collect();
             append_message_queue::<T>(BASE_NETWORK_ID, Message {
                 target: H160::zero(),
                 max_gas: 100000u64.into(),
