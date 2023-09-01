@@ -29,6 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //! Benchmarking setup for order-book
+//!
+//! Includes both regular benchmarks for extrinsics, as well as extra ones designed for figuring
+//! out appropriate parameters for the order book pallet.
+//!
+//! The normal benches are run as intended.
+//!
+//! The extra benchmarks can be conveniently run through script in this directory. Also they are
+//! generated with `./generate_benchmarks.py`
 
 #![cfg(feature = "runtime-benchmarks")]
 // order-book

@@ -1,5 +1,17 @@
 #!/usr/bin/python3
 
+"""
+Generates multiple variants of benchmarks. Intended to allow comparison of runs between different presets.
+
+The Substrate's benchmarking framework is not suitable for this because instead of switching presets it alters each
+parameter independently freezing others at max value in range.
+Rust macros are not usable because the benchmarks are already within a macro; they are processed outside-in, thus
+making it impossible to accomplish this without modifying Substrate's benchmarking macro.
+
+Usage is the following: edit/add a template, run the script, paste output into `./mod.rs` in benchmarking section.
+"""
+
+
 def generate_fs(range_: range, template: str):
     codes = ""
     for i in range_:
