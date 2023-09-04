@@ -736,31 +736,31 @@ pub mod presets {
     use framenode_runtime::order_book::Config;
 
     pub fn preset_1<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(16, 16, 16, 128)
+        FillSettings::<T>::new(16, 16, 16, 16)
     }
 
     pub fn preset_2<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(32, 32, 32, 256)
+        FillSettings::<T>::new(32, 32, 32, 32)
     }
 
     pub fn preset_3<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(64, 64, 64, 512)
+        FillSettings::<T>::new(64, 64, 64, 64)
     }
 
     pub fn preset_4<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(128, 128, 128, 1024)
+        FillSettings::<T>::new(128, 128, 128, 128)
     }
 
     pub fn preset_5<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(256, 256, 256, 2048)
+        FillSettings::<T>::new(256, 256, 256, 256)
     }
 
     pub fn preset_6<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(512, 512, 512, 4096)
+        FillSettings::<T>::new(512, 512, 512, 512)
     }
 
     pub fn preset_7<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(1024, 1024, 1024, 8192)
+        FillSettings::<T>::new(1024, 1024, 1024, 1024)
     }
 }
 
