@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+import re
+from pathlib import Path
 
 """
 Generates multiple variants of benchmarks. Intended to allow comparison of runs between different presets.
@@ -97,10 +99,68 @@ code_template_exchange = """
         }}
 """
 
-print(generate_fs(range(1, 8), code_template_delete))
-print(generate_fs(range(1, 8), code_template_place))
-print(generate_fs(range(1, 8), code_template_cancel_first))
-print(generate_fs(range(1, 8), code_template_cancel_last))
-print(generate_fs(range(1, 8), code_template_execute))
-print(generate_fs(range(1, 8), code_template_quote))
-print(generate_fs(range(1, 8), code_template_exchange))
+launch_script_template = """#!/bin/bash
+
+if which gawk > /dev/null 2>&1; then
+    awk="gawk"
+else
+    awk="awk"
+fi
+
+max_preset=7
+repeat=5
+
+# MacOS default getopt doesn't support long args,
+# so installing gnu version should make it work.
+#
+# brew install gnu-getopt
+getopt_code=$($awk -f ./misc/getopt.awk <<EOF
+Usage: sh ./benchmark_attributes.sh [-p MAX_PRESETS -r REPEATS] args...
+Run multiple variants of attribute benchmarks (order-book) storing the results in corresponding files.
+    -h, --help                  Show usage message
+usage
+exit 0
+    -r, --repeat [number]       Select how many repetitions of this benchmark should run from within the wasm. (default: $repeat)
+    -p, --max-preset [number]   Maximum number of preset to run to avoid running too long. (default: $max_preset)
+EOF
+)
+eval "$getopt_code"
+
+mkdir benches
+bench_names=( {} )
+for i in $(seq 1 $max_preset)
+do
+    # add index to the benchmark name
+    # and make comma-separated list for passing into the command
+    extrinsics=$(printf ",%s$i" "${{bench_names[@]}}")
+    extrinsics=${{extrinsics:1}}
+    command="./target/release/framenode benchmark pallet --chain=local  --execution=wasm --wasm-execution=compiled \
+--pallet order-book --extra --extrinsic \\"$extrinsics\\" --repeat $repeat --output ./benches/preset_$i.rs $*"
+    echo "$command"
+    eval "$command"
+done"""
+
+templates = [
+    code_template_delete,
+    code_template_place,
+    code_template_cancel_first,
+    code_template_cancel_last,
+    code_template_execute,
+    code_template_quote,
+    code_template_exchange
+]
+
+for t in templates:
+    print(generate_fs(range(1, 8), t))
+
+
+def extract_name(template: str) -> str:
+    regex = r"^\s+#\[extra\]\s+([\w]+){}"
+    name = re.search(regex, template).group(1)
+    return name
+
+
+benchmark_names = " ".join([extract_name(t) for t in templates])
+script_path = Path(__file__).parent.resolve() / 'benchmark_attributes.sh'
+with script_path.open('w') as file:
+    file.write(launch_script_template.format(benchmark_names))

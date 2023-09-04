@@ -1,12 +1,12 @@
 #!/bin/bash
 
 if which gawk > /dev/null 2>&1; then
-  awk="gawk"
+    awk="gawk"
 else
-  awk="awk"
+    awk="awk"
 fi
 
-max_preset=8
+max_preset=7
 repeat=5
 
 # MacOS default getopt doesn't support long args,
@@ -16,21 +16,24 @@ repeat=5
 getopt_code=$($awk -f ./misc/getopt.awk <<EOF
 Usage: sh ./benchmark_attributes.sh [-p MAX_PRESETS -r REPEATS] args...
 Run multiple variants of attribute benchmarks (order-book) storing the results in corresponding files.
-  -h, --help                  Show usage message
+    -h, --help                  Show usage message
 usage
 exit 0
-  -r, --repeat [number]       Select how many repetitions of this benchmark should run from within the wasm. (default: $repeat)
-  -p, --max-preset [number]   Maximum number of preset to run to avoid running too long. (default: $max_preset)
+    -r, --repeat [number]       Select how many repetitions of this benchmark should run from within the wasm. (default: $repeat)
+    -p, --max-preset [number]   Maximum number of preset to run to avoid running too long. (default: $max_preset)
 EOF
 )
 eval "$getopt_code"
 
-for bench_name in a b c
+mkdir benches
+bench_names=( delete_orderbook_ place_limit_order_ cancel_limit_order_first_ cancel_limit_order_last_ execute_market_order_ quote_ exchange_ )
+for i in $(seq 1 $max_preset)
 do
-  for i in $(seq 1 $max_preset)
-  do
-    instance_name=$bench_name$i
-    command="./target/release/framenode benchmark pallet --chain=local  --execution=wasm --wasm-execution=compiled --pallet order-book --extrinsic \"$instance_name\" --repeat $repeat --output ./benches/$instance_name.rs $*"
+    # add index to the benchmark name
+    # and make comma-separated list for passing into the command
+    extrinsics=$(printf ",%s$i" "${bench_names[@]}")
+    extrinsics=${extrinsics:1}
+    command="./target/release/framenode benchmark pallet --chain=local  --execution=wasm --wasm-execution=compiled --pallet order-book --extra --extrinsic \"$extrinsics\" --repeat $repeat --output ./benches/preset_$i.rs $*"
+    echo "$command"
     eval "$command"
-  done
 done
