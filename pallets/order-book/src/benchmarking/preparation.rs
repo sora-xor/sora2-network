@@ -261,6 +261,7 @@ fn prepare_order_execute_worst_case<T: Config>(
         .balance(),
     )
     .unwrap();
+    *order_book = OrderBookPallet::order_books(order_book.order_book_id).unwrap();
 
     let mut bid_prices =
         bid_prices_iterator(order_book.tick_size, fill_settings.max_side_price_count);
