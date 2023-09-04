@@ -702,7 +702,16 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
 
     if !is_divisible {
         // to allow order book update
-        let needed_supply = *order_book.max_lot_size.balance();
+        let max_side_orders =
+            fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
+        let needed_supply = *sp_std::cmp::max(
+            order_book
+                .min_lot_size
+                .checked_mul_by_scalar(Scalar(max_side_orders + 1))
+                .unwrap(),
+            order_book.max_lot_size,
+        )
+        .balance();
         assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &bob::<T>(), needed_supply)
             .unwrap();
     }
