@@ -33,7 +33,7 @@ do
     # and make comma-separated list for passing into the command
     extrinsics=$(printf ",%s$i" "${bench_names[@]}")
     extrinsics=${extrinsics:1}
-    command="./target/release/framenode benchmark pallet --chain=local  --execution=wasm --wasm-execution=compiled --pallet order-book --extra --extrinsic \"$extrinsics\" --repeat $repeat --output ./benches/preset_$i.rs $*"
+    command="./target/release/framenode benchmark pallet --chain=local  --execution=wasm --wasm-execution=compiled --pallet order-book --extra --extrinsic \"$extrinsics\" --repeat $repeat --output ./benches/preset_${i}.rs --json-file ./benches/preset_${i}_raw.json $*"
     echo "$command"
     eval "$command"
 done
