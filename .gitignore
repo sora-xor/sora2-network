@@ -25,3 +25,6 @@ db-stg-chain*
 db?
 
 .vscode/launch.json
+
+# Generated folder for benchmark results (order book extra benchmarks)
+benches/
