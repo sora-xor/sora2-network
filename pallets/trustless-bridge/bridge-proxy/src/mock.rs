@@ -52,6 +52,7 @@ use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
 use sp_runtime::{AccountId32, DispatchResult, MultiSignature};
+use system::EnsureRoot;
 
 use crate as proxy;
 
@@ -347,6 +348,16 @@ impl TimepointProvider for GenericTimepointProvider {
     }
 }
 
+pub struct ReferencePriceProvider;
+
+impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider {
+    fn get_reference_price(
+        _asset_id: &AssetId,
+    ) -> Result<Balance, frame_support::dispatch::DispatchError> {
+        Ok(common::balance!(2.5))
+    }
+}
+
 impl proxy::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type EthApp = EthApp;
@@ -354,6 +365,8 @@ impl proxy::Config for Test {
     type SubstrateApp = ();
     type HashiBridge = ();
     type TimepointProvider = GenericTimepointProvider;
+    type ReferencePriceProvider = ReferencePriceProvider;
+    type ManagerOrigin = EnsureRoot<AccountId>;
     type WeightInfo = ();
 }
 

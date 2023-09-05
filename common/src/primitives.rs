@@ -697,7 +697,7 @@ pub enum LiquiditySourceType {
     MockPool4,
     XSTPool,
 
-    #[cfg(feature = "ready-to-test")] // order-book
+    #[cfg(feature = "wip")] // order-book
     OrderBook,
 }
 
@@ -1111,6 +1111,12 @@ pub struct Rate {
 #[derive(Encode, MaxEncodedLen, Default, TypeInfo)]
 #[scale_info(skip_type_params(N))]
 pub struct BoundedString<N: Get<u32>>(BoundedVec<u8, N>);
+
+impl<N: Get<u32>> BoundedString<N> {
+    pub fn truncate_from(data: &str) -> Self {
+        Self(BoundedVec::truncate_from(data.as_bytes().to_vec()))
+    }
+}
 
 impl<N: Get<u32>> codec::Decode for BoundedString<N> {
     fn decode<I: codec::Input>(input: &mut I) -> Result<Self, codec::Error> {
