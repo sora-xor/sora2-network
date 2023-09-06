@@ -57,7 +57,7 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    Rate, RewardReason, SwapChunk, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
@@ -67,6 +67,7 @@ use frame_support::{ensure, fail, RuntimeDebug};
 use serde::{Deserialize, Serialize};
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 pub use weights::WeightInfo;
@@ -1085,6 +1086,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             deduce_fee,
             true,
         )
+    }
+
+    fn step_quote(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        steps: u32,
+    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+        // todo (m.tagirov) 447
+        todo!()
     }
 
     fn exchange(

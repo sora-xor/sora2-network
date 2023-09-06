@@ -35,10 +35,11 @@
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, RewardReason,
+    LiquiditySourceType, RewardReason, SwapChunk,
 };
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -118,6 +119,41 @@ impl<T: Config>
             MockPool2 => quote!(MockLiquiditySource2),
             MockPool3 => quote!(MockLiquiditySource3),
             MockPool4 => quote!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
+        }
+    }
+
+    fn step_quote(
+        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        steps: u32,
+    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+        use LiquiditySourceType::*;
+        macro_rules! step_quote {
+            ($source_type:ident) => {
+                T::$source_type::step_quote(
+                    &liquidity_source_id.dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    amount,
+                    steps,
+                )
+            };
+        }
+        match liquidity_source_id.liquidity_source_index {
+            LiquiditySourceType::XYKPool => step_quote!(XYKPool),
+            MulticollateralBondingCurvePool => step_quote!(MulticollateralBondingCurvePool),
+            XSTPool => step_quote!(XSTPool),
+
+            #[cfg(feature = "wip")] // order-book
+            OrderBook => step_quote!(OrderBook),
+
+            MockPool => step_quote!(MockLiquiditySource),
+            MockPool2 => step_quote!(MockLiquiditySource2),
+            MockPool3 => step_quote!(MockLiquiditySource3),
+            MockPool4 => step_quote!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
         }
     }

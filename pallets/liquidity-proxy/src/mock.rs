@@ -33,8 +33,8 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, USDT,
-    VAL, XOR, XST, XSTUSD,
+    LiquiditySourceType, RewardReason, SwapChunk, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM,
+    PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -52,6 +52,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, DispatchError, Perbill, Percent};
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::str::FromStr;
 use std::collections::{BTreeSet, HashMap};
 
@@ -730,6 +731,16 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         }
     }
 
+    fn step_quote(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+        _steps: u32,
+    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+        unimplemented!()
+    }
+
     fn exchange(
         _sender: &AccountId,
         _receiver: &AccountId,
@@ -1088,6 +1099,16 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 ))
             }
         }
+    }
+
+    fn step_quote(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+        _steps: u32,
+    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+        unimplemented!()
     }
 
     fn exchange(

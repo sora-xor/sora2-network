@@ -38,6 +38,7 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 use common::prelude::{
@@ -46,7 +47,8 @@ use common::prelude::{
 use common::{
     fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
     LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
-    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
+    RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    TradingPairSourceManager,
 };
 
 mod aliases;
@@ -432,6 +434,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
             }
         }
+    }
+
+    fn step_quote(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        steps: u32,
+    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+        // todo (m.tagirov) 447
+        todo!()
     }
 
     fn exchange(

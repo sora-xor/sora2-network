@@ -35,7 +35,8 @@
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource, RewardReason,
+    balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource,
+    RewardReason, SwapChunk,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::DispatchError;
@@ -44,6 +45,7 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT};
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -408,6 +410,17 @@ impl<T: Config<I>, I: 'static>
             }
         };
         res.map(|outcome| (outcome, Self::quote_weight()))
+    }
+
+    fn step_quote(
+        _target_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _amount: QuoteAmount<Balance>,
+        _steps: u32,
+    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+        // should not be called
+        Ok(VecDeque::new())
     }
 
     fn exchange(

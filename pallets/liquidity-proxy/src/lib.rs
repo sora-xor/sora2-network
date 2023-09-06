@@ -34,12 +34,18 @@
 
 extern crate core;
 
-use core::marker::PhantomData;
-
-use codec::{Decode, Encode};
+mod liquidity_aggregator;
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod test_utils;
+#[cfg(test)]
+mod tests;
+pub mod weights;
 
 use assets::AssetIdOf;
 use assets::WeightInfo as _;
+use codec::{Decode, Encode};
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
@@ -49,6 +55,7 @@ use common::{
     LiquiditySourceType, RewardReason, TradingPair, TradingPairSourceManager, VestedRewardsPallet,
     XSTUSD,
 };
+use core::marker::PhantomData;
 use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
 use frame_support::traits::Get;
@@ -56,27 +63,17 @@ use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
 use frame_system::ensure_signed;
 use itertools::Itertools as _;
+use liquidity_aggregator::AggregatedSwapOutcome;
 pub use pallet::*;
 use sp_runtime::traits::{CheckedSub, Zero};
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
+pub use weights::WeightInfo;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
-
-pub mod weights;
-pub use weights::WeightInfo;
-
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
-#[cfg(test)]
-mod test_utils;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -194,33 +191,6 @@ impl<T: Config> ExchangePath<T> {
                 ]),
             ]),
             (Base, Base) | (SyntheticBase, SyntheticBase) => None,
-        }
-    }
-}
-
-/// Output of the aggregated LiquidityProxy::quote() price.
-#[derive(
-    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
-)]
-pub struct AggregatedSwapOutcome<LiquiditySourceType, AmountType> {
-    /// A distribution of amounts each liquidity sources gets to swap in the entire trade
-    pub distribution: Vec<(LiquiditySourceType, QuoteAmount<AmountType>)>,
-    /// The best possible output/input amount for a given trade and a set of liquidity sources
-    pub amount: AmountType,
-    /// Total fee amount, nominated in XOR
-    pub fee: AmountType,
-}
-
-impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdType, AmountType> {
-    pub fn new(
-        distribution: Vec<(LiquiditySourceIdType, QuoteAmount<AmountType>)>,
-        amount: AmountType,
-        fee: AmountType,
-    ) -> Self {
-        Self {
-            distribution,
-            amount,
-            fee,
         }
     }
 }
@@ -1410,6 +1380,18 @@ impl<T: Config> Pallet<T> {
                 target_asset_id: asset_b,
             },
         }
+    }
+
+    fn new_smart_split() -> Result<
+        (
+            AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
+            Rewards<T::AssetId>,
+            Weight,
+        ),
+        DispatchError,
+    > {
+        // todo (m.tagirov) 447
+        todo!()
     }
 
     /// Implements the "smart" split algorithm.

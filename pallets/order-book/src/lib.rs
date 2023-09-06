@@ -41,7 +41,7 @@ use common::prelude::{
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
+    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason, SwapChunk,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 use core::fmt::Debug;
@@ -55,6 +55,7 @@ use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
 use sp_runtime::traits::{CheckedDiv, CheckedMul};
 use sp_runtime::{BoundedVec, Perbill};
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -1084,6 +1085,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 Self::quote_weight(),
             )),
         }
+    }
+
+    fn step_quote(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        steps: u32,
+    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+        // todo (m.tagirov) 447
+        todo!()
     }
 
     fn exchange(

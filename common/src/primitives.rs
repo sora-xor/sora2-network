@@ -28,7 +28,10 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::fixed_wrapper::FixedWrapper;
 use crate::traits::{IsRepresentation, PureOrWrapped};
+use crate::{Fixed, IsValid, Price};
+
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
 use frame_support::dispatch::TypeInfo;
@@ -41,7 +44,6 @@ use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
 
-use crate::{Fixed, IsValid};
 #[cfg(feature = "std")]
 use {
     rustc_hex::ToHex,
@@ -1166,5 +1168,25 @@ impl<N: Get<u32>> PartialOrd for BoundedString<N> {
 impl<N: Get<u32>> Ord for BoundedString<N> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.cmp(&other.0)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct SwapChunk<AmountType> {
+    pub input: AmountType,
+    pub output: AmountType,
+}
+
+impl<AmountType> SwapChunk<AmountType> {
+    pub fn new(input: AmountType, output: AmountType) -> Self {
+        Self { input, output }
+    }
+}
+
+impl SwapChunk<Balance> {
+    pub fn price(&self) -> Option<Price> {
+        (FixedWrapper::from(self.output) / FixedWrapper::from(self.input))
+            .get()
+            .ok()
     }
 }
