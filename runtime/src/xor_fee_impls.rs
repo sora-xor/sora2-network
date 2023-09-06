@@ -1,3 +1,4 @@
+use core::cmp::{Eq, PartialEq};
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::DispatchResult;
 
@@ -109,7 +110,10 @@ impl CustomFees {
 
         if frame_system::Pallet::<Runtime>::events()
             .iter()
-            .filter(|ev| ev.phase == frame_system::Phase::ApplyExtrinsic(xt_index))
+            .filter(|ev| match ev.phase {
+                frame_system::Phase::ApplyExtrinsic(index) if index == xt_index => true,
+                _ => false,
+            })
             .any(|ev| {
                 matches!(
                     ev.event,

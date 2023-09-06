@@ -28,12 +28,16 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use core::str::FromStr;
+
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
+use crate::opaque::SessionKeys;
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
-    AccountId, AssetId, Assets, Balance, Balances, Currencies, GetXorFeeAccountId, PoolXYK,
-    Referrals, ReferrerWeight, Runtime, RuntimeCall, RuntimeOrigin, Staking, System, Tokens,
-    Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
+    AccountId, AssetId, Assets, Babe, Balance, Balances, BlockNumber, Currencies,
+    ExpectedBlockTime, GetXorFeeAccountId, Moment, PoolXYK, Referrals, ReferrerWeight, Runtime,
+    RuntimeCall, RuntimeOrigin, Session, SessionOffset, SessionPeriod, SessionsPerEra, Staking,
+    System, Timestamp, Tokens, Utility, Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
 };
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
@@ -42,17 +46,27 @@ use common::{balance, fixed_wrapper, AssetInfoProvider, FilterMode, VAL, XOR};
 use frame_support::assert_ok;
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
-use frame_support::traits::{OnFinalize, OnInitialize};
+use frame_support::traits::{Currency, Get, OnFinalize, OnInitialize};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::WeightToFee as WeightToFeeTrait;
 use frame_system::EventRecord;
 use framenode_chain_spec::ext;
 use log::LevelFilter;
+use pallet_babe::AuthorityId as BabePublic;
 use pallet_balances::NegativeImbalance;
+use pallet_grandpa::AuthorityId as GrandpaPublic;
+use pallet_im_online::sr25519::AuthorityId as ImOnlinePublic;
+use pallet_staking::{
+    Config as StakingConfig, RewardDestination, StakingLedger, ValidatorPrefs, Validators,
+};
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
-use sp_runtime::traits::SignedExtension;
-use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
+use sp_beefy::crypto::AuthorityId as BeefyPublic;
+use sp_core::bounded_vec;
+use sp_core::sr25519::Public;
+use sp_runtime::traits::{SignedExtension, Zero};
+use sp_runtime::{assert_eq_error_rate, AccountId32, FixedPointNumber, FixedU128, Perbill};
+use sp_staking::{EraIndex, SessionIndex};
 use traits::MultiCurrency;
 use xor_fee::extension::ChargeTransactionPayment;
 use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToVal};
@@ -66,6 +80,8 @@ const MOCK_WEIGHT: Weight = Weight::from_parts(600_000_000, 0);
 const INITIAL_BALANCE: Balance = balance!(1000);
 const INITIAL_RESERVES: Balance = balance!(10000);
 const TRANSFER_AMOUNT: Balance = balance!(69);
+
+pub const INIT_TIMESTAMP: Moment = 0;
 
 fn sora_parliament_account() -> AccountId {
     AccountId32::from([7; 32])
@@ -120,6 +136,88 @@ fn set_weight_to_fee_multiplier(mul: u64) {
         RuntimeOrigin::root(),
         FixedU128::saturating_from_integer(mul)
     ));
+}
+
+fn validator_account() -> AccountId {
+    AccountId::from([1u8; 32])
+}
+
+fn nominator_account(id: u8) -> AccountId {
+    AccountId::from([id + 100u8; 32])
+}
+
+fn bond(stash: AccountId, ctrl: AccountId, val: Balance) {
+    let _ = Balances::make_free_balance_be(&stash, val);
+    let _ = Balances::make_free_balance_be(&ctrl, val);
+    assert_ok!(Staking::bond(
+        RuntimeOrigin::signed(stash),
+        ctrl,
+        val,
+        RewardDestination::Controller
+    ));
+}
+
+fn bond_validator(stash: AccountId, ctrl: AccountId, val: Balance) {
+    bond(stash, ctrl.clone(), val);
+    // arbitrary address
+    let public = Public::from_raw([1u8; 32]);
+    assert_ok!(Staking::validate(
+        RuntimeOrigin::signed(ctrl),
+        ValidatorPrefs::default()
+    ));
+}
+
+fn run_to_block(n: BlockNumber) {
+    <Staking as OnFinalize<BlockNumber>>::on_finalize(System::block_number());
+    for b in (System::block_number() + 1)..=n {
+        System::set_block_number(b);
+        Session::on_initialize(b);
+        Staking::on_initialize(b);
+        Babe::on_initialize(b);
+        let new_timestamp: Moment =
+            (System::block_number() as Moment) * ExpectedBlockTime::get() + INIT_TIMESTAMP;
+        Timestamp::set_timestamp(new_timestamp);
+        if b != n {
+            Staking::on_finalize(System::block_number());
+        }
+    }
+}
+
+fn start_session(session_index: SessionIndex) {
+    let end: BlockNumber = if SessionOffset::get().is_zero() {
+        (session_index as BlockNumber) * SessionPeriod::get()
+    } else {
+        SessionOffset::get()
+            + (session_index.saturating_sub(1) as BlockNumber) * SessionPeriod::get()
+    };
+    run_to_block(end);
+    // session must have progressed properly.
+    assert_eq!(
+        Session::current_index(),
+        session_index,
+        "current session index = {}, expected = {}",
+        Session::current_index(),
+        session_index,
+    );
+}
+
+fn start_active_era(era_index: EraIndex) {
+    start_session((era_index * <SessionsPerEra as Get<SessionIndex>>::get()).into());
+    assert_eq!(active_era(), era_index);
+    assert_eq!(current_era(), active_era());
+}
+
+fn current_era() -> EraIndex {
+    Staking::current_era().unwrap()
+}
+
+fn active_era() -> EraIndex {
+    Staking::active_era().unwrap().index
+}
+
+fn bond_nominator(stash: AccountId, ctrl: AccountId, val: Balance, target: Vec<AccountId>) {
+    bond(stash, ctrl.clone(), val);
+    assert_ok!(Staking::nominate(RuntimeOrigin::signed(ctrl), target));
 }
 
 #[test]
@@ -914,6 +1012,79 @@ fn it_works_eth_bridge_pays_no() {
                 LiquidityInfo::Paid(who, None),
                 Some(CustomFeeDetails::Regular(SMALL_FEE))
             ))
+        );
+    });
+}
+
+#[test]
+fn test_payout_stakers() {
+    ext().execute_with(|| {
+        let balance = 1000;
+        // Track the exposure of the validator and all nominators.
+        let mut total_exposure = balance;
+        // Track the exposure of the validator and the nominators that will get paid out.
+        let mut payout_exposure = balance;
+        // Create a validator:
+        bond_validator(validator_account(), validator_account(), balance); // Default(64)
+        assert_eq!(Validators::<Runtime>::count(), 3);
+
+        // Create nominators, targeting stash of validators
+        for i in 0..100 {
+            let bond_amount = balance + i as Balance;
+            bond_nominator(
+                nominator_account(i),
+                nominator_account(i),
+                bond_amount,
+                vec![validator_account()],
+            );
+            total_exposure += bond_amount;
+            if i >= 36 {
+                payout_exposure += bond_amount;
+            };
+        }
+        let payout_exposure_part = Perbill::from_rational(payout_exposure, total_exposure);
+
+        start_active_era(1);
+        Staking::reward_by_ids(vec![(validator_account(), 1)]);
+
+        start_active_era(2);
+
+        let pre_payout_total_issuance = Balances::total_issuance();
+        assert_ok!(Staking::payout_stakers(
+            RuntimeOrigin::signed(bob()),
+            validator_account(),
+            1
+        ));
+        assert_eq_error_rate!(
+            Balances::total_issuance(),
+            pre_payout_total_issuance, //
+            1
+        );
+
+        // Top 64 nominators of validator 11 automatically paid out, including the validator
+        // Validator payout goes to controller.
+        assert!(Balances::free_balance(&validator_account()) > balance);
+        for i in 36..100 {
+            assert!(Balances::free_balance(&nominator_account(i)) > balance + i as Balance);
+        }
+        // The bottom 36 do not
+        for i in 0..36 {
+            assert_eq!(
+                Balances::free_balance(&nominator_account(i)),
+                balance + i as Balance
+            );
+        }
+
+        // We track rewards in `claimed_rewards` vec
+        assert_eq!(
+            Staking::ledger(&validator_account()),
+            Some(StakingLedger {
+                stash: validator_account(),
+                total: 1000,
+                active: 1000,
+                unlocking: Default::default(),
+                claimed_rewards: bounded_vec![1]
+            })
         );
     });
 }
