@@ -2151,11 +2151,14 @@ impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<T::AssetId>>
     fn get_reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
         let dex_id = GetDEXId::get();
         let reference_asset_id = GetReferenceAssetId::get();
+        if asset_id == &reference_asset_id {
+            return Ok(balance!(1));
+        }
         let outcome = Pallet::<T>::quote(
             dex_id,
-            &reference_asset_id,
             asset_id,
-            QuoteAmount::with_desired_output(balance!(1)),
+            &reference_asset_id,
+            QuoteAmount::with_desired_input(balance!(1)),
             LiquiditySourceFilter::with_forbidden(
                 dex_id,
                 vec![LiquiditySourceType::MulticollateralBondingCurvePool],
