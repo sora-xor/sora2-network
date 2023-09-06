@@ -239,15 +239,17 @@ pub mod pallet {
                         T::HashiBridge::transfer(network_id, asset_id, sender, recipient, amount)?;
                     } else if T::EthApp::is_asset_supported(network_id, asset_id) {
                         T::EthApp::transfer(network_id, asset_id, sender, recipient, amount)?;
-                    } else {
+                    } else if T::ERC20App::is_asset_supported(network_id, asset_id) {
                         T::ERC20App::transfer(network_id, asset_id, sender, recipient, amount)?;
+                    } else {
+                        frame_support::fail!(Error::<T>::PathIsNotAvailable);
                     }
                 }
                 GenericAccount::Parachain(recipient) => {
                     T::SubstrateApp::transfer(network_id, asset_id, sender, recipient, amount)?;
                 }
                 GenericAccount::Sora(_) | GenericAccount::Unknown | GenericAccount::Root => {
-                    return Err(Error::<T>::WrongAccountKind.into())
+                    frame_support::fail!(Error::<T>::WrongAccountKind);
                 }
             }
             Ok(().into())
