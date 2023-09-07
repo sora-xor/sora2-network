@@ -67,7 +67,7 @@ use common::{Description, GetMarketInfo, PredefinedAssetId};
 use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
-#[cfg(feature = "ready-to-test")] // order-book
+// #[cfg(feature = "ready-to-test")] // order-book
 use frame_support::traits::EitherOf;
 use frame_support::weights::ConstantMultiplier;
 
@@ -82,7 +82,7 @@ use frame_election_provider_support::{generate_solution_type, onchain, Sequentia
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
-#[cfg(feature = "ready-to-test")] // order-book
+// #[cfg(feature = "ready-to-test")] // order-book
 use frame_system::EnsureSigned;
 use hex_literal::hex;
 use pallet_grandpa::{
@@ -2052,7 +2052,7 @@ parameter_types! {
     pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block; // TODO: order-book clarify
 }
 
-#[cfg(feature = "ready-to-test")] // order-book
+// #[cfg(feature = "ready-to-test")] // order-book
 impl order_book::Config for Runtime {
     const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
     const MIN_ORDER_LIFESPAN: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
@@ -2484,7 +2484,7 @@ construct_runtime! {
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
 
-        #[cfg(feature = "ready-to-test")] // order-book
+        // #[cfg(feature = "ready-to-test")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
         // Trustless bridges
@@ -3289,7 +3289,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
-            #[cfg(feature = "ready-to-test")] // order-book
+            // #[cfg(feature = "ready-to-test")] // order-book
             list_benchmark!(list, extra, order_book, OrderBook);
 
             // Trustless bridge
@@ -3376,7 +3376,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
-            #[cfg(feature = "ready-to-test")] // order-book
+            // #[cfg(feature = "ready-to-test")] // order-book
             add_benchmark!(params, batches, order_book, OrderBook);
 
             // Trustless bridge
