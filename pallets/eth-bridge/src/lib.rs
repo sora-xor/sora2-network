@@ -1933,4 +1933,16 @@ impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pal
         }
         apps
     }
+
+    fn is_asset_supported_weight() -> Weight {
+        T::DbWeight::get().reads(1)
+    }
+
+    fn refund_weight() -> Weight {
+        Default::default()
+    }
+
+    fn transfer_weight() -> Weight {
+        <T as Config>::WeightInfo::transfer_to_sidechain()
+    }
 }

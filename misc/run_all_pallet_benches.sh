@@ -29,6 +29,14 @@ declare -A PATH_OVERRIDES=(
     [bridge-data-signer]=./runtime/src/weights/bridge_data_signer.rs
 )
 
+declare -A WITHOUT_TEMPLATE=(
+    [multisig-verifier]=1
+    [bridge-data-signer]=1
+    [dispatch]=1
+    [substrate-bridge-app]=1
+    [substrate-bridge-channel-inbound]=1
+    [substrate-bridge-channel-outbound]=1
+)
 
 echo "[+] Benchmarking ${#PALLETS[@]} pallets for runtime local"
 
@@ -55,6 +63,13 @@ for PALLET in "${PALLETS[@]}"; do
     weight_path="./pallets/$pallet_dir/src/weights.rs"
   fi
   pallet_path="$(dirname $(dirname $weight_path))"
+
+  BENCHMARK_ARGS=""
+  if [[ -v "WITHOUT_TEMPLATE[$pallet_dir]" ]]; then 
+    echo "[*] Don't use template for $pallet_dir"
+  else
+    BENCHMARK_ARGS+="--template=./misc/pallet-weight-template.hbs"
+  fi
   
   if [ -d "$pallet_path" ]; then
     echo "[+] Benchmarking $PALLET in $pallet_path";
@@ -69,7 +84,7 @@ for PALLET in "${PALLETS[@]}"; do
       --execution=wasm \
       --wasm-execution=compiled \
       --header=./misc/file_header.txt \
-      --template=./misc/pallet-weight-template.hbs \
+      $BENCHMARK_ARGS \
       --output="$weight_path" 2>&1
     )
     if [ $? -ne 0 ]; then

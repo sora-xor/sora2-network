@@ -672,5 +672,17 @@ pub mod pallet {
                 })
                 .collect()
         }
+
+        fn is_asset_supported_weight() -> Weight {
+            T::DbWeight::get().reads(1)
+        }
+
+        fn refund_weight() -> Weight {
+            Default::default()
+        }
+
+        fn transfer_weight() -> Weight {
+            <T as Config>::WeightInfo::burn()
+        }
     }
 }
