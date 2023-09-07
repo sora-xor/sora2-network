@@ -40,7 +40,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 // order-book
-#![cfg(feature = "ready-to-test")]
+// #![cfg(feature = "ready-to-test")]
 
 #[allow(unused)]
 #[cfg(not(test))]
