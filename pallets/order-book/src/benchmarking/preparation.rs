@@ -758,19 +758,19 @@ pub mod presets {
     }
 
     pub fn preset_4<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(128, 128, 128, 128)
+        FillSettings::<T>::new(128, 32, 128, 128)
     }
 
     pub fn preset_5<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(256, 256, 256, 256)
+        FillSettings::<T>::new(32, 128, 128, 128)
     }
 
     pub fn preset_6<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(512, 512, 512, 512)
+        FillSettings::<T>::new(128, 128, 128, 128)
     }
 
     pub fn preset_7<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(1024, 1024, 1024, 1024)
+        FillSettings::<T>::new(128, 128, 32768, 32768)
     }
 }
 
