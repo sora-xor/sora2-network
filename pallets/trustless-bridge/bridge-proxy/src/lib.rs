@@ -573,33 +573,34 @@ impl<T: Config> BridgeAssetLockChecker<T::AssetId, Balance> for Pallet<T> {
             },
         )?;
         if Self::is_asset_limited(&asset_id) {
-            let reference_price = T::ReferencePriceProvider::get_reference_price(asset_id)?;
-            let reference_amount =
-                FixedWrapper::from(reference_price) * FixedWrapper::from(*amount);
-            let reference_amount = reference_amount
-                .try_into_balance()
-                .map_err(|_| Error::<T>::Overflow)?;
-            let transfer_limit = TransferLimit::<T>::get();
-            ConsumedTransferLimit::<T>::try_mutate(|value| {
-                *value = value
-                    .checked_add(reference_amount)
-                    .ok_or(Error::<T>::Overflow)?;
-                ensure!(
-                    *value < transfer_limit.max_amount,
-                    Error::<T>::TransferLimitReached
-                );
-                DispatchResult::Ok(())
-            })?;
-            TransferLimitUnlockSchedule::<T>::try_mutate(
-                frame_system::Pallet::<T>::block_number()
-                    .saturating_add(transfer_limit.period_blocks),
-                |value| {
+            if let Ok(reference_price) = T::ReferencePriceProvider::get_reference_price(asset_id) {
+                let reference_amount =
+                    FixedWrapper::from(reference_price) * FixedWrapper::from(*amount);
+                let reference_amount = reference_amount
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::Overflow)?;
+                let transfer_limit = TransferLimit::<T>::get();
+                ConsumedTransferLimit::<T>::try_mutate(|value| {
                     *value = value
                         .checked_add(reference_amount)
                         .ok_or(Error::<T>::Overflow)?;
+                    ensure!(
+                        *value < transfer_limit.max_amount,
+                        Error::<T>::TransferLimitReached
+                    );
                     DispatchResult::Ok(())
-                },
-            )?;
+                })?;
+                TransferLimitUnlockSchedule::<T>::try_mutate(
+                    frame_system::Pallet::<T>::block_number()
+                        .saturating_add(transfer_limit.period_blocks),
+                    |value| {
+                        *value = value
+                            .checked_add(reference_amount)
+                            .ok_or(Error::<T>::Overflow)?;
+                        DispatchResult::Ok(())
+                    },
+                )?;
+            }
         }
         Ok(())
     }
