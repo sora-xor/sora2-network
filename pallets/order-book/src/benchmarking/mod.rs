@@ -1157,7 +1157,7 @@ mod tests {
     #[ignore] // slow
     fn test_benchmark_delete_orderbook() {
         ext().execute_with(|| {
-            let settings = preset_3::<Runtime>();
+            let settings = preset_7::<Runtime>();
             let order_book_id = prepare_delete_orderbook_benchmark::<Runtime>(settings.clone());
             let mut data_layer =
                 framenode_runtime::order_book::storage_data_layer::StorageDataLayer::<Runtime>::new(
