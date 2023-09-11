@@ -667,17 +667,14 @@ mod benchmarks_inner {
             let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_4());
         } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
 
-        #[extra]
         delete_orderbook_5 {
             let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_5());
         } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
 
-        #[extra]
         delete_orderbook_6 {
             let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_6());
         } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
 
-        #[extra]
         delete_orderbook_7 {
             let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_7());
         } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
@@ -783,7 +780,6 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
-        #[extra]
         place_limit_order_5 {
             let signer = RawOrigin::Signed(alice::<T>()).into();
             let (order_book_id, price, amount, side, lifespan) =
@@ -794,7 +790,6 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
-        #[extra]
         place_limit_order_6 {
             let signer = RawOrigin::Signed(alice::<T>()).into();
             let (order_book_id, price, amount, side, lifespan) =
@@ -805,7 +800,6 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
-        #[extra]
         place_limit_order_7 {
             let signer = RawOrigin::Signed(alice::<T>()).into();
             let (order_book_id, price, amount, side, lifespan) =
@@ -981,7 +975,6 @@ mod benchmarks_inner {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
 
-        #[extra]
         cancel_limit_order_first_5 {
             let signer = RawOrigin::Signed(alice::<T>()).into();
             let (order_book_id, order_id) =
@@ -990,7 +983,6 @@ mod benchmarks_inner {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
 
-        #[extra]
         cancel_limit_order_first_6 {
             let signer = RawOrigin::Signed(alice::<T>()).into();
             let (order_book_id, order_id) =
@@ -999,7 +991,6 @@ mod benchmarks_inner {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
 
-        #[extra]
         cancel_limit_order_first_7 {
             let signer = RawOrigin::Signed(alice::<T>()).into();
             let (order_book_id, order_id) =
@@ -1149,7 +1140,6 @@ mod benchmarks_inner {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
 
-        #[extra]
         cancel_limit_order_last_5 {
             let signer = RawOrigin::Signed(alice::<T>()).into();
             let (order_book_id, order_id) =
@@ -1158,7 +1148,6 @@ mod benchmarks_inner {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
 
-        #[extra]
         cancel_limit_order_last_6 {
             let signer = RawOrigin::Signed(alice::<T>()).into();
             let (order_book_id, order_id) =
@@ -1167,7 +1156,6 @@ mod benchmarks_inner {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
 
-        #[extra]
         cancel_limit_order_last_7 {
             let signer = RawOrigin::Signed(alice::<T>()).into();
             let (order_book_id, order_id) =
@@ -1321,7 +1309,6 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
-        #[extra]
         execute_market_order_5 {
             let caller = alice::<T>();
             let (id, amount) = prepare_market_order_benchmark::<T>(preset_5(), caller.clone(), false);
@@ -1331,7 +1318,6 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
-        #[extra]
         execute_market_order_6 {
             let caller = alice::<T>();
             let (id, amount) = prepare_market_order_benchmark::<T>(preset_6(), caller.clone(), false);
@@ -1341,7 +1327,6 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
-        #[extra]
         execute_market_order_7 {
             let caller = alice::<T>();
             let (id, amount) = prepare_market_order_benchmark::<T>(preset_7(), caller.clone(), false);
@@ -1504,7 +1489,6 @@ mod benchmarks_inner {
                 .unwrap();
         }
 
-        #[extra]
         quote_5 {
             let (dex_id, input_id, output_id, amount, deduce_fee) =
             prepare_quote_benchmark::<T>(preset_5());
@@ -1513,7 +1497,6 @@ mod benchmarks_inner {
                 .unwrap();
         }
 
-        #[extra]
         quote_6 {
             let (dex_id, input_id, output_id, amount, deduce_fee) =
             prepare_quote_benchmark::<T>(preset_6());
@@ -1522,7 +1505,6 @@ mod benchmarks_inner {
                 .unwrap();
         }
 
-        #[extra]
         quote_7 {
             let (dex_id, input_id, output_id, amount, deduce_fee) =
             prepare_quote_benchmark::<T>(preset_7());
@@ -1680,7 +1662,6 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
-        #[extra]
         exchange_5 {
             let caller = alice::<T>();
             let (id, amount) = prepare_market_order_benchmark::<T>(preset_5(), caller.clone(), true);
@@ -1691,7 +1672,6 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
-        #[extra]
         exchange_6 {
             let caller = alice::<T>();
             let (id, amount) = prepare_market_order_benchmark::<T>(preset_6(), caller.clone(), true);
@@ -1702,7 +1682,6 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
-        #[extra]
         exchange_7 {
             let caller = alice::<T>();
             let (id, amount) = prepare_market_order_benchmark::<T>(preset_7(), caller.clone(), true);
