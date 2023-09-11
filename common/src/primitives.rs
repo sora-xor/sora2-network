@@ -39,7 +39,7 @@ use frame_support::traits::ConstU32;
 use frame_support::{ensure, BoundedVec, RuntimeDebug};
 use hex_literal::hex;
 use sp_core::H256;
-use sp_runtime::traits::Get;
+use sp_runtime::traits::{Get, Zero};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
@@ -1184,9 +1184,40 @@ impl<AmountType> SwapChunk<AmountType> {
 }
 
 impl SwapChunk<Balance> {
+    /// Calculates a price of the chunk
     pub fn price(&self) -> Option<Price> {
         (FixedWrapper::from(self.output) / FixedWrapper::from(self.input))
             .get()
             .ok()
+    }
+
+    /// Calculates a linearly proportional input amount depending on the price and an output amount.
+    /// `output` attribute must be less than or equal to `self.output`
+    pub fn proportional_input(&self, output: Balance) -> Option<Balance> {
+        if output > self.output {
+            return None;
+        }
+        if output.is_zero() {
+            return Some(Balance::zero());
+        }
+
+        let price = self.price()?;
+
+        (FixedWrapper::from(output) / price).try_into_balance().ok()
+    }
+
+    /// Calculates a linearly proportional output amount depending on the price and an input amount.
+    /// `input` attribute must be less than or equal to `self.input`
+    pub fn proportional_output(&self, input: Balance) -> Option<Balance> {
+        if input > self.input {
+            return None;
+        }
+        if input.is_zero() {
+            return Some(Balance::zero());
+        }
+
+        let price = self.price()?;
+
+        (FixedWrapper::from(input) * price).try_into_balance().ok()
     }
 }
