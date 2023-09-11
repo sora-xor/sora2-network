@@ -770,7 +770,7 @@ pub mod presets {
     }
 
     pub fn preset_7<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(128, 128, 32768, 32768)
+        FillSettings::<T>::new(128, 128, 16384, 16384)
     }
 }
 

@@ -1193,7 +1193,7 @@ mod tests {
     #[test]
     fn test_benchmark_place() {
         ext().execute_with(|| {
-            let settings = preset_3::<Runtime>();
+            let settings = preset_7::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, price, amount, side, lifespan) =
                 prepare_place_orderbook_benchmark(settings.clone(), caller.clone());
