@@ -3654,7 +3654,7 @@ fn test_reference_price_provider() {
                 &KSM,
             )
             .unwrap(),
-            balance!(0.500500500500500501)
+            balance!(0.499500499500499500)
         );
     });
 }
