@@ -1976,8 +1976,9 @@ impl<T: Config> Pallet<T> {
                 let out_amount = receivers
                     .iter()
                     .map(|recv| recv.target_amount)
-                    .sum::<Balance>()
-                    .saturating_sub(outcome_asset_reuse);
+                    .try_fold(Balance::zero(), |acc, val| acc.checked_add(val))
+                    .and_then(|val| val.checked_sub(outcome_asset_reuse))
+                    .ok_or(Error::<T>::CalculationError)?;
 
                 let (executed_input_amount, remainder_per_receiver, weight): (
                     Balance,
