@@ -684,6 +684,16 @@ mod benchmarks_inner {
             let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_7());
         } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
 
+        #[extra]
+        delete_orderbook_8 {
+            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_8());
+        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
+
+        #[extra]
+        delete_orderbook_9 {
+            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_9());
+        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
+
 
         #[extra]
         place_limit_order_1 {
@@ -762,6 +772,28 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
+        #[extra]
+        place_limit_order_8 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, price, amount, side, lifespan) =
+                prepare_place_orderbook_benchmark::<T>(preset_8(), alice::<T>());
+        }: {
+            OrderBookPallet::<T>::place_limit_order(
+                signer, order_book_id, price, amount, side, Some(lifespan),
+            ).unwrap();
+        }
+
+        #[extra]
+        place_limit_order_9 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, price, amount, side, lifespan) =
+                prepare_place_orderbook_benchmark::<T>(preset_9(), alice::<T>());
+        }: {
+            OrderBookPallet::<T>::place_limit_order(
+                signer, order_book_id, price, amount, side, Some(lifespan),
+            ).unwrap();
+        }
+
 
         #[extra]
         cancel_limit_order_first_1 {
@@ -826,6 +858,24 @@ mod benchmarks_inner {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
 
+        #[extra]
+        cancel_limit_order_first_8 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_8::<T>(), alice::<T>(), true);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+        }
+
+        #[extra]
+        cancel_limit_order_first_9 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_9::<T>(), alice::<T>(), true);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+        }
+
 
         #[extra]
         cancel_limit_order_last_1 {
@@ -886,6 +936,24 @@ mod benchmarks_inner {
             let signer = RawOrigin::Signed(alice::<T>()).into();
             let (order_book_id, order_id) =
                 prepare_cancel_orderbook_benchmark(preset_7::<T>(), alice::<T>(), false);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+        }
+
+        #[extra]
+        cancel_limit_order_last_8 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_8::<T>(), alice::<T>(), false);
+        }: {
+            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+        }
+
+        #[extra]
+        cancel_limit_order_last_9 {
+            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let (order_book_id, order_id) =
+                prepare_cancel_orderbook_benchmark(preset_9::<T>(), alice::<T>(), false);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
@@ -961,6 +1029,26 @@ mod benchmarks_inner {
             ).unwrap();
         }
 
+        #[extra]
+        execute_market_order_8 {
+            let caller = alice::<T>();
+            let (id, amount) = prepare_market_order_benchmark::<T>(preset_8(), caller.clone(), false);
+        }: {
+            OrderBookPallet::<T>::execute_market_order(
+                RawOrigin::Signed(caller).into(), id, PriceVariant::Sell, *amount.balance()
+            ).unwrap();
+        }
+
+        #[extra]
+        execute_market_order_9 {
+            let caller = alice::<T>();
+            let (id, amount) = prepare_market_order_benchmark::<T>(preset_9(), caller.clone(), false);
+        }: {
+            OrderBookPallet::<T>::execute_market_order(
+                RawOrigin::Signed(caller).into(), id, PriceVariant::Sell, *amount.balance()
+            ).unwrap();
+        }
+
 
         #[extra]
         quote_1 {
@@ -1020,6 +1108,24 @@ mod benchmarks_inner {
         quote_7 {
             let (dex_id, input_id, output_id, amount, deduce_fee) =
             prepare_quote_benchmark::<T>(preset_7());
+        }: {
+            OrderBookPallet::<T>::quote(&dex_id, &input_id, &output_id, amount, deduce_fee)
+                .unwrap();
+        }
+
+        #[extra]
+        quote_8 {
+            let (dex_id, input_id, output_id, amount, deduce_fee) =
+            prepare_quote_benchmark::<T>(preset_8());
+        }: {
+            OrderBookPallet::<T>::quote(&dex_id, &input_id, &output_id, amount, deduce_fee)
+                .unwrap();
+        }
+
+        #[extra]
+        quote_9 {
+            let (dex_id, input_id, output_id, amount, deduce_fee) =
+            prepare_quote_benchmark::<T>(preset_9());
         }: {
             OrderBookPallet::<T>::quote(&dex_id, &input_id, &output_id, amount, deduce_fee)
                 .unwrap();
@@ -1096,6 +1202,28 @@ mod benchmarks_inner {
         exchange_7 {
             let caller = alice::<T>();
             let (id, amount) = prepare_market_order_benchmark::<T>(preset_7(), caller.clone(), true);
+        } : {
+            OrderBookPallet::<T>::exchange(
+                &caller, &caller, &id.dex_id, &id.base, &id.quote,
+                SwapAmount::with_desired_input(*amount.balance(), balance!(0)),
+            ).unwrap();
+        }
+
+        #[extra]
+        exchange_8 {
+            let caller = alice::<T>();
+            let (id, amount) = prepare_market_order_benchmark::<T>(preset_8(), caller.clone(), true);
+        } : {
+            OrderBookPallet::<T>::exchange(
+                &caller, &caller, &id.dex_id, &id.base, &id.quote,
+                SwapAmount::with_desired_input(*amount.balance(), balance!(0)),
+            ).unwrap();
+        }
+
+        #[extra]
+        exchange_9 {
+            let caller = alice::<T>();
+            let (id, amount) = prepare_market_order_benchmark::<T>(preset_9(), caller.clone(), true);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,

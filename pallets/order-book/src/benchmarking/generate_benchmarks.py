@@ -107,7 +107,7 @@ else
     awk="awk"
 fi
 
-max_preset=7
+max_preset={max_preset_default}
 repeat=5
 
 # MacOS default getopt doesn't support long args,
@@ -127,7 +127,7 @@ EOF
 eval "$getopt_code"
 
 mkdir benches
-bench_names=( {} )
+bench_names=( {bench_names} )
 for i in $(seq 1 $max_preset)
 do
     # add index to the benchmark name
@@ -151,8 +151,10 @@ templates = [
     code_template_exchange
 ]
 
+max_preset = 9
+
 for t in templates:
-    print(generate_fs(range(1, 8), t))
+    print(generate_fs(range(1, max_preset+1), t))
 
 
 def extract_name(template: str) -> str:
@@ -164,4 +166,4 @@ def extract_name(template: str) -> str:
 benchmark_names = " ".join([extract_name(t) for t in templates])
 script_path = Path(__file__).parent.resolve() / 'benchmark_attributes.sh'
 with script_path.open('w') as file:
-    file.write(launch_script_template.format(benchmark_names))
+    file.write(launch_script_template.format(bench_names=benchmark_names, max_preset_default=max_preset))
