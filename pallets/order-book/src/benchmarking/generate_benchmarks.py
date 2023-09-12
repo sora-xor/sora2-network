@@ -151,7 +151,7 @@ templates = [
     code_template_exchange
 ]
 
-max_preset = 22
+max_preset = 19
 
 for t in templates:
     print(generate_fs(range(1, max_preset+1), t))
