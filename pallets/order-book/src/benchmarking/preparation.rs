@@ -745,41 +745,40 @@ pub mod presets {
     #[cfg(test)]
     use framenode_runtime::order_book::Config;
 
-    pub fn preset_1<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(16, 16, 16, 16)
+    macro_rules! generate_presets {
+        ($($name:ident: $($params:expr),+ $(,)? );+ $(;)? ) => {
+            $(
+            pub fn $name<T: Config>() -> FillSettings<T> {
+                FillSettings::<T>::new($($params),+)
+            }
+            )+
+        };
     }
 
-    pub fn preset_2<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(32, 32, 32, 32)
-    }
-
-    pub fn preset_3<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(64, 64, 64, 64)
-    }
-
-    pub fn preset_4<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(128, 32, 128, 128)
-    }
-
-    pub fn preset_5<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(32, 128, 128, 128)
-    }
-
-    pub fn preset_6<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(128, 128, 128, 128)
-    }
-
-    pub fn preset_7<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(128, 128, 128, 16384)
-    }
-
-    pub fn preset_8<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(128, 128, 16384, 128)
-    }
-
-    pub fn preset_9<T: Config>() -> FillSettings<T> {
-        FillSettings::<T>::new(128, 128, 16384, 16384)
-    }
+    generate_presets!(
+        preset_1: 16, 16, 16, 16;
+        preset_2: 16, 16, 16, 16;
+        preset_3: 32, 32, 32, 32;
+        preset_4: 64, 64, 64, 64;
+        preset_5: 128, 32, 64, 64;
+        preset_6: 32, 128, 64, 64;
+        preset_7: 32, 32, 32, 32;
+        preset_8: 32, 32, 64, 32;
+        preset_9: 32, 32, 128, 32;
+        preset_10: 32, 32, 256, 32;
+        preset_11: 32, 32, 512, 32;
+        preset_12: 32, 32, 1024, 32;
+        preset_13: 32, 32, 32, 64;
+        preset_14: 32, 32, 32, 128;
+        preset_15: 32, 32, 32, 256;
+        preset_16: 32, 32, 32, 512;
+        preset_17: 32, 32, 32, 1024;
+        preset_18: 32, 32, 64, 64;
+        preset_19: 32, 32, 128, 128;
+        preset_20: 32, 32, 256, 256;
+        preset_21: 32, 32, 512, 512;
+        preset_22: 32, 32, 1024, 1024;
+    );
 }
 
 #[derive(Clone, Debug)]
