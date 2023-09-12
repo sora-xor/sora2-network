@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "1.10.0"
+version = "2.0.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -14,10 +14,12 @@ targets = ["x86_64-unknown-linux-gnu"]
 substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+codec = { package = "parity-scale-codec", version = "=3.6.5", default-features = false, features = [
     "derive",
     "chain-error",
 ] }
+# Does not compile with newer version
+parity-scale-codec-derive = "=3.6.5"
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 hex-literal = "0.3.1"
 log = { version = "0.4.14" }
@@ -302,7 +304,13 @@ private-net = [
 ]
 
 wip = [
+    "order-book/wip",
     "framenode-chain-spec/wip",
+    "common/wip",
+    "dex-api/wip",
+    'liquidity-proxy/wip',
+    "liquidity-proxy-runtime-api/wip",
+    "liquidity-proxy-benchmarking/wip",
     "pallet-mmr",
     "beefy-light-client",
     "beefy-light-client-runtime-api",
@@ -326,15 +334,7 @@ wip = [
     "multisig-verifier",
 ]
 
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-    "common/ready-to-test",
-    "dex-api/ready-to-test",
-    'liquidity-proxy/ready-to-test',
-    "liquidity-proxy-runtime-api/ready-to-test",
-    "liquidity-proxy-benchmarking/ready-to-test",
-    "order-book/ready-to-test",
-]
+ready-to-test = ["framenode-chain-spec/ready-to-test"]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
@@ -391,6 +391,10 @@ runtime-benchmarks = [
     "xor-fee/runtime-benchmarks",
     "xst-benchmarking",
     "xst-benchmarking/runtime-benchmarks",
+    "dispatch/runtime-benchmarks",
+    "beefy-light-client/runtime-benchmarks",
+    "multisig-verifier/runtime-benchmarks",
+    "bridge-data-signer/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []
@@ -477,5 +481,5 @@ try-runtime = [
     "pallet-mmr/try-runtime",
     "pallet-beefy-mmr/try-runtime",
     "bridge-data-signer/try-runtime",
-    "multisig-verifier/try-runtime"
+    "multisig-verifier/try-runtime",
 ]

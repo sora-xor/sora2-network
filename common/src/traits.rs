@@ -1068,6 +1068,10 @@ impl<AssetId, AccountId> BuyBackHandler<AccountId, AssetId> for () {
     }
 }
 
+pub trait ReferencePriceProvider<AssetId, Balance> {
+    fn get_reference_price(asset_id: &AssetId) -> Result<Balance, DispatchError>;
+}
+
 pub trait ReferrerAccountProvider<AccountId> {
     fn get_referrer_account(who: &AccountId) -> Option<AccountId>;
 }

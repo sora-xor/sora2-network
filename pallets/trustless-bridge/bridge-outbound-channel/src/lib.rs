@@ -10,7 +10,6 @@ use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_io::offchain_index;
-use sp_std::prelude::*;
 use sp_std::vec;
 use traits::MultiCurrency;
 
@@ -383,6 +382,10 @@ pub mod pallet {
                 message_id,
             )
             .hash())
+        }
+
+        fn submit_weight() -> Weight {
+            Default::default()
         }
     }
 }

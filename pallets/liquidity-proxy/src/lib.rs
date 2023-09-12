@@ -260,7 +260,7 @@ impl<T: Config> Pallet<T> {
             _ => false,
         };
 
-        #[cfg(feature = "ready-to-test")] // order-book
+        #[cfg(feature = "wip")] // order-book
         {
             is_order_book = selected_source_types.contains(&LiquiditySourceType::OrderBook);
         }
@@ -992,7 +992,7 @@ impl<T: Config> Pallet<T> {
 
         // The temp solution is to exclude OrderBook source if there are multiple sources.
         // Will be redesigned in #447
-        #[cfg(feature = "ready-to-test")] // order-book
+        #[cfg(feature = "wip")] // order-book
         if sources.len() > 1 {
             sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
         }
@@ -2136,6 +2136,35 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId
             ),
         )?;
         assets::Pallet::<T>::burn_from(buy_back_asset_id, account_id, account_id, outcome.amount)?;
+        Ok(outcome.amount)
+    }
+}
+
+pub struct ReferencePriceProvider<T, GetDEXId, GetReferenceAssetId>(
+    PhantomData<(T, GetDEXId, GetReferenceAssetId)>,
+);
+
+impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<T::AssetId>>
+    common::ReferencePriceProvider<T::AssetId, Balance>
+    for ReferencePriceProvider<T, GetDEXId, GetReferenceAssetId>
+{
+    fn get_reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+        let dex_id = GetDEXId::get();
+        let reference_asset_id = GetReferenceAssetId::get();
+        if asset_id == &reference_asset_id {
+            return Ok(balance!(1));
+        }
+        let outcome = Pallet::<T>::quote(
+            dex_id,
+            asset_id,
+            &reference_asset_id,
+            QuoteAmount::with_desired_input(balance!(1)),
+            LiquiditySourceFilter::with_forbidden(
+                dex_id,
+                vec![LiquiditySourceType::MulticollateralBondingCurvePool],
+            ),
+            false,
+        )?;
         Ok(outcome.amount)
     }
 }
