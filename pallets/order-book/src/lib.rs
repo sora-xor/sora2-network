@@ -33,7 +33,7 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 // too many benchmarks, doesn't compile otherwise
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 
 use assets::AssetIdOf;
 use common::prelude::{
