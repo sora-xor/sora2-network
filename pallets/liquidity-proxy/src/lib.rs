@@ -1898,7 +1898,9 @@ impl<T: Config> Pallet<T> {
                     &output_asset_id,
                     &sender,
                     &receiver.account_id,
-                    receiver.target_amount - remainder_per_receiver,
+                    receiver
+                        .target_amount
+                        .saturating_sub(remainder_per_receiver),
                 )
             },
         )?;
@@ -1935,7 +1937,14 @@ impl<T: Config> Pallet<T> {
                     outcome_asset_id: asset_id,
                     dex_id,
                     receivers,
+                    outcome_asset_reuse,
                 } = swap_batch_info;
+
+                let balance = assets::Pallet::<T>::free_balance(&asset_id, &sender)?;
+
+                if balance < outcome_asset_reuse {
+                    fail!(Error::<T>::InsufficientBalance);
+                }
 
                 // extrinsic fails if there are duplicate output asset ids
                 if !unique_asset_ids.insert(asset_id.clone()) {
@@ -1946,24 +1955,33 @@ impl<T: Config> Pallet<T> {
                     fail!(Error::<T>::InvalidReceiversInfo);
                 }
 
-                let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
+                let out_amount = receivers
+                    .iter()
+                    .map(|recv| recv.target_amount)
+                    .try_fold(Balance::zero(), |acc, val| acc.checked_add(val))
+                    .and_then(|val| val.checked_sub(outcome_asset_reuse))
+                    .ok_or(Error::<T>::CalculationError)?;
 
                 let (executed_input_amount, remainder_per_receiver, weight): (
                     Balance,
                     Balance,
                     Weight,
                 ) = if &asset_id != input_asset_id {
-                    Self::exchange_batch_tokens(
-                        &sender,
-                        receivers.len() as u128,
-                        &input_asset_id,
-                        &asset_id,
-                        max_input_amount,
-                        &selected_source_types,
-                        dex_id,
-                        &filter_mode,
-                        out_amount,
-                    )?
+                    if !out_amount.is_zero() {
+                        Self::exchange_batch_tokens(
+                            &sender,
+                            receivers.len() as u128,
+                            &input_asset_id,
+                            &asset_id,
+                            max_input_amount,
+                            &selected_source_types,
+                            dex_id,
+                            &filter_mode,
+                            out_amount,
+                        )?
+                    } else {
+                        (0, 0, Weight::zero())
+                    }
                 } else {
                     (out_amount, 0, Weight::zero())
                 };
@@ -2070,6 +2088,7 @@ impl<AccountId> BatchReceiverInfo<AccountId> {
 #[scale_info(skip_type_params(T))]
 pub struct SwapBatchInfo<AssetId, DEXId, AccountId> {
     pub outcome_asset_id: AssetId,
+    pub outcome_asset_reuse: Balance,
     pub dex_id: DEXId,
     pub receivers: Vec<BatchReceiverInfo<AccountId>>,
 }
@@ -2466,6 +2485,8 @@ pub mod pallet {
         FailedToTransferAdarCommission,
         // ADAR commission ratio exceeds 1
         InvalidADARCommissionRatio,
+        // Sender don't have enough asset balance
+        InsufficientBalance,
     }
 
     #[pallet::type_value]
