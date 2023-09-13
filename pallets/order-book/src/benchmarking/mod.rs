@@ -647,7 +647,16 @@ mod benchmarks_inner {
         // attributes benchmarks
 
         // macros are executed outside-in, therefore implementing such codegen within Rust requires
-        // modifying `benchmarks!` macro from substrate (which is quite challenging)
+        // modifying `benchmarks!` macro from substrate (which is quite challenging); so
+        // python-codegen approach is chosen (:
+
+        // the workflow is the following:
+        // 1. edit presets in ./preparation.rs (with names "preset_*" where * is 1,2,3,4,5,...)
+        // 2. in ./generate_benchmarks.py set `max_preset` to the highest preset number
+        // 3. run ./generate_benchmarks.py
+        // 4. paste output here (instead of existing benches)
+        // 5. build as usual (with `--release` flag)
+        // 6. run with ./benchmark_attributes.sh
 
         #[extra]
         delete_orderbook_1 {
