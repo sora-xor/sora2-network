@@ -99,32 +99,6 @@ impl CustomFees {
             _ => None,
         }
     }
-
-    fn payout_stakers_batch_successful(result: &DispatchResult) -> bool {
-        if result.is_err() {
-            return false;
-        }
-        let Some(xt_index) = frame_system::Pallet::<Runtime>::extrinsic_index() else {
-            return false;
-        };
-
-        if frame_system::Pallet::<Runtime>::events()
-            .iter()
-            .filter(|ev| match ev.phase {
-                frame_system::Phase::ApplyExtrinsic(index) if index == xt_index => true,
-                _ => false,
-            })
-            .any(|ev| {
-                matches!(
-                    ev.event,
-                    RuntimeEvent::Utility(pallet_utility::Event::BatchCompleted)
-                )
-            })
-        {
-            return true;
-        }
-        false
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -146,8 +120,7 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
             Some((fee, CustomFeeDetails::Regular(fee)))
         } else {
             match call {
-                RuntimeCall::Utility(pallet_utility::Call::batch { calls })
-                | RuntimeCall::Utility(pallet_utility::Call::batch_all { calls })
+                RuntimeCall::Utility(pallet_utility::Call::batch_all { calls })
                     if calls.iter().all(|call| {
                         matches!(
                             call,
@@ -258,7 +231,7 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
         match fee_details {
             CustomFeeDetails::Regular(fee) => Some(fee),
             CustomFeeDetails::PayoutStakers(fee) => {
-                if Self::payout_stakers_batch_successful(result) {
+                if result.is_ok() {
                     Some(0)
                 } else {
                     Some(fee)

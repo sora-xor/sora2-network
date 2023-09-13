@@ -1063,7 +1063,7 @@ fn withdraw_fee_during_batch_payout_stakers_works() {
             nominator_points_per_era,
         );
 
-        let runtime_call = RuntimeCall::Utility(pallet_utility::Call::batch {
+        let runtime_call = RuntimeCall::Utility(pallet_utility::Call::batch_all {
             calls: vec![RuntimeCall::Staking(pallet_staking::Call::payout_stakers {
                 validator_stash: alice(),
                 era: 1,
