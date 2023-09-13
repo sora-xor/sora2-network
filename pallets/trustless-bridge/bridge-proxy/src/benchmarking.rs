@@ -40,7 +40,7 @@ use traits::MultiCurrency;
 pub const BASE_NETWORK_ID: GenericNetworkId = GenericNetworkId::EVM(EVMChainId::zero());
 
 #[allow(unused_imports)]
-use crate::Pallet as ETHApp;
+use crate::Pallet as BridgeProxy;
 
 use assets::Pallet as Assets;
 
@@ -74,5 +74,30 @@ benchmarks! {
         );
     }
 
-    impl_benchmark_test_suite!(ETHApp, crate::mock::new_tester(), crate::mock::Test,);
+    add_limited_asset {
+        let asset_id: T::AssetId = XOR.into();
+    }: _(RawOrigin::Root, asset_id)
+    verify {
+        assert!(LimitedAssets::<T>::get(asset_id));
+    }
+
+    remove_limited_asset {
+        let asset_id: T::AssetId = XOR.into();
+        BridgeProxy::<T>::add_limited_asset(RawOrigin::Root.into(), asset_id)?;
+    }: _(RawOrigin::Root, asset_id)
+    verify {
+        assert!(!LimitedAssets::<T>::get(asset_id));
+    }
+
+    update_transfer_limit {
+        let settings = TransferLimitSettings {
+            max_amount: 1000,
+            period_blocks: 100u32.into(),
+        };
+    }: _(RawOrigin::Root, settings.clone())
+    verify {
+        assert_eq!(TransferLimit::<T>::get(), settings);
+    }
+
+    impl_benchmark_test_suite!(BridgeProxy, crate::mock::new_tester(), crate::mock::Test,);
 }
