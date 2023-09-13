@@ -62,9 +62,10 @@ use crate::impls::{
 use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::PredefinedAssetId;
-use common::XOR;
-use common::{Description, XSTUSD};
+#[cfg(feature = "wip")]
+use common::AssetId32;
+use common::{Description, GetMarketInfo, LiquidityProxyTrait, PredefinedAssetId};
+use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 #[cfg(feature = "wip")] // order-book
