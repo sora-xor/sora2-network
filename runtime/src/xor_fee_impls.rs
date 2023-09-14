@@ -1,7 +1,8 @@
+use core::cmp::{Eq, PartialEq};
 use pallet_utility::Call as UtilityCall;
+use sp_runtime::DispatchResult;
 
 use crate::*;
-use common::LiquidityProxyTrait;
 
 impl RuntimeCall {
     pub fn swap_count(&self) -> u32 {
@@ -104,6 +105,7 @@ impl CustomFees {
 pub enum CustomFeeDetails {
     /// Regular call with custom fee without any additional logic
     Regular(Balance),
+    PayoutStakers(Balance),
 }
 
 // Flat fees implementation for the selected extrinsics.
@@ -113,8 +115,25 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     type FeeDetails = CustomFeeDetails;
 
     fn compute_fee(call: &RuntimeCall) -> Option<(Balance, CustomFeeDetails)> {
-        let fee = Self::base_fee(call)?;
-        Some((fee, CustomFeeDetails::Regular(fee)))
+        let fee = Self::base_fee(call);
+        if let Some(fee) = fee {
+            Some((fee, CustomFeeDetails::Regular(fee)))
+        } else {
+            match call {
+                RuntimeCall::Utility(pallet_utility::Call::batch_all { calls })
+                    if calls.iter().all(|call| {
+                        matches!(
+                            call,
+                            RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
+                        )
+                    }) =>
+                {
+                    let fee = calls.len() as Balance * SMALL_FEE;
+                    Some((fee, CustomFeeDetails::PayoutStakers(fee)))
+                }
+                _ => None,
+            }
+        }
     }
 
     fn should_be_postponed(
@@ -205,12 +224,19 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     fn compute_actual_fee(
         _post_info: &sp_runtime::traits::PostDispatchInfoOf<RuntimeCall>,
         _info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
-        _result: &sp_runtime::DispatchResult,
+        result: &DispatchResult,
         fee_details: Option<CustomFeeDetails>,
     ) -> Option<Balance> {
         let fee_details = fee_details?;
         match fee_details {
             CustomFeeDetails::Regular(fee) => Some(fee),
+            CustomFeeDetails::PayoutStakers(fee) => {
+                if result.is_ok() {
+                    Some(0)
+                } else {
+                    Some(fee)
+                }
+            }
         }
     }
 
