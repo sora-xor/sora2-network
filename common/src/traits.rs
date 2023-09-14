@@ -178,13 +178,12 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         deduce_fee: bool,
     ) -> Result<(SwapOutcome<Amount>, Weight), Error>;
 
-    /// Get the input/output liquidity divided into steps with the same interval based on the desired amount.
+    /// Get the input/output liquidity divided into steps based on the desired amount.
     fn step_quote(
         target_id: &TargetId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
-        steps: u32,
     ) -> Result<VecDeque<SwapChunk<Amount>>, Error>;
 
     /// Perform exchange based on desired amount.
@@ -312,7 +311,6 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
-        _steps: u32,
     ) -> Result<VecDeque<SwapChunk<Fixed>>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -387,7 +385,6 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
-        _steps: u32,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }

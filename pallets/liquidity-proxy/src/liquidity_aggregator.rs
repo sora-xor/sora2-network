@@ -36,6 +36,7 @@ use itertools::Itertools;
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::vec_deque::VecDeque;
+use sp_std::vec::Vec;
 
 /// Output of the aggregated LiquidityProxy::quote() price.
 #[derive(

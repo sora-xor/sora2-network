@@ -736,7 +736,6 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
-        _steps: u32,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         unimplemented!()
     }
@@ -1106,7 +1105,6 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
-        _steps: u32,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         unimplemented!()
     }

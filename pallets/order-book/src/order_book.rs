@@ -45,6 +45,7 @@ use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Sa
 use sp_std::cmp::Ordering;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::Add;
+use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, PartialEq, Eq, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
@@ -1078,13 +1079,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         DispatchError,
     > {
         let (mut market_amount, mut limit_amout) = match limit_order.side {
-            PriceVariant::Buy => Self::calculate_market_depth_to_price(
+            PriceVariant::Buy => Self::calculate_market_depth_volume_to_price(
                 limit_order.side.switched(),
                 limit_order.price,
                 limit_order.amount,
                 data.get_aggregated_asks(&self.order_book_id).iter(),
             ),
-            PriceVariant::Sell => Self::calculate_market_depth_to_price(
+            PriceVariant::Sell => Self::calculate_market_depth_volume_to_price(
                 limit_order.side.switched(),
                 limit_order.price,
                 limit_order.amount,
@@ -1134,7 +1135,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     /// Calculates and returns the sum of limit orders up to the `price` or until the `amount` is reached
     /// and remaining `amount` if it is greater than the market volume.
-    pub fn calculate_market_depth_to_price<'a>(
+    pub fn calculate_market_depth_volume_to_price<'a>(
         side: PriceVariant,
         price: OrderPrice,
         mut amount: OrderVolume,
@@ -1166,5 +1167,60 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
 
         (market_amount, amount)
+    }
+
+    pub fn market_depth(
+        &self,
+        side: PriceVariant,
+        volume_limit: Option<OrderAmount>,
+        data: &mut impl DataLayer<T>,
+    ) -> Vec<(OrderPrice, OrderVolume)> {
+        match side {
+            PriceVariant::Buy => Self::get_market_depth(
+                volume_limit,
+                data.get_aggregated_bids(&self.order_book_id).iter().rev(),
+            ),
+            PriceVariant::Sell => Self::get_market_depth(
+                volume_limit,
+                data.get_aggregated_asks(&self.order_book_id).iter(),
+            ),
+        }
+    }
+
+    fn get_market_depth<'a>(
+        volume_limit: Option<OrderAmount>,
+        market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
+    ) -> Vec<(OrderPrice, OrderVolume)> {
+        if let Some(volume_limit) = volume_limit {
+            let mut market_depth = Vec::new();
+
+            let mut limit = *volume_limit.value();
+
+            if limit.is_zero() {
+                return market_depth;
+            }
+
+            for (price, volume) in market_data {
+                market_depth.push((*price, *volume));
+
+                match volume_limit {
+                    OrderAmount::Base(..) => {
+                        limit = limit.saturating_sub(*volume);
+                    }
+                    OrderAmount::Quote(..) => {
+                        limit = limit.saturating_sub(volume.saturating_mul(*price));
+                    }
+                }
+
+                if limit.is_zero() {
+                    break;
+                }
+            }
+            market_depth
+        } else {
+            market_data
+                .map(|(price, volume)| (*price, *volume))
+                .collect()
+        }
     }
 }

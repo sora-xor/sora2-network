@@ -441,7 +441,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
-        steps: u32,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         // todo (m.tagirov) 447
         todo!()

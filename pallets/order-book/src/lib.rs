@@ -1092,10 +1092,59 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
-        steps: u32,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
-        // todo (m.tagirov) 447
-        todo!()
+        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+            return Err(Error::<T>::UnknownOrderBook.into());
+        };
+
+        let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+        let mut data = CacheDataLayer::<T>::new();
+
+        let direction = order_book.get_direction(input_asset_id, output_asset_id)?;
+
+        let limit = match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
+                PriceVariant::Buy => {
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_in))
+                }
+                PriceVariant::Sell => OrderAmount::Base(
+                    order_book
+                        .step_lot_size
+                        .copy_divisibility(desired_amount_in),
+                ),
+            },
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
+                PriceVariant::Buy => OrderAmount::Base(
+                    order_book
+                        .step_lot_size
+                        .copy_divisibility(desired_amount_out),
+                ),
+                PriceVariant::Sell => {
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_out))
+                }
+            },
+        };
+
+        let market_depth = order_book.market_depth(direction.switched(), Some(limit), &mut data);
+
+        let mut chunks = VecDeque::new();
+        for (price, base_volume) in market_depth.iter() {
+            let quote_volume = price
+                .checked_mul(base_volume)
+                .ok_or(Error::<T>::AmountCalculationFailed)?;
+            match direction {
+                PriceVariant::Buy => chunks.push_back(SwapChunk::new(
+                    *quote_volume.balance(),
+                    *base_volume.balance(),
+                )),
+                PriceVariant::Sell => chunks.push_back(SwapChunk::new(
+                    *base_volume.balance(),
+                    *quote_volume.balance(),
+                )),
+            }
+        }
+
+        Ok(chunks)
     }
 
     fn exchange(
