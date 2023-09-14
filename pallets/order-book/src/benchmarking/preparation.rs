@@ -446,7 +446,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         Some((
             author.clone(),
             sp_std::cmp::min(
-                fill_settings.max_orders_per_user,
+                fill_settings.max_orders_per_user - 1,
                 (fill_settings.max_side_price_count - 1) * fill_settings.max_orders_per_price,
             ) as usize,
         )),

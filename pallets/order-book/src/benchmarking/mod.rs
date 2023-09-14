@@ -344,7 +344,11 @@ mod benchmarks_inner {
                 order_book_id,
                 Some(0),
                 None,
-                Some((caller.clone(), settings.max_orders_per_user as usize)),
+                // 1 order was placed
+                Some((caller.clone(), sp_std::cmp::min(
+                    settings.max_orders_per_user,
+                    (settings.max_side_price_count - 1) * settings.max_orders_per_price + 1,
+                ) as usize)),
                 Some((lifespan, settings.max_expiring_orders_per_block as usize)),
             );
 
@@ -1803,7 +1807,7 @@ mod tests {
                     caller.clone(),
                     sp_std::cmp::min(
                         settings.max_orders_per_user,
-                        (settings.max_side_price_count - 1) * settings.max_orders_per_price,
+                        (settings.max_side_price_count - 1) * settings.max_orders_per_price + 1,
                     ) as usize,
                 )),
                 Some((lifespan, settings.max_expiring_orders_per_block as usize)),
