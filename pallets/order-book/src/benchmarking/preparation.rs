@@ -365,7 +365,10 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
 
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let mut fill_user_settings = fill_settings.clone();
+    // leave a room for one more order
     fill_user_settings.max_orders_per_user -= 1;
+    // leave a room for the price to execute all buy
+    fill_user_settings.max_side_price_count -= 1;
     fill_user_orders(
         &mut data_layer,
         fill_user_settings,
@@ -376,6 +379,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         &mut lifespans,
     );
 
+    // fill expiration schedule for a block:
     // skip to an empty block
     let filled_block = lifespans.next().unwrap();
     let mut lifespans = lifespans.skip_while(|b| *b == filled_block);
@@ -441,7 +445,10 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         None,
         Some((
             author.clone(),
-            (fill_settings.max_orders_per_user - 1) as usize,
+            sp_std::cmp::min(
+                fill_settings.max_orders_per_user,
+                (fill_settings.max_side_price_count - 1) * fill_settings.max_orders_per_price,
+            ) as usize,
         )),
         Some((
             lifespan,

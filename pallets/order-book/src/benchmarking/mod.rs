@@ -1799,7 +1799,13 @@ mod tests {
                 order_book_id,
                 Some(0),
                 None,
-                Some((caller.clone(), settings.max_orders_per_user as usize)),
+                Some((
+                    caller.clone(),
+                    sp_std::cmp::min(
+                        settings.max_orders_per_user,
+                        (settings.max_side_price_count - 1) * settings.max_orders_per_price,
+                    ) as usize,
+                )),
                 Some((lifespan, settings.max_expiring_orders_per_block as usize)),
             );
 
