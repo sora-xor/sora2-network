@@ -42,6 +42,7 @@ use bridge_types::{GenericAccount, GenericNetworkId};
 use codec::Encode;
 use common::{balance, DAI, XOR};
 use frame_support::assert_noop;
+use frame_support::assert_ok;
 use frame_support::traits::Hooks;
 use frame_system::RawOrigin;
 use sp_keyring::AccountKeyring as Keyring;
@@ -60,6 +61,7 @@ fn assert_event(event: RuntimeEvent) {
 fn burn_successfull() {
     new_tester().execute_with(|| {
         let caller: AccountId = Keyring::Alice.into();
+        assert_ok!(BridgeProxy::add_limited_asset(RawOrigin::Root.into(), XOR));
         Currencies::update_balance(
             RawOrigin::Root.into(),
             caller.clone(),
@@ -79,6 +81,9 @@ fn burn_successfull() {
             crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),
             1000
         );
+        assert_eq!(crate::ConsumedTransferLimit::<Test>::get(), 2500);
+        assert_eq!(crate::TransferLimitUnlockSchedule::<Test>::get(601), 2500);
+
         let message_id = MessageId::batched(
             bridge_types::SubNetworkId::Mainnet.into(),
             BASE_EVM_NETWORK_ID.into(),
@@ -299,6 +304,153 @@ fn burn_no_enough_locked() {
         assert_eq!(
             crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), DAI),
             0
+        );
+    })
+}
+
+#[test]
+fn add_remove_limited_asset_works() {
+    new_tester().execute_with(|| {
+        assert!(!crate::LimitedAssets::<Test>::get(DAI));
+
+        assert_ok!(BridgeProxy::add_limited_asset(RawOrigin::Root.into(), DAI));
+        assert!(crate::LimitedAssets::<Test>::get(DAI));
+
+        assert_noop!(
+            BridgeProxy::add_limited_asset(RawOrigin::Root.into(), DAI),
+            crate::Error::<Test>::AssetAlreadyLimited
+        );
+        assert!(crate::LimitedAssets::<Test>::get(DAI));
+
+        assert_ok!(BridgeProxy::remove_limited_asset(
+            RawOrigin::Root.into(),
+            DAI
+        ));
+        assert!(!crate::LimitedAssets::<Test>::get(DAI));
+
+        assert_noop!(
+            BridgeProxy::remove_limited_asset(RawOrigin::Root.into(), DAI),
+            crate::Error::<Test>::AssetNotLimited
+        );
+        assert!(!crate::LimitedAssets::<Test>::get(DAI));
+    })
+}
+
+#[test]
+fn update_transfer_limit_works() {
+    new_tester().execute_with(|| {
+        let settings = crate::TransferLimitSettings {
+            max_amount: 1000,
+            period_blocks: 100u32.into(),
+        };
+        assert_ok!(BridgeProxy::update_transfer_limit(
+            RawOrigin::Root.into(),
+            settings.clone()
+        ));
+        assert_eq!(crate::TransferLimit::<Test>::get(), settings);
+
+        let wrong_settings = crate::TransferLimitSettings {
+            max_amount: 1000,
+            period_blocks: 0u32.into(),
+        };
+        assert_noop!(
+            BridgeProxy::update_transfer_limit(RawOrigin::Root.into(), wrong_settings.clone()),
+            crate::Error::<Test>::WrongLimitSettings
+        );
+        assert_eq!(crate::TransferLimit::<Test>::get(), settings);
+    })
+}
+
+#[test]
+fn transfer_limit_works() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+        assert_ok!(BridgeProxy::add_limited_asset(RawOrigin::Root.into(), XOR));
+        assert_ok!(Currencies::update_balance(
+            RawOrigin::Root.into(),
+            caller.clone(),
+            XOR,
+            balance!(50000) as i128,
+        ));
+        assert_ok!(BridgeProxy::burn(
+            RawOrigin::Signed(caller.clone()).into(),
+            BASE_EVM_NETWORK_ID.into(),
+            XOR,
+            GenericAccount::EVM(H160::default()),
+            balance!(5000),
+        ));
+        assert_eq!(crate::ConsumedTransferLimit::<Test>::get(), balance!(12500));
+        assert_eq!(
+            crate::TransferLimitUnlockSchedule::<Test>::get(601),
+            balance!(12500)
+        );
+
+        frame_system::Pallet::<Test>::set_block_number(100);
+        assert_ok!(BridgeProxy::burn(
+            RawOrigin::Signed(caller.clone()).into(),
+            BASE_EVM_NETWORK_ID.into(),
+            XOR,
+            GenericAccount::EVM(H160::default()),
+            balance!(10000),
+        ));
+        assert_eq!(crate::ConsumedTransferLimit::<Test>::get(), balance!(37500));
+        assert_eq!(
+            crate::TransferLimitUnlockSchedule::<Test>::get(601),
+            balance!(12500)
+        );
+        assert_eq!(
+            crate::TransferLimitUnlockSchedule::<Test>::get(700),
+            balance!(25000)
+        );
+
+        assert_noop!(
+            BridgeProxy::burn(
+                RawOrigin::Signed(caller.clone()).into(),
+                BASE_EVM_NETWORK_ID.into(),
+                XOR,
+                GenericAccount::EVM(H160::default()),
+                balance!(7000),
+            ),
+            crate::Error::<Test>::TransferLimitReached
+        );
+
+        assert_eq!(crate::ConsumedTransferLimit::<Test>::get(), balance!(37500));
+        assert_eq!(
+            crate::TransferLimitUnlockSchedule::<Test>::get(601),
+            balance!(12500)
+        );
+        assert_eq!(
+            crate::TransferLimitUnlockSchedule::<Test>::get(700),
+            balance!(25000)
+        );
+
+        BridgeProxy::on_initialize(601);
+
+        assert_eq!(crate::ConsumedTransferLimit::<Test>::get(), balance!(25000));
+        assert_eq!(crate::TransferLimitUnlockSchedule::<Test>::get(601), 0);
+        assert_eq!(
+            crate::TransferLimitUnlockSchedule::<Test>::get(700),
+            balance!(25000)
+        );
+
+        frame_system::Pallet::<Test>::set_block_number(650);
+
+        assert_ok!(BridgeProxy::burn(
+            RawOrigin::Signed(caller.clone()).into(),
+            BASE_EVM_NETWORK_ID.into(),
+            XOR,
+            GenericAccount::EVM(H160::default()),
+            balance!(7000),
+        ));
+
+        assert_eq!(crate::ConsumedTransferLimit::<Test>::get(), balance!(42500));
+        assert_eq!(
+            crate::TransferLimitUnlockSchedule::<Test>::get(700),
+            balance!(25000)
+        );
+        assert_eq!(
+            crate::TransferLimitUnlockSchedule::<Test>::get(1250),
+            balance!(17500)
         );
     })
 }

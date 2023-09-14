@@ -42,15 +42,16 @@ use bridge_types::traits::Verifier;
 mod bags_thresholds;
 /// Constant values used within the runtime.
 pub mod constants;
-mod extensions;
 mod impls;
 pub mod migrations;
+mod xor_fee_impls;
 
 #[cfg(test)]
 pub mod mock;
 
 #[cfg(test)]
 pub mod tests;
+pub mod weights;
 
 use crate::impls::PreimageWeightInfo;
 #[cfg(feature = "ready-to-test")]
@@ -61,9 +62,10 @@ use crate::impls::{
 use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::PredefinedAssetId;
-use common::XOR;
-use common::{Description, XSTUSD};
+#[cfg(feature = "wip")]
+use common::AssetId32;
+use common::{Description, GetMarketInfo, LiquidityProxyTrait, PredefinedAssetId};
+use common::{XOR, XST, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 #[cfg(feature = "wip")] // order-book
@@ -76,7 +78,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
-use extensions::ChargeTransactionPayment;
 use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
@@ -109,7 +110,7 @@ use sp_runtime::transaction_validity::{
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
+    MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
@@ -118,7 +119,8 @@ use sp_std::vec::Vec;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::assert_eq_size;
-use traits::parameter_type_with_key;
+use traits::{parameter_type_with_key, MultiCurrency};
+use xor_fee::extension::ChargeTransactionPayment;
 
 // A few exports that help ease life for downstream crates.
 pub use common::prelude::{
@@ -137,7 +139,7 @@ pub use ethereum_light_client::EthereumHeader;
 pub use frame_support::dispatch::DispatchClass;
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
-    KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
+    Contains, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
 };
 pub use frame_support::weights::constants::{BlockExecutionWeight, RocksDbWeight};
 pub use frame_support::weights::Weight;
@@ -257,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 60,
+    spec_version: 61,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 60,
+    transaction_version: 61,
     state_version: 0,
 };
 
@@ -359,8 +361,25 @@ parameter_types! {
     pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 
+pub struct BaseCallFilter;
+
+impl Contains<RuntimeCall> for BaseCallFilter {
+    fn contains(call: &RuntimeCall) -> bool {
+        if call.swap_count() > 1 {
+            return false;
+        }
+        if matches!(
+            call,
+            RuntimeCall::BridgeMultisig(bridge_multisig::Call::register_multisig { .. })
+        ) {
+            return false;
+        }
+        true
+    }
+}
+
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
+    type BaseCallFilter = BaseCallFilter;
     type BlockWeights = BlockWeights;
     /// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
     type BlockLength = BlockLength;
@@ -1205,137 +1224,6 @@ impl rewards::Config for Runtime {
     type WeightInfo = rewards::weights::SubstrateWeight<Runtime>;
 }
 
-// Multiplied flat fees implementation for the selected extrinsics.
-// Returns a value (* multiplier) if the extrinsic is subject to manual fee
-// adjustment and `None` otherwise
-impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
-    fn compute_fee(call: &RuntimeCall) -> Option<Balance> {
-        let result = match call {
-            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
-                swap_batches,
-                ..
-            }) => Some(
-                swap_batches
-                    .iter()
-                    .map(|x| x.receivers.len() as Balance)
-                    .sum::<Balance>()
-                    .max(1)
-                    * SMALL_FEE,
-            ),
-            RuntimeCall::Assets(assets::Call::register { .. })
-            | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
-            | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
-            | RuntimeCall::Rewards(rewards::Call::claim { .. })
-            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
-                ..
-            })
-            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => {
-                Some(BIG_FEE)
-            }
-            RuntimeCall::Assets(..)
-            | RuntimeCall::Band(..)
-            | RuntimeCall::EthBridge(..)
-            | RuntimeCall::LiquidityProxy(..)
-            | RuntimeCall::MulticollateralBondingCurvePool(..)
-            | RuntimeCall::PoolXYK(..)
-            | RuntimeCall::Rewards(..)
-            | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
-            | RuntimeCall::TradingPair(..)
-            | RuntimeCall::Referrals(..) => Some(SMALL_FEE),
-            _ => None,
-        };
-        result.map(|fee| XorFee::multiplier().saturating_mul_int(fee))
-    }
-}
-
-impl xor_fee::ExtractProxySwap for RuntimeCall {
-    type AccountId = AccountId;
-    type DexId = DEXId;
-    type AssetId = AssetId;
-    type Amount = SwapAmount<u128>;
-    fn extract(
-        &self,
-    ) -> Option<xor_fee::SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>> {
-        match self {
-            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap {
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-                selected_source_types,
-                filter_mode,
-            }) => Some(xor_fee::SwapInfo {
-                fee_source: None,
-                dex_id: *dex_id,
-                input_asset_id: *input_asset_id,
-                output_asset_id: *output_asset_id,
-                amount: *swap_amount,
-                selected_source_types: selected_source_types.to_vec(),
-                filter_mode: filter_mode.clone(),
-            }),
-            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer {
-                receiver,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-                selected_source_types,
-                filter_mode,
-                ..
-            }) => Some(xor_fee::SwapInfo {
-                fee_source: Some(receiver.clone()),
-                dex_id: *dex_id,
-                input_asset_id: *input_asset_id,
-                output_asset_id: *output_asset_id,
-                amount: *swap_amount,
-                selected_source_types: selected_source_types.to_vec(),
-                filter_mode: filter_mode.clone(),
-            }),
-            _ => None,
-        }
-    }
-}
-
-impl xor_fee::IsCalledByBridgePeer<AccountId> for RuntimeCall {
-    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
-        match self {
-            RuntimeCall::BridgeMultisig(call) => match call {
-                bridge_multisig::Call::as_multi {
-                    id: multisig_id, ..
-                }
-                | bridge_multisig::Call::as_multi_threshold_1 {
-                    id: multisig_id, ..
-                } => bridge_multisig::Accounts::<Runtime>::get(multisig_id)
-                    .map(|acc| acc.is_signatory(&who)),
-                _ => None,
-            },
-            RuntimeCall::EthBridge(call) => match call {
-                eth_bridge::Call::approve_request { network_id, .. } => {
-                    Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
-                }
-                eth_bridge::Call::register_incoming_request { incoming_request } => {
-                    let net_id = incoming_request.network_id();
-                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
-                }
-                eth_bridge::Call::import_incoming_request {
-                    load_incoming_request,
-                    ..
-                } => {
-                    let net_id = load_incoming_request.network_id();
-                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
-                }
-                eth_bridge::Call::finalize_incoming_request { network_id, .. }
-                | eth_bridge::Call::abort_request { network_id, .. } => {
-                    eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
-                }
-                _ => None,
-            },
-            _ => None,
-        }
-        .unwrap_or(false)
-    }
-}
-
 pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
 
 impl<T> OnValBurned for ValBurnedAggregator<T>
@@ -1345,42 +1233,6 @@ where
     fn on_val_burned(amount: Balance) {
         Rewards::on_val_burned(amount);
         T::notify_val_burned(amount);
-    }
-}
-
-pub struct WithdrawFee;
-
-impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
-    fn withdraw_fee(
-        who: &AccountId,
-        call: &RuntimeCall,
-        fee: Balance,
-    ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
-        match call {
-            RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
-                if Referrals::can_set_referrer(who) =>
-            {
-                Referrals::withdraw_fee(referrer, fee)?;
-                Ok((
-                    referrer.clone(),
-                    Some(Balances::withdraw(
-                        &ReferralsReservesAcc::get(),
-                        fee,
-                        WithdrawReasons::TRANSACTION_PAYMENT,
-                        ExistenceRequirement::KeepAlive,
-                    )?),
-                ))
-            }
-            _ => Ok((
-                who.clone(),
-                Some(Balances::withdraw(
-                    who,
-                    fee,
-                    WithdrawReasons::TRANSACTION_PAYMENT,
-                    ExistenceRequirement::KeepAlive,
-                )?),
-            )),
-        }
     }
 }
 
@@ -1402,12 +1254,14 @@ impl xor_fee::Config for Runtime {
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
-    type CustomFees = XorFee;
+    type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type SessionManager = Staking;
+    type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
-    type WithdrawFee = WithdrawFee;
+    type WithdrawFee = xor_fee_impls::WithdrawFee;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
+    type ReferrerAccountProvider = Referrals;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -1584,10 +1438,15 @@ impl eth_bridge::Config for Runtime {
     type GetEthNetworkId = GetEthNetworkId;
     type WeightInfo = eth_bridge::weights::SubstrateWeight<Runtime>;
     type WeightToFee = XorFee;
-    #[cfg(feature = "ready-to-test")]
+    #[cfg(feature = "ready-to-test")] // Substrate bridge
     type MessageStatusNotifier = BridgeProxy;
     #[cfg(not(feature = "ready-to-test"))]
     type MessageStatusNotifier = ();
+
+    #[cfg(feature = "ready-to-test")] // Substrate bridge
+    type BridgeAssetLockChecker = BridgeProxy;
+    #[cfg(not(feature = "ready-to-test"))]
+    type BridgeAssetLockChecker = ();
 }
 
 #[cfg(feature = "private-net")]
@@ -2110,8 +1969,6 @@ parameter_types! {
 #[cfg(feature = "ready-to-test")] // EVM bridge
 impl dispatch::Config<dispatch::Instance1> for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type NetworkId = EVMChainId;
-    type Additional = AdditionalEVMInboundData;
     type OriginOutput =
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
     type Origin = RuntimeOrigin;
@@ -2119,6 +1976,7 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
     type Hashing = Keccak256;
     type Call = RuntimeCall;
     type CallFilter = EVMBridgeCallFilter;
+    type WeightInfo = dispatch::weights::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")]
@@ -2208,8 +2066,6 @@ impl eth_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type MessageStatusNotifier = BridgeProxy;
@@ -2225,8 +2081,6 @@ impl erc20_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
@@ -2245,6 +2099,11 @@ impl migration_app::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const GetReferenceAssetId: AssetId = GetDaiAssetId::get();
+    pub const GetReferenceDexId: DEXId = 0;
+}
+
 #[cfg(feature = "ready-to-test")] // Bridges
 impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -2253,6 +2112,12 @@ impl bridge_proxy::Config for Runtime {
     type HashiBridge = EthBridge;
     type SubstrateApp = SubstrateBridgeApp;
     type TimepointProvider = GenericTimepointProvider;
+    type ReferencePriceProvider =
+        liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
+    type ManagerOrigin = EitherOfDiverse<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 2, 3>,
+        EnsureRoot<AccountId>,
+    >;
     type WeightInfo = ();
 }
 
@@ -2265,14 +2130,13 @@ impl beefy_light_client::Config for Runtime {
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl dispatch::Config<dispatch::Instance2> for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type NetworkId = SubNetworkId;
-    type Additional = ();
     type OriginOutput = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>;
     type Origin = RuntimeOrigin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
     type Call = DispatchableSubstrateBridgeCall;
     type CallFilter = SubstrateBridgeCallFilter;
+    type WeightInfo = crate::weights::dispatch::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -2285,7 +2149,7 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type ThisNetworkId = ThisNetworkId;
-    type WeightInfo = ();
+    type WeightInfo = crate::weights::substrate_inbound_channel::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -2296,6 +2160,9 @@ pub struct MultiVerifier;
 pub enum MultiProof {
     Beefy(<BeefyLightClient as Verifier>::Proof),
     Multisig(<MultisigVerifier as Verifier>::Proof),
+    /// This proof is only used for benchmarking purposes
+    #[cfg(feature = "runtime-benchmarks")]
+    Empty,
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -2310,7 +2177,23 @@ impl Verifier for MultiVerifier {
         match proof {
             MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
             MultiProof::Multisig(proof) => MultisigVerifier::verify(network_id, message, proof),
+            #[cfg(feature = "runtime-benchmarks")]
+            MultiProof::Empty => Ok(()),
         }
+    }
+
+    fn verify_weight(proof: &Self::Proof) -> Weight {
+        match proof {
+            MultiProof::Beefy(proof) => BeefyLightClient::verify_weight(proof),
+            MultiProof::Multisig(proof) => MultisigVerifier::verify_weight(proof),
+            #[cfg(feature = "runtime-benchmarks")]
+            MultiProof::Empty => Default::default(),
+        }
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof> {
+        Some(MultiProof::Empty)
     }
 }
 
@@ -2335,25 +2218,22 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type Balance = Balance;
     type TimepointProvider = GenericTimepointProvider;
     type ThisNetworkId = ThisNetworkId;
-    type WeightInfo = ();
+    type WeightInfo = crate::weights::substrate_outbound_channel::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl substrate_bridge_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
-    type CallOrigin = dispatch::EnsureAccount<
-        SubNetworkId,
-        (),
-        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
-    >;
+    type CallOrigin =
+        dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
     type MessageStatusNotifier = BridgeProxy;
     type AssetRegistry = BridgeProxy;
     type AccountIdConverter = sp_runtime::traits::Identity;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
-    type WeightInfo = ();
     type BridgeAssetLocker = BridgeProxy;
+    type WeightInfo = crate::weights::substrate_bridge_app::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -2370,28 +2250,22 @@ parameter_types! {
 impl bridge_data_signer::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
-    type CallOrigin = dispatch::EnsureAccount<
-        SubNetworkId,
-        (),
-        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
-    >;
+    type CallOrigin =
+        dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
     type MaxPeers = BridgeMaxPeers;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
-    type WeightInfo = bridge_data_signer::weights::WeightInfo<Runtime>;
+    type WeightInfo = crate::weights::bridge_data_signer::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
 impl multisig_verifier::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type CallOrigin = dispatch::EnsureAccount<
-        SubNetworkId,
-        (),
-        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
-    >;
+    type CallOrigin =
+        dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type MaxPeers = BridgeMaxPeers;
-    type WeightInfo = multisig_verifier::weights::WeightInfo<Runtime>;
+    type WeightInfo = crate::weights::multisig_verifier::SubstrateWeight<Runtime>;
 }
 
 construct_runtime! {
@@ -2657,21 +2531,13 @@ impl_runtime_apis! {
         Balance,
     > for Runtime {
         fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
-            let maybe_dispatch_info = XorFee::query_info(&uxt, len);
-            let output = match maybe_dispatch_info {
-                Some(dispatch_info) => dispatch_info,
-                _ => TransactionPayment::query_info(uxt, len),
-            };
-            output
+            let call = &uxt.function;
+            XorFee::query_info(&uxt, call, len)
         }
 
         fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::FeeDetails<Balance> {
-            let maybe_fee_details = XorFee::query_fee_details(&uxt, len);
-            let output = match maybe_fee_details {
-                Some(fee_details) => fee_details,
-                _ => TransactionPayment::query_fee_details(uxt, len),
-            };
-            output
+            let call = &uxt.function;
+            XorFee::query_fee_details(&uxt, call, len)
         }
 
         fn query_weight_to_fee(weight: Weight) -> Balance {
@@ -3288,7 +3154,19 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // EVM bridge
             list_benchmark!(list, extra, migration_app, MigrationApp);
             #[cfg(feature = "ready-to-test")] // Bridges
-            list_benchmark!(list, extra, bridge_proxy, BridgeProxy);
+            list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, dispatch, Dispatch);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3375,7 +3253,19 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // EVM bridge
             add_benchmark!(params, batches, migration_app, MigrationApp);
             #[cfg(feature = "ready-to-test")] // Bridges
-            add_benchmark!(params, batches, bridge_proxy, BridgeProxy);
+            add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, dispatch, Dispatch);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
+            #[cfg(feature = "ready-to-test")] // Bridges
+            add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

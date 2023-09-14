@@ -38,6 +38,7 @@ use crate::{
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
+use bridge_types::traits::BridgeAssetLockChecker;
 use bridge_types::types::MessageStatus;
 use bridge_types::{GenericAccount, GenericNetworkId, GenericTimepoint};
 use codec::{Decode, Encode};
@@ -199,6 +200,22 @@ impl<T: Config> OutgoingTransfer<T> {
     pub fn prepare(&self, tx_hash: H256) -> Result<(), DispatchError> {
         let bridge_account = get_bridge_account::<T>(self.network_id);
         common::with_transaction(|| {
+            let generic_network_id =
+                GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
+            let asset_kind: AssetKind =
+                crate::Pallet::<T>::registered_asset(self.network_id, self.asset_id)
+                    .ok_or(Error::<T>::UnknownAssetId)?;
+            let asset_kind = if asset_kind.is_owned() {
+                bridge_types::types::AssetKind::Thischain
+            } else {
+                bridge_types::types::AssetKind::Sidechain
+            };
+            T::BridgeAssetLockChecker::before_asset_lock(
+                generic_network_id,
+                asset_kind,
+                &self.asset_id,
+                &self.amount,
+            )?;
             Assets::<T>::transfer_from(&self.asset_id, &self.from, &bridge_account, self.amount)?;
             Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)?;
             T::MessageStatusNotifier::outbound_request(

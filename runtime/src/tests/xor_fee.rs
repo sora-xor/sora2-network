@@ -29,11 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
+use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
-    AccountId, AssetId, Assets, Balance, Balances, Currencies, GetXorFeeAccountId, PoolXYK,
-    Referrals, ReferrerWeight, Runtime, RuntimeCall, RuntimeOrigin, Staking, System, Tokens,
-    Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
+    AccountId, AssetId, Assets, Balance, Balances, BlockHashCount, Currencies, Executive,
+    GetXorFeeAccountId, PoolXYK, Referrals, ReferrerWeight, Runtime, RuntimeCall, RuntimeOrigin,
+    SignedExtra, SignedPayload, Staking, System, Tokens, UncheckedExtrinsic, Weight,
+    XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
 };
+use codec::Encode;
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
@@ -41,19 +44,29 @@ use common::{balance, fixed_wrapper, AssetInfoProvider, FilterMode, VAL, XOR};
 use frame_support::assert_ok;
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
-use frame_support::traits::{OnFinalize, OnInitialize};
+use frame_support::traits::{Currency, OnFinalize, OnInitialize};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::WeightToFee as WeightToFeeTrait;
 use frame_system::EventRecord;
 use framenode_chain_spec::ext;
 use log::LevelFilter;
 use pallet_balances::NegativeImbalance;
-use pallet_transaction_payment::{ChargeTransactionPayment, OnChargeTransaction};
+use pallet_staking::{
+    Bonded, CurrentEra, EraRewardPoints, ErasRewardPoints, ErasStakersClipped, ErasValidatorPrefs,
+    ErasValidatorReward, Exposure, IndividualExposure, Ledger, Payee, RewardDestination,
+    RewardPoint, StakingLedger, ValidatorPrefs,
+};
+use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
-use sp_runtime::traits::SignedExtension;
-use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
+use sp_core::Pair;
+use sp_runtime::generic::Era;
+use sp_runtime::traits::{IdentifyAccount, SaturatedConversion, SignedExtension};
+use sp_runtime::{AccountId32, FixedPointNumber, FixedU128, MultiSignature, MultiSigner};
+use sp_staking::EraIndex;
+use sp_std::collections::btree_map::BTreeMap;
 use traits::MultiCurrency;
-use xor_fee::{LiquidityInfo, XorToVal};
+use xor_fee::extension::ChargeTransactionPayment;
+use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToVal};
 
 type BlockWeights = <Runtime as frame_system::Config>::BlockWeights;
 type LengthToFee = <Runtime as pallet_transaction_payment::Config>::LengthToFee;
@@ -120,6 +133,108 @@ fn set_weight_to_fee_multiplier(mul: u64) {
     ));
 }
 
+fn nominator_account(id: u8) -> AccountId {
+    AccountId::from([id + 100u8; 32])
+}
+
+fn setup_staking_pallet(
+    valdiator: AccountId,
+    nominators: Vec<AccountId>,
+    mut eras_reward: Vec<(EraIndex, Balance)>,
+    validator_stake: Balance,
+    nominator_stake: Balance,
+    validator_points_per_era: RewardPoint,
+    nominator_points_per_era: RewardPoint,
+) {
+    eras_reward.sort_by_key(|(era, _)| *era);
+
+    let current_era = eras_reward
+        .last()
+        .expect("Expected to get the most recent era")
+        .0;
+    CurrentEra::<Runtime>::put(current_era + 1);
+
+    Bonded::<Runtime>::insert(valdiator.clone(), valdiator.clone());
+    Ledger::<Runtime>::insert(
+        valdiator.clone(),
+        StakingLedger::default_from(valdiator.clone()),
+    );
+
+    let individual_exposures: Vec<_> = nominators
+        .iter()
+        .cloned()
+        .map(|who| IndividualExposure {
+            who,
+            value: nominator_stake,
+        })
+        .collect();
+
+    let total = validator_stake + nominator_stake.saturating_mul(nominators.len() as u128);
+    let exposure = Exposure {
+        total,
+        own: validator_stake,
+        others: individual_exposures,
+    };
+    let rewards_map: BTreeMap<AccountId, RewardPoint> = nominators
+        .into_iter()
+        .map(|nom| (nom, nominator_points_per_era))
+        .chain(vec![(valdiator.clone(), validator_points_per_era)])
+        .collect();
+    let total_rewards = rewards_map.iter().map(|(_, reward)| reward).sum();
+
+    for (era, reward) in eras_reward {
+        ErasValidatorReward::<Runtime>::insert(era, reward);
+        ErasStakersClipped::<Runtime>::insert(era, valdiator.clone(), exposure.clone());
+        ErasValidatorPrefs::<Runtime>::insert(era, valdiator.clone(), ValidatorPrefs::default());
+
+        // EraRewardPoints does not implement Clone trait
+        let reward_points_per_era = EraRewardPoints {
+            total: total_rewards,
+            individual: rewards_map.clone(),
+        };
+        ErasRewardPoints::<Runtime>::insert(era, reward_points_per_era);
+    }
+
+    Payee::<Runtime>::insert(valdiator, RewardDestination::Controller);
+}
+
+fn dispatch_and_process_call(runtime_call: RuntimeCall) {
+    let pair = sp_keyring::AccountKeyring::Bob.pair();
+    let bob_public = MultiSigner::from(pair.public().clone());
+    let bob_account = bob_public.clone().into_account();
+
+    let period = BlockHashCount::get() as u64;
+    let current_block = System::block_number()
+        .saturated_into::<u64>()
+        .saturating_sub(1);
+
+    let nonce = System::account(&bob_account).nonce;
+
+    let extra: SignedExtra = (
+        frame_system::CheckSpecVersion::<Runtime>::new(),
+        frame_system::CheckTxVersion::<Runtime>::new(),
+        frame_system::CheckGenesis::<Runtime>::new(),
+        frame_system::CheckEra::<Runtime>::from(Era::mortal(period, current_block)),
+        frame_system::CheckNonce::<Runtime>::from(nonce),
+        frame_system::CheckWeight::<Runtime>::new(),
+        ChargeTransactionPayment::<Runtime>::new(),
+    );
+
+    let raw_payload = SignedPayload::new(runtime_call.clone(), extra.clone())
+        .expect("Expected to create a new signed payload");
+
+    let signature = raw_payload.using_encoded(|payload| pair.sign(payload));
+
+    let uxt = UncheckedExtrinsic::new_signed(
+        runtime_call,
+        bob_account.clone(),
+        MultiSignature::Sr25519(signature),
+        extra,
+    );
+
+    let _ = Executive::apply_extrinsic(uxt).expect("Expected to apply extrinsic");
+}
+
 #[test]
 fn referrer_gets_bonus_from_tx_fee() {
     ext().execute_with(|| {
@@ -139,7 +254,7 @@ fn referrer_gets_bonus_from_tx_fee() {
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
-        let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+        let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         let balance_after_reserving_fee = FixedWrapper::from(INITIAL_BALANCE) - SMALL_FEE;
@@ -235,7 +350,7 @@ fn notify_val_burned_works() {
 
             let len = 10;
             let dispatch_info = info_from_weight(MOCK_WEIGHT);
-            let pre = ChargeTransactionPayment::<Runtime>::from(0_u128.into())
+            let pre = ChargeTransactionPayment::<Runtime>::new()
                 .pre_dispatch(&alice(), call, &dispatch_info, len)
                 .unwrap();
             assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
@@ -307,7 +422,7 @@ fn custom_fees_work() {
 
         let mut balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
         for call in calls {
-            let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+            let pre = ChargeTransactionPayment::<Runtime>::new()
                 .pre_dispatch(&alice(), &call, &dispatch_info, len)
                 .unwrap();
             balance_after_fee_withdrawal = balance_after_fee_withdrawal - BIG_FEE;
@@ -332,7 +447,7 @@ fn custom_fees_work() {
                 amount: balance!(1),
             });
 
-        let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+        let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         let balance_after_fee_withdrawal = balance_after_fee_withdrawal - SMALL_FEE;
@@ -360,7 +475,7 @@ fn custom_fees_work() {
                 oracle: common::Oracle::BandChainFeed,
             });
 
-        let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+        let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         let balance_after_fee_withdrawal =
@@ -414,7 +529,7 @@ fn custom_fees_multiplied() {
 
         let mut balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
         for call in calls {
-            let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+            let pre = ChargeTransactionPayment::<Runtime>::new()
                 .pre_dispatch(&alice(), &call, &dispatch_info, len)
                 .unwrap();
             balance_after_fee_withdrawal = balance_after_fee_withdrawal - multiplier * BIG_FEE;
@@ -439,7 +554,7 @@ fn custom_fees_multiplied() {
                 amount: balance!(1),
             });
 
-        let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+        let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         let balance_after_fee_withdrawal = balance_after_fee_withdrawal - multiplier * SMALL_FEE;
@@ -475,8 +590,9 @@ fn normal_fees_multiplied() {
         let base_fee = WeightToFee::weight_to_fee(
             &BlockWeights::get().get(dispatch_info.class).base_extrinsic,
         );
-        let len_fee = len as u128 * LengthToFee::weight_to_fee(&Weight::from_parts(len as u64, 0));
+        let len_fee = LengthToFee::weight_to_fee(&Weight::from_parts(len as u64, 0));
         let weight_fee = WeightToFee::weight_to_fee(&MOCK_WEIGHT);
+        let final_fee = (base_fee + len_fee + weight_fee) * 3;
 
         let balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
         // An extrinsic without custom fee adjustment
@@ -485,11 +601,11 @@ fn normal_fees_multiplied() {
                 oracle: common::Oracle::BandChainFeed,
             });
 
-        let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+        let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         let balance_after_fee_withdrawal =
-            FixedWrapper::from(balance_after_fee_withdrawal) - base_fee - len_fee - weight_fee;
+            FixedWrapper::from(balance_after_fee_withdrawal) - final_fee;
         let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
         assert_eq!(
             Balances::free_balance(alice()),
@@ -533,7 +649,7 @@ fn refund_if_pays_no_works() {
                 opt_desc: None,
             });
 
-        let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+        let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         let balance_after_fee_withdrawal =
@@ -572,7 +688,7 @@ fn actual_weight_is_ignored_works() {
                 amount: TRANSFER_AMOUNT,
             });
 
-        let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+        let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         let balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE) - SMALL_FEE;
@@ -617,7 +733,7 @@ fn reminting_for_sora_parliament_works() {
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
-        let pre = ChargeTransactionPayment::<Runtime>::from(0_u128.into())
+        let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
@@ -677,7 +793,7 @@ fn fee_payment_regular_swap() {
         let regular_fee =
             xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
 
-        assert!(matches!(regular_fee, Ok(LiquidityInfo::Paid(_))));
+        assert!(matches!(regular_fee, Ok(LiquidityInfo::Paid(..))));
     });
 }
 
@@ -721,10 +837,10 @@ fn fee_payment_postponed_swap() {
         });
 
         let quoted_fee =
-            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0)
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0)
                 .unwrap();
 
-        assert_eq!(quoted_fee, LiquidityInfo::Postponed(alice(), SMALL_FEE));
+        assert_eq!(quoted_fee, LiquidityInfo::Postponed(alice()));
     });
 }
 
@@ -769,10 +885,9 @@ fn fee_payment_postponed_swap_transfer() {
         });
 
         let quoted_fee =
-            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0)
-                .unwrap();
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0);
 
-        assert_eq!(quoted_fee, LiquidityInfo::Postponed(bob(), SMALL_FEE));
+        assert!(matches!(quoted_fee, Err(_)));
     });
 }
 
@@ -813,13 +928,13 @@ fn withdraw_fee_set_referrer() {
         let call = RuntimeCall::Referrals(referrals::Call::set_referrer { referrer: bob() });
         let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
 
-        let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
+        let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0);
         assert_eq!(
             result,
-            Ok(LiquidityInfo::Paid((
-                bob(),
+            Ok(LiquidityInfo::Paid(
+                crate::ReferralsReservesAcc::get(),
                 Some(NegativeImbalance::new(SMALL_FEE))
-            )))
+            ))
         );
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()),
@@ -863,18 +978,114 @@ fn withdraw_fee_set_referrer_already2() {
 
         let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::Referrals(referrals::Call::set_referrer { referrer: bob() });
-        let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
+        let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0);
         assert_eq!(
             result,
-            Ok(LiquidityInfo::Paid((
+            Ok(LiquidityInfo::Paid(
                 alice(),
                 Some(NegativeImbalance::new(SMALL_FEE))
-            )))
+            ))
         );
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()),
             Ok(balance!(1) - SMALL_FEE)
         );
         assert_eq!(ReferrerBalances::<Runtime>::get(&bob()), Some(SMALL_FEE));
+    });
+}
+
+#[test]
+fn it_works_eth_bridge_pays_no() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        let who = crate::EthBridge::bridge_account(0).unwrap();
+        let call = RuntimeCall::EthBridge(eth_bridge::Call::finalize_incoming_request {
+            hash: Default::default(),
+            network_id: 0,
+        });
+        let info = info_from_weight(Weight::from_parts(100, 100));
+        let len = 100;
+        let (fee, custom_fee_details) = XorFee::compute_fee(len, &call, &info, 0);
+        assert_eq!(fee, SMALL_FEE);
+        assert_eq!(
+            custom_fee_details,
+            Some(CustomFeeDetails::Regular(SMALL_FEE))
+        );
+        assert_eq!(CustomFees::get_fee_source(&who, &call, fee), who);
+        assert!(!CustomFees::should_be_paid(&who, &call));
+        let res = xor_fee::extension::ChargeTransactionPayment::<Runtime>::new().pre_dispatch(
+            &who,
+            &call,
+            &info,
+            len as usize,
+        );
+        assert_eq!(
+            res,
+            Ok((
+                0,
+                who.clone(),
+                LiquidityInfo::Paid(who, None),
+                Some(CustomFeeDetails::Regular(SMALL_FEE))
+            ))
+        );
+    });
+}
+
+#[test]
+fn withdraw_fee_during_batch_payout_stakers_works() {
+    ext().execute_with(|| {
+        let pair = sp_keyring::AccountKeyring::Bob.pair();
+        let bob_account = MultiSigner::from(pair.public()).into_account();
+        System::set_block_number(1);
+        Balances::make_free_balance_be(&bob_account, balance!(100));
+        let total_reward = balance!(10);
+
+        let nominators = (0..3).into_iter().map(|id| nominator_account(id)).collect();
+
+        let eras_reward = (0..50u32)
+            .into_iter()
+            .map(|era| (era, total_reward))
+            .collect();
+
+        let validator_stake = balance!(1000);
+        let nominator_stake = balance!(100);
+
+        let validator_points_per_era = 1000;
+        let nominator_points_per_era = 100;
+
+        setup_staking_pallet(
+            alice(),
+            nominators,
+            eras_reward,
+            validator_stake,
+            nominator_stake,
+            validator_points_per_era,
+            nominator_points_per_era,
+        );
+
+        let runtime_call = RuntimeCall::Utility(pallet_utility::Call::batch_all {
+            calls: vec![RuntimeCall::Staking(pallet_staking::Call::payout_stakers {
+                validator_stash: alice(),
+                era: 1,
+            })],
+        });
+
+        // simulation of first inherent extrinsic
+        // without it there would be no ApplyExtrinsic phase in events for the next call
+        dispatch_and_process_call(RuntimeCall::System(frame_system::Call::remark {
+            remark: b"a".to_vec(),
+        }));
+
+        let bob_balance = Balances::free_balance(&bob_account);
+
+        dispatch_and_process_call(runtime_call.clone());
+        assert_eq!(Balances::free_balance(&bob_account), bob_balance);
+
+        // invalid duplicate call
+        dispatch_and_process_call(runtime_call);
+        assert_eq!(
+            Balances::free_balance(&bob_account),
+            bob_balance.saturating_sub(balance!(0.7))
+        );
     });
 }
