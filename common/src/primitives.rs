@@ -61,6 +61,8 @@ pub const ASSET_CONTENT_SOURCE_MAX_LENGTH: usize = 2048;
 /// Max length of asset description, it should be enough to describe everything the user wants
 pub const ASSET_DESCRIPTION_MAX_LENGTH: usize = 512;
 
+pub const LIQUIDITY_SAMPLES_COUNT: u128 = 10;
+
 /// Wrapper type which extends Balance serialization, used for json in RPC's.
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct BalanceWrapper(pub Balance);

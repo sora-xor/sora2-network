@@ -45,10 +45,10 @@ use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
-    LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
-    RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
-    TradingPairSourceManager,
+    fixed, fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists,
+    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
+    PoolXykPallet, RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    TradingPairSourceManager, LIQUIDITY_SAMPLES_COUNT,
 };
 
 mod aliases;
@@ -442,8 +442,89 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
-        // todo (m.tagirov) 447
-        todo!()
+        if amount.amount().is_zero() {
+            return Ok(VecDeque::new());
+        }
+
+        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
+        // Get pool account.
+        let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
+            *dex_id,
+            *input_asset_id,
+            *output_asset_id,
+        )?;
+        let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+
+        // Get actual pool reserves.
+        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+
+        // Check reserves validity.
+        if reserve_input == 0 && reserve_output == 0 {
+            fail!(Error::<T>::PoolIsEmpty);
+        } else if reserve_input <= 0 || reserve_output <= 0 {
+            fail!(Error::<T>::PoolIsInvalid);
+        }
+
+        // Decide which side should be used for fee.
+        let get_fee_from_destination = Pallet::<T>::decide_is_fee_from_destination(
+            &dex_info.base_asset_id,
+            input_asset_id,
+            output_asset_id,
+        )?;
+
+        let step = amount
+            .amount()
+            .checked_div(LIQUIDITY_SAMPLES_COUNT)
+            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+
+        let mut chunks = VecDeque::new();
+        let mut sub_sum = Balance::zero();
+
+        match amount {
+            QuoteAmount::WithDesiredInput { .. } => {
+                for i in 1..=LIQUIDITY_SAMPLES_COUNT {
+                    let volume = step
+                        .checked_mul(i)
+                        .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+
+                    let (calculated, _fee) = Pallet::<T>::calc_output_for_exact_input(
+                        fixed!(0),
+                        get_fee_from_destination,
+                        &reserve_input,
+                        &reserve_output,
+                        &volume,
+                        false,
+                    )?;
+
+                    let output = calculated.saturating_sub(sub_sum);
+                    sub_sum = calculated;
+                    chunks.push_back(SwapChunk::new(step, output));
+                }
+            }
+            QuoteAmount::WithDesiredOutput { .. } => {
+                for i in 1..=LIQUIDITY_SAMPLES_COUNT {
+                    let volume = step
+                        .checked_mul(i)
+                        .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+
+                    let (calculated, _fee) = Pallet::<T>::calc_input_for_exact_output(
+                        fixed!(0),
+                        get_fee_from_destination,
+                        &reserve_input,
+                        &reserve_output,
+                        &volume,
+                        false,
+                    )?;
+
+                    let input = calculated.saturating_sub(sub_sum);
+                    sub_sum = calculated;
+                    chunks.push_back(SwapChunk::new(input, step));
+                }
+            }
+        }
+
+        Ok(chunks)
     }
 
     fn exchange(

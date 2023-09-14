@@ -33,13 +33,15 @@ use core::str::FromStr;
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
-    LiquiditySourceType, Oracle, ToFeeAccount, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
+    LiquiditySourceType, Oracle, SwapChunk, ToFeeAccount, TradingPairSourceManager,
+    DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 
 use crate::mock::*;
 use crate::{PoolProviders, TotalIssuances};
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::rc::Rc;
 
 type PresetFunction<'a> = Rc<
@@ -497,6 +499,148 @@ fn quote_case_exact_output_for_input_base_second() {
             )
             .unwrap()),
             (201207243460764587525158, 150451354062186559679)
+        );
+    })]);
+}
+
+#[test]
+fn check_empty_step_quote() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            balance!(100000),
+            balance!(200000),
+            balance!(100000),
+            balance!(200000),
+        ));
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::with_desired_input(balance!(0))
+            )
+            .unwrap(),
+            VecDeque::new()
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::with_desired_output(balance!(0))
+            )
+            .unwrap(),
+            VecDeque::new()
+        );
+    })]);
+}
+
+#[test]
+fn check_step_quote() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            balance!(100000),
+            balance!(200000),
+            balance!(100000),
+            balance!(200000),
+        ));
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::with_desired_input(balance!(100))
+            )
+            .unwrap(),
+            VecDeque::from([
+                SwapChunk::new(balance!(10), balance!(19.998000199980001999)),
+                SwapChunk::new(balance!(10), balance!(19.994001399700061988)),
+                SwapChunk::new(balance!(10), balance!(19.990003798700421867)),
+                SwapChunk::new(balance!(10), balance!(19.986007396501561327)),
+                SwapChunk::new(balance!(10), balance!(19.982012192624199695)),
+                SwapChunk::new(balance!(10), balance!(19.978018186589295798)),
+                SwapChunk::new(balance!(10), balance!(19.974025377918047812)),
+                SwapChunk::new(balance!(10), balance!(19.970033766131893127)),
+                SwapChunk::new(balance!(10), balance!(19.966043350752508194)),
+                SwapChunk::new(balance!(10), balance!(19.962054131301808392)),
+            ])
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::with_desired_output(balance!(200))
+            )
+            .unwrap(),
+            VecDeque::from([
+                SwapChunk::new(balance!(10.001000100010001000), balance!(20)),
+                SwapChunk::new(balance!(10.003000700150031006), balance!(20)),
+                SwapChunk::new(balance!(10.005001900650211067), balance!(20)),
+                SwapChunk::new(balance!(10.007003701750781337), balance!(20)),
+                SwapChunk::new(balance!(10.009006103692102153), balance!(20)),
+                SwapChunk::new(balance!(10.011009106714654105), balance!(20)),
+                SwapChunk::new(balance!(10.013012711059038105), balance!(20)),
+                SwapChunk::new(balance!(10.015016916965975462), balance!(20)),
+                SwapChunk::new(balance!(10.017021724676307957), balance!(20)),
+                SwapChunk::new(balance!(10.019027134430997908), balance!(20)),
+            ])
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_input(balance!(200))
+            )
+            .unwrap(),
+            VecDeque::from([
+                SwapChunk::new(balance!(20), balance!(9.999000099990000999)),
+                SwapChunk::new(balance!(20), balance!(9.997000699850030994)),
+                SwapChunk::new(balance!(20), balance!(9.995001899350210934)),
+                SwapChunk::new(balance!(20), balance!(9.993003698250780663)),
+                SwapChunk::new(balance!(20), balance!(9.991006096312099848)),
+                SwapChunk::new(balance!(20), balance!(9.989009093294647899)),
+                SwapChunk::new(balance!(20), balance!(9.987012688959023906)),
+                SwapChunk::new(balance!(20), balance!(9.985016883065946563)),
+                SwapChunk::new(balance!(20), balance!(9.983021675376254097)),
+                SwapChunk::new(balance!(20), balance!(9.981027065650904196)),
+            ])
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_output(balance!(100))
+            )
+            .unwrap(),
+            VecDeque::from([
+                SwapChunk::new(balance!(20.002000200020002002), balance!(10)),
+                SwapChunk::new(balance!(20.006001400300062012), balance!(10)),
+                SwapChunk::new(balance!(20.010003801300422133), balance!(10)),
+                SwapChunk::new(balance!(20.014007403501562674), balance!(10)),
+                SwapChunk::new(balance!(20.018012207384204307), balance!(10)),
+                SwapChunk::new(balance!(20.022018213429308210), balance!(10)),
+                SwapChunk::new(balance!(20.026025422118076210), balance!(10)),
+                SwapChunk::new(balance!(20.030033833931950924), balance!(10)),
+                SwapChunk::new(balance!(20.034043449352615913), balance!(10)),
+                SwapChunk::new(balance!(20.038054268861995817), balance!(10)),
+            ])
         );
     })]);
 }
