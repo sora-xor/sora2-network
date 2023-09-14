@@ -4658,6 +4658,7 @@ dependencies = [
  "sp-consensus-babe",
  "sp-core",
  "sp-inherents",
+ "sp-keyring",
  "sp-mmr-primitives",
  "sp-npos-elections",
  "sp-offchain",
