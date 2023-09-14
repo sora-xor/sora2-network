@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"framenode_runtime":[["impl <a class=\"trait\" href=\"xor_fee/trait.IsCalledByBridgePeer.html\" title=\"trait xor_fee::IsCalledByBridgePeer\">IsCalledByBridgePeer</a>&lt;&lt;&lt;MultiSignature as Verify&gt;::Signer as IdentifyAccount&gt;::AccountId&gt; for <a class=\"enum\" href=\"framenode_runtime/enum.RuntimeCall.html\" title=\"enum framenode_runtime::RuntimeCall\">RuntimeCall</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

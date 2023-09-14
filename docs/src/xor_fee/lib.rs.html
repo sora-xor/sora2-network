@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `pallets/xor-fee/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ba5701c5741a7b69.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="xor_fee" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.0-nightly (39c6804b9 2023-04-19)" data-search-js="search-e077946657036a58.js" data-settings-js="settings-298e1ea74db45b39.js" data-settings-css="settings-7bfb4c59cc6bc502.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../static.files/source-script-905937fbbdc8e9ea.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-1a524efa7bd4ab32.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `pallets/xor-fee/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="xor_fee" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (44f518058 2023-03-20)" data-search-js="search-a6dd7f063a44c279.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../static.files/storage-9184409068f70b79.js"></script><script defer src="../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-f5a2577c5297a973.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
 <!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
@@ -13,7 +13,7 @@
             ]
         });'></script>
 
-</head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../xor_fee/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+</head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../xor_fee/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -730,7 +730,58 @@
 <a href="#715" id="715">715</a>
 <a href="#716" id="716">716</a>
 <a href="#717" id="717">717</a>
-</pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+</pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
 // SPDX-License-Identifier: BSD-4-Clause
@@ -761,15 +812,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
-</span><span class="comment">// TODO #167: fix clippy warnings
-</span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">use </span>common::prelude::SwapAmount;
 <span class="kw">use </span>common::{
-    AssetInfoProvider, Balance, BuyBackHandler, FilterMode, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
+    Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    OnValBurned, ReferrerAccountProvider,
 };
-<span class="kw">use </span>frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays};
+<span class="kw">use </span>frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
 <span class="kw">use </span>frame_support::log::error;
 <span class="kw">use </span>frame_support::pallet_prelude::InvalidTransaction;
 <span class="kw">use </span>frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
@@ -777,18 +826,21 @@
 <span class="kw">use </span>frame_support::weights::{
     WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
+<span class="kw">use </span>pallet_transaction_payment <span class="kw">as </span>ptp;
 <span class="kw">use </span>pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
 };
 <span class="kw">use </span>smallvec::smallvec;
-<span class="kw">use </span>sp_runtime::generic::{CheckedExtrinsic, UncheckedExtrinsic};
+<span class="kw">use </span>sp_arithmetic::FixedPointOperand;
 <span class="kw">use </span>sp_runtime::traits::{
     DispatchInfoOf, Dispatchable, Extrinsic <span class="kw">as </span>ExtrinsicT, PostDispatchInfoOf, SaturatedConversion,
-    SignedExtension, UniqueSaturatedInto, Zero,
+    Saturating, UniqueSaturatedInto, Zero,
 };
-<span class="kw">use </span>sp_runtime::{DispatchError, FixedPointNumber, FixedU128, Perbill, Percent};
+<span class="kw">use </span>sp_runtime::{DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent};
 <span class="kw">use </span>sp_staking::SessionIndex;
 <span class="kw">use </span>sp_std::vec::Vec;
+
+<span class="kw">pub mod </span>extension;
 
 <span class="kw">mod </span>benchmarking;
 <span class="kw">pub mod </span>weights;
@@ -817,21 +869,21 @@
 <span class="comment">// #[cfg_attr(test, derive(PartialEq))]
 </span><span class="kw">pub enum </span>LiquidityInfo&lt;T: Config&gt; {
     <span class="doccomment">/// Fees operate as normal
-    </span>Paid((T::AccountId, <span class="prelude-ty">Option</span>&lt;NegativeImbalanceOf&lt;T&gt;&gt;)),
+    </span>Paid(T::AccountId, <span class="prelude-ty">Option</span>&lt;NegativeImbalanceOf&lt;T&gt;&gt;),
     <span class="doccomment">/// The fee payment has been postponed to after the transaction
-    </span>Postponed(T::AccountId, BalanceOf&lt;T&gt;),
-    <span class="doccomment">/// Default value
+    </span>Postponed(T::AccountId),
+    <span class="doccomment">/// The fee should not be paid
     </span>NotPaid,
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; sp_std::fmt::Debug <span class="kw">for </span>LiquidityInfo&lt;T&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>sp_std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; sp_std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
-            LiquidityInfo::Paid((a, b)) =&gt; {
+            LiquidityInfo::Paid(a, b) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;Paid({:?}, {:?})&quot;</span>, a, b.as_ref().map(|b| b.peek()))
             }
-            LiquidityInfo::Postponed(account_id, b) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;Postponed({:?}, {:?})&quot;</span>, account_id, b)
+            LiquidityInfo::Postponed(account_id) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Postponed({:?})&quot;</span>, account_id)
             }
             LiquidityInfo::NotPaid =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;NotPaid&quot;</span>)
@@ -843,18 +895,17 @@
 <span class="kw">impl</span>&lt;T: Config&gt; PartialEq <span class="kw">for </span>LiquidityInfo&lt;T&gt; {
     <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
         <span class="kw">match </span>(<span class="self">self</span>, other) {
-            (LiquidityInfo::Paid((a1, b1)), LiquidityInfo::Paid((a2, b2))) =&gt; {
+            (LiquidityInfo::Paid(a1, b1), LiquidityInfo::Paid(a2, b2)) =&gt; {
                 (a1 == a2) &amp;&amp; b1.as_ref().map(|b| b.peek()) == b2.as_ref().map(|b| b.peek())
             }
-            (LiquidityInfo::Postponed(a1, b1), LiquidityInfo::Postponed(a2, b2)) =&gt; {
-                a1 == a2 &amp;&amp; b1 == b2
-            }
+            (LiquidityInfo::Postponed(a1), LiquidityInfo::Postponed(a2)) =&gt; a1 == a2,
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; Default <span class="kw">for </span>LiquidityInfo&lt;T&gt; {
+<span class="attr">#[allow(clippy::derivable_impls)] </span><span class="comment">// To use Default derive impl AccountId needs to implement Default trait
+</span><span class="kw">impl</span>&lt;T: Config&gt; Default <span class="kw">for </span>LiquidityInfo&lt;T&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         LiquidityInfo::NotPaid
     }
@@ -862,19 +913,13 @@
 
 <span class="kw">impl</span>&lt;T: Config&gt; From&lt;(T::AccountId, <span class="prelude-ty">Option</span>&lt;NegativeImbalanceOf&lt;T&gt;&gt;)&gt; <span class="kw">for </span>LiquidityInfo&lt;T&gt; {
     <span class="kw">fn </span>from((account_id, paid): (T::AccountId, <span class="prelude-ty">Option</span>&lt;NegativeImbalanceOf&lt;T&gt;&gt;)) -&gt; <span class="self">Self </span>{
-        LiquidityInfo::Paid((account_id, paid))
+        LiquidityInfo::Paid(account_id, paid)
     }
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; OnChargeTransaction&lt;T&gt; <span class="kw">for </span>Pallet&lt;T&gt;
 <span class="kw">where
-    </span>CallOf&lt;T&gt;: ExtractProxySwap&lt;
-            AccountId = T::AccountId,
-            DexId = T::DEXId,
-            AssetId = T::AssetId,
-            Amount = SwapAmount&lt;u128&gt;,
-        &gt; + IsCalledByBridgePeer&lt;T::AccountId&gt;,
-    BalanceOf&lt;T&gt;: Into&lt;u128&gt;,
+    </span>BalanceOf&lt;T&gt;: Into&lt;u128&gt;,
     DispatchInfoOf&lt;CallOf&lt;T&gt;&gt;: Into&lt;DispatchInfo&gt; + Clone,
 {
     <span class="kw">type </span>Balance = BalanceOf&lt;T&gt;;
@@ -884,92 +929,25 @@
         who: <span class="kw-2">&amp;</span>T::AccountId,
         call: <span class="kw-2">&amp;</span>CallOf&lt;T&gt;,
         _dispatch_info: <span class="kw-2">&amp;</span>DispatchInfoOf&lt;CallOf&lt;T&gt;&gt;,
-        fee: <span class="self">Self</span>::Balance,
-        _tip: <span class="self">Self</span>::Balance,
+        fee: BalanceOf&lt;T&gt;,
+        _tip: BalanceOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::LiquidityInfo, TransactionValidityError&gt; {
-        <span class="kw">if </span>fee.is_zero() {
+        <span class="comment">// Not pay fee at all. It&#39;s not possible to withdraw fee if it&#39;s disabled here.
+        </span><span class="kw">if </span>fee.is_zero() || !T::CustomFees::should_be_paid(who, call) {
             <span class="kw">return </span><span class="prelude-val">Ok</span>((who.clone(), <span class="prelude-val">None</span>).into());
         }
 
-        <span class="kw">let </span>maybe_custom_fee = T::CustomFees::compute_fee(call);
-        <span class="kw">let </span>final_fee: BalanceOf&lt;T&gt; = <span class="kw">match </span>maybe_custom_fee {
-            <span class="prelude-val">Some</span>(value) =&gt; BalanceOf::&lt;T&gt;::saturated_from(value),
-            <span class="kw">_ </span>=&gt; fee,
-        };
+        <span class="comment">// Use custom fee source for transaction
+        </span><span class="kw">let </span>fee_source = T::CustomFees::get_fee_source(who, call, fee.into());
 
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(result) = T::WithdrawFee::withdraw_fee(who, call, final_fee.into()) {
+        <span class="comment">// Postpone fee payment to post dispatch phase if we can&#39;t or don&#39;t want to pay it now
+        </span><span class="kw">if </span>T::CustomFees::should_be_postponed(who, <span class="kw-2">&amp;</span>fee_source, call, fee.into()) {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(LiquidityInfo::Postponed(fee_source));
+        }
+
+        <span class="comment">// Withdraw fee
+        </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(result) = T::WithdrawFee::withdraw_fee(who, <span class="kw-2">&amp;</span>fee_source, call, fee.into()) {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(result.into());
-        }
-
-        <span class="comment">// In case we are producing XOR, we perform exchange before fees are withdraw to allow 0-XOR accounts to trade
-        </span><span class="kw">let </span>SwapInfo {
-            fee_source,
-            dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            filter_mode,
-            selected_source_types,
-        } = call
-            .extract()
-            .ok_or(TransactionValidityError::from(InvalidTransaction::Payment))<span class="question-mark">?</span>;
-
-        <span class="kw">if </span>output_asset_id != T::XorId::get() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(InvalidTransaction::Payment.into());
-        }
-
-        <span class="comment">// Check how much user has input asset
-        </span><span class="kw">let </span>user_input_balance = assets::Pallet::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>input_asset_id, who)
-            .map_err(|<span class="kw">_</span>| TransactionValidityError::from(InvalidTransaction::Payment))<span class="question-mark">?</span>;
-
-        <span class="comment">// How much does the user want to spend of their input asset
-        </span><span class="kw">let </span>swap_input_amount = <span class="kw">match </span>amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in, ..
-            } =&gt; desired_amount_in,
-            SwapAmount::WithDesiredOutput { max_amount_in, .. } =&gt; max_amount_in,
-        };
-
-        <span class="comment">// The amount of input asset needed for this swap is more than the user has, so error
-        </span><span class="kw">if </span>swap_input_amount &gt; user_input_balance {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(InvalidTransaction::Payment.into());
-        }
-
-        <span class="kw">let </span>filter = LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
-
-        <span class="comment">// Quote to see if there will be enough funds for the fee
-        </span><span class="kw">let </span>swap =
-            &lt;T::LiquidityProxy <span class="kw">as </span>LiquidityProxyTrait&lt;T::DEXId, T::AccountId, T::AssetId&gt;&gt;::quote(
-                dex_id,
-                <span class="kw-2">&amp;</span>input_asset_id,
-                <span class="kw-2">&amp;</span>output_asset_id,
-                amount.into(),
-                filter.clone(),
-                <span class="bool-val">true</span>,
-            )
-            .map_err(|<span class="kw">_</span>| InvalidTransaction::Payment)<span class="question-mark">?</span>;
-
-        <span class="comment">// Quote does not check if max_in or min_out are respected
-        </span><span class="kw">let </span>(limits_ok, output_amount) = <span class="kw">match </span>amount {
-            SwapAmount::WithDesiredInput { min_amount_out, .. } =&gt; {
-                (swap.amount &gt;= min_amount_out, swap.amount)
-            }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out,
-                max_amount_in,
-                ..
-            } =&gt; (swap.amount &lt;= max_amount_in, desired_amount_out),
-        };
-
-        <span class="kw">let </span>fee_source = fee_source.unwrap_or(who.clone());
-        <span class="comment">// Check the swap result + existing balance is enough for fee
-        </span><span class="kw">if </span>limits_ok
-            &amp;&amp; T::XorCurrency::free_balance(<span class="kw-2">&amp;</span>fee_source).into() + output_amount
-                - T::XorCurrency::minimum_balance().into()
-                &gt;= final_fee.into()
-        {
-            <span class="comment">// The fee is applied afterwards, in correct_and_deposit_fee
-            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(LiquidityInfo::Postponed(fee_source, final_fee));
         }
 
         <span class="prelude-val">Err</span>(InvalidTransaction::Payment.into())
@@ -979,13 +957,13 @@
         who: <span class="kw-2">&amp;</span>T::AccountId,
         _dispatch_info: <span class="kw-2">&amp;</span>DispatchInfoOf&lt;CallOf&lt;T&gt;&gt;,
         _post_info: <span class="kw-2">&amp;</span>PostDispatchInfoOf&lt;CallOf&lt;T&gt;&gt;,
-        corrected_fee: <span class="self">Self</span>::Balance,
-        tip: <span class="self">Self</span>::Balance,
+        corrected_fee: BalanceOf&lt;T&gt;,
+        tip: BalanceOf&lt;T&gt;,
         already_withdrawn: <span class="self">Self</span>::LiquidityInfo,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TransactionValidityError&gt; {
         <span class="kw">let </span>(fee_source, withdrawn) = <span class="kw">match </span>already_withdrawn {
-            LiquidityInfo::Paid(opt) =&gt; opt,
-            LiquidityInfo::Postponed(fee_source, fee) =&gt; {
+            LiquidityInfo::Paid(a, b) =&gt; (a, b),
+            LiquidityInfo::Postponed(fee_source) =&gt; {
                 <span class="kw">let </span>withdraw_reason = <span class="kw">if </span>tip.is_zero() {
                     WithdrawReasons::TRANSACTION_PAYMENT
                 } <span class="kw">else </span>{
@@ -993,33 +971,22 @@
                 };
                 <span class="kw">let </span>result = T::XorCurrency::withdraw(
                     <span class="kw-2">&amp;</span>fee_source,
-                    fee,
+                    corrected_fee,
                     withdraw_reason,
                     ExistenceRequirement::KeepAlive,
                 )
-                .ok();
-                (fee_source, result)
+                .map_err(|<span class="kw">_</span>| InvalidTransaction::Payment)<span class="question-mark">?</span>;
+                (fee_source, <span class="prelude-val">Some</span>(result))
             }
             LiquidityInfo::NotPaid =&gt; (who.clone(), <span class="prelude-val">None</span>),
         };
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(paid) = withdrawn {
             <span class="comment">// Calculate the amount to refund to the caller
-            // A refund is possible in two cases:
-            //  - the `Dispatchable:PostInfo` structure has the `pays_fee` field changed
-            //    from `Payes::Yes` to `Pays::No` during exection. In this case the `corrected_fee`
-            //    will be 0 so that the entire withdrawn amount should be refunded to the caller;
-            //  - the extrinsic is not subject to the manual fees applied by means of the
-            //    `ApplyCustomFees` trait implementation so that the withdrawn amount is
-            //    completely defined by the extrinsic&#39;s weight and can change based on the
-            //    `actual_weight` from the `Dispatchable::PostInfo` structure.
-            // TODO: only the former case is currently supported; for the latter case we need a
-            // reliable way to determine whether the extrinsic is or is not subject to manual fees.
-            </span><span class="kw">let </span>refund_amount: <span class="self">Self</span>::Balance = <span class="kw">if </span>corrected_fee == <span class="number">0_u32</span>.into() {
-                paid.peek()
-            } <span class="kw">else </span>{
-                <span class="self">Self</span>::Balance::zero()
-            };
+            // Refund behavior is fully defined by CustomFee type or
+            // by default transaction payment pallet implementation if
+            // call is not subject for custom fee
+            </span><span class="kw">let </span>refund_amount = paid.peek().saturating_sub(corrected_fee);
 
             <span class="comment">// Refund to the the account that paid the fees. If this fails, the
             // account might have dropped below the existential balance. In
@@ -1029,16 +996,16 @@
                     |<span class="kw">_</span>| &lt;T::XorCurrency <span class="kw">as </span>Currency&lt;T::AccountId&gt;&gt;::PositiveImbalance::zero(),
                 );
 
-            <span class="comment">// Offset the imbalance caused by paying the fees against the refunded amount.
-            </span><span class="kw">let </span>adjusted_paid = paid
+            <span class="kw">let </span>adjusted_paid = paid
                 .offset(refund_imbalance)
                 .same()
                 .map_err(|<span class="kw">_</span>| TransactionValidityError::Invalid(InvalidTransaction::Payment))<span class="question-mark">?</span>;
 
-            <span class="self">Self</span>::deposit_event(Event::FeeWithdrawn(
-                fee_source.clone(),
-                adjusted_paid.peek(),
-            ));
+            <span class="self">Self</span>::deposit_event(Event::FeeWithdrawn(fee_source, adjusted_paid.peek()));
+
+            <span class="kw">if </span>adjusted_paid.peek().is_zero() {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+            }
 
             <span class="comment">// Applying VAL buy-back-and-burn logic
             </span><span class="kw">let </span>xor_burned_weight = T::XorBurnedWeight::get();
@@ -1047,7 +1014,7 @@
                 T::ReferrerWeight::get(),
                 xor_burned_weight + xor_into_val_burned_weight,
             );
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(referrer) = referrals::Pallet::&lt;T&gt;::referrer_account(who) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
                 <span class="kw">let </span>referrer_portion = referrer_xor.peek();
                 <span class="kw">if </span>T::XorCurrency::resolve_into_existing(<span class="kw-2">&amp;</span>referrer, referrer_xor).is_ok() {
                     <span class="self">Self</span>::deposit_event(Event::ReferrerRewarded(
@@ -1122,142 +1089,282 @@
     }
 }
 
+<span class="kw">pub type </span>CustomFeeDetailsOf&lt;T&gt; =
+    &lt;&lt;T <span class="kw">as </span>Config&gt;::CustomFees <span class="kw">as </span>ApplyCustomFees&lt;CallOf&lt;T&gt;, AccountIdOf&lt;T&gt;&gt;&gt;::FeeDetails;
+
 <span class="doccomment">/// Trait whose implementation allows to redefine extrinsics fees based
-/// exclusively on the extrinsic&#39;s `Call` variant
-</span><span class="kw">pub trait </span>ApplyCustomFees&lt;Call&gt; {
-    <span class="doccomment">/// If a value is returned, it overrides the fee amount calculated by the
-    /// TransactionPayment pallet based on `DispatchInfo` and `WeightToFee` conversion
-    </span><span class="comment">//  `None` as the output indicated the extrinsic is not subject to a manual fee
-    </span><span class="doccomment">/// adjustment so the original value from TransactionPayment pallet will be charged
-    </span><span class="kw">fn </span>compute_fee(call: <span class="kw-2">&amp;</span>Call) -&gt; <span class="prelude-ty">Option</span>&lt;Balance&gt;;
+/// on the extrinsic&#39;s `Call` variant and dispatch result
+</span><span class="kw">pub trait </span>ApplyCustomFees&lt;Call: Dispatchable, AccountId&gt; {
+    <span class="doccomment">/// Additinal information to be passed between `Self::compute_fee` and `Self::compute_actual_fee`
+    </span><span class="kw">type </span>FeeDetails;
+
+    <span class="doccomment">/// Check if the fee payment should be postponed
+    ///
+    /// Parameters:
+    /// `who` is the caller of the extrinsic
+    /// `fee_source` is the account which will pay fees
+    /// `call` is the Call extracted from the extrinsic
+    /// `fee` is the pre dispatch fee
+    ///
+    /// Returns:
+    /// `true` then fee payment should be postponed to the post dispatch phase
+    /// `false` then fee should be paid at pre dispatch phase and corrected at post dispatch phase
+    ///
+    /// This call should check if `fee_source` will have enough funds to pay the fee after call dispatch
+    /// and if not then it should return `false`
+    </span><span class="kw">fn </span>should_be_postponed(
+        who: <span class="kw-2">&amp;</span>AccountId,
+        fee_source: <span class="kw-2">&amp;</span>AccountId,
+        call: <span class="kw-2">&amp;</span>Call,
+        fee: Balance,
+    ) -&gt; bool;
+
+    <span class="doccomment">/// Check if the fee should be paid for this extrinsic
+    ///
+    /// Parameters:
+    /// `who` is the caller of the extrinsic
+    /// `call` is the Call extracted from the extrinsic
+    ///
+    /// Returns:
+    /// `true` then fee should be paid
+    /// `false` then fee should not be paid
+    </span><span class="kw">fn </span>should_be_paid(who: <span class="kw-2">&amp;</span>AccountId, call: <span class="kw-2">&amp;</span>Call) -&gt; bool;
+
+    <span class="doccomment">/// Get the account which will pay fees
+    ///
+    /// Parameters:
+    /// `who` is the caller of the extrinsic
+    /// `call` is the Call extracted from the extrinsic
+    /// `fee` is the pre dispatch fee
+    ///
+    /// Returns account which will pay fees
+    </span><span class="kw">fn </span>get_fee_source(who: <span class="kw-2">&amp;</span>AccountId, call: <span class="kw-2">&amp;</span>Call, fee: Balance) -&gt; AccountId;
+
+    <span class="doccomment">/// Compute custom fees for this call
+    ///
+    /// Parameters:
+    /// `call` is the Call extracted from the extrinsic
+    ///
+    /// Returns:
+    /// `Some(..)` if custom fees should be applied. Then `Balance` value is used as fee
+    /// and `Self::FeeDetails` is passed to `Self::compute_actual_fee` at post dispatch phase
+    /// `None` if default transaction payment pallet fees should be used
+    </span><span class="kw">fn </span>compute_fee(call: <span class="kw-2">&amp;</span>Call) -&gt; <span class="prelude-ty">Option</span>&lt;(Balance, <span class="self">Self</span>::FeeDetails)&gt;;
+
+    <span class="doccomment">/// Compute actual fees for this call
+    ///
+    /// Parameters:
+    /// `post_info` is the `PostDispatchInfo` returned from the call
+    /// `info` is the `DispatchInfo` for the call
+    /// `result` is the `DispatchResult` returned from the call
+    /// `fee_details` is the `Self::FeeDetails` returned from the previous `Self::compute_fee` call
+    ///
+    /// Returns:
+    /// `Some(..)` if custom post dispatch fees should be applied
+    /// `None` if transaction payment pallet post dispatch fees should be used
+    </span><span class="kw">fn </span>compute_actual_fee(
+        post_info: <span class="kw-2">&amp;</span>PostDispatchInfoOf&lt;Call&gt;,
+        info: <span class="kw-2">&amp;</span>DispatchInfoOf&lt;Call&gt;,
+        result: <span class="kw-2">&amp;</span>DispatchResult,
+        fee_details: <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::FeeDetails&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;Balance&gt;;
 }
 
-<span class="kw">impl</span>&lt;Call&gt; ApplyCustomFees&lt;Call&gt; <span class="kw">for </span>() {
-    <span class="kw">fn </span>compute_fee(_call: <span class="kw-2">&amp;</span>Call) -&gt; <span class="prelude-ty">Option</span>&lt;Balance&gt; {
+<span class="kw">impl</span>&lt;Call: Dispatchable, AccountId: Clone&gt; ApplyCustomFees&lt;Call, AccountId&gt; <span class="kw">for </span>() {
+    <span class="kw">type </span>FeeDetails = ();
+
+    <span class="kw">fn </span>should_be_postponed(
+        _who: <span class="kw-2">&amp;</span>AccountId,
+        _fee_source: <span class="kw-2">&amp;</span>AccountId,
+        _call: <span class="kw-2">&amp;</span>Call,
+        _fee: Balance,
+    ) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>should_be_paid(_who: <span class="kw-2">&amp;</span>AccountId, _call: <span class="kw-2">&amp;</span>Call) -&gt; bool {
+        <span class="bool-val">true
+    </span>}
+
+    <span class="kw">fn </span>compute_fee(_call: <span class="kw-2">&amp;</span>Call) -&gt; <span class="prelude-ty">Option</span>&lt;(Balance, <span class="self">Self</span>::FeeDetails)&gt; {
         <span class="prelude-val">None
     </span>}
-}
 
-<span class="kw">pub struct </span>SwapInfo&lt;AccountId, DexId, AssetId, Amount&gt; {
-    <span class="kw">pub </span>fee_source: <span class="prelude-ty">Option</span>&lt;AccountId&gt;,
-    <span class="kw">pub </span>dex_id: DexId,
-    <span class="kw">pub </span>input_asset_id: AssetId,
-    <span class="kw">pub </span>output_asset_id: AssetId,
-    <span class="kw">pub </span>amount: Amount,
-    <span class="kw">pub </span>selected_source_types: Vec&lt;LiquiditySourceType&gt;,
-    <span class="kw">pub </span>filter_mode: FilterMode,
-}
+    <span class="kw">fn </span>compute_actual_fee(
+        _post_info: <span class="kw-2">&amp;</span>PostDispatchInfoOf&lt;Call&gt;,
+        _info: <span class="kw-2">&amp;</span>DispatchInfoOf&lt;Call&gt;,
+        _result: <span class="kw-2">&amp;</span>DispatchResult,
+        _fee_details: <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::FeeDetails&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;Balance&gt; {
+        <span class="prelude-val">None
+    </span>}
 
-<span class="doccomment">/// A trait for extracting call information out of liquidity_proxy.swap calls
-</span><span class="kw">pub trait </span>ExtractProxySwap {
-    <span class="kw">type </span>AccountId;
-    <span class="kw">type </span>DexId;
-    <span class="kw">type </span>AssetId;
-    <span class="kw">type </span>Amount;
-    <span class="kw">fn </span>extract(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;SwapInfo&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::DexId, <span class="self">Self</span>::AssetId, <span class="self">Self</span>::Amount&gt;&gt;;
-}
-
-<span class="kw">pub trait </span>IsCalledByBridgePeer&lt;AccountId&gt; {
-    <span class="kw">fn </span>is_called_by_bridge_peer(<span class="kw-2">&amp;</span><span class="self">self</span>, who: <span class="kw-2">&amp;</span>AccountId) -&gt; bool;
-}
-
-<span class="doccomment">/// A trait whose purpose is to extract the `Call` variant of an extrinsic
-</span><span class="kw">pub trait </span>GetCall&lt;Call&gt; {
-    <span class="kw">fn </span>get_call(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Call;
+    <span class="kw">fn </span>get_fee_source(who: <span class="kw-2">&amp;</span>AccountId, _call: <span class="kw-2">&amp;</span>Call, _fee: Balance) -&gt; AccountId {
+        who.clone()
+    }
 }
 
 <span class="kw">pub trait </span>WithdrawFee&lt;T: Config&gt; {
     <span class="kw">fn </span>withdraw_fee(
         who: <span class="kw-2">&amp;</span>T::AccountId,
+        fee_source: <span class="kw-2">&amp;</span>T::AccountId,
         call: <span class="kw-2">&amp;</span>CallOf&lt;T&gt;,
         fee: Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(T::AccountId, <span class="prelude-ty">Option</span>&lt;NegativeImbalanceOf&lt;T&gt;&gt;), DispatchError&gt;;
 }
 
-<span class="doccomment">/// Implementation for unchecked extrinsic.
-</span><span class="kw">impl</span>&lt;Address, Call, Signature, Extra&gt; GetCall&lt;Call&gt;
-    <span class="kw">for </span>UncheckedExtrinsic&lt;Address, Call, Signature, Extra&gt;
+<span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt;
 <span class="kw">where
-    </span>Call: Dispatchable + Clone,
-    Extra: SignedExtension,
+    </span>CallOf&lt;T&gt;: Dispatchable&lt;Info = DispatchInfo, PostInfo = PostDispatchInfo&gt;,
+    BalanceOf&lt;T&gt;: FixedPointOperand + Into&lt;Balance&gt;,
+    T: ptp::Config&lt;OnChargeTransaction = Pallet&lt;T&gt;&gt;,
 {
-    <span class="kw">fn </span>get_call(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Call {
-        <span class="self">self</span>.function.clone()
+    <span class="kw">pub fn </span>multiplied_fee(<span class="kw-2">mut </span>fee: FeeDetails&lt;BalanceOf&lt;T&gt;&gt;) -&gt; FeeDetails&lt;BalanceOf&lt;T&gt;&gt; {
+        <span class="kw">let </span>multiplier = Multiplier::&lt;T&gt;::get();
+        fee.inclusion_fee = fee.inclusion_fee.map(|fee| InclusionFee {
+            base_fee: multiplier.saturating_mul_int(fee.base_fee),
+            len_fee: multiplier.saturating_mul_int(fee.len_fee),
+            adjusted_weight_fee: multiplier.saturating_mul_int(fee.adjusted_weight_fee),
+        });
+        fee.tip = multiplier.saturating_mul_int(fee.tip);
+
+        fee
     }
-}
-
-<span class="doccomment">/// Implementation for checked extrinsic.
-</span><span class="kw">impl</span>&lt;Address, Call, Extra&gt; GetCall&lt;Call&gt; <span class="kw">for </span>CheckedExtrinsic&lt;Address, Call, Extra&gt;
-<span class="kw">where
-    </span>Call: Dispatchable + Clone,
-{
-    <span class="kw">fn </span>get_call(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Call {
-        <span class="self">self</span>.function.clone()
-    }
-}
-
-<span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-    <span class="comment">// Returns value if custom fee is applicable to an extrinsic and `None` otherwise
-    </span><span class="kw">pub fn </span>query_info&lt;Extrinsic: Clone + ExtrinsicT + GetDispatchInfo + GetCall&lt;CallOf&lt;T&gt;&gt;&gt;(
-        unchecked_extrinsic: <span class="kw-2">&amp;</span>Extrinsic,
-        _len: u32,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;RuntimeDispatchInfo&lt;BalanceOf&lt;T&gt;&gt;&gt;
-    <span class="kw">where
-        </span>&lt;T <span class="kw">as </span>frame_system::Config&gt;::RuntimeCall: Dispatchable&lt;Info = DispatchInfo&gt;,
-    {
-        <span class="kw">let </span>dispatch_info = &lt;Extrinsic <span class="kw">as </span>GetDispatchInfo&gt;::get_dispatch_info(unchecked_extrinsic);
-        <span class="kw">let </span>DispatchInfo {
-            weight,
-            class,
-            pays_fee,
-        } = dispatch_info;
-
-        <span class="kw">if </span>pays_fee == Pays::No {
-            <span class="kw">return </span><span class="prelude-val">None</span>;
+    <span class="kw">pub fn </span>compute_fee_details(
+        len: u32,
+        call: <span class="kw-2">&amp;</span>CallOf&lt;T&gt;,
+        info: <span class="kw-2">&amp;</span>DispatchInfoOf&lt;CallOf&lt;T&gt;&gt;,
+        tip: BalanceOf&lt;T&gt;,
+    ) -&gt; (FeeDetails&lt;BalanceOf&lt;T&gt;&gt;, <span class="prelude-ty">Option</span>&lt;CustomFeeDetailsOf&lt;T&gt;&gt;) {
+        <span class="kw">if </span><span class="macro">matches!</span>(info.pays_fee, Pays::No) {
+            <span class="kw">return </span>(
+                FeeDetails {
+                    tip,
+                    inclusion_fee: <span class="prelude-val">None</span>,
+                },
+                <span class="prelude-val">None</span>,
+            );
         }
-
-        <span class="kw">let </span>call = &lt;Extrinsic <span class="kw">as </span>GetCall&lt;CallOf&lt;T&gt;&gt;&gt;::get_call(<span class="kw-2">&amp;</span>unchecked_extrinsic);
-
-        <span class="kw">let </span>maybe_custom_fee = T::CustomFees::compute_fee(<span class="kw-2">&amp;</span>call);
-        <span class="kw">let </span>res = <span class="kw">match </span>maybe_custom_fee {
-            <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Some</span>(RuntimeDispatchInfo {
-                weight,
-                class,
-                partial_fee: BalanceOf::&lt;T&gt;::saturated_from(value),
-            }),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        <span class="kw">let </span>maybe_custom_fee = T::CustomFees::compute_fee(call);
+        <span class="kw">let </span>(fee, kind) = <span class="kw">match </span>maybe_custom_fee {
+            <span class="prelude-val">Some</span>((<span class="number">0</span>, custom_details)) =&gt; (
+                FeeDetails {
+                    inclusion_fee: <span class="prelude-val">None</span>,
+                    tip,
+                },
+                <span class="prelude-val">Some</span>(custom_details),
+            ),
+            <span class="prelude-val">Some</span>((custom_fee, custom_details)) =&gt; (
+                FeeDetails {
+                    inclusion_fee: <span class="prelude-val">Some</span>(InclusionFee {
+                        base_fee: <span class="number">0_u32</span>.into(),
+                        len_fee: <span class="number">0_u32</span>.into(),
+                        adjusted_weight_fee: BalanceOf::&lt;T&gt;::saturated_from(custom_fee),
+                    }),
+                    tip,
+                },
+                <span class="prelude-val">Some</span>(custom_details),
+            ),
+            <span class="prelude-val">None </span>=&gt; (
+                pallet_transaction_payment::Pallet::&lt;T&gt;::compute_fee_details(len, info, tip),
+                <span class="prelude-val">None</span>,
+            ),
         };
-
-        res
+        (<span class="self">Self</span>::multiplied_fee(fee), kind)
     }
 
-    <span class="comment">// Returns value if custom fee is applicable to an extrinsic and `None` otherwise
-    </span><span class="kw">pub fn </span>query_fee_details&lt;Extrinsic: ExtrinsicT + GetDispatchInfo + GetCall&lt;CallOf&lt;T&gt;&gt;&gt;(
-        unchecked_extrinsic: <span class="kw-2">&amp;</span>Extrinsic,
-        _len: u32,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;FeeDetails&lt;BalanceOf&lt;T&gt;&gt;&gt;
-    <span class="kw">where
-        </span>&lt;T <span class="kw">as </span>frame_system::Config&gt;::RuntimeCall: Dispatchable&lt;Info = DispatchInfo&gt;,
-    {
-        <span class="kw">let </span>call = &lt;Extrinsic <span class="kw">as </span>GetCall&lt;CallOf&lt;T&gt;&gt;&gt;::get_call(unchecked_extrinsic);
-        <span class="kw">let </span>maybe_custom_fee = T::CustomFees::compute_fee(<span class="kw-2">&amp;</span>call);
-        <span class="kw">let </span>res = <span class="kw">match </span>maybe_custom_fee {
-            <span class="prelude-val">Some</span>(fee) =&gt; <span class="prelude-val">Some</span>(FeeDetails {
+    <span class="kw">pub fn </span>compute_fee(
+        len: u32,
+        call: <span class="kw-2">&amp;</span>CallOf&lt;T&gt;,
+        info: <span class="kw-2">&amp;</span>DispatchInfoOf&lt;CallOf&lt;T&gt;&gt;,
+        tip: BalanceOf&lt;T&gt;,
+    ) -&gt; (BalanceOf&lt;T&gt;, <span class="prelude-ty">Option</span>&lt;CustomFeeDetailsOf&lt;T&gt;&gt;) {
+        <span class="kw">let </span>(fee, details) = <span class="self">Self</span>::compute_fee_details(len, call, info, tip);
+        (fee.final_fee(), details)
+    }
+
+    <span class="kw">pub fn </span>compute_actual_fee(
+        len: u32,
+        info: <span class="kw-2">&amp;</span>DispatchInfoOf&lt;CallOf&lt;T&gt;&gt;,
+        post_info: <span class="kw-2">&amp;</span>PostDispatchInfoOf&lt;CallOf&lt;T&gt;&gt;,
+        result: <span class="kw-2">&amp;</span>DispatchResult,
+        tip: BalanceOf&lt;T&gt;,
+        custom_fee_details: <span class="prelude-ty">Option</span>&lt;CustomFeeDetailsOf&lt;T&gt;&gt;,
+    ) -&gt; BalanceOf&lt;T&gt; {
+        <span class="self">Self</span>::compute_actual_fee_details(len, info, post_info, result, tip, custom_fee_details)
+            .final_fee()
+    }
+
+    <span class="kw">pub fn </span>compute_actual_fee_details(
+        len: u32,
+        info: <span class="kw-2">&amp;</span>DispatchInfoOf&lt;CallOf&lt;T&gt;&gt;,
+        post_info: <span class="kw-2">&amp;</span>PostDispatchInfoOf&lt;CallOf&lt;T&gt;&gt;,
+        result: <span class="kw-2">&amp;</span>DispatchResult,
+        tip: BalanceOf&lt;T&gt;,
+        custom_fee_details: <span class="prelude-ty">Option</span>&lt;CustomFeeDetailsOf&lt;T&gt;&gt;,
+    ) -&gt; FeeDetails&lt;BalanceOf&lt;T&gt;&gt; {
+        <span class="kw">let </span>pays = post_info.pays_fee(info);
+        <span class="kw">if </span><span class="macro">matches!</span>(pays, Pays::No) {
+            <span class="kw">return </span>FeeDetails {
+                inclusion_fee: <span class="prelude-val">None</span>,
+                tip,
+            };
+        }
+        <span class="kw">let </span>maybe_custom_fee =
+            T::CustomFees::compute_actual_fee(post_info, info, result, custom_fee_details);
+        <span class="kw">let </span>fee = <span class="kw">match </span>maybe_custom_fee {
+            <span class="prelude-val">Some</span>(<span class="number">0</span>) =&gt; FeeDetails {
+                inclusion_fee: <span class="prelude-val">None</span>,
+                tip,
+            },
+            <span class="prelude-val">Some</span>(custom_fee) =&gt; FeeDetails {
                 inclusion_fee: <span class="prelude-val">Some</span>(InclusionFee {
                     base_fee: <span class="number">0_u32</span>.into(),
                     len_fee: <span class="number">0_u32</span>.into(),
-                    adjusted_weight_fee: BalanceOf::&lt;T&gt;::saturated_from(fee),
+                    adjusted_weight_fee: BalanceOf::&lt;T&gt;::saturated_from(custom_fee),
                 }),
-                tip: <span class="number">0_u32</span>.into(),
-            }),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                tip,
+            },
+            <span class="prelude-val">None </span>=&gt; pallet_transaction_payment::Pallet::&lt;T&gt;::compute_fee_details(len, info, tip),
         };
-
-        res
+        <span class="self">Self</span>::multiplied_fee(fee)
     }
 
+    <span class="comment">// Returns value if custom fee is applicable to an extrinsic and `None` otherwise
+    </span><span class="kw">pub fn </span>query_info&lt;Extrinsic: Clone + ExtrinsicT + GetDispatchInfo&gt;(
+        unchecked_extrinsic: <span class="kw-2">&amp;</span>Extrinsic,
+        call: <span class="kw-2">&amp;</span>CallOf&lt;T&gt;,
+        len: u32,
+    ) -&gt; RuntimeDispatchInfo&lt;BalanceOf&lt;T&gt;&gt; {
+        <span class="kw">let </span>dispatch_info = &lt;Extrinsic <span class="kw">as </span>GetDispatchInfo&gt;::get_dispatch_info(unchecked_extrinsic);
+
+        <span class="kw">let </span>partial_fee = <span class="kw">if </span>unchecked_extrinsic.is_signed().unwrap_or(<span class="bool-val">false</span>) {
+            <span class="self">Self</span>::compute_fee(len, call, <span class="kw-2">&amp;</span>dispatch_info, <span class="number">0u32</span>.into()).<span class="number">0
+        </span>} <span class="kw">else </span>{
+            <span class="number">0u32</span>.into()
+        };
+
+        <span class="kw">let </span>DispatchInfo { weight, class, .. } = dispatch_info;
+
+        RuntimeDispatchInfo {
+            weight,
+            class,
+            partial_fee,
+        }
+    }
+
+    <span class="comment">// Returns value if custom fee is applicable to an extrinsic and `None` otherwise
+    </span><span class="kw">pub fn </span>query_fee_details&lt;Extrinsic: ExtrinsicT + GetDispatchInfo&gt;(
+        unchecked_extrinsic: <span class="kw-2">&amp;</span>Extrinsic,
+        call: <span class="kw-2">&amp;</span>CallOf&lt;T&gt;,
+        len: u32,
+    ) -&gt; FeeDetails&lt;BalanceOf&lt;T&gt;&gt; {
+        <span class="kw">let </span>info = &lt;Extrinsic <span class="kw">as </span>GetDispatchInfo&gt;::get_dispatch_info(unchecked_extrinsic);
+        <span class="self">Self</span>::compute_fee_details(len, call, <span class="kw-2">&amp;</span>info, <span class="number">0u32</span>.into()).<span class="number">0
+    </span>}
+}
+
+<span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
     <span class="kw">pub fn </span>remint(xor_to_val: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account_id = &lt;T <span class="kw">as </span>Config&gt;::GetTechnicalAccountId::get();
         <span class="kw">let </span>xor = T::XorId::get();
@@ -1285,8 +1392,8 @@
             ),
         ) {
             <span class="prelude-val">Ok</span>(swap_outcome) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>val_to_burn = Balance::from(swap_outcome.amount);
-                T::OnValBurned::on_val_burned(val_to_burn.clone());
+                <span class="kw">let </span><span class="kw-2">mut </span>val_to_burn = swap_outcome.amount;
+                T::OnValBurned::on_val_burned(val_to_burn);
 
                 <span class="kw">let </span>val_to_buy_back = T::BuyBackXSTPercent::get() * val_to_burn;
                 <span class="kw">let </span>result = common::with_transaction(|| {
@@ -1339,13 +1446,7 @@
     <span class="comment">// TODO: #395 use AssetInfoProvider instead of assets pallet
     </span><span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
-        frame_system::Config
-        + referrals::Config
-        + assets::Config
-        + eth_bridge::Config
-        + common::Config
-        + pallet_transaction_payment::Config
-        + pallet_session::historical::Config
+        frame_system::Config + pallet_transaction_payment::Config + assets::Config
     {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="doccomment">/// XOR - The native currency of this blockchain.
@@ -1360,12 +1461,14 @@
         <span class="kw">type </span>DEXIdValue: Get&lt;<span class="self">Self</span>::DEXId&gt;;
         <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>OnValBurned: OnValBurned;
-        <span class="kw">type </span>CustomFees: ApplyCustomFees&lt;CallOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>CustomFees: ApplyCustomFees&lt;CallOf&lt;<span class="self">Self</span>&gt;, <span class="self">Self</span>::AccountId&gt;;
         <span class="kw">type </span>GetTechnicalAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;
+        <span class="kw">type </span>FullIdentification;
         <span class="kw">type </span>SessionManager: pallet_session::historical::SessionManager&lt;
             <span class="self">Self</span>::AccountId,
-            &lt;<span class="self">Self </span><span class="kw">as </span>pallet_session::historical::Config&gt;::FullIdentification,
+            <span class="self">Self</span>::FullIdentification,
         &gt;;
+        <span class="kw">type </span>ReferrerAccountProvider: ReferrerAccountProvider&lt;<span class="self">Self</span>::AccountId&gt;;
         <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
@@ -1422,8 +1525,7 @@
 
     <span class="attr">#[pallet::type_value]
     </span><span class="kw">pub fn </span>DefaultForFeeMultiplier&lt;T: Config&gt;() -&gt; FixedU128 {
-        <span class="comment">// We set 100 as it&#39;s the given required value
-        </span>FixedU128::from(<span class="number">100</span>)
+        FixedU128::from(<span class="number">1000</span>)
     }
 
     <span class="comment">// Multiplier used in WeightToFee conversion
@@ -1439,7 +1541,7 @@
         <span class="kw">fn </span>polynomial() -&gt; WeightToFeeCoefficients&lt;<span class="self">Self</span>::Balance&gt; {
             <span class="macro">smallvec!</span>(WeightToFeeCoefficient {
                 <span class="comment">// 7_000_000 was the original coefficient taken as reference
-                </span>coeff_integer: &lt;Multiplier&lt;T&gt;&gt;::get().saturating_mul_int(<span class="number">7_000_000</span>),
+                </span>coeff_integer: <span class="number">7_000_000</span>,
                 coeff_frac: Perbill::zero(),
                 negative: <span class="bool-val">false</span>,
                 degree: <span class="number">1</span>,
@@ -1447,4 +1549,5 @@
         }
     }
 }
-</code></pre></div></section></main></body></html>
+</code></pre></div>
+</section></main></body></html>

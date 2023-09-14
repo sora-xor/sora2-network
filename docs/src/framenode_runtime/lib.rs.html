@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `runtime/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ba5701c5741a7b69.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="framenode_runtime" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.0-nightly (39c6804b9 2023-04-19)" data-search-js="search-e077946657036a58.js" data-settings-js="settings-298e1ea74db45b39.js" data-settings-css="settings-7bfb4c59cc6bc502.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../static.files/source-script-905937fbbdc8e9ea.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-1a524efa7bd4ab32.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `runtime/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="framenode_runtime" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (44f518058 2023-03-20)" data-search-js="search-a6dd7f063a44c279.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../static.files/storage-9184409068f70b79.js"></script><script defer src="../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-f5a2577c5297a973.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
 <!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
@@ -13,7 +13,7 @@
             ]
         });'></script>
 
-</head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../framenode_runtime/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+</head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../framenode_runtime/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -3332,117 +3332,7 @@
 <a href="#3317" id="3317">3317</a>
 <a href="#3318" id="3318">3318</a>
 <a href="#3319" id="3319">3319</a>
-<a href="#3320" id="3320">3320</a>
-<a href="#3321" id="3321">3321</a>
-<a href="#3322" id="3322">3322</a>
-<a href="#3323" id="3323">3323</a>
-<a href="#3324" id="3324">3324</a>
-<a href="#3325" id="3325">3325</a>
-<a href="#3326" id="3326">3326</a>
-<a href="#3327" id="3327">3327</a>
-<a href="#3328" id="3328">3328</a>
-<a href="#3329" id="3329">3329</a>
-<a href="#3330" id="3330">3330</a>
-<a href="#3331" id="3331">3331</a>
-<a href="#3332" id="3332">3332</a>
-<a href="#3333" id="3333">3333</a>
-<a href="#3334" id="3334">3334</a>
-<a href="#3335" id="3335">3335</a>
-<a href="#3336" id="3336">3336</a>
-<a href="#3337" id="3337">3337</a>
-<a href="#3338" id="3338">3338</a>
-<a href="#3339" id="3339">3339</a>
-<a href="#3340" id="3340">3340</a>
-<a href="#3341" id="3341">3341</a>
-<a href="#3342" id="3342">3342</a>
-<a href="#3343" id="3343">3343</a>
-<a href="#3344" id="3344">3344</a>
-<a href="#3345" id="3345">3345</a>
-<a href="#3346" id="3346">3346</a>
-<a href="#3347" id="3347">3347</a>
-<a href="#3348" id="3348">3348</a>
-<a href="#3349" id="3349">3349</a>
-<a href="#3350" id="3350">3350</a>
-<a href="#3351" id="3351">3351</a>
-<a href="#3352" id="3352">3352</a>
-<a href="#3353" id="3353">3353</a>
-<a href="#3354" id="3354">3354</a>
-<a href="#3355" id="3355">3355</a>
-<a href="#3356" id="3356">3356</a>
-<a href="#3357" id="3357">3357</a>
-<a href="#3358" id="3358">3358</a>
-<a href="#3359" id="3359">3359</a>
-<a href="#3360" id="3360">3360</a>
-<a href="#3361" id="3361">3361</a>
-<a href="#3362" id="3362">3362</a>
-<a href="#3363" id="3363">3363</a>
-<a href="#3364" id="3364">3364</a>
-<a href="#3365" id="3365">3365</a>
-<a href="#3366" id="3366">3366</a>
-<a href="#3367" id="3367">3367</a>
-<a href="#3368" id="3368">3368</a>
-<a href="#3369" id="3369">3369</a>
-<a href="#3370" id="3370">3370</a>
-<a href="#3371" id="3371">3371</a>
-<a href="#3372" id="3372">3372</a>
-<a href="#3373" id="3373">3373</a>
-<a href="#3374" id="3374">3374</a>
-<a href="#3375" id="3375">3375</a>
-<a href="#3376" id="3376">3376</a>
-<a href="#3377" id="3377">3377</a>
-<a href="#3378" id="3378">3378</a>
-<a href="#3379" id="3379">3379</a>
-<a href="#3380" id="3380">3380</a>
-<a href="#3381" id="3381">3381</a>
-<a href="#3382" id="3382">3382</a>
-<a href="#3383" id="3383">3383</a>
-<a href="#3384" id="3384">3384</a>
-<a href="#3385" id="3385">3385</a>
-<a href="#3386" id="3386">3386</a>
-<a href="#3387" id="3387">3387</a>
-<a href="#3388" id="3388">3388</a>
-<a href="#3389" id="3389">3389</a>
-<a href="#3390" id="3390">3390</a>
-<a href="#3391" id="3391">3391</a>
-<a href="#3392" id="3392">3392</a>
-<a href="#3393" id="3393">3393</a>
-<a href="#3394" id="3394">3394</a>
-<a href="#3395" id="3395">3395</a>
-<a href="#3396" id="3396">3396</a>
-<a href="#3397" id="3397">3397</a>
-<a href="#3398" id="3398">3398</a>
-<a href="#3399" id="3399">3399</a>
-<a href="#3400" id="3400">3400</a>
-<a href="#3401" id="3401">3401</a>
-<a href="#3402" id="3402">3402</a>
-<a href="#3403" id="3403">3403</a>
-<a href="#3404" id="3404">3404</a>
-<a href="#3405" id="3405">3405</a>
-<a href="#3406" id="3406">3406</a>
-<a href="#3407" id="3407">3407</a>
-<a href="#3408" id="3408">3408</a>
-<a href="#3409" id="3409">3409</a>
-<a href="#3410" id="3410">3410</a>
-<a href="#3411" id="3411">3411</a>
-<a href="#3412" id="3412">3412</a>
-<a href="#3413" id="3413">3413</a>
-<a href="#3414" id="3414">3414</a>
-<a href="#3415" id="3415">3415</a>
-<a href="#3416" id="3416">3416</a>
-<a href="#3417" id="3417">3417</a>
-<a href="#3418" id="3418">3418</a>
-<a href="#3419" id="3419">3419</a>
-<a href="#3420" id="3420">3420</a>
-<a href="#3421" id="3421">3421</a>
-<a href="#3422" id="3422">3422</a>
-<a href="#3423" id="3423">3423</a>
-<a href="#3424" id="3424">3424</a>
-<a href="#3425" id="3425">3425</a>
-<a href="#3426" id="3426">3426</a>
-<a href="#3427" id="3427">3427</a>
-<a href="#3428" id="3428">3428</a>
-<a href="#3429" id="3429">3429</a>
-</pre></div><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
+</pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
 // SPDX-License-Identifier: BSD-4-Clause
@@ -3486,15 +3376,16 @@
 <span class="kw">mod </span>bags_thresholds;
 <span class="doccomment">/// Constant values used within the runtime.
 </span><span class="kw">pub mod </span>constants;
-<span class="kw">mod </span>extensions;
 <span class="kw">mod </span>impls;
 <span class="kw">pub mod </span>migrations;
+<span class="kw">mod </span>xor_fee_impls;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>mock;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>tests;
+<span class="kw">pub mod </span>weights;
 
 <span class="kw">use </span><span class="kw">crate</span>::impls::PreimageWeightInfo;
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
@@ -3505,9 +3396,10 @@
 </span><span class="kw">use </span>bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 <span class="kw">use </span>common::prelude::constants::{BIG_FEE, SMALL_FEE};
 <span class="kw">use </span>common::prelude::QuoteAmount;
-<span class="kw">use </span>common::PredefinedAssetId;
-<span class="kw">use </span>common::XOR;
-<span class="kw">use </span>common::{Description, XSTUSD};
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+</span><span class="kw">use </span>common::AssetId32;
+<span class="kw">use </span>common::{Description, GetMarketInfo, LiquidityProxyTrait, PredefinedAssetId};
+<span class="kw">use </span>common::{XOR, XST, XSTUSD};
 <span class="kw">use </span>constants::currency::deposit;
 <span class="kw">use </span>constants::time::<span class="kw-2">*</span>;
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
@@ -3520,7 +3412,6 @@
 
 <span class="kw">use </span>core::time::Duration;
 <span class="kw">use </span>currencies::BasicCurrencyAdapter;
-<span class="kw">use </span>extensions::ChargeTransactionPayment;
 <span class="kw">use </span>frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
 <span class="kw">use </span>frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 <span class="kw">use </span>frame_system::offchain::{Account, SigningTypes};
@@ -3553,7 +3444,7 @@
 };
 <span class="kw">use </span>sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
+    MultiSignature, Perbill, Percent, Perquintill,
 };
 <span class="kw">use </span>sp_std::cmp::Ordering;
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
@@ -3562,7 +3453,8 @@
 </span><span class="kw">use </span>sp_version::NativeVersion;
 <span class="kw">use </span>sp_version::RuntimeVersion;
 <span class="kw">use </span>static_assertions::assert_eq_size;
-<span class="kw">use </span>traits::parameter_type_with_key;
+<span class="kw">use </span>traits::{parameter_type_with_key, MultiCurrency};
+<span class="kw">use </span>xor_fee::extension::ChargeTransactionPayment;
 
 <span class="comment">// A few exports that help ease life for downstream crates.
 </span><span class="kw">pub use </span>common::prelude::{
@@ -3581,7 +3473,7 @@
 <span class="kw">pub use </span>frame_support::dispatch::DispatchClass;
 <span class="kw">pub use </span>frame_support::traits::schedule::Named <span class="kw">as </span>ScheduleNamed;
 <span class="kw">pub use </span>frame_support::traits::{
-    KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
+    Contains, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
 };
 <span class="kw">pub use </span>frame_support::weights::constants::{BlockExecutionWeight, RocksDbWeight};
 <span class="kw">pub use </span>frame_support::weights::Weight;
@@ -3701,10 +3593,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">60</span>,
+    spec_version: <span class="number">61</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">60</span>,
+    transaction_version: <span class="number">61</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -3803,8 +3695,25 @@
     <span class="kw">pub const </span>NoPreimagePostponement: <span class="prelude-ty">Option</span>&lt;u32&gt; = <span class="prelude-val">Some</span>(<span class="number">10</span>);
 }
 
+<span class="kw">pub struct </span>BaseCallFilter;
+
+<span class="kw">impl </span>Contains&lt;RuntimeCall&gt; <span class="kw">for </span>BaseCallFilter {
+    <span class="kw">fn </span>contains(call: <span class="kw-2">&amp;</span>RuntimeCall) -&gt; bool {
+        <span class="kw">if </span>call.swap_count() &gt; <span class="number">1 </span>{
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+        <span class="kw">if </span><span class="macro">matches!</span>(
+            call,
+            RuntimeCall::BridgeMultisig(bridge_multisig::Call::register_multisig { .. })
+        ) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+        <span class="bool-val">true
+    </span>}
+}
+
 <span class="kw">impl </span>frame_system::Config <span class="kw">for </span>Runtime {
-    <span class="kw">type </span>BaseCallFilter = Everything;
+    <span class="kw">type </span>BaseCallFilter = BaseCallFilter;
     <span class="kw">type </span>BlockWeights = BlockWeights;
     <span class="doccomment">/// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
     </span><span class="kw">type </span>BlockLength = BlockLength;
@@ -4649,137 +4558,6 @@
     <span class="kw">type </span>WeightInfo = rewards::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
-<span class="comment">// Multiplied flat fees implementation for the selected extrinsics.
-// Returns a value (* multiplier) if the extrinsic is subject to manual fee
-// adjustment and `None` otherwise
-</span><span class="kw">impl</span>&lt;T&gt; xor_fee::ApplyCustomFees&lt;RuntimeCall&gt; <span class="kw">for </span>xor_fee::Pallet&lt;T&gt; {
-    <span class="kw">fn </span>compute_fee(call: <span class="kw-2">&amp;</span>RuntimeCall) -&gt; <span class="prelude-ty">Option</span>&lt;Balance&gt; {
-        <span class="kw">let </span>result = <span class="kw">match </span>call {
-            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
-                swap_batches,
-                ..
-            }) =&gt; <span class="prelude-val">Some</span>(
-                swap_batches
-                    .iter()
-                    .map(|x| x.receivers.len() <span class="kw">as </span>Balance)
-                    .sum::&lt;Balance&gt;()
-                    .max(<span class="number">1</span>)
-                    * SMALL_FEE,
-            ),
-            RuntimeCall::Assets(assets::Call::register { .. })
-            | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
-            | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
-            | RuntimeCall::Rewards(rewards::Call::claim { .. })
-            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
-                ..
-            })
-            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_rewards { .. }) =&gt; {
-                <span class="prelude-val">Some</span>(BIG_FEE)
-            }
-            RuntimeCall::Assets(..)
-            | RuntimeCall::Band(..)
-            | RuntimeCall::EthBridge(..)
-            | RuntimeCall::LiquidityProxy(..)
-            | RuntimeCall::MulticollateralBondingCurvePool(..)
-            | RuntimeCall::PoolXYK(..)
-            | RuntimeCall::Rewards(..)
-            | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
-            | RuntimeCall::TradingPair(..)
-            | RuntimeCall::Referrals(..) =&gt; <span class="prelude-val">Some</span>(SMALL_FEE),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-        };
-        result.map(|fee| XorFee::multiplier().saturating_mul_int(fee))
-    }
-}
-
-<span class="kw">impl </span>xor_fee::ExtractProxySwap <span class="kw">for </span>RuntimeCall {
-    <span class="kw">type </span>AccountId = AccountId;
-    <span class="kw">type </span>DexId = DEXId;
-    <span class="kw">type </span>AssetId = AssetId;
-    <span class="kw">type </span>Amount = SwapAmount&lt;u128&gt;;
-    <span class="kw">fn </span>extract(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;xor_fee::SwapInfo&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::DexId, <span class="self">Self</span>::AssetId, <span class="self">Self</span>::Amount&gt;&gt; {
-        <span class="kw">match </span><span class="self">self </span>{
-            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap {
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-                selected_source_types,
-                filter_mode,
-            }) =&gt; <span class="prelude-val">Some</span>(xor_fee::SwapInfo {
-                fee_source: <span class="prelude-val">None</span>,
-                dex_id: <span class="kw-2">*</span>dex_id,
-                input_asset_id: <span class="kw-2">*</span>input_asset_id,
-                output_asset_id: <span class="kw-2">*</span>output_asset_id,
-                amount: <span class="kw-2">*</span>swap_amount,
-                selected_source_types: selected_source_types.to_vec(),
-                filter_mode: filter_mode.clone(),
-            }),
-            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer {
-                receiver,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-                selected_source_types,
-                filter_mode,
-                ..
-            }) =&gt; <span class="prelude-val">Some</span>(xor_fee::SwapInfo {
-                fee_source: <span class="prelude-val">Some</span>(receiver.clone()),
-                dex_id: <span class="kw-2">*</span>dex_id,
-                input_asset_id: <span class="kw-2">*</span>input_asset_id,
-                output_asset_id: <span class="kw-2">*</span>output_asset_id,
-                amount: <span class="kw-2">*</span>swap_amount,
-                selected_source_types: selected_source_types.to_vec(),
-                filter_mode: filter_mode.clone(),
-            }),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-        }
-    }
-}
-
-<span class="kw">impl </span>xor_fee::IsCalledByBridgePeer&lt;AccountId&gt; <span class="kw">for </span>RuntimeCall {
-    <span class="kw">fn </span>is_called_by_bridge_peer(<span class="kw-2">&amp;</span><span class="self">self</span>, who: <span class="kw-2">&amp;</span>AccountId) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            RuntimeCall::BridgeMultisig(call) =&gt; <span class="kw">match </span>call {
-                bridge_multisig::Call::as_multi {
-                    id: multisig_id, ..
-                }
-                | bridge_multisig::Call::as_multi_threshold_1 {
-                    id: multisig_id, ..
-                } =&gt; bridge_multisig::Accounts::&lt;Runtime&gt;::get(multisig_id)
-                    .map(|acc| acc.is_signatory(<span class="kw-2">&amp;</span>who)),
-                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-            },
-            RuntimeCall::EthBridge(call) =&gt; <span class="kw">match </span>call {
-                eth_bridge::Call::approve_request { network_id, .. } =&gt; {
-                    <span class="prelude-val">Some</span>(eth_bridge::Pallet::&lt;Runtime&gt;::is_peer(who, <span class="kw-2">*</span>network_id))
-                }
-                eth_bridge::Call::register_incoming_request { incoming_request } =&gt; {
-                    <span class="kw">let </span>net_id = incoming_request.network_id();
-                    eth_bridge::BridgeAccount::&lt;Runtime&gt;::get(net_id).map(|acc| acc == <span class="kw-2">*</span>who)
-                }
-                eth_bridge::Call::import_incoming_request {
-                    load_incoming_request,
-                    ..
-                } =&gt; {
-                    <span class="kw">let </span>net_id = load_incoming_request.network_id();
-                    eth_bridge::BridgeAccount::&lt;Runtime&gt;::get(net_id).map(|acc| acc == <span class="kw-2">*</span>who)
-                }
-                eth_bridge::Call::finalize_incoming_request { network_id, .. }
-                | eth_bridge::Call::abort_request { network_id, .. } =&gt; {
-                    eth_bridge::BridgeAccount::&lt;Runtime&gt;::get(network_id).map(|acc| acc == <span class="kw-2">*</span>who)
-                }
-                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-            },
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-        }
-        .unwrap_or(<span class="bool-val">false</span>)
-    }
-}
-
 <span class="kw">pub struct </span>ValBurnedAggregator&lt;T&gt;(sp_std::marker::PhantomData&lt;T&gt;);
 
 <span class="kw">impl</span>&lt;T&gt; OnValBurned <span class="kw">for </span>ValBurnedAggregator&lt;T&gt;
@@ -4789,42 +4567,6 @@
     <span class="kw">fn </span>on_val_burned(amount: Balance) {
         Rewards::on_val_burned(amount);
         T::notify_val_burned(amount);
-    }
-}
-
-<span class="kw">pub struct </span>WithdrawFee;
-
-<span class="kw">impl </span>xor_fee::WithdrawFee&lt;Runtime&gt; <span class="kw">for </span>WithdrawFee {
-    <span class="kw">fn </span>withdraw_fee(
-        who: <span class="kw-2">&amp;</span>AccountId,
-        call: <span class="kw-2">&amp;</span>RuntimeCall,
-        fee: Balance,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(AccountId, <span class="prelude-ty">Option</span>&lt;NegativeImbalanceOf&lt;Runtime&gt;&gt;), DispatchError&gt; {
-        <span class="kw">match </span>call {
-            RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
-                <span class="kw">if </span>Referrals::can_set_referrer(who) =&gt;
-            {
-                Referrals::withdraw_fee(referrer, fee)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>((
-                    referrer.clone(),
-                    <span class="prelude-val">Some</span>(Balances::withdraw(
-                        <span class="kw-2">&amp;</span>ReferralsReservesAcc::get(),
-                        fee,
-                        WithdrawReasons::TRANSACTION_PAYMENT,
-                        ExistenceRequirement::KeepAlive,
-                    )<span class="question-mark">?</span>),
-                ))
-            }
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>((
-                who.clone(),
-                <span class="prelude-val">Some</span>(Balances::withdraw(
-                    who,
-                    fee,
-                    WithdrawReasons::TRANSACTION_PAYMENT,
-                    ExistenceRequirement::KeepAlive,
-                )<span class="question-mark">?</span>),
-            )),
-        }
     }
 }
 
@@ -4846,12 +4588,14 @@
     <span class="kw">type </span>DEXIdValue = DEXIdValue;
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;
     <span class="kw">type </span>OnValBurned = ValBurnedAggregator&lt;Staking&gt;;
-    <span class="kw">type </span>CustomFees = XorFee;
+    <span class="kw">type </span>CustomFees = xor_fee_impls::CustomFees;
     <span class="kw">type </span>GetTechnicalAccountId = GetXorFeeAccountId;
     <span class="kw">type </span>SessionManager = Staking;
+    <span class="kw">type </span>FullIdentification = pallet_staking::Exposure&lt;AccountId, Balance&gt;;
     <span class="kw">type </span>WeightInfo = xor_fee::weights::SubstrateWeight&lt;Runtime&gt;;
-    <span class="kw">type </span>WithdrawFee = WithdrawFee;
+    <span class="kw">type </span>WithdrawFee = xor_fee_impls::WithdrawFee;
     <span class="kw">type </span>BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler&lt;Runtime, GetBuyBackDexId&gt;;
+    <span class="kw">type </span>ReferrerAccountProvider = Referrals;
 }
 
 <span class="kw">pub struct </span>ConstantFeeMultiplier;
@@ -5028,10 +4772,15 @@
     <span class="kw">type </span>GetEthNetworkId = GetEthNetworkId;
     <span class="kw">type </span>WeightInfo = eth_bridge::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>WeightToFee = XorFee;
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
     </span><span class="kw">type </span>MessageStatusNotifier = BridgeProxy;
     <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
     </span><span class="kw">type </span>MessageStatusNotifier = ();
+
+    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
+    </span><span class="kw">type </span>BridgeAssetLockChecker = BridgeProxy;
+    <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
+    </span><span class="kw">type </span>BridgeAssetLockChecker = ();
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
@@ -5554,8 +5303,6 @@
 </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">impl </span>dispatch::Config&lt;dispatch::Instance1&gt; <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
-    <span class="kw">type </span>NetworkId = EVMChainId;
-    <span class="kw">type </span>Additional = AdditionalEVMInboundData;
     <span class="kw">type </span>OriginOutput =
         bridge_types::types::CallOriginOutput&lt;EVMChainId, H256, AdditionalEVMInboundData&gt;;
     <span class="kw">type </span>Origin = RuntimeOrigin;
@@ -5563,6 +5310,7 @@
     <span class="kw">type </span>Hashing = Keccak256;
     <span class="kw">type </span>Call = RuntimeCall;
     <span class="kw">type </span>CallFilter = EVMBridgeCallFilter;
+    <span class="kw">type </span>WeightInfo = dispatch::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
@@ -5652,8 +5400,6 @@
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = BridgeOutboundChannel;
     <span class="kw">type </span>CallOrigin = dispatch::EnsureAccount&lt;
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput&lt;EVMChainId, H256, AdditionalEVMInboundData&gt;,
     &gt;;
     <span class="kw">type </span>MessageStatusNotifier = BridgeProxy;
@@ -5669,8 +5415,6 @@
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = BridgeOutboundChannel;
     <span class="kw">type </span>CallOrigin = dispatch::EnsureAccount&lt;
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput&lt;EVMChainId, H256, AdditionalEVMInboundData&gt;,
     &gt;;
     <span class="kw">type </span>AppRegistry = BridgeInboundChannel;
@@ -5689,6 +5433,11 @@
     <span class="kw">type </span>WeightInfo = ();
 }
 
+<span class="macro">parameter_types! </span>{
+    <span class="kw">pub const </span>GetReferenceAssetId: AssetId = GetDaiAssetId::get();
+    <span class="kw">pub const </span>GetReferenceDexId: DEXId = <span class="number">0</span>;
+}
+
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
 </span><span class="kw">impl </span>bridge_proxy::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
@@ -5697,6 +5446,12 @@
     <span class="kw">type </span>HashiBridge = EthBridge;
     <span class="kw">type </span>SubstrateApp = SubstrateBridgeApp;
     <span class="kw">type </span>TimepointProvider = GenericTimepointProvider;
+    <span class="kw">type </span>ReferencePriceProvider =
+        liquidity_proxy::ReferencePriceProvider&lt;Runtime, GetReferenceDexId, GetReferenceAssetId&gt;;
+    <span class="kw">type </span>ManagerOrigin = EitherOfDiverse&lt;
+        pallet_collective::EnsureProportionMoreThan&lt;AccountId, TechnicalCollective, <span class="number">2</span>, <span class="number">3</span>&gt;,
+        EnsureRoot&lt;AccountId&gt;,
+    &gt;;
     <span class="kw">type </span>WeightInfo = ();
 }
 
@@ -5709,14 +5464,13 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
 </span><span class="kw">impl </span>dispatch::Config&lt;dispatch::Instance2&gt; <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
-    <span class="kw">type </span>NetworkId = SubNetworkId;
-    <span class="kw">type </span>Additional = ();
     <span class="kw">type </span>OriginOutput = bridge_types::types::CallOriginOutput&lt;SubNetworkId, H256, ()&gt;;
     <span class="kw">type </span>Origin = RuntimeOrigin;
     <span class="kw">type </span>MessageId = bridge_types::types::MessageId;
     <span class="kw">type </span>Hashing = Keccak256;
     <span class="kw">type </span>Call = DispatchableSubstrateBridgeCall;
     <span class="kw">type </span>CallFilter = SubstrateBridgeCallFilter;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::dispatch::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
@@ -5729,7 +5483,7 @@
     <span class="kw">type </span>MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     <span class="kw">type </span>MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     <span class="kw">type </span>ThisNetworkId = ThisNetworkId;
-    <span class="kw">type </span>WeightInfo = ();
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::substrate_inbound_channel::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
@@ -5740,6 +5494,9 @@
 </span><span class="kw">pub enum </span>MultiProof {
     Beefy(&lt;BeefyLightClient <span class="kw">as </span>Verifier&gt;::Proof),
     Multisig(&lt;MultisigVerifier <span class="kw">as </span>Verifier&gt;::Proof),
+    <span class="doccomment">/// This proof is only used for benchmarking purposes
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
+    </span>Empty,
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
@@ -5754,7 +5511,23 @@
         <span class="kw">match </span>proof {
             MultiProof::Beefy(proof) =&gt; BeefyLightClient::verify(network_id, message, proof),
             MultiProof::Multisig(proof) =&gt; MultisigVerifier::verify(network_id, message, proof),
+            <span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
+            </span>MultiProof::Empty =&gt; <span class="prelude-val">Ok</span>(()),
         }
+    }
+
+    <span class="kw">fn </span>verify_weight(proof: <span class="kw-2">&amp;</span><span class="self">Self</span>::Proof) -&gt; Weight {
+        <span class="kw">match </span>proof {
+            MultiProof::Beefy(proof) =&gt; BeefyLightClient::verify_weight(proof),
+            MultiProof::Multisig(proof) =&gt; MultisigVerifier::verify_weight(proof),
+            <span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
+            </span>MultiProof::Empty =&gt; Default::default(),
+        }
+    }
+
+    <span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
+    </span><span class="kw">fn </span>valid_proof() -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Proof&gt; {
+        <span class="prelude-val">Some</span>(MultiProof::Empty)
     }
 }
 
@@ -5779,25 +5552,22 @@
     <span class="kw">type </span>Balance = Balance;
     <span class="kw">type </span>TimepointProvider = GenericTimepointProvider;
     <span class="kw">type </span>ThisNetworkId = ThisNetworkId;
-    <span class="kw">type </span>WeightInfo = ();
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::substrate_outbound_channel::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
 </span><span class="kw">impl </span>substrate_bridge_app::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = SubstrateBridgeOutboundChannel;
-    <span class="kw">type </span>CallOrigin = dispatch::EnsureAccount&lt;
-        SubNetworkId,
-        (),
-        bridge_types::types::CallOriginOutput&lt;SubNetworkId, H256, ()&gt;,
-    &gt;;
+    <span class="kw">type </span>CallOrigin =
+        dispatch::EnsureAccount&lt;bridge_types::types::CallOriginOutput&lt;SubNetworkId, H256, ()&gt;&gt;;
     <span class="kw">type </span>MessageStatusNotifier = BridgeProxy;
     <span class="kw">type </span>AssetRegistry = BridgeProxy;
     <span class="kw">type </span>AccountIdConverter = sp_runtime::traits::Identity;
     <span class="kw">type </span>AssetIdConverter = sp_runtime::traits::ConvertInto;
     <span class="kw">type </span>BalancePrecisionConverter = impls::BalancePrecisionConverter;
-    <span class="kw">type </span>WeightInfo = ();
     <span class="kw">type </span>BridgeAssetLocker = BridgeProxy;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::substrate_bridge_app::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
@@ -5814,28 +5584,22 @@
 </span><span class="kw">impl </span>bridge_data_signer::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = SubstrateBridgeOutboundChannel;
-    <span class="kw">type </span>CallOrigin = dispatch::EnsureAccount&lt;
-        SubNetworkId,
-        (),
-        bridge_types::types::CallOriginOutput&lt;SubNetworkId, H256, ()&gt;,
-    &gt;;
+    <span class="kw">type </span>CallOrigin =
+        dispatch::EnsureAccount&lt;bridge_types::types::CallOriginOutput&lt;SubNetworkId, H256, ()&gt;&gt;;
     <span class="kw">type </span>MaxPeers = BridgeMaxPeers;
     <span class="kw">type </span>UnsignedPriority = DataSignerPriority;
     <span class="kw">type </span>UnsignedLongevity = DataSignerLongevity;
-    <span class="kw">type </span>WeightInfo = bridge_data_signer::weights::WeightInfo&lt;Runtime&gt;;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::bridge_data_signer::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
 </span><span class="kw">impl </span>multisig_verifier::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
-    <span class="kw">type </span>CallOrigin = dispatch::EnsureAccount&lt;
-        SubNetworkId,
-        (),
-        bridge_types::types::CallOriginOutput&lt;SubNetworkId, H256, ()&gt;,
-    &gt;;
+    <span class="kw">type </span>CallOrigin =
+        dispatch::EnsureAccount&lt;bridge_types::types::CallOriginOutput&lt;SubNetworkId, H256, ()&gt;&gt;;
     <span class="kw">type </span>OutboundChannel = SubstrateBridgeOutboundChannel;
     <span class="kw">type </span>MaxPeers = BridgeMaxPeers;
-    <span class="kw">type </span>WeightInfo = multisig_verifier::weights::WeightInfo&lt;Runtime&gt;;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::multisig_verifier::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="macro">construct_runtime! </span>{
@@ -6101,21 +5865,13 @@
         Balance,
     &gt; <span class="kw">for </span>Runtime {
         <span class="kw">fn </span>query_info(uxt: &lt;Block <span class="kw">as </span>BlockT&gt;::Extrinsic, len: u32) -&gt; pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo&lt;Balance&gt; {
-            <span class="kw">let </span>maybe_dispatch_info = XorFee::query_info(<span class="kw-2">&amp;</span>uxt, len);
-            <span class="kw">let </span>output = <span class="kw">match </span>maybe_dispatch_info {
-                <span class="prelude-val">Some</span>(dispatch_info) =&gt; dispatch_info,
-                <span class="kw">_ </span>=&gt; TransactionPayment::query_info(uxt, len),
-            };
-            output
+            <span class="kw">let </span>call = <span class="kw-2">&amp;</span>uxt.function;
+            XorFee::query_info(<span class="kw-2">&amp;</span>uxt, call, len)
         }
 
         <span class="kw">fn </span>query_fee_details(uxt: &lt;Block <span class="kw">as </span>BlockT&gt;::Extrinsic, len: u32) -&gt; pallet_transaction_payment_rpc_runtime_api::FeeDetails&lt;Balance&gt; {
-            <span class="kw">let </span>maybe_fee_details = XorFee::query_fee_details(<span class="kw-2">&amp;</span>uxt, len);
-            <span class="kw">let </span>output = <span class="kw">match </span>maybe_fee_details {
-                <span class="prelude-val">Some</span>(fee_details) =&gt; fee_details,
-                <span class="kw">_ </span>=&gt; TransactionPayment::query_fee_details(uxt, len),
-            };
-            output
+            <span class="kw">let </span>call = <span class="kw-2">&amp;</span>uxt.function;
+            XorFee::query_fee_details(<span class="kw-2">&amp;</span>uxt, call, len)
         }
 
         <span class="kw">fn </span>query_weight_to_fee(weight: Weight) -&gt; Balance {
@@ -6732,7 +6488,19 @@
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, migration_app, MigrationApp);
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">list_benchmark!</span>(list, extra, bridge_proxy, BridgeProxy);
+            </span><span class="macro">list_benchmark!</span>(list, extra, evm_bridge_proxy, BridgeProxy);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">list_benchmark!</span>(list, extra, dispatch, Dispatch);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_app, SubstrateBridgeApp);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">list_benchmark!</span>(list, extra, bridge_data_signer, BridgeDataSigner);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">list_benchmark!</span>(list, extra, multisig_verifier, MultisigVerifier);
 
             <span class="kw">let </span>storage_info = AllPalletsWithSystem::storage_info();
 
@@ -6819,7 +6587,19 @@
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, migration_app, MigrationApp);
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">add_benchmark!</span>(params, batches, bridge_proxy, BridgeProxy);
+            </span><span class="macro">add_benchmark!</span>(params, batches, evm_bridge_proxy, BridgeProxy);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">add_benchmark!</span>(params, batches, dispatch, Dispatch);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_app, SubstrateBridgeApp);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">add_benchmark!</span>(params, batches, bridge_data_signer, BridgeDataSigner);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            </span><span class="macro">add_benchmark!</span>(params, batches, multisig_verifier, MultisigVerifier);
 
             <span class="kw">if </span>batches.is_empty() { <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Benchmark not found for this pallet.&quot;</span>.into()) }
             <span class="prelude-val">Ok</span>(batches)
@@ -6871,4 +6651,5 @@
         }
     }
 }
-</code></pre></div></section></main></body></html>
+</code></pre></div>
+</section></main></body></html>

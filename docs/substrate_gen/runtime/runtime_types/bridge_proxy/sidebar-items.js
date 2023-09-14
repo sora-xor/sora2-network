@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["pallet"],"struct":["BridgeRequest"]};
+window.SIDEBAR_ITEMS = {"mod":["pallet"],"struct":["BridgeRequest","TransferLimitSettings"]};

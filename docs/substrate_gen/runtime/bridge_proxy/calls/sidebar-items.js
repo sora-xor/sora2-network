@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Burn","TransactionApi"]};
+window.SIDEBAR_ITEMS = {"struct":["AddLimitedAsset","Burn","RemoveLimitedAsset","TransactionApi","UpdateTransferLimit"]};

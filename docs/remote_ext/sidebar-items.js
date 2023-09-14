@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["create_ext","main"],"struct":["Cli"]};
+window.SIDEBAR_ITEMS = {"constant":["VALUE","VALUE_SIGNED"],"fn":["create_ext","main"],"opaque":[""],"struct":["Cli"]};
