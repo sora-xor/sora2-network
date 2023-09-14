@@ -1735,7 +1735,7 @@ mod tests {
             //     <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get(),
             //     <Runtime as Config>::MaxExpiringOrdersPerBlock::get(),
             // );
-            let settings = preset_3::<Runtime>();
+            let settings = preset_16::<Runtime>();
             let _ =
                 fill_order_book_worst_case(settings, &mut order_book, &mut data_layer, true, true);
             <OrderBooks<Runtime>>::insert(order_book_id, order_book);
@@ -1746,7 +1746,7 @@ mod tests {
     #[ignore] // slow
     fn test_benchmark_delete_orderbook() {
         ext().execute_with(|| {
-            let settings = preset_7::<Runtime>();
+            let settings = preset_16::<Runtime>();
             let order_book_id = prepare_delete_orderbook_benchmark::<Runtime>(settings.clone());
             let mut data_layer =
                 framenode_runtime::order_book::storage_data_layer::StorageDataLayer::<Runtime>::new(
@@ -1782,7 +1782,7 @@ mod tests {
     #[test]
     fn test_benchmark_place() {
         ext().execute_with(|| {
-            let settings = preset_7::<Runtime>();
+            let settings = preset_16::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, price, amount, side, lifespan) =
                 prepare_place_orderbook_benchmark(settings.clone(), caller.clone());
@@ -1838,7 +1838,7 @@ mod tests {
     fn test_benchmark_cancel() {
         ext().execute_with(|| {
             // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            let settings = preset_3::<Runtime>();
+            let settings = preset_16::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, order_id) =
                 prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);
@@ -1864,7 +1864,7 @@ mod tests {
             use common::LiquiditySource;
 
             // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            let settings = preset_3::<Runtime>();
+            let settings = preset_16::<Runtime>();
             let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
                 prepare_quote_benchmark::<Runtime>(settings);
             let _order_book_id = OrderBookId {
@@ -1890,7 +1890,7 @@ mod tests {
             use common::LiquiditySource;
 
             // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            let settings = preset_3::<Runtime>();
+            let settings = preset_16::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings.clone(), caller.clone(), true);
@@ -1913,7 +1913,7 @@ mod tests {
     fn test_benchmark_execute_market_order() {
         ext().execute_with(|| {
             // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            let settings = preset_3::<Runtime>();
+            let settings = preset_16::<Runtime>();
             let caller = alice::<Runtime>();
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings, caller.clone(), false);
