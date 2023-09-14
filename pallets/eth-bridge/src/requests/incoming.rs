@@ -38,6 +38,7 @@ use crate::{
     WeightInfo,
 };
 use alloc::collections::BTreeSet;
+use bridge_types::traits::BridgeAssetLockChecker;
 use bridge_types::traits::MessageStatusNotifier;
 use bridge_types::types::MessageStatus;
 use bridge_types::{GenericAccount, GenericNetworkId, GenericTimepoint};
@@ -299,6 +300,19 @@ impl<T: Config> IncomingTransfer<T> {
 
     /// If the asset kind is owned, then the `amount` of funds is reserved on the bridge account.
     pub fn prepare(&self) -> Result<(), DispatchError> {
+        let generic_network_id =
+            GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
+        let asset_kind = if self.asset_kind.is_owned() {
+            bridge_types::types::AssetKind::Thischain
+        } else {
+            bridge_types::types::AssetKind::Sidechain
+        };
+        T::BridgeAssetLockChecker::before_asset_unlock(
+            generic_network_id,
+            asset_kind,
+            &self.asset_id,
+            &self.amount,
+        )?;
         if self.asset_kind.is_owned() {
             let bridge_account = get_bridge_account::<T>(self.network_id);
             Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)?;

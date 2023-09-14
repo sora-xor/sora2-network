@@ -38,7 +38,7 @@ use frame_support::weights::constants::BlockExecutionWeight;
 use frame_support::weights::Weight;
 #[cfg(feature = "ready-to-test")]
 use frame_support::{
-    dispatch::{DispatchInfo, Dispatchable, PostDispatchInfo},
+    dispatch::{DispatchInfo, Dispatchable, GetDispatchInfo, PostDispatchInfo},
     traits::Contains,
     RuntimeDebug,
 };
@@ -273,7 +273,7 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
         self,
         origin: Self::RuntimeOrigin,
     ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
-        frame_support::log::info!("Dispatching SubstrateBridgeCall: {:?}", self.0);
+        frame_support::log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
         match self.0 {
             bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
                 let call: substrate_bridge_app::Call<crate::Runtime> = msg.into();
@@ -290,6 +290,27 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 let call: multisig_verifier::Call<crate::Runtime> = msg.into();
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "ready-to-test")] // Substrate bridge
+impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
+    fn get_dispatch_info(&self) -> DispatchInfo {
+        match &self.0 {
+            bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
+                let call: substrate_bridge_app::Call<crate::Runtime> = msg.clone().into();
+                call.get_dispatch_info()
+            }
+            bridge_types::substrate::BridgeCall::XCMApp(_msg) => unimplemented!(),
+            bridge_types::substrate::BridgeCall::DataSigner(msg) => {
+                let call: bridge_data_signer::Call<crate::Runtime> = msg.clone().into();
+                call.get_dispatch_info()
+            }
+            bridge_types::substrate::BridgeCall::MultisigVerifier(msg) => {
+                let call: multisig_verifier::Call<crate::Runtime> = msg.clone().into();
+                call.get_dispatch_info()
             }
         }
     }
@@ -397,13 +418,20 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
 #[cfg(feature = "ready-to-test")] // EVM bridge
 pub struct EVMBridgeCallFilter;
 
-#[cfg(feature = "ready-to-test")] // EVM bridge
+#[cfg(all(feature = "ready-to-test", not(feature = "runtime-benchmarks")))] // EVM bridge
 impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
     fn contains(call: &crate::RuntimeCall) -> bool {
         match call {
             crate::RuntimeCall::ERC20App(_) | crate::RuntimeCall::EthApp(_) => true,
             _ => false,
         }
+    }
+}
+
+#[cfg(all(feature = "ready-to-test", feature = "runtime-benchmarks"))] // EVM bridge
+impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
+    fn contains(_call: &crate::RuntimeCall) -> bool {
+        true
     }
 }
 
