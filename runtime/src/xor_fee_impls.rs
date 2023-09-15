@@ -1,5 +1,6 @@
 use core::cmp::{Eq, PartialEq};
 use pallet_utility::Call as UtilityCall;
+use sp_runtime::traits::Zero;
 use sp_runtime::DispatchResult;
 
 use crate::*;
@@ -73,8 +74,10 @@ impl CustomFees {
                 swap_batches
                     .iter()
                     .map(|x| x.receivers.len() as Balance)
-                    .sum::<Balance>()
-                    * SMALL_FEE,
+                    .fold(Balance::zero(), |acc, x| {
+                        acc.saturating_add(x.saturating_mul(SMALL_FEE))
+                    })
+                    .max(SMALL_FEE),
             ),
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
