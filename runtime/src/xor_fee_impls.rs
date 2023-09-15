@@ -74,9 +74,8 @@ impl CustomFees {
                 swap_batches
                     .iter()
                     .map(|x| x.receivers.len() as Balance)
-                    .fold(Balance::zero(), |acc, x| {
-                        acc.saturating_add(x.saturating_mul(SMALL_FEE))
-                    })
+                    .fold(Balance::zero(), |acc, x| acc.saturating_add(x))
+                    .saturating_mul(SMALL_FEE)
                     .max(SMALL_FEE),
             ),
             RuntimeCall::Assets(assets::Call::register { .. })
