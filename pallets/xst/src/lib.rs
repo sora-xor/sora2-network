@@ -57,7 +57,8 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SwapChunk, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    Rate, RewardReason, SwapChunk, SyntheticInfoProvider, TradingPairSourceManager,
+    LIQUIDITY_SAMPLES_COUNT, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
@@ -65,6 +66,7 @@ use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::collections::vec_deque::VecDeque;
@@ -1094,8 +1096,48 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
-        // todo (m.tagirov) 447
-        todo!()
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            fail!(Error::<T>::CantExchange);
+        }
+        if amount.amount().is_zero() {
+            return Ok(VecDeque::new());
+        }
+
+        let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
+        let (mut input_amount, mut output_amount, _fee_amount) =
+            if input_asset_id == synthetic_base_asset_id {
+                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, false, false)?
+            } else {
+                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, false, false)?
+            };
+
+        let limit = T::GetSyntheticBaseBuySellLimit::get();
+        let price = FixedWrapper::from(output_amount) / FixedWrapper::from(input_amount);
+
+        if input_asset_id == synthetic_base_asset_id {
+            if input_amount > limit {
+                input_amount = limit;
+                output_amount = (FixedWrapper::from(input_amount) * price)
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+            }
+        } else {
+            if output_amount > limit {
+                output_amount = limit;
+                input_amount = (FixedWrapper::from(output_amount) / price)
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+            }
+        }
+
+        let input_step = input_amount
+            .checked_div(LIQUIDITY_SAMPLES_COUNT as Balance)
+            .ok_or(Error::<T>::PriceCalculationFailed)?;
+        let output_step = output_amount
+            .checked_div(LIQUIDITY_SAMPLES_COUNT as Balance)
+            .ok_or(Error::<T>::PriceCalculationFailed)?;
+
+        Ok(vec![SwapChunk::new(input_step, output_step); LIQUIDITY_SAMPLES_COUNT].into())
     }
 
     fn exchange(

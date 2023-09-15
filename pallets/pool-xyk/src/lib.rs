@@ -475,7 +475,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let step = amount
             .amount()
-            .checked_div(LIQUIDITY_SAMPLES_COUNT)
+            .checked_div(LIQUIDITY_SAMPLES_COUNT as Balance)
             .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
 
         let mut chunks = VecDeque::new();
@@ -485,7 +485,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             QuoteAmount::WithDesiredInput { .. } => {
                 for i in 1..=LIQUIDITY_SAMPLES_COUNT {
                     let volume = step
-                        .checked_mul(i)
+                        .checked_mul(i as Balance)
                         .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
 
                     let (calculated, _fee) = Pallet::<T>::calc_output_for_exact_input(
@@ -505,7 +505,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             QuoteAmount::WithDesiredOutput { .. } => {
                 for i in 1..=LIQUIDITY_SAMPLES_COUNT {
                     let volume = step
-                        .checked_mul(i)
+                        .checked_mul(i as Balance)
                         .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
 
                     let (calculated, _fee) = Pallet::<T>::calc_input_for_exact_output(
