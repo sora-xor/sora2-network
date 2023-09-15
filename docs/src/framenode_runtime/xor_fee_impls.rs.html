@@ -439,8 +439,11 @@
 <a href="#424" id="424">424</a>
 <a href="#425" id="425">425</a>
 <a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::cmp::{Eq, PartialEq};
 <span class="kw">use </span>pallet_utility::Call <span class="kw">as </span>UtilityCall;
+<span class="kw">use </span>sp_runtime::traits::Zero;
 <span class="kw">use </span>sp_runtime::DispatchResult;
 
 <span class="kw">use crate</span>::<span class="kw-2">*</span>;
@@ -514,8 +517,9 @@
                 swap_batches
                     .iter()
                     .map(|x| x.receivers.len() <span class="kw">as </span>Balance)
-                    .sum::&lt;Balance&gt;()
-                    * SMALL_FEE,
+                    .fold(Balance::zero(), |acc, x| acc.saturating_add(x))
+                    .saturating_mul(SMALL_FEE)
+                    .max(SMALL_FEE),
             ),
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
