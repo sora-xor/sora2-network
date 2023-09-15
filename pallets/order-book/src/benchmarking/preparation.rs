@@ -18,7 +18,7 @@ use common::prelude::{BalanceUnit, QuoteAmount, Scalar};
 use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::debug;
 use frame_benchmarking::Zero;
-use frame_support::traits::Time;
+use frame_support::traits::{Get, Time};
 use frame_system::RawOrigin;
 use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion};
 use sp_std::collections::btree_map::BTreeMap;
@@ -806,6 +806,15 @@ impl<T: Config> FillSettings<T> {
             max_orders_per_user,
             max_expiring_orders_per_block,
         }
+    }
+
+    pub fn max() -> Self {
+        Self::new(
+            <T as Config>::MaxSidePriceCount::get(),
+            <T as Config>::MaxLimitOrdersForPrice::get(),
+            <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
+            <T as Config>::MaxExpiringOrdersPerBlock::get(),
+        )
     }
 }
 

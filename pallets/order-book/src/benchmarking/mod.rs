@@ -227,12 +227,7 @@ mod benchmarks_inner {
         }
 
         delete_orderbook {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(FillSettings::new(
-                <T as Config>::MaxSidePriceCount::get(),
-                <T as Config>::MaxLimitOrdersForPrice::get(),
-                <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
-                <T as Config>::MaxExpiringOrdersPerBlock::get()
-            ));
+            let order_book_id = prepare_delete_orderbook_benchmark::<T>(FillSettings::<T>::max());
         }: {
             OrderBookPallet::<T>::delete_orderbook(
                 RawOrigin::Root.into(),
@@ -319,12 +314,7 @@ mod benchmarks_inner {
 
         place_limit_order {
             let caller = alice::<T>();
-            let settings = FillSettings::new(
-                <T as Config>::MaxSidePriceCount::get(),
-                <T as Config>::MaxLimitOrdersForPrice::get(),
-                <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
-                <T as Config>::MaxExpiringOrdersPerBlock::get()
-            );
+            let settings = FillSettings::<T>::max();
             let (order_book_id, price, amount, side, lifespan) =
                 prepare_place_orderbook_benchmark::<T>(settings.clone(), caller.clone());
         }: {
@@ -382,12 +372,7 @@ mod benchmarks_inner {
 
         cancel_limit_order_first_expiration {
             let caller = alice::<T>();
-            let settings = FillSettings::<T>::new(
-                <T as Config>::MaxSidePriceCount::get(),
-                <T as Config>::MaxLimitOrdersForPrice::get(),
-                <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
-                <T as Config>::MaxExpiringOrdersPerBlock::get()
-            );
+            let settings = FillSettings::<T>::max();
             let (order_book_id, order_id) = prepare_cancel_orderbook_benchmark(settings, caller.clone(), true);
             let order = OrderBookPallet::<T>::limit_orders::<_, T::OrderId>(order_book_id, order_id).unwrap();
             let balance_before =
@@ -418,12 +403,7 @@ mod benchmarks_inner {
 
         cancel_limit_order_last_expiration {
             let caller = alice::<T>();
-            let settings = FillSettings::<T>::new(
-                <T as Config>::MaxSidePriceCount::get(),
-                <T as Config>::MaxLimitOrdersForPrice::get(),
-                <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
-                <T as Config>::MaxExpiringOrdersPerBlock::get()
-            );
+            let settings = FillSettings::<T>::max();
             let (order_book_id, order_id) =
                 prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);
             let order =
@@ -460,12 +440,7 @@ mod benchmarks_inner {
 
         execute_market_order {
             let caller = alice::<T>();
-            let settings = FillSettings::<T>::new(
-                <T as Config>::MaxSidePriceCount::get(),
-                <T as Config>::MaxLimitOrdersForPrice::get(),
-                <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
-                <T as Config>::MaxExpiringOrdersPerBlock::get()
-            );
+            let settings = FillSettings::<T>::max();
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings.clone(), caller.clone(), false);
             let caller_base_balance =
@@ -507,12 +482,7 @@ mod benchmarks_inner {
         }
 
         quote {
-            let settings = FillSettings::<T>::new(
-                <T as Config>::MaxSidePriceCount::get(),
-                <T as Config>::MaxLimitOrdersForPrice::get(),
-                <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
-                <T as Config>::MaxExpiringOrdersPerBlock::get()
-            );
+            let settings = FillSettings::<T>::max();
             let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
                 prepare_quote_benchmark::<T>(settings);
         }: {
@@ -531,12 +501,7 @@ mod benchmarks_inner {
 
         exchange {
             let caller = alice::<T>();
-            let settings = FillSettings::<T>::new(
-                <T as Config>::MaxSidePriceCount::get(),
-                <T as Config>::MaxLimitOrdersForPrice::get(),
-                <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
-                <T as Config>::MaxExpiringOrdersPerBlock::get()
-            );
+            let settings = FillSettings::<T>::max();
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings.clone(), caller.clone(), true);
             let caller_base_balance =
@@ -1701,9 +1666,10 @@ mod tests {
     use crate::test_utils::{
         create_empty_order_book, pretty_print_expirations, pretty_print_order_book, run_to_block,
     };
+
     use frame_support::assert_ok;
 
-    use crate::benchmarking::preparation::prepare_market_order_benchmark;
+    use crate::benchmarking::preparation::{prepare_market_order_benchmark, FillSettings};
     use common::prelude::SwapAmount;
     use common::{balance, PriceVariant};
     use frame_support::traits::Time;
@@ -1729,13 +1695,8 @@ mod tests {
             let mut order_book = create_empty_order_book(order_book_id);
             let mut data_layer =
                 framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
-            // let settings = FillSettings::new(
-            //     <Runtime as Config>::MaxSidePriceCount::get(),
-            //     <Runtime as Config>::MaxLimitOrdersForPrice::get(),
-            //     <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get(),
-            //     <Runtime as Config>::MaxExpiringOrdersPerBlock::get(),
-            // );
-            let settings = preset_16::<Runtime>();
+            // let settings = preset_16::<Runtime>();
+            let settings = FillSettings::<Runtime>::max();
             let _ =
                 fill_order_book_worst_case(settings, &mut order_book, &mut data_layer, true, true);
             <OrderBooks<Runtime>>::insert(order_book_id, order_book);
@@ -1743,10 +1704,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // slow
     fn test_benchmark_delete_orderbook() {
         ext().execute_with(|| {
-            let settings = preset_16::<Runtime>();
+            // let settings = preset_16::<Runtime>();
+            let settings = FillSettings::<Runtime>::max();
             let order_book_id = prepare_delete_orderbook_benchmark::<Runtime>(settings.clone());
             let mut data_layer =
                 framenode_runtime::order_book::storage_data_layer::StorageDataLayer::<Runtime>::new(
@@ -1782,7 +1743,8 @@ mod tests {
     #[test]
     fn test_benchmark_place() {
         ext().execute_with(|| {
-            let settings = preset_16::<Runtime>();
+            // let settings = preset_16::<Runtime>();
+            let settings = FillSettings::<Runtime>::max();
             let caller = alice::<Runtime>();
             let (order_book_id, price, amount, side, lifespan) =
                 prepare_place_orderbook_benchmark(settings.clone(), caller.clone());
@@ -1837,8 +1799,8 @@ mod tests {
     #[test]
     fn test_benchmark_cancel() {
         ext().execute_with(|| {
-            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            let settings = preset_16::<Runtime>();
+            // let settings = preset_16::<Runtime>();
+            let settings = FillSettings::<Runtime>::max();
             let caller = alice::<Runtime>();
             let (order_book_id, order_id) =
                 prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);
@@ -1863,8 +1825,8 @@ mod tests {
         ext().execute_with(|| {
             use common::LiquiditySource;
 
-            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            let settings = preset_16::<Runtime>();
+            // let settings = preset_16::<Runtime>();
+            let settings = FillSettings::<Runtime>::max();
             let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
                 prepare_quote_benchmark::<Runtime>(settings);
             let _order_book_id = OrderBookId {
@@ -1889,8 +1851,8 @@ mod tests {
         ext().execute_with(|| {
             use common::LiquiditySource;
 
-            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            let settings = preset_16::<Runtime>();
+            // let settings = preset_16::<Runtime>();
+            let settings = FillSettings::<Runtime>::max();
             let caller = alice::<Runtime>();
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings.clone(), caller.clone(), true);
@@ -1912,8 +1874,8 @@ mod tests {
     #[test]
     fn test_benchmark_execute_market_order() {
         ext().execute_with(|| {
-            // let settings = FillSettings::<Runtime>::new(2, 2, 3, 2);
-            let settings = preset_16::<Runtime>();
+            // let settings = preset_16::<Runtime>();
+            let settings = FillSettings::<Runtime>::max();
             let caller = alice::<Runtime>();
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings, caller.clone(), false);
