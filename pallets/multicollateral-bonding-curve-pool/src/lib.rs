@@ -56,7 +56,7 @@ use common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
     LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
     ManagementMode, PriceVariant, RewardReason, SwapChunk, TradingPairSourceManager,
-    VestedRewardsPallet, PSWAP, TBCD, VAL, XOR, XST,
+    VestedRewardsPallet, LIQUIDITY_SAMPLES_COUNT, PSWAP, TBCD, VAL, XOR, XST,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -1595,8 +1595,46 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
-        // todo (m.tagirov) 447
-        todo!()
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            fail!(Error::<T>::CantExchange);
+        }
+        if amount.amount().is_zero() {
+            return Ok(VecDeque::new());
+        }
+
+        let base_asset_id = &T::GetBaseAssetId::get();
+
+        let step = amount
+            .amount()
+            .checked_div(LIQUIDITY_SAMPLES_COUNT as Balance)
+            .ok_or(Error::<T>::ArithmeticError)?;
+
+        let mut chunks = VecDeque::new();
+        let mut sub_in = Balance::zero();
+        let mut sub_out = Balance::zero();
+
+        for i in 1..=LIQUIDITY_SAMPLES_COUNT {
+            let volume = amount.copy_direction(
+                step.checked_mul(i as Balance)
+                    .ok_or(Error::<T>::ArithmeticError)?,
+            );
+
+            let (input_amount, output_amount, _fee_amount) = if input_asset_id == base_asset_id {
+                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, volume, false)?
+            } else {
+                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, volume, false)?
+            };
+
+            let input_chunk = input_amount.saturating_sub(sub_in);
+            let output_chunk = output_amount.saturating_sub(sub_out);
+
+            sub_in = input_amount;
+            sub_out = output_amount;
+
+            chunks.push_back(SwapChunk::new(input_chunk, output_chunk));
+        }
+
+        Ok(chunks)
     }
 
     fn exchange(

@@ -40,7 +40,7 @@ mod tests {
         fixnum::ops::Zero as _,
         prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome},
         AssetInfoProvider, AssetName, AssetSymbol, DEXId, Fixed, LiquidityProxyTrait,
-        LiquiditySource, LiquiditySourceFilter, PriceVariant, TechPurpose, DAI,
+        LiquiditySource, LiquiditySourceFilter, PriceVariant, SwapChunk, TechPurpose, DAI,
         DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
     };
     use frame_support::assert_err;
@@ -49,6 +49,7 @@ mod tests {
     use frame_support::traits::OnInitialize;
     use sp_arithmetic::traits::Zero;
     use sp_runtime::DispatchError;
+    use sp_std::collections::vec_deque::VecDeque;
 
     type MBCPool = Pallet<Runtime>;
 
@@ -3865,6 +3866,267 @@ mod tests {
                 balance!(1558.966302104893601417)
             );
             assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
+        });
+    }
+
+    #[test]
+    fn check_empty_step_quote() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                DAI,
+                balance!(0),
+                AssetSymbol(b"DAI".to_vec()),
+                AssetName(b"DAI".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                USDT,
+                balance!(0),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XOR,
+                balance!(0),
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                VAL,
+                balance!(200000),
+                AssetSymbol(b"VAL".to_vec()),
+                AssetName(b"SORA Validator Token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XSTUSD,
+                0,
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(
+                RuntimeOrigin::signed(alice()),
+                DEXId::Polkaswap.into(),
+                XOR,
+                VAL,
+            )
+            .expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            assert_eq!(
+                MBCPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XOR,
+                    &VAL,
+                    QuoteAmount::with_desired_input(balance!(0))
+                )
+                .unwrap(),
+                VecDeque::new()
+            );
+
+            assert_eq!(
+                MBCPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XOR,
+                    &VAL,
+                    QuoteAmount::with_desired_output(balance!(0))
+                )
+                .unwrap(),
+                VecDeque::new()
+            );
+
+            assert_eq!(
+                MBCPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &VAL,
+                    &XOR,
+                    QuoteAmount::with_desired_input(balance!(0))
+                )
+                .unwrap(),
+                VecDeque::new()
+            );
+
+            assert_eq!(
+                MBCPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &VAL,
+                    &XOR,
+                    QuoteAmount::with_desired_output(balance!(0))
+                )
+                .unwrap(),
+                VecDeque::new()
+            );
+        });
+    }
+
+    #[test]
+    fn check_step_quote() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                DAI,
+                balance!(0),
+                AssetSymbol(b"DAI".to_vec()),
+                AssetName(b"DAI".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                USDT,
+                balance!(0),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XOR,
+                balance!(0),
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                VAL,
+                balance!(200000),
+                AssetSymbol(b"VAL".to_vec()),
+                AssetName(b"SORA Validator Token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XSTUSD,
+                0,
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(
+                RuntimeOrigin::signed(alice()),
+                DEXId::Polkaswap.into(),
+                XOR,
+                VAL,
+            )
+            .expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            assert_eq!(
+                MBCPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &VAL,
+                    &XOR,
+                    QuoteAmount::with_desired_input(balance!(100))
+                )
+                .unwrap(),
+                VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(1.814079625905152404)),
+                    SwapChunk::new(balance!(10), balance!(1.814070668767458329)),
+                    SwapChunk::new(balance!(10), balance!(1.814061711762435693)),
+                    SwapChunk::new(balance!(10), balance!(1.814052754890087845)),
+                    SwapChunk::new(balance!(10), balance!(1.814043798150411458)),
+                    SwapChunk::new(balance!(10), balance!(1.814034841543403386)),
+                    SwapChunk::new(balance!(10), balance!(1.814025885069060194)),
+                    SwapChunk::new(balance!(10), balance!(1.814016928727378736)),
+                    SwapChunk::new(balance!(10), balance!(1.814007972518355685)),
+                    SwapChunk::new(balance!(10), balance!(1.813999016441987786)),
+                ])
+            );
+
+            assert_eq!(
+                MBCPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &VAL,
+                    &XOR,
+                    QuoteAmount::with_desired_output(balance!(100))
+                )
+                .unwrap(),
+                VecDeque::from([
+                    SwapChunk::new(balance!(55.124986027641638452), balance!(10)),
+                    SwapChunk::new(balance!(55.126486415116703889), balance!(10)),
+                    SwapChunk::new(balance!(55.127986802591769324), balance!(10)),
+                    SwapChunk::new(balance!(55.129487190066834760), balance!(10)),
+                    SwapChunk::new(balance!(55.130987577541900196), balance!(10)),
+                    SwapChunk::new(balance!(55.132487965016965631), balance!(10)),
+                    SwapChunk::new(balance!(55.133988352492031067), balance!(10)),
+                    SwapChunk::new(balance!(55.135488739967096503), balance!(10)),
+                    SwapChunk::new(balance!(55.136989127442161938), balance!(10)),
+                    SwapChunk::new(balance!(55.138489514917227373), balance!(10)),
+                ])
+            );
+
+            // to fill reserves
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(7000), Balance::zero()),
+            )
+            .unwrap();
+
+            assert_eq!(
+                MBCPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XOR,
+                    &VAL,
+                    QuoteAmount::with_desired_input(balance!(100))
+                )
+                .unwrap(),
+                VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(43.904162265615428784)),
+                    SwapChunk::new(balance!(10), balance!(43.221097702920335502)),
+                    SwapChunk::new(balance!(10), balance!(42.553850855426252604)),
+                    SwapChunk::new(balance!(10), balance!(41.901937076677897369)),
+                    SwapChunk::new(balance!(10), balance!(41.264890140760950125)),
+                    SwapChunk::new(balance!(10), balance!(40.642261408482453968)),
+                    SwapChunk::new(balance!(10), balance!(40.033619037255543993)),
+                    SwapChunk::new(balance!(10), balance!(39.438547232089968657)),
+                    SwapChunk::new(balance!(10), balance!(38.856645535262398030)),
+                    SwapChunk::new(balance!(10), balance!(38.287528152400410951)),
+                ])
+            );
+
+            assert_eq!(
+                MBCPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XOR,
+                    &VAL,
+                    QuoteAmount::with_desired_output(balance!(100))
+                )
+                .unwrap(),
+                VecDeque::from([
+                    SwapChunk::new(balance!(2.263873863894484038), balance!(10)),
+                    SwapChunk::new(balance!(2.271988107134249214), balance!(10)),
+                    SwapChunk::new(balance!(2.280146053658968243), balance!(10)),
+                    SwapChunk::new(balance!(2.288348017880763091), balance!(10)),
+                    SwapChunk::new(balance!(2.296594317044297374), balance!(10)),
+                    SwapChunk::new(balance!(2.304885271257453681), balance!(10)),
+                    SwapChunk::new(balance!(2.313221203522399264), balance!(10)),
+                    SwapChunk::new(balance!(2.321602439767045639), balance!(10)),
+                    SwapChunk::new(balance!(2.330029308876907873), balance!(10)),
+                    SwapChunk::new(balance!(2.338502142727369357), balance!(10)),
+                ])
+            );
         });
     }
 }
