@@ -49,6 +49,10 @@ use crate::{
     ExpirationScheduler, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
     OrderBookStatus, OrderBooks, OrderVolume, Pallet,
 };
+use assets::AssetIdOf;
+use codec::Decode;
+use common::{DEXId, VAL, XOR};
+use frame_system::EventRecord;
 #[allow(unused)]
 #[cfg(test)]
 use framenode_runtime::order_book::{
@@ -56,11 +60,6 @@ use framenode_runtime::order_book::{
     ExpirationScheduler, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
     OrderBookStatus, OrderBooks, OrderVolume, Pallet,
 };
-
-use assets::AssetIdOf;
-use codec::Decode;
-use common::{DEXId, VAL, XOR};
-use frame_system::EventRecord;
 use hex_literal::hex;
 
 use Pallet as OrderBookPallet;
@@ -227,6 +226,8 @@ mod benchmarks_inner {
         }
 
         delete_orderbook {
+            // https://github.com/paritytech/polkadot-sdk/issues/383
+            frame_system::Pallet::<T>::set_block_number(1u32.into());
             let order_book_id = prepare_delete_orderbook_benchmark::<T>(FillSettings::<T>::max());
         }: {
             OrderBookPallet::<T>::delete_orderbook(
@@ -313,6 +314,8 @@ mod benchmarks_inner {
         }
 
         place_limit_order {
+            // https://github.com/paritytech/polkadot-sdk/issues/383
+            frame_system::Pallet::<T>::set_block_number(1u32.into());
             let caller = alice::<T>();
             let settings = FillSettings::<T>::max();
             let (order_book_id, price, amount, side, lifespan) =
@@ -329,7 +332,6 @@ mod benchmarks_inner {
         }
         verify {
             let order_id = get_last_order_id::<T>(order_book_id).unwrap();
-
             assert_orders_numbers::<T>(
                 order_book_id,
                 Some(0),
@@ -371,6 +373,8 @@ mod benchmarks_inner {
         }
 
         cancel_limit_order_first_expiration {
+            // https://github.com/paritytech/polkadot-sdk/issues/383
+            frame_system::Pallet::<T>::set_block_number(1u32.into());
             let caller = alice::<T>();
             let settings = FillSettings::<T>::max();
             let (order_book_id, order_id) = prepare_cancel_orderbook_benchmark(settings, caller.clone(), true);
@@ -402,6 +406,8 @@ mod benchmarks_inner {
         }
 
         cancel_limit_order_last_expiration {
+            // https://github.com/paritytech/polkadot-sdk/issues/383
+            frame_system::Pallet::<T>::set_block_number(1u32.into());
             let caller = alice::<T>();
             let settings = FillSettings::<T>::max();
             let (order_book_id, order_id) =
@@ -439,6 +445,8 @@ mod benchmarks_inner {
         }
 
         execute_market_order {
+            // https://github.com/paritytech/polkadot-sdk/issues/383
+            frame_system::Pallet::<T>::set_block_number(1u32.into());
             let caller = alice::<T>();
             let settings = FillSettings::<T>::max();
             let (order_book_id, amount) =
@@ -482,6 +490,8 @@ mod benchmarks_inner {
         }
 
         quote {
+            // https://github.com/paritytech/polkadot-sdk/issues/383
+            frame_system::Pallet::<T>::set_block_number(1u32.into());
             let settings = FillSettings::<T>::max();
             let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
                 prepare_quote_benchmark::<T>(settings);
@@ -500,6 +510,8 @@ mod benchmarks_inner {
         }
 
         exchange {
+            // https://github.com/paritytech/polkadot-sdk/issues/383
+            frame_system::Pallet::<T>::set_block_number(1u32.into());
             let caller = alice::<T>();
             let settings = FillSettings::<T>::max();
             let (order_book_id, amount) =
@@ -1676,10 +1688,12 @@ mod tests {
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
+    #[allow(unused)]
+    use preparation::presets::*;
     use preparation::{
         fill_order_book_worst_case, prepare_cancel_orderbook_benchmark,
         prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark,
-        prepare_quote_benchmark, presets::*,
+        prepare_quote_benchmark,
     };
 
     #[test]
