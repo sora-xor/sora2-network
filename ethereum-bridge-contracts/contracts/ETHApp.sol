@@ -16,7 +16,7 @@ contract ETHApp is GenericApp, IEthTokenReceiver {
 
     bytes2 constant MINT_CALL = 0x0201;
 
-    constructor(address inboundChannel) GenericApp(inboundChannel) {}
+    constructor(address channelHandler) GenericApp(channelHandler) {}
 
     fallback() external {
         revert();

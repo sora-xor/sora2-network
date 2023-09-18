@@ -36,10 +36,10 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
     event MigratedAssets(address contractAddress);
 
     constructor(
-        address _inbound,
+        address channelHandler,
         address[] memory evmAssets,
         address[] memory soraAssets
-    ) GenericApp(_inbound) {
+    ) GenericApp(channelHandler) {
         for (uint256 i = 0; i < evmAssets.length; i++) {
             tokens[evmAssets[i]] = AssetType.Evm;
         }
