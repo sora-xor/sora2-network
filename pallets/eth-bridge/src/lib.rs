@@ -1933,4 +1933,16 @@ impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pal
         }
         apps
     }
+
+    fn transfer_weight() -> Weight {
+        Default::default()
+    }
+
+    fn refund_weight() -> Weight {
+        Default::default()
+    }
+
+    fn is_asset_supported_weight() -> Weight {
+        Default::default()
+    }
 }

@@ -672,5 +672,17 @@ pub mod pallet {
                 })
                 .collect()
         }
+
+        fn transfer_weight() -> Weight {
+            Default::default()
+        }
+
+        fn refund_weight() -> Weight {
+            Default::default()
+        }
+
+        fn is_asset_supported_weight() -> Weight {
+            Default::default()
+        }
     }
 }
