@@ -1,4 +1,4 @@
-@Library('jenkins-library') _
+@Library('jenkins-library@feature/DOPS-2746/rust_sonar_dojo_slither') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
@@ -11,6 +11,9 @@ def pipeline = new org.rust.AppPipeline(steps: this,
       cargoClippyCmds: ['housekeeping/clippy.sh'],
       buildTestCmds: ['housekeeping/build.sh'],
       buildArtifacts: 'framenode_runtime.compact.compressed.wasm, subwasm_report.json, pallet_list.txt',
-      pushToPublicRegistry: true
+      pushToPublicRegistry: true,
+      sonarProjectKey: 'sora:sora2-network',
+      sonarProjectName: 'sora2-network',
+      dojoProductType: 'sora'
 )
 pipeline.runPipeline()
