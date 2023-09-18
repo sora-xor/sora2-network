@@ -3,6 +3,7 @@ use crate::{
 };
 use alloc::string::String;
 use codec::{Decode, Encode};
+use common::BoundedString;
 use frame_support::dispatch::Weight;
 use frame_support::log;
 use frame_support::traits::Get;
@@ -54,7 +55,7 @@ pub fn migrate_voting_and_poll_data<T: Config>() -> Weight {
             }
 
             Some(HermesVotingInfo {
-                voting_option: new_voting_option.try_into().unwrap(),
+                voting_option: BoundedString::truncate_from(new_voting_option),
                 number_of_hermes,
                 hermes_withdrawn,
             })
@@ -65,16 +66,16 @@ pub fn migrate_voting_and_poll_data<T: Config>() -> Weight {
         weight += 1;
 
         let mut options = BoundedVec::default();
-        options.try_push("Yes".try_into().unwrap()).unwrap();
-        options.try_push("No".try_into().unwrap()).unwrap();
+        options.try_push(BoundedString::truncate_from("Yes")).ok()?;
+        options.try_push(BoundedString::truncate_from("No")).ok()?;
 
         Some(HermesPollInfo {
             creator: v.creator,
             hermes_locked: v.hermes_locked,
             poll_start_timestamp: v.poll_start_timestamp,
             poll_end_timestamp: v.poll_end_timestamp,
-            title: v.title.as_str().try_into().unwrap(),
-            description: v.description.as_str().try_into().unwrap(),
+            title: BoundedString::truncate_from(v.title.as_str()),
+            description: BoundedString::truncate_from(v.description.as_str()),
             creator_hermes_withdrawn: v.creator_hermes_withdrawn,
             options,
         })

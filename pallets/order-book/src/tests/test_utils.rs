@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "ready-to-test")] // order-book
+#![cfg(feature = "wip")] // order-book
 
 use assets::AssetIdOf;
 use common::{balance, AssetInfoProvider, Balance, PriceVariant};

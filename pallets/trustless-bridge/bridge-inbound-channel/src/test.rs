@@ -176,6 +176,15 @@ impl Verifier for MockVerifier {
     fn verify(_: GenericNetworkId, _: H256, _: &Self::Proof) -> DispatchResult {
         Ok(())
     }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof> {
+        None
+    }
+
+    fn verify_weight(_proof: &Self::Proof) -> frame_support::weights::Weight {
+        Default::default()
+    }
 }
 
 // Mock Dispatch
@@ -198,6 +207,10 @@ impl MessageDispatch<Test, EVMChainId, MessageId, AdditionalEVMInboundData>
         _: MessageId,
     ) -> Option<<Test as frame_system::Config>::RuntimeEvent> {
         None
+    }
+
+    fn dispatch_weight(_payload: &[u8]) -> frame_support::weights::Weight {
+        Default::default()
     }
 }
 
@@ -271,6 +284,10 @@ impl<AccountId> OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData
         _: AdditionalEVMOutboundData,
     ) -> Result<H256, DispatchError> {
         Ok(Default::default())
+    }
+
+    fn submit_weight() -> frame_support::weights::Weight {
+        Default::default()
     }
 }
 

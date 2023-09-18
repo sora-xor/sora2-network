@@ -216,7 +216,7 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
 
-    #[cfg(feature = "ready-to-test")] // order-book
+    #[cfg(feature = "wip")] // order-book
     type OrderBook = ();
 }
 

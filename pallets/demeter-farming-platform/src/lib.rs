@@ -793,10 +793,7 @@ pub mod pallet {
             let mut exist = false;
 
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed
-                    && p_info.is_farm == is_farm
-                    && p_info.base_asset == base_asset
-                {
+                if p_info.is_farm == is_farm && p_info.base_asset == base_asset {
                     exist = true;
                     old_multiplier = p_info.multiplier;
                     p_info.multiplier = new_multiplier;
