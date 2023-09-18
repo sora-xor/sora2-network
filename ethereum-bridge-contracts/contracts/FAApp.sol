@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "./MasterToken.sol";
 import "./interfaces/IFAReceiver.sol";
 import "./GenericApp.sol";
+import {InvalidAmount, Unregistered, AlreadyRegistered, InvalidRecipient, InvalidLength, InvalidContract} from "./Error.sol";
 
 contract FAApp is ERC165, GenericApp, IFAReceiver {
     using SafeERC20 for IERC20;
@@ -69,7 +70,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
             MasterToken(token).burnFrom(msg.sender, amount);
             transferredAmount = amount;
         } else {
-            revert UnregisteredAsset();
+            revert Unregistered();
         }
 
         emit Locked(token, msg.sender, recipient, transferredAmount, asset);
@@ -99,7 +100,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
         } else if (asset == AssetType.Sora) {
             MasterToken(token).mintTokens(msg.sender, amount);
         } else {
-            revert UnregisteredAsset();
+            revert Unregistered();
         }
         emit Unlocked(token, sender, recipient, amount, asset);
     }
@@ -153,7 +154,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
         address token,
         AssetType assetType
     ) external onlyRole(INBOUND_CHANNEL_ROLE) {
-        if (tokens[token] != AssetType.Unregistered) revert RegisteredAsset();
+        if (tokens[token] != AssetType.Unregistered) revert AlreadyRegistered();
         tokens[token] = assetType;
     }
 
@@ -164,7 +165,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
     function removeTokenFromWhitelist(
         address token
     ) external onlyRole(INBOUND_CHANNEL_ROLE) {
-        if (tokens[token] == AssetType.Unregistered) revert UnregisteredAsset();
+        if (tokens[token] == AssetType.Unregistered) revert Unregistered();
         tokens[token] = AssetType.Unregistered;
     }
 
@@ -174,7 +175,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
         AssetType[] calldata assetType
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         uint256 length = assets.length;
-        if(length != assetType.length) revert AssetLengthMismatch();
+        if (length != assetType.length) revert InvalidLength();
         if (
             !IERC165(contractAddress).supportsInterface(
                 type(IFAReceiver).interfaceId
@@ -192,7 +193,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
                 // slither-disable-next-line calls-loop
                 MasterToken(assets[i]).transferOwnership(contractAddress);
             } else {
-                revert UnregisteredAsset();
+                revert Unregistered();
             }
         }
         emit MigratedAssets(contractAddress);

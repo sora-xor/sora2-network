@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./interfaces/IChannelHandler.sol";
+import {InvalidPeersCount, InvalidLength, InvalidNonce, InvalidSignature, InsufficientGas, AlreadyRegistered, Unregistered, InvalidCaller, LastPeer, SignaturesNotEnough, SigParamsLengthMismatch} from "./Error.sol";
 
 /**
  * @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken
@@ -50,7 +51,7 @@ contract ChannelHandler is Ownable, ReentrancyGuard, IChannelHandler {
     ) external nonReentrant {
         uint256 begin_gas_left = gasleft();
         if (peersCount < 1) revert InvalidPeersCount();
-        if (batch.messages.length >= 256) revert InvalidMessagesLength();
+        if (batch.messages.length >= 256) revert InvalidLength();
         batch_nonce = batch_nonce + 1;
         // Check batch nonce is correct for replay protection
         if (batch.nonce != batch_nonce) revert InvalidNonce();
@@ -60,9 +61,7 @@ contract ChannelHandler is Ownable, ReentrancyGuard, IChannelHandler {
         // appropriate, and `total_max_gas` = `sum(max_gas)`)
 
         bytes32 commitment = keccak256(abi.encode(batch));
-        bytes32 digestHash = keccak256(
-            abi.encode(block.chainid, commitment)
-        );
+        bytes32 digestHash = keccak256(abi.encode(block.chainid, commitment));
 
         if (!verifySignatures(digestHash, v, r, s)) revert InvalidSignature();
         // Require there is enough gas to execute all messages
@@ -93,10 +92,7 @@ contract ChannelHandler is Ownable, ReentrancyGuard, IChannelHandler {
         if (msg.sender != address(this)) revert InvalidCaller();
 
         //TODO set up call signature
-        bytes memory call = abi.encodePacked(
-            ADD_PEER_CALL,
-            newPeerAddress
-        );
+        bytes memory call = abi.encodePacked(ADD_PEER_CALL, newPeerAddress);
 
         addPeer(newPeerAddress);
         emit ChangePeers(newPeerAddress, false);
@@ -122,10 +118,7 @@ contract ChannelHandler is Ownable, ReentrancyGuard, IChannelHandler {
         if (msg.sender != address(this)) revert InvalidCaller();
 
         //TODO set up call signature
-        bytes memory call = abi.encodePacked(
-            REMOVE_PEER_CALL,
-            peerAddress
-        );
+        bytes memory call = abi.encodePacked(REMOVE_PEER_CALL, peerAddress);
 
         removePeer(peerAddress);
         emit ChangePeers(peerAddress, true);
@@ -152,7 +145,7 @@ contract ChannelHandler is Ownable, ReentrancyGuard, IChannelHandler {
     function removePeer(address peerAddress) private {
         if (!isPeer[peerAddress]) revert Unregistered();
         isPeer[peerAddress] = false;
-        if(--peersCount < 1) revert LastPeer();
+        if (--peersCount < 1) revert LastPeer();
     }
 
     /**
@@ -216,7 +209,7 @@ contract ChannelHandler is Ownable, ReentrancyGuard, IChannelHandler {
                     value: 0,
                     gas: messages[i].max_gas
                 }(messages[i].payload);
-            } 
+            }
             results |= uint256(success ? 1 : 0) << i;
         }
         return results;

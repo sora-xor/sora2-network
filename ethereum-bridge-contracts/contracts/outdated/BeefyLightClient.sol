@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../libraries/Bits.sol";
 import "../libraries/Bitfield.sol";
 import "../libraries/ScaleCodec.sol";
-import "../interfaces/ISimplifiedMMRProof.sol";
-import "../interfaces/ISimplifiedMMRVerification.sol";
+import "./ISimplifiedMMRProof.sol";
+import "./ISimplifiedMMRVerification.sol";
 import "../libraries/MerkleProof.sol";
 
 /**

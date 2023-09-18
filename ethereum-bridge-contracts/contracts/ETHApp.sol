@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import "./interfaces/IEthTokenReceiver.sol";
 import "./GenericApp.sol";
+import { InvalidAmount, InvalidRecipient, FailedCall } from "./Error.sol";
 
 /**
  * @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken
@@ -12,10 +13,6 @@ contract ETHApp is GenericApp, IEthTokenReceiver {
     event Locked(address sender, bytes32 recipient, uint256 amount);
     event Unlocked(bytes32 sender, address recipient, uint256 amount);
     event MigratedEth(address contractAddress);
-
-    error InvalidRecipient();
-    error InvalidAmount();
-    error FailedCall();
 
     bytes2 constant MINT_CALL = 0x0201;
 
