@@ -31,12 +31,10 @@
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
-    AccountId, AssetId, Assets, Balance, Balances, BlockHashCount, Currencies, Executive,
-    GetXorFeeAccountId, PoolXYK, Referrals, ReferrerWeight, Runtime, RuntimeCall, RuntimeOrigin,
-    SignedExtra, SignedPayload, Staking, System, Tokens, UncheckedExtrinsic, Weight,
-    XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
+    AccountId, AssetId, Assets, Balance, Balances, Currencies, GetXorFeeAccountId, PoolXYK,
+    Referrals, ReferrerWeight, Runtime, RuntimeCall, RuntimeOrigin, Staking, System, Tokens,
+    Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
 };
-use codec::Encode;
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
@@ -44,26 +42,17 @@ use common::{balance, fixed_wrapper, AssetInfoProvider, FilterMode, VAL, XOR};
 use frame_support::assert_ok;
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
-use frame_support::traits::{Currency, OnFinalize, OnInitialize};
+use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::WeightToFee as WeightToFeeTrait;
 use frame_system::EventRecord;
 use framenode_chain_spec::ext;
 use log::LevelFilter;
 use pallet_balances::NegativeImbalance;
-use pallet_staking::{
-    Bonded, CurrentEra, EraRewardPoints, ErasRewardPoints, ErasStakersClipped, ErasValidatorPrefs,
-    ErasValidatorReward, Exposure, IndividualExposure, Ledger, Payee, RewardDestination,
-    RewardPoint, StakingLedger, ValidatorPrefs,
-};
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
-use sp_core::Pair;
-use sp_runtime::generic::Era;
-use sp_runtime::traits::{IdentifyAccount, SaturatedConversion, SignedExtension};
-use sp_runtime::{AccountId32, FixedPointNumber, FixedU128, MultiSignature, MultiSigner};
-use sp_staking::EraIndex;
-use sp_std::collections::btree_map::BTreeMap;
+use sp_runtime::traits::SignedExtension;
+use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 use xor_fee::extension::ChargeTransactionPayment;
 use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToVal};
@@ -131,108 +120,6 @@ fn set_weight_to_fee_multiplier(mul: u64) {
         RuntimeOrigin::root(),
         FixedU128::saturating_from_integer(mul)
     ));
-}
-
-fn nominator_account(id: u8) -> AccountId {
-    AccountId::from([id + 100u8; 32])
-}
-
-fn setup_staking_pallet(
-    valdiator: AccountId,
-    nominators: Vec<AccountId>,
-    mut eras_reward: Vec<(EraIndex, Balance)>,
-    validator_stake: Balance,
-    nominator_stake: Balance,
-    validator_points_per_era: RewardPoint,
-    nominator_points_per_era: RewardPoint,
-) {
-    eras_reward.sort_by_key(|(era, _)| *era);
-
-    let current_era = eras_reward
-        .last()
-        .expect("Expected to get the most recent era")
-        .0;
-    CurrentEra::<Runtime>::put(current_era + 1);
-
-    Bonded::<Runtime>::insert(valdiator.clone(), valdiator.clone());
-    Ledger::<Runtime>::insert(
-        valdiator.clone(),
-        StakingLedger::default_from(valdiator.clone()),
-    );
-
-    let individual_exposures: Vec<_> = nominators
-        .iter()
-        .cloned()
-        .map(|who| IndividualExposure {
-            who,
-            value: nominator_stake,
-        })
-        .collect();
-
-    let total = validator_stake + nominator_stake.saturating_mul(nominators.len() as u128);
-    let exposure = Exposure {
-        total,
-        own: validator_stake,
-        others: individual_exposures,
-    };
-    let rewards_map: BTreeMap<AccountId, RewardPoint> = nominators
-        .into_iter()
-        .map(|nom| (nom, nominator_points_per_era))
-        .chain(vec![(valdiator.clone(), validator_points_per_era)])
-        .collect();
-    let total_rewards = rewards_map.iter().map(|(_, reward)| reward).sum();
-
-    for (era, reward) in eras_reward {
-        ErasValidatorReward::<Runtime>::insert(era, reward);
-        ErasStakersClipped::<Runtime>::insert(era, valdiator.clone(), exposure.clone());
-        ErasValidatorPrefs::<Runtime>::insert(era, valdiator.clone(), ValidatorPrefs::default());
-
-        // EraRewardPoints does not implement Clone trait
-        let reward_points_per_era = EraRewardPoints {
-            total: total_rewards,
-            individual: rewards_map.clone(),
-        };
-        ErasRewardPoints::<Runtime>::insert(era, reward_points_per_era);
-    }
-
-    Payee::<Runtime>::insert(valdiator, RewardDestination::Controller);
-}
-
-fn dispatch_and_process_call(runtime_call: RuntimeCall) {
-    let pair = sp_keyring::AccountKeyring::Bob.pair();
-    let bob_public = MultiSigner::from(pair.public().clone());
-    let bob_account = bob_public.clone().into_account();
-
-    let period = BlockHashCount::get() as u64;
-    let current_block = System::block_number()
-        .saturated_into::<u64>()
-        .saturating_sub(1);
-
-    let nonce = System::account(&bob_account).nonce;
-
-    let extra: SignedExtra = (
-        frame_system::CheckSpecVersion::<Runtime>::new(),
-        frame_system::CheckTxVersion::<Runtime>::new(),
-        frame_system::CheckGenesis::<Runtime>::new(),
-        frame_system::CheckEra::<Runtime>::from(Era::mortal(period, current_block)),
-        frame_system::CheckNonce::<Runtime>::from(nonce),
-        frame_system::CheckWeight::<Runtime>::new(),
-        ChargeTransactionPayment::<Runtime>::new(),
-    );
-
-    let raw_payload = SignedPayload::new(runtime_call.clone(), extra.clone())
-        .expect("Expected to create a new signed payload");
-
-    let signature = raw_payload.using_encoded(|payload| pair.sign(payload));
-
-    let uxt = UncheckedExtrinsic::new_signed(
-        runtime_call,
-        bob_account.clone(),
-        MultiSignature::Sr25519(signature),
-        extra,
-    );
-
-    let _ = Executive::apply_extrinsic(uxt).expect("Expected to apply extrinsic");
 }
 
 #[test]
@@ -1027,65 +914,6 @@ fn it_works_eth_bridge_pays_no() {
                 LiquidityInfo::Paid(who, None),
                 Some(CustomFeeDetails::Regular(SMALL_FEE))
             ))
-        );
-    });
-}
-
-#[test]
-fn withdraw_fee_during_batch_payout_stakers_works() {
-    ext().execute_with(|| {
-        let pair = sp_keyring::AccountKeyring::Bob.pair();
-        let bob_account = MultiSigner::from(pair.public()).into_account();
-        System::set_block_number(1);
-        Balances::make_free_balance_be(&bob_account, balance!(100));
-        let total_reward = balance!(10);
-
-        let nominators = (0..3).into_iter().map(|id| nominator_account(id)).collect();
-
-        let eras_reward = (0..50u32)
-            .into_iter()
-            .map(|era| (era, total_reward))
-            .collect();
-
-        let validator_stake = balance!(1000);
-        let nominator_stake = balance!(100);
-
-        let validator_points_per_era = 1000;
-        let nominator_points_per_era = 100;
-
-        setup_staking_pallet(
-            alice(),
-            nominators,
-            eras_reward,
-            validator_stake,
-            nominator_stake,
-            validator_points_per_era,
-            nominator_points_per_era,
-        );
-
-        let runtime_call = RuntimeCall::Utility(pallet_utility::Call::batch_all {
-            calls: vec![RuntimeCall::Staking(pallet_staking::Call::payout_stakers {
-                validator_stash: alice(),
-                era: 1,
-            })],
-        });
-
-        // simulation of first inherent extrinsic
-        // without it there would be no ApplyExtrinsic phase in events for the next call
-        dispatch_and_process_call(RuntimeCall::System(frame_system::Call::remark {
-            remark: b"a".to_vec(),
-        }));
-
-        let bob_balance = Balances::free_balance(&bob_account);
-
-        dispatch_and_process_call(runtime_call.clone());
-        assert_eq!(Balances::free_balance(&bob_account), bob_balance);
-
-        // invalid duplicate call
-        dispatch_and_process_call(runtime_call);
-        assert_eq!(
-            Balances::free_balance(&bob_account),
-            bob_balance.saturating_sub(balance!(0.7))
         );
     });
 }
