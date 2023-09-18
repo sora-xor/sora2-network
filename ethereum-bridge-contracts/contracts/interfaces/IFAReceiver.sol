@@ -2,6 +2,13 @@
 pragma solidity 0.8.15;
 
 interface IFAReceiver {
+    error InvalidRecipient();
+    error InvalidAmount();
+    error InvalidContract();
+    error UnregisteredAsset();
+    error RegisteredAsset();
+    error AssetLengthMismatch();
+
     enum AssetType {
         Unregistered,
         Evm,

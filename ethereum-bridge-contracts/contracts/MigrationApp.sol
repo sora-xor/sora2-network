@@ -11,29 +11,33 @@ import "./interfaces/IFAReceiver.sol";
 import "./interfaces/IEthTokenReceiver.sol";
 import "./GenericApp.sol";
 
-/** 
-* @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken 
-* into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`. 
-*/
+/**
+ * @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken
+ * into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`.
+ */
 contract MigrationApp is GenericApp, IEthTokenReceiver {
     using ScaleCodec for uint256;
     using SafeERC20 for IERC20;
 
-    constructor(address _inbound, address _outbound)
-        GenericApp(_inbound, _outbound)
-    {}
+    constructor(address _inbound) GenericApp(_inbound) {}
 
     /// Events
     event MigratedNativeErc20(address contractAddress);
     event MigratedEth(address contractAddress);
     event MigratedSidechain(address contractAddress);
 
+    error InvalidContract();
+
     function migrateNativeErc20(
         address contractAddress,
         address[] calldata erc20nativeTokens
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
-        require(IERC165(contractAddress).supportsInterface(type(IFAReceiver).interfaceId), "Invalid contract address");
-        uint256 length = erc20nativeTokens.length; 
+        if (
+            !IERC165(contractAddress).supportsInterface(
+                type(IFAReceiver).interfaceId
+            )
+        ) revert InvalidContract();
+        uint256 length = erc20nativeTokens.length;
         for (uint256 i = 0; i < length; i++) {
             IERC20 token = IERC20(erc20nativeTokens[i]);
             // slither-disable-next-line calls-loop
@@ -42,11 +46,9 @@ contract MigrationApp is GenericApp, IEthTokenReceiver {
         emit MigratedNativeErc20(contractAddress);
     }
 
-    function migrateEth(address contractAddress)
-        external
-        onlyRole(INBOUND_CHANNEL_ROLE)
-        nonReentrant
-    {
+    function migrateEth(
+        address contractAddress
+    ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         IEthTokenReceiver receiver = IEthTokenReceiver(contractAddress);
         // slither-disable-next-line arbitrary-send
         receiver.receivePayment{value: address(this).balance}();
@@ -57,8 +59,12 @@ contract MigrationApp is GenericApp, IEthTokenReceiver {
         address contractAddress,
         address[] calldata sidechainTokens
     ) external onlyRole(INBOUND_CHANNEL_ROLE) {
-        require(IERC165(contractAddress).supportsInterface(type(IFAReceiver).interfaceId), "Invalid contract address");
-        uint256 length = sidechainTokens.length; 
+        if (
+            !IERC165(contractAddress).supportsInterface(
+                type(IFAReceiver).interfaceId
+            )
+        ) revert InvalidContract();
+        uint256 length = sidechainTokens.length;
         for (uint256 i = 0; i < length; i++) {
             MasterToken token = MasterToken(sidechainTokens[i]);
             // slither-disable-next-line calls-loop

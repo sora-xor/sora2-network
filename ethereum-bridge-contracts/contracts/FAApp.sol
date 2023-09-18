@@ -5,18 +5,16 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "./MasterToken.sol";
-import "./libraries/ScaleCodec.sol";
 import "./interfaces/IFAReceiver.sol";
 import "./GenericApp.sol";
 
 contract FAApp is ERC165, GenericApp, IFAReceiver {
-    using ScaleCodec for uint256;
     using SafeERC20 for IERC20;
 
     mapping(address => AssetType) public tokens;
 
-    bytes2 constant MINT_CALL = 0x6500;
-    bytes2 constant REGISTER_ASSET_CALL = 0x6501;
+    bytes2 constant MINT_CALL = 0x0301;
+    bytes2 constant REGISTER_ASSET_CALL = 0x0302;
 
     event Locked(
         address token,
@@ -38,10 +36,9 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
 
     constructor(
         address _inbound,
-        address _outbound, // an address of an IOutboundChannel contract
         address[] memory evmAssets,
         address[] memory soraAssets
-    ) GenericApp(_inbound, _outbound) {
+    ) GenericApp(_inbound) {
         for (uint256 i = 0; i < evmAssets.length; i++) {
             tokens[evmAssets[i]] = AssetType.Evm;
         }
@@ -50,13 +47,17 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
         }
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControl, ERC165) returns (bool) {
-        return interfaceId == type(IFAReceiver).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(AccessControl, ERC165) returns (bool) {
+        return
+            interfaceId == type(IFAReceiver).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function lock(address token, bytes32 recipient, uint256 amount) external {
         AssetType asset = tokens[token];
-        require(amount > 0, "Must lock a positive amount");
+        if (amount == 0) revert InvalidAmount();
         uint256 transferredAmount;
         if (asset == AssetType.Evm) {
             uint256 beforeBalance = IERC20(token).balanceOf(address(this));
@@ -68,16 +69,10 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
             MasterToken(token).burnFrom(msg.sender, amount);
             transferredAmount = amount;
         } else {
-            revert("Unregistered asset type");
+            revert UnregisteredAsset();
         }
 
-        emit Locked(
-            token,
-            msg.sender,
-            recipient,
-            transferredAmount,
-            asset
-        );
+        emit Locked(token, msg.sender, recipient, transferredAmount, asset);
 
         bytes memory call = encodeCall(
             token,
@@ -86,7 +81,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
             transferredAmount
         );
 
-        outbound.submit(msg.sender, call);
+        handler.submitMessage(call);
     }
 
     function unlock(
@@ -96,26 +91,17 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
         uint256 amount
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         AssetType asset = tokens[token];
-        require(
-            recipient != address(0x0),
-            "Recipient must not be a zero address"
-        );
-        require(amount > 0, "Must unlock a positive amount");
+        if (recipient == address(0x0)) revert InvalidRecipient();
+        if (amount == 0) revert InvalidAmount();
 
         if (asset == AssetType.Evm) {
             IERC20(token).safeTransfer(recipient, amount);
         } else if (asset == AssetType.Sora) {
             MasterToken(token).mintTokens(msg.sender, amount);
         } else {
-            revert("Unregistered asset type");
+            revert UnregisteredAsset();
         }
-        emit Unlocked(
-            token,
-            sender,
-            recipient,
-            amount,
-            asset 
-        );
+        emit Unlocked(token, sender, recipient, amount, asset);
     }
 
     /**
@@ -137,7 +123,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
         );
         tokens[tokenInstance] = AssetType.Sora;
         bytes memory call = registerAssetCall(tokenInstance, sidechainAssetId);
-        outbound.submit(msg.sender, call);
+        handler.submitMessage(call);
     }
 
     // SCALE-encode payload
@@ -147,14 +133,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
         bytes32 recipient,
         uint256 amount
     ) private pure returns (bytes memory) {
-        return
-            abi.encodePacked(
-                MINT_CALL,
-                token,
-                sender,
-                recipient,
-                amount.encode256()
-            );
+        return abi.encodePacked(MINT_CALL, token, sender, recipient, amount);
     }
 
     // SCALE-encode payload
@@ -174,7 +153,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
         address token,
         AssetType assetType
     ) external onlyRole(INBOUND_CHANNEL_ROLE) {
-        require(tokens[token] == AssetType.Unregistered, "Token is already registered");
+        if (tokens[token] != AssetType.Unregistered) revert RegisteredAsset();
         tokens[token] = assetType;
     }
 
@@ -185,7 +164,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
     function removeTokenFromWhitelist(
         address token
     ) external onlyRole(INBOUND_CHANNEL_ROLE) {
-        require(tokens[token] != AssetType.Unregistered, "Token is not registered");
+        if (tokens[token] == AssetType.Unregistered) revert UnregisteredAsset();
         tokens[token] = AssetType.Unregistered;
     }
 
@@ -195,8 +174,12 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
         AssetType[] calldata assetType
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         uint256 length = assets.length;
-        require(length == assetType.length, "Types length mismatch");
-        require(ERC165(contractAddress).supportsInterface(type(IFAReceiver).interfaceId), "Invalid contract address");
+        if(length != assetType.length) revert AssetLengthMismatch();
+        if (
+            !IERC165(contractAddress).supportsInterface(
+                type(IFAReceiver).interfaceId
+            )
+        ) revert InvalidContract();
         for (uint256 i = 0; i < length; i++) {
             if (assetType[i] == AssetType.Evm) {
                 IERC20 token = IERC20(assets[i]);
@@ -209,7 +192,7 @@ contract FAApp is ERC165, GenericApp, IFAReceiver {
                 // slither-disable-next-line calls-loop
                 MasterToken(assets[i]).transferOwnership(contractAddress);
             } else {
-                revert("Unregistered asset type");
+                revert UnregisteredAsset();
             }
         }
         emit MigratedAssets(contractAddress);

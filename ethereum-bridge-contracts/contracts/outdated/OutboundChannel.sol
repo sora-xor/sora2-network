@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./interfaces/IOutboundChannel.sol";
+import "./IOutboundChannel.sol";
 import "./ChannelAccess.sol";
 
 // OutboundChannel is a channel that sends ordered messages with an increasing nonce. It will have

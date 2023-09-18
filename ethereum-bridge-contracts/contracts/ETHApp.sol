@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.15;
 
-import "./libraries/ScaleCodec.sol";
 import "./interfaces/IEthTokenReceiver.sol";
 import "./GenericApp.sol";
 
@@ -10,18 +9,17 @@ import "./GenericApp.sol";
  * into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`.
  */
 contract ETHApp is GenericApp, IEthTokenReceiver {
-    using ScaleCodec for uint256;
-
     event Locked(address sender, bytes32 recipient, uint256 amount);
     event Unlocked(bytes32 sender, address recipient, uint256 amount);
     event MigratedEth(address contractAddress);
 
-    bytes2 constant MINT_CALL = 0x6401;
+    error InvalidRecipient();
+    error InvalidAmount();
+    error FailedCall();
 
-    constructor(
-        address inboundChannel,
-        address outboundChannel // an address of an IOutboundChannel contract
-    ) GenericApp(inboundChannel, outboundChannel) {}
+    bytes2 constant MINT_CALL = 0x0201;
+
+    constructor(address inboundChannel) GenericApp(inboundChannel) {}
 
     fallback() external {
         revert();
@@ -32,10 +30,11 @@ contract ETHApp is GenericApp, IEthTokenReceiver {
     }
 
     function lock(bytes32 recipient) external payable {
-        require(msg.value > 0, "Value of transaction must be positive");
+        if (msg.value == 0) revert InvalidAmount();
+        if (recipient == bytes32(0)) revert InvalidRecipient();
         emit Locked(msg.sender, recipient, msg.value);
         bytes memory call = encodeCall(msg.sender, recipient, msg.value);
-        outbound.submit(msg.sender, call);
+        handler.submitMessage(call);
     }
 
     function unlock(
@@ -43,14 +42,11 @@ contract ETHApp is GenericApp, IEthTokenReceiver {
         address payable recipient,
         uint256 amount
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
-        require(
-            recipient != address(0x0),
-            "Recipient must not be a zero address"
-        );
-        require(amount > 0, "Must unlock a positive amount");
+        if (recipient == address(0x0)) revert InvalidRecipient();
+        if (amount == 0) revert InvalidAmount();
         // slither-disable-next-line arbitrary-send,low-level-calls
         (bool success, ) = recipient.call{value: amount}("");
-        require(success, "Transfer failed.");
+        if (!success) revert FailedCall();
         emit Unlocked(sender, recipient, amount);
     }
 
@@ -75,7 +71,7 @@ contract ETHApp is GenericApp, IEthTokenReceiver {
                 sender,
                 //bytes1(0x00), // Encode recipient as MultiAddress::Id
                 recipient,
-                amount.encode256()
+                amount
             );
     }
 

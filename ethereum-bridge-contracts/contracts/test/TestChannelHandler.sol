@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.15;
 
-import "../InboundChannel.sol";
+import "../ChannelHandler.sol";
 
-contract TestInboundChannel is InboundChannel {
+contract TestInboundChannel is ChannelHandler {
     constructor()
-        InboundChannel()
+        ChannelHandler()
     {}
 
     function reset() external onlyOwner {
