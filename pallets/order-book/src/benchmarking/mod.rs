@@ -146,7 +146,7 @@ pub fn assert_orders_numbers<T: Config>(
 pub use benchmarks_inner::*;
 #[cfg(not(test))]
 mod benchmarks_inner {
-    use common::prelude::SwapAmount;
+    use common::prelude::{BalanceUnit, SwapAmount};
     use common::{
         balance, AssetInfoProvider, AssetName, AssetSymbol, LiquiditySource, PriceVariant,
     };
@@ -345,10 +345,15 @@ mod benchmarks_inner {
             );
 
             assert_last_event::<T>(
-                Event::<T>::LimitOrderPlaced {
+                Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
                     order_book_id,
-                    order_id,
                     owner_id: caller.clone(),
+                    market_order_direction: PriceVariant::Sell,
+                    market_order_amount: OrderAmount::Base(BalanceUnit::divisible(
+                        4096000000000000000000,
+                    )),
+                    market_order_average_price: BalanceUnit::divisible(325000000000000),
+                    limit_order_id: order_id,
                 }
                 .into(),
             );
@@ -1682,7 +1687,7 @@ mod tests {
     use frame_support::assert_ok;
 
     use crate::benchmarking::preparation::{prepare_market_order_benchmark, FillSettings};
-    use common::prelude::SwapAmount;
+    use common::prelude::{BalanceUnit, SwapAmount};
     use common::{balance, PriceVariant};
     use frame_support::traits::Time;
     use frame_system::RawOrigin;
@@ -1760,6 +1765,7 @@ mod tests {
             // let settings = preset_16::<Runtime>();
             let settings = FillSettings::<Runtime>::max();
             let caller = alice::<Runtime>();
+            run_to_block(1);
             let (order_book_id, price, amount, side, lifespan) =
                 prepare_place_orderbook_benchmark(settings.clone(), caller.clone());
 
@@ -1787,6 +1793,20 @@ mod tests {
                     ) as usize,
                 )),
                 Some((lifespan, settings.max_expiring_orders_per_block as usize)),
+            );
+
+            assert_last_event::<Runtime>(
+                Event::<Runtime>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+                    order_book_id,
+                    owner_id: caller.clone(),
+                    market_order_direction: PriceVariant::Sell,
+                    market_order_amount: OrderAmount::Base(BalanceUnit::divisible(
+                        4096000000000000000000,
+                    )),
+                    market_order_average_price: BalanceUnit::divisible(325000000000000),
+                    limit_order_id: order_id,
+                }
+                .into(),
             );
 
             let current_block = frame_system::Pallet::<Runtime>::block_number();

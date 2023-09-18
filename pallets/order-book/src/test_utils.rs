@@ -36,7 +36,7 @@ use common::prelude::FixedWrapper;
 use common::{balance, AssetInfoProvider, Balance, PriceVariant};
 use sp_runtime::traits::{CheckedAdd, Zero};
 use sp_runtime::BoundedVec;
-use std::collections::BTreeMap;
+use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 pub const DEX: common::DEXId = common::DEXId::Polkaswap;
 pub const INIT_BALANCE: Balance = balance!(1000000);
@@ -80,6 +80,7 @@ pub fn free_balance<T: assets::Config + frame_system::Config>(
     assets::Pallet::<T>::free_balance(asset, account).expect("Asset must exist")
 }
 
+#[cfg(feature = "std")]
 fn print_side<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     side: PriceVariant,
@@ -152,6 +153,7 @@ fn print_side<T: Config>(
 ///   9.5 |  261.3 | buy4, buy5, buy6
 ///          Bids
 /// ```
+#[cfg(feature = "std")]
 pub fn pretty_print_order_book<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     column_width: Option<usize>,
@@ -186,6 +188,7 @@ use framenode_runtime::order_book::{
     OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
 };
 
+#[cfg(feature = "std")]
 fn print_block_expirations<T: Config>(block: u32)
 where
     T::BlockNumber: From<u32>,
@@ -208,6 +211,7 @@ where
 /// ```text
 /// block number | order book id | order id
 /// ```
+#[cfg(feature = "std")]
 pub fn pretty_print_expirations<T: Config>(blocks: sp_std::ops::Range<u32>)
 where
     T::BlockNumber: TryFrom<u32>,
