@@ -2110,7 +2110,7 @@ impl bridge_proxy::Config for Runtime {
     type ERC20App = ERC20App;
     type EthApp = EthApp;
     type HashiBridge = EthBridge;
-    type SubstrateApp = ParachainBridgeApp;
+    type ParachainApp = ParachainBridgeApp;
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
