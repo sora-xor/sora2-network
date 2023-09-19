@@ -3162,7 +3162,7 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // Bridges
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             #[cfg(feature = "ready-to-test")] // Bridges
-            list_benchmark!(list, extra, parachain_bridge_app, SubstrateBridgeApp);
+            list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
             #[cfg(feature = "ready-to-test")] // Bridges
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             #[cfg(feature = "ready-to-test")] // Bridges
@@ -3261,7 +3261,7 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // Bridges
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             #[cfg(feature = "ready-to-test")] // Bridges
-            add_benchmark!(params, batches, parachain_bridge_app, SubstrateBridgeApp);
+            add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
             #[cfg(feature = "ready-to-test")] // Bridges
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             #[cfg(feature = "ready-to-test")] // Bridges
