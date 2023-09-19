@@ -471,12 +471,12 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            let average_price = balance!(11).into();
+            let average_price = BalanceUnit::divisible(325000000000000);
             assert_last_event::<T>(
                 Event::<T>::MarketOrderExecuted {
                     order_book_id,
                     owner_id: caller.clone(),
-                    direction: PriceVariant::Buy,
+                    direction: PriceVariant::Sell,
                     amount: OrderAmount::Base(OrderVolume::indivisible(*amount.balance())),
                     average_price,
                     to: None,
@@ -486,11 +486,11 @@ mod benchmarks_inner {
             assert_orders_numbers::<T>(order_book_id, Some(1), Some(0), None, None);
             assert_eq!(
                 <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
-                caller_base_balance + *amount.balance()
+                caller_base_balance - *amount.balance()
             );
             assert_eq!(
                 <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
-                caller_quote_balance - *(amount * average_price).balance()
+                caller_quote_balance + *(amount * average_price).balance()
             );
         }
 
@@ -539,8 +539,8 @@ mod benchmarks_inner {
             .unwrap();
         }
         verify {
-            let order_amount = OrderAmount::Base(balance!(355.13473).into());
-            let average_price = balance!(9.855414408497867837).into();
+            let order_amount = OrderAmount::Base(balance!(4096).into());
+            let average_price = BalanceUnit::divisible(325000000000000);
             assert_last_event::<T>(
                 Event::<T>::MarketOrderExecuted {
                     order_book_id,
@@ -558,11 +558,11 @@ mod benchmarks_inner {
 
             assert_eq!(
                 <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
-                caller_base_balance + *order_amount.value().balance()
+                caller_base_balance - *order_amount.value().balance()
             );
             assert_eq!(
                 <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
-                caller_quote_balance - *(*order_amount.value() * average_price).balance()
+                caller_quote_balance + *(*order_amount.value() * average_price).balance()
             );
         }
 
@@ -1688,7 +1688,7 @@ mod tests {
 
     use crate::benchmarking::preparation::{prepare_market_order_benchmark, FillSettings};
     use common::prelude::{BalanceUnit, SwapAmount};
-    use common::{balance, PriceVariant};
+    use common::{balance, AssetInfoProvider, PriceVariant};
     use frame_support::traits::Time;
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
@@ -1836,8 +1836,20 @@ mod tests {
             // let settings = preset_16::<Runtime>();
             let settings = FillSettings::<Runtime>::max();
             let caller = alice::<Runtime>();
+            run_to_block(1);
             let (order_book_id, order_id) =
                 prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);
+            let order =
+                OrderBookPallet::<Runtime>::limit_orders::<_, <Runtime as Config>::OrderId>(
+                    order_book_id,
+                    order_id,
+                )
+                .unwrap();
+            let balance_before = <Runtime as Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &order.owner,
+            )
+            .unwrap();
 
             // println!("1;");
             // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
@@ -1851,6 +1863,24 @@ mod tests {
             // println!("2;");
             // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
             // pretty_print_expirations::<Runtime>(0..10);
+
+            assert_last_event::<Runtime>(
+                Event::<Runtime>::LimitOrderCanceled {
+                    order_book_id,
+                    order_id,
+                    owner_id: order.owner.clone(),
+                }
+                .into(),
+            );
+
+            let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
+            let balance = <Runtime as Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &order.owner,
+            )
+            .unwrap();
+            let expected_balance = balance_before + deal_amount.balance();
+            assert_eq!(balance, expected_balance);
         })
     }
 
@@ -1888,8 +1918,15 @@ mod tests {
             // let settings = preset_16::<Runtime>();
             let settings = FillSettings::<Runtime>::max();
             let caller = alice::<Runtime>();
+            run_to_block(1);
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings.clone(), caller.clone(), true);
+            let caller_base_balance =
+                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
+                    .unwrap();
+            let caller_quote_balance =
+                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                    .unwrap();
             // pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
             let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
                 &caller,
@@ -1901,7 +1938,31 @@ mod tests {
             )
             .unwrap();
             // pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            let order_amount = OrderAmount::Base(balance!(4096).into());
+            let average_price = BalanceUnit::divisible(325000000000000);
+            assert_last_event::<Runtime>(
+                Event::<Runtime>::MarketOrderExecuted {
+                    order_book_id,
+                    owner_id: caller.clone(),
+                    direction: PriceVariant::Sell,
+                    amount: order_amount,
+                    average_price,
+                    to: None,
+                }
+                .into(),
+            );
+
             assert_orders_numbers::<Runtime>(order_book_id, Some(1), Some(0), None, None);
+            assert_eq!(
+                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
+                    .unwrap(),
+                caller_base_balance - *order_amount.value().balance()
+            );
+            assert_eq!(
+                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                    .unwrap(),
+                caller_quote_balance + *(*order_amount.value() * average_price).balance()
+            );
         })
     }
 
@@ -1911,8 +1972,15 @@ mod tests {
             // let settings = preset_16::<Runtime>();
             let settings = FillSettings::<Runtime>::max();
             let caller = alice::<Runtime>();
+            run_to_block(1);
             let (order_book_id, amount) =
                 prepare_market_order_benchmark(settings, caller.clone(), false);
+            let caller_base_balance =
+                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
+                    .unwrap();
+            let caller_quote_balance =
+                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                    .unwrap();
             // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(20));
             assert_ok!(OrderBookPallet::<Runtime>::execute_market_order(
                 RawOrigin::Signed(caller.clone()).into(),
@@ -1921,7 +1989,29 @@ mod tests {
                 *amount.balance(),
             ));
             // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(20));
+            let average_price = BalanceUnit::divisible(325000000000000);
+            assert_last_event::<Runtime>(
+                Event::<Runtime>::MarketOrderExecuted {
+                    order_book_id,
+                    owner_id: caller.clone(),
+                    direction: PriceVariant::Sell,
+                    amount: OrderAmount::Base(OrderVolume::indivisible(*amount.balance())),
+                    average_price,
+                    to: None,
+                }
+                .into(),
+            );
             assert_orders_numbers::<Runtime>(order_book_id, Some(1), Some(0), None, None);
+            assert_eq!(
+                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
+                    .unwrap(),
+                caller_base_balance - *amount.balance()
+            );
+            assert_eq!(
+                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                    .unwrap(),
+                caller_quote_balance + *(amount * average_price).balance()
+            );
         })
     }
 }
