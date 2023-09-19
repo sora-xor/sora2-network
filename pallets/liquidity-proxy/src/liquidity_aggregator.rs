@@ -75,7 +75,7 @@ pub struct LiquidityAggregator<LiquiditySourceType> {
 
 impl<LiquiditySourceType> LiquidityAggregator<LiquiditySourceType>
 where
-    LiquiditySourceType: Copy + Clone + Ord,
+    LiquiditySourceType: Clone + Ord,
 {
     pub fn new(variant: SwapVariant) -> Self {
         Self {
@@ -145,7 +145,7 @@ where
             };
 
             distribution
-                .entry(*source)
+                .entry(source.clone())
                 .and_modify(|amount| *amount = amount.saturating_add(remaining_delta))
                 .or_insert(remaining_delta);
             result_amount = result_amount.checked_add(result_delta)?;
@@ -175,13 +175,13 @@ where
             };
 
             if price == max {
-                candidates.push(*source)
+                candidates.push(source.clone())
             }
 
             if price > max {
                 candidates.clear();
                 max = price;
-                candidates.push(*source);
+                candidates.push(source.clone());
             }
         }
         candidates

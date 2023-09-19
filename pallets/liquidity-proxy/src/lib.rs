@@ -63,7 +63,7 @@ use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
 use frame_system::ensure_signed;
 use itertools::Itertools as _;
-use liquidity_aggregator::AggregatedSwapOutcome;
+use liquidity_aggregator::{AggregatedSwapOutcome, LiquidityAggregator};
 pub use pallet::*;
 use sp_runtime::traits::{CheckedSub, Zero};
 use sp_runtime::DispatchError;
@@ -1382,7 +1382,15 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    fn new_smart_split() -> Result<
+    fn new_smart_split(
+        sources: &Vec<LiquiditySourceIdOf<T>>,
+        base_asset_id: &T::AssetId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        _skip_info: bool,
+        _deduce_fee: bool,
+    ) -> Result<
         (
             AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
             Rewards<T::AssetId>,
@@ -1390,8 +1398,25 @@ impl<T: Config> Pallet<T> {
         ),
         DispatchError,
     > {
-        // todo (m.tagirov) 447
-        todo!()
+        ensure!(
+            input_asset_id == base_asset_id || output_asset_id == base_asset_id,
+            Error::<T>::UnavailableExchangePath
+        );
+
+        let mut aggregator = LiquidityAggregator::new(amount.variant());
+
+        for source in sources {
+            let chunks =
+                T::LiquidityRegistry::step_quote(source, input_asset_id, output_asset_id, amount)?;
+            aggregator.add_source(source.clone(), chunks);
+        }
+
+        let aggregate_swap_outcome = aggregator
+            .aggregate_swap_outcome(amount.amount())
+            .ok_or(Error::<T>::AggregationError)?;
+
+        // todo (m.tagirov) 447: rewards, fee, weight
+        Ok((aggregate_swap_outcome, Rewards::new(), Weight::zero()))
     }
 
     /// Implements the "smart" split algorithm.
