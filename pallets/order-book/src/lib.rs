@@ -39,7 +39,7 @@ use assets::AssetIdOf;
 use common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
-#[cfg(feature = "ready-to-test")] // order-book
+#[cfg(feature = "wip")] // order-book
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
@@ -478,7 +478,7 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::verify_create_orderbook_params(&who, &order_book_id)?;
 
-            #[cfg(feature = "ready-to-test")] // order-book
+            #[cfg(feature = "wip")] // order-book
             {
                 T::TradingPairSourceManager::enable_source_for_trading_pair(
                     &order_book_id.dex_id,
@@ -510,7 +510,7 @@ pub mod pallet {
 
             data.commit();
 
-            #[cfg(feature = "ready-to-test")] // order-book
+            #[cfg(feature = "wip")] // order-book
             {
                 T::TradingPairSourceManager::disable_source_for_trading_pair(
                     &order_book_id.dex_id,

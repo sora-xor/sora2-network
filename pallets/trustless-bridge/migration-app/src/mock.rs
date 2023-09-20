@@ -177,8 +177,6 @@ impl technical::Config for Test {
 
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type NetworkId = EVMChainId;
-    type Additional = AdditionalEVMInboundData;
     type OriginOutput =
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
     type Origin = RuntimeOrigin;
@@ -186,6 +184,7 @@ impl dispatch::Config for Test {
     type Hashing = Keccak256;
     type Call = RuntimeCall;
     type CallFilter = Everything;
+    type WeightInfo = ();
 }
 
 pub struct MockOutboundChannel<AccountId>(PhantomData<AccountId>);
@@ -200,6 +199,10 @@ impl<AccountId> OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData
         _: AdditionalEVMOutboundData,
     ) -> Result<H256, DispatchError> {
         Ok(Default::default())
+    }
+
+    fn submit_weight() -> frame_support::weights::Weight {
+        Default::default()
     }
 }
 
@@ -224,8 +227,6 @@ impl eth_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = MockOutboundChannel<Self::AccountId>;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type MessageStatusNotifier = ();
@@ -332,8 +333,6 @@ impl erc20_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = MockOutboundChannel<Self::AccountId>;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type AppRegistry = AppRegistry;

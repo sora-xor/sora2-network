@@ -177,14 +177,13 @@ impl technical::Config for Test {
 
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type NetworkId = EVMChainId;
-    type Additional = AdditionalEVMInboundData;
     type OriginOutput = CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
     type Origin = RuntimeOrigin;
     type MessageId = u64;
     type Hashing = Keccak256;
     type Call = RuntimeCall;
     type CallFilter = Everything;
+    type WeightInfo = ();
 }
 
 pub struct MockOutboundChannel<AccountId>(PhantomData<AccountId>);
@@ -205,6 +204,10 @@ impl OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData>
         }
 
         Ok(Default::default())
+    }
+
+    fn submit_weight() -> frame_support::weights::Weight {
+        Default::default()
     }
 }
 
@@ -303,8 +306,6 @@ impl eth_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = MockOutboundChannel<Self::AccountId>;
     type CallOrigin = dispatch::EnsureAccount<
-        EVMChainId,
-        AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type MessageStatusNotifier = ();

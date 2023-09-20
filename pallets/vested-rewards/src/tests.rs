@@ -289,18 +289,18 @@ fn migration_to_v2_works() {
         let claim_history: Vec<(AccountId, AssetId32<PredefinedAssetId>, BlockNumber)> =
             serde_json::from_str(claim_history).unwrap();
         for (account, asset, block) in claim_history {
-            crate::migrations::v2::CrowdloanClaimHistory::<Runtime>::insert(account, asset, block);
+            crate::migrations::v4::CrowdloanClaimHistory::<Runtime>::insert(account, asset, block);
         }
         let crowdloan_rewards = include_str!("../crowdloan_rewards.json");
-        let crowdloan_rewards: Vec<crate::migrations::v2::CrowdloanReward> =
+        let crowdloan_rewards: Vec<crate::migrations::v4::CrowdloanReward> =
             serde_json::from_str(crowdloan_rewards).unwrap();
         for reward in crowdloan_rewards {
             let account = AccountId::new(reward.address.clone().try_into().unwrap());
-            crate::migrations::v2::CrowdloanRewards::<Runtime>::insert(account, reward);
+            crate::migrations::v4::CrowdloanRewards::<Runtime>::insert(account, reward);
         }
-        StorageVersion::new(1).put::<crate::Pallet<Runtime>>();
-        crate::migrations::v2::Migration::<Runtime>::on_runtime_upgrade();
-        assert_eq!(crate::Pallet::<Runtime>::on_chain_storage_version(), 2);
+        StorageVersion::new(3).put::<crate::Pallet<Runtime>>();
+        crate::migrations::v4::Migration::<Runtime>::on_runtime_upgrade();
+        assert_eq!(crate::Pallet::<Runtime>::on_chain_storage_version(), 4);
         let info = crate::CrowdloanInfos::<Runtime>::get(CrowdloanTag(
             b"crowdloan".to_vec().try_into().unwrap(),
         ))
