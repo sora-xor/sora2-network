@@ -110,7 +110,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub const GetNumSamples: usize = 40;
+    pub const GetNumSamples: usize = 10;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
     pub const ExistentialDeposit: u128 = 0;
@@ -736,6 +736,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
+        _samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         unimplemented!()
     }
@@ -1105,6 +1106,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
+        _samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         unimplemented!()
     }

@@ -1092,6 +1092,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        _samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());

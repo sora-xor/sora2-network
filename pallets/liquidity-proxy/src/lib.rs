@@ -1406,8 +1406,13 @@ impl<T: Config> Pallet<T> {
         let mut aggregator = LiquidityAggregator::new(amount.variant());
 
         for source in sources {
-            let chunks =
-                T::LiquidityRegistry::step_quote(source, input_asset_id, output_asset_id, amount)?;
+            let chunks = T::LiquidityRegistry::step_quote(
+                source,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                T::GetNumSamples::get(),
+            )?;
             aggregator.add_source(source.clone(), chunks);
         }
 

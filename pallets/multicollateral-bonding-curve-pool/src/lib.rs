@@ -56,7 +56,7 @@ use common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
     LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
     ManagementMode, PriceVariant, RewardReason, SwapChunk, TradingPairSourceManager,
-    VestedRewardsPallet, LIQUIDITY_SAMPLES_COUNT, PSWAP, TBCD, VAL, XOR, XST,
+    VestedRewardsPallet, PSWAP, TBCD, VAL, XOR, XST,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -1594,6 +1594,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
@@ -1606,14 +1607,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let step = amount
             .amount()
-            .checked_div(LIQUIDITY_SAMPLES_COUNT as Balance)
+            .checked_div(samples_count as Balance)
             .ok_or(Error::<T>::ArithmeticError)?;
 
         let mut chunks = VecDeque::new();
         let mut sub_in = Balance::zero();
         let mut sub_out = Balance::zero();
 
-        for i in 1..=LIQUIDITY_SAMPLES_COUNT {
+        for i in 1..=samples_count {
             let volume = amount.copy_direction(
                 step.checked_mul(i as Balance)
                     .ok_or(Error::<T>::ArithmeticError)?,

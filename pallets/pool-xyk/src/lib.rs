@@ -48,7 +48,7 @@ use common::{
     fixed, fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists,
     GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
     PoolXykPallet, RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
-    TradingPairSourceManager, LIQUIDITY_SAMPLES_COUNT,
+    TradingPairSourceManager,
 };
 
 mod aliases;
@@ -441,6 +441,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         if amount.amount().is_zero() {
             return Ok(VecDeque::new());
@@ -475,7 +476,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let step = amount
             .amount()
-            .checked_div(LIQUIDITY_SAMPLES_COUNT as Balance)
+            .checked_div(samples_count as Balance)
             .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
 
         let mut chunks = VecDeque::new();
@@ -483,7 +484,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => {
-                for i in 1..=LIQUIDITY_SAMPLES_COUNT {
+                for i in 1..=samples_count {
                     let volume = step
                         .checked_mul(i as Balance)
                         .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
@@ -503,7 +504,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 }
             }
             QuoteAmount::WithDesiredOutput { .. } => {
-                for i in 1..=LIQUIDITY_SAMPLES_COUNT {
+                for i in 1..=samples_count {
                     let volume = step
                         .checked_mul(i as Balance)
                         .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;

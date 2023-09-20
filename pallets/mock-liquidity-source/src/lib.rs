@@ -417,6 +417,7 @@ impl<T: Config<I>, I: 'static>
         _input_asset_id: &T::AssetId,
         _output_asset_id: &T::AssetId,
         _amount: QuoteAmount<Balance>,
+        _samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         // should not be called
         Ok(VecDeque::new())

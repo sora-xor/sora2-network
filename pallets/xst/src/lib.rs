@@ -57,8 +57,7 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SwapChunk, SyntheticInfoProvider, TradingPairSourceManager,
-    LIQUIDITY_SAMPLES_COUNT, XSTUSD,
+    Rate, RewardReason, SwapChunk, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
@@ -1096,6 +1095,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
@@ -1132,13 +1132,13 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
 
         let input_step = input_amount
-            .checked_div(LIQUIDITY_SAMPLES_COUNT as Balance)
+            .checked_div(samples_count as Balance)
             .ok_or(Error::<T>::PriceCalculationFailed)?;
         let output_step = output_amount
-            .checked_div(LIQUIDITY_SAMPLES_COUNT as Balance)
+            .checked_div(samples_count as Balance)
             .ok_or(Error::<T>::PriceCalculationFailed)?;
 
-        Ok(vec![SwapChunk::new(input_step, output_step); LIQUIDITY_SAMPLES_COUNT].into())
+        Ok(vec![SwapChunk::new(input_step, output_step); samples_count].into())
     }
 
     fn exchange(

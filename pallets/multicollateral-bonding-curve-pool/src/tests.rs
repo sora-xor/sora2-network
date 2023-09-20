@@ -3931,7 +3931,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XOR,
                     &VAL,
-                    QuoteAmount::with_desired_input(balance!(0))
+                    QuoteAmount::with_desired_input(balance!(0)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::new()
@@ -3942,7 +3943,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XOR,
                     &VAL,
-                    QuoteAmount::with_desired_output(balance!(0))
+                    QuoteAmount::with_desired_output(balance!(0)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::new()
@@ -3953,7 +3955,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    QuoteAmount::with_desired_input(balance!(0))
+                    QuoteAmount::with_desired_input(balance!(0)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::new()
@@ -3964,7 +3967,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    QuoteAmount::with_desired_output(balance!(0))
+                    QuoteAmount::with_desired_output(balance!(0)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::new()
@@ -4034,7 +4038,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    QuoteAmount::with_desired_input(balance!(100))
+                    QuoteAmount::with_desired_input(balance!(100)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::from([
@@ -4056,7 +4061,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    QuoteAmount::with_desired_output(balance!(100))
+                    QuoteAmount::with_desired_output(balance!(100)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::from([
@@ -4089,7 +4095,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XOR,
                     &VAL,
-                    QuoteAmount::with_desired_input(balance!(100))
+                    QuoteAmount::with_desired_input(balance!(100)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::from([
@@ -4111,7 +4118,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XOR,
                     &VAL,
-                    QuoteAmount::with_desired_output(balance!(100))
+                    QuoteAmount::with_desired_output(balance!(100)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::from([

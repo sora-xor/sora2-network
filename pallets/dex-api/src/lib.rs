@@ -128,6 +128,7 @@ impl<T: Config>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! step_quote {
@@ -137,6 +138,7 @@ impl<T: Config>
                     input_asset_id,
                     output_asset_id,
                     amount,
+                    samples_count,
                 )
             };
         }

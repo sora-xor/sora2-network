@@ -522,7 +522,8 @@ fn check_empty_step_quote() {
                 &dex_id,
                 &gt,
                 &bp,
-                QuoteAmount::with_desired_input(balance!(0))
+                QuoteAmount::with_desired_input(balance!(0)),
+                10
             )
             .unwrap(),
             VecDeque::new()
@@ -533,7 +534,8 @@ fn check_empty_step_quote() {
                 &dex_id,
                 &gt,
                 &bp,
-                QuoteAmount::with_desired_output(balance!(0))
+                QuoteAmount::with_desired_output(balance!(0)),
+                10
             )
             .unwrap(),
             VecDeque::new()
@@ -560,7 +562,8 @@ fn check_step_quote() {
                 &dex_id,
                 &gt,
                 &bp,
-                QuoteAmount::with_desired_input(balance!(100))
+                QuoteAmount::with_desired_input(balance!(100)),
+                10
             )
             .unwrap(),
             VecDeque::from([
@@ -582,7 +585,8 @@ fn check_step_quote() {
                 &dex_id,
                 &gt,
                 &bp,
-                QuoteAmount::with_desired_output(balance!(200))
+                QuoteAmount::with_desired_output(balance!(200)),
+                10
             )
             .unwrap(),
             VecDeque::from([
@@ -604,7 +608,8 @@ fn check_step_quote() {
                 &dex_id,
                 &bp,
                 &gt,
-                QuoteAmount::with_desired_input(balance!(200))
+                QuoteAmount::with_desired_input(balance!(200)),
+                10
             )
             .unwrap(),
             VecDeque::from([
@@ -626,7 +631,8 @@ fn check_step_quote() {
                 &dex_id,
                 &bp,
                 &gt,
-                QuoteAmount::with_desired_output(balance!(100))
+                QuoteAmount::with_desired_output(balance!(100)),
+                10
             )
             .unwrap(),
             VecDeque::from([

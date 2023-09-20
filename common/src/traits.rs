@@ -184,6 +184,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
+        samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Amount>>, Error>;
 
     /// Perform exchange based on desired amount.
@@ -311,6 +312,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
+        _samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Fixed>>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -385,6 +387,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
+        _samples_count: usize,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }

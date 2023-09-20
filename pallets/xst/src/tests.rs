@@ -1375,7 +1375,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
-                QuoteAmount::with_desired_input(balance!(0))
+                QuoteAmount::with_desired_input(balance!(0)),
+                10
             )
             .unwrap(),
             VecDeque::new()
@@ -1386,7 +1387,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
-                QuoteAmount::with_desired_output(balance!(0))
+                QuoteAmount::with_desired_output(balance!(0)),
+                10
             )
             .unwrap(),
             VecDeque::new()
@@ -1397,7 +1399,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
-                QuoteAmount::with_desired_input(balance!(0))
+                QuoteAmount::with_desired_input(balance!(0)),
+                10
             )
             .unwrap(),
             VecDeque::new()
@@ -1408,7 +1411,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
-                QuoteAmount::with_desired_output(balance!(0))
+                QuoteAmount::with_desired_output(balance!(0)),
+                10
             )
             .unwrap(),
             VecDeque::new()
@@ -1435,7 +1439,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
-                    QuoteAmount::with_desired_input(balance!(100))
+                    QuoteAmount::with_desired_input(balance!(100)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::from([
@@ -1457,7 +1462,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
-                    QuoteAmount::with_desired_output(balance!(100))
+                    QuoteAmount::with_desired_output(balance!(100)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::from([
@@ -1479,7 +1485,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
-                    QuoteAmount::with_desired_input(balance!(100))
+                    QuoteAmount::with_desired_input(balance!(100)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::from([
@@ -1501,7 +1508,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
-                    QuoteAmount::with_desired_output(balance!(100))
+                    QuoteAmount::with_desired_output(balance!(100)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::from([
@@ -1539,7 +1547,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
-                    QuoteAmount::with_desired_output(balance!(123456789123456789))
+                    QuoteAmount::with_desired_output(balance!(123456789123456789)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::from([
@@ -1561,7 +1570,8 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
-                    QuoteAmount::with_desired_output(balance!(123456789123456789))
+                    QuoteAmount::with_desired_output(balance!(123456789123456789)),
+                    10
                 )
                 .unwrap(),
                 VecDeque::from([
