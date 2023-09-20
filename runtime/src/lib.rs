@@ -62,10 +62,8 @@ use crate::impls::{
 use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-#[cfg(feature = "wip")]
-use common::AssetId32;
-use common::{Description, GetMarketInfo, LiquidityProxyTrait, PredefinedAssetId};
-use common::{XOR, XST, XSTUSD};
+use common::{AssetId32, Description, LiquidityProxyTrait, PredefinedAssetId};
+use common::{XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 #[cfg(feature = "wip")] // order-book
@@ -894,16 +892,16 @@ impl tokens::Config for Runtime {
 
 parameter_types! {
     // This is common::PredefinedAssetId with 0 index, 2 is size, 0 and 0 is code.
-    pub const GetXorAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::XOR);
-    pub const GetDotAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::DOT);
-    pub const GetKsmAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::KSM);
-    pub const GetUsdAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::USDT);
-    pub const GetValAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::VAL);
-    pub const GetPswapAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
-    pub const GetDaiAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::DAI);
-    pub const GetEthAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::ETH);
-    pub const GetXstAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::XST);
-    pub const GetTbcdAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    pub const GetXorAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XOR);
+    pub const GetDotAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DOT);
+    pub const GetKsmAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KSM);
+    pub const GetUsdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::USDT);
+    pub const GetValAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::VAL);
+    pub const GetPswapAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
+    pub const GetDaiAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DAI);
+    pub const GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
+    pub const GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
+    pub const GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
@@ -967,8 +965,8 @@ impl trading_pair::Config for Runtime {
 impl dex_manager::Config for Runtime {}
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
+pub type TechAssetId = common::TechAssetId<PredefinedAssetId>;
+pub type AssetId = AssetId32<PredefinedAssetId>;
 
 impl technical::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -1810,7 +1808,7 @@ impl pallet_beefy_mmr::Config for Runtime {
 
 parameter_types! {
     pub const CeresPerDay: Balance = balance!(6.66666666667);
-    pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
+    pub const CeresAssetId: AssetId = AssetId32::from_bytes
         (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
     pub const MaximumCeresInStakingPool: Balance = balance!(14400);
 }

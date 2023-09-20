@@ -228,18 +228,13 @@ pub use test_only::*;
 #[cfg(test)]
 mod test_only {
     use super::*;
-    use common::prelude::FixedWrapper;
     use common::PriceVariant;
-    use frame_benchmarking::Zero;
+    use frame_support::assert_ok;
     use frame_support::traits::Hooks;
     use frame_support::weights::Weight;
-    use frame_support::{assert_ok, BoundedVec};
     use frame_system::RawOrigin;
-    use framenode_runtime::order_book::{
-        self, Config, LimitOrder, OrderBook, OrderBookId, OrderPrice, OrderVolume, Pallet,
-    };
+    use framenode_runtime::order_book::{self, Config, OrderBook, OrderBookId, OrderPrice, Pallet};
     use framenode_runtime::{Runtime, RuntimeOrigin};
-    use sp_runtime::traits::CheckedAdd;
     use sp_std::collections::btree_map::BTreeMap;
 
     pub type E = order_book::Error<Runtime>;

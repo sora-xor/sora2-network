@@ -33,14 +33,14 @@
 use crate::{
     self as order_book, cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event,
     ExpirationScheduler, ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount,
-    OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
+    OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume, Pallet, Payment,
 };
 #[allow(unused)]
 #[cfg(test)]
 use framenode_runtime::order_book::{
     self as order_book, cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event,
     ExpirationScheduler, ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount,
-    OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderVolume, Pallet, Payment,
+    OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume, Pallet, Payment,
 };
 
 use assets::AssetIdOf;
@@ -57,7 +57,6 @@ use sp_std::vec::Vec;
 
 use crate::benchmarking::{assert_orders_numbers, bob, DEX};
 
-use crate::OrderPrice;
 use assets::Pallet as Assets;
 use Pallet as OrderBookPallet;
 
