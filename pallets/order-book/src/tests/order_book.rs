@@ -1639,6 +1639,16 @@ fn should_sum_market() {
                 OrderAmount::Quote(balance!(4458.27).into())
             )
         );
+        // impacts all orders
+        assert_eq!(
+            order_book
+                .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(610.7).into())))
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(610.7).into()),
+                OrderAmount::Quote(balance!(6881.32).into())
+            )
+        );
 
         // impacts 1 price
         assert_eq!(
