@@ -188,6 +188,7 @@ where
     }
 }
 
+#[cfg(feature = "wip")] // order-book
 #[cfg(test)]
 mod tests {
     use crate::liquidity_aggregator::*;
