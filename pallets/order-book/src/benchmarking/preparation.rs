@@ -31,16 +31,24 @@
 #[allow(unused)]
 #[cfg(not(test))]
 use crate::{
-    self as order_book, cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event,
-    ExpirationScheduler, ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount,
-    OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume, Pallet, Payment,
+    self as order_book,
+    cache_data_layer::CacheDataLayer,
+    test_utils::{ask_prices_iterator, bid_prices_iterator, lifespans_iterator, users_iterator},
+    traits::DataLayer,
+    Config, Event, ExpirationScheduler, ExpirationsAgenda, LimitOrder, MarketRole, MomentOf,
+    OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume,
+    Pallet, Payment,
 };
 #[allow(unused)]
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    self as order_book, cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event,
-    ExpirationScheduler, ExpirationsAgenda, LimitOrder, MarketRole, MomentOf, OrderAmount,
-    OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume, Pallet, Payment,
+    self as order_book,
+    cache_data_layer::CacheDataLayer,
+    test_utils::{ask_prices_iterator, bid_prices_iterator, lifespans_iterator, users_iterator},
+    traits::DataLayer,
+    Config, Event, ExpirationScheduler, ExpirationsAgenda, LimitOrder, MarketRole, MomentOf,
+    OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume,
+    Pallet, Payment,
 };
 
 use assets::AssetIdOf;
@@ -1094,66 +1102,6 @@ fn fill_price_inner<T: Config>(
         // schedule its expiration
         to_expire.entry(expires_at).or_default().push(order_id);
     }
-}
-
-fn bid_prices_iterator(
-    tick_size: OrderPrice,
-    max_side_price_count: u32,
-) -> impl Iterator<Item = BalanceUnit> {
-    (1..=max_side_price_count).map(move |i| tick_size * Scalar(i))
-}
-
-fn ask_prices_iterator(
-    tick_size: OrderPrice,
-    max_side_price_count: u32,
-) -> impl Iterator<Item = BalanceUnit> {
-    (max_side_price_count + 1..=2 * max_side_price_count)
-        .rev()
-        .map(move |i| tick_size * Scalar(i))
-}
-
-fn users_iterator<T: Config>(
-    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-    max_order_amount: OrderVolume,
-    max_price: OrderPrice,
-    max_orders_per_user: u32,
-) -> impl Iterator<Item = T::AccountId> {
-    let mint_per_user = max_order_amount * Scalar(max_orders_per_user);
-    (1..)
-        .map(crate::test_utils::generate_account::<T>)
-        // each user receives assets that should be enough for placing their orders
-        .inspect(move |user| {
-            assets::Pallet::<T>::mint_unchecked(
-                &order_book_id.base,
-                &user,
-                *mint_per_user.balance(),
-            )
-            .unwrap();
-            assets::Pallet::<T>::mint_unchecked(
-                &order_book_id.quote,
-                &user,
-                *max_price.checked_mul(&mint_per_user).unwrap().balance(),
-            )
-            .unwrap();
-        })
-        // yield same user for `max_orders_per_user` orders.
-        // `inspect` is still called only once for each user.
-        .flat_map(move |user| repeat(user).take(max_orders_per_user.try_into().unwrap()))
-}
-
-fn lifespans_iterator<T: Config>(
-    max_expiring_orders_per_block: u32,
-    start_from_block: u64,
-) -> impl Iterator<Item = u64> {
-    (start_from_block..)
-        .map(|i| {
-            i * T::MILLISECS_PER_BLOCK.saturated_into::<u64>()
-                + T::MIN_ORDER_LIFESPAN.saturated_into::<u64>()
-        })
-        // same lifespan should be yielded for `max_expiring_orders_per_block` orders
-        .flat_map(move |lifespan| {
-            repeat(lifespan).take(max_expiring_orders_per_block.try_into().unwrap())
-        })
 }
 
 /// Returns per-order iterators for users and lifespans. They can be used for proceeding with
