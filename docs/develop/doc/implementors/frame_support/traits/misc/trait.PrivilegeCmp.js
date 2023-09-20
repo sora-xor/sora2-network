@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"framenode_runtime":[["impl PrivilegeCmp&lt;<a class=\"enum\" href=\"framenode_runtime/enum.OriginCaller.html\" title=\"enum framenode_runtime::OriginCaller\">OriginCaller</a>&gt; for <a class=\"struct\" href=\"framenode_runtime/struct.OriginPrivilegeCmp.html\" title=\"struct framenode_runtime::OriginPrivilegeCmp\">OriginPrivilegeCmp</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

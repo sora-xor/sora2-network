@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"vested_rewards":[["impl&lt;T: <a class=\"trait\" href=\"vested_rewards/pallet/trait.Config.html\" title=\"trait vested_rewards::pallet::Config\">Config</a>&gt; VestedRewardsPallet&lt;&lt;T as Config&gt;::AccountId, &lt;T as Config&gt;::AssetId&gt; for <a class=\"struct\" href=\"vested_rewards/pallet/struct.Pallet.html\" title=\"struct vested_rewards::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MILLISECS_MULTIPLIER","RATE_MULTIPLIER"],"mod":["migrations","pallet","weights"],"struct":["BandRate","FeeCalculationParameters"]};

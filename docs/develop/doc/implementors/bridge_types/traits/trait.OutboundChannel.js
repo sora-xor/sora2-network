@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"bridge_outbound_channel":[["impl&lt;T: <a class=\"trait\" href=\"bridge_outbound_channel/pallet/trait.Config.html\" title=\"trait bridge_outbound_channel::pallet::Config\">Config</a>&gt; OutboundChannel&lt;U256, &lt;T as Config&gt;::AccountId, AdditionalEVMOutboundData&gt; for <a class=\"struct\" href=\"bridge_outbound_channel/pallet/struct.Pallet.html\" title=\"struct bridge_outbound_channel::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

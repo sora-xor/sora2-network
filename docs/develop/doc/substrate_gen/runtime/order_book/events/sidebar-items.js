@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ExpirationFailure","LimitOrderCanceled","LimitOrderConvertedToMarketOrder","LimitOrderExecuted","LimitOrderExpired","LimitOrderIsSplitIntoMarketOrderAndLimitOrder","LimitOrderPlaced","LimitOrderUpdated","MarketOrderExecuted","OrderBookCreated","OrderBookDeleted","OrderBookStatusChanged","OrderBookUpdated"]};

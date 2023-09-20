@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SubstrateAppCall","XCMAppTransferStatus"],"struct":["BridgeMessage","Commitment"]};
