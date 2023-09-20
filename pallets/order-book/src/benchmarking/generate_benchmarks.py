@@ -139,7 +139,8 @@ do
 --json-file ./benches/preset_${{i}}_raw.json $*"
     echo "$command"
     eval "$command"
-done"""
+done
+"""
 
 templates = [
     code_template_delete,
