@@ -217,7 +217,7 @@ leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag
 leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.17" }
 bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.17" }
 dispatch = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.17" }
-substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.17" }
+parachain-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.17" }
 substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.17" }
 bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.17" }
 bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.17" }

@@ -47,7 +47,7 @@ leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", default-
 leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 bridge-proxy = { path = "../pallets/trustless-bridge/bridge-proxy", default-features = false, optional = true }
 bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/bridge-proxy/runtime-api", default-features = false, optional = true }
-substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 assets = { path = "../pallets/assets", default-features = false }
@@ -213,7 +213,7 @@ std = [
     "leaf-provider-runtime-api/std",
     "bridge-proxy/std",
     "bridge-proxy-runtime-api/std",
-    "substrate-bridge-app/std",
+    "parachain-bridge-app/std",
     "substrate-bridge-channel/std",
     "bridge-data-signer/std",
     "multisig-verifier/std",
@@ -324,7 +324,7 @@ wip = [
     "leaf-provider-runtime-api",
     "bridge-proxy",
     "bridge-proxy-runtime-api",
-    "substrate-bridge-app",
+    "parachain-bridge-app",
     "substrate-bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
@@ -356,7 +356,7 @@ runtime-benchmarks = [
     "erc20-app/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
     "bridge-proxy/runtime-benchmarks",
-    "substrate-bridge-app/runtime-benchmarks",
+    "parachain-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
@@ -426,7 +426,7 @@ try-runtime = [
     "erc20-app/try-runtime",
     "leaf-provider/try-runtime",
     "bridge-proxy/try-runtime",
-    "substrate-bridge-app/try-runtime",
+    "parachain-bridge-app/try-runtime",
     "substrate-bridge-channel/try-runtime",
     "bridge-types/try-runtime",
     "farming/try-runtime",

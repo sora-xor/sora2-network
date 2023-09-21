@@ -2109,7 +2109,7 @@ impl bridge_proxy::Config for Runtime {
     type ERC20App = ERC20App;
     type EthApp = EthApp;
     type HashiBridge = EthBridge;
-    type SubstrateApp = SubstrateBridgeApp;
+    type ParachainApp = ParachainBridgeApp;
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
@@ -2221,7 +2221,7 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
-impl substrate_bridge_app::Config for Runtime {
+impl parachain_bridge_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type CallOrigin =
@@ -2381,7 +2381,7 @@ construct_runtime! {
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
         #[cfg(feature = "ready-to-test")] // Substrate bridge
-        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
+        ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -3161,7 +3161,7 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // Bridges
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             #[cfg(feature = "ready-to-test")] // Bridges
-            list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
+            list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
             #[cfg(feature = "ready-to-test")] // Bridges
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             #[cfg(feature = "ready-to-test")] // Bridges
@@ -3260,7 +3260,7 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // Bridges
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             #[cfg(feature = "ready-to-test")] // Bridges
-            add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
+            add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
             #[cfg(feature = "ready-to-test")] // Bridges
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             #[cfg(feature = "ready-to-test")] // Bridges
