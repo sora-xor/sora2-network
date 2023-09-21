@@ -31,7 +31,7 @@ const config: HardhatUserConfig = {
       mining: {
         auto: true,
         interval: 1000,
-      }
+      },
     },
     docker: {
       url: "http://bridge-geth:8545",
@@ -82,7 +82,7 @@ const config: HardhatUserConfig = {
     timeout: 60000
   },
   etherscan: {
-    apiKey: {"mainnet": etherscanKey},
+    apiKey: { "mainnet": etherscanKey },
   },
   typechain: {
     outDir: './typechain',
