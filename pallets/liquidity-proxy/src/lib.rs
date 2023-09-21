@@ -1389,7 +1389,7 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         _skip_info: bool,
-        _deduce_fee: bool,
+        deduce_fee: bool,
     ) -> Result<
         (
             AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
@@ -1412,6 +1412,7 @@ impl<T: Config> Pallet<T> {
                 output_asset_id,
                 amount,
                 T::GetNumSamples::get(),
+                deduce_fee,
             )?;
             aggregator.add_source(source.clone(), chunks);
         }
@@ -1420,7 +1421,7 @@ impl<T: Config> Pallet<T> {
             .aggregate_swap_outcome(amount.amount())
             .ok_or(Error::<T>::AggregationError)?;
 
-        // todo (m.tagirov) 447: rewards, fee, weight
+        // todo (m.tagirov) 447: rewards, weight
         Ok((aggregate_swap_outcome, Rewards::new(), Weight::zero()))
     }
 

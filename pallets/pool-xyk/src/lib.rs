@@ -45,9 +45,9 @@ use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    fixed, fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists,
-    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
-    PoolXykPallet, RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
+    LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
+    RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
     TradingPairSourceManager,
 };
 
@@ -442,6 +442,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         samples_count: usize,
+        deduce_fee: bool,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         if amount.amount().is_zero() {
             return Ok(VecDeque::new());
@@ -481,6 +482,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let mut chunks = VecDeque::new();
         let mut sub_sum = Balance::zero();
+        let mut sub_fee = Balance::zero();
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => {
@@ -489,18 +491,20 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         .checked_mul(i as Balance)
                         .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
 
-                    let (calculated, _fee) = Pallet::<T>::calc_output_for_exact_input(
-                        fixed!(0),
+                    let (calculated, fee) = Pallet::<T>::calc_output_for_exact_input(
+                        T::GetFee::get(),
                         get_fee_from_destination,
                         &reserve_input,
                         &reserve_output,
                         &volume,
-                        false,
+                        deduce_fee,
                     )?;
 
                     let output = calculated.saturating_sub(sub_sum);
+                    let fee_chunk = fee.saturating_sub(sub_fee);
                     sub_sum = calculated;
-                    chunks.push_back(SwapChunk::new(step, output));
+                    sub_fee = fee;
+                    chunks.push_back(SwapChunk::new(step, output, fee_chunk));
                 }
             }
             QuoteAmount::WithDesiredOutput { .. } => {
@@ -509,18 +513,20 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         .checked_mul(i as Balance)
                         .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
 
-                    let (calculated, _fee) = Pallet::<T>::calc_input_for_exact_output(
-                        fixed!(0),
+                    let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
+                        T::GetFee::get(),
                         get_fee_from_destination,
                         &reserve_input,
                         &reserve_output,
                         &volume,
-                        false,
+                        deduce_fee,
                     )?;
 
                     let input = calculated.saturating_sub(sub_sum);
+                    let fee_chunk = fee.saturating_sub(sub_fee);
                     sub_sum = calculated;
-                    chunks.push_back(SwapChunk::new(input, step));
+                    sub_fee = fee;
+                    chunks.push_back(SwapChunk::new(input, step, fee_chunk));
                 }
             }
         }

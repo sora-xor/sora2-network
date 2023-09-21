@@ -1175,11 +1175,12 @@ impl<N: Get<u32>> Ord for BoundedString<N> {
 pub struct SwapChunk<AmountType> {
     pub input: AmountType,
     pub output: AmountType,
+    pub fee: AmountType,
 }
 
 impl<AmountType> SwapChunk<AmountType> {
-    pub fn new(input: AmountType, output: AmountType) -> Self {
-        Self { input, output }
+    pub fn new(input: AmountType, output: AmountType, fee: AmountType) -> Self {
+        Self { input, output, fee }
     }
 }
 
@@ -1194,9 +1195,6 @@ impl SwapChunk<Balance> {
     /// Calculates a linearly proportional input amount depending on the price and an output amount.
     /// `output` attribute must be less than or equal to `self.output`
     pub fn proportional_input(&self, output: Balance) -> Option<Balance> {
-        if output > self.output {
-            return None;
-        }
         if output.is_zero() {
             return Some(Balance::zero());
         }
@@ -1209,9 +1207,6 @@ impl SwapChunk<Balance> {
     /// Calculates a linearly proportional output amount depending on the price and an input amount.
     /// `input` attribute must be less than or equal to `self.input`
     pub fn proportional_output(&self, input: Balance) -> Option<Balance> {
-        if input > self.input {
-            return None;
-        }
         if input.is_zero() {
             return Some(Balance::zero());
         }
@@ -1219,5 +1214,36 @@ impl SwapChunk<Balance> {
         let price = self.price()?;
 
         (FixedWrapper::from(input) * price).try_into_balance().ok()
+    }
+
+    pub fn rescale_by_input(self, input: Balance) -> Option<Self> {
+        let output = self.proportional_output(input)?;
+        let ratio = FixedWrapper::from(input) / FixedWrapper::from(self.input);
+        let fee = (FixedWrapper::from(self.fee) * ratio)
+            .try_into_balance()
+            .ok()?;
+        Some(Self::new(input, output, fee))
+    }
+
+    pub fn rescale_by_output(self, output: Balance) -> Option<Self> {
+        let input = self.proportional_input(output)?;
+        let ratio = FixedWrapper::from(output) / FixedWrapper::from(self.output);
+        let fee = (FixedWrapper::from(self.fee) * ratio)
+            .try_into_balance()
+            .ok()?;
+        Some(Self::new(input, output, fee))
+    }
+
+    pub fn rescale_by_ratio(self, ratio: Fixed) -> Option<Self> {
+        let input = (FixedWrapper::from(self.input) * ratio)
+            .try_into_balance()
+            .ok()?;
+        let output = (FixedWrapper::from(self.output) * ratio)
+            .try_into_balance()
+            .ok()?;
+        let fee = (FixedWrapper::from(self.fee) * ratio)
+            .try_into_balance()
+            .ok()?;
+        Some(Self::new(input, output, fee))
     }
 }

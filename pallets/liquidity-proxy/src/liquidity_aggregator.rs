@@ -102,6 +102,7 @@ where
 
         let mut remaining_amount = amount;
         let mut result_amount = Balance::zero();
+        let mut fee = Balance::zero();
 
         let mut distribution: BTreeMap<LiquiditySourceType, Balance> = BTreeMap::new();
 
@@ -119,28 +120,20 @@ where
                 }
             }
 
-            let chunk = self.liquidity_chunks.get_mut(source)?.pop_front()?;
+            let mut chunk = self.liquidity_chunks.get_mut(source)?.pop_front()?;
 
-            let (remaining_delta, result_delta) = match self.variant {
+            let (remaining_delta, result_delta, fee_delta) = match self.variant {
                 SwapVariant::WithDesiredInput => {
-                    if remaining_amount >= chunk.input {
-                        (chunk.input, chunk.output)
-                    } else {
-                        (
-                            remaining_amount,
-                            chunk.proportional_output(remaining_amount)?,
-                        )
+                    if remaining_amount < chunk.input {
+                        chunk = chunk.rescale_by_input(remaining_amount)?;
                     }
+                    (chunk.input, chunk.output, chunk.fee)
                 }
                 SwapVariant::WithDesiredOutput => {
-                    if remaining_amount >= chunk.output {
-                        (chunk.output, chunk.input)
-                    } else {
-                        (
-                            remaining_amount,
-                            chunk.proportional_input(remaining_amount)?,
-                        )
+                    if remaining_amount < chunk.output {
+                        chunk = chunk.rescale_by_output(remaining_amount)?;
                     }
+                    (chunk.output, chunk.input, chunk.fee)
                 }
             };
 
@@ -150,6 +143,7 @@ where
                 .or_insert(remaining_delta);
             result_amount = result_amount.checked_add(result_delta)?;
             remaining_amount = remaining_amount.checked_sub(remaining_delta)?;
+            fee = fee.checked_add(fee_delta)?;
         }
 
         Some(AggregatedSwapOutcome {
@@ -158,7 +152,7 @@ where
                 .map(|(source, amount)| (source, QuoteAmount::with_variant(self.variant, amount)))
                 .collect(),
             amount: result_amount,
-            fee: Balance::zero(), // todo (m.tagirov) 447 fee
+            fee,
         })
     }
 
@@ -202,31 +196,31 @@ mod tests {
         aggregator.add_source(
             LiquiditySourceType::XYKPool,
             VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(100)),
-                SwapChunk::new(balance!(10), balance!(90)),
-                SwapChunk::new(balance!(10), balance!(80)),
-                SwapChunk::new(balance!(10), balance!(70)),
-                SwapChunk::new(balance!(10), balance!(60)),
+                SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                SwapChunk::new(balance!(10), balance!(90), balance!(0.9)),
+                SwapChunk::new(balance!(10), balance!(80), balance!(0.8)),
+                SwapChunk::new(balance!(10), balance!(70), balance!(0.7)),
+                SwapChunk::new(balance!(10), balance!(60), balance!(0.6)),
             ]),
         );
 
         aggregator.add_source(
             LiquiditySourceType::XSTPool,
             VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(85)),
-                SwapChunk::new(balance!(10), balance!(85)),
-                SwapChunk::new(balance!(10), balance!(85)),
-                SwapChunk::new(balance!(10), balance!(85)),
-                SwapChunk::new(balance!(10), balance!(85)),
+                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
             ]),
         );
 
         aggregator.add_source(
             LiquiditySourceType::OrderBook,
             VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(120)),
-                SwapChunk::new(balance!(10), balance!(100)),
-                SwapChunk::new(balance!(10), balance!(80)),
+                SwapChunk::new(balance!(10), balance!(120), balance!(0)),
+                SwapChunk::new(balance!(10), balance!(100), balance!(0)),
+                SwapChunk::new(balance!(10), balance!(80), balance!(0)),
             ]),
         );
 
@@ -240,31 +234,31 @@ mod tests {
         aggregator.add_source(
             LiquiditySourceType::XYKPool,
             VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(100)),
-                SwapChunk::new(balance!(11), balance!(100)),
-                SwapChunk::new(balance!(12), balance!(100)),
-                SwapChunk::new(balance!(13), balance!(100)),
-                SwapChunk::new(balance!(14), balance!(100)),
+                SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                SwapChunk::new(balance!(11), balance!(100), balance!(1)),
+                SwapChunk::new(balance!(12), balance!(100), balance!(1)),
+                SwapChunk::new(balance!(13), balance!(100), balance!(1)),
+                SwapChunk::new(balance!(14), balance!(100), balance!(1)),
             ]),
         );
 
         aggregator.add_source(
             LiquiditySourceType::XSTPool,
             VecDeque::from([
-                SwapChunk::new(balance!(12.5), balance!(100)),
-                SwapChunk::new(balance!(12.5), balance!(100)),
-                SwapChunk::new(balance!(12.5), balance!(100)),
-                SwapChunk::new(balance!(12.5), balance!(100)),
-                SwapChunk::new(balance!(12.5), balance!(100)),
+                SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
             ]),
         );
 
         aggregator.add_source(
             LiquiditySourceType::OrderBook,
             VecDeque::from([
-                SwapChunk::new(balance!(8), balance!(100)),
-                SwapChunk::new(balance!(10), balance!(100)),
-                SwapChunk::new(balance!(13), balance!(100)),
+                SwapChunk::new(balance!(8), balance!(100), balance!(0)),
+                SwapChunk::new(balance!(10), balance!(100), balance!(0)),
+                SwapChunk::new(balance!(13), balance!(100), balance!(0)),
             ]),
         );
 
@@ -277,31 +271,31 @@ mod tests {
         aggregator.add_source(
             LiquiditySourceType::XYKPool,
             VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(100)),
-                SwapChunk::new(balance!(12), balance!(108)),
-                SwapChunk::new(balance!(14), balance!(112)),
-                SwapChunk::new(balance!(16), balance!(112)),
-                SwapChunk::new(balance!(18), balance!(108)),
+                SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                SwapChunk::new(balance!(12), balance!(108), balance!(1.08)),
+                SwapChunk::new(balance!(14), balance!(112), balance!(1.12)),
+                SwapChunk::new(balance!(16), balance!(112), balance!(1.12)),
+                SwapChunk::new(balance!(18), balance!(108), balance!(1.08)),
             ]),
         );
 
         aggregator.add_source(
             LiquiditySourceType::XSTPool,
             VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(85)),
-                SwapChunk::new(balance!(11), balance!(93.5)),
-                SwapChunk::new(balance!(12), balance!(102)),
-                SwapChunk::new(balance!(13), balance!(110.5)),
-                SwapChunk::new(balance!(14), balance!(119)),
+                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                SwapChunk::new(balance!(11), balance!(93.5), balance!(0.935)),
+                SwapChunk::new(balance!(12), balance!(102), balance!(1.02)),
+                SwapChunk::new(balance!(13), balance!(110.5), balance!(1.105)),
+                SwapChunk::new(balance!(14), balance!(119), balance!(1.19)),
             ]),
         );
 
         aggregator.add_source(
             LiquiditySourceType::OrderBook,
             VecDeque::from([
-                SwapChunk::new(balance!(12), balance!(144)),
-                SwapChunk::new(balance!(10), balance!(100)),
-                SwapChunk::new(balance!(14), balance!(112)),
+                SwapChunk::new(balance!(12), balance!(144), balance!(0)),
+                SwapChunk::new(balance!(10), balance!(100), balance!(0)),
+                SwapChunk::new(balance!(14), balance!(112), balance!(0)),
             ]),
         );
 
@@ -315,31 +309,31 @@ mod tests {
         aggregator.add_source(
             LiquiditySourceType::XYKPool,
             VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(100)),
-                SwapChunk::new(balance!(5.5), balance!(50)),
-                SwapChunk::new(balance!(3), balance!(25)),
-                SwapChunk::new(balance!(26), balance!(200)),
-                SwapChunk::new(balance!(7), balance!(50)),
+                SwapChunk::new(balance!(10), balance!(100), balance!(0)),
+                SwapChunk::new(balance!(5.5), balance!(50), balance!(0)),
+                SwapChunk::new(balance!(3), balance!(25), balance!(0)),
+                SwapChunk::new(balance!(26), balance!(200), balance!(0)),
+                SwapChunk::new(balance!(7), balance!(50), balance!(0)),
             ]),
         );
 
         aggregator.add_source(
             LiquiditySourceType::XSTPool,
             VecDeque::from([
-                SwapChunk::new(balance!(12.5), balance!(100)),
-                SwapChunk::new(balance!(10), balance!(80)),
-                SwapChunk::new(balance!(9), balance!(72)),
-                SwapChunk::new(balance!(8), balance!(64)),
-                SwapChunk::new(balance!(7), balance!(56)),
+                SwapChunk::new(balance!(12.5), balance!(100), balance!(0)),
+                SwapChunk::new(balance!(10), balance!(80), balance!(0)),
+                SwapChunk::new(balance!(9), balance!(72), balance!(0)),
+                SwapChunk::new(balance!(8), balance!(64), balance!(0)),
+                SwapChunk::new(balance!(7), balance!(56), balance!(0)),
             ]),
         );
 
         aggregator.add_source(
             LiquiditySourceType::OrderBook,
             VecDeque::from([
-                SwapChunk::new(balance!(8), balance!(100)),
-                SwapChunk::new(balance!(9), balance!(90)),
-                SwapChunk::new(balance!(13), balance!(100)),
+                SwapChunk::new(balance!(8), balance!(100), balance!(0)),
+                SwapChunk::new(balance!(9), balance!(90), balance!(0)),
+                SwapChunk::new(balance!(13), balance!(100), balance!(0)),
             ]),
         );
 
@@ -541,7 +535,7 @@ mod tests {
                     )
                 ],
                 balance!(320),
-                0
+                balance!(1)
             )
         );
 
@@ -560,7 +554,7 @@ mod tests {
                     )
                 ],
                 balance!(410),
-                0
+                balance!(1.9)
             )
         );
 
@@ -583,7 +577,7 @@ mod tests {
                     )
                 ],
                 balance!(495),
-                0
+                balance!(2.75)
             )
         );
 
@@ -606,7 +600,7 @@ mod tests {
                     )
                 ],
                 balance!(580),
-                0
+                balance!(3.6)
             )
         );
     }
@@ -654,7 +648,7 @@ mod tests {
                     )
                 ],
                 balance!(28),
-                0
+                balance!(1)
             )
         );
 
@@ -673,7 +667,7 @@ mod tests {
                     )
                 ],
                 balance!(39),
-                0
+                balance!(2)
             )
         );
 
@@ -692,7 +686,7 @@ mod tests {
                     )
                 ],
                 balance!(51),
-                0
+                balance!(3)
             )
         );
 
@@ -715,7 +709,7 @@ mod tests {
                     )
                 ],
                 balance!(63.5),
-                0
+                balance!(4)
             )
         );
 
@@ -738,7 +732,7 @@ mod tests {
                     )
                 ],
                 balance!(76),
-                0
+                balance!(5)
             )
         );
     }
@@ -938,7 +932,7 @@ mod tests {
                     )
                 ],
                 balance!(324),
-                0
+                balance!(0.8)
             )
         );
 
@@ -957,7 +951,7 @@ mod tests {
                     )
                 ],
                 balance!(416),
-                0
+                balance!(1.719999999999999999)
             )
         );
 
@@ -980,7 +974,7 @@ mod tests {
                     )
                 ],
                 balance!(503),
-                0
+                balance!(2.59)
             )
         );
 
@@ -1003,7 +997,7 @@ mod tests {
                     )
                 ],
                 balance!(588),
-                0
+                balance!(3.439999999999999999)
             )
         );
     }

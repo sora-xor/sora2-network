@@ -1595,6 +1595,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         samples_count: usize,
+        deduce_fee: bool,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
@@ -1613,6 +1614,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let mut chunks = VecDeque::new();
         let mut sub_in = Balance::zero();
         let mut sub_out = Balance::zero();
+        let mut sub_fee = Balance::zero();
 
         for i in 1..=samples_count {
             let volume = amount.copy_direction(
@@ -1620,19 +1622,21 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     .ok_or(Error::<T>::ArithmeticError)?,
             );
 
-            let (input_amount, output_amount, _fee_amount) = if input_asset_id == base_asset_id {
-                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, volume, false)?
+            let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
+                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, volume, deduce_fee)?
             } else {
-                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, volume, false)?
+                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, volume, deduce_fee)?
             };
 
             let input_chunk = input_amount.saturating_sub(sub_in);
             let output_chunk = output_amount.saturating_sub(sub_out);
+            let fee_chunk = fee_amount.saturating_sub(sub_fee);
 
             sub_in = input_amount;
             sub_out = output_amount;
+            sub_fee = fee_amount;
 
-            chunks.push_back(SwapChunk::new(input_chunk, output_chunk));
+            chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
         }
 
         Ok(chunks)

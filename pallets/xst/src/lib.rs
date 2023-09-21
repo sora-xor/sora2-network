@@ -1096,6 +1096,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         samples_count: usize,
+        deduce_fee: bool,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
@@ -1105,40 +1106,40 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
 
         let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
-        let (mut input_amount, mut output_amount, _fee_amount) =
-            if input_asset_id == synthetic_base_asset_id {
-                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, false, false)?
-            } else {
-                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, false, false)?
-            };
+        let (input_amount, output_amount, fee_amount) = if input_asset_id == synthetic_base_asset_id
+        {
+            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee, false)?
+        } else {
+            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee, false)?
+        };
+
+        let mut monolith = SwapChunk::new(input_amount, output_amount, fee_amount);
 
         let limit = T::GetSyntheticBaseBuySellLimit::get();
-        let price = FixedWrapper::from(output_amount) / FixedWrapper::from(input_amount);
 
         if input_asset_id == synthetic_base_asset_id {
             if input_amount > limit {
-                input_amount = limit;
-                output_amount = (FixedWrapper::from(input_amount) * price)
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                monolith = monolith
+                    .rescale_by_input(limit)
+                    .ok_or(Error::<T>::PriceCalculationFailed)?;
             }
         } else {
             if output_amount > limit {
-                output_amount = limit;
-                input_amount = (FixedWrapper::from(output_amount) / price)
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                monolith = monolith
+                    .rescale_by_output(limit)
+                    .ok_or(Error::<T>::PriceCalculationFailed)?;
             }
         }
 
-        let input_step = input_amount
-            .checked_div(samples_count as Balance)
-            .ok_or(Error::<T>::PriceCalculationFailed)?;
-        let output_step = output_amount
-            .checked_div(samples_count as Balance)
+        let ratio = (FixedWrapper::from(1) / FixedWrapper::from(samples_count))
+            .get()
+            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+
+        let chunk = monolith
+            .rescale_by_ratio(ratio)
             .ok_or(Error::<T>::PriceCalculationFailed)?;
 
-        Ok(vec![SwapChunk::new(input_step, output_step); samples_count].into())
+        Ok(vec![chunk; samples_count].into())
     }
 
     fn exchange(
