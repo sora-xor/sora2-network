@@ -1388,7 +1388,7 @@ impl<T: Config> Pallet<T> {
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
-        _skip_info: bool,
+        skip_info: bool,
         deduce_fee: bool,
     ) -> Result<
         (
@@ -1417,12 +1417,29 @@ impl<T: Config> Pallet<T> {
             aggregator.add_source(source.clone(), chunks);
         }
 
-        let aggregate_swap_outcome = aggregator
+        let (swap_info, aggregate_swap_outcome) = aggregator
             .aggregate_swap_outcome(amount.amount())
             .ok_or(Error::<T>::AggregationError)?;
 
-        // todo (m.tagirov) 447: rewards, weight
-        Ok((aggregate_swap_outcome, Rewards::new(), Weight::zero()))
+        let mut rewards = Rewards::new();
+
+        if !skip_info {
+            for (source, (input, output)) in swap_info {
+                let (mut reward, _weight) = T::LiquidityRegistry::check_rewards(
+                    &source,
+                    input_asset_id,
+                    output_asset_id,
+                    input,
+                    output,
+                )
+                .unwrap_or((Vec::new(), Weight::zero()));
+
+                rewards.append(&mut reward);
+            }
+        }
+
+        // todo (m.tagirov) 447: weight
+        Ok((aggregate_swap_outcome, rewards, Weight::zero()))
     }
 
     /// Implements the "smart" split algorithm.

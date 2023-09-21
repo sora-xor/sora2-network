@@ -38,6 +38,10 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
+// info with input & output amounts for liquidity source
+type SwapInfo<LiquiditySourceType, AmountType> =
+    BTreeMap<LiquiditySourceType, (AmountType, AmountType)>;
+
 /// Output of the aggregated LiquidityProxy::quote() price.
 #[derive(
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
@@ -95,7 +99,10 @@ where
     pub fn aggregate_swap_outcome(
         mut self,
         amount: Balance,
-    ) -> Option<AggregatedSwapOutcome<LiquiditySourceType, Balance>> {
+    ) -> Option<(
+        SwapInfo<LiquiditySourceType, Balance>,
+        AggregatedSwapOutcome<LiquiditySourceType, Balance>,
+    )> {
         if self.liquidity_chunks.is_empty() {
             return None;
         }
@@ -105,6 +112,7 @@ where
         let mut fee = Balance::zero();
 
         let mut distribution: BTreeMap<LiquiditySourceType, Balance> = BTreeMap::new();
+        let mut swap_info: SwapInfo<LiquiditySourceType, Balance> = SwapInfo::new();
 
         while remaining_amount > Balance::zero() {
             let candidates = self.find_best_price_candidates();
@@ -137,6 +145,14 @@ where
                 }
             };
 
+            swap_info
+                .entry(source.clone())
+                .and_modify(|(input, output)| {
+                    *input = input.saturating_add(chunk.input);
+                    *output = output.saturating_add(chunk.output);
+                })
+                .or_insert((chunk.input, chunk.output));
+
             distribution
                 .entry(source.clone())
                 .and_modify(|amount| *amount = amount.saturating_add(remaining_delta))
@@ -146,14 +162,19 @@ where
             fee = fee.checked_add(fee_delta)?;
         }
 
-        Some(AggregatedSwapOutcome {
-            distribution: distribution
-                .into_iter()
-                .map(|(source, amount)| (source, QuoteAmount::with_variant(self.variant, amount)))
-                .collect(),
-            amount: result_amount,
-            fee,
-        })
+        Some((
+            swap_info,
+            AggregatedSwapOutcome {
+                distribution: distribution
+                    .into_iter()
+                    .map(|(source, amount)| {
+                        (source, QuoteAmount::with_variant(self.variant, amount))
+                    })
+                    .collect(),
+                amount: result_amount,
+                fee,
+            },
+        ))
     }
 
     /// Find liquidity sources where the top chunk has the best price.
@@ -497,110 +518,160 @@ mod tests {
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(10)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![(
+            (
+                SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
-                    QuoteAmount::with_desired_input(balance!(10))
-                )],
-                balance!(120),
-                0
+                    (balance!(10), balance!(120))
+                )]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_input(balance!(10))
+                    )],
+                    balance!(120),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(20)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![(
+            (
+                SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
-                    QuoteAmount::with_desired_input(balance!(20))
-                )],
-                balance!(220),
-                0
+                    (balance!(20), balance!(220))
+                )]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_input(balance!(20))
+                    )],
+                    balance!(220),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(30)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(balance!(10))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(20))
+                        (balance!(20), balance!(220))
                     )
-                ],
-                balance!(320),
-                balance!(1)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(10))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        )
+                    ],
+                    balance!(320),
+                    balance!(1)
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(40)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(balance!(20))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(20))
+                        (balance!(20), balance!(220))
                     )
-                ],
-                balance!(410),
-                balance!(1.9)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        )
+                    ],
+                    balance!(410),
+                    balance!(1.9)
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(50)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(balance!(20))
-                    ),
-                    (
-                        LiquiditySourceType::XSTPool,
-                        QuoteAmount::with_desired_input(balance!(10))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
+                    (LiquiditySourceType::XSTPool, (balance!(10), balance!(85))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(20))
+                        (balance!(20), balance!(220))
                     )
-                ],
-                balance!(495),
-                balance!(2.75)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_input(balance!(10))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        )
+                    ],
+                    balance!(495),
+                    balance!(2.75)
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(60)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(balance!(20))
-                    ),
-                    (
-                        LiquiditySourceType::XSTPool,
-                        QuoteAmount::with_desired_input(balance!(20))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
+                    (LiquiditySourceType::XSTPool, (balance!(20), balance!(170))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(20))
+                        (balance!(20), balance!(220))
                     )
-                ],
-                balance!(580),
-                balance!(3.6)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        )
+                    ],
+                    balance!(580),
+                    balance!(3.6)
+                )
             )
         );
     }
@@ -610,129 +681,188 @@ mod tests {
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(100)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![(
-                    LiquiditySourceType::OrderBook,
-                    QuoteAmount::with_desired_output(balance!(100))
-                )],
-                balance!(8),
-                0
+            (
+                SwapInfo::from([(LiquiditySourceType::OrderBook, (balance!(8), balance!(100)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_output(balance!(100))
+                    )],
+                    balance!(8),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(200)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![(
+            (
+                SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
-                    QuoteAmount::with_desired_output(balance!(200))
-                )],
-                balance!(18),
-                0
+                    (balance!(18), balance!(200))
+                )]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_output(balance!(200))
+                    )],
+                    balance!(18),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(300)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(100))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(200))
+                        (balance!(18), balance!(200))
                     )
-                ],
-                balance!(28),
-                balance!(1)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(100))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(200))
+                        )
+                    ],
+                    balance!(28),
+                    balance!(1)
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(400)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(200))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(21), balance!(200))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(200))
+                        (balance!(18), balance!(200))
                     )
-                ],
-                balance!(39),
-                balance!(2)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(200))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(200))
+                        )
+                    ],
+                    balance!(39),
+                    balance!(2)
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(500)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(300))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(200))
+                        (balance!(18), balance!(200))
                     )
-                ],
-                balance!(51),
-                balance!(3)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(300))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(200))
+                        )
+                    ],
+                    balance!(51),
+                    balance!(3)
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(600)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(300))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
                     (
                         LiquiditySourceType::XSTPool,
-                        QuoteAmount::with_desired_output(balance!(100))
+                        (balance!(12.5), balance!(100))
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(200))
+                        (balance!(18), balance!(200))
                     )
-                ],
-                balance!(63.5),
-                balance!(4)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(300))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_output(balance!(100))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(200))
+                        )
+                    ],
+                    balance!(63.5),
+                    balance!(4)
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(700)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(300))
-                    ),
-                    (
-                        LiquiditySourceType::XSTPool,
-                        QuoteAmount::with_desired_output(balance!(200))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
+                    (LiquiditySourceType::XSTPool, (balance!(25), balance!(200))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(200))
+                        (balance!(18), balance!(200))
                     )
-                ],
-                balance!(76),
-                balance!(5)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(300))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_output(balance!(200))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(200))
+                        )
+                    ],
+                    balance!(76),
+                    balance!(5)
+                )
             )
         );
     }
@@ -894,110 +1024,160 @@ mod tests {
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(10)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![(
+            (
+                SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
-                    QuoteAmount::with_desired_input(balance!(10))
-                )],
-                balance!(120),
-                0
+                    (balance!(10), balance!(120))
+                )]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_input(balance!(10))
+                    )],
+                    balance!(120),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(20)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![(
+            (
+                SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
-                    QuoteAmount::with_desired_input(balance!(20))
-                )],
-                balance!(224),
-                0
+                    (balance!(20), balance!(224))
+                )]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_input(balance!(20))
+                    )],
+                    balance!(224),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(30)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(balance!(8))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(22))
+                        (balance!(22), balance!(244))
                     )
-                ],
-                balance!(324),
-                balance!(0.8)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(8))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(22))
+                        )
+                    ],
+                    balance!(324),
+                    balance!(0.8)
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(40)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(balance!(18))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(18), balance!(172))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(22))
+                        (balance!(22), balance!(244))
                     )
-                ],
-                balance!(416),
-                balance!(1.719999999999999999)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(18))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(22))
+                        )
+                    ],
+                    balance!(416),
+                    balance!(1.719999999999999999)
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(50)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(balance!(22))
-                    ),
-                    (
-                        LiquiditySourceType::XSTPool,
-                        QuoteAmount::with_desired_input(balance!(6))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(22), balance!(208))),
+                    (LiquiditySourceType::XSTPool, (balance!(6), balance!(51))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(22))
+                        (balance!(22), balance!(244))
                     )
-                ],
-                balance!(503),
-                balance!(2.59)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(22))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_input(balance!(6))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(22))
+                        )
+                    ],
+                    balance!(503),
+                    balance!(2.59)
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(60)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(balance!(22))
-                    ),
-                    (
-                        LiquiditySourceType::XSTPool,
-                        QuoteAmount::with_desired_input(balance!(16))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(22), balance!(208))),
+                    (LiquiditySourceType::XSTPool, (balance!(16), balance!(136))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(22))
+                        (balance!(22), balance!(244))
                     )
-                ],
-                balance!(588),
-                balance!(3.439999999999999999)
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(22))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_input(balance!(16))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(22))
+                        )
+                    ],
+                    balance!(588),
+                    balance!(3.439999999999999999)
+                )
             )
         );
     }
@@ -1007,110 +1187,169 @@ mod tests {
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(100)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![(
-                    LiquiditySourceType::OrderBook,
-                    QuoteAmount::with_desired_output(balance!(100))
-                )],
-                balance!(8),
-                0
+            (
+                SwapInfo::from([(LiquiditySourceType::OrderBook, (balance!(8), balance!(100)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_output(balance!(100))
+                    )],
+                    balance!(8),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(150)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![(
+            (
+                SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
-                    QuoteAmount::with_desired_output(balance!(150))
-                )],
-                balance!(13),
-                0
+                    (balance!(13), balance!(150))
+                )]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_output(balance!(150))
+                    )],
+                    balance!(13),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(250)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(60))
-                    ),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(6), balance!(60))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(190))
+                        (balance!(17), balance!(190))
                     )
-                ],
-                balance!(23),
-                0
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(60))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(190))
+                        )
+                    ],
+                    balance!(23),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(340)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
+            (
+                SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(150))
+                        (balance!(15.5), balance!(150))
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(190))
+                        (balance!(17), balance!(190))
                     )
-                ],
-                balance!(32.5),
-                0
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(150))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(190))
+                        )
+                    ],
+                    balance!(32.5),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(405)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
+            (
+                SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(175))
+                        (balance!(18.5), balance!(175))
                     ),
-                    (
-                        LiquiditySourceType::XSTPool,
-                        QuoteAmount::with_desired_output(balance!(40))
-                    ),
+                    (LiquiditySourceType::XSTPool, (balance!(5), balance!(40))),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(190))
+                        (balance!(17), balance!(190))
                     )
-                ],
-                balance!(40.5),
-                0
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(175))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_output(balance!(40))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(190))
+                        )
+                    ],
+                    balance!(40.5),
+                    0
+                )
             )
         );
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
             aggregator.aggregate_swap_outcome(balance!(505)).unwrap(),
-            AggregatedSwapOutcome::new(
-                vec![
+            (
+                SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(175))
+                        (balance!(18.5), balance!(175))
                     ),
                     (
                         LiquiditySourceType::XSTPool,
-                        QuoteAmount::with_desired_output(balance!(140))
+                        (balance!(17.5), balance!(140))
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(190))
+                        (balance!(17), balance!(190))
                     )
-                ],
-                balance!(53),
-                0
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(175))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_output(balance!(140))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(190))
+                        )
+                    ],
+                    balance!(53),
+                    0
+                )
             )
         );
     }
