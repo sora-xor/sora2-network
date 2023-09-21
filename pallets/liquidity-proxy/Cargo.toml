@@ -48,7 +48,7 @@ vested-rewards = { path = "../vested-rewards" }
 pool-xyk = { path = "../pool-xyk" }
 pswap-distribution = { path = "../pswap-distribution" }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 
 
 [features]
@@ -71,11 +71,6 @@ std = [
     'fallible-iterator/std',
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]
 
-wip = [
-    "common/wip",
-    "dex-api/wip",
-]
+wip = ["common/wip", "dex-api/wip"]

@@ -20,7 +20,7 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-hex-literal = { version = "0.3.1" }
+hex-literal = { version = "0.4.1" }
 serde = { version = "1.0.101", features = ["derive"], default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -80,6 +80,4 @@ runtime-benchmarks = [
 ]
 private-net = []
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]
