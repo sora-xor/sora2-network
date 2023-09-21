@@ -4411,7 +4411,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "ansi_term",
  "assert_cmd",
@@ -4511,7 +4511,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "common",
  "faucet",
@@ -4541,7 +4541,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "assets",
  "assets-runtime-api",
@@ -4658,7 +4658,6 @@ dependencies = [
  "sp-consensus-babe",
  "sp-core",
  "sp-inherents",
- "sp-keyring",
  "sp-mmr-primitives",
  "sp-npos-elections",
  "sp-offchain",
