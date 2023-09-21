@@ -62,8 +62,9 @@ use crate::impls::{
 use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{Description, LiquidityProxyTrait, PredefinedAssetId};
-use common::{XOR, XSTUSD};
+use common::PredefinedAssetId;
+use common::XOR;
+use common::{Description, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 #[cfg(feature = "wip")] // order-book
@@ -257,10 +258,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 60,
+    spec_version: 63,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 60,
+    transaction_version: 63,
     state_version: 0,
 };
 
