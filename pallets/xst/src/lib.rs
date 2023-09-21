@@ -1113,6 +1113,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee, false)?
         };
 
+        let fee_amount = if deduce_fee {
+            Self::convert_fee(fee_amount)?
+        } else {
+            fee_amount
+        };
+
         let mut monolith = SwapChunk::new(input_amount, output_amount, fee_amount);
 
         let limit = T::GetSyntheticBaseBuySellLimit::get();

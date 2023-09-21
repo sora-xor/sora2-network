@@ -1561,16 +1561,16 @@ mod tests {
                 )
                 .unwrap(),
                 VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000302727272727272)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000302727272727272)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000302727272727272)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000302727272727272)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000302727272727272)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000302727272727272)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000302727272727272)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000302727272727272)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000302727272727272)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000302727272727272)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
                 ])
             );
             
@@ -1585,16 +1585,16 @@ mod tests {
                 )
                 .unwrap(),
                 VecDeque::from([
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.067046529889061147)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.067046529889061147)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.067046529889061147)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.067046529889061147)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.067046529889061147)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.067046529889061147)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.067046529889061147)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.067046529889061147)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.067046529889061147)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.067046529889061147)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
                 ])
             );
             
@@ -1609,16 +1609,16 @@ mod tests {
                 )
                 .unwrap(),
                 VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.0666)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.0666)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.0666)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.0666)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.0666)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.0666)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.0666)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.0666)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.0666)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.0666)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
                 ])
             );
 
@@ -1633,16 +1633,16 @@ mod tests {
                 )
                 .unwrap(),
                 VecDeque::from([
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000446976865927074)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000446976865927074)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000446976865927074)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000446976865927074)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000446976865927074)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000446976865927074)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000446976865927074)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000446976865927074)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000446976865927074)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000446976865927074)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
                 ])
             );
         });
@@ -1737,16 +1737,16 @@ mod tests {
                 )
                 .unwrap(),
                 VecDeque::from([
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(6704.652934598425452910)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(6704.652934598425452910)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(6704.652934598425452910)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(6704.652934598425452910)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(6704.652934598425452910)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(6704.652934598425452910)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(6704.652934598425452910)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(6704.652934598425452910)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(6704.652934598425452910)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(6704.652934598425452910)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
                 ])
             );
 
@@ -1761,16 +1761,16 @@ mod tests {
                 )
                 .unwrap(),
                 VecDeque::from([
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(6659.999999580858761485)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(6659.999999580858761485)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(6659.999999580858761485)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(6659.999999580858761485)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(6659.999999580858761485)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(6659.999999580858761485)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(6659.999999580858761485)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(6659.999999580858761485)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(6659.999999580858761485)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(6659.999999580858761485)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
                 ])
             );
         });
