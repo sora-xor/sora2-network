@@ -1,4 +1,5 @@
 use crate::*;
+use bridge_types::{traits::BridgeApp, GenericNetworkId};
 use common::{DEXId, XOR, XST, XSTUSD};
 
 pub struct StakingMigrationV11OldPallet;
@@ -57,6 +58,32 @@ impl Get<Vec<BlockNumber>> for FarmingPoolBlocksToInspect {
     }
 }
 
+pub struct HashiBridgeLockedAssets;
+
+impl Get<Vec<(AssetId, Balance)>> for HashiBridgeLockedAssets {
+    fn get() -> Vec<(AssetId, Balance)> {
+        let Ok(assets) = EthBridge::get_registered_assets(Some(GetEthNetworkId::get())) else {
+            return Weight::zero();
+        };
+        let Some(bridge_account) = eth_bridge::BridgeAccount::<Runtime>::get(GetEthNetworkId::get()) else {
+            return Weight::zero();
+        };
+        let mut result = vec![];
+        for (kind, (asset_id, precision), _) in assets {
+            let reserved = if kind.is_owned() {
+                Assets::total_issuance(&asset_id)
+            } else {
+                Assets::total_balance(&asset_id, &bridge_account)
+            };
+            result.push((asset_id, reserved.unwrap_or_default()));
+        }
+    }
+}
+
+parameter_types! {
+    pub const HashiBridgeNetworkId: GenericNetworkId = GenericNetworkId::EVMLegacy(GetEthNetworkId::get());
+}
+
 pub type Migrations = (
     farming::migrations::v3::Migrate<
         Runtime,
@@ -66,4 +93,9 @@ pub type Migrations = (
     pswap_distribution::migrations::v2::Migrate<Runtime, XYKSyntheticPoolAccountList<Runtime>>,
     pool_xyk::migrations::v3::XYKPoolUpgrade<Runtime, XYKSyntheticPoolPairs<Runtime>>,
     band::migrations::v2::BandUpdateV2<Runtime>,
+    bridge_proxy::migrations::init::InitLockedAssets<
+        Runtime,
+        HashiBridgeLockedAssets,
+        HashiBridgeNetworkId,
+    >,
 );

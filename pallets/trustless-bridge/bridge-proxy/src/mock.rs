@@ -56,9 +56,9 @@ use system::EnsureRoot;
 
 use crate as proxy;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
-type AssetId = AssetId32<common::PredefinedAssetId>;
+pub type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+pub type Block = frame_system::mocking::MockBlock<Test>;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
 
 frame_support::construct_runtime!(
     pub enum Test where

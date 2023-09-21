@@ -30,13 +30,11 @@
 
 use core::marker::PhantomData;
 
-#[cfg(feature = "ready-to-test")]
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::constants::BlockExecutionWeight;
 use frame_support::weights::Weight;
-#[cfg(feature = "ready-to-test")]
 use frame_support::{
     dispatch::{DispatchInfo, Dispatchable, GetDispatchInfo, PostDispatchInfo},
     traits::Contains,
@@ -44,9 +42,7 @@ use frame_support::{
 };
 
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
-#[cfg(feature = "ready-to-test")]
 use scale_info::TypeInfo;
-#[cfg(feature = "ready-to-test")]
 use sp_core::U256;
 
 pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Currency<
@@ -258,11 +254,9 @@ impl<T: frame_system::Config + pallet_staking::Config> OnUnbalanced<NegativeImba
     fn on_nonzero_unbalanced(_amount: NegativeImbalanceOf<T>) {}
 }
 
-#[cfg(feature = "ready-to-test")] // Substrate bridge
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct DispatchableSubstrateBridgeCall(bridge_types::substrate::BridgeCall);
 
-#[cfg(feature = "ready-to-test")] // Substrate bridge
 impl Dispatchable for DispatchableSubstrateBridgeCall {
     type RuntimeOrigin = crate::RuntimeOrigin;
     type Config = crate::Runtime;
@@ -295,7 +289,6 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     }
 }
 
-#[cfg(feature = "ready-to-test")] // Substrate bridge
 impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
     fn get_dispatch_info(&self) -> DispatchInfo {
         match &self.0 {
@@ -316,10 +309,8 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
     }
 }
 
-#[cfg(feature = "ready-to-test")] // Bridges
 pub struct BalancePrecisionConverter;
 
-#[cfg(feature = "ready-to-test")] // Bridges
 impl BalancePrecisionConverter {
     fn convert_precision(
         precision_from: u8,
@@ -349,7 +340,6 @@ impl BalancePrecisionConverter {
     }
 }
 
-#[cfg(feature = "ready-to-test")] // Bridges
 impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, crate::Balance>
     for BalancePrecisionConverter
 {
@@ -372,7 +362,6 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
     }
 }
 
-#[cfg(feature = "ready-to-test")] // Bridges
 impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, U256>
     for BalancePrecisionConverter
 {
@@ -400,10 +389,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
     }
 }
 
-#[cfg(feature = "ready-to-test")] // Substrate bridge
 pub struct SubstrateBridgeCallFilter;
 
-#[cfg(feature = "ready-to-test")] // Substrate bridge
 impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     fn contains(call: &DispatchableSubstrateBridgeCall) -> bool {
         match &call.0 {
@@ -415,10 +402,10 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     }
 }
 
-#[cfg(feature = "ready-to-test")] // EVM bridge
+#[cfg(feature = "wip")] // EVM bridge
 pub struct EVMBridgeCallFilter;
 
-#[cfg(all(feature = "ready-to-test", not(feature = "runtime-benchmarks")))] // EVM bridge
+#[cfg(all(feature = "wip", not(feature = "runtime-benchmarks")))] // EVM bridge
 impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
     fn contains(call: &crate::RuntimeCall) -> bool {
         match call {
@@ -428,7 +415,7 @@ impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
     }
 }
 
-#[cfg(all(feature = "ready-to-test", feature = "runtime-benchmarks"))] // EVM bridge
+#[cfg(all(feature = "wip", feature = "runtime-benchmarks"))] // EVM bridge
 impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
     fn contains(_call: &crate::RuntimeCall) -> bool {
         true
