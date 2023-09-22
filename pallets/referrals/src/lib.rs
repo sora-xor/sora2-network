@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -39,6 +41,7 @@ mod mock;
 pub mod weights;
 
 use common::Balance;
+use common::ReferrerAccountProvider;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 
@@ -228,5 +231,11 @@ pub mod pallet {
                 Referrals::<T>::append(v, k);
             });
         }
+    }
+}
+
+impl<T: Config> ReferrerAccountProvider<T::AccountId> for Pallet<T> {
+    fn get_referrer_account(who: &T::AccountId) -> Option<T::AccountId> {
+        Self::referrer_account(who)
     }
 }

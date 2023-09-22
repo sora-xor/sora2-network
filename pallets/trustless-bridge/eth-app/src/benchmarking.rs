@@ -2,7 +2,8 @@
 use super::*;
 
 use crate::{AssetIdOf, AssetNameOf, AssetSymbolOf, BalanceOf};
-use bridge_types::types::{AdditionalEVMInboundData, CallOriginOutput};
+use bridge_types::evm::AdditionalEVMInboundData;
+use bridge_types::types::CallOriginOutput;
 use bridge_types::H160;
 use bridge_types::H256;
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
@@ -19,11 +20,13 @@ use crate::Pallet as ETHApp;
 
 benchmarks! {
     where_clause {where
+        T: assets::Config,
         AssetIdOf<T>: From<AssetId32<PredefinedAssetId>>,
         AssetNameOf<T>: From<common::AssetName>,
         AssetSymbolOf<T>: From<common::AssetSymbol>,
         BalanceOf<T>: From<u128>,
-        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>
+        <T as assets::Config>::AssetId: From<AssetIdOf<T>>,
+        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>
     }
     // Benchmark `burn` extrinsic under worst case conditions:
     // * `burn` successfully substracts amount from caller account
@@ -34,11 +37,11 @@ benchmarks! {
         let amount = balance!(20);
         let asset_id: AssetIdOf<T> = XOR.into();
 
-        <T as Config>::Currency::deposit(asset_id.clone(), &caller, amount.into())?;
+        <T as assets::Config>::Currency::deposit(asset_id.clone().into(), &caller, amount.into())?;
 
     }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, recipient, amount.into())
     verify {
-        assert_eq!(<T as Config>::Currency::total_balance(asset_id, &caller), balance!(0).into());
+        assert_eq!(<T as assets::Config>::Currency::total_balance(asset_id.into(), &caller), balance!(0).into());
     }
 
     // Benchmark `mint` extrinsic under worst case conditions:
@@ -56,7 +59,7 @@ benchmarks! {
 
     }: { call.dispatch_bypass_filter(origin.into())? }
     verify {
-        assert_eq!(<T as Config>::Currency::total_balance(asset_id, &recipient), amount.into());
+        assert_eq!(<T as assets::Config>::Currency::total_balance(asset_id.into(), &recipient), amount.into());
     }
 
     register_network {
@@ -71,7 +74,7 @@ benchmarks! {
     register_network_with_existing_asset {
         let asset_id: AssetIdOf<T> = XOR.into();
         let contract = H160::repeat_byte(6);
-    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_id, contract, 18)
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_id.clone(), contract, 18)
     verify {
         assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1), Some((contract, asset_id, 18)));
     }

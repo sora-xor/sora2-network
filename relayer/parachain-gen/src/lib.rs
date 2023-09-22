@@ -28,11 +28,22 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
+
+pub type MaxU32 = sp_runtime::traits::ConstU32<{ core::u32::MAX }>;
+pub type UnboundedBridgeMessage = bridge_types::substrate::BridgeMessage<MaxU32>;
+pub type UnboundedGenericCommitment = bridge_types::GenericCommitment<MaxU32, MaxU32>;
+
 #[subxt::subxt(
     runtime_metadata_path = "src/bytes/parachain_metadata.scale",
     derive_for_all_types = "Clone"
 )]
 pub mod parachain_runtime {
+    #[subxt(substitute_type = "bridge_types::substrate::BridgeMessage")]
+    use crate::UnboundedBridgeMessage;
+    #[subxt(substitute_type = "bridge_types::GenericCommitment")]
+    use crate::UnboundedGenericCommitment;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
     use ::bridge_common::beefy_types::BeefyMMRLeaf;
     #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]
@@ -47,8 +58,6 @@ pub mod parachain_runtime {
     use ::bridge_types::ethashproof::DoubleNodeWithMerkleProof;
     #[subxt(substitute_type = "bridge_types::network_config::NetworkConfig")]
     use ::bridge_types::network_config::NetworkConfig;
-    #[subxt(substitute_type = "bridge_types::substrate::BridgeMessage")]
-    use ::bridge_types::substrate::BridgeMessage;
     #[subxt(substitute_type = "bridge_types::types::AssetKind")]
     use ::bridge_types::types::AssetKind;
     #[subxt(substitute_type = "bridge_types::types::AuxiliaryDigest")]

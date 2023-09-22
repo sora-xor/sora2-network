@@ -34,6 +34,8 @@
 //   specified, we have to rely on such constructions.
 
 #![allow(unused_imports, unused_macros, dead_code)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
@@ -58,7 +60,7 @@ use framenode_runtime::{
     Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
-#[cfg(feature = "wip")]
+#[cfg(feature = "ready-to-test")]
 use framenode_runtime::{
     BridgeInboundChannelConfig, BridgeOutboundChannelConfig, EthereumLightClientConfig,
 };
@@ -470,24 +472,17 @@ pub fn bridge_staging_net_coded() -> ChainSpec {
                 vec![],
                 eth_bridge_params,
                 vec![
-                    hex!("3449d09bd0d8db3e925b1a7260dbfbf340e48ae6e6b845ad8799a8e9d90f3419").into(),
-                    hex!("aea4a9cde3671cfcef190f4bab6c09cb8aaaf86b601a3480a1911258e6333b31").into(),
-                    hex!("7abbc1462576cdf687e2b701e2aaca008cfed0445a02fcde19067814d1507273").into(),
-                    hex!("fc6239c9a5647036fc27fcb1ddcba1963930f9bbec3085d37949f2c69c0f8542").into(),
-                    hex!("ce87ff3c35a5811baaa435750e5c7f093fb5a75a6caf4bc2dd52dd0c31cf2915").into(),
-                    hex!("22946844899b7329e242e7366b68b2388297b6c20bd55bc16018138fb918e136").into(),
-                    hex!("d982a770961ccb5dc410dc43cec18cec7f75e35bd24cf258b836d7ed1912b42e").into(),
-                    hex!("22b8381f123c514b5cc8f10db489fc2f13bc6e0c2482f71fa06c506483136a38").into(),
-                    hex!("70e17c41c468aa2ddee29945683d07ae695fbe4c31e8fb1ade53f6634b03265f").into(),
-                    hex!("f0d8f9f778885c08bd92ef6b3ab8842c0d7fc8c16c315ff5ec5f59415b8a6c47").into(),
-                    hex!("2e533300bf71154cf45c80c1e8927fb0c686cc94a74b69693f3cee8e55ffd238").into(),
-                    hex!("14f2c52c094820f11e468dc9822b9bbd56be5b65fe15508279680ad8fab9184d").into(),
-                    hex!("aa1d35e511ba5f58926340f769b04c456c3d02ce70e3835716ccae6a89fe081c").into(),
+                    hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
+                    hex!("aa7c410fe2d9a0b96ba392c4cef95d3bf8761047297747e9118ee6d1df9f6558").into(),
+                    hex!("30e87994d26e4123d585d5d8c46116bbc196a6f5a4ed87a3ee24a2dbada9a66d").into(),
+                    hex!("30fbd05409cf5f6a8ae6afaa05e9861405d8fa710d0b4c8d088f155cb0b87749").into(),
+                    hex!("20c706cba79f03fc2ed233da544a3e75a81dcae43b0a4edf72719307fd21cb1b").into(),
+                    hex!("8297172611ad3b085258d518f849a5533271d760f729669c9f8863971d70c372").into(),
                 ],
                 vec![
-                    hex!("c4ce370e3ef70681909725fb7385000effe1d88fdf8499df94b53b31e82d9a6e").into(),
-                    hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
-                    hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
+                    hex!("4a2fe11a37dfb548c64def2cbd8d5332bbd56571627b91b81c82970ceb7eec2b").into(),
+                    hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
+                    hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
                 69,
             )
@@ -613,24 +608,17 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                 ],
                 eth_bridge_params,
                 vec![
-                    hex!("3449d09bd0d8db3e925b1a7260dbfbf340e48ae6e6b845ad8799a8e9d90f3419").into(),
-                    hex!("aea4a9cde3671cfcef190f4bab6c09cb8aaaf86b601a3480a1911258e6333b31").into(),
-                    hex!("7abbc1462576cdf687e2b701e2aaca008cfed0445a02fcde19067814d1507273").into(),
-                    hex!("fc6239c9a5647036fc27fcb1ddcba1963930f9bbec3085d37949f2c69c0f8542").into(),
-                    hex!("ce87ff3c35a5811baaa435750e5c7f093fb5a75a6caf4bc2dd52dd0c31cf2915").into(),
-                    hex!("22946844899b7329e242e7366b68b2388297b6c20bd55bc16018138fb918e136").into(),
-                    hex!("d982a770961ccb5dc410dc43cec18cec7f75e35bd24cf258b836d7ed1912b42e").into(),
-                    hex!("22b8381f123c514b5cc8f10db489fc2f13bc6e0c2482f71fa06c506483136a38").into(),
-                    hex!("70e17c41c468aa2ddee29945683d07ae695fbe4c31e8fb1ade53f6634b03265f").into(),
-                    hex!("f0d8f9f778885c08bd92ef6b3ab8842c0d7fc8c16c315ff5ec5f59415b8a6c47").into(),
-                    hex!("2e533300bf71154cf45c80c1e8927fb0c686cc94a74b69693f3cee8e55ffd238").into(),
-                    hex!("14f2c52c094820f11e468dc9822b9bbd56be5b65fe15508279680ad8fab9184d").into(),
-                    hex!("aa1d35e511ba5f58926340f769b04c456c3d02ce70e3835716ccae6a89fe081c").into(),
+                    hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
+                    hex!("aa7c410fe2d9a0b96ba392c4cef95d3bf8761047297747e9118ee6d1df9f6558").into(),
+                    hex!("30e87994d26e4123d585d5d8c46116bbc196a6f5a4ed87a3ee24a2dbada9a66d").into(),
+                    hex!("30fbd05409cf5f6a8ae6afaa05e9861405d8fa710d0b4c8d088f155cb0b87749").into(),
+                    hex!("20c706cba79f03fc2ed233da544a3e75a81dcae43b0a4edf72719307fd21cb1b").into(),
+                    hex!("8297172611ad3b085258d518f849a5533271d760f729669c9f8863971d70c372").into(),
                 ],
                 vec![
-                    hex!("c4ce370e3ef70681909725fb7385000effe1d88fdf8499df94b53b31e82d9a6e").into(),
-                    hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
-                    hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
+                    hex!("4a2fe11a37dfb548c64def2cbd8d5332bbd56571627b91b81c82970ceb7eec2b").into(),
+                    hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
+                    hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
                 69,
             )
@@ -828,7 +816,7 @@ fn testnet_genesis(
     validator_count: u32,
 ) -> GenesisConfig {
     use common::XSTUSD;
-    #[cfg(feature = "wip")]
+    #[cfg(feature = "ready-to-test")]
     use framenode_runtime::EthAppConfig;
 
     // Initial balances
@@ -1150,28 +1138,28 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     GenesisConfig {
-        #[cfg(feature = "wip")] // Substrate bridge
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
         multisig_verifier: Default::default(),
-        #[cfg(feature = "wip")] // Substrate bridge
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
         beefy_light_client: Default::default(),
-        #[cfg(feature = "wip")] // Substrate bridge
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
         substrate_bridge_app: Default::default(),
-        #[cfg(feature = "wip")] // Substrate bridge
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         migration_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         erc20_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         eth_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         ethereum_light_client: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(80),
             ..Default::default()
         },
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: 10000,
             interval: 10,
@@ -1632,24 +1620,17 @@ pub fn main_net_coded() -> ChainSpec {
                 ],
                 eth_bridge_params,
                 vec![
-                    hex!("3449d09bd0d8db3e925b1a7260dbfbf340e48ae6e6b845ad8799a8e9d90f3419").into(),
-                    hex!("aea4a9cde3671cfcef190f4bab6c09cb8aaaf86b601a3480a1911258e6333b31").into(),
-                    hex!("7abbc1462576cdf687e2b701e2aaca008cfed0445a02fcde19067814d1507273").into(),
-                    hex!("fc6239c9a5647036fc27fcb1ddcba1963930f9bbec3085d37949f2c69c0f8542").into(),
-                    hex!("ce87ff3c35a5811baaa435750e5c7f093fb5a75a6caf4bc2dd52dd0c31cf2915").into(),
-                    hex!("22946844899b7329e242e7366b68b2388297b6c20bd55bc16018138fb918e136").into(),
-                    hex!("d982a770961ccb5dc410dc43cec18cec7f75e35bd24cf258b836d7ed1912b42e").into(),
-                    hex!("22b8381f123c514b5cc8f10db489fc2f13bc6e0c2482f71fa06c506483136a38").into(),
-                    hex!("70e17c41c468aa2ddee29945683d07ae695fbe4c31e8fb1ade53f6634b03265f").into(),
-                    hex!("f0d8f9f778885c08bd92ef6b3ab8842c0d7fc8c16c315ff5ec5f59415b8a6c47").into(),
-                    hex!("2e533300bf71154cf45c80c1e8927fb0c686cc94a74b69693f3cee8e55ffd238").into(),
-                    hex!("14f2c52c094820f11e468dc9822b9bbd56be5b65fe15508279680ad8fab9184d").into(),
-                    hex!("aa1d35e511ba5f58926340f769b04c456c3d02ce70e3835716ccae6a89fe081c").into(),
+                    hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
+                    hex!("aa7c410fe2d9a0b96ba392c4cef95d3bf8761047297747e9118ee6d1df9f6558").into(),
+                    hex!("30e87994d26e4123d585d5d8c46116bbc196a6f5a4ed87a3ee24a2dbada9a66d").into(),
+                    hex!("30fbd05409cf5f6a8ae6afaa05e9861405d8fa710d0b4c8d088f155cb0b87749").into(),
+                    hex!("20c706cba79f03fc2ed233da544a3e75a81dcae43b0a4edf72719307fd21cb1b").into(),
+                    hex!("8297172611ad3b085258d518f849a5533271d760f729669c9f8863971d70c372").into(),
                 ],
                 vec![
-                    hex!("c4ce370e3ef70681909725fb7385000effe1d88fdf8499df94b53b31e82d9a6e").into(),
-                    hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
-                    hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
+                    hex!("4a2fe11a37dfb548c64def2cbd8d5332bbd56571627b91b81c82970ceb7eec2b").into(),
+                    hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
+                    hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
             )
         },
@@ -2011,28 +1992,28 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
-        #[cfg(feature = "wip")] // Substrate bridge
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
         multisig_verifier: Default::default(),
-        #[cfg(feature = "wip")] // Substrate bridge
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
         beefy_light_client: Default::default(),
-        #[cfg(feature = "wip")] // Substrate bridge
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
         substrate_bridge_app: Default::default(),
-        #[cfg(feature = "wip")] // Substrate bridge
+        #[cfg(feature = "ready-to-test")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         migration_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         erc20_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         eth_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         ethereum_light_client: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(80),
             ..Default::default()
         },
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "ready-to-test")] // EVM bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: 10000,
             interval: 10,

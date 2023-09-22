@@ -1,5 +1,5 @@
 use super::*;
-use bridge_types::types::AdditionalEVMOutboundData;
+use bridge_types::evm::AdditionalEVMOutboundData;
 use currencies::BasicCurrencyAdapter;
 
 use bridge_types::traits::OutboundChannel;
@@ -17,7 +17,7 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::MultiSignature;
 use sp_std::convert::From;
 
@@ -159,8 +159,8 @@ impl assets::Config for Test {
 }
 
 parameter_types! {
-    pub const MaxMessagePayloadSize: u64 = 128;
-    pub const MaxMessagesPerCommit: u64 = 5;
+    pub const MaxMessagePayloadSize: u32 = 128;
+    pub const MaxMessagesPerCommit: u32 = 5;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
@@ -176,12 +176,11 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 impl bridge_outbound_channel::Config for Test {
-    const INDEXING_PREFIX: &'static [u8] = b"commitment";
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type MaxTotalGasLimit = MaxTotalGasLimit;
@@ -189,6 +188,7 @@ impl bridge_outbound_channel::Config for Test {
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type MessageStatusNotifier = ();
     type AuxiliaryDigestHandler = ();
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
@@ -273,7 +273,7 @@ fn test_submit() {
                 target
             }
         ));
-        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 1);
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 0);
 
         assert_ok!(BridgeOutboundChannel::submit(
             BASE_NETWORK_ID,
@@ -284,7 +284,7 @@ fn test_submit() {
                 target
             }
         ));
-        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 2);
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 0);
     });
 }
 
@@ -410,26 +410,4 @@ fn test_submit_exceeds_payload_limit() {
             Error::<Test>::PayloadTooLarge,
         );
     })
-}
-
-#[test]
-fn test_submit_fails_on_nonce_overflow() {
-    new_tester().execute_with(|| {
-        let target = H160::zero();
-        let who: AccountId = Keyring::Bob.into();
-
-        <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, u64::MAX);
-        assert_noop!(
-            BridgeOutboundChannel::submit(
-                BASE_NETWORK_ID,
-                &RawOrigin::Signed(who),
-                &vec![0, 1, 2],
-                AdditionalEVMOutboundData {
-                    max_gas: 100000.into(),
-                    target
-                }
-            ),
-            Error::<Test>::Overflow,
-        );
-    });
 }

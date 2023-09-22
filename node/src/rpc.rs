@@ -73,14 +73,7 @@ pub struct FullDeps<C, P> {
 }
 
 #[cfg(feature = "ready-to-test")]
-pub fn add_ready_for_test_rpc(
-    rpc: RpcExtension,
-) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>> {
-    Ok(rpc)
-}
-
-#[cfg(feature = "wip")]
-pub fn add_wip_rpc<C, B>(
+pub fn add_ready_for_test_rpc<C, B>(
     mut rpc: RpcExtension,
     backend: Arc<B>,
     client: Arc<C>,
@@ -100,22 +93,26 @@ where
     use bridge_channel_rpc::{BridgeChannelAPIServer, BridgeChannelClient};
     use bridge_proxy_rpc::{BridgeProxyAPIServer, BridgeProxyClient};
     use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
-    use substrate_bridge_channel_rpc::{
-        BridgeChannelAPIServer as SubstrateBridgeChannelAPIServer,
-        BridgeChannelClient as SubstrateBridgeChannelClient,
-    };
 
     rpc.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
     rpc.merge(BridgeProxyClient::new(client.clone()).into_rpc())?;
     if let Some(storage) = backend.offchain_storage() {
-        rpc.merge(BridgeChannelClient::new(storage.clone()).into_rpc())?;
-        rpc.merge(
-            <SubstrateBridgeChannelClient<_> as SubstrateBridgeChannelAPIServer>::into_rpc(
-                SubstrateBridgeChannelClient::new(storage),
-            ),
-        )?;
+        rpc.merge(<BridgeChannelClient<_, _> as BridgeChannelAPIServer<
+            bridge_types::types::BridgeOffchainData<
+                framenode_runtime::BlockNumber,
+                framenode_runtime::BridgeMaxMessagesPerCommit,
+                framenode_runtime::BridgeMaxMessagePayloadSize,
+            >,
+        >>::into_rpc(BridgeChannelClient::new(storage)))?;
     }
     rpc.merge(BeefyLightClientClient::new(client).into_rpc())?;
+    Ok(rpc)
+}
+
+#[cfg(feature = "wip")]
+pub fn add_wip_rpc(
+    rpc: RpcExtension,
+) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>> {
     Ok(rpc)
 }
 

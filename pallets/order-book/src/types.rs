@@ -28,18 +28,22 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::traits::{CurrencyLocker, CurrencyUnlocker};
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::{Balance, PriceVariant, TradingPair};
-use frame_support::{BoundedBTreeMap, BoundedVec, RuntimeDebug};
-use sp_runtime::traits::Zero;
+use common::prelude::BalanceUnit;
+use common::{PriceVariant, TradingPair};
+use frame_support::ensure;
+use frame_support::sp_runtime::DispatchError;
+use frame_support::{BoundedBTreeMap, BoundedVec};
+use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedSub, Saturating, Zero};
 use sp_std::collections::btree_map::BTreeMap;
-use sp_std::vec::Vec;
+use sp_std::ops::{Add, Sub};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-pub type OrderPrice = Balance;
-pub type OrderVolume = Balance;
+pub type OrderPrice = BalanceUnit;
+pub type OrderVolume = BalanceUnit;
 pub type PriceOrders<OrderId, MaxLimitOrdersForPrice> = BoundedVec<OrderId, MaxLimitOrdersForPrice>;
 pub type MarketSide<MaxSidePriceCount> =
     BoundedBTreeMap<OrderPrice, OrderVolume, MaxSidePriceCount>;
@@ -63,7 +67,10 @@ pub enum OrderBookStatus {
     Stop,
 }
 
-#[derive(Eq, PartialEq, Clone, Copy, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Copy, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OrderAmount {
     Base(OrderVolume),
     Quote(OrderVolume),
@@ -72,37 +79,83 @@ pub enum OrderAmount {
 impl OrderAmount {
     pub fn value(&self) -> &OrderVolume {
         match self {
-            OrderAmount::Base(value) => value,
-            OrderAmount::Quote(value) => value,
+            Self::Base(value) => value,
+            Self::Quote(value) => value,
         }
     }
 
     pub fn is_base(&self) -> bool {
         match self {
-            OrderAmount::Base(..) => true,
-            OrderAmount::Quote(..) => false,
+            Self::Base(..) => true,
+            Self::Quote(..) => false,
         }
     }
 
     pub fn is_quote(&self) -> bool {
         match self {
-            OrderAmount::Base(..) => false,
-            OrderAmount::Quote(..) => true,
+            Self::Base(..) => false,
+            Self::Quote(..) => true,
         }
     }
 
-    pub fn associated_asset<'a, AssetId>(
+    pub fn is_same(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Base(..), Self::Base(..)) | (Self::Quote(..), Self::Quote(..)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn copy_type(&self, amount: OrderVolume) -> Self {
+        match self {
+            Self::Base(..) => Self::Base(amount),
+            Self::Quote(..) => Self::Quote(amount),
+        }
+    }
+
+    pub fn associated_asset<'a, AssetId, DEXId>(
         &'a self,
-        order_book_id: &'a OrderBookId<AssetId>,
+        order_book_id: &'a OrderBookId<AssetId, DEXId>,
     ) -> &AssetId {
         match self {
-            OrderAmount::Base(..) => &order_book_id.base,
-            OrderAmount::Quote(..) => &order_book_id.quote,
+            Self::Base(..) => &order_book_id.base,
+            Self::Quote(..) => &order_book_id.quote,
+        }
+    }
+
+    pub fn average_price(input: OrderAmount, output: OrderAmount) -> Result<OrderPrice, ()> {
+        if input.is_quote() {
+            input.value().checked_div(output.value()).ok_or(())
+        } else {
+            output.value().checked_div(input.value()).ok_or(())
         }
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Copy, RuntimeDebug)]
+impl Add for OrderAmount {
+    type Output = Result<Self, ()>;
+
+    fn add(self, other: Self) -> Self::Output {
+        ensure!(self.is_same(&other), ());
+        let Some(result) = self.value().checked_add(other.value()) else {
+            return Err(());
+        };
+        Ok(self.copy_type(result))
+    }
+}
+
+impl Sub for OrderAmount {
+    type Output = Result<Self, ()>;
+
+    fn sub(self, other: Self) -> Self::Output {
+        ensure!(self.is_same(&other), ());
+        let Some(result) = self.value().checked_sub(other.value()) else {
+            return Err(());
+        };
+        Ok(self.copy_type(result))
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub enum MarketRole {
     Maker,
     Taker,
@@ -117,30 +170,33 @@ pub enum MarketRole {
     Clone,
     PartialOrd,
     Ord,
-    RuntimeDebug,
+    Debug,
     Hash,
     scale_info::TypeInfo,
     MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct OrderBookId<AssetId> {
+pub struct OrderBookId<AssetId, DEXId> {
+    /// DEX id
+    pub dex_id: DEXId,
     /// Base asset.
     pub base: AssetId,
     /// Quote asset. It should be a base asset of DEX.
     pub quote: AssetId,
 }
 
-impl<AssetId> From<TradingPair<AssetId>> for OrderBookId<AssetId> {
-    fn from(trading_pair: TradingPair<AssetId>) -> Self {
+impl<AssetId, DEXId> OrderBookId<AssetId, DEXId> {
+    fn from_trading_pair(trading_pair: TradingPair<AssetId>, dex_id: DEXId) -> Self {
         Self {
+            dex_id,
             base: trading_pair.target_asset_id,
             quote: trading_pair.base_asset_id,
         }
     }
 }
 
-impl<AssetId> From<OrderBookId<AssetId>> for TradingPair<AssetId> {
-    fn from(order_book_id: OrderBookId<AssetId>) -> Self {
+impl<AssetId, DEXId> From<OrderBookId<AssetId, DEXId>> for TradingPair<AssetId> {
+    fn from(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
         Self {
             base_asset_id: order_book_id.quote,
             target_asset_id: order_book_id.base,
@@ -148,14 +204,14 @@ impl<AssetId> From<OrderBookId<AssetId>> for TradingPair<AssetId> {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, RuntimeDebug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct DealInfo<AssetId> {
     pub input_asset_id: AssetId,
     pub input_amount: OrderAmount,
     pub output_asset_id: AssetId,
     pub output_amount: OrderAmount,
     pub average_price: OrderPrice,
-    pub side: PriceVariant,
+    pub direction: PriceVariant,
 }
 
 impl<AssetId: PartialEq> DealInfo<AssetId> {
@@ -185,11 +241,264 @@ impl<AssetId: PartialEq> DealInfo<AssetId> {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, RuntimeDebug)]
-pub struct MarketChange<AccountId, OrderId, LimitOrder> {
-    pub market_input: OrderAmount,
-    pub market_output: OrderAmount,
-    pub to_delete: Vec<OrderId>,
-    pub to_update: Vec<LimitOrder>,
-    pub makers_output: BTreeMap<AccountId, OrderVolume>,
+/// Instructions about payments.
+/// It contains lists of which liquidity should be locked in the tech account
+/// and which liquidity should be unlocked from the tech account to users.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct Payment<AssetId, AccountId, DEXId> {
+    pub order_book_id: OrderBookId<AssetId, DEXId>,
+    pub to_lock: BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
+    pub to_unlock: BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
+}
+
+impl<AssetId, AccountId, DEXId> Payment<AssetId, AccountId, DEXId>
+where
+    AssetId: Copy + PartialEq + Ord,
+    AccountId: Ord + Clone,
+    DEXId: Copy + PartialEq,
+{
+    pub fn new(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
+        Self {
+            order_book_id,
+            to_lock: BTreeMap::new(),
+            to_unlock: BTreeMap::new(),
+        }
+    }
+
+    pub fn merge(&mut self, other: &Self) -> Result<(), ()> {
+        ensure!(self.order_book_id == other.order_book_id, ());
+
+        for (map, to_merge) in [
+            (&mut self.to_lock, &other.to_lock),
+            (&mut self.to_unlock, &other.to_unlock),
+        ] {
+            Self::merge_asset_map(map, to_merge);
+        }
+
+        Ok(())
+    }
+
+    fn merge_account_map(
+        account_map: &mut BTreeMap<AccountId, OrderVolume>,
+        to_merge: &BTreeMap<AccountId, OrderVolume>,
+    ) {
+        for (account, volume) in to_merge {
+            account_map
+                .entry(account.clone())
+                .and_modify(|current_volune| {
+                    *current_volune = current_volune.saturating_add(*volume)
+                })
+                .or_insert(*volume);
+        }
+    }
+
+    fn merge_asset_map(
+        map: &mut BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
+        to_merge: &BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
+    ) {
+        for (asset, whom) in to_merge {
+            map.entry(*asset)
+                .and_modify(|account_map| {
+                    Self::merge_account_map(account_map, whom);
+                })
+                .or_insert(whom.clone());
+        }
+    }
+
+    pub fn lock<Locker>(&self) -> Result<(), DispatchError>
+    where
+        Locker: CurrencyLocker<AccountId, AssetId, DEXId, DispatchError>,
+    {
+        for (asset_id, from_whom) in self.to_lock.iter() {
+            for (account, amount) in from_whom.iter() {
+                Locker::lock_liquidity(account, self.order_book_id, asset_id, *amount)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn unlock<Unlocker>(&self) -> Result<(), DispatchError>
+    where
+        Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId, DispatchError>,
+    {
+        for (asset_id, to_whom) in self.to_unlock.iter() {
+            Unlocker::unlock_liquidity_batch(self.order_book_id, asset_id, to_whom)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn execute_all<Locker, Unlocker>(&self) -> Result<(), DispatchError>
+    where
+        Locker: CurrencyLocker<AccountId, AssetId, DEXId, DispatchError>,
+        Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId, DispatchError>,
+    {
+        self.lock::<Locker>()?;
+        self.unlock::<Unlocker>()?;
+        Ok(())
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
+    // Info fields
+    /// The amount of the input asset for the exchange deal
+    pub deal_input: Option<OrderAmount>,
+
+    /// The amount of the output asset for the exchange deal
+    pub deal_output: Option<OrderAmount>,
+
+    /// The amount of the input asset that is placed into the market
+    pub market_input: Option<OrderAmount>,
+
+    /// The amount of the output asset that is placed into the market
+    pub market_output: Option<OrderAmount>,
+
+    // Fields to apply
+    /// Limit orders that should be placed in the order book
+    pub to_place: BTreeMap<OrderId, LimitOrder>,
+
+    /// Limit orders that should be partially executed and executed amount
+    pub to_part_execute: BTreeMap<OrderId, (LimitOrder, OrderAmount)>,
+
+    /// Limit orders that should be fully executed
+    pub to_full_execute: BTreeMap<OrderId, LimitOrder>,
+
+    /// Limit orders that should be cancelled
+    pub to_cancel: BTreeMap<OrderId, LimitOrder>,
+
+    /// Limit orders that should be forcibly updated
+    pub to_force_update: BTreeMap<OrderId, LimitOrder>,
+
+    pub payment: Payment<AssetId, AccountId, DEXId>,
+    pub ignore_unschedule_error: bool,
+}
+
+impl<AccountId, AssetId, DEXId, OrderId, LimitOrder>
+    MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder>
+where
+    AssetId: Copy + PartialEq + Ord,
+    AccountId: Ord + Clone,
+    DEXId: Copy + PartialEq,
+    OrderId: Copy + Ord,
+{
+    pub fn new(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
+        Self {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: None,
+            to_place: BTreeMap::new(),
+            to_part_execute: BTreeMap::new(),
+            to_full_execute: BTreeMap::new(),
+            to_cancel: BTreeMap::new(),
+            to_force_update: BTreeMap::new(),
+            payment: Payment::new(order_book_id),
+            ignore_unschedule_error: false,
+        }
+    }
+
+    pub fn merge(&mut self, mut other: Self) -> Result<(), ()> {
+        let join = |lhs: Option<OrderAmount>,
+                    rhs: Option<OrderAmount>|
+         -> Result<Option<OrderAmount>, ()> {
+            let result = match (lhs, rhs) {
+                (Some(left_amount), Some(right_amount)) => Some((left_amount + right_amount)?),
+                (Some(left_amount), None) => Some(left_amount),
+                (None, Some(right_amount)) => Some(right_amount),
+                (None, None) => None,
+            };
+            Ok(result)
+        };
+
+        self.deal_input = join(self.deal_input, other.deal_input)?;
+        self.deal_output = join(self.deal_output, other.deal_output)?;
+        self.market_input = join(self.market_input, other.market_input)?;
+        self.market_output = join(self.market_output, other.market_output)?;
+
+        self.to_place.append(&mut other.to_place);
+        self.to_part_execute.append(&mut other.to_part_execute);
+        self.to_full_execute.append(&mut other.to_full_execute);
+        self.to_cancel.append(&mut other.to_cancel);
+        self.to_force_update.append(&mut other.to_force_update);
+
+        self.payment.merge(&other.payment)?;
+
+        self.ignore_unschedule_error =
+            self.ignore_unschedule_error || other.ignore_unschedule_error;
+
+        Ok(())
+    }
+
+    pub fn average_deal_price(&self) -> Option<OrderPrice> {
+        let (Some(input), Some(output)) = (self.deal_input, self.deal_output) else {
+            return None;
+        };
+
+        let Ok(price) = OrderAmount::average_price(input, output) else {
+            return None;
+        };
+
+        Some(price)
+    }
+
+    pub fn deal_base_amount(&self) -> Option<OrderVolume> {
+        let (Some(input), Some(output)) = (self.deal_input, self.deal_output) else {
+            return None;
+        };
+
+        if input.is_base() {
+            Some(*input.value())
+        } else {
+            Some(*output.value())
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub enum OrderBookEvent<AccountId, OrderId> {
+    LimitOrderPlaced {
+        order_id: OrderId,
+        owner_id: AccountId,
+    },
+
+    LimitOrderConvertedToMarketOrder {
+        owner_id: AccountId,
+        direction: PriceVariant,
+        amount: OrderAmount,
+    },
+
+    LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+        owner_id: AccountId,
+        market_order_direction: PriceVariant,
+        market_order_amount: OrderAmount,
+        market_order_average_price: OrderPrice,
+        limit_order_id: OrderId,
+    },
+
+    LimitOrderCanceled {
+        order_id: OrderId,
+        owner_id: AccountId,
+    },
+
+    LimitOrderExecuted {
+        order_id: OrderId,
+        owner_id: AccountId,
+        side: PriceVariant,
+        amount: OrderAmount,
+    },
+
+    LimitOrderUpdated {
+        order_id: OrderId,
+        owner_id: AccountId,
+    },
+
+    MarketOrderExecuted {
+        owner_id: AccountId,
+        direction: PriceVariant,
+        amount: OrderAmount,
+        average_price: OrderPrice,
+        to: Option<AccountId>,
+    },
 }

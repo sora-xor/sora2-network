@@ -13,15 +13,16 @@ cargo run --bin relayer --release -- \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
-	bridge register-asset existing-erc20 \
+	bridge register sora evm asset existing-erc20 \
 	--address $DAI \
-	--asset-id 0x0200060000000000000000000000000000000000000000000000000000000000
+	--asset-id 0x0200060000000000000000000000000000000000000000000000000000000000 \
+	--decimals 18
 
 cargo run --bin relayer --release -- \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
-	bridge register-asset erc20 \
+	bridge register sora evm asset erc20 \
 	--address $USDT \
 	--name "Tether USD" \
 	--symbol "USDT" \
@@ -33,14 +34,14 @@ cargo run --bin relayer --release -- \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
-	bridge register-asset native \
+	bridge register sora evm asset native \
 	--asset-id 0x0200000000000000000000000000000000000000000000000000000000000000
 
 cargo run --bin relayer --release -- \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
-	bridge register-asset native \
+	bridge register sora evm asset native \
 	--asset-id 0x0200040000000000000000000000000000000000000000000000000000000000
 
 sleep 60
@@ -49,5 +50,5 @@ cargo run --bin relayer --release -- \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
-	bridge register-asset native \
+	bridge register sora evm asset native \
 	--asset-id 0x0200050000000000000000000000000000000000000000000000000000000000

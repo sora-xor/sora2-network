@@ -31,18 +31,21 @@
 #![cfg(feature = "wip")] // order-book
 
 use assets::AssetIdOf;
-use common::{balance, AssetInfoProvider, Balance, DEXId, PriceVariant};
+use common::{balance, AssetInfoProvider, Balance, PriceVariant};
 use frame_support::assert_ok;
+use frame_support::traits::Hooks;
+use frame_support::weights::Weight;
 use frame_system::RawOrigin;
-use framenode_runtime::order_book::{self, Config, OrderBook, OrderBookId, Pallet};
+use framenode_runtime::order_book::{self, Config, OrderBook, OrderBookId, OrderPrice, Pallet};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_std::collections::btree_map::BTreeMap;
 
 pub type E = order_book::Error<Runtime>;
-pub const DEX: DEXId = DEXId::Polkaswap;
+pub const DEX: common::DEXId = common::DEXId::Polkaswap;
 pub const INIT_BALANCE: Balance = balance!(1000000);
 
 pub type OrderBookPallet = Pallet<Runtime>;
+pub type DEXId = <Runtime as common::Config>::DEXId;
 
 pub fn alice() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
@@ -83,7 +86,7 @@ pub fn free_balance(
 
 pub fn fill_balance(
     account: <Runtime as frame_system::Config>::AccountId,
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
 ) {
     assert_ok!(assets::Pallet::<Runtime>::update_balance(
         RuntimeOrigin::root(),
@@ -101,11 +104,10 @@ pub fn fill_balance(
 }
 
 pub fn create_empty_order_book(
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
 ) -> OrderBook<Runtime> {
     assert_ok!(OrderBookPallet::create_orderbook(
         RawOrigin::Signed(bob()).into(),
-        DEX.into(),
         order_book_id
     ));
 
@@ -124,18 +126,17 @@ pub fn create_empty_order_book(
 //   9.5 |  261.3 | buy4, buy5, buy6
 //          Bids
 pub fn create_and_fill_order_book(
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
 ) -> OrderBook<Runtime> {
     assert_ok!(OrderBookPallet::create_orderbook(
         RawOrigin::Signed(bob()).into(),
-        DEX.into(),
         order_book_id
     ));
 
     fill_balance(bob(), order_book_id);
     fill_balance(charlie(), order_book_id);
 
-    let lifespan = 10000;
+    let lifespan = Some(100000);
 
     // prices
     let bp1 = balance!(10);
@@ -261,45 +262,45 @@ pub fn create_and_fill_order_book(
 
     // check
     assert_eq!(
-        OrderBookPallet::bids(&order_book_id, &bp1).unwrap(),
+        OrderBookPallet::bids(order_book_id, OrderPrice::divisible(bp1)).unwrap(),
         vec![1]
     );
     assert_eq!(
-        OrderBookPallet::bids(&order_book_id, &bp2).unwrap(),
+        OrderBookPallet::bids(order_book_id, OrderPrice::divisible(bp2)).unwrap(),
         vec![2, 3]
     );
     assert_eq!(
-        OrderBookPallet::bids(&order_book_id, &bp3).unwrap(),
+        OrderBookPallet::bids(order_book_id, OrderPrice::divisible(bp3)).unwrap(),
         vec![4, 5, 6]
     );
 
     assert_eq!(
-        OrderBookPallet::asks(&order_book_id, &sp1).unwrap(),
+        OrderBookPallet::asks(order_book_id, OrderPrice::divisible(sp1)).unwrap(),
         vec![7]
     );
     assert_eq!(
-        OrderBookPallet::asks(&order_book_id, &sp2).unwrap(),
+        OrderBookPallet::asks(order_book_id, OrderPrice::divisible(sp2)).unwrap(),
         vec![8, 9]
     );
     assert_eq!(
-        OrderBookPallet::asks(&order_book_id, &sp3).unwrap(),
+        OrderBookPallet::asks(order_book_id, OrderPrice::divisible(sp3)).unwrap(),
         vec![10, 11, 12]
     );
 
     assert_eq!(
         OrderBookPallet::aggregated_bids(&order_book_id),
         BTreeMap::from([
-            (bp1, amount1),
-            (bp2, amount2 + amount3),
-            (bp3, amount4 + amount5 + amount6)
+            (bp1.into(), amount1.into()),
+            (bp2.into(), (amount2 + amount3).into()),
+            (bp3.into(), (amount4 + amount5 + amount6).into())
         ])
     );
     assert_eq!(
         OrderBookPallet::aggregated_asks(&order_book_id),
         BTreeMap::from([
-            (sp1, amount7),
-            (sp2, amount8 + amount9),
-            (sp3, amount10 + amount11 + amount12)
+            (sp1.into(), amount7.into()),
+            (sp2.into(), (amount8 + amount9).into()),
+            (sp3.into(), (amount10 + amount11 + amount12).into())
         ])
     );
 
@@ -307,11 +308,23 @@ pub fn create_and_fill_order_book(
 }
 
 pub fn get_last_order_id(
-    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
 ) -> Option<<Runtime as Config>::OrderId> {
     if let Some(order_book) = OrderBookPallet::order_books(order_book_id) {
         Some(order_book.last_order_id)
     } else {
         None
     }
+}
+
+/// Returns weight spent on initializations
+pub fn run_to_block(n: u32) -> Weight {
+    type System = frame_system::Pallet<Runtime>;
+    let mut total_init_weight = 0.into();
+    while System::block_number() < n {
+        OrderBookPallet::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        total_init_weight += OrderBookPallet::on_initialize(System::block_number());
+    }
+    total_init_weight
 }

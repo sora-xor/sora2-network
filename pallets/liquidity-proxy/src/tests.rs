@@ -32,11 +32,12 @@ use crate::mock::*;
 use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
 use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
-use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
+use common::prelude::{AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount};
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
     Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
-    RewardReason, TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    ReferencePriceProvider, RewardReason, TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP,
+    USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
@@ -3314,6 +3315,7 @@ fn test_batch_swap_desired_input_successful() {
                 outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+                outcome_asset_reuse: 0,
             },
             SwapBatchInfo {
                 outcome_asset_id: KSM,
@@ -3322,6 +3324,7 @@ fn test_batch_swap_desired_input_successful() {
                     BatchReceiverInfo::new(charlie(), balance!(10)),
                     BatchReceiverInfo::new(dave(), balance!(10)),
                 ],
+                outcome_asset_reuse: 0,
             },
         ]);
 
@@ -3346,6 +3349,46 @@ fn test_batch_swap_desired_input_successful() {
 }
 
 #[test]
+fn test_batch_swap_emits_event() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        frame_system::Pallet::<Runtime>::set_block_number(1);
+        assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
+
+        let swap_batches = Vec::from([SwapBatchInfo {
+            outcome_asset_id: XOR,
+            dex_id: DEX_C_ID,
+            receivers: vec![
+                BatchReceiverInfo::new(charlie(), balance!(10)),
+                BatchReceiverInfo::new(dave(), balance!(10)),
+            ],
+            outcome_asset_reuse: 0,
+        }]);
+
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+
+        let amount_in = balance!(20);
+        let adar_fee = (FixedWrapper::from(amount_in) * fixed_wrapper!(0.0025)).into_balance();
+
+        let max_input_amount = amount_in + adar_fee;
+
+        assert_ok!(LiquidityProxy::swap_transfer_batch(
+            RuntimeOrigin::signed(alice()),
+            swap_batches.clone(),
+            XOR,
+            max_input_amount,
+            sources.clone(),
+            filter_mode,
+        ));
+
+        common::test_utils::assert_last_event::<Runtime>(
+            crate::Event::BatchSwapExecuted(adar_fee, amount_in).into(),
+        );
+    });
+}
+
+#[test]
 fn test_batch_swap_duplicate_receivers_successful() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
@@ -3360,6 +3403,7 @@ fn test_batch_swap_duplicate_receivers_successful() {
                 outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+                outcome_asset_reuse: 0,
             },
             SwapBatchInfo {
                 outcome_asset_id: KSM,
@@ -3369,6 +3413,7 @@ fn test_batch_swap_duplicate_receivers_successful() {
                     BatchReceiverInfo::new(dave(), balance!(10)),
                     BatchReceiverInfo::new(dave(), balance!(10)),
                 ],
+                outcome_asset_reuse: 0,
             },
         ]);
 
@@ -3405,6 +3450,7 @@ fn test_batch_swap_desired_input_too_low() {
                 outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+                outcome_asset_reuse: 0,
             },
             SwapBatchInfo {
                 outcome_asset_id: KSM,
@@ -3413,6 +3459,7 @@ fn test_batch_swap_desired_input_too_low() {
                     BatchReceiverInfo::new(charlie(), balance!(10)),
                     BatchReceiverInfo::new(dave(), balance!(10)),
                 ],
+                outcome_asset_reuse: 0,
             },
         ]);
         let sources = [LiquiditySourceType::XYKPool].to_vec();
@@ -3448,11 +3495,13 @@ fn test_batch_swap_fail_with_duplicate_asset_ids() {
                 outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+                outcome_asset_reuse: 0,
             },
             SwapBatchInfo {
                 outcome_asset_id: USDT,
                 dex_id: DEX_A_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+                outcome_asset_reuse: 0,
             },
             SwapBatchInfo {
                 outcome_asset_id: KSM,
@@ -3461,6 +3510,7 @@ fn test_batch_swap_fail_with_duplicate_asset_ids() {
                     BatchReceiverInfo::new(charlie(), balance!(10)),
                     BatchReceiverInfo::new(dave(), balance!(10)),
                 ],
+                outcome_asset_reuse: 0,
             },
         ]);
 
@@ -3557,6 +3607,159 @@ fn test_buy_back_handler() {
         assert_eq!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(11999)
+        );
+    });
+}
+
+#[test]
+fn test_set_adar_commission_ratio() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        assert!(LiquidityProxy::adar_commission_ratio() == balance!(0.0025));
+        assert_noop!(
+            LiquidityProxy::set_adar_commission_ratio(
+                RuntimeOrigin::signed(alice()),
+                balance!(0.5)
+            ),
+            DispatchError::BadOrigin
+        );
+        assert_noop!(
+            LiquidityProxy::set_adar_commission_ratio(RuntimeOrigin::root(), balance!(1)),
+            Error::<Runtime>::InvalidADARCommissionRatio
+        );
+        assert_ok!(LiquidityProxy::set_adar_commission_ratio(
+            RuntimeOrigin::root(),
+            balance!(0.5)
+        ));
+        assert!(LiquidityProxy::adar_commission_ratio() == balance!(0.5));
+    })
+}
+
+#[test]
+fn test_reference_price_provider() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::MulticollateralBondingCurvePool,
+        LiquiditySourceType::XSTPool,
+    ])
+    .with_xyk_pool()
+    .build();
+    ext.execute_with(|| {
+        frame_support::parameter_types! {
+            pub const GetReferenceDexId: DEXId = DEX_A_ID;
+            pub const GetReferenceAssetId: AssetId = USDT;
+        }
+
+        assert_eq!(
+            crate::ReferencePriceProvider::<Runtime, GetReferenceDexId, GetReferenceAssetId>::get_reference_price(
+                &KSM,
+            )
+            .unwrap(),
+            balance!(0.499500499500499500)
+        );
+    });
+}
+
+#[test]
+fn test_batch_swap_asset_reuse_works() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
+
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+        assert_eq!(
+            Assets::free_balance(&KSM, &alice()).unwrap(),
+            balance!(2000)
+        );
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(12000)
+        );
+
+        let swap_batches = Vec::from([
+            SwapBatchInfo {
+                outcome_asset_id: USDT,
+                dex_id: DEX_C_ID,
+                receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+                outcome_asset_reuse: balance!(10),
+            },
+            SwapBatchInfo {
+                outcome_asset_id: KSM,
+                dex_id: DEX_A_ID,
+                receivers: vec![
+                    BatchReceiverInfo::new(charlie(), balance!(10)),
+                    BatchReceiverInfo::new(dave(), balance!(10)),
+                ],
+                outcome_asset_reuse: balance!(10),
+            },
+        ]);
+
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let max_input_amount =
+            calculate_swap_batch_input_amount_with_adar_commission(&swap_batches, sources.clone())
+                + balance!(1);
+
+        assert_ok!(LiquidityProxy::swap_transfer_batch(
+            RuntimeOrigin::signed(alice()),
+            swap_batches.clone(),
+            XOR,
+            max_input_amount,
+            sources.clone(),
+            filter_mode,
+        ));
+
+        test_utils::check_adar_commission(&swap_batches, sources);
+        test_utils::check_swap_batch_executed_amount(swap_batches);
+        assert_approx_eq!(
+            Assets::free_balance(&KSM, &alice()).unwrap(),
+            balance!(1990),
+            balance!(0.00001)
+        );
+        assert_approx_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(11990),
+            balance!(0.00001)
+        );
+    });
+}
+
+#[test]
+fn test_batch_swap_asset_reuse_fails() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
+
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(12000)
+        );
+
+        let swap_batches = Vec::from([SwapBatchInfo {
+            outcome_asset_id: USDT,
+            dex_id: DEX_C_ID,
+            receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+            outcome_asset_reuse: balance!(1000000),
+        }]);
+
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let max_input_amount =
+            calculate_swap_batch_input_amount_with_adar_commission(&swap_batches, sources.clone())
+                + balance!(1);
+
+        assert_noop!(
+            LiquidityProxy::swap_transfer_batch(
+                RuntimeOrigin::signed(alice()),
+                swap_batches.clone(),
+                XOR,
+                max_input_amount,
+                sources.clone(),
+                filter_mode,
+            ),
+            Error::<Runtime>::InsufficientBalance
         );
     });
 }

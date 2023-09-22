@@ -1,9 +1,12 @@
 //! Channel for passing messages from ethereum to substrate.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
+use bridge_types::evm::{AdditionalEVMInboundData, AdditionalEVMOutboundData};
 use bridge_types::traits::{MessageDispatch, Verifier};
-use bridge_types::types::{AdditionalEVMInboundData, AdditionalEVMOutboundData, MessageId};
+use bridge_types::types::MessageId;
 use bridge_types::EVMChainId;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
@@ -36,8 +39,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use crate::events::MessageDispatched;
-    use bridge_types::traits::{AppRegistry, MessageStatusNotifier, OutboundChannel};
+    use crate::events::BatchDispatched;
+    use bridge_types::traits::{AppRegistry, GasTracker, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::MessageStatus;
     use bridge_types::{GenericNetworkId, GenericTimepoint, Log, H256};
     use frame_support::log::{debug, warn};
@@ -46,6 +49,10 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use sp_runtime::traits::{Hash, Keccak256};
+
+    /// Since gas from event is measured before tx is ended, extra gas should be added.
+    /// 20000 for storage gas_proof in map + ~10000 for emit BatchDispatched
+    const GAS_EXTRA: u64 = 60000;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
@@ -58,6 +65,8 @@ pub mod pallet {
         type MessageDispatch: MessageDispatch<Self, EVMChainId, MessageId, AdditionalEVMInboundData>;
 
         type Hashing: Hash<Output = H256>;
+
+        type GasTracker: GasTracker<BalanceOf<Self>>;
 
         type MessageStatusNotifier: MessageStatusNotifier<
             Self::AssetId,
@@ -80,6 +89,9 @@ pub mod pallet {
             AdditionalEVMOutboundData,
         >;
 
+        #[pallet::constant]
+        type ThisNetworkId: Get<GenericNetworkId>;
+
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
     }
@@ -90,6 +102,7 @@ pub mod pallet {
     pub type InboundChannelAddresses<T: Config> =
         StorageMap<_, Identity, EVMChainId, H160, OptionQuery>;
 
+    // Dispatched batch nonce for replay protection
     #[pallet::storage]
     pub type InboundChannelNonces<T: Config> = StorageMap<_, Identity, EVMChainId, u64, ValueQuery>;
 
@@ -136,8 +149,8 @@ pub mod pallet {
         InvalidSourceChannel,
         /// Message has an invalid envelope.
         InvalidEnvelope,
-        /// Malformed MessageDispatched event
-        InvalidMessageDispatchedEvent,
+        /// Malformed BatchDispatched event
+        InvalidBatchDispatchedEvent,
         /// Message has an unexpected nonce.
         InvalidNonce,
         /// Incorrect reward fraction
@@ -148,6 +161,7 @@ pub mod pallet {
         CallEncodeFailed,
     }
 
+    /// OutboundChannel event Message found.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
@@ -186,7 +200,8 @@ pub mod pallet {
 
             Self::handle_fee(envelope.fee, &relayer);
 
-            let message_id = MessageId::inbound(envelope.nonce);
+            let message_id =
+                MessageId::basic(network_id.into(), T::ThisNetworkId::get(), envelope.nonce);
             T::MessageDispatch::dispatch(
                 network_id,
                 message_id.into(),
@@ -201,9 +216,11 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// BatchDispatched event from InboundChannel on Ethereum found, the function verifies tx
+        /// and changes all the batch messages statuses.
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::message_dispatched())]
-        pub fn message_dispatched(
+        #[pallet::weight(<T as Config>::WeightInfo::batch_dispatched())]
+        pub fn batch_dispatched(
             origin: OriginFor<T>,
             network_id: EVMChainId,
             log: Log,
@@ -211,24 +228,24 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!(
-                "message_dispatched: Received MessageDispatched from {:?}",
+                "message_dispatched: Received BatchDispatched from {:?}",
                 relayer
             );
             // submit message to verifier for verification
             let log_hash = Keccak256::hash_of(&log);
             T::Verifier::verify(network_id.into(), log_hash, &proof)?;
-            let message_dispatched_event: MessageDispatched = MessageDispatched::try_from(log)
-                .map_err(|_| Error::<T>::InvalidMessageDispatchedEvent)?;
+            let batch_dispatched_event: BatchDispatched = BatchDispatched::try_from(log)
+                .map_err(|_| Error::<T>::InvalidBatchDispatchedEvent)?;
 
             ensure!(
                 <InboundChannelAddresses<T>>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?
-                    == message_dispatched_event.channel,
+                    == batch_dispatched_event.channel,
                 Error::<T>::InvalidSourceChannel
             );
 
-            // Verify message nonce
+            // Verify batch nonce
             <InboundChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
-                if message_dispatched_event.nonce != *nonce + 1 {
+                if batch_dispatched_event.batch_nonce != *nonce + 1 {
                     Err(Error::<T>::InvalidNonce.into())
                 } else {
                     *nonce += 1;
@@ -236,17 +253,38 @@ pub mod pallet {
                 }
             })?;
 
-            T::MessageStatusNotifier::update_status(
-                GenericNetworkId::EVM(network_id),
-                MessageId::outbound(message_dispatched_event.nonce)
-                    .using_encoded(|v| <T as Config>::Hashing::hash(v)),
-                if message_dispatched_event.result {
+            let network_id = GenericNetworkId::EVM(network_id);
+
+            T::GasTracker::record_tx_fee(
+                network_id,
+                batch_dispatched_event.batch_nonce,
+                batch_dispatched_event.relayer,
+                // Since gas tracked during tx execution, some extra gas should be added
+                U256::from(batch_dispatched_event.gas_spent + GAS_EXTRA),
+                U256::from(batch_dispatched_event.base_fee),
+            );
+
+            for i in 0..batch_dispatched_event.results_length {
+                let message_id = MessageId::batched(
+                    T::ThisNetworkId::get(),
+                    network_id.into(),
+                    batch_dispatched_event.batch_nonce,
+                    i,
+                )
+                .using_encoded(|v| <T as Config>::Hashing::hash(v));
+
+                let message_status = if (batch_dispatched_event.results & 1 << i) != 0 {
                     MessageStatus::Done
                 } else {
                     MessageStatus::Failed
-                },
-                GenericTimepoint::Unknown,
-            );
+                };
+                T::MessageStatusNotifier::update_status(
+                    network_id,
+                    message_id,
+                    message_status,
+                    GenericTimepoint::Unknown,
+                );
+            }
 
             Ok(().into())
         }

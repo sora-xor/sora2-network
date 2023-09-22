@@ -65,6 +65,8 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
 */
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 #[macro_use]
 extern crate alloc;
@@ -80,7 +82,7 @@ use common::prelude::Balance;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
 };
-use core::{line, stringify};
+use core::stringify;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::log::{debug, error, info, warn};
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
@@ -326,7 +328,7 @@ pub mod pallet {
     use super::*;
     use crate::offchain::SignatureParams;
     use crate::util::get_bridge_account;
-    use bridge_types::traits::MessageStatusNotifier;
+    use bridge_types::traits::{BridgeAssetLockChecker, MessageStatusNotifier};
     use codec::Codec;
     use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
@@ -373,6 +375,8 @@ pub mod pallet {
         type Mock: tests::mock::Mock;
 
         type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId, Balance>;
+
+        type BridgeAssetLockChecker: BridgeAssetLockChecker<Self::AssetId, Balance>;
 
         type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
     }
@@ -1859,7 +1863,8 @@ impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pal
     fn list_supported_assets(
         network_id: GenericNetworkId,
     ) -> Vec<bridge_types::types::BridgeAssetInfo> {
-        use bridge_types::types::{BridgeAssetInfo, EVMAppKind, EVMLegacyAssetInfo};
+        use bridge_types::evm::{EVMAppKind, EVMLegacyAssetInfo};
+        use bridge_types::types::BridgeAssetInfo;
         let Ok(network_id) = Self::ensure_generic_network(network_id) else {
             return vec![];
         };
@@ -1891,7 +1896,8 @@ impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pal
     }
 
     fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
-        use bridge_types::types::{BridgeAppInfo, EVMAppInfo, EVMAppKind};
+        use bridge_types::evm::{EVMAppInfo, EVMAppKind};
+        use bridge_types::types::BridgeAppInfo;
         let mut apps = vec![];
         let network_id = T::GetEthNetworkId::get();
         let generic_network_id = GenericNetworkId::EVMLegacy(network_id.unique_saturated_into());

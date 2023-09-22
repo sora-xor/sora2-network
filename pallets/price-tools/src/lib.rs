@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 pub mod weights;
 
@@ -214,7 +216,7 @@ impl<T: Config> Pallet<T> {
             }
             (input, xor) if xor == &XOR.into() => {
                 // Buy price should always be greater or equal to sell price, so we need to invert price_variant here
-                Self::get_asset_average_price(input, price_variant.switch()).and_then(
+                Self::get_asset_average_price(input, price_variant.switched()).and_then(
                     |average_price| {
                         (fixed_wrapper!(1) / average_price)
                             .try_into_balance()

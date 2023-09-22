@@ -30,7 +30,7 @@
 
 use std::time::Duration;
 
-use bridge_types::types::Proof;
+use bridge_types::evm::Proof;
 use bridge_types::EVMChainId;
 use ethers::abi::RawLog;
 
@@ -115,7 +115,7 @@ impl SubstrateMessagesRelay {
         }
 
         self.handle_message_events(current_eth_block).await?;
-        self.handle_message_dispatched(current_eth_block).await?;
+        self.handle_batch_dispatched(current_eth_block).await?;
 
         self.latest_channel_block = current_eth_block + 1;
         Ok(())
@@ -166,28 +166,13 @@ impl SubstrateMessagesRelay {
                     {
                         let message = self.make_message(log).await?;
                         debug!("Channel: Send {} message", event.nonce);
-                        let ev = self
-                            .sub
-                            .api()
-                            .tx()
-                            .sign_and_submit_then_watch_default(
-                                &runtime::tx().bridge_inbound_channel().submit(
-                                    self.network_id,
-                                    message.data,
-                                    message.proof,
-                                ),
-                                &self.sub,
-                            )
-                            .await?
-                            .wait_for_in_block()
-                            .await?
-                            .wait_for_success()
+                        self.sub
+                            .submit_extrinsic(&runtime::tx().bridge_inbound_channel().submit(
+                                self.network_id,
+                                message.data,
+                                message.proof,
+                            ))
                             .await?;
-                        info!(
-                            "Channel: Message {} included in {:?}",
-                            event.nonce,
-                            ev.block_hash()
-                        );
                         sub_nonce = event.nonce;
                     }
                 }
@@ -197,20 +182,20 @@ impl SubstrateMessagesRelay {
         Ok(())
     }
 
-    async fn handle_message_dispatched(&mut self, current_eth_block: u64) -> AnyResult<()> {
+    async fn handle_batch_dispatched(&mut self, current_eth_block: u64) -> AnyResult<()> {
         let eth = self.eth.inner();
         let inbound_channel = ethereum_gen::InboundChannel::new(self.inbound_channel, eth.clone());
         let events: Vec<(
-            ethereum_gen::inbound_channel::MessageDispatchedFilter,
+            ethereum_gen::inbound_channel::BatchDispatchedFilter,
             LogMeta,
         )> = inbound_channel
-            .message_dispatched_filter()
+            .batch_dispatched_filter()
             .from_block(self.latest_channel_block)
             .to_block(current_eth_block)
             .query_with_meta()
             .await?;
         debug!(
-            "Channel: Found {} MessageDispatched events from {} to {}",
+            "Channel: Found {} BatchDispatched events from {} to {}",
             events.len(),
             self.latest_channel_block,
             current_eth_block
@@ -227,44 +212,36 @@ impl SubstrateMessagesRelay {
             .await?;
 
         for (event, meta) in events {
-            if event.nonce > sub_inbound_nonce && meta.address == self.inbound_channel {
+            if event.batch_nonce > sub_inbound_nonce && meta.address == self.inbound_channel {
                 let tx = eth
                     .get_transaction_receipt(meta.transaction_hash)
                     .await?
                     .expect("should exist");
+
                 for log in tx.logs {
                     let raw_log = RawLog {
                         topics: log.topics.clone(),
                         data: log.data.to_vec(),
                     };
                     if let Ok(event) =
-                    <ethereum_gen::inbound_channel::MessageDispatchedFilter as EthEvent>::decode_log(
-                        &raw_log,
-                    )
-                    {
-                        debug!("Channel: Send {} MessageDispatched", event.nonce);
-                        let message = self.make_message(log).await?;
-                        let ev = self
-                            .sub
-                            .api()
-                            .tx()
-                            .sign_and_submit_then_watch_default(
-                                &runtime::tx()
-                                    .bridge_inbound_channel()
-                                    .message_dispatched(self.network_id, message.data, message.proof),
-                                &self.sub,
-                            )
-                            .await?
-                            .wait_for_in_block()
-                            .await?
-                            .wait_for_success()
-                            .await?;
-                        info!(
-                            "Channel: MessageDispatched event {} submitted in {:?}",
-                            event.nonce,
-                            ev.block_hash()
-                        );
-                        sub_inbound_nonce = event.nonce;
+                        <ethereum_gen::inbound_channel::BatchDispatchedFilter as EthEvent>::decode_log(
+                            &raw_log,
+                        ) {
+                            debug!("Channel: Send BatchDispatched {}", event.batch_nonce);
+                            let message = self.make_message(log).await?;
+                            self
+                                .sub
+                                .submit_extrinsic(
+                                    &runtime::tx()
+                                        .bridge_inbound_channel()
+                                        .batch_dispatched(
+                                            self.network_id,
+                                            message.data,
+                                            message.proof,
+                                        ),
+                                )
+                                .await?;
+                        sub_inbound_nonce = event.batch_nonce;
                     }
                 }
             }

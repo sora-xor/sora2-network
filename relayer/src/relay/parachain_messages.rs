@@ -28,14 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::VecDeque;
+use std::collections::BTreeMap;
 
 use super::beefy_syncer::BeefySyncer;
 use crate::prelude::*;
 use crate::substrate::{BlockNumber, OtherParams};
-use bridge_types::{SubNetworkId, H256};
-use futures::FutureExt;
-use futures::StreamExt;
+use bridge_types::SubNetworkId;
 
 pub struct RelayBuilder<S: SenderConfig, R: ReceiverConfig> {
     sender: Option<SubUnsignedClient<S>>,
@@ -91,7 +89,7 @@ where
             sender,
             receiver,
             syncer,
-            commitment_queue: Default::default(),
+            commitment_blocks: Default::default(),
             receiver_network_id,
             sender_network_id,
         })
@@ -102,7 +100,7 @@ where
 pub struct Relay<S: SenderConfig, R: ReceiverConfig> {
     sender: SubUnsignedClient<S>,
     receiver: SubUnsignedClient<R>,
-    commitment_queue: VecDeque<(BlockNumber<S>, H256)>,
+    commitment_blocks: BTreeMap<u64, BlockNumber<S>>,
     syncer: BeefySyncer,
     receiver_network_id: SubNetworkId,
     sender_network_id: SubNetworkId,
@@ -114,37 +112,25 @@ where
     R: ReceiverConfig,
     OtherParams<R>: Default,
 {
-    async fn send_commitment(
-        &self,
-        block_number: BlockNumber<S>,
-        commitment_hash: H256,
-    ) -> AnyResult<()> {
-        info!("Sending channel commitment for block {:?}", block_number);
+    async fn send_commitment(&self, batch_nonce: u64) -> AnyResult<()> {
+        info!("Sending channel commitment with nonce {:?}", batch_nonce);
         let latest_sent = self.syncer.latest_sent();
         let commitment = super::messages_subscription::load_commitment_with_proof(
             &self.sender,
             self.receiver_network_id.into(),
-            block_number,
-            commitment_hash,
+            batch_nonce,
             latest_sent as u32,
         )
         .await?;
-        let super::messages_subscription::MessageCommitment::Sub(commitment_inner) = commitment.commitment else {
-            return Err(anyhow::anyhow!("Invalid commitment"));
-        };
         let inbound_channel_nonce = self.inbound_channel_nonce().await?;
-        if commitment_inner
-            .messages
-            .iter()
-            .all(|message| message.nonce <= inbound_channel_nonce)
-        {
+        if commitment.offchain_data.commitment.nonce() <= inbound_channel_nonce {
             info!("Channel commitment is already sent");
             return Ok(());
         }
 
         let payload = R::submit_messages_commitment(
             self.sender_network_id,
-            commitment_inner.messages,
+            commitment.offchain_data.commitment,
             R::beefy_proof(beefy_light_client::SubstrateBridgeMessageProof {
                 proof: commitment.proof,
                 leaf: commitment.leaf,
@@ -163,41 +149,54 @@ where
         Ok(nonce)
     }
 
+    async fn outbound_channel_nonce(&self) -> AnyResult<u64> {
+        let nonce = self
+            .sender
+            .storage_fetch_or_default(
+                &S::bridge_outbound_nonce(self.receiver_network_id.into()),
+                (),
+            )
+            .await?;
+        Ok(nonce)
+    }
+
     pub async fn run(mut self) -> AnyResult<()> {
-        let inbound_nonce = self.inbound_channel_nonce().await?;
-        let mut subscription = super::messages_subscription::subscribe_message_commitments(
-            self.sender.clone(),
-            self.receiver_network_id.into(),
-            inbound_nonce,
-        );
+        let mut interval = tokio::time::interval(S::average_block_time());
         loop {
-            let res = futures::select! {
-                a_res = subscription.next().fuse() => Some(a_res),
-                _ = tokio::time::sleep(S::average_block_time()).fuse() => None,
-            };
-            if let Some((block, hash)) = res.flatten().transpose()? {
-                self.commitment_queue.push_back((block, hash));
-                let block: u64 = block.into();
-                self.syncer.request(block + 1);
+            interval.tick().await;
+            let inbound_nonce = self.inbound_channel_nonce().await?;
+            let outbound_nonce = self.outbound_channel_nonce().await?;
+            if inbound_nonce >= outbound_nonce {
+                if inbound_nonce > outbound_nonce {
+                    error!(
+                        "Inbound channel nonce is higher than outbound channel nonce: {} > {}",
+                        inbound_nonce, outbound_nonce
+                    );
+                }
+                continue;
             }
-            let latest_sent = self.syncer.latest_sent();
-            loop {
-                let (block_number, commitment_hash) = match self.commitment_queue.pop_front() {
-                    Some(commitment) => commitment,
-                    None => break,
+            for nonce in (inbound_nonce + 1)..=outbound_nonce {
+                let block_number = match self.commitment_blocks.entry(nonce) {
+                    std::collections::btree_map::Entry::Vacant(v) => {
+                        let offchain_data = self
+                            .sender
+                            .bridge_commitment(self.receiver_network_id.into(), nonce)
+                            .await?;
+                        v.insert(offchain_data.block_number);
+                        offchain_data.block_number
+                    }
+                    std::collections::btree_map::Entry::Occupied(v) => v.get().clone(),
                 };
+                let latest_sent = self.syncer.latest_sent();
                 if Into::<u64>::into(block_number) > latest_sent {
                     debug!("Waiting for BEEFY block {:?}", block_number);
-                    self.commitment_queue
-                        .push_front((block_number, commitment_hash));
                     break;
                 }
-                if let Err(err) = self.send_commitment(block_number, commitment_hash).await {
-                    error!("Error sending message commitment: {:?}", err);
-                    self.commitment_queue
-                        .push_front((block_number, commitment_hash));
+                self.send_commitment(nonce).await?;
+                if let Err(err) = self.send_commitment(nonce).await {
                     return Err(anyhow!("Error sending message commitment: {:?}", err));
                 }
+                self.commitment_blocks.remove(&nonce);
             }
         }
     }

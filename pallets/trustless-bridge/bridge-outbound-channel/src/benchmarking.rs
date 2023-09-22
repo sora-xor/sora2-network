@@ -1,7 +1,8 @@
 //! BridgeOutboundChannel pallet benchmarking
 use super::*;
 
-use bridge_types::U256;
+use bridge_types::evm::*;
+use bridge_types::*;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
@@ -19,15 +20,12 @@ benchmarks! {
         let p in 0 .. T::MaxMessagePayloadSize::get() as u32;
 
         for _ in 0 .. m {
-            let payload: Vec<u8> = (0..).take(p as usize).collect();
+            let payload: sp_std::vec::Vec<u8> = (0..).take(p as usize).collect();
             append_message_queue::<T>(BASE_NETWORK_ID, Message {
-                network_id: BASE_NETWORK_ID,
                 target: H160::zero(),
-                nonce: 0u64,
-                fee: U256::zero(),
                 max_gas: 100000u64.into(),
-                payload,
-            });
+                payload: payload.try_into().unwrap(),
+            }).unwrap();
         }
 
         let block_number = 0u32.into();
@@ -42,13 +40,10 @@ benchmarks! {
     on_initialize_non_interval {
         take_message_queue::<T>(BASE_NETWORK_ID);
         append_message_queue::<T>(BASE_NETWORK_ID, Message {
-            network_id: BASE_NETWORK_ID,
             target: H160::zero(),
-            nonce: 0u64,
-            fee: U256::zero(),
             max_gas: 100000u64.into(),
-            payload: vec![1u8; T::MaxMessagePayloadSize::get() as usize],
-        });
+            payload: vec![1u8; T::MaxMessagePayloadSize::get() as usize].try_into().unwrap(),
+        }).unwrap();
 
         let interval: T::BlockNumber = 10u32.into();
         Interval::<T>::put(interval);

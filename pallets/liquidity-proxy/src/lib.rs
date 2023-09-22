@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 extern crate core;
 
@@ -62,7 +64,6 @@ use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
-
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
 
 pub mod weights;
@@ -79,7 +80,6 @@ mod test_utils;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
-pub const ADAR_COMMISSION_RATIO: Balance = balance!(0.0025);
 
 const REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
@@ -375,7 +375,7 @@ impl<T: Config> Pallet<T> {
         );
 
         common::with_transaction(|| {
-            let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+            let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
             let maybe_path =
                 ExchangePath::<T>::new_trivial(&dex_info, *input_asset_id, *output_asset_id);
             let total_weight = <T as Config>::WeightInfo::new_trivial();
@@ -667,7 +667,7 @@ impl<T: Config> Pallet<T> {
             input_asset_id != output_asset_id,
             Error::<T>::UnavailableExchangePath
         );
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let maybe_path =
             ExchangePath::<T>::new_trivial(&dex_info, *input_asset_id, *output_asset_id);
         maybe_path.map_or_else(
@@ -990,6 +990,13 @@ impl<T: Config> Pallet<T> {
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
 
+        // The temp solution is to exclude OrderBook source if there are multiple sources.
+        // Will be redesigned in #447
+        #[cfg(feature = "wip")] // order-book
+        if sources.len() > 1 {
+            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
+        }
+
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {
             let src = sources.first().unwrap();
@@ -1075,7 +1082,7 @@ impl<T: Config> Pallet<T> {
         input_asset_id: T::AssetId,
         output_asset_id: T::AssetId,
     ) -> Result<bool, DispatchError> {
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let maybe_path = ExchangePath::<T>::new_trivial(&dex_info, input_asset_id, output_asset_id);
         maybe_path.map_or(Ok(false), |paths| {
             let paths_flag = paths
@@ -1192,7 +1199,7 @@ impl<T: Config> Pallet<T> {
         swap_variant: SwapVariant,
     ) -> Weight {
         // Get DEX info or return weight that will be rejected
-        let Ok(dex_info) = dex_manager::Pallet::<T>::get_dex_info(dex_id) else {
+        let Ok(dex_info) = T::DexInfoProvider::get_dex_info(dex_id) else {
             return REJECTION_WEIGHT;
         };
 
@@ -1322,7 +1329,7 @@ impl<T: Config> Pallet<T> {
         input_asset_id: T::AssetId,
         output_asset_id: T::AssetId,
     ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let maybe_path = ExchangePath::<T>::new_trivial(&dex_info, input_asset_id, output_asset_id);
         maybe_path.map_or_else(
             || Err(Error::<T>::UnavailableExchangePath.into()),
@@ -1909,7 +1916,9 @@ impl<T: Config> Pallet<T> {
                     &output_asset_id,
                     &sender,
                     &receiver.account_id,
-                    receiver.target_amount - remainder_per_receiver,
+                    receiver
+                        .target_amount
+                        .saturating_sub(remainder_per_receiver),
                 )
             },
         )?;
@@ -1917,7 +1926,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn calculate_adar_commission(amount: Balance) -> Result<Balance, DispatchError> {
-        let adar_commission_ratio = FixedWrapper::from(ADAR_COMMISSION_RATIO);
+        let adar_commission_ratio = FixedWrapper::from(Self::adar_commission_ratio());
 
         let adar_commission = (FixedWrapper::from(amount) * adar_commission_ratio)
             .try_into_balance()
@@ -1933,7 +1942,7 @@ impl<T: Config> Pallet<T> {
         mut max_input_amount: Balance,
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
-    ) -> Result<(Balance, Weight), DispatchError> {
+    ) -> Result<(Balance, Balance, Weight), DispatchError> {
         let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
 
         let mut executed_batch_input_amount = balance!(0);
@@ -1946,7 +1955,14 @@ impl<T: Config> Pallet<T> {
                     outcome_asset_id: asset_id,
                     dex_id,
                     receivers,
+                    outcome_asset_reuse,
                 } = swap_batch_info;
+
+                let balance = assets::Pallet::<T>::free_balance(&asset_id, &sender)?;
+
+                if balance < outcome_asset_reuse {
+                    fail!(Error::<T>::InsufficientBalance);
+                }
 
                 // extrinsic fails if there are duplicate output asset ids
                 if !unique_asset_ids.insert(asset_id.clone()) {
@@ -1957,24 +1973,33 @@ impl<T: Config> Pallet<T> {
                     fail!(Error::<T>::InvalidReceiversInfo);
                 }
 
-                let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
+                let out_amount = receivers
+                    .iter()
+                    .map(|recv| recv.target_amount)
+                    .try_fold(Balance::zero(), |acc, val| acc.checked_add(val))
+                    .and_then(|val| val.checked_sub(outcome_asset_reuse))
+                    .ok_or(Error::<T>::CalculationError)?;
 
                 let (executed_input_amount, remainder_per_receiver, weight): (
                     Balance,
                     Balance,
                     Weight,
                 ) = if &asset_id != input_asset_id {
-                    Self::exchange_batch_tokens(
-                        &sender,
-                        receivers.len() as u128,
-                        &input_asset_id,
-                        &asset_id,
-                        max_input_amount,
-                        &selected_source_types,
-                        dex_id,
-                        &filter_mode,
-                        out_amount,
-                    )?
+                    if !out_amount.is_zero() {
+                        Self::exchange_batch_tokens(
+                            &sender,
+                            receivers.len() as u128,
+                            &input_asset_id,
+                            &asset_id,
+                            max_input_amount,
+                            &selected_source_types,
+                            dex_id,
+                            &filter_mode,
+                            out_amount,
+                        )?
+                    } else {
+                        (0, 0, Weight::zero())
+                    }
                 } else {
                     (out_amount, 0, Weight::zero())
                 };
@@ -2002,7 +2027,7 @@ impl<T: Config> Pallet<T> {
         max_input_amount
             .checked_sub(adar_commission)
             .ok_or(Error::<T>::SlippageNotTolerated)?;
-        Ok((adar_commission, total_weight))
+        Ok((adar_commission, executed_batch_input_amount, total_weight))
     }
 }
 
@@ -2081,6 +2106,7 @@ impl<AccountId> BatchReceiverInfo<AccountId> {
 #[scale_info(skip_type_params(T))]
 pub struct SwapBatchInfo<AssetId, DEXId, AccountId> {
     pub outcome_asset_id: AssetId,
+    pub outcome_asset_reuse: Balance,
     pub dex_id: DEXId,
     pub receivers: Vec<BatchReceiverInfo<AccountId>>,
 }
@@ -2133,14 +2159,43 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId
     }
 }
 
+pub struct ReferencePriceProvider<T, GetDEXId, GetReferenceAssetId>(
+    PhantomData<(T, GetDEXId, GetReferenceAssetId)>,
+);
+
+impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<T::AssetId>>
+    common::ReferencePriceProvider<T::AssetId, Balance>
+    for ReferencePriceProvider<T, GetDEXId, GetReferenceAssetId>
+{
+    fn get_reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+        let dex_id = GetDEXId::get();
+        let reference_asset_id = GetReferenceAssetId::get();
+        if asset_id == &reference_asset_id {
+            return Ok(balance!(1));
+        }
+        let outcome = Pallet::<T>::quote(
+            dex_id,
+            asset_id,
+            &reference_asset_id,
+            QuoteAmount::with_desired_input(balance!(1)),
+            LiquiditySourceFilter::with_forbidden(
+                dex_id,
+                vec![LiquiditySourceType::MulticollateralBondingCurvePool],
+            ),
+            false,
+        )?;
+        Ok(outcome.amount)
+    }
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::EnsureOrigin;
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
 
-    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
     // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
@@ -2163,6 +2218,7 @@ pub mod pallet {
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         type GetADARAccountId: Get<Self::AccountId>;
+        type ADARCommissionRatioUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
@@ -2283,22 +2339,31 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
-            let (adar_commission, mut weight) = Self::inner_swap_batch_transfer(
-                &who,
-                &input_asset_id,
-                swap_batches,
-                max_input_amount,
-                &selected_source_types,
-                &filter_mode,
-            )?;
+            let (adar_commission, executed_input_amount, mut weight) =
+                Self::inner_swap_batch_transfer(
+                    &who,
+                    &input_asset_id,
+                    swap_batches,
+                    max_input_amount,
+                    &selected_source_types,
+                    &filter_mode,
+                )?;
 
-            assets::Pallet::<T>::transfer_from(
-                &input_asset_id,
-                &who,
-                &T::GetADARAccountId::get(),
+            if adar_commission > balance!(0) {
+                assets::Pallet::<T>::transfer_from(
+                    &input_asset_id,
+                    &who,
+                    &T::GetADARAccountId::get(),
+                    adar_commission,
+                )
+                .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
+            }
+
+            Self::deposit_event(Event::<T>::BatchSwapExecuted(
                 adar_commission,
-            )
-            .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
+                executed_input_amount,
+            ));
+
             weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
 
             Ok(PostDispatchInfo {
@@ -2361,6 +2426,21 @@ pub mod pallet {
             Self::deposit_event(Event::<T>::LiquiditySourceDisabled(liquidity_source));
             Ok(().into())
         }
+
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_adar_commission_ratio())]
+        pub fn set_adar_commission_ratio(
+            origin: OriginFor<T>,
+            commission_ratio: Balance,
+        ) -> DispatchResultWithPostInfo {
+            T::ADARCommissionRatioUpdateOrigin::ensure_origin(origin)?;
+            ensure!(
+                commission_ratio < balance!(1),
+                Error::<T>::InvalidADARCommissionRatio
+            );
+            ADARCommissionRatio::<T>::put(commission_ratio);
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -2382,6 +2462,9 @@ pub mod pallet {
         LiquiditySourceEnabled(LiquiditySourceType),
         /// Liquidity source was disabled
         LiquiditySourceDisabled(LiquiditySourceType),
+        /// Batch of swap transfers has been performed
+        /// [ADAR Fee, Input amount]
+        BatchSwapExecuted(Balance, Balance),
     }
 
     #[pallet::error]
@@ -2418,5 +2501,20 @@ pub mod pallet {
         InvalidReceiversInfo,
         // Failure while transferring commission to ADAR account
         FailedToTransferAdarCommission,
+        // ADAR commission ratio exceeds 1
+        InvalidADARCommissionRatio,
+        // Sender don't have enough asset balance
+        InsufficientBalance,
     }
+
+    #[pallet::type_value]
+    pub fn DefaultADARCommissionRatio() -> Balance {
+        balance!(0.0025)
+    }
+
+    /// ADAR commission ratio
+    #[pallet::storage]
+    #[pallet::getter(fn adar_commission_ratio)]
+    pub type ADARCommissionRatio<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultADARCommissionRatio>;
 }

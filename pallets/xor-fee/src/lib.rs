@@ -32,10 +32,10 @@
 
 use common::prelude::SwapAmount;
 use common::{
-    AssetInfoProvider, Balance, BuyBackHandler, FilterMode, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
+    Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    OnValBurned, ReferrerAccountProvider,
 };
-use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays};
+use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
 use frame_support::log::error;
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
@@ -43,18 +43,21 @@ use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{
     WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
+use pallet_transaction_payment as ptp;
 use pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
 };
 use smallvec::smallvec;
-use sp_runtime::generic::{CheckedExtrinsic, UncheckedExtrinsic};
+use sp_arithmetic::FixedPointOperand;
 use sp_runtime::traits::{
     DispatchInfoOf, Dispatchable, Extrinsic as ExtrinsicT, PostDispatchInfoOf, SaturatedConversion,
-    SignedExtension, UniqueSaturatedInto, Zero,
+    Saturating, UniqueSaturatedInto, Zero,
 };
-use sp_runtime::{DispatchError, FixedPointNumber, FixedU128, Perbill, Percent};
+use sp_runtime::{DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent};
 use sp_staking::SessionIndex;
 use sp_std::vec::Vec;
+
+pub mod extension;
 
 mod benchmarking;
 pub mod weights;
@@ -83,21 +86,21 @@ type Assets<T> = assets::Pallet<T>;
 // #[cfg_attr(test, derive(PartialEq))]
 pub enum LiquidityInfo<T: Config> {
     /// Fees operate as normal
-    Paid((T::AccountId, Option<NegativeImbalanceOf<T>>)),
+    Paid(T::AccountId, Option<NegativeImbalanceOf<T>>),
     /// The fee payment has been postponed to after the transaction
-    Postponed(T::AccountId, BalanceOf<T>),
-    /// Default value
+    Postponed(T::AccountId),
+    /// The fee should not be paid
     NotPaid,
 }
 
 impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
     fn fmt(&self, f: &mut sp_std::fmt::Formatter<'_>) -> sp_std::fmt::Result {
         match self {
-            LiquidityInfo::Paid((a, b)) => {
+            LiquidityInfo::Paid(a, b) => {
                 write!(f, "Paid({:?}, {:?})", a, b.as_ref().map(|b| b.peek()))
             }
-            LiquidityInfo::Postponed(account_id, b) => {
-                write!(f, "Postponed({:?}, {:?})", account_id, b)
+            LiquidityInfo::Postponed(account_id) => {
+                write!(f, "Postponed({:?})", account_id)
             }
             LiquidityInfo::NotPaid => {
                 write!(f, "NotPaid")
@@ -109,17 +112,16 @@ impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
 impl<T: Config> PartialEq for LiquidityInfo<T> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (LiquidityInfo::Paid((a1, b1)), LiquidityInfo::Paid((a2, b2))) => {
+            (LiquidityInfo::Paid(a1, b1), LiquidityInfo::Paid(a2, b2)) => {
                 (a1 == a2) && b1.as_ref().map(|b| b.peek()) == b2.as_ref().map(|b| b.peek())
             }
-            (LiquidityInfo::Postponed(a1, b1), LiquidityInfo::Postponed(a2, b2)) => {
-                a1 == a2 && b1 == b2
-            }
+            (LiquidityInfo::Postponed(a1), LiquidityInfo::Postponed(a2)) => a1 == a2,
             _ => false,
         }
     }
 }
 
+#[allow(clippy::derivable_impls)] // To use Default derive impl AccountId needs to implement Default trait
 impl<T: Config> Default for LiquidityInfo<T> {
     fn default() -> Self {
         LiquidityInfo::NotPaid
@@ -128,18 +130,12 @@ impl<T: Config> Default for LiquidityInfo<T> {
 
 impl<T: Config> From<(T::AccountId, Option<NegativeImbalanceOf<T>>)> for LiquidityInfo<T> {
     fn from((account_id, paid): (T::AccountId, Option<NegativeImbalanceOf<T>>)) -> Self {
-        LiquidityInfo::Paid((account_id, paid))
+        LiquidityInfo::Paid(account_id, paid)
     }
 }
 
 impl<T: Config> OnChargeTransaction<T> for Pallet<T>
 where
-    CallOf<T>: ExtractProxySwap<
-            AccountId = T::AccountId,
-            DexId = T::DEXId,
-            AssetId = T::AssetId,
-            Amount = SwapAmount<u128>,
-        > + IsCalledByBridgePeer<T::AccountId>,
     BalanceOf<T>: Into<u128>,
     DispatchInfoOf<CallOf<T>>: Into<DispatchInfo> + Clone,
 {
@@ -150,92 +146,25 @@ where
         who: &T::AccountId,
         call: &CallOf<T>,
         _dispatch_info: &DispatchInfoOf<CallOf<T>>,
-        fee: Self::Balance,
-        _tip: Self::Balance,
+        fee: BalanceOf<T>,
+        _tip: BalanceOf<T>,
     ) -> Result<Self::LiquidityInfo, TransactionValidityError> {
-        if fee.is_zero() {
+        // Not pay fee at all. It's not possible to withdraw fee if it's disabled here.
+        if fee.is_zero() || !T::CustomFees::should_be_paid(who, call) {
             return Ok((who.clone(), None).into());
         }
 
-        let maybe_custom_fee = T::CustomFees::compute_fee(call);
-        let final_fee: BalanceOf<T> = match maybe_custom_fee {
-            Some(value) => BalanceOf::<T>::saturated_from(value),
-            _ => fee,
-        };
+        // Use custom fee source for transaction
+        let fee_source = T::CustomFees::get_fee_source(who, call, fee.into());
 
-        if let Ok(result) = T::WithdrawFee::withdraw_fee(who, call, final_fee.into()) {
+        // Postpone fee payment to post dispatch phase if we can't or don't want to pay it now
+        if T::CustomFees::should_be_postponed(who, &fee_source, call, fee.into()) {
+            return Ok(LiquidityInfo::Postponed(fee_source));
+        }
+
+        // Withdraw fee
+        if let Ok(result) = T::WithdrawFee::withdraw_fee(who, &fee_source, call, fee.into()) {
             return Ok(result.into());
-        }
-
-        // In case we are producing XOR, we perform exchange before fees are withdraw to allow 0-XOR accounts to trade
-        let SwapInfo {
-            fee_source,
-            dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            filter_mode,
-            selected_source_types,
-        } = call
-            .extract()
-            .ok_or(TransactionValidityError::from(InvalidTransaction::Payment))?;
-
-        if output_asset_id != T::XorId::get() {
-            return Err(InvalidTransaction::Payment.into());
-        }
-
-        // Check how much user has input asset
-        let user_input_balance = assets::Pallet::<T>::free_balance(&input_asset_id, who)
-            .map_err(|_| TransactionValidityError::from(InvalidTransaction::Payment))?;
-
-        // How much does the user want to spend of their input asset
-        let swap_input_amount = match amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in, ..
-            } => desired_amount_in,
-            SwapAmount::WithDesiredOutput { max_amount_in, .. } => max_amount_in,
-        };
-
-        // The amount of input asset needed for this swap is more than the user has, so error
-        if swap_input_amount > user_input_balance {
-            return Err(InvalidTransaction::Payment.into());
-        }
-
-        let filter = LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
-
-        // Quote to see if there will be enough funds for the fee
-        let swap =
-            <T::LiquidityProxy as LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId>>::quote(
-                dex_id,
-                &input_asset_id,
-                &output_asset_id,
-                amount.into(),
-                filter.clone(),
-                true,
-            )
-            .map_err(|_| InvalidTransaction::Payment)?;
-
-        // Quote does not check if max_in or min_out are respected
-        let (limits_ok, output_amount) = match amount {
-            SwapAmount::WithDesiredInput { min_amount_out, .. } => {
-                (swap.amount >= min_amount_out, swap.amount)
-            }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out,
-                max_amount_in,
-                ..
-            } => (swap.amount <= max_amount_in, desired_amount_out),
-        };
-
-        let fee_source = fee_source.unwrap_or(who.clone());
-        // Check the swap result + existing balance is enough for fee
-        if limits_ok
-            && T::XorCurrency::free_balance(&fee_source).into() + output_amount
-                - T::XorCurrency::minimum_balance().into()
-                >= final_fee.into()
-        {
-            // The fee is applied afterwards, in correct_and_deposit_fee
-            return Ok(LiquidityInfo::Postponed(fee_source, final_fee));
         }
 
         Err(InvalidTransaction::Payment.into())
@@ -245,13 +174,13 @@ where
         who: &T::AccountId,
         _dispatch_info: &DispatchInfoOf<CallOf<T>>,
         _post_info: &PostDispatchInfoOf<CallOf<T>>,
-        corrected_fee: Self::Balance,
-        tip: Self::Balance,
+        corrected_fee: BalanceOf<T>,
+        tip: BalanceOf<T>,
         already_withdrawn: Self::LiquidityInfo,
     ) -> Result<(), TransactionValidityError> {
         let (fee_source, withdrawn) = match already_withdrawn {
-            LiquidityInfo::Paid(opt) => opt,
-            LiquidityInfo::Postponed(fee_source, fee) => {
+            LiquidityInfo::Paid(a, b) => (a, b),
+            LiquidityInfo::Postponed(fee_source) => {
                 let withdraw_reason = if tip.is_zero() {
                     WithdrawReasons::TRANSACTION_PAYMENT
                 } else {
@@ -259,33 +188,22 @@ where
                 };
                 let result = T::XorCurrency::withdraw(
                     &fee_source,
-                    fee,
+                    corrected_fee,
                     withdraw_reason,
                     ExistenceRequirement::KeepAlive,
                 )
-                .ok();
-                (fee_source, result)
+                .map_err(|_| InvalidTransaction::Payment)?;
+                (fee_source, Some(result))
             }
             LiquidityInfo::NotPaid => (who.clone(), None),
         };
 
         if let Some(paid) = withdrawn {
             // Calculate the amount to refund to the caller
-            // A refund is possible in two cases:
-            //  - the `Dispatchable:PostInfo` structure has the `pays_fee` field changed
-            //    from `Payes::Yes` to `Pays::No` during exection. In this case the `corrected_fee`
-            //    will be 0 so that the entire withdrawn amount should be refunded to the caller;
-            //  - the extrinsic is not subject to the manual fees applied by means of the
-            //    `ApplyCustomFees` trait implementation so that the withdrawn amount is
-            //    completely defined by the extrinsic's weight and can change based on the
-            //    `actual_weight` from the `Dispatchable::PostInfo` structure.
-            // TODO: only the former case is currently supported; for the latter case we need a
-            // reliable way to determine whether the extrinsic is or is not subject to manual fees.
-            let refund_amount: Self::Balance = if corrected_fee == 0_u32.into() {
-                paid.peek()
-            } else {
-                Self::Balance::zero()
-            };
+            // Refund behavior is fully defined by CustomFee type or
+            // by default transaction payment pallet implementation if
+            // call is not subject for custom fee
+            let refund_amount = paid.peek().saturating_sub(corrected_fee);
 
             // Refund to the the account that paid the fees. If this fails, the
             // account might have dropped below the existential balance. In
@@ -295,16 +213,16 @@ where
                     |_| <T::XorCurrency as Currency<T::AccountId>>::PositiveImbalance::zero(),
                 );
 
-            // Offset the imbalance caused by paying the fees against the refunded amount.
             let adjusted_paid = paid
                 .offset(refund_imbalance)
                 .same()
                 .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
 
-            Self::deposit_event(Event::FeeWithdrawn(
-                fee_source.clone(),
-                adjusted_paid.peek(),
-            ));
+            Self::deposit_event(Event::FeeWithdrawn(fee_source, adjusted_paid.peek()));
+
+            if adjusted_paid.peek().is_zero() {
+                return Ok(());
+            }
 
             // Applying VAL buy-back-and-burn logic
             let xor_burned_weight = T::XorBurnedWeight::get();
@@ -313,7 +231,7 @@ where
                 T::ReferrerWeight::get(),
                 xor_burned_weight + xor_into_val_burned_weight,
             );
-            if let Some(referrer) = referrals::Pallet::<T>::referrer_account(who) {
+            if let Some(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
                 let referrer_portion = referrer_xor.peek();
                 if T::XorCurrency::resolve_into_existing(&referrer, referrer_xor).is_ok() {
                     Self::deposit_event(Event::ReferrerRewarded(
@@ -388,142 +306,282 @@ impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::Full
     }
 }
 
+pub type CustomFeeDetailsOf<T> =
+    <<T as Config>::CustomFees as ApplyCustomFees<CallOf<T>, AccountIdOf<T>>>::FeeDetails;
+
 /// Trait whose implementation allows to redefine extrinsics fees based
-/// exclusively on the extrinsic's `Call` variant
-pub trait ApplyCustomFees<Call> {
-    /// If a value is returned, it overrides the fee amount calculated by the
-    /// TransactionPayment pallet based on `DispatchInfo` and `WeightToFee` conversion
-    //  `None` as the output indicated the extrinsic is not subject to a manual fee
-    /// adjustment so the original value from TransactionPayment pallet will be charged
-    fn compute_fee(call: &Call) -> Option<Balance>;
+/// on the extrinsic's `Call` variant and dispatch result
+pub trait ApplyCustomFees<Call: Dispatchable, AccountId> {
+    /// Additinal information to be passed between `Self::compute_fee` and `Self::compute_actual_fee`
+    type FeeDetails;
+
+    /// Check if the fee payment should be postponed
+    ///
+    /// Parameters:
+    /// `who` is the caller of the extrinsic
+    /// `fee_source` is the account which will pay fees
+    /// `call` is the Call extracted from the extrinsic
+    /// `fee` is the pre dispatch fee
+    ///
+    /// Returns:
+    /// `true` then fee payment should be postponed to the post dispatch phase
+    /// `false` then fee should be paid at pre dispatch phase and corrected at post dispatch phase
+    ///
+    /// This call should check if `fee_source` will have enough funds to pay the fee after call dispatch
+    /// and if not then it should return `false`
+    fn should_be_postponed(
+        who: &AccountId,
+        fee_source: &AccountId,
+        call: &Call,
+        fee: Balance,
+    ) -> bool;
+
+    /// Check if the fee should be paid for this extrinsic
+    ///
+    /// Parameters:
+    /// `who` is the caller of the extrinsic
+    /// `call` is the Call extracted from the extrinsic
+    ///
+    /// Returns:
+    /// `true` then fee should be paid
+    /// `false` then fee should not be paid
+    fn should_be_paid(who: &AccountId, call: &Call) -> bool;
+
+    /// Get the account which will pay fees
+    ///
+    /// Parameters:
+    /// `who` is the caller of the extrinsic
+    /// `call` is the Call extracted from the extrinsic
+    /// `fee` is the pre dispatch fee
+    ///
+    /// Returns account which will pay fees
+    fn get_fee_source(who: &AccountId, call: &Call, fee: Balance) -> AccountId;
+
+    /// Compute custom fees for this call
+    ///
+    /// Parameters:
+    /// `call` is the Call extracted from the extrinsic
+    ///
+    /// Returns:
+    /// `Some(..)` if custom fees should be applied. Then `Balance` value is used as fee
+    /// and `Self::FeeDetails` is passed to `Self::compute_actual_fee` at post dispatch phase
+    /// `None` if default transaction payment pallet fees should be used
+    fn compute_fee(call: &Call) -> Option<(Balance, Self::FeeDetails)>;
+
+    /// Compute actual fees for this call
+    ///
+    /// Parameters:
+    /// `post_info` is the `PostDispatchInfo` returned from the call
+    /// `info` is the `DispatchInfo` for the call
+    /// `result` is the `DispatchResult` returned from the call
+    /// `fee_details` is the `Self::FeeDetails` returned from the previous `Self::compute_fee` call
+    ///
+    /// Returns:
+    /// `Some(..)` if custom post dispatch fees should be applied
+    /// `None` if transaction payment pallet post dispatch fees should be used
+    fn compute_actual_fee(
+        post_info: &PostDispatchInfoOf<Call>,
+        info: &DispatchInfoOf<Call>,
+        result: &DispatchResult,
+        fee_details: Option<Self::FeeDetails>,
+    ) -> Option<Balance>;
 }
 
-impl<Call> ApplyCustomFees<Call> for () {
-    fn compute_fee(_call: &Call) -> Option<Balance> {
+impl<Call: Dispatchable, AccountId: Clone> ApplyCustomFees<Call, AccountId> for () {
+    type FeeDetails = ();
+
+    fn should_be_postponed(
+        _who: &AccountId,
+        _fee_source: &AccountId,
+        _call: &Call,
+        _fee: Balance,
+    ) -> bool {
+        false
+    }
+
+    fn should_be_paid(_who: &AccountId, _call: &Call) -> bool {
+        true
+    }
+
+    fn compute_fee(_call: &Call) -> Option<(Balance, Self::FeeDetails)> {
         None
     }
-}
 
-pub struct SwapInfo<AccountId, DexId, AssetId, Amount> {
-    pub fee_source: Option<AccountId>,
-    pub dex_id: DexId,
-    pub input_asset_id: AssetId,
-    pub output_asset_id: AssetId,
-    pub amount: Amount,
-    pub selected_source_types: Vec<LiquiditySourceType>,
-    pub filter_mode: FilterMode,
-}
+    fn compute_actual_fee(
+        _post_info: &PostDispatchInfoOf<Call>,
+        _info: &DispatchInfoOf<Call>,
+        _result: &DispatchResult,
+        _fee_details: Option<Self::FeeDetails>,
+    ) -> Option<Balance> {
+        None
+    }
 
-/// A trait for extracting call information out of liquidity_proxy.swap calls
-pub trait ExtractProxySwap {
-    type AccountId;
-    type DexId;
-    type AssetId;
-    type Amount;
-    fn extract(
-        &self,
-    ) -> Option<SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>>;
-}
-
-pub trait IsCalledByBridgePeer<AccountId> {
-    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool;
-}
-
-/// A trait whose purpose is to extract the `Call` variant of an extrinsic
-pub trait GetCall<Call> {
-    fn get_call(&self) -> Call;
+    fn get_fee_source(who: &AccountId, _call: &Call, _fee: Balance) -> AccountId {
+        who.clone()
+    }
 }
 
 pub trait WithdrawFee<T: Config> {
     fn withdraw_fee(
         who: &T::AccountId,
+        fee_source: &T::AccountId,
         call: &CallOf<T>,
         fee: Balance,
     ) -> Result<(T::AccountId, Option<NegativeImbalanceOf<T>>), DispatchError>;
 }
 
-/// Implementation for unchecked extrinsic.
-impl<Address, Call, Signature, Extra> GetCall<Call>
-    for UncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<T: Config> Pallet<T>
 where
-    Call: Dispatchable + Clone,
-    Extra: SignedExtension,
+    CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+    BalanceOf<T>: FixedPointOperand + Into<Balance>,
+    T: ptp::Config<OnChargeTransaction = Pallet<T>>,
 {
-    fn get_call(&self) -> Call {
-        self.function.clone()
-    }
-}
+    pub fn multiplied_fee(mut fee: FeeDetails<BalanceOf<T>>) -> FeeDetails<BalanceOf<T>> {
+        let multiplier = Multiplier::<T>::get();
+        fee.inclusion_fee = fee.inclusion_fee.map(|fee| InclusionFee {
+            base_fee: multiplier.saturating_mul_int(fee.base_fee),
+            len_fee: multiplier.saturating_mul_int(fee.len_fee),
+            adjusted_weight_fee: multiplier.saturating_mul_int(fee.adjusted_weight_fee),
+        });
+        fee.tip = multiplier.saturating_mul_int(fee.tip);
 
-/// Implementation for checked extrinsic.
-impl<Address, Call, Extra> GetCall<Call> for CheckedExtrinsic<Address, Call, Extra>
-where
-    Call: Dispatchable + Clone,
-{
-    fn get_call(&self) -> Call {
-        self.function.clone()
+        fee
+    }
+    pub fn compute_fee_details(
+        len: u32,
+        call: &CallOf<T>,
+        info: &DispatchInfoOf<CallOf<T>>,
+        tip: BalanceOf<T>,
+    ) -> (FeeDetails<BalanceOf<T>>, Option<CustomFeeDetailsOf<T>>) {
+        if matches!(info.pays_fee, Pays::No) {
+            return (
+                FeeDetails {
+                    tip,
+                    inclusion_fee: None,
+                },
+                None,
+            );
+        }
+        let maybe_custom_fee = T::CustomFees::compute_fee(call);
+        let (fee, kind) = match maybe_custom_fee {
+            Some((0, custom_details)) => (
+                FeeDetails {
+                    inclusion_fee: None,
+                    tip,
+                },
+                Some(custom_details),
+            ),
+            Some((custom_fee, custom_details)) => (
+                FeeDetails {
+                    inclusion_fee: Some(InclusionFee {
+                        base_fee: 0_u32.into(),
+                        len_fee: 0_u32.into(),
+                        adjusted_weight_fee: BalanceOf::<T>::saturated_from(custom_fee),
+                    }),
+                    tip,
+                },
+                Some(custom_details),
+            ),
+            None => (
+                pallet_transaction_payment::Pallet::<T>::compute_fee_details(len, info, tip),
+                None,
+            ),
+        };
+        (Self::multiplied_fee(fee), kind)
+    }
+
+    pub fn compute_fee(
+        len: u32,
+        call: &CallOf<T>,
+        info: &DispatchInfoOf<CallOf<T>>,
+        tip: BalanceOf<T>,
+    ) -> (BalanceOf<T>, Option<CustomFeeDetailsOf<T>>) {
+        let (fee, details) = Self::compute_fee_details(len, call, info, tip);
+        (fee.final_fee(), details)
+    }
+
+    pub fn compute_actual_fee(
+        len: u32,
+        info: &DispatchInfoOf<CallOf<T>>,
+        post_info: &PostDispatchInfoOf<CallOf<T>>,
+        result: &DispatchResult,
+        tip: BalanceOf<T>,
+        custom_fee_details: Option<CustomFeeDetailsOf<T>>,
+    ) -> BalanceOf<T> {
+        Self::compute_actual_fee_details(len, info, post_info, result, tip, custom_fee_details)
+            .final_fee()
+    }
+
+    pub fn compute_actual_fee_details(
+        len: u32,
+        info: &DispatchInfoOf<CallOf<T>>,
+        post_info: &PostDispatchInfoOf<CallOf<T>>,
+        result: &DispatchResult,
+        tip: BalanceOf<T>,
+        custom_fee_details: Option<CustomFeeDetailsOf<T>>,
+    ) -> FeeDetails<BalanceOf<T>> {
+        let pays = post_info.pays_fee(info);
+        if matches!(pays, Pays::No) {
+            return FeeDetails {
+                inclusion_fee: None,
+                tip,
+            };
+        }
+        let maybe_custom_fee =
+            T::CustomFees::compute_actual_fee(post_info, info, result, custom_fee_details);
+        let fee = match maybe_custom_fee {
+            Some(0) => FeeDetails {
+                inclusion_fee: None,
+                tip,
+            },
+            Some(custom_fee) => FeeDetails {
+                inclusion_fee: Some(InclusionFee {
+                    base_fee: 0_u32.into(),
+                    len_fee: 0_u32.into(),
+                    adjusted_weight_fee: BalanceOf::<T>::saturated_from(custom_fee),
+                }),
+                tip,
+            },
+            None => pallet_transaction_payment::Pallet::<T>::compute_fee_details(len, info, tip),
+        };
+        Self::multiplied_fee(fee)
+    }
+
+    // Returns value if custom fee is applicable to an extrinsic and `None` otherwise
+    pub fn query_info<Extrinsic: Clone + ExtrinsicT + GetDispatchInfo>(
+        unchecked_extrinsic: &Extrinsic,
+        call: &CallOf<T>,
+        len: u32,
+    ) -> RuntimeDispatchInfo<BalanceOf<T>> {
+        let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(unchecked_extrinsic);
+
+        let partial_fee = if unchecked_extrinsic.is_signed().unwrap_or(false) {
+            Self::compute_fee(len, call, &dispatch_info, 0u32.into()).0
+        } else {
+            0u32.into()
+        };
+
+        let DispatchInfo { weight, class, .. } = dispatch_info;
+
+        RuntimeDispatchInfo {
+            weight,
+            class,
+            partial_fee,
+        }
+    }
+
+    // Returns value if custom fee is applicable to an extrinsic and `None` otherwise
+    pub fn query_fee_details<Extrinsic: ExtrinsicT + GetDispatchInfo>(
+        unchecked_extrinsic: &Extrinsic,
+        call: &CallOf<T>,
+        len: u32,
+    ) -> FeeDetails<BalanceOf<T>> {
+        let info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(unchecked_extrinsic);
+        Self::compute_fee_details(len, call, &info, 0u32.into()).0
     }
 }
 
 impl<T: Config> Pallet<T> {
-    // Returns value if custom fee is applicable to an extrinsic and `None` otherwise
-    pub fn query_info<Extrinsic: Clone + ExtrinsicT + GetDispatchInfo + GetCall<CallOf<T>>>(
-        unchecked_extrinsic: &Extrinsic,
-        _len: u32,
-    ) -> Option<RuntimeDispatchInfo<BalanceOf<T>>>
-    where
-        <T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo>,
-    {
-        let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(unchecked_extrinsic);
-        let DispatchInfo {
-            weight,
-            class,
-            pays_fee,
-        } = dispatch_info;
-
-        if pays_fee == Pays::No {
-            return None;
-        }
-
-        let call = <Extrinsic as GetCall<CallOf<T>>>::get_call(&unchecked_extrinsic);
-
-        let maybe_custom_fee = T::CustomFees::compute_fee(&call);
-        let res = match maybe_custom_fee {
-            Some(value) => Some(RuntimeDispatchInfo {
-                weight,
-                class,
-                partial_fee: BalanceOf::<T>::saturated_from(value),
-            }),
-            _ => None,
-        };
-
-        res
-    }
-
-    // Returns value if custom fee is applicable to an extrinsic and `None` otherwise
-    pub fn query_fee_details<Extrinsic: ExtrinsicT + GetDispatchInfo + GetCall<CallOf<T>>>(
-        unchecked_extrinsic: &Extrinsic,
-        _len: u32,
-    ) -> Option<FeeDetails<BalanceOf<T>>>
-    where
-        <T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo>,
-    {
-        let call = <Extrinsic as GetCall<CallOf<T>>>::get_call(unchecked_extrinsic);
-        let maybe_custom_fee = T::CustomFees::compute_fee(&call);
-        let res = match maybe_custom_fee {
-            Some(fee) => Some(FeeDetails {
-                inclusion_fee: Some(InclusionFee {
-                    base_fee: 0_u32.into(),
-                    len_fee: 0_u32.into(),
-                    adjusted_weight_fee: BalanceOf::<T>::saturated_from(fee),
-                }),
-                tip: 0_u32.into(),
-            }),
-            _ => None,
-        };
-
-        res
-    }
-
     pub fn remint(xor_to_val: Balance) -> Result<(), DispatchError> {
         let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
         let xor = T::XorId::get();
@@ -551,8 +609,8 @@ impl<T: Config> Pallet<T> {
             ),
         ) {
             Ok(swap_outcome) => {
-                let mut val_to_burn = Balance::from(swap_outcome.amount);
-                T::OnValBurned::on_val_burned(val_to_burn.clone());
+                let mut val_to_burn = swap_outcome.amount;
+                T::OnValBurned::on_val_burned(val_to_burn);
 
                 let val_to_buy_back = T::BuyBackXSTPercent::get() * val_to_burn;
                 let result = common::with_transaction(|| {
@@ -605,13 +663,7 @@ pub mod pallet {
     // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
-        frame_system::Config
-        + referrals::Config
-        + assets::Config
-        + eth_bridge::Config
-        + common::Config
-        + pallet_transaction_payment::Config
-        + pallet_session::historical::Config
+        frame_system::Config + pallet_transaction_payment::Config + assets::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// XOR - The native currency of this blockchain.
@@ -626,12 +678,14 @@ pub mod pallet {
         type DEXIdValue: Get<Self::DEXId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type OnValBurned: OnValBurned;
-        type CustomFees: ApplyCustomFees<CallOf<Self>>;
+        type CustomFees: ApplyCustomFees<CallOf<Self>, Self::AccountId>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
+        type FullIdentification;
         type SessionManager: pallet_session::historical::SessionManager<
             Self::AccountId,
-            <Self as pallet_session::historical::Config>::FullIdentification,
+            Self::FullIdentification,
         >;
+        type ReferrerAccountProvider: ReferrerAccountProvider<Self::AccountId>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -688,8 +742,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultForFeeMultiplier<T: Config>() -> FixedU128 {
-        // We set 100 as it's the given required value
-        FixedU128::from(100)
+        FixedU128::from(1000)
     }
 
     // Multiplier used in WeightToFee conversion
@@ -705,7 +758,7 @@ pub mod pallet {
         fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
             smallvec!(WeightToFeeCoefficient {
                 // 7_000_000 was the original coefficient taken as reference
-                coeff_integer: <Multiplier<T>>::get().saturating_mul_int(7_000_000),
+                coeff_integer: 7_000_000,
                 coeff_frac: Perbill::zero(),
                 negative: false,
                 degree: 1,

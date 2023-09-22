@@ -45,45 +45,27 @@ impl Command {
                 }
                 info!("Add liquidity {}-{}: {:?}", base, asset_id, reserves);
                 info!("Mint {}: {}", base, reserves.0 as i128 * 2);
-                sub.api()
-                    .tx()
-                    .sign_and_submit_then_watch_default(
-                        &runtime::tx().sudo().sudo(
-                            runtime::runtime_types::framenode_runtime::RuntimeCall::Assets(
-                                runtime::runtime_types::assets::pallet::Call::force_mint {
-                                    asset_id: base,
-                                    to: sub.account_id(),
-                                    amount: reserves.0 * 2,
-                                },
-                            ),
-                        ),
-                        &sub,
-                    )
-                    .await?
-                    .wait_for_in_block()
-                    .await?
-                    .wait_for_success()
-                    .await?;
+                sub.submit_extrinsic(&runtime::tx().sudo().sudo(
+                    runtime::runtime_types::framenode_runtime::RuntimeCall::Assets(
+                        runtime::runtime_types::assets::pallet::Call::force_mint {
+                            asset_id: base,
+                            to: sub.account_id(),
+                            amount: reserves.0 * 2,
+                        },
+                    ),
+                ))
+                .await?;
                 info!("Mint {}: {}", asset_id, reserves.1 as i128 * 2);
-                sub.api()
-                    .tx()
-                    .sign_and_submit_then_watch_default(
-                        &runtime::tx().sudo().sudo(
-                            runtime::runtime_types::framenode_runtime::RuntimeCall::Assets(
-                                runtime::runtime_types::assets::pallet::Call::force_mint {
-                                    asset_id: asset_id,
-                                    to: sub.account_id(),
-                                    amount: reserves.1 * 2,
-                                },
-                            ),
-                        ),
-                        &sub,
-                    )
-                    .await?
-                    .wait_for_in_block()
-                    .await?
-                    .wait_for_success()
-                    .await?;
+                sub.submit_extrinsic(&runtime::tx().sudo().sudo(
+                    runtime::runtime_types::framenode_runtime::RuntimeCall::Assets(
+                        runtime::runtime_types::assets::pallet::Call::force_mint {
+                            asset_id: asset_id,
+                            to: sub.account_id(),
+                            amount: reserves.1 * 2,
+                        },
+                    ),
+                ))
+                .await?;
                 let tp = sub
                     .api()
                     .storage()
@@ -100,48 +82,27 @@ impl Command {
                     .await?;
                 if tp.is_none() {
                     info!("Registering trading pair");
-                    sub.api()
-                        .tx()
-                        .sign_and_submit_then_watch_default(
-                            &runtime::tx()
-                                .trading_pair()
-                                .register(dex_id, base, asset_id),
-                            &sub,
-                        )
-                        .await?
-                        .wait_for_in_block()
-                        .await?
-                        .wait_for_success()
-                        .await?;
+                    sub.submit_extrinsic(
+                        &runtime::tx()
+                            .trading_pair()
+                            .register(dex_id, base, asset_id),
+                    )
+                    .await?;
                 }
                 info!("Initializing pool");
-                sub.api()
-                    .tx()
-                    .sign_and_submit_then_watch_default(
-                        &runtime::tx()
-                            .pool_xyk()
-                            .initialize_pool(dex_id, base, asset_id),
-                        &sub,
-                    )
-                    .await?
-                    .wait_for_in_block()
-                    .await?
-                    .wait_for_success()
-                    .await?;
+                sub.submit_extrinsic(
+                    &runtime::tx()
+                        .pool_xyk()
+                        .initialize_pool(dex_id, base, asset_id),
+                )
+                .await?;
                 info!("Deposit liquidity");
-                sub.api()
-                    .tx()
-                    .sign_and_submit_then_watch_default(
-                        &runtime::tx().pool_xyk().deposit_liquidity(
-                            dex_id, base, asset_id, reserves.0, reserves.1, 1, 1,
-                        ),
-                        &sub,
-                    )
-                    .await?
-                    .wait_for_in_block()
-                    .await?
-                    .wait_for_success()
-                    .await?;
+                sub.submit_extrinsic(
+                    &runtime::tx()
+                        .pool_xyk()
+                        .deposit_liquidity(dex_id, base, asset_id, reserves.0, reserves.1, 1, 1),
+                )
+                .await?;
             }
         }
         Ok(())

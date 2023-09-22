@@ -9,10 +9,10 @@ edition = "2021"
 ethereum-gen = { path = "./ethereum-gen" }
 substrate-gen = { path = "./substrate-gen" }
 parachain-gen = { path = "./parachain-gen" }
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
-bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
-leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }
+leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git" }
 ethers = { version = "2.0.0", features = [
   "ws",
   "rustls",
@@ -29,9 +29,7 @@ jsonrpsee = { version = "0.16.2", features = [
   "ws-client",
   "http-client",
 ] }
-clap = { git = "https://github.com/clap-rs/clap", rev = "56ed9981", features = [
-  "derive",
-] }
+clap = { version = "=3.2.22", features = ["derive"] }
 async-trait = "0.1.56"
 rlp = "0.5.2"
 triehash = "0.8.4"
@@ -68,8 +66,7 @@ k256 = "0.11.6"
 assets-rpc = { path = "../pallets/assets/rpc" }
 assets-runtime-api = { path = "../pallets/assets/runtime-api" }
 eth-bridge = { path = "../pallets/eth-bridge" }
-bridge-channel-rpc = { path = "../pallets/trustless-bridge/bridge-channel-rpc" }
-substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
+bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 rand = "0.8.5"
 mmr-lib = { package = "ckb-merkle-mountain-range", version = "0.5.2", default-features = false }
 metrics = "0.21.0"

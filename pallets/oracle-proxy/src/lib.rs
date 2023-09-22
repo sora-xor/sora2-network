@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use common::{DataFeed, OnNewSymbolsRelayed, Oracle, Rate};
 use frame_support;
@@ -74,6 +76,19 @@ impl<T: Config> DataFeed<T::Symbol, Rate, u64> for Pallet<T> {
             })
             .collect();
         Ok(symbols_rates)
+    }
+
+    fn quote_unchecked(symbol: &T::Symbol) -> Option<Rate> {
+        let enabled_oracles = Self::enabled_oracles();
+
+        Self::enabled_symbols(symbol)
+            .into_iter()
+            .filter(|oracle| enabled_oracles.contains(&oracle))
+            .map(|oracle| match oracle {
+                Oracle::BandChainFeed => T::BandChainOracle::quote_unchecked(symbol),
+            })
+            .next()
+            .unwrap_or(None)
     }
 }
 
