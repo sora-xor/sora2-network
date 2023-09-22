@@ -1430,7 +1430,10 @@ impl<T: Config> Pallet<T> {
             Error::<T>::UnavailableExchangePath
         );
 
+        let samples_count = T::GetNumSamples::get();
         let mut aggregator = LiquidityAggregator::new(amount.variant());
+
+        let mut total_weight = Weight::zero();
 
         for source in sources {
             let chunks = T::LiquidityRegistry::step_quote(
@@ -1438,10 +1441,13 @@ impl<T: Config> Pallet<T> {
                 input_asset_id,
                 output_asset_id,
                 amount,
-                T::GetNumSamples::get(),
+                samples_count,
                 deduce_fee,
             )?;
             aggregator.add_source(source.clone(), chunks);
+
+            let weight = T::LiquidityRegistry::step_quote_weight(samples_count);
+            total_weight = total_weight.saturating_add(weight);
         }
 
         let (swap_info, aggregate_swap_outcome) = aggregator
@@ -1452,7 +1458,7 @@ impl<T: Config> Pallet<T> {
 
         if !skip_info {
             for (source, (input, output)) in swap_info {
-                let (mut reward, _weight) = T::LiquidityRegistry::check_rewards(
+                let (mut reward, weight) = T::LiquidityRegistry::check_rewards(
                     &source,
                     input_asset_id,
                     output_asset_id,
@@ -1462,11 +1468,11 @@ impl<T: Config> Pallet<T> {
                 .unwrap_or((Vec::new(), Weight::zero()));
 
                 rewards.append(&mut reward);
+                total_weight = total_weight.saturating_add(weight);
             }
         }
 
-        // todo (m.tagirov) 447: weight
-        Ok((aggregate_swap_outcome, rewards, Weight::zero()))
+        Ok((aggregate_swap_outcome, rewards, total_weight))
     }
 
     #[cfg(not(feature = "wip"))] // order-book / ALT
