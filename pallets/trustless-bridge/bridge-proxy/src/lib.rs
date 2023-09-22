@@ -347,7 +347,7 @@ pub mod pallet {
             T::HashiBridge::transfer_weight()
                 .max(T::EthApp::transfer_weight())
                 .max(T::ERC20App::transfer_weight())
-                .max(T::SubstrateApp::transfer_weight())
+                .max(T::ParachainApp::transfer_weight())
                 .saturating_add(T::HashiBridge::is_asset_supported_weight())
                 .saturating_add(T::EthApp::is_asset_supported_weight())
                 .saturating_add(T::ERC20App::is_asset_supported_weight())

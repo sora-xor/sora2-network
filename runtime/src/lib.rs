@@ -2232,7 +2232,7 @@ impl parachain_bridge_app::Config for Runtime {
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type BridgeAssetLocker = BridgeProxy;
-    type WeightInfo = crate::weights::substrate_bridge_app::WeightInfo<Runtime>;
+    type WeightInfo = crate::weights::parachain_bridge_app::WeightInfo<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
