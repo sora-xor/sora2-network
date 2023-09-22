@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![cfg(not(feature = "wip"))] // order-book / ALT
+
 use crate::mock::*;
 use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
 use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};

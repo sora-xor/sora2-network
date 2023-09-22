@@ -29,16 +29,22 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode};
-use common::prelude::{QuoteAmount, SwapVariant};
-use common::{fixed, Balance, SwapChunk};
+use common::prelude::QuoteAmount;
 use frame_support::RuntimeDebug;
-use itertools::Itertools;
-use sp_runtime::traits::Zero;
-use sp_std::collections::btree_map::BTreeMap;
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
-// info with input & output amounts for liquidity source
+#[cfg(feature = "wip")] // order-book / ALT
+use {
+    common::prelude::SwapVariant,
+    common::{fixed, Balance, SwapChunk},
+    itertools::Itertools,
+    sp_runtime::traits::Zero,
+    sp_std::collections::btree_map::BTreeMap,
+    sp_std::collections::vec_deque::VecDeque,
+};
+
+#[cfg(feature = "wip")] // order-book / ALT
+                        // info with input & output amounts for liquidity source
 type SwapInfo<LiquiditySourceType, AmountType> =
     BTreeMap<LiquiditySourceType, (AmountType, AmountType)>;
 
@@ -69,6 +75,7 @@ impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdT
     }
 }
 
+#[cfg(feature = "wip")] // order-book / ALT
 /// Aggregates the liquidity from the provided liquidity sources.
 /// Liquidity sources provide discretized liquidity curve by chunks and then Liquidity Aggregator selects the best chunks from different sources to gain the best swap amount.
 #[derive(Clone)]
@@ -77,6 +84,7 @@ pub struct LiquidityAggregator<LiquiditySourceType> {
     variant: SwapVariant,
 }
 
+#[cfg(feature = "wip")] // order-book / ALT
 impl<LiquiditySourceType> LiquidityAggregator<LiquiditySourceType>
 where
     LiquiditySourceType: Clone + Ord,
@@ -203,7 +211,7 @@ where
     }
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "wip")] // order-book / ALT
 #[cfg(test)]
 mod tests {
     use crate::liquidity_aggregator::*;
