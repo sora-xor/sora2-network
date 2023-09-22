@@ -37,7 +37,7 @@ use std::sync::Arc;
 
 use crate::prelude::*;
 use bridge_types::types::AuxiliaryDigest;
-use bridge_types::{GenericNetworkId, H256};
+use bridge_types::GenericNetworkId;
 use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
 use mmr_rpc::MmrApiClient;
 use sp_core::Bytes;

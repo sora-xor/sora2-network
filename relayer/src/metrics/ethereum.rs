@@ -99,7 +99,7 @@ impl MetricsCollector {
                 metrics::absolute_counter!(ETH_OUTBOUND_NONCE, nonce, labels);
             }
             let block_number = self.client.get_block_number().await?.as_u64();
-            metrics::counter!(ETH_BLOCK_NUMBER, block_number, labels);
+            metrics::absolute_counter!(ETH_BLOCK_NUMBER, block_number, labels);
         }
     }
 

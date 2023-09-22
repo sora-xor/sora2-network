@@ -85,8 +85,8 @@ impl MetricsCollector {
 
             let address = mainnet_runtime::storage().mmr_leaf().beefy_authorities();
             self.update_metric(&address, block_hash, |vset| {
-                metrics::gauge!(SUB_BEEFY_CURRENT_ID, vset.id);
-                metrics::gauge!(SUB_BEEFY_CURRENT_LEN, vset.len as u64);
+                metrics::gauge!(SUB_BEEFY_CURRENT_ID, vset.id as f64);
+                metrics::gauge!(SUB_BEEFY_CURRENT_LEN, vset.len as f64);
             })
             .await;
 
@@ -94,8 +94,8 @@ impl MetricsCollector {
                 .mmr_leaf()
                 .beefy_next_authorities();
             self.update_metric(&address, block_hash, |vset| {
-                metrics::gauge!(SUB_BEEFY_NEXT_ID, vset.id);
-                metrics::gauge!(SUB_BEEFY_NEXT_LEN, vset.len as u64);
+                metrics::gauge!(SUB_BEEFY_NEXT_ID, vset.id as f64);
+                metrics::gauge!(SUB_BEEFY_NEXT_LEN, vset.len as f64);
             })
             .await;
 
@@ -154,10 +154,10 @@ impl MetricsCollector {
                         .beefy_light_client()
                         .current_validator_set(network_id);
                     self.update_metric(&address, block_hash, |vset| {
-                        metrics::gauge!(SUB_BEEFY_LIGHT_CLIENT_CURRENT_ID, vset.id, labels);
+                        metrics::gauge!(SUB_BEEFY_LIGHT_CLIENT_CURRENT_ID, vset.id as f64, labels);
                         metrics::gauge!(
                             SUB_BEEFY_LIGHT_CLIENT_CURRENT_LEN,
-                            vset.len as u64,
+                            vset.len as f64,
                             labels
                         );
                     })
@@ -167,8 +167,8 @@ impl MetricsCollector {
                         .beefy_light_client()
                         .next_validator_set(network_id);
                     self.update_metric(&address, block_hash, |vset| {
-                        metrics::gauge!(SUB_BEEFY_LIGHT_CLIENT_NEXT_ID, vset.id, labels);
-                        metrics::gauge!(SUB_BEEFY_LIGHT_CLIENT_NEXT_LEN, vset.len as u64, labels);
+                        metrics::gauge!(SUB_BEEFY_LIGHT_CLIENT_NEXT_ID, vset.id as f64, labels);
+                        metrics::gauge!(SUB_BEEFY_LIGHT_CLIENT_NEXT_LEN, vset.len as f64, labels);
                     })
                     .await;
 
