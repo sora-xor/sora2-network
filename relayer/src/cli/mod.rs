@@ -98,7 +98,7 @@ impl Cli {
         if self.enable_metrics {
             let mut builder = metrics_exporter_prometheus::PrometheusBuilder::new();
             if let Some(address) = &self.prometheus_address {
-                builder = builder.with_http_listener(address.clone());
+                builder = builder.with_http_listener(*address);
             }
             builder.install()?;
             crate::metrics::describe_metrics();
