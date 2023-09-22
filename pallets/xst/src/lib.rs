@@ -1095,7 +1095,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
-        samples_count: usize,
+        recommended_samples_count: usize,
         deduce_fee: bool,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
@@ -1106,6 +1106,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
 
         let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
+
+        // Get the price without checking the limit, because even if it exceeds the limit it will be rounded below.
+        // It is necessary to use as much liquidity from the source as we can.
         let (input_amount, output_amount, fee_amount) = if input_asset_id == synthetic_base_asset_id
         {
             Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee, false)?
@@ -1123,6 +1126,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let limit = T::GetSyntheticBaseBuySellLimit::get();
 
+        // If amount exceeds the limit, it is necessary to round the amount to the limit.
         if input_asset_id == synthetic_base_asset_id {
             if input_amount > limit {
                 monolith = monolith
@@ -1137,7 +1141,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             }
         }
 
-        let ratio = (FixedWrapper::from(1) / FixedWrapper::from(samples_count))
+        let ratio = (FixedWrapper::from(1) / FixedWrapper::from(recommended_samples_count))
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
 
@@ -1145,7 +1149,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             .rescale_by_ratio(ratio)
             .ok_or(Error::<T>::PriceCalculationFailed)?;
 
-        Ok(vec![chunk; samples_count].into())
+        Ok(vec![chunk; recommended_samples_count].into())
     }
 
     fn exchange(

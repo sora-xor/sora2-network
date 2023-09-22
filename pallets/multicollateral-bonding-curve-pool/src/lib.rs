@@ -1594,7 +1594,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
-        samples_count: usize,
+        recommended_samples_count: usize,
         deduce_fee: bool,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
@@ -1608,7 +1608,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let step = amount
             .amount()
-            .checked_div(samples_count as Balance)
+            .checked_div(recommended_samples_count as Balance)
             .ok_or(Error::<T>::ArithmeticError)?;
 
         let mut chunks = VecDeque::new();
@@ -1616,7 +1616,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let mut sub_out = Balance::zero();
         let mut sub_fee = Balance::zero();
 
-        for i in 1..=samples_count {
+        for i in 1..=recommended_samples_count {
             let volume = amount.copy_direction(
                 step.checked_mul(i as Balance)
                     .ok_or(Error::<T>::ArithmeticError)?,

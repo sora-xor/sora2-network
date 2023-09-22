@@ -91,9 +91,9 @@ where
     pub fn add_source(
         &mut self,
         source: LiquiditySourceType,
-        chunks: VecDeque<SwapChunk<Balance>>,
+        sorted_chunks: VecDeque<SwapChunk<Balance>>,
     ) {
-        self.liquidity_chunks.insert(source, chunks);
+        self.liquidity_chunks.insert(source, sorted_chunks);
     }
 
     pub fn aggregate_swap_outcome(

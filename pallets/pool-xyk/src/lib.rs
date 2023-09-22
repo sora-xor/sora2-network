@@ -441,7 +441,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
-        samples_count: usize,
+        recommended_samples_count: usize,
         deduce_fee: bool,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         if amount.amount().is_zero() {
@@ -477,7 +477,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let step = amount
             .amount()
-            .checked_div(samples_count as Balance)
+            .checked_div(recommended_samples_count as Balance)
             .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
 
         let mut chunks = VecDeque::new();
@@ -486,7 +486,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => {
-                for i in 1..=samples_count {
+                for i in 1..=recommended_samples_count {
                     let volume = step
                         .checked_mul(i as Balance)
                         .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
@@ -508,7 +508,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 }
             }
             QuoteAmount::WithDesiredOutput { .. } => {
-                for i in 1..=samples_count {
+                for i in 1..=recommended_samples_count {
                     let volume = step
                         .checked_mul(i as Balance)
                         .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;

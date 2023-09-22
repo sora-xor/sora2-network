@@ -128,7 +128,7 @@ impl<T: Config>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
-        samples_count: usize,
+        recommended_samples_count: usize,
         deduce_fee: bool,
     ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
         use LiquiditySourceType::*;
@@ -139,7 +139,7 @@ impl<T: Config>
                     input_asset_id,
                     output_asset_id,
                     amount,
-                    samples_count,
+                    recommended_samples_count,
                     deduce_fee,
                 )
             };
