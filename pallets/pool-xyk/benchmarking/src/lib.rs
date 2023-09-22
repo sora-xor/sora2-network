@@ -202,6 +202,27 @@ benchmarks! {
         // can't check, nothing is changed
     }
 
+    step_quote {
+        let a in 10..1000;
+        setup_benchmark::<T>()?;
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(10000),
+            min_amount_out: balance!(0),
+        };
+    }: {
+        XYKPool::<T>::step_quote(
+            &DEX.into(),
+            &XOR.into(),
+            &DOT.into(),
+            amount.into(),
+            a as usize,
+            true,
+        ).unwrap()
+    }
+    verify {
+        // can't check, nothing is changed
+    }
+
     deposit_liquidity {
         setup_benchmark::<T>()?;
         let caller = alice::<T>();

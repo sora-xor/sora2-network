@@ -220,6 +220,9 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
     /// Get weight of quote
     fn quote_weight() -> Weight;
 
+    /// Get weight of step quote
+    fn step_quote_weight(samples_count: usize) -> Weight;
+
     /// Get weight of exchange
     fn exchange_weight() -> Weight;
 
@@ -354,6 +357,10 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         Weight::zero()
     }
 
+    fn step_quote_weight(_samples_count: usize) -> Weight {
+        Weight::zero()
+    }
+
     fn exchange_weight() -> Weight {
         Weight::zero()
     }
@@ -427,6 +434,10 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
     }
 
     fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
         Weight::zero()
     }
 

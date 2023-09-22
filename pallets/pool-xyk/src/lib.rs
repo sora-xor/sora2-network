@@ -721,6 +721,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         <T as Config>::WeightInfo::quote()
     }
 
+    fn step_quote_weight(samples_count: usize) -> Weight {
+        <T as Config>::WeightInfo::step_quote(samples_count as u32)
+    }
+
     fn exchange_weight() -> Weight {
         <T as Config>::WeightInfo::swap_pair()
     }

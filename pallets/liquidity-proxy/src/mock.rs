@@ -791,6 +791,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         Weight::zero()
     }
 
+    fn step_quote_weight(_samples_count: usize) -> Weight {
+        Weight::zero()
+    }
+
     fn exchange_weight() -> Weight {
         Weight::zero()
     }
@@ -1147,6 +1151,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
         Weight::zero()
     }
 

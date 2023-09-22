@@ -68,6 +68,7 @@ pub trait WeightInfo {
 	fn set_synthetic_asset_fee() -> Weight;
 	fn set_synthetic_base_asset_floor_price() -> Weight;
 	fn quote() -> Weight;
+	fn step_quote() -> Weight;
 	fn exchange() -> Weight;
 }
 
@@ -212,6 +213,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(545_000_000, 35210)
 			.saturating_add(T::DbWeight::get().reads(8_u64))
 	}
+
+	fn step_quote() -> Weight {
+		Weight::zero()
+	}
+
 	/// Storage: XSTPool EnabledSynthetics (r:1 w:0)
 	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	/// Storage: OracleProxy EnabledOracles (r:1 w:0)
@@ -387,6 +393,11 @@ impl WeightInfo for () {
 		Weight::from_parts(545_000_000, 35210)
 			.saturating_add(RocksDbWeight::get().reads(8_u64))
 	}
+
+	fn step_quote() -> Weight {
+		Weight::zero()
+	}
+
 	/// Storage: XSTPool EnabledSynthetics (r:1 w:0)
 	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	/// Storage: OracleProxy EnabledOracles (r:1 w:0)

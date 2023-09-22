@@ -509,6 +509,10 @@ impl<T: Config<I>, I: 'static>
         Weight::zero()
     }
 
+    fn step_quote_weight(_samples_count: usize) -> Weight {
+        Weight::zero()
+    }
+
     fn exchange_weight() -> Weight {
         Weight::zero()
     }
