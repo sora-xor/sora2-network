@@ -1143,7 +1143,7 @@ fn testnet_genesis(
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         beefy_light_client: Default::default(),
         #[cfg(feature = "ready-to-test")] // Substrate bridge
-        substrate_bridge_app: Default::default(),
+        parachain_bridge_app: Default::default(),
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
         #[cfg(feature = "ready-to-test")] // EVM bridge
@@ -1997,7 +1997,7 @@ fn mainnet_genesis(
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         beefy_light_client: Default::default(),
         #[cfg(feature = "ready-to-test")] // Substrate bridge
-        substrate_bridge_app: Default::default(),
+        parachain_bridge_app: Default::default(),
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
         #[cfg(feature = "ready-to-test")] // EVM bridge
