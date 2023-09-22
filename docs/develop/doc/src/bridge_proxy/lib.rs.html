@@ -788,7 +788,7 @@
 
         <span class="kw">type </span>ERC20App: BridgeApp&lt;<span class="self">Self</span>::AccountId, H160, <span class="self">Self</span>::AssetId, Balance&gt;;
 
-        <span class="kw">type </span>SubstrateApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, ParachainAccountId, <span class="self">Self</span>::AssetId, Balance&gt;;
+        <span class="kw">type </span>ParachainApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, ParachainAccountId, <span class="self">Self</span>::AssetId, Balance&gt;;
 
         <span class="kw">type </span>HashiBridge: BridgeApp&lt;<span class="self">Self</span>::AccountId, H160, <span class="self">Self</span>::AssetId, Balance&gt;;
 
@@ -948,7 +948,7 @@
                     }
                 }
                 GenericAccount::Parachain(recipient) =&gt; {
-                    T::SubstrateApp::transfer(network_id, asset_id, sender, recipient, amount)<span class="question-mark">?</span>;
+                    T::ParachainApp::transfer(network_id, asset_id, sender, recipient, amount)<span class="question-mark">?</span>;
                 }
                 GenericAccount::Sora(<span class="kw">_</span>) | GenericAccount::Unknown | GenericAccount::Root =&gt; {
                     <span class="macro">frame_support::fail!</span>(Error::&lt;T&gt;::WrongAccountKind);
@@ -1009,7 +1009,7 @@
             res.extend(T::EthApp::list_apps());
             res.extend(T::ERC20App::list_apps());
             res.extend(T::HashiBridge::list_apps());
-            res.extend(T::SubstrateApp::list_apps());
+            res.extend(T::ParachainApp::list_apps());
             res
         }
 
@@ -1018,7 +1018,7 @@
             res.extend(T::EthApp::list_supported_assets(network_id));
             res.extend(T::ERC20App::list_supported_assets(network_id));
             res.extend(T::HashiBridge::list_supported_assets(network_id));
-            res.extend(T::SubstrateApp::list_supported_assets(network_id));
+            res.extend(T::ParachainApp::list_supported_assets(network_id));
             res
         }
 
@@ -1034,8 +1034,8 @@
             };
             <span class="kw">if </span>T::HashiBridge::is_asset_supported(network_id, asset_id) {
                 T::HashiBridge::refund(network_id, message_id, beneficiary, asset_id, amount)<span class="question-mark">?</span>;
-            } <span class="kw">else if </span>T::SubstrateApp::is_asset_supported(network_id, asset_id) {
-                T::SubstrateApp::refund(network_id, message_id, beneficiary, asset_id, amount)<span class="question-mark">?</span>;
+            } <span class="kw">else if </span>T::ParachainApp::is_asset_supported(network_id, asset_id) {
+                T::ParachainApp::refund(network_id, message_id, beneficiary, asset_id, amount)<span class="question-mark">?</span>;
             } <span class="kw">else if </span>T::EthApp::is_asset_supported(network_id, asset_id) {
                 T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)<span class="question-mark">?</span>;
             } <span class="kw">else </span>{

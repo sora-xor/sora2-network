@@ -5442,7 +5442,7 @@
     <span class="kw">type </span>ERC20App = ERC20App;
     <span class="kw">type </span>EthApp = EthApp;
     <span class="kw">type </span>HashiBridge = EthBridge;
-    <span class="kw">type </span>SubstrateApp = SubstrateBridgeApp;
+    <span class="kw">type </span>ParachainApp = ParachainBridgeApp;
     <span class="kw">type </span>TimepointProvider = GenericTimepointProvider;
     <span class="kw">type </span>ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider&lt;Runtime, GetReferenceDexId, GetReferenceAssetId&gt;;
@@ -5554,7 +5554,7 @@
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="kw">impl </span>substrate_bridge_app::Config <span class="kw">for </span>Runtime {
+</span><span class="kw">impl </span>parachain_bridge_app::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = SubstrateBridgeOutboundChannel;
     <span class="kw">type </span>CallOrigin =
@@ -5565,7 +5565,7 @@
     <span class="kw">type </span>AssetIdConverter = sp_runtime::traits::ConvertInto;
     <span class="kw">type </span>BalancePrecisionConverter = impls::BalancePrecisionConverter;
     <span class="kw">type </span>BridgeAssetLocker = BridgeProxy;
-    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::substrate_bridge_app::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::parachain_bridge_app::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
@@ -5714,7 +5714,7 @@
         <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
         </span>SubstrateDispatch: dispatch::&lt;Instance2&gt;::{Pallet, Storage, Event&lt;T&gt;, Origin&lt;T&gt;} = <span class="number">108</span>,
         <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;, Call} = <span class="number">109</span>,
+        </span>ParachainBridgeApp: parachain_bridge_app::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;, Call} = <span class="number">109</span>,
         <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
         </span>BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event&lt;T&gt;, Call, ValidateUnsigned} = <span class="number">110</span>,
         <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
@@ -6494,7 +6494,7 @@
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
             </span><span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_app, SubstrateBridgeApp);
+            </span><span class="macro">list_benchmark!</span>(list, extra, parachain_bridge_app, ParachainBridgeApp);
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
             </span><span class="macro">list_benchmark!</span>(list, extra, bridge_data_signer, BridgeDataSigner);
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
@@ -6593,7 +6593,7 @@
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
             </span><span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_app, SubstrateBridgeApp);
+            </span><span class="macro">add_benchmark!</span>(params, batches, parachain_bridge_app, ParachainBridgeApp);
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
             </span><span class="macro">add_benchmark!</span>(params, batches, bridge_data_signer, BridgeDataSigner);
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges

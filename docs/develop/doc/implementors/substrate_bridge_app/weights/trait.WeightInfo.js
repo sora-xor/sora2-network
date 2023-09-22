@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"framenode_runtime":[["impl&lt;T: Config&gt; WeightInfo for <a class=\"struct\" href=\"framenode_runtime/weights/substrate_bridge_app/struct.SubstrateWeight.html\" title=\"struct framenode_runtime::weights::substrate_bridge_app::SubstrateWeight\">SubstrateWeight</a>&lt;T&gt;"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
