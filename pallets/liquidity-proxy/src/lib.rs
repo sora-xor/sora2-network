@@ -1140,6 +1140,47 @@ impl<T: Config> Pallet<T> {
         Ok(sources_set)
     }
 
+    /// Calculates the max potential weight of smart_split / new_smart_split
+    ///
+    /// This function should cover the current code map and all possible calls of some functions that can take a weight.
+    /// The current code map:
+    ///
+    /// smart_split()
+    ///     quote()
+    ///     quote()
+    ///     check_rewards()
+    ///     quote()
+    ///     check_rewards()
+    ///
+    /// The new approach code map:
+    ///
+    /// new_smart_split()
+    ///     step_quote() - max 4 times, because there are 4 liquidity sources
+    ///     check_rewards() - max 4 times, because there are 4 liquidity sources
+    ///
+    /// Dev NOTE: if you change the logic of liquidity proxy, please sustain inner_exchange_weight() and code map above.
+    pub fn smart_split_weight() -> Weight {
+        // Only TBC has rewards weight, all others are zero.
+        // In this case the max value of the sum of rewards weights is TBC weight,
+        // because it could be only one TBC source in the list.
+        // The rewards weight is added once, no matter how many times it was called in the code.
+        let mut weight = T::LiquidityRegistry::check_rewards_weight();
+
+        #[cfg(not(feature = "wip"))] // order-book / ALT
+        {
+            weight = weight.saturating_add(T::LiquidityRegistry::quote_weight().saturating_mul(3));
+        }
+
+        #[cfg(feature = "wip")] // order-book / ALT
+        {
+            weight = weight.saturating_add(
+                T::LiquidityRegistry::step_quote_weight(T::GetNumSamples::get()).saturating_mul(4),
+            );
+        }
+
+        weight
+    }
+
     /// Calculates the max potential weight of inner_exchange
     ///
     /// This function should cover the current code map and all possible calls of some functions that can take a weight.
@@ -1154,32 +1195,17 @@ impl<T: Config> Pallet<T> {
     ///                     list_liquidity_sources()
     ///                     quote()
     ///                     smart_split()
-    ///                         quote()
-    ///                         quote()
-    ///                         check_rewards()
-    ///                         quote()
-    ///                         check_rewards()
     ///         calculate_input_amount() - call only for SwapAmount::WithDesiredOutput
     ///             quote_single()
     ///                 list_liquidity_sources()
     ///                 quote()
     ///                 smart_split()
-    ///                     quote()
-    ///                     quote()
-    ///                     check_rewards()
-    ///                     quote()
-    ///                     check_rewards()
     ///         exchange_sequence_with_input_amount()
     ///             exchange_single()
     ///                 quote_single()
     ///                     list_liquidity_sources()
     ///                     quote()
     ///                     smart_split()
-    ///                         quote()
-    ///                         quote()
-    ///                         check_rewards()
-    ///                         quote()
-    ///                         check_rewards()
     ///                 exchange() - call N times, where N is a count of assets in the path
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain inner_exchange_weight() and code map above.
@@ -1199,13 +1225,10 @@ impl<T: Config> Pallet<T> {
             return REJECTION_WEIGHT;
         };
 
-        let quote_weight = T::LiquidityRegistry::quote_weight();
         let exchange_weight = T::LiquidityRegistry::exchange_weight();
-        let check_rewards_weight = T::LiquidityRegistry::check_rewards_weight();
 
         let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
-            .saturating_add(quote_weight.saturating_mul(4))
-            .saturating_add(check_rewards_weight.saturating_mul(2));
+            .saturating_add(Self::smart_split_weight());
 
         let mut weight = <T as Config>::WeightInfo::new_trivial();
 
