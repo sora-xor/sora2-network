@@ -84,7 +84,7 @@ impl Command {
             .await?
             .ok_or(anyhow!("Network id not found"))?;
 
-        let call = parachain_runtime::runtime_types::parachain_template_runtime::RuntimeCall::BeefyLightClient(parachain_runtime::runtime_types::beefy_light_client::pallet::Call::initialize {
+        let call = parachain_runtime::runtime_types::sora2_parachain_runtime::RuntimeCall::BeefyLightClient(parachain_runtime::runtime_types::beefy_light_client::pallet::Call::initialize {
                 network_id,
                 latest_beefy_block: block_number.into(),
                 validator_set: authorities,

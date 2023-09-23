@@ -62,8 +62,9 @@ use crate::impls::{
 use bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{Description, LiquidityProxyTrait, PredefinedAssetId};
-use common::{XOR, XSTUSD};
+use common::PredefinedAssetId;
+use common::XOR;
+use common::{Description, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 #[cfg(feature = "wip")] // order-book
@@ -257,10 +258,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 60,
+    spec_version: 63,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 60,
+    transaction_version: 63,
     state_version: 0,
 };
 
@@ -2108,7 +2109,7 @@ impl bridge_proxy::Config for Runtime {
     type ERC20App = ERC20App;
     type EthApp = EthApp;
     type HashiBridge = EthBridge;
-    type SubstrateApp = SubstrateBridgeApp;
+    type ParachainApp = ParachainBridgeApp;
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
@@ -2220,7 +2221,7 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
-impl substrate_bridge_app::Config for Runtime {
+impl parachain_bridge_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type CallOrigin =
@@ -2231,7 +2232,7 @@ impl substrate_bridge_app::Config for Runtime {
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type BridgeAssetLocker = BridgeProxy;
-    type WeightInfo = crate::weights::substrate_bridge_app::SubstrateWeight<Runtime>;
+    type WeightInfo = crate::weights::parachain_bridge_app::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -2380,7 +2381,7 @@ construct_runtime! {
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
         #[cfg(feature = "ready-to-test")] // Substrate bridge
-        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
+        ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         #[cfg(feature = "ready-to-test")] // Substrate bridge
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         #[cfg(feature = "ready-to-test")] // Substrate bridge
@@ -3160,7 +3161,7 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // Bridges
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             #[cfg(feature = "ready-to-test")] // Bridges
-            list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
+            list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
             #[cfg(feature = "ready-to-test")] // Bridges
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             #[cfg(feature = "ready-to-test")] // Bridges
@@ -3259,7 +3260,7 @@ impl_runtime_apis! {
             #[cfg(feature = "ready-to-test")] // Bridges
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             #[cfg(feature = "ready-to-test")] // Bridges
-            add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
+            add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
             #[cfg(feature = "ready-to-test")] // Bridges
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             #[cfg(feature = "ready-to-test")] // Bridges

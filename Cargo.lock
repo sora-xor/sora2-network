@@ -411,7 +411,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -692,7 +692,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "oracle-proxy",
  "pallet-balances",
  "pallet-timestamp",
@@ -834,17 +834,18 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "anyhow",
  "beefy-merkle-tree",
  "bridge-common",
  "bridge-types",
+ "ckb-merkle-mountain-range",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "log",
  "parity-scale-codec",
- "rand 0.8.5",
  "scale-info",
  "serde",
  "sp-beefy",
@@ -857,7 +858,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee",
@@ -866,7 +867,6 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
@@ -874,7 +874,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -1104,7 +1104,7 @@ dependencies = [
 [[package]]
 name = "bridge-channel-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "anyhow",
  "bridge-types",
@@ -1113,10 +1113,8 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-blockchain",
  "sp-core",
  "sp-offchain",
- "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
@@ -1124,11 +1122,10 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "bitvec 1.0.1",
  "bridge-types",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "parity-scale-codec",
@@ -1143,7 +1140,7 @@ dependencies = [
 [[package]]
 name = "bridge-data-signer"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "bridge-common",
  "bridge-types",
@@ -1174,7 +1171,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "once_cell",
  "orml-currencies",
  "orml-tokens",
@@ -1204,7 +1201,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -1287,10 +1284,9 @@ dependencies = [
 [[package]]
 name = "bridge-types"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "derivative",
- "enum-iterator",
  "ethabi 17.2.0",
  "ethash",
  "ethbloom 0.13.0",
@@ -1298,7 +1294,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "getrandom 0.2.10",
- "hex-literal",
+ "hex-literal 0.4.1",
  "libsecp256k1",
  "orml-traits",
  "parity-bytes",
@@ -1475,7 +1471,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -1509,7 +1505,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
@@ -1541,7 +1537,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -1576,7 +1572,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "getrandom 0.2.10",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
@@ -1604,7 +1600,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
@@ -1631,7 +1627,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
@@ -1969,7 +1965,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
- "hex-literal",
+ "hex-literal 0.3.4",
  "libsecp256k1",
  "num-traits",
  "orml-currencies",
@@ -2491,7 +2487,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
@@ -2524,7 +2520,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
@@ -2678,7 +2674,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
@@ -2725,7 +2721,7 @@ dependencies = [
  "common",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -2878,7 +2874,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "bridge-types",
  "frame-benchmarking",
@@ -3123,26 +3119,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enum-iterator"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79a6321a1197d7730510c7e3f6cb80432dfefecb32426de8cea0aa19b4bb8d7"
-dependencies = [
- "enum-iterator-derive",
-]
-
-[[package]]
-name = "enum-iterator-derive"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e94aa31f7c0dc764f57896dc615ddd76fc13b0d5dca7eb6cc5e018a5a09ec06"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "enumflags2"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3226,7 +3202,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -3289,7 +3265,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -3325,7 +3301,7 @@ dependencies = [
  "frame-executive",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "jsonrpc-core",
  "libsecp256k1",
  "once_cell",
@@ -3527,7 +3503,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "parity-scale-codec",
  "rlp 0.5.2",
  "rustc-hex",
@@ -3895,7 +3871,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "log",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
@@ -3968,7 +3944,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
@@ -4434,7 +4410,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "ansi_term",
  "assert_cmd",
@@ -4463,7 +4439,7 @@ dependencies = [
  "framenode-runtime",
  "futures 0.3.28",
  "futures-timer",
- "hex-literal",
+ "hex-literal 0.3.4",
  "iroha-migration",
  "iroha-migration-rpc",
  "jsonrpsee",
@@ -4534,13 +4510,13 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "common",
  "faucet",
  "frame-support",
  "framenode-runtime",
- "hex-literal",
+ "hex-literal 0.3.4",
  "iroha-migration",
  "order-book",
  "pallet-multisig 3.2.3",
@@ -4564,7 +4540,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "assets",
  "assets-runtime-api",
@@ -4611,7 +4587,7 @@ dependencies = [
  "frame-try-runtime",
  "framenode-chain-spec",
  "hermes-governance-platform",
- "hex-literal",
+ "hex-literal 0.3.4",
  "iroha-migration",
  "iroha-migration-runtime-api",
  "leaf-provider",
@@ -4659,6 +4635,7 @@ dependencies = [
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-utility",
+ "parachain-bridge-app",
  "parity-scale-codec",
  "parity-scale-codec-derive",
  "permissions",
@@ -4681,7 +4658,6 @@ dependencies = [
  "sp-consensus-babe",
  "sp-core",
  "sp-inherents",
- "sp-keyring",
  "sp-mmr-primitives",
  "sp-npos-elections",
  "sp-offchain",
@@ -4693,7 +4669,6 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
- "substrate-bridge-app",
  "substrate-bridge-channel",
  "substrate-wasm-builder",
  "technical",
@@ -5151,7 +5126,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hermes-governance-platform",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -5201,6 +5176,12 @@ name = "hex-literal"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
+
+[[package]]
+name = "hex-literal"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
 
 [[package]]
 name = "hkdf"
@@ -5632,7 +5613,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
@@ -6003,15 +5984,12 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "leaf-provider"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
- "beefy-merkle-tree",
  "bridge-types",
  "ethabi 17.2.0",
  "frame-support",
  "frame-system",
- "pallet-beefy-mmr",
- "pallet-mmr",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6026,7 +6004,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "jsonrpsee",
  "leaf-provider-runtime-api",
@@ -6036,7 +6014,6 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
@@ -6044,7 +6021,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -6682,7 +6659,7 @@ dependencies = [
  "fallible-iterator 0.2.0",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "itertools",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
@@ -6720,7 +6697,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "liquidity-proxy",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
@@ -6997,7 +6974,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -7092,7 +7069,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -7198,7 +7175,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
@@ -7273,7 +7250,7 @@ checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 [[package]]
 name = "multisig-verifier"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "bridge-common",
  "bridge-types",
@@ -7283,7 +7260,6 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-beefy",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -7713,7 +7689,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -7762,7 +7738,7 @@ dependencies = [
  "frame-system",
  "framenode-chain-spec",
  "framenode-runtime",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-tokens",
  "pallet-balances",
  "pallet-collective",
@@ -8393,6 +8369,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "parachain-bridge-app"
+version = "0.1.1"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
+dependencies = [
+ "bridge-types",
+ "ethabi 17.2.0",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal 0.4.1",
+ "orml-currencies",
+ "orml-traits",
+ "parity-scale-codec",
+ "rlp 0.5.2",
+ "rustc-hex",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
 name = "parachain-gen"
 version = "0.1.0"
 dependencies = [
@@ -8939,7 +8940,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "num-traits",
  "oracle-proxy",
  "orml-currencies",
@@ -8975,7 +8976,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
@@ -9071,7 +9072,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
@@ -9285,7 +9286,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
@@ -9318,7 +9319,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -9789,7 +9790,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -9887,7 +9888,7 @@ dependencies = [
  "ethers-core",
  "futures 0.3.28",
  "hex",
- "hex-literal",
+ "hex-literal 0.3.4",
  "http",
  "jsonrpsee",
  "k256",
@@ -10011,7 +10012,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
- "hex-literal",
+ "hex-literal 0.3.4",
  "libsecp256k1",
  "orml-currencies",
  "orml-tokens",
@@ -12947,43 +12948,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "substrate-bridge-app"
-version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
-dependencies = [
- "bridge-types",
- "ethabi 17.2.0",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "orml-currencies",
- "orml-traits",
- "parity-scale-codec",
- "rlp 0.5.2",
- "rustc-hex",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "xcm",
-]
-
-[[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.13#bf527aea206c8dfa79150f468bc42e342dd352ac"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.17#a32ef72e50c5483f1411a61b3c34a46c993ba049"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.4.1",
  "once_cell",
- "orml-traits",
  "pallet-timestamp",
  "parity-scale-codec",
  "rlp 0.5.2",
@@ -13271,7 +13246,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -13728,7 +13703,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -14146,7 +14121,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
- "hex-literal",
+ "hex-literal 0.3.4",
  "itertools",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",
@@ -15301,7 +15276,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "mock-liquidity-source",
  "oracle-proxy",
  "orml-currencies",
@@ -15339,7 +15314,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.3.4",
  "mock-liquidity-source",
  "oracle-proxy",
  "orml-currencies",

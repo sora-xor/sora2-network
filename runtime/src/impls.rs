@@ -275,8 +275,8 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
         frame_support::log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
         match self.0 {
-            bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
-                let call: substrate_bridge_app::Call<crate::Runtime> = msg.into();
+            bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
+                let call: parachain_bridge_app::Call<crate::Runtime> = msg.into();
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
@@ -299,8 +299,8 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
 impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
     fn get_dispatch_info(&self) -> DispatchInfo {
         match &self.0 {
-            bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
-                let call: substrate_bridge_app::Call<crate::Runtime> = msg.clone().into();
+            bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
+                let call: parachain_bridge_app::Call<crate::Runtime> = msg.clone().into();
                 call.get_dispatch_info()
             }
             bridge_types::substrate::BridgeCall::XCMApp(_msg) => unimplemented!(),
@@ -407,7 +407,7 @@ pub struct SubstrateBridgeCallFilter;
 impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     fn contains(call: &DispatchableSubstrateBridgeCall) -> bool {
         match &call.0 {
-            bridge_types::substrate::BridgeCall::SubstrateApp(_) => true,
+            bridge_types::substrate::BridgeCall::ParachainApp(_) => true,
             bridge_types::substrate::BridgeCall::XCMApp(_) => false,
             bridge_types::substrate::BridgeCall::DataSigner(_) => true,
             bridge_types::substrate::BridgeCall::MultisigVerifier(_) => true,
