@@ -1092,9 +1092,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
-        _recommended_samples_count: usize,
+        recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1148,7 +1148,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             }
         }
 
-        Ok(chunks)
+        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
     }
 
     fn exchange(

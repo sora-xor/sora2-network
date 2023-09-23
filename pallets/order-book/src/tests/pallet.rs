@@ -1584,7 +1584,8 @@ fn should_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::new()
         );
 
@@ -1597,7 +1598,8 @@ fn should_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)])
         );
 
@@ -1610,7 +1612,8 @@ fn should_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
                 SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
@@ -1626,7 +1629,8 @@ fn should_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
                 SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
@@ -1643,7 +1647,8 @@ fn should_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
                 SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
@@ -1662,7 +1667,8 @@ fn should_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::new()
         );
 
@@ -1675,7 +1681,8 @@ fn should_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)])
         );
 
@@ -1688,7 +1695,8 @@ fn should_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
                 SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
@@ -1704,7 +1712,8 @@ fn should_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
                 SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
@@ -1721,7 +1730,8 @@ fn should_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
                 SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
@@ -1740,7 +1750,8 @@ fn should_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::new()
         );
 
@@ -1753,7 +1764,8 @@ fn should_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)])
         );
 
@@ -1766,7 +1778,8 @@ fn should_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(168.5), balance!(1685), 0),
                 SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
@@ -1782,7 +1795,8 @@ fn should_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(168.5), balance!(1685), 0),
                 SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
@@ -1799,7 +1813,8 @@ fn should_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(168.5), balance!(1685), 0),
                 SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
@@ -1818,7 +1833,8 @@ fn should_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::new()
         );
 
@@ -1831,7 +1847,8 @@ fn should_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)])
         );
 
@@ -1844,7 +1861,8 @@ fn should_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(168.5), balance!(1685), 0),
                 SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
@@ -1860,7 +1878,8 @@ fn should_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(168.5), balance!(1685), 0),
                 SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
@@ -1877,7 +1896,8 @@ fn should_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(168.5), balance!(1685), 0),
                 SwapChunk::new(balance!(139.9), balance!(1371.02), 0),

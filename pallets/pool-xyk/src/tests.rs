@@ -526,7 +526,8 @@ fn check_empty_step_quote() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::new()
         );
 
@@ -539,7 +540,8 @@ fn check_empty_step_quote() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::new()
         );
     })]);
@@ -568,7 +570,8 @@ fn check_step_quote_without_fee() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(19.998000199980001999), 0),
                 SwapChunk::new(balance!(10), balance!(19.994001399700061988), 0),
@@ -592,7 +595,8 @@ fn check_step_quote_without_fee() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(10.001000100010001000), balance!(20), 0),
                 SwapChunk::new(balance!(10.003000700150031006), balance!(20), 0),
@@ -616,7 +620,8 @@ fn check_step_quote_without_fee() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(20), balance!(9.999000099990000999), 0),
                 SwapChunk::new(balance!(20), balance!(9.997000699850030994), 0),
@@ -640,7 +645,8 @@ fn check_step_quote_without_fee() {
                 10,
                 false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(balance!(20.002000200020002002), balance!(10), 0),
                 SwapChunk::new(balance!(20.006001400300062012), balance!(10), 0),
@@ -680,7 +686,8 @@ fn check_step_quote_with_fee() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(
                     balance!(10),
@@ -744,7 +751,8 @@ fn check_step_quote_with_fee() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(
                     balance!(10.031093380150452357),
@@ -808,7 +816,8 @@ fn check_step_quote_with_fee() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(
                     balance!(20),
@@ -872,7 +881,8 @@ fn check_step_quote_with_fee() {
                 10,
                 true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
                 SwapChunk::new(
                     balance!(20.062192797672785635),

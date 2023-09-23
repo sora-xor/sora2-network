@@ -3935,7 +3935,8 @@ mod tests {
                     10,
                     true
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::new()
             );
 
@@ -3948,7 +3949,8 @@ mod tests {
                     10,
                     false
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::new()
             );
 
@@ -3961,7 +3963,8 @@ mod tests {
                     10,
                     true
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::new()
             );
 
@@ -3974,7 +3977,8 @@ mod tests {
                     10,
                     false
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::new()
             );
         });
@@ -4046,7 +4050,8 @@ mod tests {
                     10,
                     false
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(1.814079625905152404), 0),
                     SwapChunk::new(balance!(10), balance!(1.814070668767458329), 0),
@@ -4070,7 +4075,8 @@ mod tests {
                     10,
                     false
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::from([
                     SwapChunk::new(balance!(55.124986027641638452), balance!(10), 0),
                     SwapChunk::new(balance!(55.126486415116703889), balance!(10), 0),
@@ -4105,7 +4111,8 @@ mod tests {
                     10,
                     false
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(43.904162265615428784), 0),
                     SwapChunk::new(balance!(10), balance!(43.221097702920335502), 0),
@@ -4129,7 +4136,8 @@ mod tests {
                     10,
                     false
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::from([
                     SwapChunk::new(balance!(2.263873863894484038), balance!(10), 0),
                     SwapChunk::new(balance!(2.271988107134249214), balance!(10), 0),
@@ -4212,7 +4220,8 @@ mod tests {
                     10,
                     true
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::from([
                     SwapChunk::new(
                         balance!(10),
@@ -4276,7 +4285,8 @@ mod tests {
                     10,
                     true
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::from([
                     SwapChunk::new(
                         balance!(55.290860867597703975),
@@ -4351,7 +4361,8 @@ mod tests {
                     10,
                     true
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::from([
                     SwapChunk::new(
                         balance!(10),
@@ -4415,7 +4426,8 @@ mod tests {
                     10,
                     true
                 )
-                .unwrap(),
+                .unwrap()
+                .0,
                 VecDeque::from([
                     SwapChunk::new(
                         balance!(2.496002055010456491),

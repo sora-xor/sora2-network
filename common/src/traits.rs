@@ -187,7 +187,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         amount: QuoteAmount<Amount>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<VecDeque<SwapChunk<Amount>>, Error>;
+    ) -> Result<(VecDeque<SwapChunk<Amount>>, Weight), Error>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
@@ -319,7 +319,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _amount: QuoteAmount<Fixed>,
         _recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<VecDeque<SwapChunk<Fixed>>, DispatchError> {
+    ) -> Result<(VecDeque<SwapChunk<Fixed>>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -399,7 +399,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _amount: QuoteAmount<Balance>,
         _recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 

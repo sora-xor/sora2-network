@@ -443,9 +443,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
         if amount.amount().is_zero() {
-            return Ok(VecDeque::new());
+            return Ok((VecDeque::new(), Weight::zero()));
         }
 
         let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
@@ -531,7 +531,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             }
         }
 
-        Ok(chunks)
+        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
     }
 
     fn exchange(

@@ -1430,23 +1430,20 @@ impl<T: Config> Pallet<T> {
             Error::<T>::UnavailableExchangePath
         );
 
-        let samples_count = T::GetNumSamples::get();
         let mut aggregator = LiquidityAggregator::new(amount.variant());
 
         let mut total_weight = Weight::zero();
 
         for source in sources {
-            let chunks = T::LiquidityRegistry::step_quote(
+            let (chunks, weight) = T::LiquidityRegistry::step_quote(
                 source,
                 input_asset_id,
                 output_asset_id,
                 amount,
-                samples_count,
+                T::GetNumSamples::get(),
                 deduce_fee,
             )?;
             aggregator.add_source(source.clone(), chunks);
-
-            let weight = T::LiquidityRegistry::step_quote_weight(samples_count);
             total_weight = total_weight.saturating_add(weight);
         }
 

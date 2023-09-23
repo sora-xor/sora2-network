@@ -740,7 +740,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+    ) -> Result<(VecDeque<SwapChunk<Amount>>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
@@ -782,7 +782,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
         }
 
-        Ok(chunks)
+        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
     }
 
     fn exchange(
@@ -1156,7 +1156,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
@@ -1183,7 +1183,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             fee / recommended_samples_count as Balance,
         );
 
-        Ok(vec![chunk; recommended_samples_count].into())
+        Ok((
+            vec![chunk; recommended_samples_count].into(),
+            Self::step_quote_weight(recommended_samples_count),
+        ))
     }
 
     fn exchange(

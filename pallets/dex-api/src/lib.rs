@@ -130,7 +130,7 @@ impl<T: Config>
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! step_quote {
             ($source_type:ident) => {

@@ -419,13 +419,13 @@ impl<T: Config<I>, I: 'static>
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
 
         if amount.amount() == 0 {
-            return Ok(VecDeque::new());
+            return Ok((VecDeque::new(), Weight::zero()));
         }
 
         let step = amount.amount() / recommended_samples_count as Balance;
@@ -461,7 +461,7 @@ impl<T: Config<I>, I: 'static>
             chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
         }
 
-        Ok(chunks)
+        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
     }
 
     fn exchange(
