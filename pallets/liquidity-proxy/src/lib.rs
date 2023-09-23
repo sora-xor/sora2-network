@@ -1435,16 +1435,20 @@ impl<T: Config> Pallet<T> {
         let mut total_weight = Weight::zero();
 
         for source in sources {
-            let (chunks, weight) = T::LiquidityRegistry::step_quote(
+            if let Ok((chunks, weight)) = T::LiquidityRegistry::step_quote(
                 source,
                 input_asset_id,
                 output_asset_id,
                 amount,
                 T::GetNumSamples::get(),
                 deduce_fee,
-            )?;
-            aggregator.add_source(source.clone(), chunks);
-            total_weight = total_weight.saturating_add(weight);
+            ) {
+                aggregator.add_source(source.clone(), chunks);
+                total_weight = total_weight.saturating_add(weight);
+            } else {
+                // skip the source if it returns an error
+                continue;
+            }
         }
 
         let (swap_info, aggregate_swap_outcome) = aggregator
