@@ -373,7 +373,7 @@ pub fn new_partial(
                     beefy_best_block_stream: beefy_rpc_links.from_voter_best_beefy_stream.clone(),
                     subscription_executor,
                 },
-                backend,
+                backend: backend.clone(),
             };
 
             let rpc = crate::rpc::create_full(deps)?;

@@ -75,7 +75,7 @@ pub struct FullDeps<C, P, B> {
 }
 
 #[cfg(feature = "wip")]
-pub fn add_wip_rpc(
+pub fn add_wip_rpc<C>(
     mut rpc: RpcExtension,
     client: Arc<C>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
@@ -91,7 +91,7 @@ where
 }
 
 #[cfg(feature = "ready-to-test")]
-pub fn add_ready_for_test_rpc<C, B>(
+pub fn add_ready_for_test_rpc(
     rpc: RpcExtension,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>> {
     Ok(rpc)
@@ -236,10 +236,10 @@ where
     io.merge(RewardsClient::new(client.clone()).into_rpc())?;
     io.merge(VestedRewardsClient::new(client.clone()).into_rpc())?;
     io.merge(FarmingClient::new(client.clone()).into_rpc())?;
-    rpc.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
-    rpc.merge(BridgeProxyClient::new(client.clone()).into_rpc())?;
+    io.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
+    io.merge(BridgeProxyClient::new(client.clone()).into_rpc())?;
     if let Some(storage) = backend.offchain_storage() {
-        rpc.merge(<BridgeChannelClient<_, _> as BridgeChannelAPIServer<
+        io.merge(<BridgeChannelClient<_, _> as BridgeChannelAPIServer<
             bridge_types::types::BridgeOffchainData<
                 framenode_runtime::BlockNumber,
                 framenode_runtime::BridgeMaxMessagesPerCommit,

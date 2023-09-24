@@ -37,6 +37,8 @@
 extern crate alloc;
 use alloc::string::String;
 use bridge_types::traits::Verifier;
+use bridge_types::{SubNetworkId, H256};
+use sp_runtime::traits::Keccak256;
 
 mod bags_thresholds;
 /// Constant values used within the runtime.
@@ -52,20 +54,18 @@ pub mod mock;
 pub mod tests;
 pub mod weights;
 
+#[cfg(feature = "wip")] // EVM bridge
+use crate::impls::EVMBridgeCallFilter;
 use crate::impls::PreimageWeightInfo;
-use crate::impls::{
-    DispatchableSubstrateBridgeCall, EVMBridgeCallFilter, SubstrateBridgeCallFilter,
-};
+use crate::impls::{DispatchableSubstrateBridgeCall, SubstrateBridgeCallFilter};
 #[cfg(feature = "wip")] // Trustless bridges
 use bridge_types::types::LeafExtraData;
 #[cfg(feature = "wip")] // EVM bridge
 use bridge_types::{evm::AdditionalEVMInboundData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-#[cfg(feature = "wip")]
-use common::AssetId32;
-use common::{Description, GetMarketInfo, LiquidityProxyTrait, PredefinedAssetId};
-use common::{XOR, XST, XSTUSD};
+use common::{Description, LiquidityProxyTrait, PredefinedAssetId};
+use common::{XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 #[cfg(feature = "wip")] // order-book
@@ -160,8 +160,6 @@ use impls::{
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
 #[cfg(all(feature = "private-net", feature = "wip"))] // order-book
 pub use qa_tools;
-#[cfg(feature = "wip")]
-use sp_runtime::traits::Keccak256;
 pub use {
     assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
     xst,
@@ -1971,7 +1969,7 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
 }
 
 #[cfg(feature = "wip")]
-use bridge_types::{EVMChainId, SubNetworkId, H256};
+use bridge_types::EVMChainId;
 
 parameter_types! {
     pub const BridgeMaxMessagePayloadSize: u32 = 256;
@@ -3139,6 +3137,9 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, migration_app, MigrationApp);
 
             list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
+            // Dispatch pallet benchmarks is strictly linked to EVM bridge params
+            // TODO: fix
+            #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, dispatch, Dispatch);
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
@@ -3232,6 +3233,9 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, migration_app, MigrationApp);
 
             add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
+            // Dispatch pallet benchmarks is strictly linked to EVM bridge params
+            // TODO: fix
+            #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, dispatch, Dispatch);
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);

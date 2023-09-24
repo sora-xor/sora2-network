@@ -1,5 +1,5 @@
 use crate::*;
-use bridge_types::{traits::BridgeApp, GenericNetworkId};
+use bridge_types::GenericNetworkId;
 use common::{DEXId, XOR, XST, XSTUSD};
 
 pub struct StakingMigrationV11OldPallet;
@@ -63,13 +63,15 @@ pub struct HashiBridgeLockedAssets;
 impl Get<Vec<(AssetId, Balance)>> for HashiBridgeLockedAssets {
     fn get() -> Vec<(AssetId, Balance)> {
         let Ok(assets) = EthBridge::get_registered_assets(Some(GetEthNetworkId::get())) else {
-            return Weight::zero();
+            frame_support::log::warn!("Failed to get registered assets, skipping migration");
+            return vec![];
         };
         let Some(bridge_account) = eth_bridge::BridgeAccount::<Runtime>::get(GetEthNetworkId::get()) else {
-            return Weight::zero();
+            frame_support::log::warn!("Failed to get Hashi bridge account, skipping migration");
+            return vec![];
         };
         let mut result = vec![];
-        for (kind, (asset_id, precision), _) in assets {
+        for (kind, (asset_id, _precision), _) in assets {
             let reserved = if kind.is_owned() {
                 Assets::total_issuance(&asset_id)
             } else {
@@ -77,6 +79,7 @@ impl Get<Vec<(AssetId, Balance)>> for HashiBridgeLockedAssets {
             };
             result.push((asset_id, reserved.unwrap_or_default()));
         }
+        result
     }
 }
 
