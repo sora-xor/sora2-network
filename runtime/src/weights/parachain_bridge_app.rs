@@ -267,14 +267,4 @@ impl<T: frame_system::Config> parachain_bridge_app::WeightInfo for WeightInfo<T>
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().writes(3))
 	}
-
-	fn refund() -> Weight {		
-		// Proof Size summary in bytes:
-		//  Measured:  `207`
-		//  Estimated: `2889`
-		// Minimum execution time: 12_431_000 picoseconds.
-		Weight::from_parts(12_721_000, 2889)
-		.saturating_add(T::DbWeight::get().reads(1_u64))
-		.saturating_add(T::DbWeight::get().writes(1_u64))
-    }
 }
