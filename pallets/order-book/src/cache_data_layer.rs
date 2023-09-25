@@ -483,8 +483,8 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
     fn get_aggregated_bids_len(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
-    ) -> usize {
-        self.aggregated_bids.get(order_book_id).len()
+    ) -> Option<usize> {
+        self.aggregated_bids.get(order_book_id).map(|l| l.len())
     }
 
     fn best_bid(
@@ -509,8 +509,8 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
     fn get_aggregated_asks_len(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
-    ) -> usize {
-        self.aggregated_asks.get(order_book_id).len()
+    ) -> Option<usize> {
+        self.aggregated_asks.get(order_book_id).map(|l| l.len())
     }
 
     fn best_ask(

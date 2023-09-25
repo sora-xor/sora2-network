@@ -105,10 +105,10 @@ fn should_work_as_cache() {
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price, amount)])
         );
-        assert_eq!(data.get_aggregated_bids_len(&order_book_id), 1);
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(data.get_asks(&order_book_id, &price), None);
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
-        assert_eq!(data.get_aggregated_asks_len(&order_book_id), 0);
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_id]
@@ -198,8 +198,10 @@ fn should_work_as_storage() {
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price, amount)])
         );
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(data.get_asks(&order_book_id, &price), None);
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_id]
@@ -401,8 +403,10 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price, amount)])
         );
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(data.get_asks(&order_book_id, &price), None);
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_buy_id]
@@ -446,6 +450,7 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price, amount)])
         );
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(
             data.get_asks(&order_book_id, &price).unwrap(),
             vec![order_sell_id]
@@ -454,6 +459,7 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_asks(&order_book_id),
             BTreeMap::from([(price, amount)])
         );
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_buy_id, order_sell_id]
@@ -663,6 +669,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price1, double_amount)])
         );
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(
             data.get_asks(&order_book_id, &price1).unwrap(),
             vec![order_sell_id1, order_sell_id2]
@@ -675,6 +682,9 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_asks(&order_book_id),
             BTreeMap::from([(price1, double_amount), (price2, amount)])
         );
+        dbg!(data.get_aggregated_asks(&order_book_id));
+        dbg!(data.get_aggregated_asks_len(&order_book_id));
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 2);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![
@@ -754,6 +764,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price1, double_amount)])
         );
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(
             data.get_asks(&order_book_id, &price1).unwrap(),
             vec![order_sell_id2]
@@ -766,6 +777,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_asks(&order_book_id),
             BTreeMap::from([(price1, amount), (price2, amount)])
         );
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 2);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_buy_id1, order_buy_id2, order_sell_id2, order_sell_id3]
@@ -817,6 +829,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price1, amount)])
         );
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(
             data.get_asks(&order_book_id, &price1).unwrap(),
             vec![order_sell_id2]
@@ -829,6 +842,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_asks(&order_book_id),
             BTreeMap::from([(price1, amount), (price2, amount)])
         );
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 2);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_buy_id2, order_sell_id2, order_sell_id3]
@@ -874,6 +888,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         );
         assert_eq!(data.get_bids(&order_book_id, &price1), None);
         assert_eq!(data.get_aggregated_bids(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(
             data.get_asks(&order_book_id, &price1).unwrap(),
             vec![order_sell_id2]
@@ -886,6 +901,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_asks(&order_book_id),
             BTreeMap::from([(price1, amount), (price2, amount)])
         );
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 2);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_sell_id2, order_sell_id3]
@@ -928,6 +944,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         );
         assert_eq!(data.get_bids(&order_book_id, &price1), None);
         assert_eq!(data.get_aggregated_bids(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(
             data.get_asks(&order_book_id, &price1).unwrap(),
             vec![order_sell_id2]
@@ -937,6 +954,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_asks(&order_book_id),
             BTreeMap::from([(price1, amount)])
         );
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_sell_id2]
@@ -976,9 +994,11 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         );
         assert_eq!(data.get_bids(&order_book_id, &price1), None);
         assert_eq!(data.get_aggregated_bids(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(data.get_asks(&order_book_id, &price1), None);
         assert_eq!(data.get_asks(&order_book_id, &price2), None);
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(data.get_user_limit_orders(&owner, &order_book_id), None);
 
         data.push_to_storage();
@@ -1085,8 +1105,10 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price, amount)])
         );
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(data.get_asks(&order_book_id, &price), None);
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_id]
@@ -1133,8 +1155,10 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price, new_amount)])
         );
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(data.get_asks(&order_book_id, &price), None);
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_id]
@@ -1218,8 +1242,10 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price, amount)])
         );
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 1);
         assert_eq!(data.get_asks(&order_book_id, &price), None);
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_id]
@@ -1259,8 +1285,10 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
         );
         assert_eq!(data.get_bids(&order_book_id, &price), None);
         assert_eq!(data.get_aggregated_bids(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(data.get_asks(&order_book_id, &price), None);
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 0);
         assert_eq!(data.get_user_limit_orders(&owner, &order_book_id), None);
 
         // check storage

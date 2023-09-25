@@ -130,10 +130,13 @@ where
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount>;
 
+    /// Length of aggregated asks list for the order book.
+    /// `None` if the value is not present in the storage. Ignores default value, so `unwrap_or(0)`
+    /// usually makes sense.
     fn get_aggregated_bids_len(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
-    ) -> usize;
+    ) -> Option<usize>;
 
     fn best_bid(
         &mut self,
@@ -146,10 +149,13 @@ where
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount>;
 
+    /// Length of aggregated asks list for the order book.
+    /// `None` if the value is not present in the storage. Ignores default value, so `unwrap_or(0)`
+    /// usually makes sense.
     fn get_aggregated_asks_len(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
-    ) -> usize;
+    ) -> Option<usize>;
 
     fn best_ask(
         &mut self,

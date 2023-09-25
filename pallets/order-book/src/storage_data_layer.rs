@@ -331,8 +331,8 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
     fn get_aggregated_bids_len(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
-    ) -> usize {
-        <AggregatedBids<T>>::decode_len(order_book_id).unwrap_or(0)
+    ) -> Option<usize> {
+        <AggregatedBids<T>>::decode_len(order_book_id)
     }
 
     fn best_bid(
@@ -355,8 +355,8 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
     fn get_aggregated_asks_len(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
-    ) -> usize {
-        <AggregatedAsks<T>>::decode_len(order_book_id).unwrap_or(0)
+    ) -> Option<usize> {
+        <AggregatedAsks<T>>::decode_len(order_book_id)
     }
 
     fn best_ask(

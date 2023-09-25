@@ -1001,6 +1001,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
                 ensure!(
                     data.get_aggregated_bids_len(&self.order_book_id)
+                        .unwrap_or(0)
                         < T::MaxSidePriceCount::get() as usize,
                     Error::<T>::OrderBookReachedMaxCountOfPricesForSide
                 );
@@ -1026,6 +1027,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
                 ensure!(
                     data.get_aggregated_asks_len(&self.order_book_id)
+                        .unwrap_or(0)
                         < T::MaxSidePriceCount::get() as usize,
                     Error::<T>::OrderBookReachedMaxCountOfPricesForSide
                 );
