@@ -31,14 +31,15 @@
 #![cfg(feature = "wip")] // order-book
 
 use crate::test_utils::*;
-// use crate::benchmarking::
 use assets::AssetIdOf;
 use common::{balance, PriceVariant, ETH, PSWAP, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
-use framenode_runtime::order_book::{Config, DataLayer, LimitOrder, OrderBookId};
+use framenode_runtime::order_book::{
+    Config, DataLayer, LimitOrder, OrderBook, OrderBookId, OrderBooks, OrderPrice,
+};
 use framenode_runtime::Runtime;
 use sp_core::Get;
 use sp_runtime::BoundedVec;
@@ -1532,8 +1533,97 @@ fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
         );
     });
 }
-//
-// #[test]
-// fn is_bids_full_works() {
-//     fill_price()
-// }
+
+fn fill_single_price(
+    data: &mut impl DataLayer<Runtime>,
+    mut order_book: OrderBook<Runtime>,
+    price: OrderPrice,
+    side: PriceVariant,
+) {
+    let fill_settings = FillSettings::max();
+    let amount = order_book.min_lot_size;
+    let mut users = users_iterator::<Runtime>(
+        order_book.order_book_id,
+        amount,
+        price,
+        fill_settings.max_orders_per_user,
+    );
+    let current_block = frame_system::Pallet::<Runtime>::block_number();
+    let mut lifespans = lifespans_iterator::<Runtime>(
+        fill_settings.max_expiring_orders_per_block,
+        (current_block + 10).into(),
+    );
+    fill_price(
+        data,
+        fill_settings,
+        &mut order_book,
+        side,
+        amount,
+        price,
+        &mut users,
+        &mut lifespans,
+    );
+    <OrderBooks<Runtime>>::insert(order_book.order_book_id, order_book.clone());
+}
+
+fn is_bids_full_works(data: &mut impl DataLayer<Runtime>) {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+        let order_book = create_empty_order_book(order_book_id);
+        let price = order_book.tick_size;
+        assert!(data.is_bids_full(&order_book_id, &price).is_none());
+        fill_single_price(data, order_book, price, PriceVariant::Buy);
+        assert!(data.is_bids_full(&order_book_id, &price).unwrap());
+        let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
+        data.delete_limit_order(&order_book_id, order_book.last_order_id)
+            .unwrap();
+        assert!(!data.is_bids_full(&order_book_id, &price).unwrap());
+    })
+}
+
+fn is_asks_full_works(data: &mut impl DataLayer<Runtime>) {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+        let order_book = create_empty_order_book(order_book_id);
+        let price = order_book.tick_size;
+        assert!(data.is_asks_full(&order_book_id, &price).is_none());
+        fill_single_price(data, order_book, price, PriceVariant::Sell);
+        assert!(data.is_asks_full(&order_book_id, &price).unwrap());
+        let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
+        data.delete_limit_order(&order_book_id, order_book.last_order_id)
+            .unwrap();
+        assert!(!data.is_asks_full(&order_book_id, &price).unwrap());
+    })
+}
+
+#[test]
+fn cache_is_bids_full_works() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    is_bids_full_works(&mut cache);
+}
+
+#[test]
+fn storage_is_bids_full_works() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    is_bids_full_works(&mut storage);
+}
+
+#[test]
+fn cache_is_asks_full_works() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    is_asks_full_works(&mut cache);
+}
+
+#[test]
+fn storage_is_asks_full_works() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    is_asks_full_works(&mut storage);
+}
