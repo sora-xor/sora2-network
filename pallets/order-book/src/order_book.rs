@@ -997,14 +997,17 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     data.is_bids_full(&self.order_book_id, &limit_order.price)
                 {
                     ensure!(!is_bids_full, Error::<T>::PriceReachedMaxCountOfLimitOrders);
+                } else {
+                    // there are no orders for the price, thus no entry for the given price.
+                    // if there was an entry, we won't need to add another price and, therefore,
+                    // check the length
+                    ensure!(
+                        data.get_aggregated_bids_len(&self.order_book_id)
+                            .unwrap_or(0)
+                            < T::MaxSidePriceCount::get() as usize,
+                        Error::<T>::OrderBookReachedMaxCountOfPricesForSide
+                    );
                 }
-
-                ensure!(
-                    data.get_aggregated_bids_len(&self.order_book_id)
-                        .unwrap_or(0)
-                        < T::MaxSidePriceCount::get() as usize,
-                    Error::<T>::OrderBookReachedMaxCountOfPricesForSide
-                );
 
                 if let Some((best_bid_price, _)) = self.best_bid(data) {
                     if limit_order.price < best_bid_price {
@@ -1023,14 +1026,17 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     data.is_asks_full(&self.order_book_id, &limit_order.price)
                 {
                     ensure!(!is_asks_full, Error::<T>::PriceReachedMaxCountOfLimitOrders);
+                } else {
+                    // there are no orders for the price, thus no entry for the given price.
+                    // if there was an entry, we won't need to add another price and, therefore,
+                    // check the length
+                    ensure!(
+                        data.get_aggregated_asks_len(&self.order_book_id)
+                            .unwrap_or(0)
+                            < T::MaxSidePriceCount::get() as usize,
+                        Error::<T>::OrderBookReachedMaxCountOfPricesForSide
+                    );
                 }
-
-                ensure!(
-                    data.get_aggregated_asks_len(&self.order_book_id)
-                        .unwrap_or(0)
-                        < T::MaxSidePriceCount::get() as usize,
-                    Error::<T>::OrderBookReachedMaxCountOfPricesForSide
-                );
 
                 if let Some((best_ask_price, _)) = self.best_ask(data) {
                     if limit_order.price > best_ask_price {

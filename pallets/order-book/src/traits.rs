@@ -104,7 +104,8 @@ where
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>>;
 
-    /// Returns whether there is no place for orders inside the bid price
+    /// Returns whether there is no place for orders inside the bid price. None if no entry for
+    /// the price exists
     fn is_bids_full(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -118,6 +119,8 @@ where
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>>;
 
+    /// Returns whether there is no place for orders inside the ask price. None if no entry for
+    /// the price exists
     fn is_asks_full(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,

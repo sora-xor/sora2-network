@@ -682,8 +682,6 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             data.get_aggregated_asks(&order_book_id),
             BTreeMap::from([(price1, double_amount), (price2, amount)])
         );
-        dbg!(data.get_aggregated_asks(&order_book_id));
-        dbg!(data.get_aggregated_asks_len(&order_book_id));
         assert_eq!(data.get_aggregated_asks_len(&order_book_id).unwrap_or(0), 2);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
