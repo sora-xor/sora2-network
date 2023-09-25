@@ -10,7 +10,7 @@ codec = { package = "parity-scale-codec", version = "3", features = [
     "chain-error",
 ] }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 sc-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sc-network = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sc-network-common = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }

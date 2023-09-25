@@ -673,19 +673,16 @@ pub mod pallet {
                 .collect()
         }
 
-        // TODO implement https://app.zenhub.com/workspaces/sora2-backend-62b9c0e3e9b9e600201273e3/issues/gh/sora-xor/sora2-network/731
-        fn transfer_weight() -> Weight {
-            Default::default()
+        fn is_asset_supported_weight() -> Weight {
+            T::DbWeight::get().reads(1)
         }
 
-        // TODO implement https://app.zenhub.com/workspaces/sora2-backend-62b9c0e3e9b9e600201273e3/issues/gh/sora-xor/sora2-network/731
         fn refund_weight() -> Weight {
             Default::default()
         }
 
-        // TODO implement https://app.zenhub.com/workspaces/sora2-backend-62b9c0e3e9b9e600201273e3/issues/gh/sora-xor/sora2-network/731
-        fn is_asset_supported_weight() -> Weight {
-            Default::default()
+        fn transfer_weight() -> Weight {
+            <T as Config>::WeightInfo::burn()
         }
     }
 }

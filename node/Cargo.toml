@@ -29,7 +29,7 @@ serde_json = "1.0.61"
 jsonrpsee = { version = "0.16.2", features = ["server"] }
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig" }
 secp256k1 = { version = "0.7", features = ["hmac"], package = "libsecp256k1" }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 
 framenode-chain-spec = { path = "chain_spec" }
 common = { path = "../common" }
@@ -148,7 +148,7 @@ ready-to-test = [
     "bridge-channel-rpc",
     "bridge-proxy-rpc",
     "leaf-provider-rpc",
-    "bridge-types"
+    "bridge-types",
 ]
 
 runtime-benchmarks = [
