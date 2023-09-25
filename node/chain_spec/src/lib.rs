@@ -1139,7 +1139,7 @@ fn testnet_genesis(
     ];
     GenesisConfig {
         multisig_verifier: Default::default(),
-        substrate_bridge_app: Default::default(),
+        parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
 
         #[cfg(feature = "wip")] // Trustless substrate bridge
@@ -1993,7 +1993,7 @@ fn mainnet_genesis(
     }));
     GenesisConfig {
         multisig_verifier: Default::default(),
-        substrate_bridge_app: Default::default(),
+        parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
 
         #[cfg(feature = "wip")] // Trustless substrate bridge

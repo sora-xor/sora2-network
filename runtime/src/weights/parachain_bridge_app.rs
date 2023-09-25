@@ -57,7 +57,7 @@
 
 use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use core::marker::PhantomData;
-use substrate_bridge_app::weights::WeightInfo;
+use parachain_bridge_app::weights::WeightInfo;
 
 /// Weights for substrate_bridge_app using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
@@ -249,4 +249,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
+	fn refund() -> Weight {		
+		// Proof Size summary in bytes:
+		//  Measured:  `207`
+		//  Estimated: `2889`
+		// Minimum execution time: 12_431_000 picoseconds.
+		Weight::from_parts(12_721_000, 2889)
+		.saturating_add(T::DbWeight::get().reads(1_u64))
+		.saturating_add(T::DbWeight::get().writes(1_u64))
+    }
 }

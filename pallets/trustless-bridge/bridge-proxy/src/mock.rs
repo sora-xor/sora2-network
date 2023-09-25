@@ -362,7 +362,7 @@ impl proxy::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type EthApp = EthApp;
     type ERC20App = ERC20App;
-    type SubstrateApp = ();
+    type ParachainApp = ();
     type HashiBridge = ();
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider = ReferencePriceProvider;

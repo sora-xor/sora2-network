@@ -87,7 +87,7 @@ pub mod pallet {
 
         type ERC20App: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
-        type SubstrateApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
+        type ParachainApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
 
         type HashiBridge: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
@@ -247,7 +247,7 @@ pub mod pallet {
                     }
                 }
                 GenericAccount::Parachain(recipient) => {
-                    T::SubstrateApp::transfer(network_id, asset_id, sender, recipient, amount)?;
+                    T::ParachainApp::transfer(network_id, asset_id, sender, recipient, amount)?;
                 }
                 GenericAccount::Sora(_) | GenericAccount::Unknown | GenericAccount::Root => {
                     frame_support::fail!(Error::<T>::WrongAccountKind);
@@ -308,7 +308,7 @@ pub mod pallet {
             res.extend(T::EthApp::list_apps());
             res.extend(T::ERC20App::list_apps());
             res.extend(T::HashiBridge::list_apps());
-            res.extend(T::SubstrateApp::list_apps());
+            res.extend(T::ParachainApp::list_apps());
             res
         }
 
@@ -317,7 +317,7 @@ pub mod pallet {
             res.extend(T::EthApp::list_supported_assets(network_id));
             res.extend(T::ERC20App::list_supported_assets(network_id));
             res.extend(T::HashiBridge::list_supported_assets(network_id));
-            res.extend(T::SubstrateApp::list_supported_assets(network_id));
+            res.extend(T::ParachainApp::list_supported_assets(network_id));
             res
         }
 
@@ -333,8 +333,8 @@ pub mod pallet {
             };
             if T::HashiBridge::is_asset_supported(network_id, asset_id) {
                 T::HashiBridge::refund(network_id, message_id, beneficiary, asset_id, amount)?;
-            } else if T::SubstrateApp::is_asset_supported(network_id, asset_id) {
-                T::SubstrateApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else if T::ParachainApp::is_asset_supported(network_id, asset_id) {
+                T::ParachainApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::EthApp::is_asset_supported(network_id, asset_id) {
                 T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else {

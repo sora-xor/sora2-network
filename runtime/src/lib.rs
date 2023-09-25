@@ -64,7 +64,7 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::{evm::AdditionalEVMInboundData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{Description, LiquidityProxyTrait, PredefinedAssetId};
+use common::{Description, PredefinedAssetId};
 use common::{XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
@@ -256,10 +256,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 60,
+    spec_version: 63,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 60,
+    transaction_version: 63,
     state_version: 0,
 };
 
@@ -2105,7 +2105,7 @@ impl bridge_proxy::Config for Runtime {
     type EthApp = ();
 
     type HashiBridge = EthBridge;
-    type SubstrateApp = SubstrateBridgeApp;
+    type ParachainApp = ParachainBridgeApp;
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
@@ -2214,7 +2214,7 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type WeightInfo = crate::weights::substrate_outbound_channel::SubstrateWeight<Runtime>;
 }
 
-impl substrate_bridge_app::Config for Runtime {
+impl parachain_bridge_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type CallOrigin =
@@ -2225,7 +2225,7 @@ impl substrate_bridge_app::Config for Runtime {
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type BridgeAssetLocker = BridgeProxy;
-    type WeightInfo = crate::weights::substrate_bridge_app::SubstrateWeight<Runtime>;
+    type WeightInfo = crate::weights::parachain_bridge_app::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -2368,7 +2368,7 @@ construct_runtime! {
         SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 106,
         SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
-        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
+        ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call, Config} = 111,
 
@@ -3143,7 +3143,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, dispatch, Dispatch);
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
-            list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
+            list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
 
@@ -3239,7 +3239,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, dispatch, Dispatch);
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
-            add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
+            add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
 
