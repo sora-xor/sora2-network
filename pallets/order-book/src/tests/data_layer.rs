@@ -105,8 +105,10 @@ fn should_work_as_cache() {
             data.get_aggregated_bids(&order_book_id),
             BTreeMap::from([(price, amount)])
         );
+        assert_eq!(data.get_aggregated_bids_len(&order_book_id), 1);
         assert_eq!(data.get_asks(&order_book_id, &price), None);
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
+        assert_eq!(data.get_aggregated_asks_len(&order_book_id), 0);
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_id]
@@ -1626,4 +1628,55 @@ fn cache_is_asks_full_works() {
 fn storage_is_asks_full_works() {
     let mut storage = StorageDataLayer::<Runtime>::new();
     is_asks_full_works(&mut storage);
+}
+
+fn is_user_limit_orders_full_works(data: &mut impl DataLayer<Runtime>) {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+        let mut order_book = create_empty_order_book(order_book_id);
+        let user = alice::<Runtime>();
+        let fill_settings = FillSettings::max();
+        let current_block = frame_system::Pallet::<Runtime>::block_number();
+        let mut lifespans = lifespans_iterator::<Runtime>(
+            fill_settings.max_expiring_orders_per_block,
+            (current_block + 10).into(),
+        );
+        let amount = order_book.min_lot_size;
+        assert!(data
+            .is_user_limit_orders_full(&user, &order_book_id)
+            .is_none());
+        fill_user_orders(
+            data,
+            fill_settings,
+            &mut order_book,
+            PriceVariant::Buy,
+            amount,
+            user.clone(),
+            &mut lifespans,
+        );
+        assert!(data
+            .is_user_limit_orders_full(&user, &order_book_id)
+            .unwrap());
+        data.delete_limit_order(&order_book_id, order_book.last_order_id)
+            .unwrap();
+        assert!(!data
+            .is_user_limit_orders_full(&user, &order_book_id)
+            .unwrap());
+    })
+}
+
+#[test]
+fn cache_is_user_limit_orders_full_works() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    is_user_limit_orders_full_works(&mut cache);
+}
+
+#[test]
+fn storage_is_user_limit_orders_full_works() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    is_user_limit_orders_full_works(&mut storage);
 }
