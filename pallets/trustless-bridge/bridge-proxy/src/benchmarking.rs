@@ -30,49 +30,15 @@
 
 use super::*;
 
-use bridge_types::GenericAccount;
-use bridge_types::{types::MessageDirection, EVMChainId, GenericTimepoint};
-use common::{balance, AssetId32, PredefinedAssetId, XOR};
-use frame_benchmarking::{benchmarks, whitelisted_caller};
+use common::{AssetId32, PredefinedAssetId, XOR};
+use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
-use traits::MultiCurrency;
-
-pub const BASE_NETWORK_ID: GenericNetworkId = GenericNetworkId::EVM(EVMChainId::zero());
 
 #[allow(unused_imports)]
 use crate::Pallet as BridgeProxy;
 
-use assets::Pallet as Assets;
-
 benchmarks! {
     where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>> }
-    // Benchmark `burn` extrinsic under worst case conditions:
-    // * `burn` successfully substracts amount from caller account
-    // * The channel executes incentivization logic
-    burn {
-        let caller: T::AccountId = whitelisted_caller();
-        let asset_id: T::AssetId = XOR.into();
-        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
-        let amount = balance!(20);
-        let asset_id: T::AssetId = XOR.into();
-        <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
-    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, XOR.into(), GenericAccount::EVM(H160::default()), 1000)
-    verify {
-        let (message_id, _) = Senders::<T>::iter_prefix(BASE_NETWORK_ID).next().unwrap();
-        let req = Transactions::<T>::get((BASE_NETWORK_ID, &caller), message_id).unwrap();
-        assert!(
-            req == BridgeRequest {
-                source: GenericAccount::Sora(caller.clone()),
-                dest: GenericAccount::EVM(H160::default()),
-                asset_id: XOR.into(),
-                amount: 1000,
-                status: MessageStatus::InQueue,
-                start_timepoint: GenericTimepoint::Sora(1),
-                end_timepoint: GenericTimepoint::Pending,
-                direction: MessageDirection::Outbound,
-            }
-        );
-    }
 
     add_limited_asset {
         let asset_id: T::AssetId = XOR.into();

@@ -150,9 +150,13 @@ impl<T: Config> Pallet<T> {
                     return Ok(ContractEvent::Deposit(Self::parse_deposit_event(log)?));
                 }
                 // ChangePeers(address,bool)
-                hex!("a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9")
-                    if kind == IncomingTransactionRequestKind::AddPeer
-                        || kind == IncomingTransactionRequestKind::RemovePeer =>
+                topic
+                    if topic
+                        == hex!(
+                            "a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9"
+                        )
+                        && (kind == IncomingTransactionRequestKind::AddPeer
+                            || kind == IncomingTransactionRequestKind::RemovePeer) =>
                 {
                     let types = [ParamType::Address, ParamType::Bool];
                     let decoded = ethabi::decode(&types, &log.data.0)
@@ -162,13 +166,21 @@ impl<T: Config> Pallet<T> {
                     let peer_address = decoder.next_address()?;
                     return Ok(ContractEvent::ChangePeers(H160(peer_address.0), removed));
                 }
-                hex!("5389de9593f75e6515eefa796bd2d3324759f441f2c9b2dcda0efb25190378ff")
-                    if kind == IncomingTransactionRequestKind::PrepareForMigration =>
+                topic
+                    if topic
+                        == hex!(
+                            "5389de9593f75e6515eefa796bd2d3324759f441f2c9b2dcda0efb25190378ff"
+                        )
+                        && kind == IncomingTransactionRequestKind::PrepareForMigration =>
                 {
                     return Ok(ContractEvent::PreparedForMigration);
                 }
-                hex!("a2e7361c23d7820040603b83c0cd3f494d377bac69736377d75bb56c651a5098")
-                    if kind == IncomingTransactionRequestKind::Migrate =>
+                topic
+                    if topic
+                        == hex!(
+                            "a2e7361c23d7820040603b83c0cd3f494d377bac69736377d75bb56c651a5098"
+                        )
+                        && kind == IncomingTransactionRequestKind::Migrate =>
                 {
                     let types = [ParamType::Address];
                     let decoded = ethabi::decode(&types, &log.data.0)

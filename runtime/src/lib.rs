@@ -2130,7 +2130,7 @@ impl dispatch::Config<dispatch::Instance2> for Runtime {
     type Hashing = Keccak256;
     type Call = DispatchableSubstrateBridgeCall;
     type CallFilter = SubstrateBridgeCallFilter;
-    type WeightInfo = crate::weights::dispatch::SubstrateWeight<Runtime>;
+    type WeightInfo = crate::weights::dispatch::WeightInfo<Runtime>;
 }
 
 impl substrate_bridge_channel::inbound::Config for Runtime {
@@ -2142,7 +2142,7 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type ThisNetworkId = ThisNetworkId;
-    type WeightInfo = crate::weights::substrate_inbound_channel::SubstrateWeight<Runtime>;
+    type WeightInfo = crate::weights::substrate_inbound_channel::WeightInfo<Runtime>;
 }
 
 pub struct MultiVerifier;
@@ -2211,7 +2211,7 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type Balance = Balance;
     type TimepointProvider = GenericTimepointProvider;
     type ThisNetworkId = ThisNetworkId;
-    type WeightInfo = crate::weights::substrate_outbound_channel::SubstrateWeight<Runtime>;
+    type WeightInfo = crate::weights::substrate_outbound_channel::WeightInfo<Runtime>;
 }
 
 impl parachain_bridge_app::Config for Runtime {
@@ -2225,7 +2225,7 @@ impl parachain_bridge_app::Config for Runtime {
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type BridgeAssetLocker = BridgeProxy;
-    type WeightInfo = crate::weights::parachain_bridge_app::SubstrateWeight<Runtime>;
+    type WeightInfo = crate::weights::parachain_bridge_app::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -2245,7 +2245,7 @@ impl bridge_data_signer::Config for Runtime {
     type MaxPeers = BridgeMaxPeers;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
-    type WeightInfo = crate::weights::bridge_data_signer::SubstrateWeight<Runtime>;
+    type WeightInfo = crate::weights::bridge_data_signer::WeightInfo<Runtime>;
 }
 
 impl multisig_verifier::Config for Runtime {
@@ -2254,7 +2254,7 @@ impl multisig_verifier::Config for Runtime {
         dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type MaxPeers = BridgeMaxPeers;
-    type WeightInfo = crate::weights::multisig_verifier::SubstrateWeight<Runtime>;
+    type WeightInfo = crate::weights::multisig_verifier::WeightInfo<Runtime>;
 }
 
 construct_runtime! {
