@@ -15,7 +15,7 @@ codec = { version = "3", package = "parity-scale-codec", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-hex-literal = { version = "0.3.1", optional = true }
+hex-literal = { version = "0.4.1", optional = true }
 rlp = { version = "0.5.2", default-features = false, optional = true }
 
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
@@ -46,7 +46,7 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 common = { path = "../../../common", features = ["test"] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
 sp-keyring = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-hex-literal = { version = "0.3.1" }
+hex-literal = { version = "0.4.1" }
 rlp = { version = "0.5.2" }
 bridge-outbound-channel = { path = "../bridge-outbound-channel", default-features = false }
 dispatch = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
@@ -82,6 +82,4 @@ runtime-benchmarks = [
     "rlp",
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]

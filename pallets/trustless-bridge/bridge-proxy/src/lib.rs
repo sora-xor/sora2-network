@@ -10,6 +10,7 @@ mod test;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+pub mod migrations;
 pub mod weights;
 
 use bridge_types::{
@@ -224,7 +225,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        #[pallet::weight(Pallet::<T>::burn_weight())]
         pub fn burn(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -340,6 +341,17 @@ pub mod pallet {
                 T::ERC20App::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             }
             Ok(())
+        }
+
+        /// Returns the maximum weight which can be consumed by burn call.
+        fn burn_weight() -> Weight {
+            T::HashiBridge::transfer_weight()
+                .max(T::EthApp::transfer_weight())
+                .max(T::ERC20App::transfer_weight())
+                .max(T::ParachainApp::transfer_weight())
+                .saturating_add(T::HashiBridge::is_asset_supported_weight())
+                .saturating_add(T::EthApp::is_asset_supported_weight())
+                .saturating_add(T::ERC20App::is_asset_supported_weight())
         }
     }
 }
