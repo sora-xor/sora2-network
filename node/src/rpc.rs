@@ -61,9 +61,11 @@ pub struct BeefyDeps {
 }
 
 /// Full client dependencies
-pub struct FullDeps<C, P> {
+pub struct FullDeps<C, P, B> {
     /// The client instance to use.
     pub client: Arc<C>,
+    /// Backend instance.
+    pub backend: Arc<B>,
     /// Transaction pool instance.
     pub pool: Arc<P>,
     /// Whether to deny unsafe calls
@@ -72,10 +74,9 @@ pub struct FullDeps<C, P> {
     pub beefy: BeefyDeps,
 }
 
-#[cfg(feature = "ready-to-test")]
-pub fn add_ready_for_test_rpc<C, B>(
+#[cfg(feature = "wip")]
+pub fn add_wip_rpc<C>(
     mut rpc: RpcExtension,
-    backend: Arc<B>,
     client: Arc<C>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
@@ -83,42 +84,22 @@ where
     C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
     C: Send + Sync + 'static,
     C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
-    C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
-    C::Api: bridge_proxy_rpc::BridgeProxyRuntimeAPI<Block, AssetId>,
-    C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
-    B: sc_client_api::Backend<Block> + Send + Sync + 'static,
-    B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
     use beefy_light_client_rpc::{BeefyLightClientAPIServer, BeefyLightClientClient};
-    use bridge_channel_rpc::{BridgeChannelAPIServer, BridgeChannelClient};
-    use bridge_proxy_rpc::{BridgeProxyAPIServer, BridgeProxyClient};
-    use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
-
-    rpc.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
-    rpc.merge(BridgeProxyClient::new(client.clone()).into_rpc())?;
-    if let Some(storage) = backend.offchain_storage() {
-        rpc.merge(<BridgeChannelClient<_, _> as BridgeChannelAPIServer<
-            bridge_types::types::BridgeOffchainData<
-                framenode_runtime::BlockNumber,
-                framenode_runtime::BridgeMaxMessagesPerCommit,
-                framenode_runtime::BridgeMaxMessagePayloadSize,
-            >,
-        >>::into_rpc(BridgeChannelClient::new(storage)))?;
-    }
     rpc.merge(BeefyLightClientClient::new(client).into_rpc())?;
     Ok(rpc)
 }
 
-#[cfg(feature = "wip")]
-pub fn add_wip_rpc(
+#[cfg(feature = "ready-to-test")]
+pub fn add_ready_for_test_rpc(
     rpc: RpcExtension,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>> {
     Ok(rpc)
 }
 
 /// Instantiate full RPC extensions.
-pub fn create_full<C, P>(
-    deps: FullDeps<C, P>,
+pub fn create_full<C, P, B>(
+    deps: FullDeps<C, P, B>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>,
@@ -196,15 +177,22 @@ where
     C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     C::Api: BlockBuilder<Block>,
     C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
+    C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
+    C::Api: bridge_proxy_rpc::BridgeProxyRuntimeAPI<Block, AssetId>,
     P: TransactionPool + Send + Sync + 'static,
+    B: sc_client_api::Backend<Block> + Send + Sync + 'static,
+    B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
     use assets_rpc::{AssetsAPIServer, AssetsClient};
     use beefy_gadget_rpc::{Beefy, BeefyApiServer};
+    use bridge_channel_rpc::{BridgeChannelAPIServer, BridgeChannelClient};
+    use bridge_proxy_rpc::{BridgeProxyAPIServer, BridgeProxyClient};
     use dex_api_rpc::{DEXAPIServer, DEX};
     use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
     use eth_bridge_rpc::{EthBridgeApiServer, EthBridgeRpc};
     use farming_rpc::{FarmingApiServer, FarmingClient};
     use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
+    use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
     use mmr_rpc::{Mmr, MmrApiServer};
     use oracle_proxy_rpc::{OracleProxyApiServer, OracleProxyClient};
@@ -221,6 +209,7 @@ where
         pool,
         deny_unsafe,
         beefy,
+        backend,
     } = deps;
 
     io.merge(Mmr::new(client.clone()).into_rpc())?;
@@ -247,5 +236,16 @@ where
     io.merge(RewardsClient::new(client.clone()).into_rpc())?;
     io.merge(VestedRewardsClient::new(client.clone()).into_rpc())?;
     io.merge(FarmingClient::new(client.clone()).into_rpc())?;
+    io.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
+    io.merge(BridgeProxyClient::new(client.clone()).into_rpc())?;
+    if let Some(storage) = backend.offchain_storage() {
+        io.merge(<BridgeChannelClient<_, _> as BridgeChannelAPIServer<
+            bridge_types::types::BridgeOffchainData<
+                framenode_runtime::BlockNumber,
+                framenode_runtime::BridgeMaxMessagesPerCommit,
+                framenode_runtime::BridgeMaxMessagePayloadSize,
+            >,
+        >>::into_rpc(BridgeChannelClient::new(storage)))?;
+    }
     Ok(io)
 }
