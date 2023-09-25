@@ -31,6 +31,7 @@
 #![cfg(feature = "wip")] // order-book
 
 use crate::test_utils::*;
+// use crate::benchmarking::
 use assets::AssetIdOf;
 use common::{balance, PriceVariant, ETH, PSWAP, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
@@ -1531,3 +1532,8 @@ fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
         );
     });
 }
+//
+// #[test]
+// fn is_bids_full_works() {
+//     fill_price()
+// }

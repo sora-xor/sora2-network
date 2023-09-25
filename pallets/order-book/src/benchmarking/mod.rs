@@ -51,7 +51,7 @@ use crate::{
 };
 use assets::AssetIdOf;
 use codec::Decode;
-use common::{DEXId, VAL, XOR};
+use common::DEXId;
 use frame_system::EventRecord;
 #[allow(unused)]
 #[cfg(test)]
@@ -148,7 +148,7 @@ pub use benchmarks_inner::*;
 mod benchmarks_inner {
     use common::prelude::{BalanceUnit, SwapAmount};
     use common::{
-        balance, AssetInfoProvider, AssetName, AssetSymbol, LiquiditySource, PriceVariant,
+        balance, AssetInfoProvider, AssetName, AssetSymbol, LiquiditySource, PriceVariant, VAL, XOR,
     };
     use frame_benchmarking::benchmarks;
     use frame_support::traits::{Get, Time};
@@ -157,14 +157,16 @@ mod benchmarks_inner {
     use sp_runtime::traits::UniqueSaturatedInto;
 
     use super::*;
+    use crate::cache_data_layer::CacheDataLayer;
+    use crate::test_utils::FillSettings;
     use crate::{
-        self as order_book, cache_data_layer::CacheDataLayer, Config, Event, ExpirationScheduler,
-        LimitOrder, MarketRole, OrderAmount, OrderBook, OrderBookId, OrderBookStatus, Pallet,
+        self as order_book, Config, Event, ExpirationScheduler, LimitOrder, MarketRole,
+        OrderAmount, OrderBook, OrderBookId, OrderBookStatus, Pallet,
     };
     use preparation::{
         create_and_populate_order_book, prepare_cancel_orderbook_benchmark,
         prepare_delete_orderbook_benchmark, prepare_market_order_benchmark,
-        prepare_place_orderbook_benchmark, prepare_quote_benchmark, presets::*, FillSettings,
+        prepare_place_orderbook_benchmark, prepare_quote_benchmark, presets::*,
     };
 
     use assets::Pallet as Assets;
@@ -1679,16 +1681,12 @@ mod benchmarks_inner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[allow(unused)]
-    use crate::test_utils::{
-        create_empty_order_book, pretty_print_expirations, pretty_print_order_book, run_to_block,
-    };
+    use crate::benchmarking::preparation::prepare_market_order_benchmark;
+    use crate::test_utils::{run_to_block, FillSettings};
 
-    use frame_support::assert_ok;
-
-    use crate::benchmarking::preparation::{prepare_market_order_benchmark, FillSettings};
     use common::prelude::{BalanceUnit, SwapAmount};
     use common::{balance, AssetInfoProvider, PriceVariant};
+    use frame_support::assert_ok;
     use frame_support::traits::Time;
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
@@ -1696,31 +1694,9 @@ mod tests {
     #[allow(unused)]
     use preparation::presets::*;
     use preparation::{
-        fill_order_book_worst_case, prepare_cancel_orderbook_benchmark,
-        prepare_delete_orderbook_benchmark, prepare_place_orderbook_benchmark,
-        prepare_quote_benchmark,
+        prepare_cancel_orderbook_benchmark, prepare_delete_orderbook_benchmark,
+        prepare_place_orderbook_benchmark, prepare_quote_benchmark,
     };
-
-    #[test]
-    #[ignore] // slow
-    fn test_benchmark_fill() {
-        ext().execute_with(|| {
-            let order_book_id = OrderBookId::<AssetIdOf<Runtime>, u32> {
-                dex_id: DEX.into(),
-                base: VAL.into(),
-                quote: XOR.into(),
-            };
-
-            let mut order_book = create_empty_order_book(order_book_id);
-            let mut data_layer =
-                framenode_runtime::order_book::cache_data_layer::CacheDataLayer::<Runtime>::new();
-            // let settings = preset_16::<Runtime>();
-            let settings = FillSettings::<Runtime>::max();
-            let _ =
-                fill_order_book_worst_case(settings, &mut order_book, &mut data_layer, true, true);
-            <OrderBooks<Runtime>>::insert(order_book_id, order_book);
-        })
-    }
 
     #[test]
     fn test_benchmark_delete_orderbook() {
