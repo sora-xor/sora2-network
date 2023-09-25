@@ -1,5 +1,6 @@
 use crate::*;
 use bridge_types::GenericNetworkId;
+use sp_runtime::traits::Zero;
 
 pub struct HashiBridgeLockedAssets;
 
@@ -16,11 +17,14 @@ impl Get<Vec<(AssetId, Balance)>> for HashiBridgeLockedAssets {
         let mut result = vec![];
         for (kind, (asset_id, _precision), _) in assets {
             let reserved = if kind.is_owned() {
-                Assets::total_issuance(&asset_id)
-            } else {
                 Assets::total_balance(&asset_id, &bridge_account)
+            } else {
+                Assets::total_issuance(&asset_id)
             };
-            result.push((asset_id, reserved.unwrap_or_default()));
+            let reserved = reserved.unwrap_or_default();
+            if !reserved.is_zero() {
+                result.push((asset_id, reserved));
+            }
         }
         result
     }
