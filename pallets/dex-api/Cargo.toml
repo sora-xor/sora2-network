@@ -37,7 +37,7 @@ pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch =
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -66,10 +66,6 @@ std = [
     "traits/std",
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]
 
-wip = [
-    "common/wip",
-]
+wip = ["common/wip"]

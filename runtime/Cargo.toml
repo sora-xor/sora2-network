@@ -21,7 +21,7 @@ codec = { package = "parity-scale-codec", version = "=3.6.5", default-features =
 # Does not compile with newer version
 parity-scale-codec-derive = "=3.6.5"
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 log = { version = "0.4.14" }
 serde = { features = [
     'derive',
@@ -89,7 +89,7 @@ price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true}
+qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true }
 referrals = { path = "../pallets/referrals", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
