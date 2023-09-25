@@ -495,9 +495,6 @@
 <a href="#480" id="480">480</a>
 <a href="#481" id="481">481</a>
 <a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # ETH
 //!
 //! An application that implements a bridged ETH asset.
@@ -967,19 +964,16 @@
                 .collect()
         }
 
-        <span class="comment">// TODO implement https://app.zenhub.com/workspaces/sora2-backend-62b9c0e3e9b9e600201273e3/issues/gh/sora-xor/sora2-network/731
-        </span><span class="kw">fn </span>transfer_weight() -&gt; Weight {
+        <span class="kw">fn </span>is_asset_supported_weight() -&gt; Weight {
+            T::DbWeight::get().reads(<span class="number">1</span>)
+        }
+
+        <span class="kw">fn </span>refund_weight() -&gt; Weight {
             Default::default()
         }
 
-        <span class="comment">// TODO implement https://app.zenhub.com/workspaces/sora2-backend-62b9c0e3e9b9e600201273e3/issues/gh/sora-xor/sora2-network/731
-        </span><span class="kw">fn </span>refund_weight() -&gt; Weight {
-            Default::default()
-        }
-
-        <span class="comment">// TODO implement https://app.zenhub.com/workspaces/sora2-backend-62b9c0e3e9b9e600201273e3/issues/gh/sora-xor/sora2-network/731
-        </span><span class="kw">fn </span>is_asset_supported_weight() -&gt; Weight {
-            Default::default()
+        <span class="kw">fn </span>transfer_weight() -&gt; Weight {
+            &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::burn()
         }
     }
 }

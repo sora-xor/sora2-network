@@ -5,7 +5,7 @@ var sourcesIndex = JSON.parse('{\
 "band":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "bridge_inbound_channel":["",[],["events.rs","lib.rs","weights.rs"]],\
 "bridge_outbound_channel":["",[],["lib.rs","weights.rs"]],\
-"bridge_proxy":["",[],["lib.rs","weights.rs"]],\
+"bridge_proxy":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "bridge_proxy_rpc":["",[],["lib.rs"]],\
 "bridge_proxy_runtime_api":["",[],["lib.rs"]],\
 "ceres_governance_platform":["",[],["lib.rs","migrations.rs","weights.rs"]],\

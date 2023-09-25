@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["SubstrateWeight"]};
+window.SIDEBAR_ITEMS = {"struct":["WeightInfo"]};

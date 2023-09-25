@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["Migrations"]};
+window.SIDEBAR_ITEMS = {"struct":["HashiBridgeLockedAssets","HashiBridgeNetworkId"],"type":["Migrations"]};

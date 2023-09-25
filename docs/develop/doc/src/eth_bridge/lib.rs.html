@@ -1961,9 +1961,6 @@
 <a href="#1946" id="1946">1946</a>
 <a href="#1947" id="1947">1947</a>
 <a href="#1948" id="1948">1948</a>
-<a href="#1949" id="1949">1949</a>
-<a href="#1950" id="1950">1950</a>
-<a href="#1951" id="1951">1951</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3900,19 +3897,16 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
         apps
     }
 
-    <span class="comment">// TODO implement https://app.zenhub.com/workspaces/sora2-backend-62b9c0e3e9b9e600201273e3/issues/gh/sora-xor/sora2-network/731
-    </span><span class="kw">fn </span>transfer_weight() -&gt; Weight {
+    <span class="kw">fn </span>is_asset_supported_weight() -&gt; Weight {
+        T::DbWeight::get().reads(<span class="number">1</span>)
+    }
+
+    <span class="kw">fn </span>refund_weight() -&gt; Weight {
         Default::default()
     }
 
-    <span class="comment">// TODO implement https://app.zenhub.com/workspaces/sora2-backend-62b9c0e3e9b9e600201273e3/issues/gh/sora-xor/sora2-network/731
-    </span><span class="kw">fn </span>refund_weight() -&gt; Weight {
-        Default::default()
-    }
-
-    <span class="comment">// TODO implement https://app.zenhub.com/workspaces/sora2-backend-62b9c0e3e9b9e600201273e3/issues/gh/sora-xor/sora2-network/731
-    </span><span class="kw">fn </span>is_asset_supported_weight() -&gt; Weight {
-        Default::default()
+    <span class="kw">fn </span>transfer_weight() -&gt; Weight {
+        &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::transfer_to_sidechain()
     }
 }
 </code></pre></div>
