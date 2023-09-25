@@ -10,6 +10,7 @@ mod test;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+pub mod migrations;
 pub mod weights;
 
 use bridge_types::{
