@@ -1809,7 +1809,6 @@ mod tests {
     #[test]
     fn test_benchmark_cancel() {
         ext().execute_with(|| {
-            // let settings = preset_16::<Runtime>();
             let settings = FillSettings::<Runtime>::max();
             let caller = alice::<Runtime>();
             run_to_block(1);
@@ -1827,18 +1826,12 @@ mod tests {
             )
             .unwrap();
 
-            // println!("1;");
-            // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
-            // pretty_print_expirations::<Runtime>(0..10);
             OrderBookPallet::<Runtime>::cancel_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
                 order_book_id.clone(),
                 order_id.clone(),
             )
             .unwrap();
-            // println!("2;");
-            // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(9));
-            // pretty_print_expirations::<Runtime>(0..10);
 
             assert_last_event::<Runtime>(
                 Event::<Runtime>::LimitOrderCanceled {
