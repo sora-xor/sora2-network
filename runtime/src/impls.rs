@@ -44,6 +44,7 @@ use frame_support::{
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 use scale_info::TypeInfo;
 use sp_core::U256;
+use sp_runtime::{DispatchError, DispatchErrorWithPostInfo};
 
 pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Currency<
     <T as frame_system::Config>::AccountId,
@@ -274,7 +275,10 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            bridge_types::substrate::BridgeCall::XCMApp(_msg) => unimplemented!(),
+            bridge_types::substrate::BridgeCall::XCMApp(_msg) => Err(DispatchErrorWithPostInfo {
+                post_info: Default::default(),
+                error: DispatchError::Other("Unavailable"),
+            }),
             bridge_types::substrate::BridgeCall::DataSigner(msg) => {
                 let call: bridge_data_signer::Call<crate::Runtime> = msg.into();
                 let call: crate::RuntimeCall = call.into();
@@ -296,7 +300,7 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                 let call: parachain_bridge_app::Call<crate::Runtime> = msg.clone().into();
                 call.get_dispatch_info()
             }
-            bridge_types::substrate::BridgeCall::XCMApp(_msg) => unimplemented!(),
+            bridge_types::substrate::BridgeCall::XCMApp(_msg) => Default::default(),
             bridge_types::substrate::BridgeCall::DataSigner(msg) => {
                 let call: bridge_data_signer::Call<crate::Runtime> = msg.clone().into();
                 call.get_dispatch_info()
