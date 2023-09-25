@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(not(feature = "wip"))] // order-book / ALT
-
 use crate::mock::*;
 use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
 use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
@@ -957,6 +955,7 @@ fn test_quote_single_source_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // order-book / ALT
 #[test]
 fn test_quote_fast_split_exact_input_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1068,6 +1067,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // order-book / ALT
 #[test]
 fn test_quote_fast_split_exact_output_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1170,6 +1170,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // order-book / ALT
 #[test]
 fn test_quote_fast_split_exact_output_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1296,6 +1297,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // order-book / ALT
 #[test]
 fn test_quote_fast_split_exact_input_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1866,6 +1868,7 @@ fn test_is_path_available_should_pass_5() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // order-book / ALT
 #[test]
 fn test_smart_split_with_extreme_total_supply_works() {
     fn run_test(
@@ -2349,6 +2352,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
     }
 }
 
+#[cfg(not(feature = "wip"))] // order-book / ALT
 #[test]
 fn test_smart_split_selling_xor_should_fail() {
     fn run_test(
@@ -2439,6 +2443,7 @@ fn test_smart_split_selling_xor_should_fail() {
     }
 }
 
+#[cfg(not(feature = "wip"))] // order-book / ALT
 #[test]
 fn test_smart_split_error_handling_works() {
     fn run_test(
@@ -3019,6 +3024,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // order-book / ALT
 #[test]
 fn test_quote_does_not_overflow_with_desired_input() {
     let collateral_asset_id = VAL;
@@ -3045,6 +3051,7 @@ fn test_quote_does_not_overflow_with_desired_input() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // order-book / ALT
 #[test]
 fn test_inner_exchange_returns_correct_sources() {
     use LiquiditySourceType::*;

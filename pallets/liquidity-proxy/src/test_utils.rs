@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(not(feature = "wip"))] // order-book / ALT
-
 use crate::mock::{adar, AccountId, Assets, DEXId, LiquidityProxy};
 use crate::{BatchReceiverInfo, SwapBatchInfo};
 use common::prelude::{QuoteAmount, SwapOutcome};
