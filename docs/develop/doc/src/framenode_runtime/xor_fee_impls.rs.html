@@ -414,6 +414,7 @@
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span>common::LiquidityProxyTrait;
 <span class="kw">use </span>pallet_utility::Call <span class="kw">as </span>UtilityCall;
@@ -494,6 +495,7 @@
             ),
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
+            | RuntimeCall::BridgeProxy(bridge_proxy::Call::burn { .. })
             | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
             | RuntimeCall::Rewards(rewards::Call::claim { .. })
             | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
