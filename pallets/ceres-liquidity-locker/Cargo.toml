@@ -30,7 +30,7 @@ trading-pair = { path = "../trading-pair", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 
 [dev-dependencies]
 assets = { path = "../assets" }
@@ -49,7 +49,6 @@ pswap-distribution = { path = "../pswap-distribution" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
-liquidity-proxy = { path = "../liquidity-proxy" }
 
 [features]
 default = ['std']
@@ -66,6 +65,4 @@ std = [
     "pallet-timestamp/std",
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]

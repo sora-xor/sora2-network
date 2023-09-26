@@ -30,27 +30,21 @@
 
 use core::marker::PhantomData;
 
-#[cfg(feature = "wip")]
-use bridge_types::traits::BridgeAssetRegistry;
-#[cfg(feature = "wip")]
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::constants::BlockExecutionWeight;
 use frame_support::weights::Weight;
-#[cfg(feature = "wip")]
 use frame_support::{
-    dispatch::{DispatchInfo, Dispatchable, PostDispatchInfo},
+    dispatch::{DispatchInfo, Dispatchable, GetDispatchInfo, PostDispatchInfo},
     traits::Contains,
     RuntimeDebug,
 };
 
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
-#[cfg(feature = "wip")]
 use scale_info::TypeInfo;
 use sp_core::U256;
-#[cfg(feature = "wip")]
-use sp_runtime::DispatchError;
+use sp_runtime::{DispatchError, DispatchErrorWithPostInfo};
 
 pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Currency<
     <T as frame_system::Config>::AccountId,
@@ -261,11 +255,9 @@ impl<T: frame_system::Config + pallet_staking::Config> OnUnbalanced<NegativeImba
     fn on_nonzero_unbalanced(_amount: NegativeImbalanceOf<T>) {}
 }
 
-#[cfg(feature = "wip")] // Substrate bridge
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct DispatchableSubstrateBridgeCall(bridge_types::substrate::BridgeCall);
 
-#[cfg(feature = "wip")] // Substrate bridge
 impl Dispatchable for DispatchableSubstrateBridgeCall {
     type RuntimeOrigin = crate::RuntimeOrigin;
     type Config = crate::Runtime;
@@ -276,14 +268,17 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
         self,
         origin: Self::RuntimeOrigin,
     ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
-        frame_support::log::info!("Dispatching SubstrateBridgeCall: {:?}", self.0);
+        frame_support::log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
         match self.0 {
-            bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
-                let call: substrate_bridge_app::Call<crate::Runtime> = msg.into();
+            bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
+                let call: parachain_bridge_app::Call<crate::Runtime> = msg.into();
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            bridge_types::substrate::BridgeCall::XCMApp(_msg) => unimplemented!(),
+            bridge_types::substrate::BridgeCall::XCMApp(_msg) => Err(DispatchErrorWithPostInfo {
+                post_info: Default::default(),
+                error: DispatchError::Other("Unavailable"),
+            }),
             bridge_types::substrate::BridgeCall::DataSigner(msg) => {
                 let call: bridge_data_signer::Call<crate::Runtime> = msg.into();
                 let call: crate::RuntimeCall = call.into();
@@ -298,53 +293,22 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     }
 }
 
-#[cfg(feature = "wip")] // Bridges
-pub struct BridgeAssetRegistryImpl;
-
-#[cfg(feature = "wip")] // Bridges
-impl BridgeAssetRegistry<crate::AccountId, crate::AssetId> for BridgeAssetRegistryImpl {
-    type AssetName = crate::AssetName;
-    type AssetSymbol = crate::AssetSymbol;
-
-    fn register_asset(
-        owner: crate::AccountId,
-        name: Self::AssetName,
-        symbol: Self::AssetSymbol,
-    ) -> Result<crate::AssetId, DispatchError> {
-        let asset_id = crate::Assets::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
-        Ok(asset_id)
-    }
-
-    fn manage_asset(
-        manager: crate::AccountId,
-        asset_id: crate::AssetId,
-    ) -> frame_support::pallet_prelude::DispatchResult {
-        let scope = permissions::Scope::Limited(common::hash(&asset_id));
-        for permission_id in [permissions::BURN, permissions::MINT] {
-            if permissions::Pallet::<crate::Runtime>::check_permission_with_scope(
-                manager.clone(),
-                permission_id,
-                &scope,
-            )
-            .is_err()
-            {
-                permissions::Pallet::<crate::Runtime>::assign_permission(
-                    manager.clone(),
-                    &manager,
-                    permission_id,
-                    scope,
-                )?;
+impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
+    fn get_dispatch_info(&self) -> DispatchInfo {
+        match &self.0 {
+            bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
+                let call: parachain_bridge_app::Call<crate::Runtime> = msg.clone().into();
+                call.get_dispatch_info()
             }
-        }
-        Ok(())
-    }
-
-    fn get_raw_info(asset_id: crate::AssetId) -> bridge_types::types::RawAssetInfo {
-        let (asset_symbol, asset_name, precision, ..) = crate::Assets::asset_infos(asset_id);
-        bridge_types::types::RawAssetInfo {
-            name: asset_name.0,
-            symbol: asset_symbol.0,
-            precision,
+            bridge_types::substrate::BridgeCall::XCMApp(_msg) => Default::default(),
+            bridge_types::substrate::BridgeCall::DataSigner(msg) => {
+                let call: bridge_data_signer::Call<crate::Runtime> = msg.clone().into();
+                call.get_dispatch_info()
+            }
+            bridge_types::substrate::BridgeCall::MultisigVerifier(msg) => {
+                let call: multisig_verifier::Call<crate::Runtime> = msg.clone().into();
+                call.get_dispatch_info()
+            }
         }
     }
 }
@@ -429,14 +393,12 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
     }
 }
 
-#[cfg(feature = "wip")] // Substrate bridge
 pub struct SubstrateBridgeCallFilter;
 
-#[cfg(feature = "wip")] // Substrate bridge
 impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     fn contains(call: &DispatchableSubstrateBridgeCall) -> bool {
         match &call.0 {
-            bridge_types::substrate::BridgeCall::SubstrateApp(_) => true,
+            bridge_types::substrate::BridgeCall::ParachainApp(_) => true,
             bridge_types::substrate::BridgeCall::XCMApp(_) => false,
             bridge_types::substrate::BridgeCall::DataSigner(_) => true,
             bridge_types::substrate::BridgeCall::MultisigVerifier(_) => true,
@@ -447,13 +409,20 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
 #[cfg(feature = "wip")] // EVM bridge
 pub struct EVMBridgeCallFilter;
 
-#[cfg(feature = "wip")] // EVM bridge
+#[cfg(all(feature = "wip", not(feature = "runtime-benchmarks")))] // EVM bridge
 impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
     fn contains(call: &crate::RuntimeCall) -> bool {
         match call {
             crate::RuntimeCall::ERC20App(_) | crate::RuntimeCall::EthApp(_) => true,
             _ => false,
         }
+    }
+}
+
+#[cfg(all(feature = "wip", feature = "runtime-benchmarks"))] // EVM bridge
+impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
+    fn contains(_call: &crate::RuntimeCall) -> bool {
+        true
     }
 }
 

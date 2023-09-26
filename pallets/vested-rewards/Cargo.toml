@@ -20,7 +20,7 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-hex-literal = { version = "0.3.1" }
+hex-literal = { version = "0.4.1" }
 serde = { version = "1.0.101", features = ["derive"], default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -38,7 +38,6 @@ serde_bytes = { version = "0.11", default-features = false, features = [
 serde_json = { version = "1.0", default-features = false }
 technical = { path = "../technical", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 itertools = { version = "0.10.5", default-features = false }
 
 [dev-dependencies]
@@ -53,7 +52,6 @@ trading-pair = { path = "../trading-pair" }
 pool-xyk = { path = "../pool-xyk" }
 pswap-distribution = { path = "../pswap-distribution" }
 technical = { path = "../technical" }
-liquidity-proxy = { path = "../liquidity-proxy" }
 
 [features]
 default = ['std']
@@ -82,6 +80,4 @@ runtime-benchmarks = [
 ]
 private-net = []
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]

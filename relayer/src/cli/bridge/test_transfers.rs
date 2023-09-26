@@ -120,25 +120,16 @@ impl Command {
                             KeyPair::from_string("//Alice", None).unwrap(),
                         ))
                         .await?;
-                    sub.api()
-                        .tx()
-                        .sign_and_submit_then_watch_default(
-                            &runtime::tx().sudo().sudo(
-                                sub_types::framenode_runtime::RuntimeCall::Assets(
-                                    sub_types::assets::pallet::Call::force_mint {
-                                        asset_id: asset,
-                                        to: acc,
-                                        amount: 1000000000000000000000,
-                                    },
-                                ),
-                            ),
-                            &sub,
-                        )
-                        .await?
-                        .wait_for_in_block()
-                        .await?
-                        .wait_for_success()
-                        .await?;
+                    sub.submit_extrinsic(&runtime::tx().sudo().sudo(
+                        sub_types::framenode_runtime::RuntimeCall::Assets(
+                            sub_types::assets::pallet::Call::force_mint {
+                                asset_id: asset,
+                                to: acc,
+                                amount: 1000000000000000000000,
+                            },
+                        ),
+                    ))
+                    .await?;
                     let token = ethereum_gen::IERC20Metadata::new(address, eth.inner());
                     let call = token
                         .approve(sidechain_app, 1000000000000000000000000000u128.into())

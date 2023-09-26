@@ -1,7 +1,7 @@
 //! ERC20App pallet benchmarking
 
 use crate::*;
-use bridge_types::types::AdditionalEVMInboundData;
+use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::types::AssetKind;
 use bridge_types::types::CallOriginOutput;
 use bridge_types::EVMChainId;
@@ -21,9 +21,10 @@ pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 benchmarks! {
     where_clause {where
-        T: bridge_outbound_channel::Config,
-        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>,
+        T: bridge_outbound_channel::Config + assets::Config,
+        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>,
         AssetIdOf<T>: From<AssetId32<PredefinedAssetId>> + From<<T as assets::Config>::AssetId>,
+        <T as assets::Config>::AssetId: From<AssetIdOf<T>>,
         AssetNameOf<T>: From<common::AssetName>,
         AssetSymbolOf<T>: From<common::AssetSymbol>,
         BalanceOf<T>: From<u128>,
@@ -38,11 +39,11 @@ benchmarks! {
         let fee_asset: AssetIdOf<T> = <T as bridge_outbound_channel::Config>::FeeCurrency::get().into();
 
         // deposit enough money to cover fees
-        <T as Config>::Currency::deposit(fee_asset.clone(), &caller, bridge_outbound_channel::Fee::<T>::get().into())?;
-        <T as Config>::Currency::deposit(asset_id.clone(), &caller, amount.into())?;
+        <T as assets::Config>::Currency::deposit(fee_asset.clone().into(), &caller, bridge_outbound_channel::Fee::<T>::get().into())?;
+        <T as assets::Config>::Currency::deposit(asset_id.clone().into(), &caller, amount.into())?;
     }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, asset_id.clone(), recipient, amount.into())
     verify {
-        assert_eq!(<T as Config>::Currency::free_balance(asset_id, &caller), 0u128.into());
+        assert_eq!(<T as assets::Config>::Currency::free_balance(asset_id.into(), &caller), 0u128.into());
     }
 
     // Benchmark `mint` extrinsic under worst case conditions:
@@ -63,7 +64,7 @@ benchmarks! {
 
     }: { call.dispatch_bypass_filter(origin.into())? }
     verify {
-        assert_eq!(<T as Config>::Currency::free_balance(asset_id, &recipient), amount.into());
+        assert_eq!(<T as assets::Config>::Currency::free_balance(asset_id.into(), &recipient), amount.into());
     }
 
     register_erc20_app {
@@ -108,11 +109,11 @@ benchmarks! {
         let who = AppAddresses::<T>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
         let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, additional: AdditionalEVMInboundData{source: who}, ..Default::default()});
         let address = H160::repeat_byte(98);
-        assert!(!TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, asset_id));
-    }: _(origin, asset_id, address)
+        assert!(!TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, &asset_id));
+    }: _(origin, asset_id.clone(), address)
     verify {
-        assert_eq!(AssetKinds::<T>::get(BASE_NETWORK_ID, asset_id), Some(AssetKind::Thischain));
-        assert!(TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, asset_id));
+        assert_eq!(AssetKinds::<T>::get(BASE_NETWORK_ID, &asset_id), Some(AssetKind::Thischain));
+        assert!(TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, &asset_id));
     }
 
     impl_benchmark_test_suite!(Pallet, crate::mock::new_tester(), crate::mock::Test,);

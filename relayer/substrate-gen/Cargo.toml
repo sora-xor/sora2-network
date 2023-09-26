@@ -23,9 +23,9 @@ common = { path = "../../common" }
 subxt = { version = "0.25.0" }
 codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
 scale-info = { version = "2", features = ["derive"] }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
-bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }
+bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 jsonrpsee = { version = "0.16.2", features = [
     "macros",

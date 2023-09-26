@@ -34,7 +34,7 @@ pswap-distribution = { path = "../pswap-distribution", default-features = false 
 trading-pair = { path = "../trading-pair", default-features = false }
 technical = { path = "../technical", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 
 [dev-dependencies]
 assets = { path = "../assets" }
@@ -82,6 +82,4 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]

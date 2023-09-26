@@ -40,55 +40,59 @@ use framenode_runtime::order_book::{
 use framenode_runtime::Runtime;
 
 #[test]
-fn should_return_error_for_invalid_limit_order_lifetime() {
+fn should_return_error_for_invalid_limit_order_lifespan() {
     let wrong_lifespan1 = 0;
     let order1 = LimitOrder::<Runtime>::new(
         0,
         alice(),
         PriceVariant::Buy,
-        balance!(10),
-        balance!(100),
+        balance!(10).into(),
+        balance!(100).into(),
         1000,
         wrong_lifespan1,
+        1,
     );
     assert_err!(order1.ensure_valid(), E::InvalidLifespan);
 
-    let wrong_lifespan2 = Runtime::MAX_ORDER_LIFETIME + 1;
+    let wrong_lifespan2 = Runtime::MAX_ORDER_LIFESPAN + 1;
     let order2 = LimitOrder::<Runtime>::new(
         0,
         alice(),
         PriceVariant::Buy,
-        balance!(10),
-        balance!(100),
+        balance!(10).into(),
+        balance!(100).into(),
         1000,
         wrong_lifespan2,
+        1,
     );
     assert_err!(order2.ensure_valid(), E::InvalidLifespan);
 }
 
 #[test]
 fn should_return_error_for_invalid_limit_order_amount() {
-    let wrong_amount = balance!(0);
+    let wrong_amount = balance!(0).into();
     let order = LimitOrder::<Runtime>::new(
         0,
         alice(),
         PriceVariant::Buy,
-        balance!(10),
+        balance!(10).into(),
         wrong_amount,
         1000,
         10000,
+        1,
     );
     assert_err!(order.ensure_valid(), E::InvalidOrderAmount);
 }
 
 #[test]
 fn should_return_error_for_invalid_market_order_amount() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
     };
 
-    let wrong_amount = balance!(0);
+    let wrong_amount = balance!(0).into();
     let order = MarketOrder::<Runtime>::new(
         alice(),
         PriceVariant::Buy,
@@ -101,26 +105,27 @@ fn should_return_error_for_invalid_market_order_amount() {
 
 #[test]
 fn should_return_error_for_invalid_limit_order_price() {
-    let wrong_price = balance!(0);
+    let wrong_price = balance!(0).into();
     let order = LimitOrder::<Runtime>::new(
         0,
         alice(),
         PriceVariant::Buy,
         wrong_price,
-        balance!(100),
+        balance!(100).into(),
         1000,
         10000,
+        1,
     );
     assert_err!(order.ensure_valid(), E::InvalidLimitOrderPrice);
 }
 
 #[test]
 fn should_pass_valid_limit_order() {
-    let price = balance!(10);
-    let amount = balance!(100);
-    let lifespan1 = Runtime::MIN_ORDER_LIFETIME;
-    let lifespan2 = Runtime::MIN_ORDER_LIFETIME + 1000;
-    let lifespan3 = Runtime::MAX_ORDER_LIFETIME;
+    let price = balance!(10).into();
+    let amount = balance!(100).into();
+    let lifespan1 = Runtime::MIN_ORDER_LIFESPAN;
+    let lifespan2 = Runtime::MIN_ORDER_LIFESPAN + 1000;
+    let lifespan3 = Runtime::MAX_ORDER_LIFESPAN;
 
     let mut order = LimitOrder::<Runtime>::new(
         0,
@@ -130,6 +135,7 @@ fn should_pass_valid_limit_order() {
         amount,
         1000,
         lifespan1,
+        1,
     );
     assert_ok!(order.ensure_valid());
 
@@ -142,12 +148,13 @@ fn should_pass_valid_limit_order() {
 
 #[test]
 fn should_pass_valid_market_order() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
     };
 
-    let amount = balance!(10);
+    let amount = balance!(10).into();
     let order =
         MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, amount, None);
     assert_ok!(order.ensure_valid());
@@ -155,15 +162,23 @@ fn should_pass_valid_market_order() {
 
 #[test]
 fn should_not_return_limit_order_deal_amount_with_big_base_limit() {
-    let price = balance!(11);
-    let amount = balance!(100);
-    let base_amount_limit = balance!(101);
+    let price = balance!(11).into();
+    let amount = balance!(100).into();
+    let base_amount_limit = balance!(101).into();
 
     let buy_order =
-        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000);
+        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000, 1);
 
-    let sell_order =
-        LimitOrder::<Runtime>::new(2, alice(), PriceVariant::Sell, price, amount, 1000, 10000);
+    let sell_order = LimitOrder::<Runtime>::new(
+        2,
+        alice(),
+        PriceVariant::Sell,
+        price,
+        amount,
+        1000,
+        10000,
+        1,
+    );
 
     assert_err!(
         buy_order.deal_amount(MarketRole::Maker, Some(base_amount_limit)),
@@ -185,14 +200,22 @@ fn should_not_return_limit_order_deal_amount_with_big_base_limit() {
 
 #[test]
 fn should_return_limit_order_deal_amount() {
-    let price = balance!(11);
-    let amount = balance!(100);
+    let price = balance!(11).into();
+    let amount = balance!(100).into();
 
     let buy_order =
-        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000);
+        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000, 1);
 
-    let sell_order =
-        LimitOrder::<Runtime>::new(2, alice(), PriceVariant::Sell, price, amount, 1000, 10000);
+    let sell_order = LimitOrder::<Runtime>::new(
+        2,
+        alice(),
+        PriceVariant::Sell,
+        price,
+        amount,
+        1000,
+        10000,
+        1,
+    );
 
     assert_eq!(
         buy_order.deal_amount(MarketRole::Maker, None).unwrap(),
@@ -200,18 +223,18 @@ fn should_return_limit_order_deal_amount() {
     );
     assert_eq!(
         buy_order.deal_amount(MarketRole::Taker, None).unwrap(),
-        OrderAmount::Quote(balance!(1100))
+        OrderAmount::Quote(balance!(1100).into())
     );
     assert_eq!(
         sell_order.deal_amount(MarketRole::Maker, None).unwrap(),
-        OrderAmount::Quote(balance!(1100))
+        OrderAmount::Quote(balance!(1100).into())
     );
     assert_eq!(
         sell_order.deal_amount(MarketRole::Taker, None).unwrap(),
         OrderAmount::Base(amount)
     );
 
-    let base_amount_limit = balance!(50);
+    let base_amount_limit = balance!(50).into();
     assert_eq!(
         buy_order
             .deal_amount(MarketRole::Maker, Some(base_amount_limit))
@@ -222,13 +245,13 @@ fn should_return_limit_order_deal_amount() {
         buy_order
             .deal_amount(MarketRole::Taker, Some(base_amount_limit))
             .unwrap(),
-        OrderAmount::Quote(balance!(550))
+        OrderAmount::Quote(balance!(550).into())
     );
     assert_eq!(
         sell_order
             .deal_amount(MarketRole::Maker, Some(base_amount_limit))
             .unwrap(),
-        OrderAmount::Quote(balance!(550))
+        OrderAmount::Quote(balance!(550).into())
     );
     assert_eq!(
         sell_order
@@ -247,13 +270,13 @@ fn should_return_limit_order_deal_amount() {
         buy_order
             .deal_amount(MarketRole::Taker, Some(amount))
             .unwrap(),
-        OrderAmount::Quote(balance!(1100))
+        OrderAmount::Quote(balance!(1100).into())
     );
     assert_eq!(
         sell_order
             .deal_amount(MarketRole::Maker, Some(amount))
             .unwrap(),
-        OrderAmount::Quote(balance!(1100))
+        OrderAmount::Quote(balance!(1100).into())
     );
     assert_eq!(
         sell_order

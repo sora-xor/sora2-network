@@ -81,6 +81,10 @@ impl FixedWrapper {
         self.inner.and_then(|num| num.rsqrt(Floor)).into()
     }
 
+    pub fn abs(self) -> Self {
+        self.inner.and_then(|num| num.abs()).into()
+    }
+
     /// Calculates square root of self using fractional representation.
     #[cfg(feature = "std")]
     pub fn sqrt(&self) -> Self {
@@ -252,6 +256,25 @@ macro_rules! impl_assign_floor_op_for_fixed_wrapper {
 
 impl_assign_floor_op_for_fixed_wrapper!(MulAssign, mul_assign, rmul);
 impl_assign_floor_op_for_fixed_wrapper!(DivAssign, div_assign, rdiv);
+
+macro_rules! impl_lossless_op_for_fixed_wrapper {
+    (
+        $op_fn:ident,
+        $lossless_op_fn:ident
+    ) => {
+        impl FixedWrapper {
+            pub fn $op_fn(self, rhs: Self) -> Option<Self> {
+                zip(&self.inner, &rhs.inner)
+                    .and_then(|(lhs, &rhs)| lhs.$lossless_op_fn(rhs))
+                    .transpose()
+                    .map(|result| result.into())
+            }
+        }
+    };
+}
+
+impl_lossless_op_for_fixed_wrapper!(lossless_mul, lossless_mul);
+impl_lossless_op_for_fixed_wrapper!(lossless_div, lossless_div);
 
 impl PartialEq for FixedWrapper {
     fn eq(&self, other: &Self) -> bool {

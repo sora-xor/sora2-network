@@ -66,7 +66,7 @@ impl Command {
             .await?
             .ok_or(anyhow!("Network id not found"))?;
 
-        let call = parachain_runtime::runtime_types::parachain_template_runtime::RuntimeCall::BridgeDataSigner(
+        let call = parachain_runtime::runtime_types::sora2_parachain_runtime::RuntimeCall::BridgeDataSigner(
             parachain_runtime::runtime_types::bridge_data_signer::pallet::Call::register_network {
                 network_id,
                 peers: peers.clone(),
@@ -77,7 +77,7 @@ impl Command {
         para.submit_extrinsic(&call).await?;
 
         let call =
-            parachain_runtime::runtime_types::parachain_template_runtime::RuntimeCall::MultisigVerifier(
+            parachain_runtime::runtime_types::sora2_parachain_runtime::RuntimeCall::MultisigVerifier(
                 parachain_runtime::runtime_types::multisig_verifier::pallet::Call::initialize {
                     network_id,
                     peers,

@@ -12,7 +12,9 @@ edition = "2021"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -27,7 +29,7 @@ technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 [dev-dependencies]
@@ -48,7 +50,6 @@ technical = { path = "../technical" }
 dex-manager = { path = "../dex-manager" }
 trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
-liquidity-proxy = { path = "../liquidity-proxy" }
 
 [features]
 default = ['std']
@@ -66,7 +67,7 @@ std = [
     "sp-runtime/std",
     "sp-std/std",
     "pallet-timestamp/std",
-    "sp-io/std"
+    "sp-io/std",
 ]
 
 
@@ -76,6 +77,4 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
 ]
 
-try-runtime = [
-    "frame-support/try-runtime"
-]
+try-runtime = ["frame-support/try-runtime"]

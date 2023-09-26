@@ -54,12 +54,14 @@ benchmarks! {
         let relayer = relayer::<T>();
         let euro = symbol::<T>("EURO");
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])?;
-    }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)], 100, 1)
+    }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)].try_into().unwrap(), 100, 1)
     verify {
         assert_eq!(Band::<T>::rates(euro), Some(BandRate {
             value: Band::<T>::raw_rate_into_balance(2).expect("failed to convert value to Balance"),
             last_updated: 100,
             request_id: 1,
+            dynamic_fee: fixed!(0),
+            last_updated_block: 1u32.into(),
         }));
     }
 
@@ -67,12 +69,14 @@ benchmarks! {
         let relayer = relayer::<T>();
         let euro = symbol::<T>("EURO");
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])?;
-    }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)], 100, 1)
+    }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)].try_into().unwrap(), 100, 1)
     verify {
         assert_eq!(Band::<T>::rates(euro), Some(BandRate {
             value: Band::<T>::raw_rate_into_balance(2).expect("failed to convert value to Balance"),
             last_updated: 100,
             request_id: 1,
+            dynamic_fee: fixed!(0),
+            last_updated_block: 1u32.into(),
         }));
     }
 
@@ -90,6 +94,11 @@ benchmarks! {
     verify {
         assert_eq!(Band::<T>::trusted_relayers().unwrap().contains(&relayer), false);
     }
+
+    set_dynamic_fee_parameters {
+        let parameters = FeeCalculationParameters::new(fixed!(0), fixed!(0), fixed!(0));
+    }: _(RawOrigin::Root, parameters)
+    verify {}
 
     impl_benchmark_test_suite!(Band, crate::mock::new_test_ext(), crate::mock::Runtime);
 }

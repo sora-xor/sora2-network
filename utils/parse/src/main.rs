@@ -8,5 +8,5 @@ fn main() {
     let mut bytes = hex::decode(bytes).unwrap();
     bytes.insert(0, 0);
     let ext = UncheckedExtrinsic::decode(&mut &bytes[..]).unwrap();
-    println!("{:?}", ext);
+    println!("{ext:?}");
 }

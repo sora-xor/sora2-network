@@ -4,12 +4,9 @@
 # Should be run on a reference machine to gain accurate benchmarks
 # current reference machine: https://github.com/paritytech/substrate/pull/5848
 
-echo "[+] Compiling benchmarks..."
-cargo build --release --locked --features runtime-benchmarks,private-net --bin framenode
-
 # Load all pallet names in an array.
 PALLETS=($(
-  ./target/release/framenode benchmark pallet --list --chain="local" |\
+  /usr/local/bin/framenode benchmark pallet --list --chain="local" |\
     tail -n+2 |\
     cut -d',' -f1 |\
     sort |\
@@ -17,15 +14,29 @@ PALLETS=($(
 ))
 
 declare -A PATH_OVERRIDES=(
-    [bridge_inbound_channel]=./pallets/trustless-bridge/bridge-inbound-channel
-    [bridge_outbound_channel]=./pallets/trustless-bridge/bridge-outbound-channel
-    [erc20_app]=./pallets/trustless-bridge/erc20-app
-    [eth_app]=./pallets/trustless-bridge/eth-app
-    [ethereum_light_client]=./pallets/trustless-bridge/ethereum-light-client
-    [evm_bridge_proxy]=./pallets/trustless-bridge/bridge-proxy
-    [migration_app]=./pallets/trustless-bridge/migration-app
+    [bridge-inbound-channel]=./pallets/trustless-bridge/bridge-inbound-channel/src/weights.rs
+    [bridge-outbound-channel]=./pallets/trustless-bridge/bridge-outbound-channel/src/weights.rs
+    [erc20-app]=./pallets/trustless-bridge/erc20-app/src/weights.rs
+    [eth-app]=./pallets/trustless-bridge/eth-app/src/weights.rs
+    [ethereum-light-client]=./pallets/trustless-bridge/ethereum-light-client/src/weights.rs
+    [evm-bridge-proxy]=./pallets/trustless-bridge/bridge-proxy/src/weights.rs
+    [migration-app]=./pallets/trustless-bridge/migration-app/src/weights.rs
+    [substrate-bridge-app]=./runtime/src/weights/substrate_bridge_app.rs
+    [substrate-bridge-channel-inbound]=./runtime/src/weights/substrate_inbound_channel.rs
+    [substrate-bridge-channel-outbound]=./runtime/src/weights/substrate_outbound_channel.rs
+    [dispatch]=./runtime/src/weights/dispatch.rs
+    [multisig-verifier]=./runtime/src/weights/multisig_verifier.rs
+    [bridge-data-signer]=./runtime/src/weights/bridge_data_signer.rs
 )
 
+declare -A WITHOUT_TEMPLATE=(
+    [multisig-verifier]=1
+    [bridge-data-signer]=1
+    [dispatch]=1
+    [substrate-bridge-app]=1
+    [substrate-bridge-channel-inbound]=1
+    [substrate-bridge-channel-outbound]=1
+)
 
 echo "[+] Benchmarking ${#PALLETS[@]} pallets for runtime local"
 
@@ -45,18 +56,26 @@ for PALLET in "${PALLETS[@]}"; do
   fi
   pallet_dir="${pallet_dir//_/-}"
   
-  pallet_path=""
+  weight_path=""
   if [[ -v "PATH_OVERRIDES[$pallet_dir]" ]]; then 
-    pallet_path="${PATH_OVERRIDES[$pallet_dir]}"
+    weight_path="${PATH_OVERRIDES[$pallet_dir]}"
   else
-    pallet_path="./pallets/$pallet_dir"
+    weight_path="./pallets/$pallet_dir/src/weights.rs"
+  fi
+  pallet_path="$(dirname $(dirname $weight_path))"
+
+  BENCHMARK_ARGS=""
+  if [[ -v "WITHOUT_TEMPLATE[$pallet_dir]" ]]; then 
+    echo "[*] Don't use template for $pallet_dir"
+  else
+    BENCHMARK_ARGS+="--template=./misc/pallet-weight-template.hbs"
   fi
   
   if [ -d "$pallet_path" ]; then
     echo "[+] Benchmarking $PALLET in $pallet_path";
 
     OUTPUT=$(
-      ./target/release/framenode benchmark pallet \
+      /usr/local/bin/framenode benchmark pallet \
       --chain="local" \
       --steps=50 \
       --repeat=20 \
@@ -65,8 +84,8 @@ for PALLET in "${PALLETS[@]}"; do
       --execution=wasm \
       --wasm-execution=compiled \
       --header=./misc/file_header.txt \
-      --template=./misc/pallet-weight-template.hbs \
-      --output="$pallet_path/src/weights.rs" 2>&1
+      $BENCHMARK_ARGS \
+      --output="$weight_path" 2>&1
     )
     if [ $? -ne 0 ]; then
       echo "$OUTPUT" >> "$ERR_FILE"

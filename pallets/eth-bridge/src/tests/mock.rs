@@ -476,6 +476,7 @@ impl crate::Config for Runtime {
     type Mock = State;
     type WeightToFee = WeightToFixedFee;
     type MessageStatusNotifier = ();
+    type BridgeAssetLockChecker = ();
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {

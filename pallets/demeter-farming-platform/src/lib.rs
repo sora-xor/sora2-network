@@ -1,4 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 pub mod migrations;
 pub mod weights;
@@ -785,19 +787,13 @@ pub mod pallet {
                 return Err(Error::<T>::Unauthorized.into());
             }
 
-            // Check if multiplier is valid
-            ensure!(new_multiplier >= 1, Error::<T>::InvalidMultiplier);
-
             // Get pool info and check if pool exists
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             let mut old_multiplier = 0;
             let mut exist = false;
 
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed
-                    && p_info.is_farm == is_farm
-                    && p_info.base_asset == base_asset
-                {
+                if p_info.is_farm == is_farm && p_info.base_asset == base_asset {
                     exist = true;
                     old_multiplier = p_info.multiplier;
                     p_info.multiplier = new_multiplier;

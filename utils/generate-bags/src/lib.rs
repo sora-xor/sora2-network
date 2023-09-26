@@ -234,11 +234,7 @@ pub fn generate_thresholds<T: pallet_staking::Config>(
     writeln!(buf, "/// Constant ratio between bags for this runtime.")?;
     writeln!(buf, "#[cfg(any(test, feature = \"std\"))]")?;
     writeln!(buf, "#[allow(unused)]")?;
-    writeln!(
-        buf,
-        "pub const CONSTANT_RATIO: f64 = {:.16};",
-        constant_ratio
-    )?;
+    writeln!(buf, "pub const CONSTANT_RATIO: f64 = {constant_ratio:.16};")?;
 
     // thresholds
     let thresholds = thresholds(existential_weight, constant_ratio, n_bags);

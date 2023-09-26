@@ -41,6 +41,7 @@ pub use substrate_gen::{
 };
 pub use subxt::rpc::ChainBlock;
 pub use subxt::rpc::Subscription;
+use subxt::tx::TxPayload;
 use subxt::Config as SubxtConfig;
 use subxt::OnlineClient;
 
@@ -64,6 +65,10 @@ pub type BeefySignedCommitment<T> =
 pub type BeefyCommitment<T> = sp_beefy::Commitment<BlockNumber<T>>;
 pub type MmrLeaf<T> = sp_beefy::mmr::MmrLeaf<BlockNumber<T>, BlockHash<T>, MmrHash, LeafExtra>;
 pub type AssetId = AssetId32<PredefinedAssetId>;
+pub type MaxU32 = sp_runtime::traits::ConstU32<{ core::u32::MAX }>;
+pub type OffchainDataOf<T> =
+    bridge_types::types::BridgeOffchainData<BlockNumber<T>, MaxU32, MaxU32>;
+pub type UnboundedGenericCommitment = bridge_types::GenericCommitment<MaxU32, MaxU32>;
 
 pub enum StorageKind {
     Persistent,
@@ -123,5 +128,17 @@ impl From<u32> for BlockNumberOrHash {
 impl From<H256> for BlockNumberOrHash {
     fn from(hash: H256) -> Self {
         BlockNumberOrHash::Hash(hash)
+    }
+}
+
+pub struct UnvalidatedTxPayload<'a, P: TxPayload>(pub &'a P);
+
+impl<'a, P: TxPayload> TxPayload for UnvalidatedTxPayload<'a, P> {
+    fn encode_call_data_to(
+        &self,
+        metadata: &subxt::Metadata,
+        out: &mut Vec<u8>,
+    ) -> Result<(), subxt::Error> {
+        self.0.encode_call_data_to(metadata, out)
     }
 }

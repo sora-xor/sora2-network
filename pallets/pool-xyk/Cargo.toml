@@ -40,7 +40,7 @@ technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 common = { path = "../../common", features = ["test"] }
@@ -50,7 +50,6 @@ pswap-distribution = { path = "../pswap-distribution" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
-liquidity-proxy = { path = "../liquidity-proxy" }
 xst = { path = "../xst" }
 oracle-proxy = { path = "../oracle-proxy" }
 band = { path = "../band" }
@@ -70,6 +69,4 @@ std = [
     'sp-std/std',
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]

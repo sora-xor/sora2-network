@@ -15,9 +15,12 @@
 //! - `burn`: Burn an ETH balance.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
+use bridge_types::types::AssetKind;
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
@@ -49,14 +52,13 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::substrate::MainnetAssetId;
+    use bridge_types::evm::*;
     use bridge_types::traits::{
-        BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry, MessageStatusNotifier,
+        BalancePrecisionConverter, BridgeApp, BridgeAssetLocker, BridgeAssetRegistry,
+        MessageStatusNotifier,
     };
-    use bridge_types::types::{
-        AdditionalEVMInboundData, AdditionalEVMOutboundData, BridgeAppInfo, BridgeAssetInfo,
-        CallOriginOutput, EVMAppInfo, EVMAppKind, EVMAssetInfo, MessageStatus,
-    };
+    use bridge_types::types::{BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, MessageStatus};
+    use bridge_types::MainnetAssetId;
     use bridge_types::{GenericAccount, GenericNetworkId, H256};
     use bridge_types::{H160, U256};
     use frame_support::pallet_prelude::*;
@@ -65,11 +67,13 @@ pub mod pallet {
     use frame_system::pallet_prelude::{OriginFor, *};
     use frame_system::RawOrigin;
     use sp_runtime::traits::{Convert, Zero};
-    use traits::MultiCurrency;
 
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    pub type BalanceOf<T> = <<T as Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
-    pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<AccountIdOf<T>>>::CurrencyId;
+    pub type AssetIdOf<T> =
+        <<T as Config>::BridgeAssetLocker as BridgeAssetLocker<AccountIdOf<T>>>::AssetId;
+
+    pub type BalanceOf<T> =
+        <<T as Config>::BridgeAssetLocker as BridgeAssetLocker<AccountIdOf<T>>>::Balance;
     pub type AssetNameOf<T> = <<T as Config>::AssetRegistry as BridgeAssetRegistry<
         AccountIdOf<T>,
         AssetIdOf<T>,
@@ -104,15 +108,13 @@ pub mod pallet {
 
         type AssetIdConverter: Convert<AssetIdOf<Self>, MainnetAssetId>;
 
-        type BridgeAccountId: Get<Self::AccountId>;
-
-        type Currency: MultiCurrency<Self::AccountId>;
-
         type BalancePrecisionConverter: BalancePrecisionConverter<
             AssetIdOf<Self>,
             BalanceOf<Self>,
             U256,
         >;
+
+        type BridgeAssetLocker: BridgeAssetLocker<Self::AccountId>;
 
         type WeightInfo: WeightInfo;
     }
@@ -212,14 +214,20 @@ pub mod pallet {
             ensure!(thischain_amount > Zero::zero(), Error::<T>::WrongAmount);
 
             let recipient = T::Lookup::lookup(recipient)?;
-            T::Currency::deposit(asset_id, &recipient, thischain_amount)?;
+            T::BridgeAssetLocker::unlock_asset(
+                network_id.into(),
+                AssetKind::Sidechain,
+                &recipient,
+                &asset_id,
+                &thischain_amount,
+            )?;
             T::MessageStatusNotifier::inbound_request(
                 GenericNetworkId::EVM(network_id),
                 message_id,
                 GenericAccount::EVM(sender),
                 recipient.clone(),
                 asset_id,
-                thischain_amount,
+                thischain_amount.clone(),
                 timepoint,
                 MessageStatus::Done,
             );
@@ -248,8 +256,7 @@ pub mod pallet {
                 !Addresses::<T>::contains_key(network_id),
                 Error::<T>::AppAlreadyExists
             );
-            let bridge_account = T::BridgeAccountId::get();
-            let asset_id = T::AssetRegistry::register_asset(bridge_account.clone(), name, symbol)?;
+            let asset_id = T::AssetRegistry::register_asset(network_id.into(), name, symbol)?;
             Self::register_network_inner(network_id, asset_id, contract, sidechain_precision)?;
             Ok(().into())
         }
@@ -280,9 +287,8 @@ pub mod pallet {
             contract: H160,
             sidechain_precision: u8,
         ) -> DispatchResult {
-            Addresses::<T>::insert(network_id, (contract, asset_id, sidechain_precision));
-            let bridge_account = T::BridgeAccountId::get();
-            T::AssetRegistry::manage_asset(bridge_account, asset_id)?;
+            Addresses::<T>::insert(network_id, (contract, &asset_id, sidechain_precision));
+            T::AssetRegistry::manage_asset(network_id.into(), asset_id)?;
             Ok(())
         }
 
@@ -295,12 +301,21 @@ pub mod pallet {
             let (target, asset_id, sidechain_precision) =
                 Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
 
-            let sidechain_amount =
-                T::BalancePrecisionConverter::to_sidechain(&asset_id, sidechain_precision, amount)
-                    .ok_or(Error::<T>::WrongAmount)?;
+            let sidechain_amount = T::BalancePrecisionConverter::to_sidechain(
+                &asset_id,
+                sidechain_precision,
+                amount.clone(),
+            )
+            .ok_or(Error::<T>::WrongAmount)?;
             ensure!(sidechain_amount > 0.into(), Error::<T>::WrongAmount);
 
-            T::Currency::withdraw(asset_id, &who, amount)?;
+            T::BridgeAssetLocker::lock_asset(
+                network_id.into(),
+                AssetKind::Sidechain,
+                &who,
+                &asset_id,
+                &amount,
+            )?;
 
             let message = OutboundPayload::<T> {
                 sender: who.clone(),
@@ -323,7 +338,7 @@ pub mod pallet {
                 who.clone(),
                 GenericAccount::EVM(recipient),
                 asset_id,
-                amount,
+                amount.clone(),
                 MessageStatus::InQueue,
             );
             Self::deposit_event(Event::Burned(network_id, who, recipient, amount.into()));
@@ -343,7 +358,13 @@ pub mod pallet {
                 Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
             ensure!(asset_id == ether_asset_id, Error::<T>::WrongRequest);
 
-            T::Currency::deposit(asset_id, &recipient, amount)?;
+            T::BridgeAssetLocker::unlock_asset(
+                network_id.into(),
+                AssetKind::Sidechain,
+                &recipient,
+                &asset_id,
+                &amount,
+            )?;
 
             Self::deposit_event(Event::Refunded(network_id, recipient, amount));
 
@@ -369,8 +390,13 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             for (network_id, contract, asset_id, precision) in &self.networks {
-                Pallet::<T>::register_network_inner(*network_id, *asset_id, *contract, *precision)
-                    .unwrap();
+                Pallet::<T>::register_network_inner(
+                    *network_id,
+                    asset_id.clone(),
+                    *contract,
+                    *precision,
+                )
+                .unwrap();
             }
         }
     }
@@ -439,6 +465,18 @@ pub mod pallet {
                     )
                 })
                 .collect()
+        }
+
+        fn is_asset_supported_weight() -> Weight {
+            T::DbWeight::get().reads(1)
+        }
+
+        fn refund_weight() -> Weight {
+            Default::default()
+        }
+
+        fn transfer_weight() -> Weight {
+            <T as Config>::WeightInfo::burn()
         }
     }
 }

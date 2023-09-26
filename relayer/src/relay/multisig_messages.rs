@@ -31,11 +31,10 @@
 use std::collections::BTreeSet;
 
 use crate::prelude::*;
-use crate::relay::messages_subscription::{load_commitment, load_digest, MessageCommitment};
-use crate::substrate::{BlockNumber, OtherParams};
+use crate::relay::messages_subscription::load_digest;
+use crate::substrate::OtherParams;
 use bridge_types::types::AuxiliaryDigest;
 use bridge_types::{SubNetworkId, H256};
-use futures::StreamExt;
 use sp_core::ecdsa;
 use sp_runtime::traits::Keccak256;
 
@@ -121,6 +120,17 @@ where
         Ok(nonce)
     }
 
+    async fn outbound_channel_nonce(&self) -> AnyResult<u64> {
+        let nonce = self
+            .sender
+            .storage_fetch_or_default(
+                &S::bridge_outbound_nonce(self.receiver_network_id.into()),
+                (),
+            )
+            .await?;
+        Ok(nonce)
+    }
+
     async fn approvals(&self, message: H256) -> AnyResult<Vec<ecdsa::Signature>> {
         let peers = self.receiver_peers().await?;
         let approvals = self
@@ -171,56 +181,62 @@ where
                 break;
             }
         }
-        let inbound_nonce = self.inbound_channel_nonce().await?;
-        let mut subscription = super::messages_subscription::subscribe_message_commitments(
-            self.sender.clone(),
-            self.receiver_network_id.into(),
-            inbound_nonce,
-        );
-        while let Some(res) = subscription.next().await {
-            let (block_number, commitment_hash): (BlockNumber<S>, H256) = res?;
-            let digest: AuxiliaryDigest = load_digest(
-                &self.sender,
-                self.receiver_network_id.into(),
-                block_number,
-                commitment_hash,
-            )
-            .await?;
-            let digest_hash = Keccak256::hash_of(&digest);
-            trace!("Digest hash: {}", digest_hash);
-            let peers = self.receiver_peers().await?;
-            let approvals = self.approvals(digest_hash).await?;
-            if (approvals.len() as u32) < bridge_types::utils::threshold(peers.len() as u32) {
-                let signature = self.signer.sign_prehashed(&digest_hash.0);
-                let call =
-                    S::submit_signature(self.receiver_network_id.into(), digest_hash, signature);
-                self.sender.submit_unsigned_extrinsic(&call).await?;
-            }
-            let approvals = self.approvals(digest_hash).await?;
-            if (approvals.len() as u32) < bridge_types::utils::threshold(peers.len() as u32) {
-                info!(
-                    "Still not enough signatures, probably another relayer will submit commitment"
-                );
+        let mut interval = tokio::time::interval(S::average_block_time());
+        loop {
+            interval.tick().await;
+            let inbound_nonce = self.inbound_channel_nonce().await?;
+            let outbound_nonce = self.outbound_channel_nonce().await?;
+            if inbound_nonce >= outbound_nonce {
+                if inbound_nonce > outbound_nonce {
+                    error!(
+                        "Inbound channel nonce is higher than outbound channel nonce: {} > {}",
+                        inbound_nonce, outbound_nonce
+                    );
+                }
                 continue;
             }
-            let commitment = load_commitment(
-                &self.sender,
-                self.receiver_network_id.into(),
-                commitment_hash,
-            )
-            .await?;
-            let MessageCommitment::Sub(commitment) = commitment else {
-                return Err(anyhow!("Wrong commitment kind"));
-            };
-            let call = R::submit_messages_commitment(
-                self.sender_network_id.into(),
-                commitment.messages,
-                R::multisig_proof(digest, approvals),
-            );
-            if let Err(err) = self.receiver.submit_unsigned_extrinsic(&call).await {
-                error!("Failed to submit messages, probably another relayer already submitted it: {:?}", err);
+            for nonce in (inbound_nonce + 1)..=outbound_nonce {
+                let offchain_data = self
+                    .sender
+                    .bridge_commitment(self.receiver_network_id.into(), nonce)
+                    .await?;
+                let commitment_hash = offchain_data.commitment.hash();
+                let digest: AuxiliaryDigest = load_digest(
+                    &self.sender,
+                    self.receiver_network_id.into(),
+                    offchain_data.block_number,
+                    commitment_hash,
+                )
+                .await?;
+                let digest_hash = Keccak256::hash_of(&digest);
+                trace!("Digest hash: {}", digest_hash);
+                let peers = self.receiver_peers().await?;
+                let approvals = self.approvals(digest_hash).await?;
+                if (approvals.len() as u32) < bridge_types::utils::threshold(peers.len() as u32) {
+                    let signature = self.signer.sign_prehashed(&digest_hash.0);
+                    let call = S::submit_signature(
+                        self.receiver_network_id.into(),
+                        digest_hash,
+                        signature,
+                    );
+                    self.sender.submit_unsigned_extrinsic(&call).await?;
+                }
+                let approvals = self.approvals(digest_hash).await?;
+                if (approvals.len() as u32) < bridge_types::utils::threshold(peers.len() as u32) {
+                    info!(
+                    "Still not enough signatures, probably another relayer will submit commitment"
+                );
+                    continue;
+                }
+                let call = R::submit_messages_commitment(
+                    self.sender_network_id.into(),
+                    offchain_data.commitment,
+                    R::multisig_proof(digest, approvals),
+                );
+                if let Err(err) = self.receiver.submit_unsigned_extrinsic(&call).await {
+                    error!("Failed to submit messages, probably another relayer already submitted it: {:?}", err);
+                }
             }
         }
-        Ok(())
     }
 }

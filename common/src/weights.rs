@@ -32,7 +32,7 @@ use frame_support::parameter_types;
 use frame_support::weights::constants::{
     BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_REF_TIME_PER_SECOND,
 };
-use frame_support::weights::Weight;
+use frame_support::weights::{Weight, WeightMeter};
 use frame_system::limits;
 use sp_arithmetic::Perbill;
 use sp_std::marker::PhantomData;
@@ -109,5 +109,81 @@ pub fn err_pays_no(err: impl Into<DispatchError>) -> DispatchErrorWithPostInfo {
     DispatchErrorWithPostInfo {
         post_info: Pays::No.into(),
         error: err.into(),
+    }
+}
+
+/// Try to consume the given weight `max_n` times. If weight is only
+/// enough to consume `n <= max_n` times, it consumes it `n` times
+/// and returns `n`.
+pub fn check_accrue_n(meter: &mut WeightMeter, w: Weight, max_n: u64) -> u64 {
+    let n = {
+        let weight_left = meter.remaining();
+        // Maximum possible subtractions that we can do on each value
+        // If None, then can subtract the value infinitely
+        // thus we can use max value (more will likely be infeasible)
+        let n_ref_time = weight_left
+            .ref_time()
+            .checked_div(w.ref_time())
+            .unwrap_or(u64::MAX);
+        let n_proof_size = weight_left
+            .proof_size()
+            .checked_div(w.proof_size())
+            .unwrap_or(u64::MAX);
+        let max_possible_n = n_ref_time.min(n_proof_size);
+        max_possible_n.min(max_n)
+    };
+    // `n` was obtained as integer division `left/w`, so multiplying `n*w` will not exceed `left`;
+    // it means it will fit into u64
+    let to_consume = w.saturating_mul(n);
+    meter.defensive_saturating_accrue(to_consume);
+    n
+}
+
+#[cfg(test)]
+mod tests {
+    use super::check_accrue_n;
+
+    #[test]
+    fn test_check_accrue_n_works() {
+        // Within limits
+        let mut weight_counter = frame_support::weights::WeightMeter::from_limit(100.into());
+        assert_eq!(
+            check_accrue_n(&mut weight_counter, 10.into(), 10),
+            10,
+            "Should accrue within limits"
+        );
+        assert_eq!(weight_counter.remaining(), 0.into());
+
+        // Just above limit
+        let mut weight_counter = frame_support::weights::WeightMeter::from_limit(100.into());
+        assert_eq!(
+            check_accrue_n(&mut weight_counter, 11.into(), 10),
+            9,
+            "Should partially accrue"
+        );
+        assert_eq!(weight_counter.remaining(), 1.into()); // 100-99
+
+        // Can't accrue at all
+        let mut weight_counter = frame_support::weights::WeightMeter::from_limit(100.into());
+        assert_eq!(
+            check_accrue_n(&mut weight_counter, 101.into(), 1),
+            0,
+            "Should restrict even a single consumption exceeding limits"
+        );
+        assert_eq!(weight_counter.remaining(), 100.into());
+        // Won't accrue if 0 needed
+        assert_eq!(
+            check_accrue_n(&mut weight_counter, 1.into(), 0),
+            0,
+            "Should work with 0 maximum consumptions"
+        );
+        assert_eq!(weight_counter.remaining(), 100.into());
+        // 0 weight is freely consumed
+        assert_eq!(
+            check_accrue_n(&mut weight_counter, 0.into(), u64::MAX),
+            u64::MAX,
+            "0 weight should be allowed to be consumed infinitely (max_int is reasonably high for weight)"
+        );
+        assert_eq!(weight_counter.remaining(), 100.into());
     }
 }

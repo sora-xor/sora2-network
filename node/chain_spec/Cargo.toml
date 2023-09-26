@@ -1,6 +1,6 @@
 [package]
 name = "framenode-chain-spec"
-version = "1.10.0"
+version = "3.0.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
@@ -10,7 +10,7 @@ codec = { package = "parity-scale-codec", version = "3", features = [
     "chain-error",
 ] }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 sc-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sc-network = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sc-network-common = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
@@ -30,7 +30,7 @@ common = { path = "../../common" }
 faucet = { path = "../../pallets/faucet", optional = true }
 framenode-runtime = { path = "../../runtime" }
 iroha-migration = { path = "../../pallets/iroha-migration" }
-order-book = { path = "../../pallets/order-book", optional = true}
+order-book = { path = "../../pallets/order-book", optional = true }
 permissions = { path = "../../pallets/permissions" }
 rewards = { path = "../../pallets/rewards" }
 technical = { path = "../../pallets/technical" }

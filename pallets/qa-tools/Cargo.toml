@@ -1,0 +1,52 @@
+[package]
+name = "qa-tools"
+authors = ["Soramitsu"]
+license = "BSD-4-Clause"
+homepage = "https://sora.org"
+repository = 'https://github.com/sora-xor/sora2-network'
+edition = "2021"
+version = "0.1.0"
+publish = false
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+common = { path = "../../common", default-features = false }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+assets = { path = "../assets", default-features = false }
+order-book = { path = "../../pallets/order-book", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
+
+[dev-dependencies]
+framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
+framenode-runtime = { path = "../../runtime", default-features = false, features = ["std"] }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "order-book/std",
+    "scale-info/std",
+]
+wip = [
+    "framenode-chain-spec/wip",
+    "framenode-runtime/wip",
+    "common/wip",
+    "order-book/wip"
+]
+private-net = [
+    "framenode-chain-spec/private-net",
+    "framenode-runtime/private-net",
+]

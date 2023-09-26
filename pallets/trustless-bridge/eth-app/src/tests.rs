@@ -3,7 +3,8 @@ use crate::mock::{
     BASE_NETWORK_ID,
 };
 use crate::{Addresses, Error};
-use bridge_types::types::{AdditionalEVMInboundData, CallOriginOutput};
+use bridge_types::evm::AdditionalEVMInboundData;
+use bridge_types::types::CallOriginOutput;
 use bridge_types::H160;
 use common::{balance, AssetInfoProvider, XOR};
 use frame_support::assert_noop;

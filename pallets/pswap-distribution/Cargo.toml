@@ -20,7 +20,7 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-hex-literal = { version = "0.3.1", optional = true }
+hex-literal = { version = "0.4.1", optional = true }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 serde = { version = "1.0.101", optional = true, features = [
     "derive",
@@ -35,7 +35,6 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
-liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
@@ -44,7 +43,7 @@ pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch =
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-hex-literal = { version = '0.3.1' }
+hex-literal = { version = '0.4.1' }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
 common = { path = "../../common", features = ["test"] }
@@ -64,7 +63,6 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'permissions/std',
-    "liquidity-proxy/std",
     'serde/std',
     'sp-arithmetic/std',
     'sp-core/std',
@@ -82,6 +80,4 @@ runtime-benchmarks = [
     "hex-literal",
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]

@@ -108,6 +108,7 @@ benchmarks! {
     transfer {
         add_assets::<T>(100)?;
         let caller = alice::<T>();
+        let receiver = bob::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
         let _ = Assets::<T>::register_asset_id(
             caller.clone(),
@@ -115,7 +116,7 @@ benchmarks! {
             AssetSymbol(b"XOR".to_vec()),
             AssetName(b"XOR".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
+            1000_u32.into(),
             true,
             None,
             None,
@@ -123,11 +124,11 @@ benchmarks! {
     }: _(
         RawOrigin::Signed(caller.clone()),
         XOR.into(),
-        caller.clone(),
+        receiver.clone(),
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(Event::<T>::Transfer(caller.clone(), caller, XOR.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::<T>::Transfer(caller.clone(), receiver, XOR.into(), 100_u32.into()).into())
     }
 
     mint {

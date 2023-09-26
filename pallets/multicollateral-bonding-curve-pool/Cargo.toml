@@ -19,7 +19,7 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 serde = { version = "1.0.101", default-features = false, optional = true, features = [
     "derive",
@@ -31,7 +31,6 @@ tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 dex-api = { path = "../dex-api", default-features = false }
-liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
 technical = { path = "../technical", default-features = false }
@@ -43,7 +42,7 @@ pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch =
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -74,7 +73,6 @@ std = [
     "assets/std",
     "common/std",
     "dex-api/std",
-    "liquidity-proxy/std",
     "permissions/std",
     "pswap-distribution/std",
     "technical/std",
@@ -87,6 +85,4 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]

@@ -50,5 +50,3 @@ pub type WithdrawLiquidityActionOf<T> =
 
 pub type DepositLiquidityActionOf<T> =
     DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;
-
-pub type DEXManager<T> = dex_manager::Pallet<T>;

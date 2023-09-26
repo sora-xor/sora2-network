@@ -50,10 +50,22 @@ pub trait WeightInfo {
     fn cancel_limit_order() -> Weight {
         Weight::zero()
     }
+    fn execute_market_order() -> Weight {
+        Weight::zero()
+    }
     fn quote() -> Weight {
         Weight::zero()
     }
     fn exchange() -> Weight {
+        Weight::zero()
+    }
+    fn service_base() -> Weight {
+        Weight::zero()
+    }
+    fn service_block_base() -> Weight {
+        Weight::zero()
+    }
+    fn service_single_expiration() -> Weight {
         Weight::zero()
     }
 }
@@ -80,10 +92,24 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
     fn cancel_limit_order() -> Weight {
         Weight::zero()
     }
+    fn execute_market_order() -> Weight {
+        Weight::zero()
+    }
     fn quote() -> Weight {
         Weight::zero()
     }
     fn exchange() -> Weight {
         Weight::zero()
+    }
+    fn service_base() -> Weight {
+        Weight::zero()
+    }
+    fn service_block_base() -> Weight {
+        Weight::zero()
+    }
+    fn service_single_expiration() -> Weight {
+        // todo: benchmark
+        // not zero for now to test weight limits in `on_initialize`
+        Weight::from_parts(93_304_000, 21168)
     }
 }

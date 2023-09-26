@@ -3,7 +3,8 @@ use crate::mock::{
 };
 use crate::Error;
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
-use bridge_types::types::{AdditionalEVMInboundData, AssetKind, CallOriginOutput};
+use bridge_types::evm::AdditionalEVMInboundData;
+use bridge_types::types::{AssetKind, CallOriginOutput};
 use bridge_types::H160;
 use common::{balance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, ETH, XOR};
 use frame_support::assert_noop;

@@ -20,21 +20,24 @@ frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "po
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 common = { path = "../../common", default-features = false }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
+fallible-iterator = { version = "0.3.0", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-runtime = { version = "7.0.0", git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false}
+sp-runtime = { version = "7.0.0", git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 oracle-proxy = { path = "../oracle-proxy", default-features = false }
+xst = { path = "../xst", default-features = false }
 
 [features]
 default = ['std']
 std = [
     "codec/std",
     "scale-info/std",
+    'fallible-iterator/std',
     "frame-support/std",
     "frame-system/std",
     "oracle-proxy/std",
@@ -47,6 +50,4 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]
