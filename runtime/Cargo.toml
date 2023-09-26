@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "2.1.0"
+version = "3.0.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -21,7 +21,7 @@ codec = { package = "parity-scale-codec", version = "=3.6.5", default-features =
 # Does not compile with newer version
 parity-scale-codec-derive = "=3.6.5"
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 log = { version = "0.4.14" }
 serde = { features = [
     'derive',
@@ -32,23 +32,23 @@ sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkad
 sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-bridge-data-signer = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+bridge-data-signer = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 ethereum-light-client = { path = "../pallets/trustless-bridge/ethereum-light-client", default-features = false, optional = true }
-dispatch = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+dispatch = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 bridge-inbound-channel = { path = "../pallets/trustless-bridge/bridge-inbound-channel", default-features = false, optional = true }
 bridge-outbound-channel = { path = "../pallets/trustless-bridge/bridge-outbound-channel", default-features = false, optional = true }
 eth-app = { path = "../pallets/trustless-bridge/eth-app", default-features = false, optional = true }
 migration-app = { path = "../pallets/trustless-bridge/migration-app", default-features = false, optional = true }
 erc20-app = { path = "../pallets/trustless-bridge/erc20-app", default-features = false, optional = true }
-leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-bridge-proxy = { path = "../pallets/trustless-bridge/bridge-proxy", default-features = false, optional = true }
-bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/bridge-proxy/runtime-api", default-features = false, optional = true }
-substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+bridge-proxy = { path = "../pallets/trustless-bridge/bridge-proxy", default-features = false }
+bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/bridge-proxy/runtime-api", default-features = false }
+parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
@@ -89,7 +89,7 @@ price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true}
+qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true }
 referrals = { path = "../pallets/referrals", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
@@ -213,7 +213,7 @@ std = [
     "leaf-provider-runtime-api/std",
     "bridge-proxy/std",
     "bridge-proxy-runtime-api/std",
-    "substrate-bridge-app/std",
+    "parachain-bridge-app/std",
     "substrate-bridge-channel/std",
     "bridge-data-signer/std",
     "multisig-verifier/std",
@@ -314,23 +314,13 @@ wip = [
     "beefy-light-client",
     "beefy-light-client-runtime-api",
     "ethereum-light-client",
-    "dispatch",
     "bridge-inbound-channel",
     "bridge-outbound-channel",
     "eth-app",
     "migration-app",
     "erc20-app",
-    "leaf-provider",
-    "leaf-provider-runtime-api",
-    "bridge-proxy",
-    "bridge-proxy-runtime-api",
-    "substrate-bridge-app",
-    "substrate-bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
-    "bridge-types",
-    "bridge-data-signer",
-    "multisig-verifier",
 ]
 
 ready-to-test = ["framenode-chain-spec/ready-to-test"]
@@ -356,7 +346,7 @@ runtime-benchmarks = [
     "erc20-app/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
     "bridge-proxy/runtime-benchmarks",
-    "substrate-bridge-app/runtime-benchmarks",
+    "parachain-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
@@ -426,7 +416,7 @@ try-runtime = [
     "erc20-app/try-runtime",
     "leaf-provider/try-runtime",
     "bridge-proxy/try-runtime",
-    "substrate-bridge-app/try-runtime",
+    "parachain-bridge-app/try-runtime",
     "substrate-bridge-channel/try-runtime",
     "bridge-types/try-runtime",
     "farming/try-runtime",

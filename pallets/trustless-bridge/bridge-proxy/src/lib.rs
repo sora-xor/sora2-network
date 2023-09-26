@@ -10,6 +10,7 @@ mod test;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+pub mod migrations;
 pub mod weights;
 
 use bridge_types::{
@@ -86,7 +87,7 @@ pub mod pallet {
 
         type ERC20App: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
-        type SubstrateApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
+        type ParachainApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
 
         type HashiBridge: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
@@ -224,7 +225,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        #[pallet::weight(Pallet::<T>::burn_weight())]
         pub fn burn(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -246,7 +247,7 @@ pub mod pallet {
                     }
                 }
                 GenericAccount::Parachain(recipient) => {
-                    T::SubstrateApp::transfer(network_id, asset_id, sender, recipient, amount)?;
+                    T::ParachainApp::transfer(network_id, asset_id, sender, recipient, amount)?;
                 }
                 GenericAccount::Sora(_) | GenericAccount::Unknown | GenericAccount::Root => {
                     frame_support::fail!(Error::<T>::WrongAccountKind);
@@ -307,7 +308,7 @@ pub mod pallet {
             res.extend(T::EthApp::list_apps());
             res.extend(T::ERC20App::list_apps());
             res.extend(T::HashiBridge::list_apps());
-            res.extend(T::SubstrateApp::list_apps());
+            res.extend(T::ParachainApp::list_apps());
             res
         }
 
@@ -316,7 +317,7 @@ pub mod pallet {
             res.extend(T::EthApp::list_supported_assets(network_id));
             res.extend(T::ERC20App::list_supported_assets(network_id));
             res.extend(T::HashiBridge::list_supported_assets(network_id));
-            res.extend(T::SubstrateApp::list_supported_assets(network_id));
+            res.extend(T::ParachainApp::list_supported_assets(network_id));
             res
         }
 
@@ -332,14 +333,25 @@ pub mod pallet {
             };
             if T::HashiBridge::is_asset_supported(network_id, asset_id) {
                 T::HashiBridge::refund(network_id, message_id, beneficiary, asset_id, amount)?;
-            } else if T::SubstrateApp::is_asset_supported(network_id, asset_id) {
-                T::SubstrateApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else if T::ParachainApp::is_asset_supported(network_id, asset_id) {
+                T::ParachainApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::EthApp::is_asset_supported(network_id, asset_id) {
                 T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else {
                 T::ERC20App::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             }
             Ok(())
+        }
+
+        /// Returns the maximum weight which can be consumed by burn call.
+        fn burn_weight() -> Weight {
+            T::HashiBridge::transfer_weight()
+                .max(T::EthApp::transfer_weight())
+                .max(T::ERC20App::transfer_weight())
+                .max(T::ParachainApp::transfer_weight())
+                .saturating_add(T::HashiBridge::is_asset_supported_weight())
+                .saturating_add(T::EthApp::is_asset_supported_weight())
+                .saturating_add(T::ERC20App::is_asset_supported_weight())
         }
     }
 }

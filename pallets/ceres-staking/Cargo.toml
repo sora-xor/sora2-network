@@ -28,7 +28,7 @@ serde = { version = "1.0.101", optional = true, features = [
     "derive",
 ], default-features = false }
 technical = { path = "../technical", default-features = false }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 
 [dev-dependencies]
 assets = { path = "../assets" }
@@ -63,6 +63,4 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]

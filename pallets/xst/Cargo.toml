@@ -9,7 +9,7 @@ version = '1.0.1'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
-rustdoc-args = [ "--html-in-header", "misc/docs-katex-header.html" ]
+rustdoc-args = ["--html-in-header", "misc/docs-katex-header.html"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
@@ -19,7 +19,7 @@ scale-info = { version = "2", default-features = false, features = ["derive"] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-hex-literal = { version = "0.3.1" }
+hex-literal = { version = "0.4.1" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 serde = { version = "1.0.101", default-features = false, optional = true, features = [
     "derive",
@@ -43,7 +43,7 @@ pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch =
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker" }
 demeter-farming-platform = { path = "../demeter-farming-platform" }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -54,7 +54,7 @@ price-tools = { path = "../price-tools" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 band = { path = "../band" }
-oracle-proxy = {path = "../oracle-proxy"}
+oracle-proxy = { path = "../oracle-proxy" }
 
 [features]
 default = ['std']
@@ -81,11 +81,6 @@ std = [
     'common/std',
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]
 
-wip = [
-    "common/wip",
-    "dex-api/wip",
-]
+wip = ["common/wip", "dex-api/wip"]
