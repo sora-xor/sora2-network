@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["VersionedMultiAssets","VersionedMultiLocation","VersionedXcm"],"mod":["double_encoded","v2","v3"]};

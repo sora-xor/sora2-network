@@ -1,5 +1,0 @@
-(function() {var implementors = {
-"common":[],
-"mock_liquidity_source":[["impl&lt;T: <a class=\"trait\" href=\"mock_liquidity_source/pallet/trait.Config.html\" title=\"trait mock_liquidity_source::pallet::Config\">Config</a>&lt;I&gt;, I: 'static&gt; GetPoolReserves&lt;&lt;T as Config&gt;::AssetId&gt; for <a class=\"struct\" href=\"mock_liquidity_source/pallet/struct.Pallet.html\" title=\"struct mock_liquidity_source::pallet::Pallet\">Pallet</a>&lt;T, I&gt;"]],
-"pool_xyk":[["impl&lt;T: <a class=\"trait\" href=\"pool_xyk/pallet/trait.Config.html\" title=\"trait pool_xyk::pallet::Config\">Config</a>&gt; GetPoolReserves&lt;&lt;T as Config&gt;::AssetId&gt; for <a class=\"struct\" href=\"pool_xyk/pallet/struct.Pallet.html\" title=\"struct pool_xyk::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

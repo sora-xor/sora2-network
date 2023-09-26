@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["authority_keys_from_public_keys","authority_keys_from_seed","bridge_staging_net","main_net","staging_net","test_net"],"type":["ChainSpec"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["bridge_data_signer","dispatch","multisig_verifier","parachain_bridge_app","substrate_inbound_channel","substrate_outbound_channel"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["move_market_making_rewards_to_liquidity_provider_rewards_pool"],"mod":["v4"]};

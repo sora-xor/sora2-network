@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"dex_api":[["impl&lt;T: <a class=\"trait\" href=\"dex_api/pallet/trait.Config.html\" title=\"trait dex_api::pallet::Config\">Config</a>&gt; LiquidityRegistry&lt;&lt;T as Config&gt;::DEXId, &lt;T as Config&gt;::AccountId, &lt;T as Config&gt;::AssetId, LiquiditySourceType, <a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.u128.html\">u128</a>, DispatchError&gt; for <a class=\"struct\" href=\"dex_api/pallet/struct.Pallet.html\" title=\"struct dex_api::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

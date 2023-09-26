@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"framenode_runtime":[["impl <a class=\"trait\" href=\"framenode_runtime/trait.MultiplierUpdate.html\" title=\"trait framenode_runtime::MultiplierUpdate\">MultiplierUpdate</a> for <a class=\"struct\" href=\"framenode_runtime/struct.ConstantFeeMultiplier.html\" title=\"struct framenode_runtime::ConstantFeeMultiplier\">ConstantFeeMultiplier</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

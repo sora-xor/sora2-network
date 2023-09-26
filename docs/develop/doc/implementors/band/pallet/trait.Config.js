@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"framenode_runtime":[["impl <a class=\"trait\" href=\"band/pallet/trait.Config.html\" title=\"trait band::pallet::Config\">Config</a>&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.unit.html\">()</a>&gt; for <a class=\"struct\" href=\"framenode_runtime/struct.Runtime.html\" title=\"struct framenode_runtime::Runtime\">Runtime</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

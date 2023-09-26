@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["UpgradeRestriction"],"struct":["AbridgedHostConfiguration","AbridgedHrmpChannel","PersistedValidationData"]};

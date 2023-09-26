@@ -1949,6 +1949,18 @@
 <a href="#1934" id="1934">1934</a>
 <a href="#1935" id="1935">1935</a>
 <a href="#1936" id="1936">1936</a>
+<a href="#1937" id="1937">1937</a>
+<a href="#1938" id="1938">1938</a>
+<a href="#1939" id="1939">1939</a>
+<a href="#1940" id="1940">1940</a>
+<a href="#1941" id="1941">1941</a>
+<a href="#1942" id="1942">1942</a>
+<a href="#1943" id="1943">1943</a>
+<a href="#1944" id="1944">1944</a>
+<a href="#1945" id="1945">1945</a>
+<a href="#1946" id="1946">1946</a>
+<a href="#1947" id="1947">1947</a>
+<a href="#1948" id="1948">1948</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3883,6 +3895,18 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
             apps.push(app);
         }
         apps
+    }
+
+    <span class="kw">fn </span>is_asset_supported_weight() -&gt; Weight {
+        T::DbWeight::get().reads(<span class="number">1</span>)
+    }
+
+    <span class="kw">fn </span>refund_weight() -&gt; Weight {
+        Default::default()
+    }
+
+    <span class="kw">fn </span>transfer_weight() -&gt; Weight {
+        &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::transfer_to_sidechain()
     }
 }
 </code></pre></div>

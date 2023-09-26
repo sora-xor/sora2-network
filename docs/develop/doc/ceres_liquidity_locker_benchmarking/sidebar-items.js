@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["DEX"],"fn":["AUTHORITY"],"struct":["Pallet"],"trait":["Config"]};

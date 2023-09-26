@@ -3308,29 +3308,6 @@
 <a href="#3293" id="3293">3293</a>
 <a href="#3294" id="3294">3294</a>
 <a href="#3295" id="3295">3295</a>
-<a href="#3296" id="3296">3296</a>
-<a href="#3297" id="3297">3297</a>
-<a href="#3298" id="3298">3298</a>
-<a href="#3299" id="3299">3299</a>
-<a href="#3300" id="3300">3300</a>
-<a href="#3301" id="3301">3301</a>
-<a href="#3302" id="3302">3302</a>
-<a href="#3303" id="3303">3303</a>
-<a href="#3304" id="3304">3304</a>
-<a href="#3305" id="3305">3305</a>
-<a href="#3306" id="3306">3306</a>
-<a href="#3307" id="3307">3307</a>
-<a href="#3308" id="3308">3308</a>
-<a href="#3309" id="3309">3309</a>
-<a href="#3310" id="3310">3310</a>
-<a href="#3311" id="3311">3311</a>
-<a href="#3312" id="3312">3312</a>
-<a href="#3313" id="3313">3313</a>
-<a href="#3314" id="3314">3314</a>
-<a href="#3315" id="3315">3315</a>
-<a href="#3316" id="3316">3316</a>
-<a href="#3317" id="3317">3317</a>
-<a href="#3318" id="3318">3318</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3369,8 +3346,9 @@
 
 </span><span class="kw">extern crate </span>alloc;
 <span class="kw">use </span>alloc::string::String;
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="kw">use </span>bridge_types::traits::Verifier;
+<span class="kw">use </span>bridge_types::traits::Verifier;
+<span class="kw">use </span>bridge_types::{SubNetworkId, H256};
+<span class="kw">use </span>sp_runtime::traits::Keccak256;
 
 <span class="kw">mod </span>bags_thresholds;
 <span class="doccomment">/// Constant values used within the runtime.
@@ -3386,18 +3364,18 @@
 </span><span class="kw">pub mod </span>tests;
 <span class="kw">pub mod </span>weights;
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+</span><span class="kw">use </span><span class="kw">crate</span>::impls::EVMBridgeCallFilter;
 <span class="kw">use </span><span class="kw">crate</span>::impls::PreimageWeightInfo;
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::impls::{
-    DispatchableSubstrateBridgeCall, EVMBridgeCallFilter, SubstrateBridgeCallFilter,
-};
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
-</span><span class="kw">use </span>bridge_types::{evm::AdditionalEVMInboundData, types::LeafExtraData, U256};
+<span class="kw">use </span><span class="kw">crate</span>::impls::{DispatchableSubstrateBridgeCall, SubstrateBridgeCallFilter};
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
+</span><span class="kw">use </span>bridge_types::types::LeafExtraData;
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+</span><span class="kw">use </span>bridge_types::{evm::AdditionalEVMInboundData, U256};
 <span class="kw">use </span>common::prelude::constants::{BIG_FEE, SMALL_FEE};
 <span class="kw">use </span>common::prelude::QuoteAmount;
-<span class="kw">use </span>common::PredefinedAssetId;
-<span class="kw">use </span>common::XOR;
-<span class="kw">use </span>common::{Description, XSTUSD};
+<span class="kw">use </span>common::{Description, PredefinedAssetId};
+<span class="kw">use </span>common::{XOR, XSTUSD};
 <span class="kw">use </span>constants::currency::deposit;
 <span class="kw">use </span>constants::time::<span class="kw-2">*</span>;
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
@@ -3426,7 +3404,7 @@
 </span><span class="kw">use </span>serde::{Serialize, Serializer};
 <span class="kw">use </span>sp_api::impl_runtime_apis;
 <span class="kw">pub use </span>sp_beefy::crypto::AuthorityId <span class="kw">as </span>BeefyId;
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
 </span><span class="kw">use </span>sp_beefy::mmr::MmrLeafVersion;
 <span class="kw">use </span>sp_core::crypto::KeyTypeId;
 <span class="kw">use </span>sp_core::{Encode, OpaqueMetadata, H160};
@@ -3435,8 +3413,7 @@
     BlakeTwo256, Block <span class="kw">as </span>BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify,
 };
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
-</span><span class="kw">use </span>sp_runtime::transaction_validity::TransactionLongevity;
+<span class="kw">use </span>sp_runtime::transaction_validity::TransactionLongevity;
 <span class="kw">use </span>sp_runtime::transaction_validity::{
     TransactionPriority, TransactionSource, TransactionValidity,
 };
@@ -3493,8 +3470,6 @@
 <span class="kw">use </span>frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
 <span class="attr">#[cfg(all(feature = <span class="string">&quot;private-net&quot;</span>, feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// order-book
 </span><span class="kw">pub use </span>qa_tools;
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
-</span><span class="kw">use </span>sp_runtime::traits::Keccak256;
 <span class="kw">pub use </span>{
     assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
     xst,
@@ -3591,10 +3566,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">63</span>,
+    spec_version: <span class="number">64</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">63</span>,
+    transaction_version: <span class="number">64</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4770,15 +4745,8 @@
     <span class="kw">type </span>GetEthNetworkId = GetEthNetworkId;
     <span class="kw">type </span>WeightInfo = eth_bridge::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>WeightToFee = XorFee;
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-    </span><span class="kw">type </span>MessageStatusNotifier = BridgeProxy;
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
-    </span><span class="kw">type </span>MessageStatusNotifier = ();
-
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-    </span><span class="kw">type </span>BridgeAssetLockChecker = BridgeProxy;
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
-    </span><span class="kw">type </span>BridgeAssetLockChecker = ();
+    <span class="kw">type </span>MessageStatusNotifier = BridgeProxy;
+    <span class="kw">type </span>BridgeAssetLockChecker = BridgeProxy;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
@@ -5081,21 +5049,21 @@
 
 <span class="kw">impl </span>pallet_randomness_collective_flip::Config <span class="kw">for </span>Runtime {}
 
-<span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// Basic impl for session keys
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Basic impl for session keys
 </span><span class="kw">impl </span>pallet_beefy::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>BeefyId = BeefyId;
     <span class="kw">type </span>MaxAuthorities = MaxAuthorities;
     <span class="kw">type </span>OnNewValidatorSet = ();
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
 </span><span class="kw">impl </span>pallet_beefy::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>BeefyId = BeefyId;
     <span class="kw">type </span>MaxAuthorities = MaxAuthorities;
     <span class="kw">type </span>OnNewValidatorSet = MmrLeaf;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
 </span><span class="kw">impl </span>pallet_mmr::Config <span class="kw">for </span>Runtime {
     <span class="kw">const </span>INDEXING_PREFIX: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>[u8] = <span class="string">b&quot;mmr&quot;</span>;
     <span class="kw">type </span>Hashing = Keccak256;
@@ -5105,15 +5073,14 @@
     <span class="kw">type </span>LeafData = pallet_beefy_mmr::Pallet&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-</span><span class="kw">impl </span>leaf_provider::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>leaf_provider::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>Hashing = Keccak256;
     <span class="kw">type </span>Hash = &lt;Keccak256 <span class="kw">as </span>sp_runtime::traits::Hash&gt;::Output;
     <span class="kw">type </span>Randomness = pallet_babe::RandomnessFromTwoEpochsAgo&lt;<span class="self">Self</span>&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
 </span><span class="macro">parameter_types! </span>{
     <span class="doccomment">/// Version of the produced MMR leaf.
     ///
@@ -5131,7 +5098,7 @@
     </span><span class="kw">pub </span>LeafVersion: MmrLeafVersion = MmrLeafVersion::new(<span class="number">0</span>, <span class="number">0</span>);
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
 </span><span class="kw">impl </span>pallet_beefy_mmr::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>LeafVersion = LeafVersion;
     <span class="kw">type </span>BeefyAuthorityToMerkleLeaf = pallet_beefy_mmr::BeefyEcdsaToEthereum;
@@ -5298,7 +5265,7 @@
 
 <span class="comment">// Ethereum bridge pallets
 
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">impl </span>dispatch::Config&lt;dispatch::Instance1&gt; <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OriginOutput =
@@ -5311,21 +5278,20 @@
     <span class="kw">type </span>WeightInfo = dispatch::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
-</span><span class="kw">use </span>bridge_types::{EVMChainId, SubNetworkId, H256};
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+</span><span class="kw">use </span>bridge_types::EVMChainId;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-</span><span class="macro">parameter_types! </span>{
+<span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>BridgeMaxMessagePayloadSize: u32 = <span class="number">256</span>;
     <span class="kw">pub const </span>BridgeMaxMessagesPerCommit: u32 = <span class="number">20</span>;
     <span class="kw">pub const </span>BridgeMaxTotalGasLimit: u64 = <span class="number">5_000_000</span>;
     <span class="kw">pub const </span>Decimals: u32 = <span class="number">12</span>;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">pub struct </span>FeeConverter;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">impl </span>Convert&lt;U256, Balance&gt; <span class="kw">for </span>FeeConverter {
     <span class="kw">fn </span>convert(amount: U256) -&gt; Balance {
         common::eth::unwrap_balance(amount, Decimals::get())
@@ -5333,13 +5299,12 @@
     }
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-</span><span class="macro">parameter_types! </span>{
+<span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>FeeCurrency: AssetId = XOR;
     <span class="kw">pub const </span>ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">impl </span>bridge_inbound_channel::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>Verifier = ethereum_light_client::Pallet&lt;Runtime&gt;;
@@ -5356,7 +5321,7 @@
     <span class="kw">type </span>ThisNetworkId = ThisNetworkId;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">impl </span>bridge_outbound_channel::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
@@ -5370,7 +5335,7 @@
     <span class="kw">type </span>WeightInfo = ();
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>DescendantsUntilFinalized: u8 = <span class="number">30</span>;
     <span class="kw">pub const </span>VerifyPoW: bool = <span class="bool-val">true</span>;
@@ -5381,7 +5346,7 @@
     </span><span class="kw">pub </span>EthereumLightClientLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS <span class="kw">as </span>u64;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">impl </span>ethereum_light_client::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>DescendantsUntilFinalized = DescendantsUntilFinalized;
@@ -5393,7 +5358,7 @@
     <span class="kw">type </span>Submitter = &lt;Signature <span class="kw">as </span>Verify&gt;::Signer;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">impl </span>eth_app::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = BridgeOutboundChannel;
@@ -5408,7 +5373,7 @@
     <span class="kw">type </span>WeightInfo = ();
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">impl </span>erc20_app::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = BridgeOutboundChannel;
@@ -5424,7 +5389,7 @@
     <span class="kw">type </span>WeightInfo = ();
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">impl </span>migration_app::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = BridgeOutboundChannel;
@@ -5436,13 +5401,21 @@
     <span class="kw">pub const </span>GetReferenceDexId: DEXId = <span class="number">0</span>;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-</span><span class="kw">impl </span>bridge_proxy::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>bridge_proxy::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
-    <span class="kw">type </span>ERC20App = ERC20App;
-    <span class="kw">type </span>EthApp = EthApp;
+
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+    </span><span class="kw">type </span>ERC20App = ERC20App;
+    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// EVM bridge
+    </span><span class="kw">type </span>ERC20App = ();
+
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+    </span><span class="kw">type </span>EthApp = EthApp;
+    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// EVM bridge
+    </span><span class="kw">type </span>EthApp = ();
+
     <span class="kw">type </span>HashiBridge = EthBridge;
-    <span class="kw">type </span>SubstrateApp = SubstrateBridgeApp;
+    <span class="kw">type </span>ParachainApp = ParachainBridgeApp;
     <span class="kw">type </span>TimepointProvider = GenericTimepointProvider;
     <span class="kw">type </span>ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider&lt;Runtime, GetReferenceDexId, GetReferenceAssetId&gt;;
@@ -5453,14 +5426,13 @@
     <span class="kw">type </span>WeightInfo = ();
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
 </span><span class="kw">impl </span>beefy_light_client::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>Randomness = pallet_babe::RandomnessFromTwoEpochsAgo&lt;<span class="self">Self</span>&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="kw">impl </span>dispatch::Config&lt;dispatch::Instance2&gt; <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>dispatch::Config&lt;dispatch::Instance2&gt; <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OriginOutput = bridge_types::types::CallOriginOutput&lt;SubNetworkId, H256, ()&gt;;
     <span class="kw">type </span>Origin = RuntimeOrigin;
@@ -5468,11 +5440,10 @@
     <span class="kw">type </span>Hashing = Keccak256;
     <span class="kw">type </span>Call = DispatchableSubstrateBridgeCall;
     <span class="kw">type </span>CallFilter = SubstrateBridgeCallFilter;
-    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::dispatch::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::dispatch::WeightInfo&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="kw">impl </span>substrate_bridge_channel::inbound::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>substrate_bridge_channel::inbound::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>Verifier = MultiVerifier;
     <span class="kw">type </span>MessageDispatch = SubstrateDispatch;
@@ -5481,24 +5452,25 @@
     <span class="kw">type </span>MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     <span class="kw">type </span>MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     <span class="kw">type </span>ThisNetworkId = ThisNetworkId;
-    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::substrate_inbound_channel::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::substrate_inbound_channel::WeightInfo&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="kw">pub struct </span>MultiVerifier;
+<span class="kw">pub struct </span>MultiVerifier;
 
 <span class="attr">#[derive(Clone, Debug, PartialEq, codec::Encode, codec::Decode, scale_info::TypeInfo)]
-#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
 </span><span class="kw">pub enum </span>MultiProof {
-    Beefy(&lt;BeefyLightClient <span class="kw">as </span>Verifier&gt;::Proof),
-    Multisig(&lt;MultisigVerifier <span class="kw">as </span>Verifier&gt;::Proof),
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
+    </span><span class="attr">#[codec(index = <span class="number">0</span>)]
+    </span>Beefy(&lt;BeefyLightClient <span class="kw">as </span>Verifier&gt;::Proof),
+    <span class="attr">#[codec(index = <span class="number">1</span>)]
+    </span>Multisig(&lt;MultisigVerifier <span class="kw">as </span>Verifier&gt;::Proof),
     <span class="doccomment">/// This proof is only used for benchmarking purposes
     </span><span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
+    #[codec(index = <span class="number">2</span>)]
     </span>Empty,
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="kw">impl </span>Verifier <span class="kw">for </span>MultiVerifier {
+<span class="kw">impl </span>Verifier <span class="kw">for </span>MultiVerifier {
     <span class="kw">type </span>Proof = MultiProof;
 
     <span class="kw">fn </span>verify(
@@ -5507,7 +5479,8 @@
         proof: <span class="kw-2">&amp;</span><span class="self">Self</span>::Proof,
     ) -&gt; frame_support::pallet_prelude::DispatchResult {
         <span class="kw">match </span>proof {
-            MultiProof::Beefy(proof) =&gt; BeefyLightClient::verify(network_id, message, proof),
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
+            </span>MultiProof::Beefy(proof) =&gt; BeefyLightClient::verify(network_id, message, proof),
             MultiProof::Multisig(proof) =&gt; MultisigVerifier::verify(network_id, message, proof),
             <span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
             </span>MultiProof::Empty =&gt; <span class="prelude-val">Ok</span>(()),
@@ -5516,7 +5489,8 @@
 
     <span class="kw">fn </span>verify_weight(proof: <span class="kw-2">&amp;</span><span class="self">Self</span>::Proof) -&gt; Weight {
         <span class="kw">match </span>proof {
-            MultiProof::Beefy(proof) =&gt; BeefyLightClient::verify_weight(proof),
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
+            </span>MultiProof::Beefy(proof) =&gt; BeefyLightClient::verify_weight(proof),
             MultiProof::Multisig(proof) =&gt; MultisigVerifier::verify_weight(proof),
             <span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
             </span>MultiProof::Empty =&gt; Default::default(),
@@ -5529,18 +5503,15 @@
     }
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridge
-</span><span class="kw">pub struct </span>GenericTimepointProvider;
+<span class="kw">pub struct </span>GenericTimepointProvider;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridge
-</span><span class="kw">impl </span>bridge_types::traits::TimepointProvider <span class="kw">for </span>GenericTimepointProvider {
+<span class="kw">impl </span>bridge_types::traits::TimepointProvider <span class="kw">for </span>GenericTimepointProvider {
     <span class="kw">fn </span>get_timepoint() -&gt; bridge_types::GenericTimepoint {
         bridge_types::GenericTimepoint::Sora(System::block_number())
     }
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="kw">impl </span>substrate_bridge_channel::outbound::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>substrate_bridge_channel::outbound::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>MessageStatusNotifier = BridgeProxy;
     <span class="kw">type </span>MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
@@ -5550,11 +5521,10 @@
     <span class="kw">type </span>Balance = Balance;
     <span class="kw">type </span>TimepointProvider = GenericTimepointProvider;
     <span class="kw">type </span>ThisNetworkId = ThisNetworkId;
-    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::substrate_outbound_channel::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::substrate_outbound_channel::WeightInfo&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="kw">impl </span>substrate_bridge_app::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>parachain_bridge_app::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = SubstrateBridgeOutboundChannel;
     <span class="kw">type </span>CallOrigin =
@@ -5565,11 +5535,10 @@
     <span class="kw">type </span>AssetIdConverter = sp_runtime::traits::ConvertInto;
     <span class="kw">type </span>BalancePrecisionConverter = impls::BalancePrecisionConverter;
     <span class="kw">type </span>BridgeAssetLocker = BridgeProxy;
-    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::substrate_bridge_app::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::parachain_bridge_app::WeightInfo&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="macro">parameter_types! </span>{
+<span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>BridgeMaxPeers: u32 = <span class="number">50</span>;
     <span class="comment">// Not as important as some essential transactions (e.g. im_online or similar ones)
     </span><span class="kw">pub </span>DataSignerPriority: TransactionPriority = Perbill::from_percent(<span class="number">10</span>) * TransactionPriority::max_value();
@@ -5578,8 +5547,7 @@
     </span><span class="kw">pub </span>DataSignerLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS <span class="kw">as </span>u64;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="kw">impl </span>bridge_data_signer::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>bridge_data_signer::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = SubstrateBridgeOutboundChannel;
     <span class="kw">type </span>CallOrigin =
@@ -5587,17 +5555,16 @@
     <span class="kw">type </span>MaxPeers = BridgeMaxPeers;
     <span class="kw">type </span>UnsignedPriority = DataSignerPriority;
     <span class="kw">type </span>UnsignedLongevity = DataSignerLongevity;
-    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::bridge_data_signer::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::bridge_data_signer::WeightInfo&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-</span><span class="kw">impl </span>multisig_verifier::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>multisig_verifier::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>CallOrigin =
         dispatch::EnsureAccount&lt;bridge_types::types::CallOriginOutput&lt;SubNetworkId, H256, ()&gt;&gt;;
     <span class="kw">type </span>OutboundChannel = SubstrateBridgeOutboundChannel;
     <span class="kw">type </span>MaxPeers = BridgeMaxPeers;
-    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::multisig_verifier::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::multisig_verifier::WeightInfo&lt;Runtime&gt;;
 }
 
 <span class="macro">construct_runtime! </span>{
@@ -5676,49 +5643,44 @@
         </span>OrderBook: order_book::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">57</span>,
 
         <span class="comment">// Trustless bridges
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+        </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
         </span>Mmr: pallet_mmr::{Pallet, Storage} = <span class="number">90</span>,
         <span class="comment">// In production needed for session keys
         </span>Beefy: pallet_beefy::{Pallet, Config&lt;T&gt;, Storage} = <span class="number">91</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
         </span>MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = <span class="number">92</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+
+        <span class="comment">// Generic bridges pallets
         </span>LeafProvider: leaf_provider::{Pallet, Storage, Event&lt;T&gt;} = <span class="number">99</span>,
-        <span class="comment">// TODO: rename to BridgeProxy
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-        </span>BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = <span class="number">103</span>,
+        BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = <span class="number">103</span>,
 
         <span class="comment">// Trustless EVM bridge
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event&lt;T&gt;, Config, ValidateUnsigned} = <span class="number">93</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event&lt;T&gt;} = <span class="number">96</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;} = <span class="number">97</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>Dispatch: dispatch::&lt;Instance1&gt;::{Pallet, Storage, Event&lt;T&gt;, Origin&lt;T&gt;} = <span class="number">98</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>EthApp: eth_app::{Pallet, Call, Storage, Event&lt;T&gt;, Config&lt;T&gt;} = <span class="number">100</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>ERC20App: erc20_app::{Pallet, Call, Storage, Event&lt;T&gt;, Config&lt;T&gt;} = <span class="number">101</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>MigrationApp: migration_app::{Pallet, Call, Storage, Event&lt;T&gt;, Config} = <span class="number">102</span>,
 
-        <span class="comment">// Substrate bridge
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
+        <span class="comment">// Trustless substrate bridge
+        </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
         </span>BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event&lt;T&gt;, Config} = <span class="number">104</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
+
+        <span class="comment">// Federated substrate bridge
         </span>SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">106</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;} = <span class="number">107</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>SubstrateDispatch: dispatch::&lt;Instance2&gt;::{Pallet, Storage, Event&lt;T&gt;, Origin&lt;T&gt;} = <span class="number">108</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;, Call} = <span class="number">109</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event&lt;T&gt;, Call, ValidateUnsigned} = <span class="number">110</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>MultisigVerifier: multisig_verifier::{Pallet, Storage, Event&lt;T&gt;, Call, Config} = <span class="number">111</span>,
+        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;} = <span class="number">107</span>,
+        SubstrateDispatch: dispatch::&lt;Instance2&gt;::{Pallet, Storage, Event&lt;T&gt;, Origin&lt;T&gt;} = <span class="number">108</span>,
+        ParachainBridgeApp: parachain_bridge_app::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;, Call} = <span class="number">109</span>,
+        BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event&lt;T&gt;, Call, ValidateUnsigned} = <span class="number">110</span>,
+        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event&lt;T&gt;, Call, Config} = <span class="number">111</span>,
 
         <span class="comment">// Dev
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
@@ -5782,7 +5744,7 @@
     migrations::Migrations,
 &gt;;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
 </span><span class="kw">pub type </span>MmrHashing = &lt;Runtime <span class="kw">as </span>pallet_mmr::Config&gt;::Hashing;
 
 <span class="macro">impl_runtime_apis! </span>{
@@ -6113,7 +6075,7 @@
         }
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
     </span><span class="kw">impl </span>beefy_light_client_runtime_api::BeefyLightClientAPI&lt;Block, beefy_light_client::BitField&gt; <span class="kw">for </span>Runtime {
         <span class="kw">fn </span>get_random_bitfield(network_id: SubNetworkId, prior: beefy_light_client::BitField, num_of_validators: u32) -&gt; beefy_light_client::BitField {
             <span class="kw">let </span>len = prior.len() <span class="kw">as </span>usize;
@@ -6292,28 +6254,28 @@
     <span class="comment">// For BEEFY gadget
     </span><span class="kw">impl </span>sp_beefy::BeefyApi&lt;Block&gt; <span class="kw">for </span>Runtime {
         <span class="kw">fn </span>validator_set() -&gt; <span class="prelude-ty">Option</span>&lt;sp_beefy::ValidatorSet&lt;BeefyId&gt;&gt; {
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Trustless bridges
             </span><span class="kw">return </span><span class="prelude-val">None</span>;
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
             </span>Beefy::validator_set()
         }
     }
 
     <span class="kw">impl </span>mmr::MmrApi&lt;Block, Hash, BlockNumber&gt; <span class="kw">for </span>Runtime {
         <span class="kw">fn </span>mmr_root() -&gt; <span class="prelude-ty">Result</span>&lt;Hash, mmr::Error&gt; {
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Trustless bridges
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(mmr::Error::PalletNotIncluded);
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
             </span><span class="prelude-val">Ok</span>(Mmr::mmr_root())
         }
 
         <span class="kw">fn </span>mmr_leaf_count() -&gt; <span class="prelude-ty">Result</span>&lt;mmr::LeafIndex, mmr::Error&gt; {
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Trustless bridges
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(mmr::Error::PalletNotIncluded);
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
             </span><span class="prelude-val">Ok</span>(Mmr::mmr_leaves())
         }
 
@@ -6321,10 +6283,10 @@
             _block_numbers: Vec&lt;BlockNumber&gt;,
             _best_known_block_number: <span class="prelude-ty">Option</span>&lt;BlockNumber&gt;,
         ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;mmr::EncodableOpaqueLeaf&gt;, mmr::Proof&lt;Hash&gt;), mmr::Error&gt; {
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Trustless bridges
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(mmr::Error::PalletNotIncluded);
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
             </span>Mmr::generate_proof(_block_numbers, _best_known_block_number).map(
                 |(leaves, proof)| {
                     (
@@ -6341,10 +6303,10 @@
         <span class="kw">fn </span>verify_proof(_leaves: Vec&lt;mmr::EncodableOpaqueLeaf&gt;, _proof: mmr::Proof&lt;Hash&gt;)
             -&gt; <span class="prelude-ty">Result</span>&lt;(), mmr::Error&gt;
         {
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Trustless bridges
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(mmr::Error::PalletNotIncluded);
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
             </span>{
                 <span class="kw">pub type </span>MmrLeaf = &lt;&lt;Runtime <span class="kw">as </span>pallet_mmr::Config&gt;::LeafData <span class="kw">as </span>mmr::LeafDataProvider&gt;::LeafData;
                 <span class="kw">let </span>leaves = _leaves.into_iter().map(|leaf|
@@ -6360,10 +6322,10 @@
             _leaves: Vec&lt;mmr::EncodableOpaqueLeaf&gt;,
             _proof: mmr::Proof&lt;Hash&gt;
         ) -&gt; <span class="prelude-ty">Result</span>&lt;(), mmr::Error&gt; {
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Trustless bridges
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(mmr::Error::PalletNotIncluded);
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
             </span>{
                 <span class="kw">let </span>nodes = _leaves.into_iter().map(|leaf|mmr::DataOrHash::Data(leaf.into_opaque_leaf())).collect();
                 pallet_mmr::verify_leaves_proof::&lt;MmrHashing, <span class="kw">_</span>&gt;(_root, nodes, _proof)
@@ -6405,16 +6367,14 @@
         }
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-    </span><span class="kw">impl </span>leaf_provider_runtime_api::LeafProviderAPI&lt;Block&gt; <span class="kw">for </span>Runtime {
+    <span class="kw">impl </span>leaf_provider_runtime_api::LeafProviderAPI&lt;Block&gt; <span class="kw">for </span>Runtime {
         <span class="kw">fn </span>latest_digest() -&gt; <span class="prelude-ty">Option</span>&lt;bridge_types::types::AuxiliaryDigest&gt; {
                 LeafProvider::latest_digest().map(|logs| bridge_types::types::AuxiliaryDigest{ logs })
         }
 
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-    </span><span class="kw">impl </span>bridge_proxy_runtime_api::BridgeProxyAPI&lt;Block, AssetId&gt; <span class="kw">for </span>Runtime {
+    <span class="kw">impl </span>bridge_proxy_runtime_api::BridgeProxyAPI&lt;Block, AssetId&gt; <span class="kw">for </span>Runtime {
         <span class="kw">fn </span>list_apps() -&gt; Vec&lt;bridge_types::types::BridgeAppInfo&gt; {
             BridgeProxy::list_apps()
         }
@@ -6473,32 +6433,29 @@
             </span><span class="macro">list_benchmark!</span>(list, extra, order_book, OrderBook);
 
             <span class="comment">// Trustless bridge
-            </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, ethereum_light_client, EthereumLightClient);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, bridge_inbound_channel, BridgeInboundChannel);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, eth_app, EthApp);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, erc20_app, ERC20App);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, migration_app, MigrationApp);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">list_benchmark!</span>(list, extra, evm_bridge_proxy, BridgeProxy);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+
+            <span class="macro">list_benchmark!</span>(list, extra, evm_bridge_proxy, BridgeProxy);
+            <span class="comment">// Dispatch pallet benchmarks is strictly linked to EVM bridge params
+            // TODO: fix
+            </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, dispatch, Dispatch);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_app, SubstrateBridgeApp);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">list_benchmark!</span>(list, extra, bridge_data_signer, BridgeDataSigner);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">list_benchmark!</span>(list, extra, multisig_verifier, MultisigVerifier);
+            <span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
+            <span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
+            <span class="macro">list_benchmark!</span>(list, extra, parachain_bridge_app, ParachainBridgeApp);
+            <span class="macro">list_benchmark!</span>(list, extra, bridge_data_signer, BridgeDataSigner);
+            <span class="macro">list_benchmark!</span>(list, extra, multisig_verifier, MultisigVerifier);
 
             <span class="kw">let </span>storage_info = AllPalletsWithSystem::storage_info();
 
@@ -6572,32 +6529,29 @@
             </span><span class="macro">add_benchmark!</span>(params, batches, order_book, OrderBook);
 
             <span class="comment">// Trustless bridge
-            </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, ethereum_light_client, EthereumLightClient);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, bridge_inbound_channel, BridgeInboundChannel);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, eth_app, EthApp);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, erc20_app, ERC20App);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, migration_app, MigrationApp);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">add_benchmark!</span>(params, batches, evm_bridge_proxy, BridgeProxy);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
+
+            <span class="macro">add_benchmark!</span>(params, batches, evm_bridge_proxy, BridgeProxy);
+            <span class="comment">// Dispatch pallet benchmarks is strictly linked to EVM bridge params
+            // TODO: fix
+            </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, dispatch, Dispatch);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_app, SubstrateBridgeApp);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">add_benchmark!</span>(params, batches, bridge_data_signer, BridgeDataSigner);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Bridges
-            </span><span class="macro">add_benchmark!</span>(params, batches, multisig_verifier, MultisigVerifier);
+            <span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
+            <span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
+            <span class="macro">add_benchmark!</span>(params, batches, parachain_bridge_app, ParachainBridgeApp);
+            <span class="macro">add_benchmark!</span>(params, batches, bridge_data_signer, BridgeDataSigner);
+            <span class="macro">add_benchmark!</span>(params, batches, multisig_verifier, MultisigVerifier);
 
             <span class="kw">if </span>batches.is_empty() { <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Benchmark not found for this pallet.&quot;</span>.into()) }
             <span class="prelude-val">Ok</span>(batches)

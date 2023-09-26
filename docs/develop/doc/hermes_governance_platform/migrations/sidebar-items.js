@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["VotingOption"],"fn":["migrate","migrate_voting_and_poll_data"],"struct":["OldHermesPollInfo"]};

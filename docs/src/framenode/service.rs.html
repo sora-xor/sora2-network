@@ -1049,8 +1049,7 @@
     <span class="kw">let </span>rpc_extensions_builder = {
         <span class="kw">let </span>client = client.clone();
         <span class="kw">let </span>pool = transaction_pool.clone();
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
-        </span><span class="kw">let </span>backend = backend.clone();
+        <span class="kw">let </span>backend = backend.clone();
 
         <span class="kw">move </span>|deny_unsafe,
               subscription_executor|
@@ -1064,15 +1063,16 @@
                     beefy_best_block_stream: beefy_rpc_links.from_voter_best_beefy_stream.clone(),
                     subscription_executor,
                 },
+                backend: backend.clone(),
             };
 
             <span class="kw">let </span>rpc = <span class="kw">crate</span>::rpc::create_full(deps)<span class="question-mark">?</span>;
 
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
-            </span><span class="kw">let </span>rpc = <span class="kw">crate</span>::rpc::add_wip_rpc(rpc)<span class="question-mark">?</span>;
+            </span><span class="kw">let </span>rpc = <span class="kw">crate</span>::rpc::add_wip_rpc(rpc, client.clone())<span class="question-mark">?</span>;
 
             <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
-            </span><span class="kw">let </span>rpc = <span class="kw">crate</span>::rpc::add_ready_for_test_rpc(rpc, backend.clone(), client.clone())<span class="question-mark">?</span>;
+            </span><span class="kw">let </span>rpc = <span class="kw">crate</span>::rpc::add_ready_for_test_rpc(rpc)<span class="question-mark">?</span>;
 
             <span class="prelude-val">Ok</span>(rpc)
         }

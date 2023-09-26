@@ -2449,7 +2449,7 @@
     Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
 </span><span class="kw">use </span>framenode_runtime::{
     BridgeInboundChannelConfig, BridgeOutboundChannelConfig, EthereumLightClientConfig,
 };
@@ -3205,7 +3205,7 @@
     validator_count: u32,
 ) -&gt; GenesisConfig {
     <span class="kw">use </span>common::XSTUSD;
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
     </span><span class="kw">use </span>framenode_runtime::EthAppConfig;
 
     <span class="comment">// Initial balances
@@ -3527,33 +3527,33 @@
         TBCD.into(),
     ];
     GenesisConfig {
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>multisig_verifier: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
+        multisig_verifier: Default::default(),
+        parachain_bridge_app: Default::default(),
+        substrate_bridge_outbound_channel: Default::default(),
+
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
         </span>beefy_light_client: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>substrate_bridge_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>substrate_bridge_outbound_channel: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>migration_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>erc20_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>eth_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>ethereum_light_client: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(<span class="number">80</span>),
             ..Default::default()
         },
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: <span class="number">10000</span>,
             interval: <span class="number">10</span>,
             ..Default::default()
         },
+
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
@@ -4381,33 +4381,33 @@
         )
     }));
     GenesisConfig {
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>multisig_verifier: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
+        multisig_verifier: Default::default(),
+        parachain_bridge_app: Default::default(),
+        substrate_bridge_outbound_channel: Default::default(),
+
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
         </span>beefy_light_client: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>substrate_bridge_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Substrate bridge
-        </span>substrate_bridge_outbound_channel: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>migration_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>erc20_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>eth_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>ethereum_light_client: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(<span class="number">80</span>),
             ..Default::default()
         },
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: <span class="number">10000</span>,
             interval: <span class="number">10</span>,
             ..Default::default()
         },
+
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
         },

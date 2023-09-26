@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["DepositLiquidity","InitializePool","TransactionApi","WithdrawLiquidity"]};

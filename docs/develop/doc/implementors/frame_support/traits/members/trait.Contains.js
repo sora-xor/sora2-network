@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"framenode_runtime":[["impl <a class=\"trait\" href=\"framenode_runtime/trait.Contains.html\" title=\"trait framenode_runtime::Contains\">Contains</a>&lt;<a class=\"enum\" href=\"framenode_runtime/enum.RuntimeCall.html\" title=\"enum framenode_runtime::RuntimeCall\">RuntimeCall</a>&gt; for <a class=\"struct\" href=\"framenode_runtime/struct.BaseCallFilter.html\" title=\"struct framenode_runtime::BaseCallFilter\">BaseCallFilter</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

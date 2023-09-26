@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["__shared_types","beefy_light_client","bridge","erc20_app","eth_app","ierc20_metadata","inbound_channel","master","migration_app","outbound_channel","sidechain_app","test_token"]};

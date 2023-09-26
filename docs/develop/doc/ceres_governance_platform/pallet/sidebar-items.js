@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_default_for_pallet_storage_version"],"struct":["DefaultForPalletStorageVersion","Pallet"],"trait":["Config"],"type":["AccountIdOf","Module","PalletStorageVersion","PollData","Timestamp","Voting"]};

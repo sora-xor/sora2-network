@@ -5,7 +5,7 @@ var sourcesIndex = JSON.parse('{\
 "band":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "bridge_inbound_channel":["",[],["events.rs","lib.rs","weights.rs"]],\
 "bridge_outbound_channel":["",[],["lib.rs","weights.rs"]],\
-"bridge_proxy":["",[],["lib.rs","weights.rs"]],\
+"bridge_proxy":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "bridge_proxy_rpc":["",[],["lib.rs"]],\
 "bridge_proxy_runtime_api":["",[],["lib.rs"]],\
 "ceres_governance_platform":["",[],["lib.rs","migrations.rs","weights.rs"]],\
@@ -36,7 +36,7 @@ var sourcesIndex = JSON.parse('{\
 "faucet":["",[],["lib.rs","weights.rs"]],\
 "framenode":["",[],["cli.rs","command.rs","data_feed_metrics.rs","eth_bridge_metrics.rs","main.rs","rpc.rs","service.rs"]],\
 "framenode_chain_spec":["",[],["lib.rs"]],\
-"framenode_runtime":["",[["weights",[],["bridge_data_signer.rs","dispatch.rs","mod.rs","multisig_verifier.rs","substrate_bridge_app.rs","substrate_inbound_channel.rs","substrate_outbound_channel.rs"]]],["bags_thresholds.rs","constants.rs","impls.rs","lib.rs","migrations.rs","xor_fee_impls.rs"]],\
+"framenode_runtime":["",[["weights",[],["bridge_data_signer.rs","dispatch.rs","mod.rs","multisig_verifier.rs","parachain_bridge_app.rs","substrate_inbound_channel.rs","substrate_outbound_channel.rs"]]],["bags_thresholds.rs","constants.rs","impls.rs","lib.rs","migrations.rs","xor_fee_impls.rs"]],\
 "generate_bags":["",[],["lib.rs"]],\
 "hermes_governance_platform":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "iroha_migration":["",[],["lib.rs","weights.rs"]],\

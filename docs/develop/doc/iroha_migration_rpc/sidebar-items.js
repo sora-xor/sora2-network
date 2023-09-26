@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["IrohaMigrationClient"],"trait":["IrohaMigrationAPIClient","IrohaMigrationAPIServer","IrohaMigrationRuntimeAPI"]};

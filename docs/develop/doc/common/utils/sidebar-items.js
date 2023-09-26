@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["IntervalEndpoints"],"fn":["fixed_from_basis_points","in_basis_points_range","linspace","parse_hex_string","pow"],"mod":["string_serialization","string_serialization_opt"],"struct":["LiquiditySourceFilter"]};

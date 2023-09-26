@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["TECH_ACCOUNT_MAIN","TECH_ACCOUNT_PREFIX"],"enum":["LiquidityInfo"],"mod":["extension","pallet","weights"],"trait":["ApplyCustomFees","WithdrawFee"],"type":["CustomFeeDetailsOf"]};

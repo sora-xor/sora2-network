@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_default_for_transfer_limit"],"struct":["DefaultForTransferLimit","GenesisConfig","Pallet"],"trait":["Config"],"type":["Module"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["beefy_types","bitfield","simplified_proof"]};

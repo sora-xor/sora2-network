@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["migrate","migrate_pool_and_user_data"]};

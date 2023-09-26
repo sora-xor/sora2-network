@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["InitializePool","SetOptionalRewardMultiplier","SetPriceBias","SetPriceChangeConfig","SetReferenceAsset","TransactionApi"]};

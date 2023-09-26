@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["v2"],"struct":["BandRateV0","BandRateV1"],"type":["SymbolRatesV0","SymbolRatesV1"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["TokenWrapper"],"fn":["encode_packed"]};

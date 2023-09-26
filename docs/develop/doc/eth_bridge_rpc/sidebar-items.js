@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["EthBridgeRpc"],"trait":["EthBridgeApiClient","EthBridgeApiServer","EthBridgeRuntimeApi"]};
