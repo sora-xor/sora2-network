@@ -1598,13 +1598,69 @@ fn best_bid_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book(order_book_id);
 
-        let buy_best_price = BalanceUnit::divisible(balance!(10));
-        let buy_best_price_volume = BalanceUnit::divisible(balance!(168.5));
+        let best_price = BalanceUnit::divisible(balance!(10));
+        let best_price_aggregated_volume = BalanceUnit::divisible(balance!(168.5));
         assert_eq!(
             data.best_bid(&order_book_id),
-            Some((buy_best_price, buy_best_price_volume))
+            Some((best_price, best_price_aggregated_volume))
+        );
+
+        // rest is for adding/removing orders and checking that it still shows correct results
+
+        let owner = alice::<Runtime>();
+        let order_amount = BalanceUnit::divisible(balance!(10.0));
+
+        let order1 = LimitOrder::<Runtime>::new(
+            order_book.next_order_id(),
+            owner.clone(),
+            PriceVariant::Buy,
+            best_price,
+            order_amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        // add an order into current best price
+        assert_ok!(data.insert_limit_order(&order_book_id, order1.clone()));
+        assert_eq!(
+            data.best_bid(&order_book_id),
+            Some((best_price, best_price_aggregated_volume + order_amount))
+        );
+
+        let new_best_price = BalanceUnit::divisible(balance!(10.7));
+        let order2 = LimitOrder::<Runtime>::new(
+            order_book.next_order_id(),
+            owner.clone(),
+            PriceVariant::Buy,
+            new_best_price,
+            order_amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        // add order with new best price
+        assert_ok!(data.insert_limit_order(&order_book_id, order2.clone()));
+        assert_eq!(
+            data.best_bid(&order_book_id),
+            Some((new_best_price, order_amount))
+        );
+
+        // remove the order, old best price is again the best
+        assert_ok!(data.delete_limit_order(&order_book_id, order2.id));
+        assert_eq!(
+            data.best_bid(&order_book_id),
+            Some((best_price, best_price_aggregated_volume + order_amount))
+        );
+
+        // remove order1, amount should return back to the original
+        assert_ok!(data.delete_limit_order(&order_book_id, order1.id));
+        assert_eq!(
+            data.best_bid(&order_book_id),
+            Some((best_price, best_price_aggregated_volume))
         );
     })
 }
@@ -1616,13 +1672,69 @@ fn best_ask_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book(order_book_id);
 
-        let sell_best_price = BalanceUnit::divisible(balance!(11));
-        let sell_best_price_volume = BalanceUnit::divisible(balance!(176.3));
+        let best_price = BalanceUnit::divisible(balance!(11));
+        let best_price_aggregated_volume = BalanceUnit::divisible(balance!(176.3));
         assert_eq!(
             data.best_ask(&order_book_id),
-            Some((sell_best_price, sell_best_price_volume))
+            Some((best_price, best_price_aggregated_volume))
+        );
+
+        // rest is for adding/removing orders and checking that it still shows correct results
+
+        let owner = alice::<Runtime>();
+        let order_amount = BalanceUnit::divisible(balance!(10.0));
+
+        let order1 = LimitOrder::<Runtime>::new(
+            order_book.next_order_id(),
+            owner.clone(),
+            PriceVariant::Sell,
+            best_price,
+            order_amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        // add an order into current best price
+        assert_ok!(data.insert_limit_order(&order_book_id, order1.clone()));
+        assert_eq!(
+            data.best_ask(&order_book_id),
+            Some((best_price, best_price_aggregated_volume + order_amount))
+        );
+
+        let new_best_price = BalanceUnit::divisible(balance!(10.3));
+        let order2 = LimitOrder::<Runtime>::new(
+            order_book.next_order_id(),
+            owner.clone(),
+            PriceVariant::Sell,
+            new_best_price,
+            order_amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
+
+        // add order with new best price
+        assert_ok!(data.insert_limit_order(&order_book_id, order2.clone()));
+        assert_eq!(
+            data.best_ask(&order_book_id),
+            Some((new_best_price, order_amount))
+        );
+
+        // remove the order, old best price is again the best
+        assert_ok!(data.delete_limit_order(&order_book_id, order2.id));
+        assert_eq!(
+            data.best_ask(&order_book_id),
+            Some((best_price, best_price_aggregated_volume + order_amount))
+        );
+
+        // remove order1, amount should return back to the original
+        assert_ok!(data.delete_limit_order(&order_book_id, order1.id));
+        assert_eq!(
+            data.best_ask(&order_book_id),
+            Some((best_price, best_price_aggregated_volume))
         );
     })
 }
