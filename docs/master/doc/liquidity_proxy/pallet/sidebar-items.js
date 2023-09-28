@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_default_adar_commission_ratio"],"struct":["DefaultADARCommissionRatio","Pallet"],"trait":["Config"],"type":["ADARCommissionRatio","Module"]};

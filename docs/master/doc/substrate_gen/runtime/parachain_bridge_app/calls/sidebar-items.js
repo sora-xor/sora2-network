@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AddAssetidParaid","Burn","FinalizeAssetRegistration","Mint","RegisterSidechainAsset","RegisterThischainAsset","RemoveAssetidParaid","SetMinimumXcmIncomingAssetCount","TransactionApi","UpdateTransactionStatus"]};

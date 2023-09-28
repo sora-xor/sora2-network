@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_default_for_bridge_signature_version"],"struct":["DefaultForBridgeSignatureVersion","GenesisConfig","Pallet"],"trait":["Config"],"type":["BridgeAccount","LoadToIncomingRequestHash","Module","RequestStatuses","RequestSubmissionHeight","Requests","RequestsQueue"]};

@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"liquidity_proxy":[["impl&lt;T: <a class=\"trait\" href=\"liquidity_proxy/pallet/trait.Config.html\" title=\"trait liquidity_proxy::pallet::Config\">Config</a>, GetDEXId: Get&lt;T::DEXId&gt;, GetReferenceAssetId: Get&lt;T::AssetId&gt;&gt; ReferencePriceProvider&lt;&lt;T as Config&gt;::AssetId, <a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.u128.html\">u128</a>&gt; for <a class=\"struct\" href=\"liquidity_proxy/struct.ReferencePriceProvider.html\" title=\"struct liquidity_proxy::ReferencePriceProvider\">ReferencePriceProvider</a>&lt;T, GetDEXId, GetReferenceAssetId&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

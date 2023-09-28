@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AddPool","ChangeInfo","ChangePoolDepositFee","ChangePoolMultiplier","ChangeTokenInfo","ChangeTotalTokens","Deposit","GetRewards","RegisterToken","RemovePool","TransactionApi","Withdraw"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AssetRegistered","AssetSetNonMintable","AssetUpdated","Burn","Mint","Transfer"]};

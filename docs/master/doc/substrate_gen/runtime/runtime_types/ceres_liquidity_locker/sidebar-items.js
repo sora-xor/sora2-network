@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["StorageVersion"],"mod":["pallet"],"struct":["LockInfo"]};

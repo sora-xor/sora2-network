@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"bridge_inbound_channel":[["impl&lt;T: <a class=\"trait\" href=\"bridge_inbound_channel/pallet/trait.Config.html\" title=\"trait bridge_inbound_channel::pallet::Config\">Config</a>&gt; AppRegistry&lt;U256, H160&gt; for <a class=\"struct\" href=\"bridge_inbound_channel/pallet/struct.Pallet.html\" title=\"struct bridge_inbound_channel::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

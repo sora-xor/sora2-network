@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"eth_bridge":[["impl RuntimeAppPublic for <a class=\"struct\" href=\"eth_bridge/offchain/crypto/struct.Public.html\" title=\"struct eth_bridge::offchain::crypto::Public\">Public</a><span class=\"where fmt-newline\">where\n    Public: RuntimePublic&lt;Signature = Signature&gt;,</span>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

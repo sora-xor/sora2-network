@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AssetRecord","AssetRecordArg"],"mod":["pallet","weights"],"trait":["GetTotalBalance"],"type":["AssetIdOf","Permissions"]};

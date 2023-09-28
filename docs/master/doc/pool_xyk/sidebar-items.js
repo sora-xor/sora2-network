@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PolySwapAction"],"macro":["to_balance","to_fixed_wrapper"],"mod":["migrations","pallet","weights"],"struct":["DepositLiquidityAction","PairSwapAction","Resource","ResourcePair","WithdrawLiquidityAction"]};

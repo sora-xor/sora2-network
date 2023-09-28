@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["GenesisConfig","Pallet"],"trait":["Config"],"type":["CurrentClaimableVal","EthAddresses","MigrationPending","Module","PswapFarmOwners","PswapWaifuOwners","ReservesAcc","TotalClaimableVal","TotalValRewards","UmiNftClaimed","UmiNftReceivers","UmiNfts","ValBurnedSinceLastVesting","ValOwners"]};

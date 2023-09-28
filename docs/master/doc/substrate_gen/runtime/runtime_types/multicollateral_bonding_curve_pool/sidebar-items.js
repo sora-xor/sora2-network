@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DistributionAccount"],"mod":["pallet"],"struct":["DistributionAccountData","DistributionAccounts"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ElectionFailed","ElectionFinalized","PhaseTransitioned","Rewarded","Slashed","SolutionStored"]};

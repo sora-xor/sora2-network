@@ -1,0 +1,5 @@
+(function() {var implementors = {
+"common":[],
+"farming":[["impl&lt;T: <a class=\"trait\" href=\"farming/pallet/trait.Config.html\" title=\"trait farming::pallet::Config\">Config</a>&gt; OnPoolCreated for <a class=\"struct\" href=\"farming/pallet/struct.Pallet.html\" title=\"struct farming::pallet::Pallet\">Pallet</a>&lt;T&gt;"]],
+"pswap_distribution":[["impl&lt;T: <a class=\"trait\" href=\"pswap_distribution/pallet/trait.Config.html\" title=\"trait pswap_distribution::pallet::Config\">Config</a>&gt; OnPoolCreated for <a class=\"struct\" href=\"pswap_distribution/pallet/struct.Pallet.html\" title=\"struct pswap_distribution::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

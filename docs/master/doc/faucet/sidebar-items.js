@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_LIMIT","TECH_ACCOUNT_MAIN","TECH_ACCOUNT_PREFIX"],"fn":["transfer_limit_block_count"],"mod":["pallet","weights"]};
