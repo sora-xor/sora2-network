@@ -32,6 +32,7 @@
 
 use crate::test_utils::*;
 use assets::AssetIdOf;
+use common::prelude::BalanceUnit;
 use common::{balance, PriceVariant, ETH, PSWAP, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
@@ -1590,7 +1591,65 @@ fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
     });
 }
 
-// TODO (k.ivanov): add best_bid/best_ask for multiple prices
+fn best_bid_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+        create_and_fill_order_book(order_book_id);
+
+        let buy_best_price = BalanceUnit::divisible(balance!(10));
+        let buy_best_price_volume = BalanceUnit::divisible(balance!(168.5));
+        assert_eq!(
+            data.best_bid(&order_book_id),
+            Some((buy_best_price, buy_best_price_volume))
+        );
+    })
+}
+
+fn best_ask_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+        create_and_fill_order_book(order_book_id);
+
+        let sell_best_price = BalanceUnit::divisible(balance!(11));
+        let sell_best_price_volume = BalanceUnit::divisible(balance!(176.3));
+        assert_eq!(
+            data.best_ask(&order_book_id),
+            Some((sell_best_price, sell_best_price_volume))
+        );
+    })
+}
+
+#[test]
+fn cache_best_bid_should_work_multiple_prices() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    best_bid_should_work_multiple_prices(&mut cache);
+}
+
+#[test]
+fn storage_best_bid_should_work_multiple_prices() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    best_bid_should_work_multiple_prices(&mut storage);
+}
+
+#[test]
+fn cache_best_ask_should_work_multiple_prices() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    best_ask_should_work_multiple_prices(&mut cache);
+}
+
+#[test]
+fn storage_best_ask_should_work_multiple_prices() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    best_ask_should_work_multiple_prices(&mut storage);
+}
 
 fn fill_single_price(
     data: &mut impl DataLayer<Runtime>,
