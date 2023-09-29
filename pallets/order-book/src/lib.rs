@@ -1073,7 +1073,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
 
-        let fee = 0; // todo (m.tagirov)
+        // order-book doesn't take fee
+        let fee = Balance::zero();
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((
@@ -1141,7 +1142,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let (input_amount, output_amount) =
             order_book.execute_market_order(market_order, &mut data)?;
 
-        let fee = 0; // todo (m.tagirov)
+        // order-book doesn't take fee
+        let fee = Balance::zero();
 
         let result = match desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } => {
@@ -1254,7 +1256,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Error::<T>::InvalidOrderAmount
         );
 
-        let fee = 0; // todo (m.tagirov)
+        // order-book doesn't take fee
+        let fee = Balance::zero();
 
         Ok(SwapOutcome::new(*target_amount.balance(), fee))
     }

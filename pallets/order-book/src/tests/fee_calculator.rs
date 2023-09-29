@@ -30,7 +30,6 @@
 
 #![cfg(feature = "wip")] // order-book
 
-//use crate::fee_calculator::FeeCalculator;
 use common::balance;
 use common::prelude::constants::SMALL_FEE;
 use framenode_runtime::order_book::fee_calculator::FeeCalculator;
