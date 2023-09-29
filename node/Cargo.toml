@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "2.0.0"
+version = "3.0.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -29,7 +29,7 @@ serde_json = "1.0.61"
 jsonrpsee = { version = "0.16.2", features = ["server"] }
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig" }
 secp256k1 = { version = "0.7", features = ["hmac"], package = "libsecp256k1" }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 
 framenode-chain-spec = { path = "chain_spec" }
 common = { path = "../common" }
@@ -50,16 +50,16 @@ pswap-distribution-rpc = { path = "../pallets/pswap-distribution/rpc" }
 vested-rewards-rpc = { path = "../pallets/vested-rewards/rpc" }
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
 beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
+bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common.git" }
 oracle-proxy-rpc = { path = "../pallets/oracle-proxy/rpc" }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }
 
 # Parachain dependencies
 framenode-runtime = { path = "../runtime" }
 
 # Substrate dependencies
 
-bridge-proxy-rpc = { path = "../pallets/trustless-bridge/bridge-proxy/rpc", optional = true }
+bridge-proxy-rpc = { path = "../pallets/trustless-bridge/bridge-proxy/rpc" }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
@@ -105,7 +105,7 @@ prometheus-endpoint = { package = "substrate-prometheus-endpoint", git = "https:
 beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 mmr-gadget = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
+leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git" }
 sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 enum-as-inner = "=0.5.1"
@@ -138,17 +138,13 @@ wip = [
     "common/wip",
     "dex-api-rpc/wip",
     "liquidity-proxy-rpc/wip",
+    "beefy-light-client",
+    "beefy-light-client-rpc",
 ]
 
 ready-to-test = [
     "framenode-chain-spec/ready-to-test",
     "framenode-runtime/ready-to-test",
-    "beefy-light-client",
-    "beefy-light-client-rpc",
-    "bridge-channel-rpc",
-    "bridge-proxy-rpc",
-    "leaf-provider-rpc",
-    "bridge-types"
 ]
 
 runtime-benchmarks = [

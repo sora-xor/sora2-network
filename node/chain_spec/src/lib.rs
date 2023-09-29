@@ -60,7 +60,7 @@ use framenode_runtime::{
     Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
-#[cfg(feature = "ready-to-test")]
+#[cfg(feature = "wip")]
 use framenode_runtime::{
     BridgeInboundChannelConfig, BridgeOutboundChannelConfig, EthereumLightClientConfig,
 };
@@ -816,7 +816,7 @@ fn testnet_genesis(
     validator_count: u32,
 ) -> GenesisConfig {
     use common::XSTUSD;
-    #[cfg(feature = "ready-to-test")]
+    #[cfg(feature = "wip")]
     use framenode_runtime::EthAppConfig;
 
     // Initial balances
@@ -1138,33 +1138,33 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     GenesisConfig {
-        #[cfg(feature = "ready-to-test")] // Substrate bridge
         multisig_verifier: Default::default(),
-        #[cfg(feature = "ready-to-test")] // Substrate bridge
-        beefy_light_client: Default::default(),
-        #[cfg(feature = "ready-to-test")] // Substrate bridge
-        substrate_bridge_app: Default::default(),
-        #[cfg(feature = "ready-to-test")] // Substrate bridge
+        parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+
+        #[cfg(feature = "wip")] // Trustless substrate bridge
+        beefy_light_client: Default::default(),
+
+        #[cfg(feature = "wip")] // EVM bridge
         migration_app: Default::default(),
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+        #[cfg(feature = "wip")] // EVM bridge
         erc20_app: Default::default(),
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+        #[cfg(feature = "wip")] // EVM bridge
         eth_app: Default::default(),
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+        #[cfg(feature = "wip")] // EVM bridge
         ethereum_light_client: Default::default(),
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(80),
             ..Default::default()
         },
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: 10000,
             interval: 10,
             ..Default::default()
         },
+
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
@@ -1992,33 +1992,33 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
-        #[cfg(feature = "ready-to-test")] // Substrate bridge
         multisig_verifier: Default::default(),
-        #[cfg(feature = "ready-to-test")] // Substrate bridge
-        beefy_light_client: Default::default(),
-        #[cfg(feature = "ready-to-test")] // Substrate bridge
-        substrate_bridge_app: Default::default(),
-        #[cfg(feature = "ready-to-test")] // Substrate bridge
+        parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+
+        #[cfg(feature = "wip")] // Trustless substrate bridge
+        beefy_light_client: Default::default(),
+
+        #[cfg(feature = "wip")] // EVM bridge
         migration_app: Default::default(),
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+        #[cfg(feature = "wip")] // EVM bridge
         erc20_app: Default::default(),
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+        #[cfg(feature = "wip")] // EVM bridge
         eth_app: Default::default(),
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+        #[cfg(feature = "wip")] // EVM bridge
         ethereum_light_client: Default::default(),
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(80),
             ..Default::default()
         },
-        #[cfg(feature = "ready-to-test")] // EVM bridge
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: 10000,
             interval: 10,
             ..Default::default()
         },
+
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
