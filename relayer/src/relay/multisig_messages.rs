@@ -89,9 +89,13 @@ where
             _ => return Err(anyhow::anyhow!("Error! Sender is NOT a Substrate Network!")),
         };
 
-        let receiver_network_id = receiver
-            .storage_fetch_or_default(&R::network_id(), ())
-            .await?;
+        let receiver_network_id = receiver.constant_fetch_or_default(&R::network_id())?;
+
+        let receiver_network_id = match receiver_network_id {
+            bridge_types::GenericNetworkId::Sub(s) => s,
+            _ => return Err(anyhow::anyhow!("Error! Sender is NOT a Substrate Network!")),
+        };
+
         Ok(Relay {
             sender,
             receiver,
