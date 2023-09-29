@@ -64,7 +64,7 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::{evm::AdditionalEVMInboundData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{AssetId32, Description, LiquidityProxyTrait, PredefinedAssetId};
+use common::{AssetId32, Description, PredefinedAssetId};
 use common::{XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
