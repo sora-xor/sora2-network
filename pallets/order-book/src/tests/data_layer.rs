@@ -1795,7 +1795,7 @@ fn fill_single_price(
     <OrderBooks<Runtime>>::insert(order_book.order_book_id, order_book.clone());
 }
 
-fn is_bids_full_works(data: &mut impl DataLayer<Runtime>) {
+fn is_bid_price_full_works(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -1804,17 +1804,17 @@ fn is_bids_full_works(data: &mut impl DataLayer<Runtime>) {
         };
         let order_book = create_empty_order_book(order_book_id);
         let price = order_book.tick_size;
-        assert!(data.is_bids_full(&order_book_id, &price).is_none());
+        assert!(data.is_bid_price_full(&order_book_id, &price).is_none());
         fill_single_price(data, order_book, price, PriceVariant::Buy);
-        assert!(data.is_bids_full(&order_book_id, &price).unwrap());
+        assert!(data.is_bid_price_full(&order_book_id, &price).unwrap());
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
         data.delete_limit_order(&order_book_id, order_book.last_order_id)
             .unwrap();
-        assert!(!data.is_bids_full(&order_book_id, &price).unwrap());
+        assert!(!data.is_bid_price_full(&order_book_id, &price).unwrap());
     })
 }
 
-fn is_asks_full_works(data: &mut impl DataLayer<Runtime>) {
+fn is_ask_price_full_works(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -1823,38 +1823,38 @@ fn is_asks_full_works(data: &mut impl DataLayer<Runtime>) {
         };
         let order_book = create_empty_order_book(order_book_id);
         let price = order_book.tick_size;
-        assert!(data.is_asks_full(&order_book_id, &price).is_none());
+        assert!(data.is_ask_price_full(&order_book_id, &price).is_none());
         fill_single_price(data, order_book, price, PriceVariant::Sell);
-        assert!(data.is_asks_full(&order_book_id, &price).unwrap());
+        assert!(data.is_ask_price_full(&order_book_id, &price).unwrap());
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
         data.delete_limit_order(&order_book_id, order_book.last_order_id)
             .unwrap();
-        assert!(!data.is_asks_full(&order_book_id, &price).unwrap());
+        assert!(!data.is_ask_price_full(&order_book_id, &price).unwrap());
     })
 }
 
 #[test]
-fn cache_is_bids_full_works() {
+fn cache_is_bid_price_full_works() {
     let mut cache = CacheDataLayer::<Runtime>::new();
-    is_bids_full_works(&mut cache);
+    is_bid_price_full_works(&mut cache);
 }
 
 #[test]
-fn storage_is_bids_full_works() {
+fn storage_is_bid_price_full_works() {
     let mut storage = StorageDataLayer::<Runtime>::new();
-    is_bids_full_works(&mut storage);
+    is_bid_price_full_works(&mut storage);
 }
 
 #[test]
-fn cache_is_asks_full_works() {
+fn cache_is_ask_price_full_works() {
     let mut cache = CacheDataLayer::<Runtime>::new();
-    is_asks_full_works(&mut cache);
+    is_ask_price_full_works(&mut cache);
 }
 
 #[test]
-fn storage_is_asks_full_works() {
+fn storage_is_ask_price_full_works() {
     let mut storage = StorageDataLayer::<Runtime>::new();
-    is_asks_full_works(&mut storage);
+    is_ask_price_full_works(&mut storage);
 }
 
 fn is_user_limit_orders_full_works(data: &mut impl DataLayer<Runtime>) {

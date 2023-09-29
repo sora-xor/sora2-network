@@ -993,10 +993,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
         match limit_order.side {
             PriceVariant::Buy => {
-                if let Some(is_bids_full) =
+                if let Some(is_bid_price_full) =
                     data.is_bid_price_full(&self.order_book_id, &limit_order.price)
                 {
-                    ensure!(!is_bids_full, Error::<T>::PriceReachedMaxCountOfLimitOrders);
+                    ensure!(
+                        !is_bid_price_full,
+                        Error::<T>::PriceReachedMaxCountOfLimitOrders
+                    );
                 } else {
                     // there are no orders for the price, thus no entry for the given price.
                     // if there was an entry, we won't need to add another price and, therefore,
@@ -1022,10 +1025,13 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 }
             }
             PriceVariant::Sell => {
-                if let Some(is_asks_full) =
+                if let Some(is_ask_price_full) =
                     data.is_ask_price_full(&self.order_book_id, &limit_order.price)
                 {
-                    ensure!(!is_asks_full, Error::<T>::PriceReachedMaxCountOfLimitOrders);
+                    ensure!(
+                        !is_ask_price_full,
+                        Error::<T>::PriceReachedMaxCountOfLimitOrders
+                    );
                 } else {
                     // there are no orders for the price, thus no entry for the given price.
                     // if there was an entry, we won't need to add another price and, therefore,
