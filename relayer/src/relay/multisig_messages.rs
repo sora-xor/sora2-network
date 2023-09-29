@@ -34,7 +34,7 @@ use crate::prelude::*;
 use crate::relay::messages_subscription::load_digest;
 use crate::substrate::OtherParams;
 use bridge_types::types::AuxiliaryDigest;
-use bridge_types::{SubNetworkId, H256};
+use bridge_types::{GenericNetworkId, SubNetworkId, H256};
 use sp_core::ecdsa;
 use sp_runtime::traits::Keccak256;
 
@@ -84,16 +84,14 @@ where
         let signer = self.signer.expect("signer is needed");
         let sender_network_id = sender.constant_fetch_or_default(&S::network_id())?;
 
-        let sender_network_id = match sender_network_id {
-            bridge_types::GenericNetworkId::Sub(s) => s,
-            _ => return Err(anyhow::anyhow!("Error! Sender is NOT a Substrate Network!")),
+        let GenericNetworkId::Sub(sender_network_id) = sender_network_id else {
+            return Err(anyhow::anyhow!("Error! Sender is NOT a Substrate Network!"));
         };
 
         let receiver_network_id = receiver.constant_fetch_or_default(&R::network_id())?;
 
-        let receiver_network_id = match receiver_network_id {
-            bridge_types::GenericNetworkId::Sub(s) => s,
-            _ => return Err(anyhow::anyhow!("Error! Sender is NOT a Substrate Network!")),
+        let GenericNetworkId::Sub(receiver_network_id) = receiver_network_id else {
+            return Err(anyhow::anyhow!("Error! Reciever is NOT a Substrate Network!"));
         };
 
         Ok(Relay {

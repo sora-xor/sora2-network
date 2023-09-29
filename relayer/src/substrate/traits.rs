@@ -72,7 +72,6 @@ pub trait SenderConfig: ConfigExt + 'static {
 
     fn current_session_index() -> StaticStorageAddress<DecodeStaticType<u32>, Yes, Yes, ()>;
 
-    // fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()>;
     fn network_id() -> StaticConstantAddress<DecodeStaticType<bridge_types::GenericNetworkId>>;
 
     fn bridge_outbound_nonce(
@@ -135,7 +134,6 @@ pub trait ReceiverConfig: ConfigExt {
         network_id: SubNetworkId,
     ) -> StaticStorageAddress<DecodeStaticType<u64>, Yes, Yes, Yes>;
 
-    // fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()>;
     fn network_id() -> StaticConstantAddress<DecodeStaticType<bridge_types::GenericNetworkId>>;
 
     fn peers(
@@ -180,15 +178,6 @@ impl SenderConfig for ParachainConfig {
     fn current_session_index() -> StaticStorageAddress<DecodeStaticType<u32>, Yes, Yes, ()> {
         parachain_runtime::storage().session().current_index()
     }
-
-    // fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()> {
-    //     parachain_runtime::storage()
-    //         .beefy_light_client()
-    //         .this_network_id()
-    //     // parachain_runtime::constants()
-    //     // .substrate_bridge_inbound_channel()
-    //     // .this_network_id()
-    // }
 
     fn network_id() -> StaticConstantAddress<DecodeStaticType<bridge_types::GenericNetworkId>> {
         parachain_runtime::constants()
@@ -261,11 +250,6 @@ impl SenderConfig for MainnetConfig {
         mainnet_runtime::storage().session().current_index()
     }
 
-    // fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()> {
-    //     mainnet_runtime::storage()
-    //         .beefy_light_client()
-    //         .this_network_id()
-    // }
     fn network_id() -> StaticConstantAddress<DecodeStaticType<bridge_types::GenericNetworkId>> {
         mainnet_runtime::constants()
             .substrate_bridge_outbound_channel()
