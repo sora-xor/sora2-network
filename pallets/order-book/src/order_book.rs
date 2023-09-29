@@ -1054,10 +1054,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(())
     }
 
+    /// Returns best bid price and aggregated volume at the price in the order book.
     pub fn best_bid(&self, data: &mut impl DataLayer<T>) -> Option<(OrderPrice, OrderVolume)> {
         data.best_bid(&self.order_book_id)
     }
 
+    /// Returns best ask price and aggregated volume at the price in the order book.
     pub fn best_ask(&self, data: &mut impl DataLayer<T>) -> Option<(OrderPrice, OrderVolume)> {
         data.best_ask(&self.order_book_id)
     }
