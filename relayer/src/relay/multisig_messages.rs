@@ -82,8 +82,7 @@ where
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
         let signer = self.signer.expect("signer is needed");
-        let sender_network_id = sender
-            .constant_fetch_or_default(&S::network_id())?;
+        let sender_network_id = sender.constant_fetch_or_default(&S::network_id())?;
 
         let sender_network_id = match sender_network_id {
             bridge_types::GenericNetworkId::Sub(s) => s,

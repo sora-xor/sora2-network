@@ -394,10 +394,10 @@ impl<T: ConfigExt> UnsignedClient<T> {
 
     pub fn constant_fetch_or_default<Address>(
         &self,
-        address: &Address
+        address: &Address,
     ) -> AnyResult<<Address::Target as DecodeWithMetadata>::Target>
     where
-        Address: ConstantAddress
+        Address: ConstantAddress,
     {
         let res = self.api().constants().at(address)?;
         Ok(res)
