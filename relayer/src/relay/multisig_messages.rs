@@ -83,8 +83,13 @@ where
         let receiver = self.receiver.expect("receiver client is needed");
         let signer = self.signer.expect("signer is needed");
         let sender_network_id = sender
-            .storage_fetch_or_default(&S::network_id(), ())
-            .await?;
+            .constant_fetch_or_default(&S::network_id())?;
+
+        let sender_network_id = match sender_network_id {
+            bridge_types::GenericNetworkId::Sub(s) => s,
+            _ => return Err(anyhow::anyhow!("Error! Sender is NOT a Substrate Network!")),
+        };
+
         let receiver_network_id = receiver
             .storage_fetch_or_default(&R::network_id(), ())
             .await?;
@@ -175,6 +180,7 @@ where
             let public = self.signer.public();
             let peers = self.sender_peers().await?;
             if !peers.contains(&public) {
+                info!("Peer is not in trusted list, waiting...");
                 info!("Peer is not in trusted list, waiting...");
                 tokio::time::sleep(S::average_block_time()).await;
             } else {

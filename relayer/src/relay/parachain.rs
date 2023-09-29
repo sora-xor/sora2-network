@@ -87,8 +87,18 @@ where
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
         let sender_network_id = sender
-            .storage_fetch_or_default(&S::network_id(), ())
-            .await?;
+            // .storage_fetch_or_default(&S::network_id(), ())
+            .constant_fetch_or_default(&S::network_id())?;
+
+        let sender_network_id = match sender_network_id {
+            bridge_types::GenericNetworkId::Sub(s) => s,
+            _ => return Err(anyhow::anyhow!("Error! Sender is NOT a Substrate Network!")),
+        };
+        info!("==========================");
+        info!("==========================");
+        info!("{:?}", sender_network_id);
+        info!("==========================");
+        info!("==========================");
 
         let latest_beefy_block = sender
             .storage_fetch_or_default(&R::latest_beefy_block(sender_network_id), ())
