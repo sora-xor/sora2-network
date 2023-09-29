@@ -994,7 +994,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         match limit_order.side {
             PriceVariant::Buy => {
                 if let Some(is_bids_full) =
-                    data.is_bids_full(&self.order_book_id, &limit_order.price)
+                    data.is_bid_price_full(&self.order_book_id, &limit_order.price)
                 {
                     ensure!(!is_bids_full, Error::<T>::PriceReachedMaxCountOfLimitOrders);
                 } else {
@@ -1023,7 +1023,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
             PriceVariant::Sell => {
                 if let Some(is_asks_full) =
-                    data.is_asks_full(&self.order_book_id, &limit_order.price)
+                    data.is_ask_price_full(&self.order_book_id, &limit_order.price)
                 {
                     ensure!(!is_asks_full, Error::<T>::PriceReachedMaxCountOfLimitOrders);
                 } else {

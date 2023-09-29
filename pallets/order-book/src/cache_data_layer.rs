@@ -442,7 +442,7 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         self.bids.get(order_book_id, price).cloned()
     }
 
-    fn is_bids_full(
+    fn is_bid_price_full(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,
@@ -460,7 +460,7 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         self.asks.get(order_book_id, price).cloned()
     }
 
-    fn is_asks_full(
+    fn is_ask_price_full(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,

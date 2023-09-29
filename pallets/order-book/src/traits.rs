@@ -106,7 +106,7 @@ where
 
     /// Returns whether there is no place for orders inside the bid price. None if no entry for
     /// the price exists
-    fn is_bids_full(
+    fn is_bid_price_full(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,
@@ -121,7 +121,7 @@ where
 
     /// Returns whether there is no place for orders inside the ask price. None if no entry for
     /// the price exists
-    fn is_asks_full(
+    fn is_ask_price_full(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,

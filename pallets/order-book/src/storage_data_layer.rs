@@ -297,7 +297,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         <Bids<T>>::get(order_book_id, price)
     }
 
-    fn is_bids_full(
+    fn is_bid_price_full(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,
@@ -313,7 +313,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         <Asks<T>>::get(order_book_id, price)
     }
 
-    fn is_asks_full(
+    fn is_ask_price_full(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,
