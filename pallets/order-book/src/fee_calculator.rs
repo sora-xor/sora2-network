@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, MomentOf};
+use crate::Config;
 use common::prelude::FixedWrapper;
 use common::Balance;
 use sp_std::marker::PhantomData;
@@ -50,7 +50,7 @@ impl<T: Config> FeeCalculator<T> {
     ///
     /// const part = (4 / 7) * (base fee / 2)
     /// dynamic part = (3 / 7) * (base fee / 2) * (lifetime / max_lifetime)
-    pub fn place_limit_order_fee(lifetime: Option<MomentOf<T>>, is_err: bool) -> Option<Balance> {
+    pub fn place_limit_order_fee(lifetime: Option<u64>, is_err: bool) -> Option<Balance> {
         if is_err {
             return Some(BASE_FEE);
         }
@@ -61,7 +61,6 @@ impl<T: Config> FeeCalculator<T> {
             return Some(market_maker_max_fee);
         };
 
-        let lifetime: u64 = lifetime.try_into().ok()?;
         let max_lifetime: u64 = T::MAX_ORDER_LIFESPAN.try_into().ok()?;
 
         let life_ratio = FixedWrapper::from(lifetime) / FixedWrapper::from(max_lifetime);
