@@ -66,6 +66,7 @@ mod tests;
 mod benchmarking;
 
 pub mod cache_data_layer;
+pub mod fee_calculator;
 mod limit_order;
 mod market_order;
 mod order_book;
