@@ -181,7 +181,8 @@ where
         UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
     >;
 
-    /// Returns whether there is no place for the user's orders in the order book
+    /// Returns whether there is no place for the user's orders in the order book.
+    /// `None` if there is no entry tracking orders of the user in the order book.
     fn is_user_limit_orders_full(
         &mut self,
         account: &T::AccountId,
