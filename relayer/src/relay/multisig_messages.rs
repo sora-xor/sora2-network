@@ -182,7 +182,6 @@ where
             let peers = self.sender_peers().await?;
             if !peers.contains(&public) {
                 info!("Peer is not in trusted list, waiting...");
-                info!("Peer is not in trusted list, waiting...");
                 tokio::time::sleep(S::average_block_time()).await;
             } else {
                 break;
