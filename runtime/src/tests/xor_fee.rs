@@ -51,7 +51,7 @@ use log::LevelFilter;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
-use sp_runtime::traits::SignedExtension;
+use sp_runtime::traits::{Dispatchable, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 use xor_fee::extension::ChargeTransactionPayment;
@@ -915,5 +915,87 @@ fn it_works_eth_bridge_pays_no() {
                 Some(CustomFeeDetails::Regular(SMALL_FEE))
             ))
         );
+    });
+}
+
+/// Fee should be postponed until after the transaction
+#[test]
+fn fee_payment_postponed_xorless_transfer() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        increase_balance(alice(), VAL.into(), balance!(1000));
+
+        increase_balance(bob(), XOR.into(), balance!(1000));
+        increase_balance(bob(), VAL.into(), balance!(1000));
+
+        ensure_pool_initialized(XOR.into(), VAL.into());
+        PoolXYK::deposit_liquidity(
+            RuntimeOrigin::signed(bob()),
+            0,
+            XOR.into(),
+            VAL.into(),
+            balance!(500),
+            balance!(500),
+            balance!(450),
+            balance!(450),
+        )
+        .unwrap();
+
+        fill_spot_price();
+
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+
+        let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+            dex_id: 0,
+            asset_id: VAL,
+            // Swap with desired output may return less tokens than requested
+            desired_xor_amount: SMALL_FEE + 1,
+            max_amount_in: balance!(1),
+            amount: balance!(10),
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+            receiver: bob(),
+        });
+
+        let quoted_fee =
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0)
+                .unwrap();
+
+        assert_eq!(quoted_fee, LiquidityInfo::Postponed(alice()));
+
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice()).unwrap(),
+            balance!(0)
+        );
+        assert_eq!(
+            Assets::total_balance(&VAL.into(), &alice()).unwrap(),
+            balance!(1000)
+        );
+
+        let post_info = call.dispatch(RuntimeOrigin::signed(alice())).unwrap();
+
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice()).unwrap(),
+            SMALL_FEE
+        );
+        assert_eq!(
+            Assets::total_balance(&VAL.into(), &alice()).unwrap(),
+            balance!(989.999297892695135178)
+        );
+        assert_eq!(
+            Assets::total_balance(&VAL.into(), &bob()).unwrap(),
+            balance!(510)
+        );
+
+        assert_ok!(xor_fee::Pallet::<Runtime>::correct_and_deposit_fee(
+            &alice(),
+            &dispatch_info,
+            &post_info,
+            SMALL_FEE,
+            0,
+            quoted_fee
+        ));
+
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice()).unwrap(), 0);
     });
 }

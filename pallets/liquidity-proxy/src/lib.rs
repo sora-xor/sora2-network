@@ -2441,6 +2441,46 @@ pub mod pallet {
             ADARCommissionRatio::<T>::put(commission_ratio);
             Ok(().into())
         }
+
+        /// Extrinsic which is enable XORless transfers.
+        /// Internally it's swaps `asset_id` to `desired_xor_amount` of `XOR` and transfers remaining amount of `asset_id` to `receiver`.
+        /// Client apps should specify the XOR amount which should be paid as a fee in `desired_xor_amount` parameter.
+        /// If sender will not have enough XOR to pay fees after execution, transaction will be rejected.
+        /// This extrinsic is done as temporary solution for XORless transfers, in future it would be removed
+        /// and logic for XORless extrinsics should be moved to xor-fee pallet.
+        #[pallet::call_index(6)]
+        #[pallet::weight(Pallet::<T>::swap_weight(dex_id, asset_id, &common::XOR.into(), SwapVariant::WithDesiredOutput).saturating_add(<T as assets::Config>::WeightInfo::transfer()))]
+        pub fn xorless_transfer(
+            origin: OriginFor<T>,
+            dex_id: T::DEXId,
+            asset_id: T::AssetId,
+            receiver: T::AccountId,
+            amount: Balance,
+            desired_xor_amount: Balance,
+            max_amount_in: Balance,
+            selected_source_types: Vec<LiquiditySourceType>,
+            filter_mode: FilterMode,
+        ) -> DispatchResultWithPostInfo {
+            let sender = ensure_signed(origin)?;
+            let mut weight = Self::inner_swap(
+                sender.clone(),
+                sender.clone(),
+                dex_id,
+                asset_id,
+                common::XOR.into(),
+                SwapAmount::with_desired_output(desired_xor_amount, max_amount_in),
+                selected_source_types,
+                filter_mode,
+            )?;
+
+            assets::Pallet::<T>::transfer_from(&asset_id, &sender, &receiver, amount)?;
+            weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
+
+            Ok(PostDispatchInfo {
+                actual_weight: Some(weight),
+                pays_fee: Pays::Yes,
+            })
+        }
     }
 
     #[pallet::event]
