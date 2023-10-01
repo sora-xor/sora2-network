@@ -29,6 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
+
+#[cfg(feature = "wip")] // order-book
+use {
+    crate::order_book::OrderBookId,
+    common::{DEXId, PriceVariant},
+};
+
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
     AccountId, AssetId, Assets, Balance, Balances, Currencies, GetXorFeeAccountId, PoolXYK,
@@ -914,6 +921,222 @@ fn it_works_eth_bridge_pays_no() {
                 LiquidityInfo::Paid(who, None),
                 Some(CustomFeeDetails::Regular(SMALL_FEE))
             ))
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // order-book
+#[test]
+fn fee_postponed_place_limit_order() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: None,
+        });
+
+        let quoted_fee =
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0)
+                .unwrap();
+
+        assert_eq!(quoted_fee, LiquidityInfo::Postponed(alice()));
+    });
+}
+
+#[cfg(feature = "wip")] // order-book
+#[test]
+fn withdraw_fee_place_limit_order_with_default_lifetime() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: None,
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &default_post_info(),
+            len,
+            &Ok(())
+        )
+        .is_ok());
+
+        let fee = SMALL_FEE / 2;
+
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()).unwrap(),
+            initial_balance - fee
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // order-book
+#[test]
+fn withdraw_fee_place_limit_order_with_some_lifetime() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: Some(259200000),
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &default_post_info(),
+            len,
+            &Ok(())
+        )
+        .is_ok());
+
+        let fee = balance!(0.000215);
+
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()).unwrap(),
+            initial_balance - fee
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // order-book
+#[test]
+fn withdraw_fee_place_limit_order_with_error() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: None,
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &default_post_info(),
+            len,
+            &Err(order_book::Error::<Runtime>::InvalidLimitOrderPrice.into())
+        )
+        .is_ok());
+
+        let fee = SMALL_FEE;
+
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()).unwrap(),
+            initial_balance - fee
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // order-book
+#[ignore] // todo fix
+#[test]
+fn withdraw_fee_place_limit_order_with_crossing_spread() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: None,
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &post_info_from_weight(MOCK_WEIGHT), // some weight means that the limit was converted into market order
+            len,
+            &Ok(())
+        )
+        .is_ok());
+
+        let fee = SMALL_FEE;
+
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()).unwrap(),
+            initial_balance - fee
         );
     });
 }
