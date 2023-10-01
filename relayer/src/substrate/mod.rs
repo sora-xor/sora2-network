@@ -45,6 +45,7 @@ use sp_runtime::traits::AtLeast32BitUnsigned;
 use std::sync::RwLock;
 pub use substrate_gen::{runtime, DefaultConfig};
 use subxt::blocks::ExtrinsicEvents;
+use subxt::constants::ConstantAddress;
 use subxt::events::EventDetails;
 use subxt::metadata::DecodeWithMetadata;
 pub use subxt::rpc::Subscription;
@@ -388,6 +389,17 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .storage()
             .fetch_or_default(address, Some(hash.into()))
             .await?;
+        Ok(res)
+    }
+
+    pub fn constant_fetch_or_default<Address>(
+        &self,
+        address: &Address,
+    ) -> AnyResult<<Address::Target as DecodeWithMetadata>::Target>
+    where
+        Address: ConstantAddress,
+    {
+        let res = self.api().constants().at(address)?;
         Ok(res)
     }
 
