@@ -16,6 +16,7 @@ use sp_runtime::{
 };
 use subxt::{
     config::Parameter,
+    constants::StaticConstantAddress,
     metadata::DecodeStaticType,
     storage::{address::Yes, StaticStorageAddress},
     tx::{Signer, StaticTxPayload},
@@ -71,7 +72,7 @@ pub trait SenderConfig: ConfigExt + 'static {
 
     fn current_session_index() -> StaticStorageAddress<DecodeStaticType<u32>, Yes, Yes, ()>;
 
-    fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()>;
+    fn network_id() -> StaticConstantAddress<DecodeStaticType<bridge_types::GenericNetworkId>>;
 
     fn bridge_outbound_nonce(
         network_id: GenericNetworkId,
@@ -133,7 +134,7 @@ pub trait ReceiverConfig: ConfigExt {
         network_id: SubNetworkId,
     ) -> StaticStorageAddress<DecodeStaticType<u64>, Yes, Yes, Yes>;
 
-    fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()>;
+    fn network_id() -> StaticConstantAddress<DecodeStaticType<bridge_types::GenericNetworkId>>;
 
     fn peers(
         network_id: GenericNetworkId,
@@ -178,9 +179,9 @@ impl SenderConfig for ParachainConfig {
         parachain_runtime::storage().session().current_index()
     }
 
-    fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()> {
-        parachain_runtime::storage()
-            .beefy_light_client()
+    fn network_id() -> StaticConstantAddress<DecodeStaticType<bridge_types::GenericNetworkId>> {
+        parachain_runtime::constants()
+            .substrate_bridge_outbound_channel()
             .this_network_id()
     }
 
@@ -249,9 +250,9 @@ impl SenderConfig for MainnetConfig {
         mainnet_runtime::storage().session().current_index()
     }
 
-    fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()> {
-        mainnet_runtime::storage()
-            .beefy_light_client()
+    fn network_id() -> StaticConstantAddress<DecodeStaticType<bridge_types::GenericNetworkId>> {
+        mainnet_runtime::constants()
+            .substrate_bridge_outbound_channel()
             .this_network_id()
     }
 
@@ -382,9 +383,9 @@ impl ReceiverConfig for MainnetConfig {
             .channel_nonces(network_id)
     }
 
-    fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()> {
-        mainnet_runtime::storage()
-            .beefy_light_client()
+    fn network_id() -> StaticConstantAddress<DecodeStaticType<bridge_types::GenericNetworkId>> {
+        mainnet_runtime::constants()
+            .substrate_bridge_inbound_channel()
             .this_network_id()
     }
 
@@ -482,9 +483,9 @@ impl ReceiverConfig for ParachainConfig {
             .channel_nonces(network_id)
     }
 
-    fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()> {
-        parachain_runtime::storage()
-            .beefy_light_client()
+    fn network_id() -> StaticConstantAddress<DecodeStaticType<bridge_types::GenericNetworkId>> {
+        parachain_runtime::constants()
+            .substrate_bridge_inbound_channel()
             .this_network_id()
     }
 
