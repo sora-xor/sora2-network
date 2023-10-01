@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AddSignatory","ApproveAsMulti","AsMulti","AsMultiThreshold1","CancelAsMulti","RegisterMultisig","RemoveSignatory","TransactionApi"]};

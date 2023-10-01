@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["run","set_default_ss58_version"]};

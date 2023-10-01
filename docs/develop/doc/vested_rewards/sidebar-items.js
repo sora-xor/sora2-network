@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FARMING_REWARDS","TECH_ACCOUNT_FARMING","TECH_ACCOUNT_MARKET_MAKERS","TECH_ACCOUNT_PREFIX"],"mod":["migrations","pallet","weights"],"struct":["CrowdloanInfo","CrowdloanUserInfo","RewardInfo"]};

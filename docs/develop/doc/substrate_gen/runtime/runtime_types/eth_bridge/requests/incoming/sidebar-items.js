@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ChangePeersContract"],"struct":["IncomingAddToken","IncomingCancelOutgoingRequest","IncomingChangePeers","IncomingChangePeersCompat","IncomingMarkAsDoneRequest","IncomingMigrate","IncomingPrepareForMigration","IncomingTransfer"]};

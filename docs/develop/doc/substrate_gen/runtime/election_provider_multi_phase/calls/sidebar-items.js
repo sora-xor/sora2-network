@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["GovernanceFallback","SetEmergencyElectionResult","SetMinimumUntrustedScore","Submit","SubmitUnsigned","TransactionApi"]};

@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"assets":[],
+"framenode_runtime":[["impl <a class=\"trait\" href=\"assets/trait.GetTotalBalance.html\" title=\"trait assets::GetTotalBalance\">GetTotalBalance</a>&lt;<a class=\"struct\" href=\"framenode_runtime/struct.Runtime.html\" title=\"struct framenode_runtime::Runtime\">Runtime</a>&gt; for <a class=\"struct\" href=\"framenode_runtime/struct.GetTotalBalance.html\" title=\"struct framenode_runtime::GetTotalBalance\">GetTotalBalance</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

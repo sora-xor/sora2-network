@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["BatchDispatched","RegisterChannel","SetRewardFraction","Submit","TransactionApi"]};

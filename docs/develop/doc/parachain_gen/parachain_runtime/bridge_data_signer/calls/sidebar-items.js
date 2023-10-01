@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AddPeer","Approve","FinishAddPeer","FinishRemovePeer","RegisterNetwork","RemovePeer","TransactionApi"]};

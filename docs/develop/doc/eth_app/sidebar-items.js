@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["TRANSFER_MAX_GAS"],"mod":["pallet","weights"]};

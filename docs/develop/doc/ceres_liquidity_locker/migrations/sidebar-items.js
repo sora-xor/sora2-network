@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["migrate","migrate_locker_data"]};

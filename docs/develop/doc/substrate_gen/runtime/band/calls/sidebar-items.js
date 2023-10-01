@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AddRelayers","ForceRelay","Relay","RemoveRelayers","SetDynamicFeeParameters","TransactionApi"]};

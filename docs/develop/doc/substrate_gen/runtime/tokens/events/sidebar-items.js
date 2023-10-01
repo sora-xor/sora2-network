@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["BalanceSet","Deposited","DustLost","Endowed","LockRemoved","LockSet","Locked","ReserveRepatriated","Reserved","Slashed","TotalIssuanceSet","Transfer","Unlocked","Unreserved","Withdrawn"]};

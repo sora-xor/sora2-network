@@ -1,0 +1,192 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `AssetsRuntimeAPI` trait in crate `assets_rpc`."><title>AssetsRuntimeAPI in assets_rpc - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="assets_rpc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (44f518058 2023-03-20)" data-search-js="search-a6dd7f063a44c279.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../static.files/storage-9184409068f70b79.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-f5a2577c5297a973.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.js"                  integrity="sha384-K3vbOmF2BtaVai+Qk37uypf7VrgBubhQreNQe9aGsz9lB63dIFiQVlJbr92dw2Lx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload='renderMathInElement(document.body, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "$", right: "$", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ]
+        });'></script>
+
+</head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../assets_rpc/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../assets_rpc/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">AssetsRuntimeAPI</a></h2><div class="sidebar-elems"><section><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.free_balance">free_balance</a></li><li><a href="#method.free_balance_with_context">free_balance_with_context</a></li><li><a href="#method.get_asset_content_src">get_asset_content_src</a></li><li><a href="#method.get_asset_content_src_with_context">get_asset_content_src_with_context</a></li><li><a href="#method.get_asset_info">get_asset_info</a></li><li><a href="#method.get_asset_info_with_context">get_asset_info_with_context</a></li><li><a href="#method.list_asset_ids">list_asset_ids</a></li><li><a href="#method.list_asset_ids_with_context">list_asset_ids_with_context</a></li><li><a href="#method.list_asset_infos">list_asset_infos</a></li><li><a href="#method.list_asset_infos_with_context">list_asset_infos_with_context</a></li><li><a href="#method.total_balance">total_balance</a></li><li><a href="#method.total_balance_with_context">total_balance_with_context</a></li><li><a href="#method.total_supply">total_supply</a></li><li><a href="#method.total_supply_with_context">total_supply_with_context</a></li><li><a href="#method.usable_balance">usable_balance</a></li><li><a href="#method.usable_balance_with_context">usable_balance_with_context</a></li></ul><h3><a href="#trait-implementations">Trait Implementations</a></h3><ul class="block"><li><a href="#impl-RuntimeApiInfo-for-dyn+AssetsAPI%3CBlock,+AccountId,+AssetId,+Balance,+AssetSymbol,+AssetName,+Precision,+ContentSource,+Description%3E+%2B+'static">RuntimeApiInfo</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In assets_rpc</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="index.html">assets_rpc</a>::<wbr><a class="trait" href="#">AssetsRuntimeAPI</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait AssetsRuntimeAPI&lt;Block, AccountId, AssetId, Balance, AssetSymbol, AssetName, Precision, ContentSource, Description&gt;: Core&lt;Block&gt;<span class="where fmt-newline">where
+    Block: Block,
+    AccountId: Codec,
+    AssetId: Codec,
+    Balance: Codec + MaybeFromStr + MaybeDisplay,
+    AssetSymbol: Codec + MaybeFromStr + MaybeDisplay,
+    AssetName: Codec + MaybeFromStr + MaybeDisplay,
+    Precision: Codec + MaybeFromStr + MaybeDisplay,
+    ContentSource: Codec + MaybeFromStr + MaybeDisplay,
+    Description: Codec + MaybeFromStr + MaybeDisplay,</span>{
+<details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 16 methods</span></summary>    // Provided methods
+    fn <a href="#method.free_balance" class="fn">free_balance</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        account_id: AccountId,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.free_balance_with_context" class="fn">free_balance_with_context</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        context: ExecutionContext,
+        account_id: AccountId,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.usable_balance" class="fn">usable_balance</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        account_id: AccountId,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.usable_balance_with_context" class="fn">usable_balance_with_context</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        context: ExecutionContext,
+        account_id: AccountId,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.total_balance" class="fn">total_balance</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        account_id: AccountId,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.total_balance_with_context" class="fn">total_balance_with_context</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        context: ExecutionContext,
+        account_id: AccountId,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.total_supply" class="fn">total_supply</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.total_supply_with_context" class="fn">total_supply_with_context</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        context: ExecutionContext,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.list_asset_ids" class="fn">list_asset_ids</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;AssetId, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/alloc/struct.Global.html" title="struct alloc::alloc::Global">Global</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.list_asset_ids_with_context" class="fn">list_asset_ids_with_context</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        context: ExecutionContext
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;AssetId, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/alloc/struct.Global.html" title="struct alloc::alloc::Global">Global</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.list_asset_infos" class="fn">list_asset_infos</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;AssetInfo&lt;AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description&gt;, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/alloc/struct.Global.html" title="struct alloc::alloc::Global">Global</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.list_asset_infos_with_context" class="fn">list_asset_infos_with_context</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        context: ExecutionContext
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;AssetInfo&lt;AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description&gt;, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/alloc/struct.Global.html" title="struct alloc::alloc::Global">Global</a>&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_asset_info" class="fn">get_asset_info</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;AssetInfo&lt;AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_asset_info_with_context" class="fn">get_asset_info_with_context</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        context: ExecutionContext,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;AssetInfo&lt;AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description&gt;&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_asset_content_src" class="fn">get_asset_content_src</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;, ApiError&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_asset_content_src_with_context" class="fn">get_asset_content_src_with_context</a>(
+        &amp;self,
+        __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+        context: ExecutionContext,
+        asset_id: AssetId
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;, ApiError&gt; { ... }
+</details>}</code></pre><h2 id="provided-methods" class="small-section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><section id="method.free_balance" class="method"><h4 class="code-header">fn <a href="#method.free_balance" class="fn">free_balance</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    account_id: AccountId,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt;</h4></section><section id="method.free_balance_with_context" class="method"><h4 class="code-header">fn <a href="#method.free_balance_with_context" class="fn">free_balance_with_context</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    context: ExecutionContext,
+    account_id: AccountId,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt;</h4></section><section id="method.usable_balance" class="method"><h4 class="code-header">fn <a href="#method.usable_balance" class="fn">usable_balance</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    account_id: AccountId,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt;</h4></section><section id="method.usable_balance_with_context" class="method"><h4 class="code-header">fn <a href="#method.usable_balance_with_context" class="fn">usable_balance_with_context</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    context: ExecutionContext,
+    account_id: AccountId,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt;</h4></section><section id="method.total_balance" class="method"><h4 class="code-header">fn <a href="#method.total_balance" class="fn">total_balance</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    account_id: AccountId,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt;</h4></section><section id="method.total_balance_with_context" class="method"><h4 class="code-header">fn <a href="#method.total_balance_with_context" class="fn">total_balance_with_context</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    context: ExecutionContext,
+    account_id: AccountId,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt;</h4></section><section id="method.total_supply" class="method"><h4 class="code-header">fn <a href="#method.total_supply" class="fn">total_supply</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt;</h4></section><section id="method.total_supply_with_context" class="method"><h4 class="code-header">fn <a href="#method.total_supply_with_context" class="fn">total_supply_with_context</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    context: ExecutionContext,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;BalanceInfo&lt;Balance&gt;&gt;, ApiError&gt;</h4></section><section id="method.list_asset_ids" class="method"><h4 class="code-header">fn <a href="#method.list_asset_ids" class="fn">list_asset_ids</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;AssetId, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/alloc/struct.Global.html" title="struct alloc::alloc::Global">Global</a>&gt;, ApiError&gt;</h4></section><section id="method.list_asset_ids_with_context" class="method"><h4 class="code-header">fn <a href="#method.list_asset_ids_with_context" class="fn">list_asset_ids_with_context</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    context: ExecutionContext
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;AssetId, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/alloc/struct.Global.html" title="struct alloc::alloc::Global">Global</a>&gt;, ApiError&gt;</h4></section><section id="method.list_asset_infos" class="method"><h4 class="code-header">fn <a href="#method.list_asset_infos" class="fn">list_asset_infos</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;AssetInfo&lt;AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description&gt;, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/alloc/struct.Global.html" title="struct alloc::alloc::Global">Global</a>&gt;, ApiError&gt;</h4></section><section id="method.list_asset_infos_with_context" class="method"><h4 class="code-header">fn <a href="#method.list_asset_infos_with_context" class="fn">list_asset_infos_with_context</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    context: ExecutionContext
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;AssetInfo&lt;AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description&gt;, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/alloc/struct.Global.html" title="struct alloc::alloc::Global">Global</a>&gt;, ApiError&gt;</h4></section><section id="method.get_asset_info" class="method"><h4 class="code-header">fn <a href="#method.get_asset_info" class="fn">get_asset_info</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;AssetInfo&lt;AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description&gt;&gt;, ApiError&gt;</h4></section><section id="method.get_asset_info_with_context" class="method"><h4 class="code-header">fn <a href="#method.get_asset_info_with_context" class="fn">get_asset_info_with_context</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    context: ExecutionContext,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;AssetInfo&lt;AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description&gt;&gt;, ApiError&gt;</h4></section><section id="method.get_asset_content_src" class="method"><h4 class="code-header">fn <a href="#method.get_asset_content_src" class="fn">get_asset_content_src</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;, ApiError&gt;</h4></section><section id="method.get_asset_content_src_with_context" class="method"><h4 class="code-header">fn <a href="#method.get_asset_content_src_with_context" class="fn">get_asset_content_src_with_context</a>(
+    &amp;self,
+    __runtime_api_at_param__: &amp;BlockId&lt;Block&gt;,
+    context: ExecutionContext,
+    asset_id: AssetId
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;, ApiError&gt;</h4></section></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor">§</a></h2><div id="trait-implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-RuntimeApiInfo-for-dyn+AssetsAPI%3CBlock,+AccountId,+AssetId,+Balance,+AssetSymbol,+AssetName,+Precision,+ContentSource,+Description%3E+%2B+'static" class="impl"><a href="#impl-RuntimeApiInfo-for-dyn+AssetsAPI%3CBlock,+AccountId,+AssetId,+Balance,+AssetSymbol,+AssetName,+Precision,+ContentSource,+Description%3E+%2B+'static" class="anchor">§</a><h3 class="code-header">impl&lt;Block, AccountId, AssetId, Balance, AssetSymbol, AssetName, Precision, ContentSource, Description&gt; RuntimeApiInfo for dyn <a class="trait" href="trait.AssetsRuntimeAPI.html" title="trait assets_rpc::AssetsRuntimeAPI">AssetsAPI</a>&lt;Block, AccountId, AssetId, Balance, AssetSymbol, AssetName, Precision, ContentSource, Description&gt; + 'static<span class="where fmt-newline">where
+    Block: Block,</span></h3></section></summary><div class="impl-items"><details class="toggle" open><summary><section id="associatedconstant.ID" class="associatedconstant trait-impl"><a href="#associatedconstant.ID" class="anchor">§</a><h4 class="code-header">const <a class="constant">ID</a>: [<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.array.html">8</a>] = [216u8, 61u8, 197u8, 30u8, 22u8, 168u8, 19u8, 252u8]</h4></section></summary><div class='docblock'>The identifier of the runtime api.</div></details><details class="toggle" open><summary><section id="associatedconstant.VERSION" class="associatedconstant trait-impl"><a href="#associatedconstant.VERSION" class="anchor">§</a><h4 class="code-header">const <a class="constant">VERSION</a>: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> = 1u32</h4></section></summary><div class='docblock'>The version of the runtime api.</div></details></div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../implementors/assets_runtime_api/trait.AssetsAPI.js" async></script></section></div></main></body></html>

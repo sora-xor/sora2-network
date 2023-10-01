@@ -1,0 +1,180 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Weight functions needed for ceres_launchpad."><title>WeightInfo in ceres_launchpad::weights - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="ceres_launchpad" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (44f518058 2023-03-20)" data-search-js="search-a6dd7f063a44c279.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../static.files/storage-9184409068f70b79.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-f5a2577c5297a973.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.js"                  integrity="sha384-K3vbOmF2BtaVai+Qk37uypf7VrgBubhQreNQe9aGsz9lB63dIFiQVlJbr92dw2Lx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload='renderMathInElement(document.body, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "$", right: "$", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ]
+        });'></script>
+
+</head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../ceres_launchpad/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../ceres_launchpad/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">WeightInfo</a></h2><div class="sidebar-elems"><section><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.add_whitelisted_contributor">add_whitelisted_contributor</a></li><li><a href="#tymethod.add_whitelisted_ilo_organizer">add_whitelisted_ilo_organizer</a></li><li><a href="#tymethod.change_ceres_burn_fee">change_ceres_burn_fee</a></li><li><a href="#tymethod.change_ceres_contribution_fee">change_ceres_contribution_fee</a></li><li><a href="#tymethod.claim">claim</a></li><li><a href="#tymethod.claim_lp_tokens">claim_lp_tokens</a></li><li><a href="#tymethod.claim_pswap_rewards">claim_pswap_rewards</a></li><li><a href="#tymethod.contribute">contribute</a></li><li><a href="#tymethod.create_ilo">create_ilo</a></li><li><a href="#tymethod.emergency_withdraw">emergency_withdraw</a></li><li><a href="#tymethod.finish_ilo">finish_ilo</a></li><li><a href="#tymethod.remove_whitelisted_contributor">remove_whitelisted_contributor</a></li><li><a href="#tymethod.remove_whitelisted_ilo_organizer">remove_whitelisted_ilo_organizer</a></li></ul><h3><a href="#foreign-impls">Implementations on Foreign Types</a></h3><ul class="block"><li><a href="#impl-WeightInfo-for-()">()</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In ceres_launchpad::weights</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../index.html">ceres_launchpad</a>::<wbr><a href="index.html">weights</a>::<wbr><a class="trait" href="#">WeightInfo</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../src/ceres_launchpad/weights.rs.html#61-75">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait WeightInfo {
+<details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 13 methods</span></summary>    // Required methods
+    fn <a href="#tymethod.create_ilo" class="fn">create_ilo</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.contribute" class="fn">contribute</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.emergency_withdraw" class="fn">emergency_withdraw</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.finish_ilo" class="fn">finish_ilo</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.claim_lp_tokens" class="fn">claim_lp_tokens</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.claim" class="fn">claim</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.change_ceres_burn_fee" class="fn">change_ceres_burn_fee</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.change_ceres_contribution_fee" class="fn">change_ceres_contribution_fee</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.claim_pswap_rewards" class="fn">claim_pswap_rewards</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_whitelisted_contributor" class="fn">add_whitelisted_contributor</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.remove_whitelisted_contributor" class="fn">remove_whitelisted_contributor</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_whitelisted_ilo_organizer" class="fn">add_whitelisted_ilo_organizer</a>() -&gt; Weight;
+<span class="item-spacer"></span>    fn <a href="#tymethod.remove_whitelisted_ilo_organizer" class="fn">remove_whitelisted_ilo_organizer</a>() -&gt; Weight;
+</details>}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Weight functions needed for ceres_launchpad.</p>
+</div></details><h2 id="required-methods" class="small-section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><section id="tymethod.create_ilo" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#62">source</a><h4 class="code-header">fn <a href="#tymethod.create_ilo" class="fn">create_ilo</a>() -&gt; Weight</h4></section><section id="tymethod.contribute" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#63">source</a><h4 class="code-header">fn <a href="#tymethod.contribute" class="fn">contribute</a>() -&gt; Weight</h4></section><section id="tymethod.emergency_withdraw" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#64">source</a><h4 class="code-header">fn <a href="#tymethod.emergency_withdraw" class="fn">emergency_withdraw</a>() -&gt; Weight</h4></section><section id="tymethod.finish_ilo" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#65">source</a><h4 class="code-header">fn <a href="#tymethod.finish_ilo" class="fn">finish_ilo</a>() -&gt; Weight</h4></section><section id="tymethod.claim_lp_tokens" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#66">source</a><h4 class="code-header">fn <a href="#tymethod.claim_lp_tokens" class="fn">claim_lp_tokens</a>() -&gt; Weight</h4></section><section id="tymethod.claim" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#67">source</a><h4 class="code-header">fn <a href="#tymethod.claim" class="fn">claim</a>() -&gt; Weight</h4></section><section id="tymethod.change_ceres_burn_fee" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#68">source</a><h4 class="code-header">fn <a href="#tymethod.change_ceres_burn_fee" class="fn">change_ceres_burn_fee</a>() -&gt; Weight</h4></section><section id="tymethod.change_ceres_contribution_fee" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#69">source</a><h4 class="code-header">fn <a href="#tymethod.change_ceres_contribution_fee" class="fn">change_ceres_contribution_fee</a>() -&gt; Weight</h4></section><section id="tymethod.claim_pswap_rewards" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#70">source</a><h4 class="code-header">fn <a href="#tymethod.claim_pswap_rewards" class="fn">claim_pswap_rewards</a>() -&gt; Weight</h4></section><section id="tymethod.add_whitelisted_contributor" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#71">source</a><h4 class="code-header">fn <a href="#tymethod.add_whitelisted_contributor" class="fn">add_whitelisted_contributor</a>() -&gt; Weight</h4></section><section id="tymethod.remove_whitelisted_contributor" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#72">source</a><h4 class="code-header">fn <a href="#tymethod.remove_whitelisted_contributor" class="fn">remove_whitelisted_contributor</a>() -&gt; Weight</h4></section><section id="tymethod.add_whitelisted_ilo_organizer" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#73">source</a><h4 class="code-header">fn <a href="#tymethod.add_whitelisted_ilo_organizer" class="fn">add_whitelisted_ilo_organizer</a>() -&gt; Weight</h4></section><section id="tymethod.remove_whitelisted_ilo_organizer" class="method"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#74">source</a><h4 class="code-header">fn <a href="#tymethod.remove_whitelisted_ilo_organizer" class="fn">remove_whitelisted_ilo_organizer</a>() -&gt; Weight</h4></section></div><h2 id="foreign-impls" class="small-section-header">Implementations on Foreign Types<a href="#foreign-impls" class="anchor">§</a></h2><details class="toggle implementors-toggle"><summary><section id="impl-WeightInfo-for-()" class="impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#348-614">source</a><a href="#impl-WeightInfo-for-()" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.WeightInfo.html" title="trait ceres_launchpad::weights::WeightInfo">WeightInfo</a> for <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.create_ilo" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#367-375">source</a><a href="#method.create_ilo" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.create_ilo" class="fn">create_ilo</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad WhitelistedIloOrganizers (r:1 w:0)
+Proof Skipped: CeresLaunchpad WhitelistedIloOrganizers (max_values: Some(1), max_size: None, mode: Measured)
+Storage: CeresLaunchpad ILOs (r:1 w:1)
+Proof Skipped: CeresLaunchpad ILOs (max_values: None, max_size: None, mode: Measured)
+Storage: DEXManager DEXInfos (r:1 w:0)
+Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+Storage: TradingPair EnabledSources (r:1 w:0)
+Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
+Storage: Timestamp Now (r:1 w:0)
+Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+Storage: CeresLaunchpad CeresBurnFeeAmount (r:1 w:0)
+Proof Skipped: CeresLaunchpad CeresBurnFeeAmount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: Tokens Accounts (r:2 w:2)
+Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+Storage: Tokens TotalIssuance (r:1 w:1)
+Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+Storage: System Account (r:2 w:1)
+Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.contribute" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#390-398">source</a><a href="#method.contribute" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.contribute" class="fn">contribute</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad WhitelistedContributors (r:1 w:0)
+Proof Skipped: CeresLaunchpad WhitelistedContributors (max_values: Some(1), max_size: None, mode: Measured)
+Storage: Timestamp Now (r:1 w:0)
+Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+Storage: CeresLaunchpad CeresForContributionInILO (r:1 w:0)
+Proof Skipped: CeresLaunchpad CeresForContributionInILO (max_values: Some(1), max_size: None, mode: Measured)
+Storage: Tokens Accounts (r:1 w:0)
+Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+Storage: CeresLaunchpad ILOs (r:1 w:1)
+Proof Skipped: CeresLaunchpad ILOs (max_values: None, max_size: None, mode: Measured)
+Storage: CeresLaunchpad Contributions (r:1 w:1)
+Proof Skipped: CeresLaunchpad Contributions (max_values: None, max_size: None, mode: Measured)
+Storage: System Account (r:2 w:2)
+Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.emergency_withdraw" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#409-417">source</a><a href="#method.emergency_withdraw" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.emergency_withdraw" class="fn">emergency_withdraw</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: Timestamp Now (r:1 w:0)
+Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+Storage: CeresLaunchpad ILOs (r:1 w:1)
+Proof Skipped: CeresLaunchpad ILOs (max_values: None, max_size: None, mode: Measured)
+Storage: CeresLaunchpad Contributions (r:1 w:1)
+Proof Skipped: CeresLaunchpad Contributions (max_values: None, max_size: None, mode: Measured)
+Storage: System Account (r:3 w:3)
+Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+Storage: CeresLaunchpad PenaltiesAccount (r:1 w:0)
+Proof Skipped: CeresLaunchpad PenaltiesAccount (max_values: Some(1), max_size: None, mode: Measured)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.finish_ilo" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#470-478">source</a><a href="#method.finish_ilo" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.finish_ilo" class="fn">finish_ilo</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad ILOs (r:1 w:1)
+Proof Skipped: CeresLaunchpad ILOs (max_values: None, max_size: None, mode: Measured)
+Storage: Timestamp Now (r:1 w:0)
+Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+Storage: CeresLaunchpad FeePercentOnRaisedFunds (r:1 w:0)
+Proof Skipped: CeresLaunchpad FeePercentOnRaisedFunds (max_values: Some(1), max_size: None, mode: Measured)
+Storage: CeresLaunchpad AuthorityAccount (r:1 w:0)
+Proof Skipped: CeresLaunchpad AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: System Account (r:6 w:6)
+Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+Storage: DEXManager DEXInfos (r:1 w:0)
+Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+Storage: Assets AssetOwners (r:2 w:0)
+Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+Storage: TradingPair EnabledSources (r:1 w:1)
+Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
+Storage: Assets AssetInfos (r:2 w:0)
+Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+Storage: Technical TechAccounts (r:1 w:2)
+Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
+Storage: PswapDistribution SubscribedAccounts (r:1 w:1)
+Proof Skipped: PswapDistribution SubscribedAccounts (max_values: None, max_size: None, mode: Measured)
+Storage: Farming Pools (r:1 w:1)
+Proof Skipped: Farming Pools (max_values: None, max_size: None, mode: Measured)
+Storage: Tokens Accounts (r:5 w:5)
+Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+Storage: PoolXYK PoolProviders (r:2 w:2)
+Proof Skipped: PoolXYK PoolProviders (max_values: None, max_size: None, mode: Measured)
+Storage: PoolXYK AccountPools (r:2 w:2)
+Proof Skipped: PoolXYK AccountPools (max_values: None, max_size: None, mode: Measured)
+Storage: PoolXYK TotalIssuances (r:1 w:1)
+Proof Skipped: PoolXYK TotalIssuances (max_values: None, max_size: None, mode: Measured)
+Storage: PriceTools PriceInfos (r:1 w:0)
+Proof Skipped: PriceTools PriceInfos (max_values: None, max_size: None, mode: Measured)
+Storage: Tokens TotalIssuance (r:1 w:1)
+Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+Storage: CeresLiquidityLocker LockerData (r:1 w:1)
+Proof Skipped: CeresLiquidityLocker LockerData (max_values: None, max_size: None, mode: Measured)
+Storage: CeresLiquidityLocker FeesOptionOneAccount (r:1 w:0)
+Proof Skipped: CeresLiquidityLocker FeesOptionOneAccount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: DemeterFarmingPlatform UserInfos (r:1 w:1)
+Proof Skipped: DemeterFarmingPlatform UserInfos (max_values: None, max_size: None, mode: Measured)
+Storage: CeresTokenLocker FeeAmount (r:1 w:0)
+Proof Skipped: CeresTokenLocker FeeAmount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: CeresTokenLocker FeesAccount (r:1 w:0)
+Proof Skipped: CeresTokenLocker FeesAccount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: CeresTokenLocker TokenLockerData (r:1 w:1)
+Proof Skipped: CeresTokenLocker TokenLockerData (max_values: None, max_size: None, mode: Measured)
+Storage: PoolXYK Reserves (r:0 w:1)
+Proof Skipped: PoolXYK Reserves (max_values: None, max_size: None, mode: Measured)
+Storage: PoolXYK Properties (r:0 w:1)
+Proof Skipped: PoolXYK Properties (max_values: None, max_size: None, mode: Measured)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.claim_lp_tokens" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#489-497">source</a><a href="#method.claim_lp_tokens" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.claim_lp_tokens" class="fn">claim_lp_tokens</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: Timestamp Now (r:1 w:0)
+Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+Storage: CeresLaunchpad ILOs (r:1 w:1)
+Proof Skipped: CeresLaunchpad ILOs (max_values: None, max_size: None, mode: Measured)
+Storage: PoolXYK Properties (r:1 w:0)
+Proof Skipped: PoolXYK Properties (max_values: None, max_size: None, mode: Measured)
+Storage: PoolXYK PoolProviders (r:2 w:2)
+Proof Skipped: PoolXYK PoolProviders (max_values: None, max_size: None, mode: Measured)
+Storage: PoolXYK AccountPools (r:1 w:1)
+Proof Skipped: PoolXYK AccountPools (max_values: None, max_size: None, mode: Measured)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.claim" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#506-514">source</a><a href="#method.claim" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.claim" class="fn">claim</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad ILOs (r:1 w:0)
+Proof Skipped: CeresLaunchpad ILOs (max_values: None, max_size: None, mode: Measured)
+Storage: CeresLaunchpad Contributions (r:1 w:1)
+Proof Skipped: CeresLaunchpad Contributions (max_values: None, max_size: None, mode: Measured)
+Storage: Tokens Accounts (r:2 w:2)
+Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+Storage: System Account (r:1 w:0)
+Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.change_ceres_burn_fee" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#519-527">source</a><a href="#method.change_ceres_burn_fee" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.change_ceres_burn_fee" class="fn">change_ceres_burn_fee</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad AuthorityAccount (r:1 w:0)
+Proof Skipped: CeresLaunchpad AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: CeresLaunchpad CeresBurnFeeAmount (r:0 w:1)
+Proof Skipped: CeresLaunchpad CeresBurnFeeAmount (max_values: Some(1), max_size: None, mode: Measured)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.change_ceres_contribution_fee" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#532-540">source</a><a href="#method.change_ceres_contribution_fee" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.change_ceres_contribution_fee" class="fn">change_ceres_contribution_fee</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad AuthorityAccount (r:1 w:0)
+Proof Skipped: CeresLaunchpad AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: CeresLaunchpad CeresForContributionInILO (r:0 w:1)
+Proof Skipped: CeresLaunchpad CeresForContributionInILO (max_values: Some(1), max_size: None, mode: Measured)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.claim_pswap_rewards" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#553-561">source</a><a href="#method.claim_pswap_rewards" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.claim_pswap_rewards" class="fn">claim_pswap_rewards</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad AuthorityAccount (r:1 w:0)
+Proof Skipped: CeresLaunchpad AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: PswapDistribution ShareholderAccounts (r:1 w:1)
+Proof Skipped: PswapDistribution ShareholderAccounts (max_values: None, max_size: None, mode: Measured)
+Storage: PswapDistribution ClaimableShares (r:1 w:1)
+Proof Skipped: PswapDistribution ClaimableShares (max_values: Some(1), max_size: None, mode: Measured)
+Storage: Tokens Accounts (r:3 w:3)
+Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+Storage: System Account (r:3 w:2)
+Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+Storage: VestedRewards Rewards (r:1 w:0)
+Proof Skipped: VestedRewards Rewards (max_values: None, max_size: None, mode: Measured)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.add_whitelisted_contributor" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#566-574">source</a><a href="#method.add_whitelisted_contributor" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.add_whitelisted_contributor" class="fn">add_whitelisted_contributor</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad AuthorityAccount (r:1 w:0)
+Proof Skipped: CeresLaunchpad AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: CeresLaunchpad WhitelistedContributors (r:1 w:1)
+Proof Skipped: CeresLaunchpad WhitelistedContributors (max_values: Some(1), max_size: None, mode: Measured)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.remove_whitelisted_contributor" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#579-587">source</a><a href="#method.remove_whitelisted_contributor" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.remove_whitelisted_contributor" class="fn">remove_whitelisted_contributor</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad AuthorityAccount (r:1 w:0)
+Proof Skipped: CeresLaunchpad AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: CeresLaunchpad WhitelistedContributors (r:1 w:1)
+Proof Skipped: CeresLaunchpad WhitelistedContributors (max_values: Some(1), max_size: None, mode: Measured)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.add_whitelisted_ilo_organizer" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#592-600">source</a><a href="#method.add_whitelisted_ilo_organizer" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.add_whitelisted_ilo_organizer" class="fn">add_whitelisted_ilo_organizer</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad AuthorityAccount (r:1 w:0)
+Proof Skipped: CeresLaunchpad AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: CeresLaunchpad WhitelistedIloOrganizers (r:1 w:1)
+Proof Skipped: CeresLaunchpad WhitelistedIloOrganizers (max_values: Some(1), max_size: None, mode: Measured)</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.remove_whitelisted_ilo_organizer" class="method trait-impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#605-613">source</a><a href="#method.remove_whitelisted_ilo_organizer" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.remove_whitelisted_ilo_organizer" class="fn">remove_whitelisted_ilo_organizer</a>() -&gt; Weight</h4></section></summary><div class="docblock"><p>Storage: CeresLaunchpad AuthorityAccount (r:1 w:0)
+Proof Skipped: CeresLaunchpad AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+Storage: CeresLaunchpad WhitelistedIloOrganizers (r:1 w:1)
+Proof Skipped: CeresLaunchpad WhitelistedIloOrganizers (max_values: Some(1), max_size: None, mode: Measured)</p>
+</div></details></div></details><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-WeightInfo-for-SubstrateWeight%3CT%3E" class="impl"><a class="srclink rightside" href="../../src/ceres_launchpad/weights.rs.html#79-345">source</a><a href="#impl-WeightInfo-for-SubstrateWeight%3CT%3E" class="anchor">§</a><h3 class="code-header">impl&lt;T: Config&gt; <a class="trait" href="trait.WeightInfo.html" title="trait ceres_launchpad::weights::WeightInfo">WeightInfo</a> for <a class="struct" href="struct.SubstrateWeight.html" title="struct ceres_launchpad::weights::SubstrateWeight">SubstrateWeight</a>&lt;T&gt;</h3></section></div><script src="../../implementors/ceres_launchpad/weights/trait.WeightInfo.js" data-ignore-extern-crates="std" async></script></section></div></main></body></html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["KillPrefix","KillStorage","Remark","RemarkWithEvent","SetCode","SetCodeWithoutChecks","SetHeapPages","SetStorage","TransactionApi"]};
