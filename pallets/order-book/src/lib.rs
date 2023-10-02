@@ -646,7 +646,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::place_limit_order())]
+        #[pallet::weight(Pallet::<T>::exchange_weight())] // in the worst case the limit order is converted into market order and the exchange occurs
         pub fn place_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -685,13 +685,15 @@ pub mod pallet {
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
 
+            // Note: be careful with changing the weight. The fee depends on it,
+            // the market-maker fee is charged for some weight, and the regular fee for none weight
             let actual_weight = if executed_orders_count == 0 {
-                None
+                // if the extrinsic just places the limit order, the weight of the placing is returned
+                Some(<T as Config>::WeightInfo::place_limit_order())
             } else {
-                Some(
-                    <T as Config>::WeightInfo::exchange_single_order()
-                        .saturating_mul(executed_orders_count as u64),
-                )
+                // if the limit order was converted into market order, then None weight is returned
+                // this weight will be replaced with worst case weight - exchange_weight()
+                None
             };
 
             Ok(PostDispatchInfo {
