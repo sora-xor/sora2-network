@@ -52,7 +52,7 @@ use crate::{
 use assets::AssetIdOf;
 use codec::Decode;
 use common::prelude::BalanceUnit;
-use common::{balance, AssetInfoProvider, DEXId, PriceVariant};
+use common::{AssetInfoProvider, DEXId, PriceVariant};
 use frame_support::traits::Time;
 use frame_system::EventRecord;
 #[allow(unused)]
@@ -423,7 +423,7 @@ pub(crate) mod quote_benchmark {
 pub(crate) mod exchange_benchmark {
     use super::*;
     use common::prelude::BalanceUnit;
-    use common::Balance;
+    use common::{balance, Balance};
 
     pub struct Context<T: Config> {
         pub caller: T::AccountId,
@@ -452,11 +452,11 @@ pub(crate) mod exchange_benchmark {
         }
     }
 
-    pub fn verify<T: Config + core::fmt::Debug>(settings: FillSettings<T>, context: Context<T>) {
+    pub fn verify<T: Config + core::fmt::Debug>(_settings: FillSettings<T>, context: Context<T>) {
         let Context {
             caller,
             order_book_id,
-            amount,
+            amount: _,
             caller_base_balance,
             caller_quote_balance,
         } = context;
@@ -1963,7 +1963,6 @@ mod tests {
 
             // let settings = preset_16::<Runtime>();
             let settings = FillSettings::<Runtime>::max();
-            let caller = alice::<Runtime>();
             let context = exchange_benchmark::init(settings.clone());
             let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
                 &context.caller,
