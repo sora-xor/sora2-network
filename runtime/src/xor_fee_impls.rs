@@ -270,6 +270,7 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
             CustomFeeDetails::LimitOrderLifetime(lifetime) => {
                 order_book::fee_calculator::FeeCalculator::<Runtime>::place_limit_order_fee(
                     lifetime,
+                    _post_info.actual_weight.is_some(),
                     _result.is_err(),
                 )
             }

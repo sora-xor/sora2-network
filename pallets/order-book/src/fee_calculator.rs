@@ -50,8 +50,14 @@ impl<T: Config> FeeCalculator<T> {
     ///
     /// const part = (4 / 7) * (base fee / 2)
     /// dynamic part = (3 / 7) * (base fee / 2) * (lifetime / max_lifetime)
-    pub fn place_limit_order_fee(lifetime: Option<u64>, is_err: bool) -> Option<Balance> {
-        if is_err {
+    pub fn place_limit_order_fee(
+        lifetime: Option<u64>,
+        has_weight: bool,
+        is_err: bool,
+    ) -> Option<Balance> {
+        // if place_limit_order() returns weight, it means that the limit order was converted into market order and the exchange fee should be taken
+        // if some error occurred, it means we don't prvide the reduced market maker fee for this call
+        if has_weight || is_err {
             return Some(BASE_FEE);
         }
 

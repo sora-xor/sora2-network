@@ -1095,7 +1095,6 @@ fn withdraw_fee_place_limit_order_with_error() {
 }
 
 #[cfg(feature = "wip")] // order-book
-#[ignore] // todo fix
 #[test]
 fn withdraw_fee_place_limit_order_with_crossing_spread() {
     ext().execute_with(|| {
