@@ -41,51 +41,51 @@ fn should_calculate_place_limit_order_fee() {
     let max_lifetime = <Runtime as Config>::MAX_ORDER_LIFESPAN;
 
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(0), false, false).unwrap(),
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(0), true, false).unwrap(),
         balance!(0.0002)
     );
 
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(max_lifetime / 10), false, false)
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(max_lifetime / 10), true, false)
             .unwrap(),
         balance!(0.000215)
     );
 
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(max_lifetime / 5), false, false)
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(max_lifetime / 5), true, false)
             .unwrap(),
         balance!(0.00023)
     );
 
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(max_lifetime / 2), false, false)
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(max_lifetime / 2), true, false)
             .unwrap(),
         balance!(0.000275)
     );
 
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(max_lifetime), false, false).unwrap(),
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(max_lifetime), true, false).unwrap(),
         SMALL_FEE / 2
     );
 }
 
 #[test]
-fn should_calculate_place_limit_order_fee_with_weight() {
+fn should_calculate_place_limit_order_fee_without_weight() {
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(1000), true, false).unwrap(),
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(1000), false, false).unwrap(),
         SMALL_FEE
     );
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(0), true, false).unwrap(),
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(0), false, false).unwrap(),
         SMALL_FEE
     );
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(1000000000000000), true, false)
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(1000000000000000), false, false)
             .unwrap(),
         SMALL_FEE
     );
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(None, true, false).unwrap(),
+        FeeCalculator::<Runtime>::place_limit_order_fee(None, false, false).unwrap(),
         SMALL_FEE
     );
 }
@@ -93,20 +93,20 @@ fn should_calculate_place_limit_order_fee_with_weight() {
 #[test]
 fn should_calculate_place_limit_order_fee_with_error() {
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(1000), false, true).unwrap(),
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(1000), true, true).unwrap(),
         SMALL_FEE
     );
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(0), false, true).unwrap(),
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(0), true, true).unwrap(),
         SMALL_FEE
     );
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(Some(1000000000000000), false, true)
+        FeeCalculator::<Runtime>::place_limit_order_fee(Some(1000000000000000), true, true)
             .unwrap(),
         SMALL_FEE
     );
     assert_eq!(
-        FeeCalculator::<Runtime>::place_limit_order_fee(None, false, true).unwrap(),
+        FeeCalculator::<Runtime>::place_limit_order_fee(None, true, true).unwrap(),
         SMALL_FEE
     );
 }

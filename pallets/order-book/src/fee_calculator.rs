@@ -55,9 +55,9 @@ impl<T: Config> FeeCalculator<T> {
         has_weight: bool,
         is_err: bool,
     ) -> Option<Balance> {
-        // if place_limit_order() returns weight, it means that the limit order was converted into market order and the exchange fee should be taken
+        // if place_limit_order() doesn't return a weight, it means that the limit order was converted into market order and the exchange fee should be taken
         // if some error occurred, it means we don't prvide the reduced market maker fee for this call
-        if has_weight || is_err {
+        if !has_weight || is_err {
             return Some(BASE_FEE);
         }
 

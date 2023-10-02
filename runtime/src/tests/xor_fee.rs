@@ -987,7 +987,7 @@ fn withdraw_fee_place_limit_order_with_default_lifetime() {
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
             Some(pre),
             &dispatch_info,
-            &default_post_info(),
+            &post_info_from_weight(MOCK_WEIGHT),
             len,
             &Ok(())
         )
@@ -1033,7 +1033,7 @@ fn withdraw_fee_place_limit_order_with_some_lifetime() {
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
             Some(pre),
             &dispatch_info,
-            &default_post_info(),
+            &post_info_from_weight(MOCK_WEIGHT),
             len,
             &Ok(())
         )
@@ -1079,7 +1079,7 @@ fn withdraw_fee_place_limit_order_with_error() {
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
             Some(pre),
             &dispatch_info,
-            &default_post_info(),
+            &post_info_from_weight(MOCK_WEIGHT),
             len,
             &Err(order_book::Error::<Runtime>::InvalidLimitOrderPrice.into())
         )
@@ -1125,7 +1125,7 @@ fn withdraw_fee_place_limit_order_with_crossing_spread() {
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
             Some(pre),
             &dispatch_info,
-            &post_info_from_weight(MOCK_WEIGHT), // some weight means that the limit was converted into market order
+            &default_post_info(), // none weight means that the limit was converted into market order
             len,
             &Ok(())
         )
