@@ -114,6 +114,8 @@ pub mod pallet {
         const MIN_ORDER_LIFESPAN: MomentOf<Self>;
         const MILLISECS_PER_BLOCK: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
+        const SMALL_MIN_MAX_RATIO: usize;
+        const BIG_MIN_MAX_RATIO: usize;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -652,7 +654,7 @@ pub mod pallet {
             amount: Balance,
             side: PriceVariant,
             lifespan: Option<MomentOf<T>>,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
@@ -677,12 +679,25 @@ pub mod pallet {
             );
 
             let mut data = CacheDataLayer::<T>::new();
-            order_book.place_limit_order(order, &mut data)?;
+
+            let executed_orders_count = order_book.place_limit_order(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
 
-            Ok(().into())
+            let actual_weight = if executed_orders_count == 0 {
+                None
+            } else {
+                Some(
+                    <T as Config>::WeightInfo::exchange_single_order()
+                        .saturating_mul(executed_orders_count as u64),
+                )
+            };
+
+            Ok(PostDispatchInfo {
+                actual_weight,
+                pays_fee: Pays::Yes,
+            })
         }
 
         #[pallet::call_index(5)]
@@ -1137,7 +1152,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let market_order =
             MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to.clone());
 
-        let (input_amount, output_amount) =
+        let (input_amount, output_amount, executed_orders_count) =
             order_book.execute_market_order(market_order, &mut data)?;
 
         let fee = 0; // todo (m.tagirov)
@@ -1161,7 +1176,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         data.commit();
 
-        Ok((result, Self::exchange_weight()))
+        let weight = <T as Config>::WeightInfo::exchange_single_order()
+            .saturating_mul(executed_orders_count as u64);
+
+        Ok((result, weight))
     }
 
     fn check_rewards(
@@ -1263,7 +1281,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn exchange_weight() -> Weight {
-        <T as Config>::WeightInfo::exchange()
+        // SMALL_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
+        <T as Config>::WeightInfo::exchange_single_order()
+            .saturating_mul(<T as Config>::SMALL_MIN_MAX_RATIO as u64)
     }
 
     fn check_rewards_weight() -> Weight {
