@@ -51,7 +51,9 @@ use crate::{
 };
 use assets::AssetIdOf;
 use codec::Decode;
-use common::DEXId;
+use common::prelude::BalanceUnit;
+use common::{balance, AssetInfoProvider, DEXId, PriceVariant};
+use frame_support::traits::Time;
 use frame_system::EventRecord;
 #[allow(unused)]
 #[cfg(test)]
@@ -61,6 +63,14 @@ use framenode_runtime::order_book::{
     OrderBookStatus, OrderBooks, OrderVolume, Pallet,
 };
 use hex_literal::hex;
+
+use crate::test_utils::FillSettings;
+#[cfg(not(test))]
+use preparation::presets::*;
+use preparation::{
+    prepare_cancel_orderbook_benchmark, prepare_delete_orderbook_benchmark,
+    prepare_market_order_benchmark, prepare_place_orderbook_benchmark, prepare_quote_benchmark,
+};
 
 use Pallet as OrderBookPallet;
 
@@ -142,16 +152,351 @@ pub fn assert_orders_numbers<T: Config>(
     }
 }
 
+pub(crate) mod delete_orderbook_benchmark {
+    use super::*;
+
+    pub fn init<T: Config>(settings: FillSettings<T>) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+        prepare_delete_orderbook_benchmark::<T>(settings)
+    }
+
+    pub fn verify<T: Config + core::fmt::Debug>(
+        settings: FillSettings<T>,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookDeleted {
+                order_book_id,
+                count_of_canceled_orders: settings.max_side_price_count
+                    * settings.max_orders_per_price
+                    * 2,
+            }
+            .into(),
+        );
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
+    }
+}
+
+pub(crate) mod place_limit_order_benchmark {
+    use super::*;
+    use common::Balance;
+
+    pub struct Context<T: Config> {
+        pub caller: T::AccountId,
+        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        pub price: Balance,
+        pub amount: Balance,
+        pub side: PriceVariant,
+        pub lifespan: MomentOf<T>,
+    }
+
+    pub fn init<T: Config>(settings: FillSettings<T>) -> Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+        let caller = alice::<T>();
+        let (order_book_id, price, amount, side, lifespan) =
+            prepare_place_orderbook_benchmark::<T>(settings.clone(), caller.clone());
+        Context {
+            caller,
+            order_book_id,
+            price,
+            amount,
+            side,
+            lifespan,
+        }
+    }
+
+    pub fn verify<T: Config + core::fmt::Debug>(
+        settings: FillSettings<T>,
+        init_values: Context<T>,
+    ) {
+        let Context {
+            caller,
+            order_book_id,
+            price,
+            amount: _,
+            side,
+            lifespan,
+        } = init_values;
+        let order_id = get_last_order_id::<T>(order_book_id).unwrap();
+        assert_orders_numbers::<T>(
+            order_book_id,
+            Some(0),
+            None,
+            // 1 order was placed
+            Some((
+                caller.clone(),
+                sp_std::cmp::min(
+                    settings.max_orders_per_user,
+                    (settings.max_side_price_count - 1) * settings.max_orders_per_price + 1,
+                ) as usize,
+            )),
+            Some((lifespan, settings.max_expiring_orders_per_block as usize)),
+        );
+
+        assert_last_event::<T>(
+            Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+                order_book_id,
+                owner_id: caller.clone(),
+                market_order_direction: side,
+                market_order_amount: OrderAmount::Base(BalanceUnit::divisible(
+                    4096000000000000000000,
+                )),
+                market_order_average_price: BalanceUnit::divisible(325000000000000),
+                limit_order_id: order_id,
+            }
+            .into(),
+        );
+
+        let current_block = frame_system::Pallet::<T>::block_number();
+
+        let order_book = order_book::OrderBooks::<T>::get(order_book_id).unwrap();
+        let now = <<T as Config>::Time as Time>::now();
+        let expected_limit_order = LimitOrder::<T>::new(
+            order_id,
+            caller.clone(),
+            PriceVariant::Sell,
+            price.into(),
+            order_book.min_lot_size.into(),
+            now,
+            lifespan,
+            current_block,
+        );
+        let mut order = OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap();
+        order.original_amount = order.amount;
+        assert_eq!(order, expected_limit_order);
+    }
+}
+
+pub(crate) mod cancel_limit_order_benchmark {
+    use common::Balance;
+    // use crate::LimitOrder;
+    use super::*;
+
+    pub struct Context<T: Config> {
+        pub caller: T::AccountId,
+        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        pub order_id: T::OrderId,
+        pub order: LimitOrder<T>,
+        pub balance_before: Balance,
+    }
+
+    pub fn init<T: Config>(settings: FillSettings<T>, first_expiration: bool) -> Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+        let caller = alice::<T>();
+        let (order_book_id, order_id) =
+            prepare_cancel_orderbook_benchmark(settings, caller.clone(), first_expiration);
+        let order =
+            OrderBookPallet::<T>::limit_orders::<_, T::OrderId>(order_book_id, order_id).unwrap();
+        let balance_before =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner)
+                .unwrap();
+        Context {
+            caller,
+            order_book_id,
+            order_id,
+            order,
+            balance_before,
+        }
+    }
+
+    pub fn verify<T: Config + core::fmt::Debug>(_settings: FillSettings<T>, context: Context<T>) {
+        let Context {
+            caller: _,
+            order_book_id,
+            order_id,
+            order,
+            balance_before,
+        } = context;
+        assert_last_event::<T>(
+            Event::<T>::LimitOrderCanceled {
+                order_book_id,
+                order_id,
+                owner_id: order.owner.clone(),
+            }
+            .into(),
+        );
+
+        let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
+        let balance =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner)
+                .unwrap();
+        let expected_balance = balance_before + deal_amount.balance();
+        assert_eq!(balance, expected_balance);
+    }
+}
+
+pub(crate) mod execute_market_order_benchmark {
+    use super::*;
+    use common::prelude::BalanceUnit;
+    use common::Balance;
+
+    pub struct Context<T: Config> {
+        pub caller: T::AccountId,
+        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        pub amount: BalanceUnit,
+        pub caller_base_balance: Balance,
+        pub caller_quote_balance: Balance,
+    }
+
+    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+        let caller = alice::<T>();
+        let (order_book_id, amount) =
+            prepare_market_order_benchmark(settings, caller.clone(), false);
+        let caller_base_balance =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap();
+        let caller_quote_balance =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
+        Context {
+            caller,
+            order_book_id,
+            amount,
+            caller_base_balance,
+            caller_quote_balance,
+        }
+    }
+
+    pub fn verify<T: Config + core::fmt::Debug>(_settings: FillSettings<T>, context: Context<T>) {
+        let Context {
+            caller,
+            order_book_id,
+            amount,
+            caller_base_balance,
+            caller_quote_balance,
+        } = context;
+        let average_price = BalanceUnit::divisible(325000000000000);
+        assert_last_event::<T>(
+            Event::<T>::MarketOrderExecuted {
+                order_book_id,
+                owner_id: caller.clone(),
+                direction: PriceVariant::Sell,
+                amount: OrderAmount::Base(OrderVolume::indivisible(*amount.balance())),
+                average_price,
+                to: None,
+            }
+            .into(),
+        );
+        assert_orders_numbers::<T>(order_book_id, Some(1), Some(0), None, None);
+        assert_eq!(
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
+            caller_base_balance - *amount.balance()
+        );
+        assert_eq!(
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
+            caller_quote_balance + *(amount * average_price).balance()
+        );
+    }
+}
+
+pub(crate) mod quote_benchmark {
+    use super::*;
+    use common::prelude::QuoteAmount;
+    use common::Balance;
+
+    pub struct Context<T: Config> {
+        pub dex_id: T::DEXId,
+        pub input_asset_id: AssetIdOf<T>,
+        pub output_asset_id: AssetIdOf<T>,
+        pub amount: QuoteAmount<Balance>,
+        pub deduce_fee: bool,
+    }
+
+    pub fn init<T: Config>(settings: FillSettings<T>) -> Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+        let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
+            prepare_quote_benchmark::<T>(settings);
+        Context {
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+        }
+    }
+}
+
+pub(crate) mod exchange_benchmark {
+    use super::*;
+    use common::prelude::BalanceUnit;
+    use common::Balance;
+
+    pub struct Context<T: Config> {
+        pub caller: T::AccountId,
+        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        pub amount: BalanceUnit,
+        pub caller_base_balance: Balance,
+        pub caller_quote_balance: Balance,
+    }
+
+    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+        let caller = alice::<T>();
+        let (order_book_id, amount) =
+            prepare_market_order_benchmark(settings.clone(), caller.clone(), true);
+        let caller_base_balance =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap();
+        let caller_quote_balance =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
+        Context {
+            caller,
+            order_book_id,
+            amount,
+            caller_base_balance,
+            caller_quote_balance,
+        }
+    }
+
+    pub fn verify<T: Config + core::fmt::Debug>(settings: FillSettings<T>, context: Context<T>) {
+        let Context {
+            caller,
+            order_book_id,
+            amount,
+            caller_base_balance,
+            caller_quote_balance,
+        } = context;
+
+        let order_amount = OrderAmount::Base(balance!(4096).into());
+        let average_price = BalanceUnit::divisible(325000000000000);
+        assert_last_event::<T>(
+            Event::<T>::MarketOrderExecuted {
+                order_book_id,
+                owner_id: caller.clone(),
+                direction: PriceVariant::Sell,
+                amount: order_amount,
+                average_price,
+                to: None,
+            }
+            .into(),
+        );
+
+        assert_orders_numbers::<T>(order_book_id, Some(1), Some(0), None, None);
+
+        assert_eq!(
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
+            caller_base_balance - *order_amount.value().balance()
+        );
+        assert_eq!(
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
+            caller_quote_balance + *(*order_amount.value() * average_price).balance()
+        );
+    }
+}
+
 #[cfg(not(test))]
 pub use benchmarks_inner::*;
 #[cfg(not(test))]
 mod benchmarks_inner {
-    use common::prelude::{BalanceUnit, SwapAmount};
+    use common::prelude::SwapAmount;
     use common::{
         balance, AssetInfoProvider, AssetName, AssetSymbol, LiquiditySource, PriceVariant, VAL, XOR,
     };
     use frame_benchmarking::benchmarks;
-    use frame_support::traits::{Get, Time};
     use frame_support::weights::WeightMeter;
     use frame_system::RawOrigin;
     use sp_runtime::traits::UniqueSaturatedInto;
@@ -160,376 +505,18 @@ mod benchmarks_inner {
     use crate::cache_data_layer::CacheDataLayer;
     use crate::test_utils::FillSettings;
     use crate::{
-        self as order_book, Config, Event, ExpirationScheduler, LimitOrder, MarketRole,
-        OrderAmount, OrderBook, OrderBookId, OrderBookStatus, Pallet,
+        Config, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
+        Pallet,
     };
     use preparation::{
         create_and_populate_order_book, prepare_cancel_orderbook_benchmark,
         prepare_delete_orderbook_benchmark, prepare_market_order_benchmark,
-        prepare_place_orderbook_benchmark, prepare_quote_benchmark, presets::*,
+        prepare_place_orderbook_benchmark, prepare_quote_benchmark,
     };
 
     use assets::Pallet as Assets;
     use frame_system::Pallet as FrameSystem;
     use trading_pair::Pallet as TradingPair;
-
-    pub(crate) mod delete_orderbook_benchmark {
-        use super::*;
-
-        pub fn init<T: Config>(settings: FillSettings<T>) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
-            // https://github.com/paritytech/polkadot-sdk/issues/383
-            frame_system::Pallet::<T>::set_block_number(1u32.into());
-            prepare_delete_orderbook_benchmark::<T>(settings)
-        }
-
-        pub fn verify<T: Config + core::fmt::Debug>(
-            settings: FillSettings<T>,
-            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        ) {
-            assert_last_event::<T>(
-                Event::<T>::OrderBookDeleted {
-                    order_book_id,
-                    count_of_canceled_orders: settings.max_side_price_count
-                        * settings.max_orders_per_price
-                        * 2,
-                }
-                .into(),
-            );
-            assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
-        }
-    }
-
-    pub(crate) mod place_limit_order_benchmark {
-        use super::*;
-        use common::Balance;
-
-        pub struct Context<T: Config> {
-            pub caller: T::AccountId,
-            pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            pub price: Balance,
-            pub amount: Balance,
-            pub side: PriceVariant,
-            pub lifespan: MomentOf<T>,
-        }
-
-        pub fn init<T: Config>(settings: FillSettings<T>) -> Context<T> {
-            // https://github.com/paritytech/polkadot-sdk/issues/383
-            frame_system::Pallet::<T>::set_block_number(1u32.into());
-            let caller = alice::<T>();
-            let settings = FillSettings::<T>::max();
-            let (order_book_id, price, amount, side, lifespan) =
-                prepare_place_orderbook_benchmark::<T>(settings.clone(), caller.clone());
-            Context {
-                caller,
-                order_book_id,
-                price,
-                amount,
-                side,
-                lifespan,
-            }
-        }
-
-        pub fn verify<T: Config + core::fmt::Debug>(
-            settings: FillSettings<T>,
-            init_values: Context<T>,
-        ) {
-            let Context {
-                caller,
-                order_book_id,
-                price,
-                amount,
-                side,
-                lifespan,
-            } = init_values;
-            let order_id = get_last_order_id::<T>(order_book_id).unwrap();
-            assert_orders_numbers::<T>(
-                order_book_id,
-                Some(0),
-                None,
-                // 1 order was placed
-                Some((
-                    caller.clone(),
-                    sp_std::cmp::min(
-                        settings.max_orders_per_user,
-                        (settings.max_side_price_count - 1) * settings.max_orders_per_price + 1,
-                    ) as usize,
-                )),
-                Some((lifespan, settings.max_expiring_orders_per_block as usize)),
-            );
-
-            assert_last_event::<T>(
-                Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
-                    order_book_id,
-                    owner_id: caller.clone(),
-                    market_order_direction: PriceVariant::Sell,
-                    market_order_amount: OrderAmount::Base(BalanceUnit::divisible(
-                        4096000000000000000000,
-                    )),
-                    market_order_average_price: BalanceUnit::divisible(325000000000000),
-                    limit_order_id: order_id,
-                }
-                .into(),
-            );
-
-            let current_block = frame_system::Pallet::<T>::block_number();
-
-            let order_book = order_book::OrderBooks::<T>::get(order_book_id).unwrap();
-            let now = <<T as Config>::Time as Time>::now();
-            let expected_limit_order = LimitOrder::<T>::new(
-                order_id,
-                caller.clone(),
-                PriceVariant::Sell,
-                price.into(),
-                order_book.min_lot_size.into(),
-                now,
-                lifespan,
-                current_block,
-            );
-            let mut order = OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap();
-            order.original_amount = order.amount;
-            assert_eq!(order, expected_limit_order);
-        }
-    }
-
-    pub(crate) mod cancel_limit_order_benchmark {
-        use common::Balance;
-        // use crate::LimitOrder;
-        use super::*;
-
-        pub struct Context<T: Config> {
-            pub caller: T::AccountId,
-            pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            pub order_id: T::OrderId,
-            pub order: LimitOrder<T>,
-            pub balance_before: Balance,
-        }
-
-        pub fn init<T: Config>(settings: FillSettings<T>, first_expiration: bool) -> Context<T> {
-            // https://github.com/paritytech/polkadot-sdk/issues/383
-            frame_system::Pallet::<T>::set_block_number(1u32.into());
-            let caller = alice::<T>();
-            let (order_book_id, order_id) =
-                prepare_cancel_orderbook_benchmark(settings, caller.clone(), first_expiration);
-            let order =
-                OrderBookPallet::<T>::limit_orders::<_, T::OrderId>(order_book_id, order_id)
-                    .unwrap();
-            let balance_before =
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner)
-                    .unwrap();
-            Context {
-                caller,
-                order_book_id,
-                order_id,
-                order,
-                balance_before,
-            }
-        }
-
-        pub fn verify<T: Config + core::fmt::Debug>(
-            _settings: FillSettings<T>,
-            context: Context<T>,
-        ) {
-            let Context {
-                caller,
-                order_book_id,
-                order_id,
-                order,
-                balance_before,
-            } = context;
-            assert_last_event::<T>(
-                Event::<T>::LimitOrderCanceled {
-                    order_book_id,
-                    order_id,
-                    owner_id: order.owner.clone(),
-                }
-                .into(),
-            );
-
-            let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
-            let balance =
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner)
-                    .unwrap();
-            let expected_balance = balance_before + deal_amount.balance();
-            assert_eq!(balance, expected_balance);
-        }
-    }
-
-    pub(crate) mod execute_market_order_benchmark {
-        use super::*;
-        use common::prelude::BalanceUnit;
-        use common::Balance;
-
-        pub struct Context<T: Config> {
-            pub caller: T::AccountId,
-            pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            pub amount: BalanceUnit,
-            pub caller_base_balance: Balance,
-            pub caller_quote_balance: Balance,
-        }
-
-        pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
-            // https://github.com/paritytech/polkadot-sdk/issues/383
-            frame_system::Pallet::<T>::set_block_number(1u32.into());
-            let caller = alice::<T>();
-            let settings = FillSettings::<T>::max();
-            let (order_book_id, amount) =
-                prepare_market_order_benchmark(settings.clone(), caller.clone(), false);
-            let caller_base_balance =
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
-                    .unwrap();
-            let caller_quote_balance =
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                    .unwrap();
-            Context {
-                caller,
-                order_book_id,
-                amount,
-                caller_base_balance,
-                caller_quote_balance,
-            }
-        }
-
-        pub fn verify<T: Config + core::fmt::Debug>(
-            settings: FillSettings<T>,
-            context: Context<T>,
-        ) {
-            let Context {
-                caller,
-                order_book_id,
-                amount,
-                caller_base_balance,
-                caller_quote_balance,
-            } = context;
-            let average_price = BalanceUnit::divisible(325000000000000);
-            assert_last_event::<T>(
-                Event::<T>::MarketOrderExecuted {
-                    order_book_id,
-                    owner_id: caller.clone(),
-                    direction: PriceVariant::Sell,
-                    amount: OrderAmount::Base(OrderVolume::indivisible(*amount.balance())),
-                    average_price,
-                    to: None,
-                }
-                .into(),
-            );
-            assert_orders_numbers::<T>(order_book_id, Some(1), Some(0), None, None);
-            assert_eq!(
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
-                    .unwrap(),
-                caller_base_balance - *amount.balance()
-            );
-            assert_eq!(
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                    .unwrap(),
-                caller_quote_balance + *(amount * average_price).balance()
-            );
-        }
-    }
-
-    pub(crate) mod quote_benchmark {
-        use super::*;
-        use common::prelude::QuoteAmount;
-        use common::Balance;
-
-        pub struct Context<T: Config> {
-            pub dex_id: T::DEXId,
-            pub input_asset_id: AssetIdOf<T>,
-            pub output_asset_id: AssetIdOf<T>,
-            pub amount: QuoteAmount<Balance>,
-            pub deduce_fee: bool,
-        }
-
-        pub fn init<T: Config>(settings: FillSettings<T>) -> Context<T> {
-            // https://github.com/paritytech/polkadot-sdk/issues/383
-            frame_system::Pallet::<T>::set_block_number(1u32.into());
-            let settings = FillSettings::<T>::max();
-            let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
-                prepare_quote_benchmark::<T>(settings);
-            Context {
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                amount,
-                deduce_fee,
-            }
-        }
-    }
-
-    pub(crate) mod exchange_benchmark {
-        use super::*;
-        use common::prelude::BalanceUnit;
-        use common::Balance;
-
-        pub struct Context<T: Config> {
-            pub caller: T::AccountId,
-            pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            pub amount: BalanceUnit,
-            pub caller_base_balance: Balance,
-            pub caller_quote_balance: Balance,
-        }
-
-        pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
-            // https://github.com/paritytech/polkadot-sdk/issues/383
-            frame_system::Pallet::<T>::set_block_number(1u32.into());
-            let caller = alice::<T>();
-            let settings = FillSettings::<T>::max();
-            let (order_book_id, amount) =
-                prepare_market_order_benchmark(settings.clone(), caller.clone(), true);
-            let caller_base_balance =
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
-                    .unwrap();
-            let caller_quote_balance =
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                    .unwrap();
-            Context {
-                caller,
-                order_book_id,
-                amount,
-                caller_base_balance,
-                caller_quote_balance,
-            }
-        }
-
-        pub fn verify<T: Config + core::fmt::Debug>(
-            settings: FillSettings<T>,
-            context: Context<T>,
-        ) {
-            let Context {
-                caller,
-                order_book_id,
-                amount,
-                caller_base_balance,
-                caller_quote_balance,
-            } = context;
-
-            let order_amount = OrderAmount::Base(balance!(4096).into());
-            let average_price = BalanceUnit::divisible(325000000000000);
-            assert_last_event::<T>(
-                Event::<T>::MarketOrderExecuted {
-                    order_book_id,
-                    owner_id: caller.clone(),
-                    direction: PriceVariant::Sell,
-                    amount: order_amount,
-                    average_price,
-                    to: None,
-                }
-                .into(),
-            );
-
-            assert_orders_numbers::<T>(order_book_id, Some(1), Some(0), None, None);
-
-            assert_eq!(
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
-                    .unwrap(),
-                caller_base_balance - *order_amount.value().balance()
-            );
-            assert_eq!(
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                    .unwrap(),
-                caller_quote_balance + *(*order_amount.value() * average_price).balance()
-            );
-        }
-    }
 
     benchmarks! {
         where_clause {
@@ -1871,57 +1858,26 @@ mod benchmarks_inner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::benchmarking::preparation::prepare_market_order_benchmark;
-    use crate::test_utils::{run_to_block, FillSettings};
+    use crate::test_utils::FillSettings;
 
-    use common::prelude::{BalanceUnit, SwapAmount};
-    use common::{balance, AssetInfoProvider, PriceVariant};
-    use frame_support::assert_ok;
-    use frame_support::traits::Time;
+    use common::prelude::SwapAmount;
+    use common::{balance, PriceVariant};
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
     #[allow(unused)]
     use preparation::presets::*;
-    use preparation::{
-        prepare_cancel_orderbook_benchmark, prepare_delete_orderbook_benchmark,
-        prepare_place_orderbook_benchmark, prepare_quote_benchmark,
-    };
 
     #[test]
     fn test_benchmark_delete_orderbook() {
         ext().execute_with(|| {
             // let settings = preset_16::<Runtime>();
             let settings = FillSettings::<Runtime>::max();
-            let order_book_id = prepare_delete_orderbook_benchmark::<Runtime>(settings.clone());
-            let mut data_layer =
-                framenode_runtime::order_book::storage_data_layer::StorageDataLayer::<Runtime>::new(
-                );
-            let total_orders = data_layer.get_all_limit_orders(&order_book_id).len() as u32;
-            assert_eq!(
-                (settings.max_side_price_count * settings.max_orders_per_price * 2),
-                total_orders
-            );
-            run_to_block(1);
+            let order_book_id = delete_orderbook_benchmark::init(settings.clone());
+            // run_to_block(1);
             OrderBookPallet::<Runtime>::delete_orderbook(RawOrigin::Root.into(), order_book_id)
                 .unwrap();
-            assert_last_event::<Runtime>(
-                Event::<Runtime>::OrderBookDeleted {
-                    order_book_id,
-                    count_of_canceled_orders: settings.max_side_price_count
-                        * settings.max_orders_per_price
-                        * 2,
-                }
-                .into(),
-            );
-            assert_eq!(OrderBookPallet::<Runtime>::order_books(order_book_id), None);
-            assert_eq!(
-                <framenode_runtime::order_book::LimitOrders<Runtime>>::iter_prefix_values(
-                    order_book_id
-                )
-                .next(),
-                None,
-            );
+            delete_orderbook_benchmark::verify(settings, order_book_id);
         })
     }
 
@@ -1930,69 +1886,20 @@ mod tests {
         ext().execute_with(|| {
             // let settings = preset_16::<Runtime>();
             let settings = FillSettings::<Runtime>::max();
-            let caller = alice::<Runtime>();
-            run_to_block(1);
-            let (order_book_id, price, amount, side, lifespan) =
-                prepare_place_orderbook_benchmark(settings.clone(), caller.clone());
+            // run_to_block(1);
+            let context = place_limit_order_benchmark::init(settings.clone());
 
             OrderBookPallet::<Runtime>::place_limit_order(
-                RawOrigin::Signed(caller.clone()).into(),
-                order_book_id,
-                price,
-                amount,
-                side,
-                Some(lifespan),
+                RawOrigin::Signed(context.caller.clone()).into(),
+                context.order_book_id,
+                context.price,
+                context.amount,
+                context.side,
+                Some(context.lifespan),
             )
             .unwrap();
 
-            let order_id = get_last_order_id::<Runtime>(order_book_id).unwrap();
-
-            assert_orders_numbers::<Runtime>(
-                order_book_id,
-                Some(0),
-                None,
-                Some((
-                    caller.clone(),
-                    sp_std::cmp::min(
-                        settings.max_orders_per_user,
-                        (settings.max_side_price_count - 1) * settings.max_orders_per_price + 1,
-                    ) as usize,
-                )),
-                Some((lifespan, settings.max_expiring_orders_per_block as usize)),
-            );
-
-            assert_last_event::<Runtime>(
-                Event::<Runtime>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
-                    order_book_id,
-                    owner_id: caller.clone(),
-                    market_order_direction: PriceVariant::Sell,
-                    market_order_amount: OrderAmount::Base(BalanceUnit::divisible(
-                        4096000000000000000000,
-                    )),
-                    market_order_average_price: BalanceUnit::divisible(325000000000000),
-                    limit_order_id: order_id,
-                }
-                .into(),
-            );
-
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
-
-            let order_book = order_book::OrderBooks::<Runtime>::get(order_book_id).unwrap();
-            let now = <<Runtime as Config>::Time as Time>::now();
-            let expected_limit_order = LimitOrder::<Runtime>::new(
-                order_id,
-                caller.clone(),
-                PriceVariant::Sell,
-                price.into(),
-                order_book.min_lot_size.into(),
-                now,
-                lifespan,
-                current_block,
-            );
-            let mut order =
-                OrderBookPallet::<Runtime>::limit_orders(order_book_id, order_id).unwrap();
-            order.original_amount = order.amount;
-            assert_eq!(order, expected_limit_order);
+            place_limit_order_benchmark::verify(settings, context);
         })
     }
 
@@ -2000,46 +1907,33 @@ mod tests {
     fn test_benchmark_cancel() {
         ext().execute_with(|| {
             let settings = FillSettings::<Runtime>::max();
-            let caller = alice::<Runtime>();
-            run_to_block(1);
-            let (order_book_id, order_id) =
-                prepare_cancel_orderbook_benchmark(settings, caller.clone(), false);
-            let order =
-                OrderBookPallet::<Runtime>::limit_orders::<_, <Runtime as Config>::OrderId>(
-                    order_book_id,
-                    order_id,
-                )
-                .unwrap();
-            let balance_before = <Runtime as Config>::AssetInfoProvider::free_balance(
-                &order_book_id.quote,
-                &order.owner,
-            )
-            .unwrap();
+            let context = cancel_limit_order_benchmark::init(settings.clone(), false);
 
             OrderBookPallet::<Runtime>::cancel_limit_order(
-                RawOrigin::Signed(caller.clone()).into(),
-                order_book_id.clone(),
-                order_id.clone(),
+                RawOrigin::Signed(context.caller.clone()).into(),
+                context.order_book_id.clone(),
+                context.order_id.clone(),
             )
             .unwrap();
 
-            assert_last_event::<Runtime>(
-                Event::<Runtime>::LimitOrderCanceled {
-                    order_book_id,
-                    order_id,
-                    owner_id: order.owner.clone(),
-                }
-                .into(),
-            );
+            cancel_limit_order_benchmark::verify(settings, context);
+        })
+    }
 
-            let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
-            let balance = <Runtime as Config>::AssetInfoProvider::free_balance(
-                &order_book_id.quote,
-                &order.owner,
+    #[test]
+    fn test_benchmark_execute_market_order() {
+        ext().execute_with(|| {
+            // let settings = preset_16::<Runtime>();
+            let settings = FillSettings::<Runtime>::max();
+            let context = execute_market_order_benchmark::init(settings.clone());
+            OrderBookPallet::<Runtime>::execute_market_order(
+                RawOrigin::Signed(context.caller.clone()).into(),
+                context.order_book_id,
+                PriceVariant::Sell,
+                *context.amount.balance(),
             )
             .unwrap();
-            let expected_balance = balance_before + deal_amount.balance();
-            assert_eq!(balance, expected_balance);
+            execute_market_order_benchmark::verify(settings, context);
         })
     }
 
@@ -2050,20 +1944,13 @@ mod tests {
 
             // let settings = preset_16::<Runtime>();
             let settings = FillSettings::<Runtime>::max();
-            let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
-                prepare_quote_benchmark::<Runtime>(settings);
-            let _order_book_id = OrderBookId {
-                dex_id,
-                base: input_asset_id,
-                quote: output_asset_id,
-            };
-            // pretty_print_order_book::<Runtime>(_order_book_id.clone(), None);
+            let context = quote_benchmark::init(settings.clone());
             let _ = OrderBookPallet::<Runtime>::quote(
-                &dex_id,
-                &input_asset_id,
-                &output_asset_id,
-                amount,
-                deduce_fee,
+                &context.dex_id,
+                &context.input_asset_id,
+                &context.output_asset_id,
+                context.amount,
+                context.deduce_fee,
             )
             .unwrap();
         })
@@ -2077,100 +1964,17 @@ mod tests {
             // let settings = preset_16::<Runtime>();
             let settings = FillSettings::<Runtime>::max();
             let caller = alice::<Runtime>();
-            run_to_block(1);
-            let (order_book_id, amount) =
-                prepare_market_order_benchmark(settings.clone(), caller.clone(), true);
-            let caller_base_balance =
-                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
-                    .unwrap();
-            let caller_quote_balance =
-                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                    .unwrap();
-            // pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
+            let context = exchange_benchmark::init(settings.clone());
             let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
-                &caller,
-                &caller,
-                &order_book_id.dex_id,
-                &order_book_id.base,
-                &order_book_id.quote,
-                SwapAmount::with_desired_input(*amount.balance(), balance!(0)),
+                &context.caller,
+                &context.caller,
+                &context.order_book_id.dex_id,
+                &context.order_book_id.base,
+                &context.order_book_id.quote,
+                SwapAmount::with_desired_input(*context.amount.balance(), balance!(0)),
             )
             .unwrap();
-            // pretty_print_order_book::<Runtime>(order_book_id.clone(), None);
-            let order_amount = OrderAmount::Base(balance!(4096).into());
-            let average_price = BalanceUnit::divisible(325000000000000);
-            assert_last_event::<Runtime>(
-                Event::<Runtime>::MarketOrderExecuted {
-                    order_book_id,
-                    owner_id: caller.clone(),
-                    direction: PriceVariant::Sell,
-                    amount: order_amount,
-                    average_price,
-                    to: None,
-                }
-                .into(),
-            );
-
-            assert_orders_numbers::<Runtime>(order_book_id, Some(1), Some(0), None, None);
-            assert_eq!(
-                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
-                    .unwrap(),
-                caller_base_balance - *order_amount.value().balance()
-            );
-            assert_eq!(
-                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                    .unwrap(),
-                caller_quote_balance + *(*order_amount.value() * average_price).balance()
-            );
-        })
-    }
-
-    #[test]
-    fn test_benchmark_execute_market_order() {
-        ext().execute_with(|| {
-            // let settings = preset_16::<Runtime>();
-            let settings = FillSettings::<Runtime>::max();
-            let caller = alice::<Runtime>();
-            run_to_block(1);
-            let (order_book_id, amount) =
-                prepare_market_order_benchmark(settings, caller.clone(), false);
-            let caller_base_balance =
-                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
-                    .unwrap();
-            let caller_quote_balance =
-                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                    .unwrap();
-            // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(20));
-            assert_ok!(OrderBookPallet::<Runtime>::execute_market_order(
-                RawOrigin::Signed(caller.clone()).into(),
-                order_book_id,
-                PriceVariant::Sell,
-                *amount.balance(),
-            ));
-            // pretty_print_order_book::<Runtime>(order_book_id.clone(), Some(20));
-            let average_price = BalanceUnit::divisible(325000000000000);
-            assert_last_event::<Runtime>(
-                Event::<Runtime>::MarketOrderExecuted {
-                    order_book_id,
-                    owner_id: caller.clone(),
-                    direction: PriceVariant::Sell,
-                    amount: OrderAmount::Base(OrderVolume::indivisible(*amount.balance())),
-                    average_price,
-                    to: None,
-                }
-                .into(),
-            );
-            assert_orders_numbers::<Runtime>(order_book_id, Some(1), Some(0), None, None);
-            assert_eq!(
-                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
-                    .unwrap(),
-                caller_base_balance - *amount.balance()
-            );
-            assert_eq!(
-                <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                    .unwrap(),
-                caller_quote_balance + *(amount * average_price).balance()
-            );
+            exchange_benchmark::verify(settings, context);
         })
     }
 }
