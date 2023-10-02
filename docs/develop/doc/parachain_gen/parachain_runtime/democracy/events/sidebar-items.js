@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Blacklisted","Cancelled","Delegated","ExternalTabled","NotPassed","Passed","ProposalCanceled","Proposed","Seconded","Started","Tabled","Undelegated","Vetoed","Voted"]};

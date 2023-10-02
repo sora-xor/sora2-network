@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["AssetKind","AuxiliaryDigestItem"],"struct":["AuxiliaryDigest","LeafExtraData","MessageId"]};
+window.SIDEBAR_ITEMS = {"enum":["AssetKind","AuxiliaryDigestItem"],"struct":["AuxiliaryDigest","CallOriginOutput","LeafExtraData","MessageId"]};

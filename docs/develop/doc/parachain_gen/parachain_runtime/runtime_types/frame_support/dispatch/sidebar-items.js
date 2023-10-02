@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["DispatchClass","Pays"],"struct":["DispatchInfo","PerDispatchClass"]};
+window.SIDEBAR_ITEMS = {"enum":["DispatchClass","Pays","RawOrigin"],"struct":["DispatchInfo","PerDispatchClass"]};
