@@ -3308,6 +3308,8 @@
 <a href="#3293" id="3293">3293</a>
 <a href="#3294" id="3294">3294</a>
 <a href="#3295" id="3295">3295</a>
+<a href="#3296" id="3296">3296</a>
+<a href="#3297" id="3297">3297</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -5217,7 +5219,9 @@
     </span><span class="kw">const </span>MIN_ORDER_LIFESPAN: Moment = MILLISECS_PER_BLOCK; <span class="comment">// TODO: order-book clarify
     </span><span class="kw">const </span>MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     <span class="kw">const </span>MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(<span class="number">50</span>); <span class="comment">// TODO: order-book clarify
-    </span><span class="kw">type </span>RuntimeEvent = RuntimeEvent;
+    </span><span class="kw">const </span>SOFT_MIN_MAX_RATIO: usize = <span class="number">1000</span>;
+    <span class="kw">const </span>HARD_MIN_MAX_RATIO: usize = <span class="number">4000</span>;
+    <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OrderId = u128;
     <span class="kw">type </span>Locker = OrderBook;
     <span class="kw">type </span>Unlocker = OrderBook;

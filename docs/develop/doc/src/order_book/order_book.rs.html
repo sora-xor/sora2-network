@@ -1183,6 +1183,9 @@
 <a href="#1168" id="1168">1168</a>
 <a href="#1169" id="1169">1169</a>
 <a href="#1170" id="1170">1170</a>
+<a href="#1171" id="1171">1171</a>
+<a href="#1172" id="1172">1172</a>
+<a href="#1173" id="1173">1173</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1290,13 +1293,12 @@
         <span class="self">self</span>.last_order_id
     }
 
-    <span class="doccomment">/// Tries to place the limit order and returns market input &amp; deal input amounts.
-    /// In some cases if the limit order crosses the spread, part or all of the amount could be converted into a market order and as a result, the deal input is not empty.
+    <span class="doccomment">/// Tries to place the limit order and returns the count of executed limit orders (if the limit order crosses the spread and was converted into market order).
     </span><span class="kw">pub fn </span>place_limit_order(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         limit_order: LimitOrder&lt;T&gt;,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, DispatchError&gt; {
         <span class="macro">ensure!</span>(
             <span class="self">self</span>.status == OrderBookStatus::Trade || <span class="self">self</span>.status == OrderBookStatus::PlaceAndCancel,
             Error::&lt;T&gt;::PlacementOfLimitOrdersIsForbidden
@@ -1339,6 +1341,8 @@
         <span class="kw">let </span>maybe_average_price = market_change.average_deal_price();
         <span class="kw">let </span>maybe_deal_amount = market_change.deal_base_amount();
         <span class="kw">let </span>(market_input, deal_input) = (market_change.market_input, market_change.deal_input);
+
+        <span class="kw">let </span>executed_orders_count = market_change.count_of_executed_orders();
 
         <span class="self">self</span>.apply_market_change(market_change, data)<span class="question-mark">?</span>;
 
@@ -1386,7 +1390,7 @@
             }
         }
 
-        <span class="prelude-val">Ok</span>(())
+        <span class="prelude-val">Ok</span>(executed_orders_count)
     }
 
     <span class="kw">pub fn </span>cancel_limit_order(
@@ -1417,12 +1421,12 @@
         <span class="prelude-val">Ok</span>(count)
     }
 
-    <span class="doccomment">/// Executes market order and returns input &amp; output amounts
+    <span class="doccomment">/// Executes market order and returns input &amp; output amounts &amp; count of executed limit orders
     </span><span class="kw">pub fn </span>execute_market_order(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         market_order: MarketOrder&lt;T&gt;,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(OrderAmount, OrderAmount), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(OrderAmount, OrderAmount, usize), DispatchError&gt; {
         <span class="macro">ensure!</span>(
             <span class="self">self</span>.status == OrderBookStatus::Trade,
             Error::&lt;T&gt;::TradingIsForbidden
@@ -1443,6 +1447,8 @@
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::PriceCalculationFailed.into());
         };
 
+        <span class="kw">let </span>executed_orders_count = market_change.count_of_executed_orders();
+
         <span class="self">self</span>.apply_market_change(market_change, data)<span class="question-mark">?</span>;
 
         T::Delegate::emit_event(
@@ -1456,7 +1462,7 @@
             },
         );
 
-        <span class="prelude-val">Ok</span>((input, output))
+        <span class="prelude-val">Ok</span>((input, output, executed_orders_count))
     }
 
     <span class="kw">pub fn </span>align_limit_orders(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
