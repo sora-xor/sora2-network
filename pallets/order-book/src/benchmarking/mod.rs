@@ -180,7 +180,7 @@ pub(crate) mod delete_orderbook_benchmark {
 
 pub(crate) mod place_limit_order_benchmark {
     use super::*;
-    use common::Balance;
+    use common::{balance, Balance};
 
     pub struct Context<T: Config> {
         pub caller: T::AccountId,
@@ -240,10 +240,8 @@ pub(crate) mod place_limit_order_benchmark {
                 order_book_id,
                 owner_id: caller.clone(),
                 market_order_direction: side,
-                market_order_amount: OrderAmount::Base(BalanceUnit::divisible(
-                    4096000000000000000000,
-                )),
-                market_order_average_price: BalanceUnit::divisible(325000000000000),
+                market_order_amount: OrderAmount::Base(balance!(4096).into()),
+                market_order_average_price: balance!(0.000325).into(),
                 limit_order_id: order_id,
             }
             .into(),
@@ -331,7 +329,7 @@ pub(crate) mod cancel_limit_order_benchmark {
 pub(crate) mod execute_market_order_benchmark {
     use super::*;
     use common::prelude::BalanceUnit;
-    use common::Balance;
+    use common::{balance, Balance};
 
     pub struct Context<T: Config> {
         pub caller: T::AccountId,
@@ -368,7 +366,7 @@ pub(crate) mod execute_market_order_benchmark {
             caller_base_balance,
             caller_quote_balance,
         } = context;
-        let average_price = BalanceUnit::divisible(325000000000000);
+        let average_price = balance!(0.000325).into();
         assert_last_event::<T>(
             Event::<T>::MarketOrderExecuted {
                 order_book_id,
@@ -462,7 +460,7 @@ pub(crate) mod exchange_benchmark {
         } = context;
 
         let order_amount = OrderAmount::Base(balance!(4096).into());
-        let average_price = BalanceUnit::divisible(325000000000000);
+        let average_price = balance!(0.000325).into();
         assert_last_event::<T>(
             Event::<T>::MarketOrderExecuted {
                 order_book_id,
