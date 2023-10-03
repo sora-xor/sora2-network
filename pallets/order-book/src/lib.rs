@@ -114,8 +114,12 @@ pub mod pallet {
         const MIN_ORDER_LIFESPAN: MomentOf<Self>;
         const MILLISECS_PER_BLOCK: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
-        const SMALL_MIN_MAX_RATIO: usize;
-        const BIG_MIN_MAX_RATIO: usize;
+        /// The soft ratio between min & max order amounts.
+        /// In particular, it defines the optimal number of limit orders that could be executed by one big market order in one block.
+        const SOFT_MIN_MAX_RATIO: usize;
+        /// The soft ratio between min & max order amounts.
+        /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
+        const HARD_MIN_MAX_RATIO: usize;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -1283,9 +1287,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn exchange_weight() -> Weight {
-        // SMALL_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
+        // SOFT_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
         <T as Config>::WeightInfo::exchange_single_order()
-            .saturating_mul(<T as Config>::SMALL_MIN_MAX_RATIO as u64)
+            .saturating_mul(<T as Config>::SOFT_MIN_MAX_RATIO as u64)
     }
 
     fn check_rewards_weight() -> Weight {
