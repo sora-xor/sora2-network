@@ -56,15 +56,11 @@ impl Command {
                 Ok(acc)
             })?;
 
-        let network_id = sub
-            .storage_fetch(
-                &mainnet_runtime::storage()
-                    .multisig_verifier()
-                    .this_network_id(),
-                (),
-            )
-            .await?
-            .ok_or(anyhow!("Network id not found"))?;
+        let network_id = sub.constant_fetch_or_default(
+            &mainnet_runtime::constants()
+                .substrate_bridge_outbound_channel()
+                .this_network_id(),
+        )?;
 
         let call = parachain_runtime::runtime_types::sora2_parachain_runtime::RuntimeCall::BridgeDataSigner(
             parachain_runtime::runtime_types::bridge_data_signer::pallet::Call::register_network {

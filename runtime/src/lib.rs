@@ -2156,7 +2156,7 @@ pub enum MultiProof {
     Multisig(<MultisigVerifier as Verifier>::Proof),
     /// This proof is only used for benchmarking purposes
     #[cfg(feature = "runtime-benchmarks")]
-    #[codec(index = 2)]
+    #[codec(skip)]
     Empty,
 }
 
@@ -2332,16 +2332,10 @@ construct_runtime! {
         #[cfg(feature = "wip")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
-        // Trustless bridges
-        #[cfg(feature = "wip")] // Trustless bridges
-        Mmr: pallet_mmr::{Pallet, Storage} = 90,
-        // In production needed for session keys
-        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
-        #[cfg(feature = "wip")] // Trustless bridges
-        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
+        // Leaf provider should be placed before any pallet which is uses it
+        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
 
         // Generic bridges pallets
-        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         // Trustless EVM bridge
@@ -2371,6 +2365,15 @@ construct_runtime! {
         ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call, Config} = 111,
+
+        // Trustless bridges
+        // Beefy pallets should be placed after channels
+        #[cfg(feature = "wip")] // Trustless bridges
+        Mmr: pallet_mmr::{Pallet, Storage} = 90,
+        // In production needed for session keys
+        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
+        #[cfg(feature = "wip")] // Trustless bridges
+        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
 
         // Dev
         #[cfg(feature = "private-net")]

@@ -31,12 +31,12 @@ RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     rm -rf /var/lib/apt/lists/*
 # Install rust
 ENV RUST_NIGHTLY_VERSION=nightly-2023-03-21
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain stable && \
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_NIGHTLY_VERSION} && \
     rustup default ${RUST_NIGHTLY_VERSION} && \
     rustup target add wasm32-unknown-unknown && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_NIGHTLY_VERSION} && \
     rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"
-RUN cargo install cargo-chef
+RUN cargo install --version 0.1.61 --locked cargo-chef
 
 # generate recipe.json for dependency caching
 FROM rust AS planner
