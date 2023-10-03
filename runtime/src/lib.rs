@@ -2255,6 +2255,7 @@ impl multisig_verifier::Config for Runtime {
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type MaxPeers = BridgeMaxPeers;
     type WeightInfo = crate::weights::multisig_verifier::WeightInfo<Runtime>;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 construct_runtime! {
@@ -2370,7 +2371,7 @@ construct_runtime! {
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
         ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
-        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call, Config} = 111,
+        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
 
         // Dev
         #[cfg(feature = "private-net")]

@@ -9,4 +9,5 @@ opt-level = 's'
 debug = false
 
 [env]
-PARACHAIN_METADATA_BRANCH = "1.0.14"
+# PARACHAIN_METADATA_BRANCH = "1.0.14"
+PARACHAIN_METADATA_BRANCH = "multisig_verifier_const_networkid"
