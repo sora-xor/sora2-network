@@ -571,7 +571,7 @@ mod benchmarks_inner {
         }
 
         delete_orderbook {
-            let settings = FillSettings::<T>::max();
+            let settings = preset_14::<T>();
             let order_book_id = delete_orderbook_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::delete_orderbook(
@@ -649,7 +649,7 @@ mod benchmarks_inner {
         }
 
         place_limit_order {
-            let settings = FillSettings::<T>::max();
+            let settings = preset_14::<T>();
             let context = place_limit_order_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::place_limit_order(
@@ -666,7 +666,7 @@ mod benchmarks_inner {
         }
 
         cancel_limit_order_first_expiration {
-            let settings = FillSettings::<T>::max();
+            let settings = preset_14::<T>();
             let context = cancel_limit_order_benchmark::init(settings.clone(), true);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
@@ -680,7 +680,7 @@ mod benchmarks_inner {
         }
 
         cancel_limit_order_last_expiration {
-            let settings = FillSettings::<T>::max();
+            let settings = preset_14::<T>();
             let context = cancel_limit_order_benchmark::init(settings.clone(), false);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
@@ -694,7 +694,7 @@ mod benchmarks_inner {
         }
 
         execute_market_order {
-            let settings = FillSettings::<T>::max();
+            let settings = preset_14::<T>();
             let context = execute_market_order_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::execute_market_order(
@@ -709,7 +709,7 @@ mod benchmarks_inner {
         }
 
         quote {
-            let settings = FillSettings::<T>::max();
+            let settings = preset_14::<T>();
             let context = quote_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::quote(
@@ -726,7 +726,7 @@ mod benchmarks_inner {
         }
 
         exchange {
-            let settings = FillSettings::<T>::max();
+            let settings = preset_14::<T>();
             let context = exchange_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::exchange(
@@ -1869,8 +1869,7 @@ mod tests {
     #[test]
     fn test_benchmark_delete_orderbook() {
         ext().execute_with(|| {
-            // let settings = preset_16::<Runtime>();
-            let settings = FillSettings::<Runtime>::max();
+            let settings = preset_14::<Runtime>();
             let order_book_id = delete_orderbook_benchmark::init(settings.clone());
             // run_to_block(1);
             OrderBookPallet::<Runtime>::delete_orderbook(RawOrigin::Root.into(), order_book_id)
@@ -1882,9 +1881,7 @@ mod tests {
     #[test]
     fn test_benchmark_place() {
         ext().execute_with(|| {
-            // let settings = preset_16::<Runtime>();
-            let settings = FillSettings::<Runtime>::max();
-            // run_to_block(1);
+            let settings = preset_14::<Runtime>();
             let context = place_limit_order_benchmark::init(settings.clone());
 
             OrderBookPallet::<Runtime>::place_limit_order(
@@ -1904,7 +1901,7 @@ mod tests {
     #[test]
     fn test_benchmark_cancel() {
         ext().execute_with(|| {
-            let settings = FillSettings::<Runtime>::max();
+            let settings = preset_14::<Runtime>();
             let context = cancel_limit_order_benchmark::init(settings.clone(), false);
 
             OrderBookPallet::<Runtime>::cancel_limit_order(
@@ -1921,8 +1918,7 @@ mod tests {
     #[test]
     fn test_benchmark_execute_market_order() {
         ext().execute_with(|| {
-            // let settings = preset_16::<Runtime>();
-            let settings = FillSettings::<Runtime>::max();
+            let settings = preset_14::<Runtime>();
             let context = execute_market_order_benchmark::init(settings.clone());
             OrderBookPallet::<Runtime>::execute_market_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -1940,8 +1936,7 @@ mod tests {
         ext().execute_with(|| {
             use common::LiquiditySource;
 
-            // let settings = preset_16::<Runtime>();
-            let settings = FillSettings::<Runtime>::max();
+            let settings = preset_14::<Runtime>();
             let context = quote_benchmark::init(settings.clone());
             let _ = OrderBookPallet::<Runtime>::quote(
                 &context.dex_id,
@@ -1959,8 +1954,7 @@ mod tests {
         ext().execute_with(|| {
             use common::LiquiditySource;
 
-            // let settings = preset_16::<Runtime>();
-            let settings = FillSettings::<Runtime>::max();
+            let settings = preset_14::<Runtime>();
             let context = exchange_benchmark::init(settings.clone());
             let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
                 &context.caller,
