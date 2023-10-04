@@ -1012,12 +1012,6 @@ impl<T: Config> Pallet<T> {
             Error::<T>::NotAllowedQuoteAsset
         );
 
-        // synthetic asset are forbidden
-        ensure!(
-            !T::SyntheticInfoProvider::is_synthetic(&order_book_id.base),
-            Error::<T>::SyntheticAssetIsForbidden
-        );
-
         T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             &order_book_id.dex_id,
