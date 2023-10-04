@@ -66,23 +66,9 @@ pub type BeefyCommitment<T> = sp_beefy::Commitment<BlockNumber<T>>;
 pub type MmrLeaf<T> = sp_beefy::mmr::MmrLeaf<BlockNumber<T>, BlockHash<T>, MmrHash, LeafExtra>;
 pub type AssetId = AssetId32<PredefinedAssetId>;
 pub type MaxU32 = sp_runtime::traits::ConstU32<{ core::u32::MAX }>;
-pub type OffchainDataOf<T> =
-    bridge_types::types::BridgeOffchainData<BlockNumber<T>, MaxU32, MaxU32>;
 pub type UnboundedGenericCommitment = bridge_types::GenericCommitment<MaxU32, MaxU32>;
-
-pub enum StorageKind {
-    Persistent,
-    Local,
-}
-
-impl StorageKind {
-    pub fn as_string(&self) -> &'static str {
-        match self {
-            StorageKind::Persistent => "PERSISTENT",
-            StorageKind::Local => "LOCAL",
-        }
-    }
-}
+pub type GenericCommitmentWithBlockOf<T> =
+    bridge_types::types::GenericCommitmentWithBlock<BlockNumber<T>, MaxU32, MaxU32>;
 
 #[derive(Debug, Clone)]
 pub struct LeafProof<T: ConfigExt> {
@@ -101,10 +87,12 @@ impl EncodedBeefyCommitment {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum BlockNumberOrHash {
     Number(u64),
     Hash(H256),
     Best,
+    Finalized,
 }
 
 impl From<()> for BlockNumberOrHash {
