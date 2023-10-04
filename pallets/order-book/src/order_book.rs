@@ -84,9 +84,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Self::new(
             order_book_id,
             OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
-            OrderVolume::divisible(balance!(0.00001)), // TODO: order-book clarify
-            OrderVolume::divisible(balance!(1)),      // TODO: order-book clarify
-            OrderVolume::divisible(balance!(100000)), // TODO: order-book clarify
+            OrderVolume::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(1000)),
         )
     }
 
@@ -94,9 +94,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Self::new(
             order_book_id,
             OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
-            OrderVolume::indivisible(1),              // TODO: order-book clarify
-            OrderVolume::indivisible(1),              // TODO: order-book clarify
-            OrderVolume::indivisible(100000),         // TODO: order-book clarify
+            OrderVolume::indivisible(1),
+            OrderVolume::indivisible(1),
+            OrderVolume::indivisible(1000),
         )
     }
 

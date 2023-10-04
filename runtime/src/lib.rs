@@ -1903,10 +1903,10 @@ parameter_types! {
 
 #[cfg(feature = "wip")] // order-book
 impl order_book::Config for Runtime {
-    const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
-    const MIN_ORDER_LIFESPAN: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
+    const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days
+    const MIN_ORDER_LIFESPAN: Moment = (MINUTES as Moment) * MILLISECS_PER_BLOCK; // 1 minute
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
-    const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50); // TODO: order-book clarify
+    const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50);
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
     type Locker = OrderBook;
