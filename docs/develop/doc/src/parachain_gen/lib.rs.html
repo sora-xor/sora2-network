@@ -146,6 +146,10 @@
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -182,6 +186,8 @@
 </span><span class="kw">pub type </span>MaxU32 = sp_runtime::traits::ConstU32&lt;{ core::u32::MAX }&gt;;
 <span class="kw">pub type </span>UnboundedBridgeMessage = bridge_types::substrate::BridgeMessage&lt;MaxU32&gt;;
 <span class="kw">pub type </span>UnboundedGenericCommitment = bridge_types::GenericCommitment&lt;MaxU32, MaxU32&gt;;
+<span class="kw">pub type </span>UnboundedGenericCommitmentWithBlock&lt;BlockNumber&gt; =
+    bridge_types::types::GenericCommitmentWithBlock&lt;BlockNumber, MaxU32, MaxU32&gt;;
 
 <span class="attr">#[subxt::subxt(
     runtime_metadata_path = <span class="string">&quot;src/bytes/parachain_metadata.scale&quot;</span>,
@@ -192,6 +198,8 @@
     </span><span class="kw">use </span><span class="kw">crate</span>::UnboundedBridgeMessage;
     <span class="attr">#[subxt(substitute_type = <span class="string">&quot;bridge_types::GenericCommitment&quot;</span>)]
     </span><span class="kw">use </span><span class="kw">crate</span>::UnboundedGenericCommitment;
+    <span class="attr">#[subxt(substitute_type = <span class="string">&quot;bridge_types::types::GenericCommitmentWithBlock&quot;</span>)]
+    </span><span class="kw">use </span><span class="kw">crate</span>::UnboundedGenericCommitmentWithBlock;
     <span class="attr">#[subxt(substitute_type = <span class="string">&quot;bridge_common::beefy_types::BeefyMMRLeaf&quot;</span>)]
     </span><span class="kw">use </span>::bridge_common::beefy_types::BeefyMMRLeaf;
     <span class="attr">#[subxt(substitute_type = <span class="string">&quot;bridge_common::beefy_types::Commitment&quot;</span>)]

@@ -3310,6 +3310,10 @@
 <a href="#3295" id="3295">3295</a>
 <a href="#3296" id="3296">3296</a>
 <a href="#3297" id="3297">3297</a>
+<a href="#3298" id="3298">3298</a>
+<a href="#3299" id="3299">3299</a>
+<a href="#3300" id="3300">3300</a>
+<a href="#3301" id="3301">3301</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -5470,7 +5474,7 @@
     </span>Multisig(&lt;MultisigVerifier <span class="kw">as </span>Verifier&gt;::Proof),
     <span class="doccomment">/// This proof is only used for benchmarking purposes
     </span><span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
-    #[codec(index = <span class="number">2</span>)]
+    #[codec(skip)]
     </span>Empty,
 }
 
@@ -5569,6 +5573,7 @@
     <span class="kw">type </span>OutboundChannel = SubstrateBridgeOutboundChannel;
     <span class="kw">type </span>MaxPeers = BridgeMaxPeers;
     <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::multisig_verifier::WeightInfo&lt;Runtime&gt;;
+    <span class="kw">type </span>ThisNetworkId = ThisNetworkId;
 }
 
 <span class="macro">construct_runtime! </span>{
@@ -5646,17 +5651,11 @@
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
         </span>OrderBook: order_book::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">57</span>,
 
-        <span class="comment">// Trustless bridges
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
-        </span>Mmr: pallet_mmr::{Pallet, Storage} = <span class="number">90</span>,
-        <span class="comment">// In production needed for session keys
-        </span>Beefy: pallet_beefy::{Pallet, Config&lt;T&gt;, Storage} = <span class="number">91</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
-        </span>MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = <span class="number">92</span>,
+        <span class="comment">// Leaf provider should be placed before any pallet which is uses it
+        </span>LeafProvider: leaf_provider::{Pallet, Storage, Event&lt;T&gt;} = <span class="number">99</span>,
 
         <span class="comment">// Generic bridges pallets
-        </span>LeafProvider: leaf_provider::{Pallet, Storage, Event&lt;T&gt;} = <span class="number">99</span>,
-        BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = <span class="number">103</span>,
+        </span>BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = <span class="number">103</span>,
 
         <span class="comment">// Trustless EVM bridge
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
@@ -5684,7 +5683,16 @@
         SubstrateDispatch: dispatch::&lt;Instance2&gt;::{Pallet, Storage, Event&lt;T&gt;, Origin&lt;T&gt;} = <span class="number">108</span>,
         ParachainBridgeApp: parachain_bridge_app::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;, Call} = <span class="number">109</span>,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event&lt;T&gt;, Call, ValidateUnsigned} = <span class="number">110</span>,
-        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event&lt;T&gt;, Call, Config} = <span class="number">111</span>,
+        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event&lt;T&gt;, Call} = <span class="number">111</span>,
+
+        <span class="comment">// Trustless bridges
+        // Beefy pallets should be placed after channels
+        </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
+        </span>Mmr: pallet_mmr::{Pallet, Storage} = <span class="number">90</span>,
+        <span class="comment">// In production needed for session keys
+        </span>Beefy: pallet_beefy::{Pallet, Config&lt;T&gt;, Storage} = <span class="number">91</span>,
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
+        </span>MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = <span class="number">92</span>,
 
         <span class="comment">// Dev
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
