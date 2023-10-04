@@ -93,7 +93,7 @@ fn should_create_default() {
         tick_size: balance!(0.00001).into(),
         step_lot_size: balance!(0.00001).into(),
         min_lot_size: balance!(1).into(),
-        max_lot_size: balance!(100000).into(),
+        max_lot_size: balance!(1000).into(),
     };
 
     assert_eq!(OrderBook::<Runtime>::default(order_book_id), expected);
@@ -114,7 +114,7 @@ fn should_create_default_indivisible() {
         tick_size: balance!(0.00001).into(),
         step_lot_size: OrderVolume::indivisible(1),
         min_lot_size: OrderVolume::indivisible(1),
-        max_lot_size: OrderVolume::indivisible(100000),
+        max_lot_size: OrderVolume::indivisible(1000),
     };
 
     assert_eq!(
