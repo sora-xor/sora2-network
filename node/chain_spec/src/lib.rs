@@ -1991,7 +1991,6 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
-        multisig_verifier: Default::default(),
         parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
 
