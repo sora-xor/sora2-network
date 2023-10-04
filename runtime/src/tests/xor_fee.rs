@@ -927,7 +927,7 @@ fn it_works_eth_bridge_pays_no() {
 
 #[cfg(feature = "wip")] // order-book
 #[test]
-fn fee_postponed_place_limit_order() {
+fn fee_not_postponed_place_limit_order() {
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
         give_xor_initial_balance(alice());
@@ -952,7 +952,10 @@ fn fee_postponed_place_limit_order() {
             xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0)
                 .unwrap();
 
-        assert_eq!(quoted_fee, LiquidityInfo::Postponed(alice()));
+        assert_eq!(
+            quoted_fee,
+            LiquidityInfo::Paid(alice(), Some(NegativeImbalance::new(SMALL_FEE)))
+        );
     });
 }
 

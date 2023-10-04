@@ -63,6 +63,7 @@ impl<T: Config> FeeCalculator<T> {
 
         let market_maker_max_fee = BASE_FEE.checked_div(2)?;
 
+        // Maximum lifetime is used if `None` was supplied
         let Some(lifetime) = lifetime else {
             return Some(market_maker_max_fee);
         };

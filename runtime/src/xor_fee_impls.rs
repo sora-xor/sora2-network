@@ -242,9 +242,6 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
                     return false;
                 }
             }
-
-            #[cfg(feature = "wip")] // order-book
-            RuntimeCall::OrderBook(order_book::Call::place_limit_order { .. }) => true,
             _ => return false,
         }
     }
