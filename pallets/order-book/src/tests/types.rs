@@ -36,7 +36,7 @@ use common::{balance, PriceVariant, DAI, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
-    DealInfo, LimitOrder, MarketChange, OrderAmount, OrderBookId, Payment,
+    Config, DealInfo, LimitOrder, MarketChange, OrderAmount, OrderBookId, Payment,
 };
 use framenode_runtime::Runtime;
 use sp_std::collections::btree_map::BTreeMap;
@@ -803,7 +803,7 @@ fn should_fail_market_change_merge() {
                 balance!(10).into(),
                 balance!(100).into(),
                 1000,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 100,
             ),
         )]),
@@ -817,7 +817,7 @@ fn should_fail_market_change_merge() {
                     balance!(20).into(),
                     balance!(100).into(),
                     1000,
-                    10000,
+                    <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                     100,
                 ),
                 OrderAmount::Base(balance!(10).into()),
@@ -832,7 +832,7 @@ fn should_fail_market_change_merge() {
                 balance!(20).into(),
                 balance!(100).into(),
                 1000,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 100,
             ),
         )]),
@@ -845,7 +845,7 @@ fn should_fail_market_change_merge() {
                 balance!(10).into(),
                 balance!(100).into(),
                 1000,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 100,
             ),
         )]),
@@ -858,7 +858,7 @@ fn should_fail_market_change_merge() {
                 balance!(10).into(),
                 balance!(100).into(),
                 1000,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 100,
             ),
         )]),
@@ -952,7 +952,7 @@ fn check_market_change_merge() {
         balance!(10).into(),
         balance!(100).into(),
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         100,
     );
 
@@ -963,7 +963,7 @@ fn check_market_change_merge() {
         balance!(9).into(),
         balance!(1000).into(),
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         100,
     );
 
@@ -974,7 +974,7 @@ fn check_market_change_merge() {
         balance!(15).into(),
         balance!(100).into(),
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         100,
     );
 
@@ -985,7 +985,7 @@ fn check_market_change_merge() {
         balance!(14).into(),
         balance!(200).into(),
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         100,
     );
 
@@ -996,7 +996,7 @@ fn check_market_change_merge() {
         balance!(11).into(),
         balance!(100).into(),
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         100,
     );
 
@@ -1007,7 +1007,7 @@ fn check_market_change_merge() {
         balance!(12).into(),
         balance!(1000).into(),
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         100,
     );
 
@@ -1018,7 +1018,7 @@ fn check_market_change_merge() {
         balance!(16).into(),
         balance!(100).into(),
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         100,
     );
 
@@ -1029,7 +1029,7 @@ fn check_market_change_merge() {
         balance!(12).into(),
         balance!(100).into(),
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         100,
     );
 

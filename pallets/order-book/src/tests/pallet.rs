@@ -594,13 +594,13 @@ fn should_expire_order() {
 
         let price: OrderPrice = balance!(10).into();
         let amount: OrderVolume = balance!(100).into();
-        let lifespan = 10000;
+        let lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
-        // the lifespan of 10000 ms corresponds to at least
-        // ceil(10000 / 6000) = 2 blocks of the order lifespan;
-        // at this block the order should still be available
-        let end_of_lifespan_block = current_block + 2;
+        // the lifespan of N ms corresponds to at least
+        // ceil(N / 6000) blocks of the order being available
+        let end_of_lifespan_block = current_block
+            + <u32>::try_from(lifespan.div_ceil(<Runtime as Config>::MILLISECS_PER_BLOCK)).unwrap();
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
 
@@ -666,13 +666,13 @@ fn should_cleanup_on_expiring() {
 
         let price: OrderPrice = balance!(10).into();
         let amount: OrderVolume = balance!(100).into();
-        let lifespan = 10000;
+        let lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
-        // the lifespan of 10000 ms corresponds to at least
-        // ceil(10000 / 6000) = 2 blocks of the order lifespan;
-        // at this block the order should still be available
-        let end_of_lifespan_block = current_block + 2;
+        // the lifespan of N ms corresponds to at least
+        // ceil(N / 6000) blocks of the order being available
+        let end_of_lifespan_block = current_block
+            + <u32>::try_from(lifespan.div_ceil(<Runtime as Config>::MILLISECS_PER_BLOCK)).unwrap();
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
 
@@ -810,13 +810,13 @@ fn should_enforce_expiration_and_weight_limits() {
 
         let price = balance!(10);
         let amount = balance!(100);
-        let lifespan = 10000;
+        let lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
-        // the lifespan of 10000 ms corresponds to at least
-        // ceil(10000 / 6000) = 2 blocks of the order lifespan;
-        // at this block the order should still be available
-        let end_of_lifespan_block = current_block + 2;
+        // the lifespan of N ms corresponds to at least
+        // ceil(N / 6000) blocks of the order being available
+        let end_of_lifespan_block = current_block
+            + <u32>::try_from(lifespan.div_ceil(<Runtime as Config>::MILLISECS_PER_BLOCK)).unwrap();
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
 

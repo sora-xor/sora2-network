@@ -179,7 +179,7 @@ fn should_place_limit_order() {
             price,
             amount,
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -262,7 +262,7 @@ fn should_place_nft_limit_order() {
             price,
             amount,
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -365,7 +365,7 @@ fn should_place_limit_order_out_of_spread() {
             new_bid_price,
             balance!(26.3).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -431,7 +431,7 @@ fn should_place_limit_order_out_of_spread() {
             new_bid_price,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -510,7 +510,7 @@ fn should_place_limit_order_out_of_spread() {
             new_ask_price,
             balance!(18.5).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -575,7 +575,7 @@ fn should_place_limit_order_out_of_spread() {
             new_ask_price,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -664,7 +664,7 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
             balance!(10).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -709,7 +709,7 @@ fn should_not_place_invalid_limit_order() {
             balance!(10).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -777,7 +777,7 @@ fn should_not_place_invalid_nft_limit_order() {
             balance!(10).into(),
             OrderVolume::indivisible(1),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -827,7 +827,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
             balance!(10).into(),
             balance!(1).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -882,7 +882,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
             balance!(10).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -893,7 +893,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
             balance!(11).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -954,7 +954,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
             balance!(1000).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -965,7 +965,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
             balance!(1001).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -1036,7 +1036,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             wrong_buy_price.into(),
             balance!(10).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -1049,7 +1049,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             wrong_sell_price.into(),
             balance!(10).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -1104,7 +1104,7 @@ fn should_not_place_limit_order_in_spread() {
             buy_price,
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -1116,7 +1116,7 @@ fn should_not_place_limit_order_in_spread() {
             sell_price,
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -1217,7 +1217,7 @@ fn should_not_cancel_unknown_limit_order() {
             balance!(10).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4176,7 +4176,7 @@ fn should_calculate_align_limit_orders_impact() {
                 balance!(10.1).into(),
                 balance!(1.1).into(),
                 10,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 frame_system::Pallet::<Runtime>::block_number(),
             ),
             &mut data
@@ -4202,7 +4202,7 @@ fn should_calculate_align_limit_orders_impact() {
                 balance!(10.1).into(),
                 balance!(1).into(),
                 10,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 frame_system::Pallet::<Runtime>::block_number(),
             ),
             &mut data
@@ -4216,7 +4216,7 @@ fn should_calculate_align_limit_orders_impact() {
                 balance!(10.9).into(),
                 balance!(1.1).into(),
                 10,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 frame_system::Pallet::<Runtime>::block_number(),
             ),
             &mut data
@@ -4242,7 +4242,7 @@ fn should_calculate_align_limit_orders_impact() {
                 balance!(10.9).into(),
                 balance!(1).into(),
                 10,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 frame_system::Pallet::<Runtime>::block_number(),
             ),
             &mut data
@@ -4398,7 +4398,7 @@ fn should_apply_market_change() {
             bid_price1,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4409,7 +4409,7 @@ fn should_apply_market_change() {
             ask_price1,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4818,7 +4818,7 @@ fn should_cross_spread() {
             new_bid_price,
             balance!(26.3).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4870,7 +4870,7 @@ fn should_cross_spread() {
             new_bid_price,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4919,7 +4919,7 @@ fn should_cross_spread() {
             new_ask_price,
             balance!(18.5).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4971,7 +4971,7 @@ fn should_cross_spread() {
             new_ask_price,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -5055,7 +5055,7 @@ fn should_cross_spread_with_small_remaining_amount() {
             balance!(11.1).into(),
             balance!(177).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -5111,7 +5111,7 @@ fn should_cross_spread_with_small_remaining_amount() {
             balance!(11.6).into(),
             balance!(611).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -5168,7 +5168,7 @@ fn should_cross_spread_with_small_remaining_amount() {
             balance!(9.9).into(),
             balance!(169).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -5224,7 +5224,7 @@ fn should_cross_spread_with_small_remaining_amount() {
             balance!(9.4).into(),
             balance!(570).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 

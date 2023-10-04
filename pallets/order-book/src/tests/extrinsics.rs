@@ -588,9 +588,9 @@ fn should_delete_order_book_with_a_lot_of_orders() {
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
 
         let mut buy_price: OrderPrice = balance!(1000).into();
-        let mut buy_lifespan = 10000; // ms
+        let mut buy_lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000; // ms
         let mut sell_price: OrderPrice = balance!(1001).into();
-        let mut sell_lifespan = 10000; // ms
+        let mut sell_lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000; // ms
 
         let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
 
@@ -1500,7 +1500,7 @@ fn should_place_limit_order() {
 
         let price: OrderPrice = balance!(10).into();
         let amount: OrderVolume = balance!(100).into();
-        let lifespan = 10000;
+        let lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
 
@@ -1620,7 +1620,7 @@ fn should_place_limit_order_with_nft() {
 
         let price: OrderPrice = balance!(10).into();
         let amount = OrderVolume::indivisible(1);
-        let lifespan = 10000;
+        let lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
 
@@ -1687,7 +1687,7 @@ fn should_place_limit_order_out_of_spread() {
         let now = 1234;
         Timestamp::set_timestamp(now);
 
-        let lifespan = 100000;
+        let lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000;
 
         let bid_price1: OrderPrice = balance!(10).into();
         let bid_price2: OrderPrice = balance!(9.8).into();
@@ -1986,7 +1986,7 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         let now = 1234;
         Timestamp::set_timestamp(now);
 
-        let lifespan = 100000;
+        let lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000;
 
         let bid_price1 = balance!(10).into();
         let bid_price2 = balance!(9.8).into();
@@ -2222,9 +2222,9 @@ fn should_place_a_lot_of_orders() {
         let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
 
         let mut buy_price: OrderPrice = balance!(1000).into();
-        let mut buy_lifespan = 10000; // ms
+        let mut buy_lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000; // ms
         let mut sell_price: OrderPrice = balance!(1001).into();
-        let mut sell_lifespan = 10000; // ms
+        let mut sell_lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000; // ms
 
         let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
 

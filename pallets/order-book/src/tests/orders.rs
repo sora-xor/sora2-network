@@ -78,7 +78,7 @@ fn should_return_error_for_invalid_limit_order_amount() {
         balance!(10).into(),
         wrong_amount,
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         1,
     );
     assert_err!(order.ensure_valid(), E::InvalidOrderAmount);
@@ -113,7 +113,7 @@ fn should_return_error_for_invalid_limit_order_price() {
         wrong_price,
         balance!(100).into(),
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         1,
     );
     assert_err!(order.ensure_valid(), E::InvalidLimitOrderPrice);
@@ -178,7 +178,7 @@ fn should_not_return_limit_order_deal_amount_with_big_base_limit() {
         price,
         amount,
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         1,
     );
 
@@ -189,7 +189,7 @@ fn should_not_return_limit_order_deal_amount_with_big_base_limit() {
         price,
         amount,
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         1,
     );
 
@@ -223,7 +223,7 @@ fn should_return_limit_order_deal_amount() {
         price,
         amount,
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         1,
     );
 
@@ -234,7 +234,7 @@ fn should_return_limit_order_deal_amount() {
         price,
         amount,
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         1,
     );
 
