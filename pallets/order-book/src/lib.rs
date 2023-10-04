@@ -34,6 +34,7 @@
 #![allow(clippy::all)]
 // too many benchmarks, doesn't compile otherwise
 #![recursion_limit = "512"]
+#![feature(int_roundings)]
 
 use assets::AssetIdOf;
 use common::prelude::{
