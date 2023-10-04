@@ -32,7 +32,7 @@ use std::collections::BTreeMap;
 
 use super::beefy_syncer::BeefySyncer;
 use crate::prelude::*;
-use crate::substrate::{BlockNumber, OtherParams};
+use crate::substrate::{BlockNumber, BlockNumberOrHash, OtherParams};
 use bridge_types::{GenericNetworkId, SubNetworkId};
 
 pub struct RelayBuilder<S: SenderConfig, R: ReceiverConfig> {
@@ -160,7 +160,7 @@ where
             .sender
             .storage_fetch_or_default(
                 &S::bridge_outbound_nonce(self.receiver_network_id.into()),
-                (),
+                BlockNumberOrHash::Finalized,
             )
             .await?;
         Ok(nonce)
@@ -186,7 +186,11 @@ where
                     std::collections::btree_map::Entry::Vacant(v) => {
                         let offchain_data = self
                             .sender
-                            .bridge_commitment(self.receiver_network_id.into(), nonce)
+                            .commitment_with_nonce(
+                                self.receiver_network_id.into(),
+                                nonce,
+                                BlockNumberOrHash::Finalized,
+                            )
                             .await?;
                         v.insert(offchain_data.block_number);
                         offchain_data.block_number

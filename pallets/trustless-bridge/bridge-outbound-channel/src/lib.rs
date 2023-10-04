@@ -5,11 +5,9 @@
 #![allow(clippy::all)]
 
 use bridge_types::{H256, U256};
-use codec::Encode;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use sp_io::offchain_index;
 use sp_std::vec;
 use traits::MultiCurrency;
 
@@ -151,6 +149,19 @@ pub mod pallet {
         10000
     }
 
+    #[pallet::storage]
+    pub type LatestCommitment<T: Config> = StorageMap<
+        _,
+        Identity,
+        EVMChainId,
+        bridge_types::types::GenericCommitmentWithBlock<
+            BlockNumberFor<T>,
+            T::MaxMessagesPerCommit,
+            T::MaxMessagePayloadSize,
+        >,
+        OptionQuery,
+    >;
+
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -262,13 +273,12 @@ pub mod pallet {
                     );
                     T::AuxiliaryDigestHandler::add_item(digest_item);
 
-                    let key =
-                        bridge_types::utils::make_offchain_key(network_id.into(), batch_nonce);
-                    let offchain_data = bridge_types::types::BridgeOffchainData {
+                    let commitment = bridge_types::types::GenericCommitmentWithBlock {
                         commitment,
                         block_number: <frame_system::Pallet<T>>::block_number(),
                     };
-                    offchain_index::set(&*key, &offchain_data.encode());
+
+                    LatestCommitment::<T>::insert(network_id, commitment);
 
                     <T as Config>::WeightInfo::on_initialize(
                         messages_count as u32,
