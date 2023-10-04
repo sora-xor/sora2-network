@@ -232,9 +232,8 @@ multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag
 # leaf-provider-runtime-api = { path = "../sora2-common/pallets/leaf-provider/runtime-api" }
 # bridge-common = { path = "../sora2-common/pallets/bridge-common" }
 # dispatch = { path = "../sora2-common/pallets/dispatch" }
-# substrate-bridge-app = { path = "../sora2-common/pallets/substrate-app" }
+# parachain-bridge-app = { path = "../sora2-common/pallets/parachain-app" }
 # substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }
-# bridge-channel-rpc = { path = "../sora2-common/pallets/substrate-channel/rpc" }
 # bridge-types = { path = "../sora2-common/pallets/types" }
 # bridge-data-signer = { path = "../sora2-common/pallets/data-signer" }
 # multisig-verifier = { path = "../sora2-common/pallets/multisig-verifier" }

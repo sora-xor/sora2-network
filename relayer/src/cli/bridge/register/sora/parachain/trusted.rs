@@ -56,11 +56,13 @@ impl Command {
                 Ok(acc)
             })?;
 
-        let network_id = para.constant_fetch_or_default(
-            &parachain_runtime::constants()
-                .substrate_bridge_outbound_channel()
-                .this_network_id(),
-        )?;
+        let network_id = para
+            .constant_fetch_or_default(
+                &parachain_runtime::constants()
+                    .substrate_bridge_inbound_channel()
+                    .this_network_id(),
+            )
+            .context("Fetch this network id")?;
 
         let call = mainnet_runtime::runtime_types::framenode_runtime::RuntimeCall::BridgeDataSigner(
             mainnet_runtime::runtime_types::bridge_data_signer::pallet::Call::register_network {
