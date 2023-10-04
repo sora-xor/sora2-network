@@ -458,7 +458,7 @@ pub(crate) mod exchange_single_order_benchmark {
         Context {
             caller,
             order_book_id,
-            expected_in: balance!(165),
+            expected_in: balance!(168.5),
             expected_out: balance!(1685), // this amount executes only one limit order
             caller_base_balance,
             caller_quote_balance,
@@ -745,7 +745,7 @@ mod benchmarks_inner {
                 &context.order_book_id.base,
                 &context.order_book_id.quote,
                 SwapAmount::with_desired_output(
-                    context.expected_out, context.expected_in + balance!(5)
+                    context.expected_out, context.expected_in + balance!(1.5)
                 ),
             )
             .unwrap();
