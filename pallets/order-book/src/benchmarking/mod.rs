@@ -433,6 +433,7 @@ pub(crate) mod exchange_single_order_benchmark {
 
     pub fn init<T: Config + trading_pair::Config>(_settings: FillSettings<T>) -> Context<T> {
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
 
         let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
             dex_id: DEX.into(),
