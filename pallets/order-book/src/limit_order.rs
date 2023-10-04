@@ -97,6 +97,7 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         let lifespan = lifespan.saturated_into::<u64>();
         let millis_per_block: u64 = T::MILLISECS_PER_BLOCK.saturated_into::<u64>();
         // ceil (a/b) = (a + b - 1) / b
+        // TODO (k.ivanov): use stabilized in rust 1.73 `div_ceil`
         let mut lifespan_blocks =
             lifespan.saturating_add(millis_per_block).saturating_sub(1) / millis_per_block;
         // Expire after the lifespan ends.
