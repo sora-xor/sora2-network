@@ -650,7 +650,7 @@ benchmarks! {
         // nothing changed
     }
 
-    exchange {
+    exchange_single_order {
         let caller = alice::<T>();
 
         let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
@@ -677,7 +677,7 @@ benchmarks! {
             &DEX.into(),
             &VAL.into(),
             &XOR.into(),
-            SwapAmount::with_desired_output(balance!(3500), balance!(360)),
+            SwapAmount::with_desired_output(balance!(1685), balance!(170)), // this amount executes only one limit order
         )
         .unwrap();
     }
@@ -687,8 +687,8 @@ benchmarks! {
                 order_book_id,
                 owner_id: caller.clone(),
                 direction: PriceVariant::Sell,
-                amount: OrderAmount::Base(balance!(355.13473).into()),
-                average_price: balance!(9.855414408497867837).into(),
+                amount: OrderAmount::Base(balance!(168.5).into()),
+                average_price: balance!(10).into(),
                 to: None,
             }
             .into(),
@@ -696,11 +696,11 @@ benchmarks! {
 
         assert_eq!(
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
-            caller_base_balance - balance!(355.13473)
+            caller_base_balance - balance!(168.5)
         );
         assert_eq!(
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
-            caller_quote_balance + balance!(3499.999935)
+            caller_quote_balance + balance!(1685)
         );
     }
 
