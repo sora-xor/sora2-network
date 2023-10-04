@@ -34,6 +34,8 @@
 pub type MaxU32 = sp_runtime::traits::ConstU32<{ core::u32::MAX }>;
 pub type UnboundedBridgeMessage = bridge_types::substrate::BridgeMessage<MaxU32>;
 pub type UnboundedGenericCommitment = bridge_types::GenericCommitment<MaxU32, MaxU32>;
+pub type UnboundedGenericCommitmentWithBlock<BlockNumber> =
+    bridge_types::types::GenericCommitmentWithBlock<BlockNumber, MaxU32, MaxU32>;
 
 #[subxt::subxt(
     runtime_metadata_path = "src/bytes/parachain_metadata.scale",
@@ -44,6 +46,8 @@ pub mod parachain_runtime {
     use crate::UnboundedBridgeMessage;
     #[subxt(substitute_type = "bridge_types::GenericCommitment")]
     use crate::UnboundedGenericCommitment;
+    #[subxt(substitute_type = "bridge_types::types::GenericCommitmentWithBlock")]
+    use crate::UnboundedGenericCommitmentWithBlock;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
     use ::bridge_common::beefy_types::BeefyMMRLeaf;
     #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]

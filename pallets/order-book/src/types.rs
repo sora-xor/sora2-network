@@ -454,6 +454,12 @@ where
             Some(*output.value())
         }
     }
+
+    pub fn count_of_executed_orders(&self) -> usize {
+        self.to_full_execute
+            .len()
+            .saturating_add(self.to_part_execute.len())
+    }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]

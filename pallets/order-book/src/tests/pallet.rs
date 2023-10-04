@@ -589,8 +589,8 @@ fn should_expire_order() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
-        fill_balance(caller.clone(), order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(caller.clone(), order_book_id);
 
         let price: OrderPrice = balance!(10).into();
         let amount: OrderVolume = balance!(100).into();
@@ -661,8 +661,8 @@ fn should_cleanup_on_expiring() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
-        fill_balance(caller.clone(), order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(caller.clone(), order_book_id);
 
         let price: OrderPrice = balance!(10).into();
         let amount: OrderVolume = balance!(100).into();
@@ -806,7 +806,7 @@ fn should_enforce_expiration_and_weight_limits() {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         let price = balance!(10);
         let amount = balance!(100);
@@ -828,7 +828,7 @@ fn should_enforce_expiration_and_weight_limits() {
             let caller = generate_account::<Runtime>(i);
             // in order to avoid cap on orders for a single price
             let price = price + order_book.tick_size.balance() * i as u128;
-            fill_balance(caller.clone(), order_book_id);
+            fill_balance::<Runtime>(caller.clone(), order_book_id);
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
                 order_book_id,
@@ -840,7 +840,7 @@ fn should_enforce_expiration_and_weight_limits() {
             placed_orders.push(get_last_order_id(order_book_id).unwrap());
         }
         let caller = generate_account::<Runtime>(max_orders_expire_at_block);
-        fill_balance(caller.clone(), order_book_id);
+        fill_balance::<Runtime>(caller.clone(), order_book_id);
         assert_err!(
             OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
@@ -1035,7 +1035,7 @@ fn can_exchange() {
             quote: XOR.into(),
         };
 
-        let _ = create_empty_order_book(order_book_id);
+        let _ = create_empty_order_book::<Runtime>(order_book_id);
 
         assert!(OrderBookPallet::can_exchange(&DEX.into(), &XOR, &VAL));
         assert!(OrderBookPallet::can_exchange(&DEX.into(), &VAL, &XOR));
@@ -1093,7 +1093,7 @@ fn should_quote() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
 
         // without fee
         assert_eq!(
@@ -1240,7 +1240,7 @@ fn should_not_quote_with_empty_side() {
             quote: XOR.into(),
         };
 
-        let _ = create_empty_order_book(order_book_id);
+        let _ = create_empty_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::quote(
@@ -1275,7 +1275,7 @@ fn should_not_quote_with_small_amount() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::quote(
@@ -1332,7 +1332,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::quote(
@@ -1367,7 +1367,7 @@ fn should_quote_without_impact() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
 
         // without fee
         assert_eq!(
@@ -1506,7 +1506,7 @@ fn should_not_quote_without_impact_with_empty_side() {
             quote: XOR.into(),
         };
 
-        let _ = create_empty_order_book(order_book_id);
+        let _ = create_empty_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::quote_without_impact(
@@ -1541,7 +1541,7 @@ fn should_not_quote_without_impact_with_small_amount() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::quote_without_impact(
@@ -1598,8 +1598,8 @@ fn should_exchange_and_transfer_to_owner() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
-        fill_balance(alice::<Runtime>(), order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         let mut alice_base_balance =
             free_balance::<Runtime>(&order_book_id.base, &alice::<Runtime>());
@@ -1722,8 +1722,8 @@ fn should_exchange_and_transfer_to_another_account() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
-        fill_balance(alice::<Runtime>(), order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         let mut alice_base_balance =
             free_balance::<Runtime>(&order_book_id.base, &alice::<Runtime>());
@@ -1925,8 +1925,8 @@ fn should_not_exchange_with_invalid_slippage() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
-        fill_balance(alice::<Runtime>(), order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         assert_err!(
             OrderBookPallet::exchange(

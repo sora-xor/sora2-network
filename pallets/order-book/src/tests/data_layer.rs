@@ -1513,7 +1513,7 @@ fn get_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
 
         let empty_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -1521,7 +1521,7 @@ fn get_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(empty_order_book_id);
+        create_empty_order_book::<Runtime>(empty_order_book_id);
 
         assert_eq!(
             data.get_user_limit_orders(&bob::<Runtime>(), &empty_order_book_id),
@@ -1556,7 +1556,7 @@ fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id1);
+        create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -1564,7 +1564,7 @@ fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id2);
+        create_and_fill_order_book::<Runtime>(order_book_id2);
 
         let empty_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -1572,7 +1572,7 @@ fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(empty_order_book_id);
+        create_empty_order_book::<Runtime>(empty_order_book_id);
 
         // no orders from empty_order_book_id
         assert_eq!(
@@ -1598,7 +1598,7 @@ fn best_bid_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let best_price = BalanceUnit::divisible(balance!(10));
         let best_price_aggregated_volume = BalanceUnit::divisible(balance!(168.5));
@@ -1672,7 +1672,7 @@ fn best_ask_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let best_price = BalanceUnit::divisible(balance!(11));
         let best_price_aggregated_volume = BalanceUnit::divisible(balance!(176.3));
@@ -1802,7 +1802,7 @@ fn is_bid_price_full_works(data: &mut impl DataLayer<Runtime>) {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
         let price = order_book.tick_size;
         assert!(data.is_bid_price_full(&order_book_id, &price).is_none());
         fill_single_price(data, order_book, price, PriceVariant::Buy);
@@ -1821,7 +1821,7 @@ fn is_ask_price_full_works(data: &mut impl DataLayer<Runtime>) {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
         let price = order_book.tick_size;
         assert!(data.is_ask_price_full(&order_book_id, &price).is_none());
         fill_single_price(data, order_book, price, PriceVariant::Sell);
@@ -1864,7 +1864,7 @@ fn is_user_limit_orders_full_works(data: &mut impl DataLayer<Runtime>) {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        let mut order_book = create_empty_order_book(order_book_id);
+        let mut order_book = create_empty_order_book::<Runtime>(order_book_id);
         let user = alice::<Runtime>();
         let fill_settings = FillSettings::max();
         let current_block = frame_system::Pallet::<Runtime>::block_number();

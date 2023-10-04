@@ -1907,6 +1907,8 @@ impl order_book::Config for Runtime {
     const MIN_ORDER_LIFESPAN: Moment = (MINUTES as Moment) * MILLISECS_PER_BLOCK; // 1 minute
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50);
+    const SOFT_MIN_MAX_RATIO: usize = 1000;
+    const HARD_MIN_MAX_RATIO: usize = 4000;
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
     type Locker = OrderBook;
@@ -2165,7 +2167,7 @@ pub enum MultiProof {
     Multisig(<MultisigVerifier as Verifier>::Proof),
     /// This proof is only used for benchmarking purposes
     #[cfg(feature = "runtime-benchmarks")]
-    #[codec(index = 2)]
+    #[codec(skip)]
     Empty,
 }
 
@@ -2264,6 +2266,7 @@ impl multisig_verifier::Config for Runtime {
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type MaxPeers = BridgeMaxPeers;
     type WeightInfo = crate::weights::multisig_verifier::WeightInfo<Runtime>;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 construct_runtime! {
@@ -2341,16 +2344,10 @@ construct_runtime! {
         #[cfg(feature = "wip")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
-        // Trustless bridges
-        #[cfg(feature = "wip")] // Trustless bridges
-        Mmr: pallet_mmr::{Pallet, Storage} = 90,
-        // In production needed for session keys
-        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
-        #[cfg(feature = "wip")] // Trustless bridges
-        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
+        // Leaf provider should be placed before any pallet which is uses it
+        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
 
         // Generic bridges pallets
-        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         // Trustless EVM bridge
@@ -2379,7 +2376,16 @@ construct_runtime! {
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
         ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
-        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call, Config} = 111,
+        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
+
+        // Trustless bridges
+        // Beefy pallets should be placed after channels
+        #[cfg(feature = "wip")] // Trustless bridges
+        Mmr: pallet_mmr::{Pallet, Storage} = 90,
+        // In production needed for session keys
+        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
+        #[cfg(feature = "wip")] // Trustless bridges
+        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
 
         // Dev
         #[cfg(feature = "private-net")]

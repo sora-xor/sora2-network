@@ -36,7 +36,7 @@ use common::{balance, PriceVariant, DAI, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
-    Config, DealInfo, LimitOrder, MarketChange, OrderAmount, OrderBookId, Payment,
+    Config, DealInfo, LimitOrder, MarketChange, OrderAmount, OrderBookId, OrderVolume, Payment,
 };
 use framenode_runtime::Runtime;
 use sp_std::collections::btree_map::BTreeMap;
@@ -665,10 +665,10 @@ fn check_payment_execute_all() {
 
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
-        fill_balance(alice::<Runtime>(), order_book_id);
-        fill_balance(bob::<Runtime>(), order_book_id);
-        fill_balance(charlie::<Runtime>(), order_book_id);
-        fill_balance(dave::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(bob::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(charlie::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(dave::<Runtime>(), order_book_id);
 
         let balance_diff = balance!(150);
 
@@ -1451,4 +1451,249 @@ fn check_market_change_merge() {
     market_change = origin.clone();
     assert_ok!(market_change.merge(empty));
     assert_eq!(market_change, origin);
+}
+
+#[test]
+fn check_market_change_count_of_executed_orders() {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        dex_id: DEX.into(),
+        base: VAL.into(),
+        quote: XOR.into(),
+    };
+
+    let empty_payment =
+        Payment::<AssetIdOf<Runtime>, <Runtime as frame_system::Config>::AccountId, DEXId> {
+            order_book_id,
+            to_lock: BTreeMap::<
+                AssetIdOf<Runtime>,
+                BTreeMap<<Runtime as frame_system::Config>::AccountId, OrderVolume>,
+            >::new(),
+            to_unlock: BTreeMap::<
+                AssetIdOf<Runtime>,
+                BTreeMap<<Runtime as frame_system::Config>::AccountId, OrderVolume>,
+            >::new(),
+        };
+
+    assert_eq!(
+        MarketChange {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: None,
+            to_place: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_part_execute: BTreeMap::<
+                <Runtime as Config>::OrderId,
+                (LimitOrder::<Runtime>, OrderAmount),
+            >::new(),
+            to_full_execute: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_cancel: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            payment: empty_payment.clone(),
+            ignore_unschedule_error: false,
+        }
+        .count_of_executed_orders(),
+        0
+    );
+
+    assert_eq!(
+        MarketChange {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: None,
+            to_place: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_part_execute: BTreeMap::from([(
+                2,
+                (
+                    LimitOrder::<Runtime>::new(
+                        2,
+                        alice::<Runtime>(),
+                        PriceVariant::Buy,
+                        balance!(20).into(),
+                        balance!(100).into(),
+                        1000,
+                        10000,
+                        100,
+                    ),
+                    OrderAmount::Base(balance!(10).into()),
+                ),
+            )]),
+            to_full_execute: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_cancel: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            payment: empty_payment.clone(),
+            ignore_unschedule_error: false,
+        }
+        .count_of_executed_orders(),
+        1
+    );
+
+    assert_eq!(
+        MarketChange {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: None,
+            to_place: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_part_execute: BTreeMap::<
+                <Runtime as Config>::OrderId,
+                (LimitOrder::<Runtime>, OrderAmount),
+            >::new(),
+            to_full_execute: BTreeMap::from([(
+                1,
+                LimitOrder::<Runtime>::new(
+                    1,
+                    alice::<Runtime>(),
+                    PriceVariant::Buy,
+                    balance!(20).into(),
+                    balance!(100).into(),
+                    1000,
+                    10000,
+                    100,
+                ),
+            )]),
+            to_cancel: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            payment: empty_payment.clone(),
+            ignore_unschedule_error: false,
+        }
+        .count_of_executed_orders(),
+        1
+    );
+
+    assert_eq!(
+        MarketChange {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: None,
+            to_place: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_part_execute: BTreeMap::from([(
+                2,
+                (
+                    LimitOrder::<Runtime>::new(
+                        2,
+                        alice::<Runtime>(),
+                        PriceVariant::Buy,
+                        balance!(20).into(),
+                        balance!(100).into(),
+                        1000,
+                        10000,
+                        100,
+                    ),
+                    OrderAmount::Base(balance!(10).into()),
+                ),
+            )]),
+            to_full_execute: BTreeMap::from([(
+                1,
+                LimitOrder::<Runtime>::new(
+                    1,
+                    alice::<Runtime>(),
+                    PriceVariant::Buy,
+                    balance!(20).into(),
+                    balance!(100).into(),
+                    1000,
+                    10000,
+                    100,
+                ),
+            )]),
+            to_cancel: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            payment: empty_payment.clone(),
+            ignore_unschedule_error: false,
+        }
+        .count_of_executed_orders(),
+        2
+    );
+
+    assert_eq!(
+        MarketChange {
+            deal_input: None,
+            deal_output: None,
+            market_input: None,
+            market_output: None,
+            to_place: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_part_execute: BTreeMap::from([
+                (
+                    4,
+                    (
+                        LimitOrder::<Runtime>::new(
+                            4,
+                            alice::<Runtime>(),
+                            PriceVariant::Buy,
+                            balance!(20).into(),
+                            balance!(100).into(),
+                            1000,
+                            10000,
+                            100,
+                        ),
+                        OrderAmount::Base(balance!(10).into()),
+                    ),
+                ),
+                (
+                    5,
+                    (
+                        LimitOrder::<Runtime>::new(
+                            5,
+                            alice::<Runtime>(),
+                            PriceVariant::Buy,
+                            balance!(20).into(),
+                            balance!(100).into(),
+                            1000,
+                            10000,
+                            100,
+                        ),
+                        OrderAmount::Base(balance!(10).into()),
+                    ),
+                )
+            ]),
+            to_full_execute: BTreeMap::from([
+                (
+                    1,
+                    LimitOrder::<Runtime>::new(
+                        1,
+                        alice::<Runtime>(),
+                        PriceVariant::Buy,
+                        balance!(20).into(),
+                        balance!(100).into(),
+                        1000,
+                        10000,
+                        100,
+                    ),
+                ),
+                (
+                    2,
+                    LimitOrder::<Runtime>::new(
+                        2,
+                        alice::<Runtime>(),
+                        PriceVariant::Buy,
+                        balance!(20).into(),
+                        balance!(100).into(),
+                        1000,
+                        10000,
+                        100,
+                    ),
+                ),
+                (
+                    3,
+                    LimitOrder::<Runtime>::new(
+                        3,
+                        alice::<Runtime>(),
+                        PriceVariant::Buy,
+                        balance!(20).into(),
+                        balance!(100).into(),
+                        1000,
+                        10000,
+                        100,
+                    ),
+                )
+            ]),
+            to_cancel: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            payment: empty_payment.clone(),
+            ignore_unschedule_error: false,
+        }
+        .count_of_executed_orders(),
+        5
+    );
 }

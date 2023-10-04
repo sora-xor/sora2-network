@@ -359,7 +359,6 @@ pub fn new_partial(
     let rpc_extensions_builder = {
         let client = client.clone();
         let pool = transaction_pool.clone();
-        let backend = backend.clone();
 
         move |deny_unsafe,
               subscription_executor|
@@ -373,7 +372,6 @@ pub fn new_partial(
                     beefy_best_block_stream: beefy_rpc_links.from_voter_best_beefy_stream.clone(),
                     subscription_executor,
                 },
-                backend: backend.clone(),
             };
 
             let rpc = crate::rpc::create_full(deps)?;

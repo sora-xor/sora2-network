@@ -54,7 +54,7 @@ use codec::Decode;
 use common::prelude::BalanceUnit;
 use common::{AssetInfoProvider, DEXId, PriceVariant};
 use frame_support::traits::Time;
-use frame_system::EventRecord;
+use frame_system::{EventRecord, RawOrigin};
 #[allow(unused)]
 #[cfg(test)]
 use framenode_runtime::order_book::{
@@ -418,25 +418,40 @@ pub(crate) mod quote_benchmark {
     }
 }
 
-pub(crate) mod exchange_benchmark {
+pub(crate) mod exchange_single_order_benchmark {
     use super::*;
-    use common::prelude::BalanceUnit;
-    use common::{balance, Balance};
+    use crate::test_utils::create_and_fill_order_book;
+    use common::prelude::{BalanceUnit, SwapAmount};
+    use common::{balance, Balance, VAL, XOR};
 
     pub struct Context<T: Config> {
         pub caller: T::AccountId,
         pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        pub amount: BalanceUnit,
+        pub expected_in: Balance,
+        pub expected_out: Balance,
         pub caller_base_balance: Balance,
         pub caller_quote_balance: Balance,
     }
 
     pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
-        // https://github.com/paritytech/polkadot-sdk/issues/383
-        frame_system::Pallet::<T>::set_block_number(1u32.into());
         let caller = alice::<T>();
-        let (order_book_id, amount) =
-            prepare_market_order_benchmark(settings.clone(), caller.clone(), true);
+
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
+
+        assets::Pallet::<T>::update_balance(
+            RawOrigin::Root.into(),
+            caller.clone(),
+            order_book_id.base,
+            balance!(1000000).try_into().unwrap(),
+        )
+        .unwrap();
+
         let caller_base_balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap();
         let caller_quote_balance =
@@ -444,7 +459,8 @@ pub(crate) mod exchange_benchmark {
         Context {
             caller,
             order_book_id,
-            amount,
+            expected_in: balance!(165),
+            expected_out: balance!(1685), // this amount executes only one limit order
             caller_base_balance,
             caller_quote_balance,
         }
@@ -454,34 +470,30 @@ pub(crate) mod exchange_benchmark {
         let Context {
             caller,
             order_book_id,
-            amount: _,
+            expected_in,
+            expected_out,
             caller_base_balance,
             caller_quote_balance,
         } = context;
 
-        let order_amount = OrderAmount::Base(balance!(4096).into());
-        let average_price = balance!(0.000325).into();
         assert_last_event::<T>(
             Event::<T>::MarketOrderExecuted {
                 order_book_id,
                 owner_id: caller.clone(),
                 direction: PriceVariant::Sell,
-                amount: order_amount,
-                average_price,
+                amount: OrderAmount::Base(expected_in.into()),
+                average_price: balance!(10).into(),
                 to: None,
             }
             .into(),
         );
-
-        assert_orders_numbers::<T>(order_book_id, Some(1), Some(0), None, None);
-
         assert_eq!(
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
-            caller_base_balance - *order_amount.value().balance()
+            caller_base_balance - expected_in
         );
         assert_eq!(
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
-            caller_quote_balance + *(*order_amount.value() * average_price).balance()
+            caller_quote_balance + expected_out
         );
     }
 }
@@ -512,7 +524,6 @@ mod benchmarks_inner {
         prepare_place_orderbook_benchmark, prepare_quote_benchmark,
     };
 
-    use assets::Pallet as Assets;
     use frame_system::Pallet as FrameSystem;
     use trading_pair::Pallet as TradingPair;
 
@@ -525,7 +536,7 @@ mod benchmarks_inner {
             let caller = alice::<T>();
             FrameSystem::<T>::inc_providers(&caller);
 
-            let nft = Assets::<T>::register_from(
+            let nft = assets::Pallet::<T>::register_from(
                 &caller,
                 AssetSymbol(b"NFT".to_vec()),
                 AssetName(b"Nft".to_vec()),
@@ -725,9 +736,9 @@ mod benchmarks_inner {
             // nothing changed
         }
 
-        exchange {
+        exchange_single_order {
             let settings = preset_14::<T>();
-            let context = exchange_benchmark::init(settings.clone());
+            let context = exchange_single_order_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::exchange(
                 &context.caller,
@@ -735,12 +746,14 @@ mod benchmarks_inner {
                 &context.order_book_id.dex_id,
                 &context.order_book_id.base,
                 &context.order_book_id.quote,
-                SwapAmount::with_desired_input(*context.amount.balance(), balance!(0)),
+                SwapAmount::with_desired_output(
+                    context.expected_out, context.expected_in + balance!(5)
+                ),
             )
             .unwrap();
         }
         verify {
-            exchange_benchmark::verify(settings, context);
+            exchange_single_order_benchmark::verify(settings, context);
         }
 
         service_base {
@@ -1955,17 +1968,20 @@ mod tests {
             use common::LiquiditySource;
 
             let settings = preset_14::<Runtime>();
-            let context = exchange_benchmark::init(settings.clone());
+            let context = exchange_single_order_benchmark::init(settings.clone());
             let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
                 &context.caller,
                 &context.caller,
                 &context.order_book_id.dex_id,
                 &context.order_book_id.base,
                 &context.order_book_id.quote,
-                SwapAmount::with_desired_input(*context.amount.balance(), balance!(0)),
+                SwapAmount::with_desired_output(
+                    context.expected_out,
+                    context.expected_in + balance!(5),
+                ),
             )
             .unwrap();
-            exchange_benchmark::verify(settings, context);
+            exchange_single_order_benchmark::verify(settings, context);
         })
     }
 }

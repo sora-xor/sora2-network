@@ -37,18 +37,19 @@ use std::sync::Arc;
 
 use crate::prelude::*;
 use bridge_types::types::AuxiliaryDigest;
+use bridge_types::GenericNetworkId;
 use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
 use mmr_rpc::MmrApiClient;
-use sp_core::Bytes;
 use sp_mmr_primitives::{EncodableOpaqueLeaf, Proof};
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use std::sync::RwLock;
 pub use substrate_gen::{runtime, DefaultConfig};
 use subxt::blocks::ExtrinsicEvents;
+use subxt::constants::ConstantAddress;
 use subxt::events::EventDetails;
 use subxt::metadata::DecodeWithMetadata;
 pub use subxt::rpc::Subscription;
-use subxt::rpc::{rpc_params, ChainBlockResponse, RpcClientT};
+use subxt::rpc::{ChainBlockResponse, RpcClientT};
 use subxt::storage::address::Yes;
 use subxt::storage::StorageAddress;
 use subxt::tx::Signer;
@@ -200,22 +201,43 @@ impl<T: ConfigExt> UnsignedClient<T> {
         Ok(res.unwrap_or_default())
     }
 
-    pub async fn bridge_commitment(
+    pub async fn latest_commitment<N: Into<BlockNumberOrHash>>(
         &self,
-        network_id: bridge_types::GenericNetworkId,
-        batch_nonce: u64,
-    ) -> AnyResult<OffchainDataOf<T>> {
-        Ok(
-            bridge_channel_rpc::BridgeChannelAPIClient::<OffchainDataOf<T>>::commitment(
-                self.rpc(),
-                network_id,
-                batch_nonce,
-            )
+        network_id: GenericNetworkId,
+        at: N,
+    ) -> AnyResult<GenericCommitmentWithBlockOf<T>>
+    where
+        T: SenderConfig,
+    {
+        let address = T::latest_commitment(network_id);
+        let commitment = self
+            .storage_fetch(&address, at)
             .await?
-            .ok_or(anyhow!(
-                "Connect to substrate server with enabled offchain indexing"
-            ))?,
-        )
+            .ok_or(anyhow!("Commitment not found"))?;
+        Ok(commitment)
+    }
+
+    pub async fn commitment_with_nonce<N: Into<BlockNumberOrHash>>(
+        &self,
+        network_id: GenericNetworkId,
+        nonce: u64,
+        at: N,
+    ) -> AnyResult<GenericCommitmentWithBlockOf<T>>
+    where
+        T: SenderConfig,
+    {
+        let mut current_block = at.into();
+        loop {
+            let commitment = self.latest_commitment(network_id, current_block).await?;
+            match commitment.commitment.nonce().cmp(&nonce) {
+                std::cmp::Ordering::Equal => return Ok(commitment),
+                std::cmp::Ordering::Greater => {}
+                std::cmp::Ordering::Less => return Err(anyhow!("Commitment nonce too low")),
+            }
+            current_block = BlockNumberOrHash::Number(
+                Into::<u64>::into(commitment.block_number).saturating_sub(1),
+            );
+        }
     }
 
     pub async fn beefy_start_block(&self) -> AnyResult<u64> {
@@ -236,22 +258,6 @@ impl<T: ConfigExt> UnsignedClient<T> {
         let beefy_start_block = latest_finalized_number.into().saturating_sub(mmr_leaves);
         debug!("Beefy started at: {}", beefy_start_block);
         Ok(beefy_start_block)
-    }
-
-    pub async fn offchain_local_get(
-        &self,
-        storage: StorageKind,
-        key: Vec<u8>,
-    ) -> AnyResult<Option<Vec<u8>>> {
-        let res = self
-            .api()
-            .rpc()
-            .request::<Option<Bytes>>(
-                "offchain_localStorageGet",
-                rpc_params![storage.as_string(), Bytes(key)],
-            )
-            .await?;
-        Ok(res.map(|x| x.0))
     }
 
     pub async fn mmr_generate_proof(
@@ -324,6 +330,9 @@ impl<T: ConfigExt> UnsignedClient<T> {
             BlockNumberOrHash::Number(n) => Some(n),
             BlockNumberOrHash::Hash(h) => return Ok(h.into()),
             BlockNumberOrHash::Best => None,
+            BlockNumberOrHash::Finalized => {
+                return self.finalized_head().await;
+            }
         };
         let res = self
             .api()
@@ -383,11 +392,28 @@ impl<T: ConfigExt> UnsignedClient<T> {
         N: Into<BlockNumberOrHash>,
     {
         let hash = self.block_hash(hash).await?;
+        info!(
+            "Fetching storage {}::{} at hash {:?}",
+            address.pallet_name(),
+            address.entry_name(),
+            hash
+        );
         let res = self
             .api()
             .storage()
             .fetch_or_default(address, Some(hash.into()))
             .await?;
+        Ok(res)
+    }
+
+    pub fn constant_fetch_or_default<Address>(
+        &self,
+        address: &Address,
+    ) -> AnyResult<<Address::Target as DecodeWithMetadata>::Target>
+    where
+        Address: ConstantAddress,
+    {
+        let res = self.api().constants().at(address)?;
         Ok(res)
     }
 
@@ -407,10 +433,11 @@ impl<T: ConfigExt> UnsignedClient<T> {
         } else {
             debug!("Submitting extrinsic without validation data");
         }
+        let xt = UnvalidatedTxPayload(xt);
         let res = self
             .api()
             .tx()
-            .create_unsigned(xt)?
+            .create_unsigned(&xt)?
             .submit_and_watch()
             .await
             .map_err(|e| {

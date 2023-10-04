@@ -57,7 +57,7 @@ fn should_create_new() {
     };
 
     let expected = OrderBook::<Runtime> {
-        order_book_id: order_book_id,
+        order_book_id,
         status: OrderBookStatus::Trade,
         last_order_id: 0,
         tick_size: balance!(0.001).into(),
@@ -155,8 +155,8 @@ fn should_place_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
-        fill_balance(owner.clone(), order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(owner.clone(), order_book_id);
 
         let order_id = 100;
         let price = balance!(10).into();
@@ -186,7 +186,7 @@ fn should_place_limit_order() {
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // place new order
-        assert_ok!(order_book.place_limit_order(order, &mut data));
+        assert_eq!(order_book.place_limit_order(order, &mut data).unwrap(), 0);
 
         // check
         let mut expected_bids = bids_before.clone();
@@ -267,7 +267,7 @@ fn should_place_nft_limit_order() {
         );
 
         // place new order
-        assert_ok!(order_book.place_limit_order(order, &mut data));
+        assert_eq!(order_book.place_limit_order(order, &mut data).unwrap(), 0);
 
         // check
         assert_eq!(
@@ -299,8 +299,8 @@ fn should_place_limit_order_out_of_spread() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
-        fill_balance(alice::<Runtime>(), order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         let bid_price1 = balance!(10).into();
         let bid_price2 = balance!(9.8).into();
@@ -369,7 +369,10 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(buy_order1, &mut data));
+        assert_eq!(
+            order_book.place_limit_order(buy_order1, &mut data).unwrap(),
+            1
+        );
 
         // check state
 
@@ -435,7 +438,12 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(buy_order2.clone(), &mut data));
+        assert_eq!(
+            order_book
+                .place_limit_order(buy_order2.clone(), &mut data)
+                .unwrap(),
+            1
+        );
 
         // check state
 
@@ -514,7 +522,12 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(sell_order1, &mut data));
+        assert_eq!(
+            order_book
+                .place_limit_order(sell_order1, &mut data)
+                .unwrap(),
+            1
+        );
 
         // check state
 
@@ -579,7 +592,12 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(sell_order2.clone(), &mut data));
+        assert_eq!(
+            order_book
+                .place_limit_order(sell_order2.clone(), &mut data)
+                .unwrap(),
+            1
+        );
 
         // check state
 
@@ -655,7 +673,7 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
         let mut order_book = OrderBook::<Runtime>::default(order_book_id);
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
-        fill_balance(alice::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         let mut order = LimitOrder::<Runtime>::new(
             1,
@@ -818,7 +836,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
         let order_book = OrderBook::<Runtime>::default(order_book_id);
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
-        fill_balance(alice::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         let mut order = LimitOrder::<Runtime>::new(
             0,
@@ -901,7 +919,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
             // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
             let account = generate_account::<Runtime>(i);
 
-            fill_balance(account.clone(), order_book_id);
+            fill_balance::<Runtime>(account.clone(), order_book_id);
 
             buy_order.id += 1;
             buy_order.owner = account.clone();
@@ -973,7 +991,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
             // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
             let account = generate_account::<Runtime>(i);
 
-            fill_balance(account.clone(), order_book_id);
+            fill_balance::<Runtime>(account.clone(), order_book_id);
 
             buy_order.id += 1;
             buy_order.owner = account.clone();
@@ -1017,13 +1035,13 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
-        fill_balance(alice::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         let max_price_shift = <Runtime as Config>::MAX_PRICE_SHIFT;
 
-        // values from create_and_fill_order_book()
+        // values from create_and_fill_order_book::<Runtime>()
         let best_bid_price = balance!(10);
         let best_ask_price = balance!(11);
 
@@ -1094,7 +1112,7 @@ fn should_not_place_limit_order_in_spread() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let buy_price = balance!(11.1).into(); // above the spread, in the asks zone
         let buy_order = LimitOrder::<Runtime>::new(
@@ -1147,7 +1165,7 @@ fn should_cancel_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order = data.get_limit_order(&order_book_id, 5).unwrap();
 
@@ -1208,7 +1226,7 @@ fn should_not_cancel_unknown_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let unknown_order = LimitOrder::<Runtime>::new(
             1234,
@@ -1239,7 +1257,7 @@ fn should_not_cancel_limit_order_when_status_doesnt_allow() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         let order2 = data.get_limit_order(&order_book_id, 2).unwrap();
@@ -1274,7 +1292,7 @@ fn should_cancel_all_limit_orders() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &OrderBookPallet::tech_account_for_order_book(order_book_id.clone()),
@@ -1346,7 +1364,7 @@ fn should_not_get_best_bid_from_empty_order_book() {
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         assert_eq!(order_book.best_bid(&mut data), None);
     });
@@ -1363,7 +1381,7 @@ fn should_get_best_bid() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_eq!(
             order_book.best_bid(&mut data).unwrap(),
@@ -1383,7 +1401,7 @@ fn should_not_get_best_ask_from_empty_order_book() {
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         assert_eq!(order_book.best_ask(&mut data), None);
     });
@@ -1400,7 +1418,7 @@ fn should_get_best_ask() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_eq!(
             order_book.best_ask(&mut data).unwrap(),
@@ -1418,7 +1436,7 @@ fn should_not_get_direction_if_any_asset_is_not_in_order_book_id() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(order_book.get_direction(&DOT, &KSM), E::InvalidAsset);
         assert_err!(order_book.get_direction(&XOR, &KSM), E::InvalidAsset);
@@ -1437,7 +1455,7 @@ fn should_get_direction() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_eq!(
             order_book.get_direction(&XOR, &VAL).unwrap(),
@@ -1459,7 +1477,7 @@ fn should_align_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         // default step = 0.00001
         assert_eq!(
@@ -1512,7 +1530,7 @@ fn should_not_sum_market_if_limit_is_greater_than_liquidity() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let asks = data.get_aggregated_asks(&order_book_id);
         let bids = data.get_aggregated_bids(&order_book_id);
@@ -1556,7 +1574,7 @@ fn should_sum_market_with_zero_limit() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let asks = data.get_aggregated_asks(&order_book_id);
         let bids = data.get_aggregated_bids(&order_book_id);
@@ -1617,7 +1635,7 @@ fn should_sum_market() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let asks = data.get_aggregated_asks(&order_book_id);
         let bids = data.get_aggregated_bids(&order_book_id);
@@ -1830,7 +1848,7 @@ fn should_not_calculate_deal_with_small_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             order_book.calculate_deal(
@@ -1882,7 +1900,7 @@ fn should_calculate_deal() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_eq!(
             order_book
@@ -1970,7 +1988,7 @@ fn should_not_execute_market_order_with_non_trade_status() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order = MarketOrder::<Runtime>::new(
             alice::<Runtime>(),
@@ -2011,7 +2029,7 @@ fn should_not_execute_market_order_with_empty_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let wrong_amount = OrderVolume::zero();
         let order = MarketOrder::<Runtime>::new(
@@ -2046,7 +2064,7 @@ fn should_not_execute_market_order_with_invalid_order_book_id() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order = MarketOrder::<Runtime>::new(
             alice::<Runtime>(),
@@ -2074,7 +2092,7 @@ fn should_not_execute_market_order_with_invalid_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order = MarketOrder::<Runtime>::new(
             alice::<Runtime>(),
@@ -2118,9 +2136,9 @@ fn should_execute_market_order_and_transfer_to_owner() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
-        fill_balance(alice::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         let mut alice_base_balance =
             free_balance::<Runtime>(&order_book_id.base, &alice::<Runtime>());
@@ -2175,7 +2193,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1650).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                1
             )
         );
         assert_eq!(
@@ -2236,7 +2255,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1674.74).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
@@ -2296,7 +2316,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1708.53).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
@@ -2353,7 +2374,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1500).into())
+                OrderAmount::Quote(balance!(1500).into()),
+                1
             )
         );
         assert_eq!(
@@ -2410,7 +2432,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1473.7).into())
+                OrderAmount::Quote(balance!(1473.7).into()),
+                3
             )
         );
         assert_eq!(
@@ -2466,7 +2489,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1427.52).into())
+                OrderAmount::Quote(balance!(1427.52).into()),
+                3
             )
         );
         assert_eq!(
@@ -2522,7 +2546,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05).into()),
-                OrderAmount::Base(balance!(160.7).into())
+                OrderAmount::Base(balance!(160.7).into()),
+                2
             )
         );
         assert_eq!(
@@ -2531,7 +2556,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7).into()),
-                OrderAmount::Quote(balance!(1137.15).into())
+                OrderAmount::Quote(balance!(1137.15).into()),
+                2
             )
         );
         assert_eq!(
@@ -2575,9 +2601,9 @@ fn should_execute_market_order_and_transfer_to_another_account() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
-        fill_balance(alice::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         let mut alice_base_balance =
             free_balance::<Runtime>(&order_book_id.base, &alice::<Runtime>());
@@ -2637,7 +2663,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1650).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                1
             )
         );
         assert_eq!(
@@ -2709,7 +2736,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1674.74).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
@@ -2780,7 +2808,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1708.53).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
@@ -2848,7 +2877,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1500).into())
+                OrderAmount::Quote(balance!(1500).into()),
+                1
             )
         );
         assert_eq!(
@@ -2916,7 +2946,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1473.7).into())
+                OrderAmount::Quote(balance!(1473.7).into()),
+                3
             )
         );
         assert_eq!(
@@ -2983,7 +3014,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1427.52).into())
+                OrderAmount::Quote(balance!(1427.52).into()),
+                3
             )
         );
         assert_eq!(
@@ -3050,7 +3082,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05).into()),
-                OrderAmount::Base(balance!(160.7).into())
+                OrderAmount::Base(balance!(160.7).into()),
+                2
             )
         );
         assert_eq!(
@@ -3059,7 +3092,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7).into()),
-                OrderAmount::Quote(balance!(1137.15).into())
+                OrderAmount::Quote(balance!(1137.15).into()),
+                2
             )
         );
         assert_eq!(
@@ -3110,7 +3144,7 @@ fn should_align_limit_orders() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         // change lot size precision
         order_book.step_lot_size = balance!(1).into();
@@ -3185,7 +3219,7 @@ fn should_not_calculate_market_order_impact_with_empty_side() {
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             order_book.calculate_market_order_impact(
@@ -3227,7 +3261,7 @@ fn should_not_calculate_market_order_impact_if_liquidity_is_not_enough() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             order_book.calculate_market_order_impact(
@@ -3269,7 +3303,7 @@ fn should_calculate_market_order_impact() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
@@ -3852,7 +3886,7 @@ fn should_calculate_limit_order_impact() {
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         let limit_order_buy = LimitOrder::<Runtime>::new(
             1,
@@ -3940,7 +3974,7 @@ fn should_calculate_cancellation_limit_order_impact() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
         let limit_order8 = data.get_limit_order(&order_book_id, 8).unwrap();
@@ -4086,7 +4120,7 @@ fn should_calculate_cancellation_of_all_limit_orders_impact() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
@@ -4165,8 +4199,8 @@ fn should_calculate_align_limit_orders_impact() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
-        fill_balance(alice::<Runtime>(), order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         assert_ok!(order_book.place_limit_order(
             LimitOrder::<Runtime>::new(
@@ -4368,9 +4402,9 @@ fn should_apply_market_change() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
-        fill_balance(alice::<Runtime>(), order_book_id);
-        fill_balance(dave::<Runtime>(), order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(dave::<Runtime>(), order_book_id);
 
         let bid_price1 = balance!(10).into();
         let bid_price2 = balance!(9.8).into();
@@ -4617,7 +4651,7 @@ fn should_calculate_market_depth_to_price() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
 
         let bids = data.get_aggregated_bids(&order_book_id);
         let asks = data.get_aggregated_asks(&order_book_id);
@@ -4796,7 +4830,7 @@ fn should_cross_spread() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let new_bid_price = balance!(11.1).into();
         let new_ask_price = balance!(9.9).into();
@@ -5024,7 +5058,7 @@ fn should_cross_spread_with_small_remaining_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();

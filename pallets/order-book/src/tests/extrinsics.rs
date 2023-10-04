@@ -30,6 +30,7 @@
 
 #![cfg(feature = "wip")] // order-book
 
+use crate::test_utils::DEXId;
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::{
@@ -429,7 +430,7 @@ fn should_check_permissions_for_delete_order_book() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
         assert_err!(
             OrderBookPallet::delete_orderbook(
                 RawOrigin::Signed(alice::<Runtime>()).into(),
@@ -447,7 +448,7 @@ fn should_check_permissions_for_delete_order_book() {
 
         // Only more than half approvals from technical commitee are accepted
 
-        create_empty_order_book(order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
         if pallet_collective::Pallet::<Runtime, framenode_runtime::TechnicalCollective>::members()
             .len()
             > 1
@@ -464,7 +465,7 @@ fn should_check_permissions_for_delete_order_book() {
                 TechnicalRawOrigin::Member(alice::<Runtime>()).into(),
                 order_book_id
             ),);
-            create_empty_order_book(order_book_id);
+            create_empty_order_book::<Runtime>(order_book_id);
         }
         assert_err!(
             OrderBookPallet::delete_orderbook(
@@ -505,7 +506,7 @@ fn should_delete_order_book() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
         let owner = bob::<Runtime>();
 
         let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
@@ -598,7 +599,7 @@ fn should_delete_order_book_with_a_lot_of_orders() {
             // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
             let account = generate_account::<Runtime>(i);
 
-            fill_balance(account.clone(), order_book_id);
+            fill_balance::<Runtime>(account.clone(), order_book_id);
 
             buy_price -= order_book.tick_size;
             sell_price += order_book.tick_size;
@@ -641,7 +642,7 @@ fn should_check_permissions_for_update_order_book() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::update_orderbook(
@@ -692,7 +693,7 @@ fn should_check_permissions_for_update_order_book() {
                 balance!(1),
                 balance!(10000)
             ),);
-            create_empty_order_book(order_book_id);
+            create_empty_order_book::<Runtime>(order_book_id);
         }
         assert_err!(
             OrderBookPallet::update_orderbook(
@@ -739,7 +740,7 @@ fn should_check_permissions_for_update_order_book() {
             order_book_id.quote,
             order_book_id.base
         ));
-        create_empty_order_book(order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
 
         let asset_owner_base = Assets::asset_owner(&order_book_id.base).unwrap();
         let asset_owner_quote = Assets::asset_owner(&order_book_id.quote).unwrap();
@@ -808,7 +809,7 @@ fn should_not_update_order_book_with_zero_attributes() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
 
         let tick_size = balance!(0.01);
         let step_lot_size = balance!(0.001);
@@ -874,7 +875,7 @@ fn should_not_update_order_book_with_simple_mistakes() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
 
         // min > max
         assert_err!(
@@ -948,7 +949,7 @@ fn should_not_update_order_book_with_wrong_min_deal_amount() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::update_orderbook(
@@ -1045,7 +1046,7 @@ fn should_not_update_order_book_when_attributes_exceed_total_supply() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::update_orderbook(
@@ -1070,7 +1071,7 @@ fn should_update_order_book_with_regular_asset() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
 
         let limit_order1 = OrderBookPallet::limit_orders(order_book_id, 1).unwrap();
         let limit_order2 = OrderBookPallet::limit_orders(order_book_id, 2).unwrap();
@@ -1218,7 +1219,7 @@ fn should_align_limit_orders_when_update_order_book() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
 
         let limit_order1 = OrderBookPallet::limit_orders(order_book_id, 1).unwrap();
         let limit_order2 = OrderBookPallet::limit_orders(order_book_id, 2).unwrap();
@@ -1325,7 +1326,7 @@ fn should_check_permissions_for_change_order_book_status() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
         assert_err!(
             OrderBookPallet::change_orderbook_status(
                 RawOrigin::Signed(alice::<Runtime>()).into(),
@@ -1409,7 +1410,7 @@ fn should_change_order_book_status() {
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
 
         assert_eq!(
             OrderBookPallet::order_books(order_book_id).unwrap().status,
@@ -1495,8 +1496,8 @@ fn should_place_limit_order() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
-        fill_balance(caller.clone(), order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(caller.clone(), order_book_id);
 
         let price: OrderPrice = balance!(10).into();
         let amount: OrderVolume = balance!(100).into();
@@ -1681,8 +1682,8 @@ fn should_place_limit_order_out_of_spread() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
-        fill_balance(alice::<Runtime>(), order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         let now = 1234;
         Timestamp::set_timestamp(now);
@@ -1980,8 +1981,8 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
-        fill_balance(alice::<Runtime>(), order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         let now = 1234;
         Timestamp::set_timestamp(now);
@@ -2232,7 +2233,7 @@ fn should_place_a_lot_of_orders() {
             // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
             let account = generate_account::<Runtime>(i);
 
-            fill_balance(account.clone(), order_book_id);
+            fill_balance::<Runtime>(account.clone(), order_book_id);
 
             buy_price -= order_book.tick_size;
             sell_price += order_book.tick_size;
@@ -2270,7 +2271,7 @@ fn should_not_cancel_unknown_limit_order() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
 
         let unknown_order_id = 1234;
 
@@ -2295,7 +2296,7 @@ fn should_not_cancel_not_own_limit_order() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order_id = 1;
 
@@ -2319,7 +2320,7 @@ fn should_cancel_limit_order() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order_id = 5;
 
@@ -2383,7 +2384,7 @@ fn should_not_cancel_not_own_limit_orders_batch() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id1);
+        create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -2391,7 +2392,7 @@ fn should_not_cancel_not_own_limit_orders_batch() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id2);
+        create_and_fill_order_book::<Runtime>(order_book_id2);
 
         // Bob owns orders (1, 3, 5, 7, 9, 11) in both order books
         let to_cancel = vec![
@@ -2418,7 +2419,7 @@ fn should_not_cancel_unknown_limit_orders_batch() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id1);
+        create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -2426,7 +2427,7 @@ fn should_not_cancel_unknown_limit_orders_batch() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id2);
+        create_and_fill_order_book::<Runtime>(order_book_id2);
 
         // Bob owns orders (1, 3, 5, 7, 9, 11) in both order books
         let to_cancel = vec![
@@ -2453,7 +2454,7 @@ fn should_not_cancel_limit_orders_batch_in_stopped_order_book() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id1);
+        create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -2461,7 +2462,7 @@ fn should_not_cancel_limit_orders_batch_in_stopped_order_book() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id2);
+        create_and_fill_order_book::<Runtime>(order_book_id2);
 
         let order_book_id3 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -2469,7 +2470,7 @@ fn should_not_cancel_limit_orders_batch_in_stopped_order_book() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id3);
+        create_and_fill_order_book::<Runtime>(order_book_id3);
 
         assert_ok!(OrderBookPallet::change_orderbook_status(
             RawOrigin::Root.into(),
@@ -2515,7 +2516,7 @@ fn should_cancel_all_user_limit_orders_batch() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id1);
+        create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -2523,7 +2524,7 @@ fn should_cancel_all_user_limit_orders_batch() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id2);
+        create_and_fill_order_book::<Runtime>(order_book_id2);
 
         let bid_price1: OrderPrice = balance!(10).into();
         let bid_price2: OrderPrice = balance!(9.8).into();
@@ -2656,7 +2657,7 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id1);
+        create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -2664,7 +2665,7 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id2);
+        create_and_fill_order_book::<Runtime>(order_book_id2);
 
         let bid_price1: OrderPrice = balance!(10).into();
         let bid_price2: OrderPrice = balance!(9.8).into();
@@ -2803,8 +2804,8 @@ fn should_not_execute_market_order_with_divisible_asset() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
-        fill_balance(alice::<Runtime>(), order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
 
         assert_err!(
             OrderBookPallet::execute_market_order(
@@ -2851,8 +2852,8 @@ fn should_execute_market_order_with_indivisible_asset() {
             quote: XOR.into(),
         };
 
-        fill_balance(alice::<Runtime>(), order_book_id);
-        fill_balance(bob::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(bob::<Runtime>(), order_book_id);
 
         assert_ok!(TradingPair::register(
             RawOrigin::Signed(bob::<Runtime>()).into(),
