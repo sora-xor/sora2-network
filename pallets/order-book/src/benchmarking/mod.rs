@@ -51,7 +51,6 @@ use crate::{
 };
 use assets::AssetIdOf;
 use codec::Decode;
-use common::prelude::BalanceUnit;
 use common::{AssetInfoProvider, DEXId, PriceVariant};
 use frame_support::traits::Time;
 use frame_system::{EventRecord, RawOrigin};
@@ -421,7 +420,6 @@ pub(crate) mod quote_benchmark {
 pub(crate) mod exchange_single_order_benchmark {
     use super::*;
     use crate::test_utils::create_and_fill_order_book;
-    use common::prelude::{BalanceUnit, SwapAmount};
     use common::{balance, Balance, VAL, XOR};
 
     pub struct Context<T: Config> {
@@ -433,7 +431,7 @@ pub(crate) mod exchange_single_order_benchmark {
         pub caller_quote_balance: Balance,
     }
 
-    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
+    pub fn init<T: Config + trading_pair::Config>(_settings: FillSettings<T>) -> Context<T> {
         let caller = alice::<T>();
 
         let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
@@ -513,7 +511,6 @@ mod benchmarks_inner {
 
     use super::*;
     use crate::cache_data_layer::CacheDataLayer;
-    use crate::test_utils::FillSettings;
     use crate::{
         Config, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
         Pallet,
@@ -1869,7 +1866,6 @@ mod benchmarks_inner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::FillSettings;
 
     use common::prelude::SwapAmount;
     use common::{balance, PriceVariant};
@@ -1884,9 +1880,10 @@ mod tests {
         ext().execute_with(|| {
             let settings = preset_14::<Runtime>();
             let order_book_id = delete_orderbook_benchmark::init(settings.clone());
-            // run_to_block(1);
+
             OrderBookPallet::<Runtime>::delete_orderbook(RawOrigin::Root.into(), order_book_id)
                 .unwrap();
+
             delete_orderbook_benchmark::verify(settings, order_book_id);
         })
     }
