@@ -341,11 +341,11 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
 
-    fn vec_to_price_orders<T: Config>(
-        v: Vec<u32>,
+    fn slice_to_price_orders<T: Config>(
+        v: &[u32],
     ) -> PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice> {
         v.into_iter()
-            .map(T::OrderId::from)
+            .map(|id| T::OrderId::from(*id))
             .collect::<Vec<_>>()
             .try_into()
             .unwrap()
@@ -354,28 +354,28 @@ pub fn create_and_fill_order_book<T: Config>(
     // check
     assert_eq!(
         Pallet::<T>::bids(order_book_id, OrderPrice::divisible(bp1)).unwrap(),
-        vec_to_price_orders::<T>(vec![1])
+        slice_to_price_orders::<T>(&[1])
     );
     assert_eq!(
         Pallet::<T>::bids(order_book_id, OrderPrice::divisible(bp2)).unwrap(),
-        vec_to_price_orders::<T>(vec![2, 3])
+        slice_to_price_orders::<T>(&[2, 3])
     );
     assert_eq!(
         Pallet::<T>::bids(order_book_id, OrderPrice::divisible(bp3)).unwrap(),
-        vec_to_price_orders::<T>(vec![4, 5, 6])
+        slice_to_price_orders::<T>(&[4, 5, 6])
     );
 
     assert_eq!(
         Pallet::<T>::asks(order_book_id, OrderPrice::divisible(sp1)).unwrap(),
-        vec_to_price_orders::<T>(vec![7])
+        slice_to_price_orders::<T>(&[7])
     );
     assert_eq!(
         Pallet::<T>::asks(order_book_id, OrderPrice::divisible(sp2)).unwrap(),
-        vec_to_price_orders::<T>(vec![8, 9])
+        slice_to_price_orders::<T>(&[8, 9])
     );
     assert_eq!(
         Pallet::<T>::asks(order_book_id, OrderPrice::divisible(sp3)).unwrap(),
-        vec_to_price_orders::<T>(vec![10, 11, 12])
+        slice_to_price_orders::<T>(&[10, 11, 12])
     );
 
     assert_eq!(
