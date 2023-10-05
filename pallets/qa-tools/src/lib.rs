@@ -179,15 +179,14 @@ pub mod pallet {
             })
         }
 
-        /// Create multiple many order books with default parameters if do not exist and
-        /// fill them according to given parameters.
+        /// Initialize order book liquidity source. Create multiple many order books with default
+        /// parameters if do not exist and fill them according to given parameters.
         ///
         /// Balance for placing the orders is minted automatically, trading pairs are
         /// created if needed.
         ///
         /// Parameters:
-        /// - `origin`: caller, should be account because unsigned error messages are unclear,
-        /// - `dex_id`: DEXId for all created order books,
+        /// - `origin`: account to mint non-divisible assets (for creating an order book)
         /// - `bids_owner`: Creator of the buy orders placed on the order books,
         /// - `asks_owner`: Creator of the sell orders placed on the order books,
         /// - `fill_settings`: Parameters for placing the orders in each order book.
@@ -204,6 +203,7 @@ pub mod pallet {
                 OrderBookFillSettings<MomentOf<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {
+            // error messages for unsigned calls are non-informative
             let who = Self::ensure_in_whitelist(origin)?;
 
             pallet_tools::liquidity_proxy::source_initializers::order_book::<T>(
