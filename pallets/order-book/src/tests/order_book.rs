@@ -185,7 +185,7 @@ fn should_place_limit_order() {
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // place new order
-        assert_ok!(order_book.place_limit_order(order, &mut data));
+        assert_eq!(order_book.place_limit_order(order, &mut data).unwrap(), 0);
 
         // check
         let mut expected_bids = bids_before.clone();
@@ -266,7 +266,7 @@ fn should_place_nft_limit_order() {
         );
 
         // place new order
-        assert_ok!(order_book.place_limit_order(order, &mut data));
+        assert_eq!(order_book.place_limit_order(order, &mut data).unwrap(), 0);
 
         // check
         assert_eq!(
@@ -366,7 +366,10 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(buy_order1, &mut data));
+        assert_eq!(
+            order_book.place_limit_order(buy_order1, &mut data).unwrap(),
+            1
+        );
 
         // check state
 
@@ -432,7 +435,12 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(buy_order2.clone(), &mut data));
+        assert_eq!(
+            order_book
+                .place_limit_order(buy_order2.clone(), &mut data)
+                .unwrap(),
+            1
+        );
 
         // check state
 
@@ -511,7 +519,12 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(sell_order1, &mut data));
+        assert_eq!(
+            order_book
+                .place_limit_order(sell_order1, &mut data)
+                .unwrap(),
+            1
+        );
 
         // check state
 
@@ -576,7 +589,12 @@ fn should_place_limit_order_out_of_spread() {
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(sell_order2.clone(), &mut data));
+        assert_eq!(
+            order_book
+                .place_limit_order(sell_order2.clone(), &mut data)
+                .unwrap(),
+            1
+        );
 
         // check state
 
@@ -2133,7 +2151,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1650).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                1
             )
         );
         assert_eq!(
@@ -2190,7 +2209,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1674.74).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
@@ -2246,7 +2266,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1708.53).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
@@ -2299,7 +2320,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1500).into())
+                OrderAmount::Quote(balance!(1500).into()),
+                1
             )
         );
         assert_eq!(
@@ -2355,7 +2377,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1473.7).into())
+                OrderAmount::Quote(balance!(1473.7).into()),
+                3
             )
         );
         assert_eq!(
@@ -2410,7 +2433,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1427.52).into())
+                OrderAmount::Quote(balance!(1427.52).into()),
+                3
             )
         );
         assert_eq!(
@@ -2465,7 +2489,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05).into()),
-                OrderAmount::Base(balance!(160.7).into())
+                OrderAmount::Base(balance!(160.7).into()),
+                2
             )
         );
         assert_eq!(
@@ -2474,7 +2499,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7).into()),
-                OrderAmount::Quote(balance!(1137.15).into())
+                OrderAmount::Quote(balance!(1137.15).into()),
+                2
             )
         );
         assert_eq!(
@@ -2573,7 +2599,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1650).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                1
             )
         );
         assert_eq!(
@@ -2641,7 +2668,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1674.74).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
@@ -2708,7 +2736,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1708.53).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
@@ -2772,7 +2801,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1500).into())
+                OrderAmount::Quote(balance!(1500).into()),
+                1
             )
         );
         assert_eq!(
@@ -2839,7 +2869,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1473.7).into())
+                OrderAmount::Quote(balance!(1473.7).into()),
+                3
             )
         );
         assert_eq!(
@@ -2905,7 +2936,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1427.52).into())
+                OrderAmount::Quote(balance!(1427.52).into()),
+                3
             )
         );
         assert_eq!(
@@ -2971,7 +3003,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05).into()),
-                OrderAmount::Base(balance!(160.7).into())
+                OrderAmount::Base(balance!(160.7).into()),
+                2
             )
         );
         assert_eq!(
@@ -2980,7 +3013,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7).into()),
-                OrderAmount::Quote(balance!(1137.15).into())
+                OrderAmount::Quote(balance!(1137.15).into()),
+                2
             )
         );
         assert_eq!(
