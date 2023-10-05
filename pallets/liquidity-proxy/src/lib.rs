@@ -2462,16 +2462,19 @@ pub mod pallet {
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
-            let mut weight = Self::inner_swap(
-                sender.clone(),
-                sender.clone(),
-                dex_id,
-                asset_id,
-                common::XOR.into(),
-                SwapAmount::with_desired_output(desired_xor_amount, max_amount_in),
-                selected_source_types,
-                filter_mode,
-            )?;
+            let mut weight = Weight::default();
+            if max_amount_in > Balance::zero() && desired_xor_amount > Balance::zero() {
+                weight = weight.saturating_add(Self::inner_swap(
+                    sender.clone(),
+                    sender.clone(),
+                    dex_id,
+                    asset_id,
+                    common::XOR.into(),
+                    SwapAmount::with_desired_output(desired_xor_amount, max_amount_in),
+                    selected_source_types,
+                    filter_mode,
+                )?);
+            }
 
             assets::Pallet::<T>::transfer_from(&asset_id, &sender, &receiver, amount)?;
             weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());

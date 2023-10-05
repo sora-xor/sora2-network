@@ -203,6 +203,11 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
                 max_amount_in,
                 ..
             }) => {
+                // Pay fee as usual
+                if balance > fee {
+                    return false;
+                }
+
                 // Check how much user has input asset
                 let user_input_balance = Currencies::free_balance(*asset_id, who);
 

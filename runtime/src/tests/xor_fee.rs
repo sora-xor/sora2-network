@@ -39,12 +39,12 @@ use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
 use common::{balance, fixed_wrapper, AssetInfoProvider, FilterMode, VAL, XOR};
-use frame_support::assert_ok;
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
 use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::WeightToFee as WeightToFeeTrait;
+use frame_support::{assert_err, assert_ok};
 use frame_system::EventRecord;
 use framenode_chain_spec::ext;
 use log::LevelFilter;
@@ -949,6 +949,27 @@ fn fee_payment_postponed_xorless_transfer() {
             dex_id: 0,
             asset_id: VAL,
             // Swap with desired output may return less tokens than requested
+            desired_xor_amount: 0,
+            max_amount_in: 0,
+            amount: balance!(500),
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+            receiver: alice(),
+        });
+
+        let quoted_fee =
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&bob(), &call, &dispatch_info, SMALL_FEE, 0)
+                .unwrap();
+
+        assert_eq!(
+            quoted_fee,
+            LiquidityInfo::Paid(bob(), Some(NegativeImbalance::new(SMALL_FEE)))
+        );
+
+        let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+            dex_id: 0,
+            asset_id: VAL,
+            // Swap with desired output may return less tokens than requested
             desired_xor_amount: SMALL_FEE + 1,
             max_amount_in: balance!(1),
             amount: balance!(10),
@@ -997,5 +1018,68 @@ fn fee_payment_postponed_xorless_transfer() {
         ));
 
         assert_eq!(Assets::total_balance(&XOR.into(), &alice()).unwrap(), 0);
+    });
+}
+
+/// Fee should be postponed until after the transaction
+#[test]
+fn fee_payment_postpone_failed_xorless_transfer() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        increase_balance(alice(), VAL.into(), balance!(1000));
+
+        increase_balance(bob(), XOR.into(), balance!(1000));
+        increase_balance(bob(), VAL.into(), balance!(1000));
+
+        ensure_pool_initialized(XOR.into(), VAL.into());
+        PoolXYK::deposit_liquidity(
+            RuntimeOrigin::signed(bob()),
+            0,
+            XOR.into(),
+            VAL.into(),
+            balance!(500),
+            balance!(500),
+            balance!(450),
+            balance!(450),
+        )
+        .unwrap();
+
+        fill_spot_price();
+
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+
+        let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+            dex_id: 0,
+            asset_id: VAL,
+            // Swap with desired output may return less tokens than requested
+            desired_xor_amount: SMALL_FEE + 1,
+            max_amount_in: 1,
+            amount: balance!(10),
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+            receiver: bob(),
+        });
+
+        assert_err!(
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0),
+            TransactionValidityError::Invalid(InvalidTransaction::Payment)
+        );
+
+        let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+            dex_id: 0,
+            asset_id: VAL,
+            // Swap with desired output may return less tokens than requested
+            desired_xor_amount: 0,
+            max_amount_in: 0,
+            amount: balance!(500),
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+            receiver: bob(),
+        });
+
+        assert_err!(
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0),
+            TransactionValidityError::Invalid(InvalidTransaction::Payment)
+        );
     });
 }
