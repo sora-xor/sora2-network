@@ -39,7 +39,7 @@ pub use pallet::*;
 mod tests;
 pub mod weights;
 pub use weights::*;
-mod pallets;
+mod pallet_tools;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -53,7 +53,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use order_book::{MomentOf, OrderBookId};
-    pub use pallets::order_book_tools::OrderBookFillSettings;
+    pub use pallet_tools::order_book::OrderBookFillSettings;
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -162,14 +162,14 @@ pub mod pallet {
 
             // replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            pallets::order_book_tools::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
+            pallet_tools::order_book::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
                 .map_err(|e| DispatchErrorWithPostInfo {
-                post_info: PostDispatchInfo {
-                    actual_weight: None,
-                    pays_fee: Pays::No,
-                },
-                error: e,
-            })?;
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                })?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -207,15 +207,15 @@ pub mod pallet {
             let who = Self::ensure_in_whitelist(origin)?;
 
             let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
-            pallets::order_book_tools::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
+            pallet_tools::order_book::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
                 .map_err(|e| DispatchErrorWithPostInfo {
-                post_info: PostDispatchInfo {
-                    actual_weight: None,
-                    pays_fee: Pays::No,
-                },
-                error: e,
-            })?;
-            pallets::order_book_tools::fill_multiple_empty_unchecked::<T>(
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                })?;
+            pallet_tools::order_book::fill_multiple_empty_unchecked::<T>(
                 bids_owner,
                 asks_owner,
                 fill_settings,
