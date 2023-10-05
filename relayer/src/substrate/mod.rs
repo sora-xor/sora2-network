@@ -368,6 +368,12 @@ impl<T: ConfigExt> UnsignedClient<T> {
         N: Into<BlockNumberOrHash>,
     {
         let hash = self.block_hash(hash).await?;
+        trace!(
+            "Fetching storage {}::{} at hash {:?}",
+            address.pallet_name(),
+            address.entry_name(),
+            hash
+        );
         let res = self
             .api()
             .storage()
@@ -392,7 +398,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
         N: Into<BlockNumberOrHash>,
     {
         let hash = self.block_hash(hash).await?;
-        info!(
+        trace!(
             "Fetching storage {}::{} at hash {:?}",
             address.pallet_name(),
             address.entry_name(),
@@ -402,7 +408,13 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .api()
             .storage()
             .fetch_or_default(address, Some(hash.into()))
-            .await?;
+            .await
+            .context(format!(
+                "Fetch storage {}::{} at hash {:?}",
+                address.pallet_name(),
+                address.entry_name(),
+                hash
+            ))?;
         Ok(res)
     }
 
