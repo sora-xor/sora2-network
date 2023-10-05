@@ -206,16 +206,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = Self::ensure_in_whitelist(origin)?;
 
-            let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
-            pallet_tools::order_book::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
-                .map_err(|e| DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: None,
-                        pays_fee: Pays::No,
-                    },
-                    error: e,
-                })?;
-            pallet_tools::order_book::fill_multiple_empty_unchecked::<T>(
+            pallet_tools::liquidity_proxy::source_initializers::order_book::<T>(
+                who,
                 bids_owner,
                 asks_owner,
                 fill_settings,

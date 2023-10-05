@@ -13,14 +13,17 @@ use sp_std::prelude::*;
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct OrderBookFillSettings<Moment> {
     /// Best (highest) price for placed buy orders
-    pub best_bid_price: order_book::types::OrderPrice,
+    pub best_bid_price: OrderPrice,
     /// Best (lowest) price for placed sell orders
-    pub best_ask_price: order_book::types::OrderPrice,
+    pub best_ask_price: OrderPrice,
     /// Lifespan of inserted orders, max by default
     pub lifespan: Option<Moment>,
 }
 
 /// Does not create an order book if it already exists
+///
+/// `who` is just some account. Used to mint non-divisible assets for creating corresponding
+/// order book(-s).
 pub fn create_multiple_empty_unchecked<T: Config>(
     who: &T::AccountId,
     order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
