@@ -48,7 +48,6 @@ extern crate anyhow;
 async fn main() -> AnyResult<()> {
     init_log();
     let cli = cli::Cli::parse();
-    debug!("Cli: {:?}", cli);
     cli.run().await.map_err(|e| {
         error!("Relayer returned error: {:?}", e);
         e
