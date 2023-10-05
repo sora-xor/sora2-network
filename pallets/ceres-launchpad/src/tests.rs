@@ -3773,4 +3773,40 @@ mod tests {
             );
         });
     }
+
+    #[test]
+    fn create_ilo_tokens_for_ilo_overflow() {
+        preset_initial(|| {
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+            let base_asset = XOR;
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::create_ilo(
+                    RuntimeOrigin::signed(ALICE),
+                    base_asset.into(),
+                    CERES_ASSET_ID.into(),
+                    balance!(7693),
+                    balance!(3000),
+                    2,
+                    balance!(600),
+                    u128::MAX.into(),
+                    balance!(0.2),
+                    balance!(0.25),
+                    true,
+                    balance!(0.75),
+                    balance!(4),
+                    31,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_timestamp + 3,
+                    balance!(0.2),
+                    balance!(0.2),
+                    current_timestamp + 3,
+                    balance!(0.2)
+                ),
+                Error::<Runtime>::TokensForILOOverflow
+            );
+        });
+    }
 }
