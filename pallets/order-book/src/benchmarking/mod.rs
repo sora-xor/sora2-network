@@ -54,9 +54,7 @@ use frame_support::traits::Time;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use order_book::{
-    cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event, ExpirationScheduler,
-    LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId, OrderBookStatus,
-    OrderBooks, OrderVolume, Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBookId, OrderVolume, Pallet,
 };
 
 use crate::test_utils::FillSettings;
