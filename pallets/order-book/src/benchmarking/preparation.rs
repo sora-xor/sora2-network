@@ -28,21 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[allow(unused)]
 #[cfg(not(test))]
-use crate::{
-    self as order_book,
-    cache_data_layer::CacheDataLayer,
-    test_utils::{ask_prices_iterator, bid_prices_iterator, lifespans_iterator, users_iterator},
-    traits::DataLayer,
-    Config, Event, ExpirationScheduler, ExpirationsAgenda, LimitOrder, MarketRole, MomentOf,
-    OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume,
-    Pallet, Payment,
-};
-#[allow(unused)]
+use crate as order_book;
 #[cfg(test)]
-use framenode_runtime::order_book::{
-    self as order_book,
+use framenode_runtime::order_book;
+
+use order_book::{
     cache_data_layer::CacheDataLayer,
     test_utils::{ask_prices_iterator, bid_prices_iterator, lifespans_iterator, users_iterator},
     traits::DataLayer,
@@ -784,11 +775,13 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
 }
 
 pub mod presets {
-    use crate::test_utils::FillSettings;
     #[cfg(not(test))]
-    use crate::Config;
+    use crate as order_book;
     #[cfg(test)]
-    use framenode_runtime::order_book::Config;
+    use framenode_runtime::order_book;
+
+    use crate::test_utils::FillSettings;
+    use order_book::Config;
 
     macro_rules! generate_presets {
         ($($name:ident: $($params:expr),+ $(,)? );+ $(;)? ) => {

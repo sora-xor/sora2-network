@@ -31,12 +31,11 @@
 #![cfg(feature = "wip")] // order-book
 
 #[cfg(not(test))]
-use crate::{
-    traits::DataLayer, Asks, Bids, Config, ExpirationsAgenda, LimitOrder, LimitOrders, MarketRole,
-    OrderBook, OrderBookId, OrderPrice, OrderVolume, Pallet, Payment, PriceOrders,
-};
+use crate as order_book;
 #[cfg(test)]
-use framenode_runtime::order_book::{
+use framenode_runtime::order_book;
+
+use order_book::{
     traits::DataLayer, Asks, Bids, Config, ExpirationsAgenda, LimitOrder, LimitOrders, MarketRole,
     OrderBook, OrderBookId, OrderPrice, OrderVolume, Pallet, Payment, PriceOrders,
 };

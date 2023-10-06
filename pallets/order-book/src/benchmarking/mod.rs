@@ -42,30 +42,24 @@
 // order-book
 #![cfg(feature = "wip")]
 
-#[allow(unused)]
 #[cfg(not(test))]
-use crate::{
-    self as order_book, cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event,
-    ExpirationScheduler, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus, OrderBooks, OrderVolume, Pallet,
-};
+use crate as order_book;
+#[cfg(test)]
+use framenode_runtime::order_book;
+
 use assets::AssetIdOf;
 use codec::Decode;
 use common::{AssetInfoProvider, DEXId, PriceVariant};
 use frame_support::traits::Time;
 use frame_system::{EventRecord, RawOrigin};
-#[allow(unused)]
-#[cfg(test)]
-use framenode_runtime::order_book::{
-    self as order_book, cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event,
-    ExpirationScheduler, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus, OrderBooks, OrderVolume, Pallet,
-};
 use hex_literal::hex;
+use order_book::{
+    cache_data_layer::CacheDataLayer, traits::DataLayer, Config, Event, ExpirationScheduler,
+    LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId, OrderBookStatus,
+    OrderBooks, OrderVolume, Pallet,
+};
 
 use crate::test_utils::FillSettings;
-#[cfg(not(test))]
-use preparation::presets::*;
 use preparation::{
     prepare_cancel_orderbook_benchmark, prepare_delete_orderbook_benchmark,
     prepare_market_order_benchmark, prepare_place_orderbook_benchmark, prepare_quote_benchmark,
@@ -499,6 +493,7 @@ pub(crate) mod exchange_single_order_benchmark {
 
 #[cfg(not(test))]
 pub use benchmarks_inner::*;
+
 #[cfg(not(test))]
 mod benchmarks_inner {
     use common::prelude::SwapAmount;
@@ -519,7 +514,7 @@ mod benchmarks_inner {
     use preparation::{
         create_and_populate_order_book, prepare_cancel_orderbook_benchmark,
         prepare_delete_orderbook_benchmark, prepare_market_order_benchmark,
-        prepare_place_orderbook_benchmark, prepare_quote_benchmark,
+        prepare_place_orderbook_benchmark, prepare_quote_benchmark, presets::*,
     };
 
     use frame_system::Pallet as FrameSystem;
