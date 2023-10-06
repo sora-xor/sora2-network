@@ -30,7 +30,6 @@
 
 #![cfg(feature = "wip")] // order-book
 
-use crate::test_utils::DEXId;
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::{
@@ -148,7 +147,7 @@ fn should_not_create_order_book_with_wrong_quote_asset() {
 }
 
 #[test]
-fn should_not_create_order_book_with_synthetic_base_asset() {
+fn should_create_order_book_with_synthetic_base_asset() {
     ext().execute_with(|| {
         let xstusd_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -156,15 +155,27 @@ fn should_not_create_order_book_with_synthetic_base_asset() {
             quote: XOR.into(),
         };
 
-        assert_err!(
-            OrderBookPallet::create_orderbook(
+        if !TradingPair::is_trading_pair_enabled(
+            &xstusd_order_book_id.dex_id,
+            &xstusd_order_book_id.quote,
+            &xstusd_order_book_id.base,
+        )
+        .unwrap()
+        {
+            assert_ok!(TradingPair::register(
                 RawOrigin::Signed(alice::<Runtime>()).into(),
-                xstusd_order_book_id
-            ),
-            E::SyntheticAssetIsForbidden
-        );
+                xstusd_order_book_id.dex_id,
+                xstusd_order_book_id.quote,
+                xstusd_order_book_id.base
+            ));
+        }
 
-        // but should create with synthetic base asset - XST
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(alice::<Runtime>()).into(),
+            xstusd_order_book_id
+        ));
+
+        // it should work with synthetic base asset - XST as well
         let xst_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: XST.into(),
