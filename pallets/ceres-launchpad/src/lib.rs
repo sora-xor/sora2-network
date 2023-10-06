@@ -1,4 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::type_complexity)]
 
 pub mod weights;
 
@@ -72,6 +74,7 @@ pub struct ContributionInfo<Balance> {
 pub use pallet::*;
 
 #[frame_support::pallet]
+#[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
     use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
@@ -1255,6 +1258,7 @@ pub mod pallet {
         }
 
         /// Check parameters
+        #[allow(clippy::too_many_arguments)]
         fn check_parameters(
             tokens_for_ilo: Balance,
             tokens_for_liquidity: Balance,
