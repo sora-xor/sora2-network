@@ -30,21 +30,15 @@
 
 #![cfg(feature = "wip")] // order-book
 
-#[allow(unused)]
 #[cfg(not(test))]
 use crate::{
-    self as order_book, cache_data_layer::CacheDataLayer, traits::DataLayer, Asks, Bids, Config,
-    Event, ExpirationScheduler, ExpirationsAgenda, LimitOrder, LimitOrders, MarketRole, MomentOf,
-    OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume,
-    Pallet, Payment, PriceOrders,
+    traits::DataLayer, Asks, Bids, Config, ExpirationsAgenda, LimitOrder, LimitOrders, MarketRole,
+    OrderBook, OrderBookId, OrderPrice, OrderVolume, Pallet, Payment, PriceOrders,
 };
-#[allow(unused)]
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    self as order_book, cache_data_layer::CacheDataLayer, traits::DataLayer, Asks, Bids, Config,
-    Event, ExpirationScheduler, ExpirationsAgenda, LimitOrder, LimitOrders, MarketRole, MomentOf,
-    OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume,
-    Pallet, Payment, PriceOrders,
+    traits::DataLayer, Asks, Bids, Config, ExpirationsAgenda, LimitOrder, LimitOrders, MarketRole,
+    OrderBook, OrderBookId, OrderPrice, OrderVolume, Pallet, Payment, PriceOrders,
 };
 
 use assets::AssetIdOf;
@@ -147,7 +141,7 @@ pub fn users_iterator<T: Config>(
 ) -> impl Iterator<Item = T::AccountId> {
     let mint_per_user = max_order_amount * Scalar(max_orders_per_user);
     (1..)
-        .map(crate::test_utils::generate_account::<T>)
+        .map(generate_account::<T>)
         // each user receives assets that should be enough for placing their orders
         .inspect(move |user| {
             assets::Pallet::<T>::mint_unchecked(
