@@ -28,12 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(not(test))]
-use crate as order_book;
+use crate as order_book_imported;
 #[cfg(test)]
-use framenode_runtime::order_book;
+use framenode_runtime::order_book as order_book_imported;
 
-use order_book::{
+use order_book_imported::{
     cache_data_layer::CacheDataLayer,
     test_utils::{bid_prices_iterator, lifespans_iterator, users_iterator},
     traits::DataLayer,
@@ -773,13 +774,14 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
 }
 
 pub mod presets {
+    // TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
     #[cfg(not(test))]
-    use crate as order_book;
+    use crate as order_book_imported;
     #[cfg(test)]
-    use framenode_runtime::order_book;
+    use framenode_runtime::order_book as order_book_imported;
 
     use crate::test_utils::FillSettings;
-    use order_book::Config;
+    use order_book_imported::Config;
 
     macro_rules! generate_presets {
         ($($name:ident: $($params:expr),+ $(,)? );+ $(;)? ) => {

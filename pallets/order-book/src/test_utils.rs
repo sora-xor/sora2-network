@@ -30,12 +30,13 @@
 
 #![cfg(feature = "wip")] // order-book
 
+// TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(not(test))]
-use crate as order_book;
+use crate as order_book_imported;
 #[cfg(test)]
-use framenode_runtime::order_book;
+use framenode_runtime::order_book as order_book_imported;
 
-use order_book::{
+use order_book_imported::{
     traits::DataLayer, Asks, Bids, Config, ExpirationsAgenda, LimitOrder, LimitOrders, MarketRole,
     OrderBook, OrderBookId, OrderPrice, OrderVolume, Pallet, Payment, PriceOrders,
 };

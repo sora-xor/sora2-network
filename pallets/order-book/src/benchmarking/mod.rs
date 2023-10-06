@@ -42,10 +42,11 @@
 // order-book
 #![cfg(feature = "wip")]
 
+// TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(not(test))]
-use crate as order_book;
+use crate as order_book_imported;
 #[cfg(test)]
-use framenode_runtime::order_book;
+use framenode_runtime::order_book as order_book_imported;
 
 use assets::AssetIdOf;
 use codec::Decode;
@@ -53,7 +54,7 @@ use common::{AssetInfoProvider, DEXId, PriceVariant};
 use frame_support::traits::Time;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use order_book::{
+use order_book_imported::{
     Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBookId, OrderVolume, Pallet,
 };
 
@@ -107,7 +108,7 @@ pub fn assert_orders_numbers<T: Config>(
     // # of bids should be max to execute max # of orders and payments
     if let Some(expected_bids) = bids {
         assert_eq!(
-            order_book::Bids::<T>::iter_prefix(order_book_id)
+            order_book_imported::Bids::<T>::iter_prefix(order_book_id)
                 .flat_map(|(_price, orders)| orders.into_iter())
                 .count(),
             expected_bids
@@ -115,7 +116,7 @@ pub fn assert_orders_numbers<T: Config>(
     }
     if let Some(expected_asks) = asks {
         assert_eq!(
-            order_book::Asks::<T>::iter_prefix(order_book_id)
+            order_book_imported::Asks::<T>::iter_prefix(order_book_id)
                 .flat_map(|(_price, orders)| orders.into_iter())
                 .count(),
             expected_asks
@@ -124,7 +125,7 @@ pub fn assert_orders_numbers<T: Config>(
     if let Some((user, count)) = user_orders {
         // user orders of `caller` should be almost full
         assert_eq!(
-            order_book::UserLimitOrders::<T>::get(user.clone(), order_book_id)
+            order_book_imported::UserLimitOrders::<T>::get(user.clone(), order_book_id)
                 .unwrap()
                 .len(),
             count
@@ -133,7 +134,7 @@ pub fn assert_orders_numbers<T: Config>(
     if let Some((lifespan, count)) = expirations {
         // expiration schedule for the block should be almost full
         assert_eq!(
-            order_book::ExpirationsAgenda::<T>::get(LimitOrder::<T>::resolve_lifespan(
+            order_book_imported::ExpirationsAgenda::<T>::get(LimitOrder::<T>::resolve_lifespan(
                 frame_system::Pallet::<T>::block_number(),
                 lifespan
             ))
@@ -240,7 +241,7 @@ pub(crate) mod place_limit_order_benchmark {
 
         let current_block = frame_system::Pallet::<T>::block_number();
 
-        let order_book = order_book::OrderBooks::<T>::get(order_book_id).unwrap();
+        let order_book = order_book_imported::OrderBooks::<T>::get(order_book_id).unwrap();
         let now = <<T as Config>::Time as Time>::now();
         let expected_limit_order = LimitOrder::<T>::new(
             order_id,
