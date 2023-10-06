@@ -61,11 +61,9 @@ pub struct BeefyDeps {
 }
 
 /// Full client dependencies
-pub struct FullDeps<C, P, B> {
+pub struct FullDeps<C, P> {
     /// The client instance to use.
     pub client: Arc<C>,
-    /// Backend instance.
-    pub backend: Arc<B>,
     /// Transaction pool instance.
     pub pool: Arc<P>,
     /// Whether to deny unsafe calls
@@ -98,8 +96,8 @@ pub fn add_ready_for_test_rpc(
 }
 
 /// Instantiate full RPC extensions.
-pub fn create_full<C, P, B>(
-    deps: FullDeps<C, P, B>,
+pub fn create_full<C, P>(
+    deps: FullDeps<C, P>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>,
@@ -180,12 +178,9 @@ where
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
     C::Api: bridge_proxy_rpc::BridgeProxyRuntimeAPI<Block, AssetId>,
     P: TransactionPool + Send + Sync + 'static,
-    B: sc_client_api::Backend<Block> + Send + Sync + 'static,
-    B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
     use assets_rpc::{AssetsAPIServer, AssetsClient};
     use beefy_gadget_rpc::{Beefy, BeefyApiServer};
-    use bridge_channel_rpc::{BridgeChannelAPIServer, BridgeChannelClient};
     use bridge_proxy_rpc::{BridgeProxyAPIServer, BridgeProxyClient};
     use dex_api_rpc::{DEXAPIServer, DEX};
     use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
@@ -209,7 +204,6 @@ where
         pool,
         deny_unsafe,
         beefy,
-        backend,
     } = deps;
 
     io.merge(Mmr::new(client.clone()).into_rpc())?;
@@ -238,14 +232,5 @@ where
     io.merge(FarmingClient::new(client.clone()).into_rpc())?;
     io.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
     io.merge(BridgeProxyClient::new(client.clone()).into_rpc())?;
-    if let Some(storage) = backend.offchain_storage() {
-        io.merge(<BridgeChannelClient<_, _> as BridgeChannelAPIServer<
-            bridge_types::types::BridgeOffchainData<
-                framenode_runtime::BlockNumber,
-                framenode_runtime::BridgeMaxMessagesPerCommit,
-                framenode_runtime::BridgeMaxMessagePayloadSize,
-            >,
-        >>::into_rpc(BridgeChannelClient::new(storage)))?;
-    }
     Ok(io)
 }

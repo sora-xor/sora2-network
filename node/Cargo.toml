@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "3.0.0"
+version = "3.0.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -50,7 +50,6 @@ pswap-distribution-rpc = { path = "../pallets/pswap-distribution/rpc" }
 vested-rewards-rpc = { path = "../pallets/vested-rewards/rpc" }
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
 beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common.git" }
 oracle-proxy-rpc = { path = "../pallets/oracle-proxy/rpc" }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }
 
