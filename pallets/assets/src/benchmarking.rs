@@ -59,8 +59,7 @@ fn bob<T: Config>() -> T::AccountId {
 fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
-        RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner).into();
     for _i in 0..n {
         Assets::<T>::register(
             owner_origin.clone(),
@@ -174,7 +173,7 @@ benchmarks! {
     }: _(
         RawOrigin::Root,
         USDT.into(),
-        caller.clone(),
+        caller,
         100_u32.into()
     )
     verify {
@@ -229,9 +228,9 @@ benchmarks! {
         ).unwrap();
     }: _(
         RawOrigin::Root,
-        caller.clone(),
+        caller,
         USDT.into(),
-        100_i128.into()
+        100_i128
     )
     verify {
         let usdt_issuance = Assets::<T>::total_issuance(&USDT.into())?;
@@ -266,7 +265,7 @@ benchmarks! {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
-            caller.clone(),
+            caller,
             USDT.into(),
             AssetSymbol(b"USDT".to_vec()),
             AssetName(b"USDT".to_vec()),
