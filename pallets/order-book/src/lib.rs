@@ -518,8 +518,10 @@ pub mod pallet {
                 Error::<T>::ForbiddenStatusToDeleteOrderBook
             );
 
-            let count = <LimitOrders<T>>::iter_prefix_values(order_book_id).count();
-            ensure!(count == 0, Error::<T>::OrderBookIsNotEmpty);
+            let is_empty = <LimitOrders<T>>::iter_prefix_values(order_book_id)
+                .next()
+                .is_none();
+            ensure!(is_empty, Error::<T>::OrderBookIsNotEmpty);
 
             #[cfg(feature = "wip")] // order-book
             {
