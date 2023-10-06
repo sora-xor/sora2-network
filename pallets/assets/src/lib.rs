@@ -41,12 +41,6 @@
 //! - `register` - registers new asset by a given ID.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
-
-#[allow(unused_imports)]
-#[macro_use]
-extern crate alloc;
 
 pub mod weights;
 
@@ -179,6 +173,7 @@ impl<T: Config> GetTotalBalance<T> for () {
 pub use pallet::*;
 
 #[frame_support::pallet]
+#[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
     use common::{ContentSource, Description};
@@ -354,7 +349,7 @@ pub mod pallet {
             let issuer = ensure_signed(origin.clone())?;
 
             Self::mint_to(&asset_id, &issuer, &to, amount)?;
-            Self::deposit_event(Event::Mint(issuer, to, asset_id.clone(), amount));
+            Self::deposit_event(Event::Mint(issuer, to, asset_id, amount));
             Ok(().into())
         }
 
@@ -412,7 +407,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let issuer = ensure_signed(origin.clone())?;
             Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
-            Self::deposit_event(Event::Burn(issuer, asset_id.clone(), amount));
+            Self::deposit_event(Event::Burn(issuer, asset_id, amount));
             Ok(().into())
         }
 
@@ -448,7 +443,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin.clone())?;
             Self::set_non_mintable_from(&asset_id, &who)?;
-            Self::deposit_event(Event::AssetSetNonMintable(asset_id.clone()));
+            Self::deposit_event(Event::AssetSetNonMintable(asset_id));
             Ok(().into())
         }
 
@@ -468,7 +463,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             Self::ensure_asset_exists(&asset_id)?;
-            AssetInfos::<T>::mutate(&asset_id, |(ref mut symbol, ref mut name, ..)| {
+            AssetInfos::<T>::mutate(asset_id, |(ref mut symbol, ref mut name, ..)| {
                 if let Some(new_name) = new_name.clone() {
                     ensure!(new_name.is_valid(), Error::<T>::InvalidAssetName);
                     *name = new_name;
@@ -561,6 +556,7 @@ pub mod pallet {
     pub type AssetRecordAssetId<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, AssetRecord<T>>;
 
+    #[allow(clippy::type_complexity)]
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub endowed_assets: Vec<(
@@ -650,7 +646,7 @@ impl<T: Config> Pallet<T> {
         let mut keccak = Keccak::v256();
         keccak.update(b"Sora Asset Id");
         keccak.update(&account_id.encode());
-        keccak.update(&frame_system::Pallet::<T>::account_nonce(&account_id).encode());
+        keccak.update(&frame_system::Pallet::<T>::account_nonce(account_id).encode());
         let mut output = [0u8; 32];
         keccak.finalize(&mut output);
         // More safe to escape.
@@ -659,6 +655,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Register the given `AssetId`.
+    #[allow(clippy::too_many_arguments)]
     pub fn register_asset_id(
         account_id: T::AccountId,
         asset_id: T::AssetId,
@@ -716,7 +713,7 @@ impl<T: Config> Pallet<T> {
         }
 
         if !initial_supply.is_zero() {
-            T::Currency::deposit(asset_id.clone(), &account_id, initial_supply)?;
+            T::Currency::deposit(asset_id, &account_id, initial_supply)?;
         }
 
         frame_system::Pallet::<T>::inc_account_nonce(&account_id);
@@ -725,6 +722,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Generates new `AssetId` and registers it from the `account_id`.
+    #[allow(clippy::too_many_arguments)]
     pub fn register_from(
         account_id: &T::AccountId,
         symbol: AssetSymbol,
@@ -785,7 +783,7 @@ impl<T: Config> Pallet<T> {
         to: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        let r = T::Currency::transfer(asset_id.clone(), from, to, amount);
+        let r = T::Currency::transfer(*asset_id, from, to, amount);
         if r.is_err() {
             Self::ensure_asset_exists(asset_id)?;
         }
@@ -812,7 +810,7 @@ impl<T: Config> Pallet<T> {
         to: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        T::Currency::deposit(asset_id.clone(), to, amount)
+        T::Currency::deposit(*asset_id, to, amount)
     }
 
     pub fn burn_from(
@@ -836,7 +834,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let r = T::Currency::withdraw(*asset_id, from, amount);
         if r.is_err() {
-            Self::ensure_asset_exists(&asset_id)?;
+            Self::ensure_asset_exists(asset_id)?;
         }
         r
     }
@@ -846,7 +844,7 @@ impl<T: Config> Pallet<T> {
         let technical_account = T::GetBuyBackAccountId::get();
         let buy_back_asset_id = T::GetBuyBackAssetId::get();
 
-        Self::mint_unchecked(&asset_id, &technical_account, amount)?;
+        Self::mint_unchecked(asset_id, &technical_account, amount)?;
         let outcome = T::BuyBackLiquidityProxy::exchange(
             dex_id,
             &technical_account,
@@ -874,7 +872,7 @@ impl<T: Config> Pallet<T> {
         if by_amount.is_positive() {
             Self::ensure_asset_is_mintable(asset_id)?;
         }
-        T::Currency::update_balance(asset_id.clone(), who, by_amount)
+        T::Currency::update_balance(*asset_id, who, by_amount)
     }
 
     pub fn can_reserve(asset_id: T::AssetId, who: &T::AccountId, amount: Balance) -> bool {
@@ -884,7 +882,7 @@ impl<T: Config> Pallet<T> {
     pub fn reserve(asset_id: &T::AssetId, who: &T::AccountId, amount: Balance) -> DispatchResult {
         let r = T::Currency::reserve(*asset_id, who, amount);
         if r.is_err() {
-            Self::ensure_asset_exists(&asset_id)?;
+            Self::ensure_asset_exists(asset_id)?;
         }
         r
     }
@@ -896,7 +894,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Balance, DispatchError> {
         let amount = T::Currency::unreserve(*asset_id, who, amount);
         if amount != Default::default() {
-            Self::ensure_asset_exists(&asset_id)?;
+            Self::ensure_asset_exists(asset_id)?;
         }
         Ok(amount)
     }
@@ -917,6 +915,7 @@ impl<T: Config> Pallet<T> {
         AssetInfos::<T>::iter().map(|(key, _)| key).collect()
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn list_registered_asset_infos() -> Vec<(
         T::AssetId,
         AssetSymbol,
@@ -1010,7 +1009,7 @@ impl<T: Config>
     }
 
     fn total_issuance(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
-        let r = T::Currency::total_issuance(asset_id.clone());
+        let r = T::Currency::total_issuance(*asset_id);
         if r == Default::default() {
             Self::ensure_asset_exists(asset_id)?;
         }
@@ -1018,7 +1017,7 @@ impl<T: Config>
     }
 
     fn total_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError> {
-        let r = T::Currency::total_balance(asset_id.clone(), who);
+        let r = T::Currency::total_balance(*asset_id, who);
         if r == Default::default() {
             Self::ensure_asset_exists(asset_id)?;
         }
@@ -1026,7 +1025,7 @@ impl<T: Config>
     }
 
     fn free_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError> {
-        let r = T::Currency::free_balance(asset_id.clone(), who);
+        let r = T::Currency::free_balance(*asset_id, who);
         if r == Default::default() {
             Self::ensure_asset_exists(asset_id)?;
         }
@@ -1038,7 +1037,7 @@ impl<T: Config>
         who: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        let r = T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount);
+        let r = T::Currency::ensure_can_withdraw(*asset_id, who, amount);
         if r.is_err() {
             Self::ensure_asset_exists(asset_id)?;
         }
