@@ -2116,6 +2116,7 @@ impl bridge_proxy::Config for Runtime {
         EnsureRoot<AccountId>,
     >;
     type WeightInfo = ();
+    type AccountIdConverter = sp_runtime::traits::Identity;
 }
 
 #[cfg(feature = "wip")] // Trustless substrate bridge

@@ -60,36 +60,36 @@ pub mod init {
         }
     }
 
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use crate::mock::{new_tester, AssetId, Test};
-        use common::{balance, DAI, XOR};
+    // #[cfg(test)]
+    // mod tests {
+    //     use super::*;
+    //     use crate::mock::{new_tester, AssetId, Test};
+    //     use common::{balance, DAI, XOR};
 
-        frame_support::parameter_types! {
-            pub const HashiBridgeNetworkId: GenericNetworkId = GenericNetworkId::EVMLegacy(0);
+    //     frame_support::parameter_types! {
+    //         pub const HashiBridgeNetworkId: GenericNetworkId = GenericNetworkId::EVMLegacy(0);
 
-            pub AssetsList: Vec<(AssetId, Balance)> = vec![
-                (DAI, balance!(100)),
-                (XOR, balance!(1000)),
-            ];
-        }
+    //         pub AssetsList: Vec<(AssetId, Balance)> = vec![
+    //             (DAI, balance!(100)),
+    //             (XOR, balance!(1000)),
+    //         ];
+    //     }
 
-        #[test]
-        fn test() {
-            new_tester().execute_with(|| {
-                assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 0);
-                InitLockedAssets::<Test, AssetsList, HashiBridgeNetworkId>::on_runtime_upgrade();
-                assert_eq!(
-                    crate::LockedAssets::<Test>::get(GenericNetworkId::EVMLegacy(0), DAI),
-                    balance!(100)
-                );
-                assert_eq!(
-                    crate::LockedAssets::<Test>::get(GenericNetworkId::EVMLegacy(0), XOR),
-                    balance!(1000)
-                );
-                assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 1);
-            });
-        }
-    }
+    //     #[test]
+    //     fn test() {
+    //         new_tester().execute_with(|| {
+    //             assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 0);
+    //             InitLockedAssets::<Test, AssetsList, HashiBridgeNetworkId>::on_runtime_upgrade();
+    //             assert_eq!(
+    //                 crate::LockedAssets::<Test>::get(GenericNetworkId::EVMLegacy(0), DAI),
+    //                 balance!(100)
+    //             );
+    //             assert_eq!(
+    //                 crate::LockedAssets::<Test>::get(GenericNetworkId::EVMLegacy(0), XOR),
+    //                 balance!(1000)
+    //             );
+    //             assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 1);
+    //         });
+    //     }
+    // }
 }

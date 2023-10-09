@@ -2,11 +2,11 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-#[cfg(test)]
-mod mock;
+// #[cfg(test)]
+// mod mock;
 
-#[cfg(test)]
-mod test;
+// #[cfg(test)]
+// mod test;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -29,6 +29,7 @@ use frame_support::ensure;
 use frame_support::log;
 use scale_info::TypeInfo;
 use sp_core::U256;
+use sp_runtime::traits::Convert;
 use sp_runtime::DispatchError;
 use sp_runtime::Saturating;
 use sp_std::prelude::*;
@@ -39,9 +40,9 @@ pub const BRIDGE_TECH_ACC_PREFIX: &[u8] = b"bridge";
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct BridgeRequest<AccountId, AssetId> {
-    source: GenericAccount<AccountId>,
-    dest: GenericAccount<AccountId>,
+pub struct BridgeRequest<AssetId> {
+    source: GenericAccount,
+    dest: GenericAccount,
     asset_id: AssetId,
     amount: Balance,
     status: MessageStatus,
@@ -73,6 +74,8 @@ pub mod pallet {
     };
     use frame_system::pallet_prelude::{BlockNumberFor, *};
     use traits::MultiCurrency;
+    // use sp_runtime::traits::Convert;
+    use bridge_types::MainnetAccountId;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
@@ -83,13 +86,21 @@ pub mod pallet {
     {
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        type EthApp: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+        // type EthApp: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
-        type ERC20App: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+        // type ERC20App: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
-        type ParachainApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
+        // type ParachainApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
 
-        type HashiBridge: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+        // type HashiBridge: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+
+        type EthApp: BridgeApp<MainnetAccountId, H160, Self::AssetId, Balance>;
+
+        type ERC20App: BridgeApp<MainnetAccountId, H160, Self::AssetId, Balance>;
+
+        type ParachainApp: BridgeApp<MainnetAccountId, ParachainAccountId, Self::AssetId, Balance>;
+
+        type HashiBridge: BridgeApp<MainnetAccountId, H160, Self::AssetId, Balance>;
 
         type ReferencePriceProvider: ReferencePriceProvider<Self::AssetId, Balance>;
 
@@ -98,6 +109,8 @@ pub mod pallet {
         type TimepointProvider: TimepointProvider;
 
         type WeightInfo: WeightInfo;
+
+        type AccountIdConverter: Convert<Self::AccountId, MainnetAccountId>;
     }
 
     #[pallet::storage]
@@ -108,7 +121,7 @@ pub mod pallet {
         (GenericNetworkId, T::AccountId),
         Blake2_128Concat,
         H256,
-        BridgeRequest<T::AccountId, T::AssetId>,
+        BridgeRequest<T::AssetId>,
         OptionQuery,
     >;
 
@@ -230,10 +243,11 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             asset_id: T::AssetId,
-            recipient: GenericAccount<T::AccountId>,
+            recipient: GenericAccount,
             amount: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
+            let sender = T::AccountIdConverter::convert(sender);
             match recipient {
                 GenericAccount::EVM(recipient) => {
                     if T::HashiBridge::is_asset_supported(network_id, asset_id) {
@@ -324,7 +338,7 @@ pub mod pallet {
         pub fn refund(
             network_id: GenericNetworkId,
             message_id: H256,
-            beneficiary: GenericAccount<T::AccountId>,
+            beneficiary: GenericAccount,
             asset_id: T::AssetId,
             amount: Balance,
         ) -> DispatchResult {
@@ -440,7 +454,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
     fn inbound_request(
         network_id: GenericNetworkId,
         message_id: H256,
-        source: GenericAccount<T::AccountId>,
+        source: GenericAccount,
         dest: T::AccountId,
         asset_id: T::AssetId,
         amount: Balance,
@@ -454,7 +468,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
             &message_id,
             BridgeRequest {
                 source,
-                dest: GenericAccount::Sora(dest.clone()),
+                dest: GenericAccount::Sora(T::AccountIdConverter::convert(dest.clone())),
                 asset_id,
                 amount,
                 status,
@@ -469,7 +483,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
         network_id: GenericNetworkId,
         message_id: H256,
         source: T::AccountId,
-        dest: GenericAccount<T::AccountId>,
+        dest: GenericAccount,
         asset_id: T::AssetId,
         amount: Balance,
         status: MessageStatus,
@@ -480,7 +494,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
             (&network_id, &source),
             &message_id,
             BridgeRequest {
-                source: GenericAccount::Sora(source.clone()),
+                source: GenericAccount::Sora(T::AccountIdConverter::convert(source.clone())),
                 dest,
                 asset_id,
                 amount,

@@ -289,6 +289,7 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => todo!(),
         }
     }
 }
@@ -309,6 +310,7 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                 let call: multisig_verifier::Call<crate::Runtime> = msg.clone().into();
                 call.get_dispatch_info()
             }
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => todo!(),
         }
     }
 }
@@ -402,6 +404,7 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
             bridge_types::substrate::BridgeCall::XCMApp(_) => false,
             bridge_types::substrate::BridgeCall::DataSigner(_) => true,
             bridge_types::substrate::BridgeCall::MultisigVerifier(_) => true,
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => true,
         }
     }
 }
