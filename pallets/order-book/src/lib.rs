@@ -100,7 +100,6 @@ pub mod pallet {
         Blake2_128Concat, Twox128,
     };
     use frame_system::pallet_prelude::*;
-    use sp_runtime::Either;
 
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -169,12 +168,7 @@ pub mod pallet {
         type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type Time: Time;
-        type ParameterUpdateOrigin: EnsureOrigin<
-            Self::RuntimeOrigin,
-            Success = Either<Self::AccountId, ()>,
-        >;
-        type StatusUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
-        type RemovalOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
+        type PermissionOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
         type WeightInfo: WeightInfo;
     }
 
@@ -462,6 +456,8 @@ pub mod pallet {
         ForbiddenStatusToDeleteOrderBook,
         // It is possible to delete only empty order-book
         OrderBookIsNotEmpty,
+        /// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
+        ForbiddenStatusToUpdateOrderBook,
     }
 
     #[pallet::hooks]
@@ -508,7 +504,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         ) -> DispatchResult {
-            T::RemovalOrigin::ensure_origin(origin)?;
+            T::PermissionOrigin::ensure_origin(origin)?;
             let order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
 
@@ -550,18 +546,15 @@ pub mod pallet {
             min_lot_size: Balance,
             max_lot_size: Balance,
         ) -> DispatchResult {
-            let origin_check_result = T::ParameterUpdateOrigin::ensure_origin(origin)?;
-            match origin_check_result {
-                Either::Left(who) => {
-                    ensure!(
-                        T::AssetInfoProvider::is_asset_owner(&order_book_id.base, &who),
-                        DispatchError::BadOrigin
-                    );
-                }
-                Either::Right(()) => (),
-            }
+            T::PermissionOrigin::ensure_origin(origin)?;
             let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+
+            ensure!(
+                order_book.status == OrderBookStatus::OnlyCancel
+                    || order_book.status == OrderBookStatus::Stop,
+                Error::<T>::ForbiddenStatusToUpdateOrderBook
+            );
 
             // Check that values are non-zero
             ensure!(tick_size > Balance::zero(), Error::<T>::InvalidTickSize);
@@ -593,6 +586,22 @@ pub mod pallet {
             );
             ensure!(
                 max_lot_size % step_lot_size == 0,
+                Error::<T>::InvalidMaxLotSize
+            );
+
+            // check the ratio between min & max
+            ensure!(
+                max_lot_size <= min_lot_size.saturating_mul(T::SOFT_MIN_MAX_RATIO as Balance),
+                Error::<T>::InvalidMaxLotSize
+            );
+
+            // check the ratio between old min & new max
+            ensure!(
+                max_lot_size
+                    <= order_book
+                        .min_lot_size
+                        .balance()
+                        .saturating_mul(T::HARD_MIN_MAX_RATIO as Balance),
                 Error::<T>::InvalidMaxLotSize
             );
 
@@ -643,7 +652,7 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             status: OrderBookStatus,
         ) -> DispatchResult {
-            T::StatusUpdateOrigin::ensure_origin(origin)?;
+            T::PermissionOrigin::ensure_origin(origin)?;
             <OrderBooks<T>>::mutate(order_book_id, |order_book| {
                 let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
                 order_book.status = status;
