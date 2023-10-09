@@ -26,7 +26,7 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
     elif [[ ${TAG_NAME} =~ 'test'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
-    elif [[ -n ${TAG_NAME} ]]; then
+    elif [[ -n ${TAG_NAME} && ${TAG_NAME} !~ 'predev'* ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
