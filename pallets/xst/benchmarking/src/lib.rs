@@ -268,6 +268,20 @@ benchmarks! {
         ).unwrap();
     }
 
+    step_quote {
+        utils::setup_exchange_benchmark::<T>();
+        let asset_id = utils::enable_synthetic_asset::<T>()?;
+    }: {
+        let _ = XSTPool::<T>::step_quote(
+            &DEXId::Polkaswap.into(),
+            &XST.into(),
+            &asset_id,
+            QuoteAmount::with_desired_input(balance!(1000)),
+            1000,
+            true,
+        ).unwrap();
+    }
+
     exchange {
         utils::setup_exchange_benchmark::<T>();
         let asset_id = utils::enable_synthetic_asset::<T>()?;

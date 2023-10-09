@@ -1580,9 +1580,12 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(0).into())
+                QuoteAmount::with_desired_input(balance!(0).into()),
+                10,
+                true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::new()
         );
 
@@ -1591,10 +1594,13 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(1000).into())
+                QuoteAmount::with_desired_input(balance!(1000).into()),
+                10,
+                false
             )
-            .unwrap(),
-            VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3))])
+            .unwrap()
+            .0,
+            VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)])
         );
 
         assert_eq!(
@@ -1602,12 +1608,15 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(2000).into())
+                QuoteAmount::with_desired_input(balance!(2000).into()),
+                10,
+                true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3)),
-                SwapChunk::new(balance!(2000.32), balance!(178.6))
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
             ])
         );
 
@@ -1616,13 +1625,16 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(5000).into())
+                QuoteAmount::with_desired_input(balance!(5000).into()),
+                10,
+                false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3)),
-                SwapChunk::new(balance!(2000.32), balance!(178.6)),
-                SwapChunk::new(balance!(2941.7), balance!(255.8)),
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
             ])
         );
 
@@ -1631,13 +1643,16 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(10000).into())
+                QuoteAmount::with_desired_input(balance!(10000).into()),
+                10,
+                true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3)),
-                SwapChunk::new(balance!(2000.32), balance!(178.6)),
-                SwapChunk::new(balance!(2941.7), balance!(255.8)),
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
             ])
         );
 
@@ -1648,9 +1663,12 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(0).into())
+                QuoteAmount::with_desired_output(balance!(0).into()),
+                10,
+                false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::new()
         );
 
@@ -1659,10 +1677,13 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(100).into())
+                QuoteAmount::with_desired_output(balance!(100).into()),
+                10,
+                true
             )
-            .unwrap(),
-            VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3))])
+            .unwrap()
+            .0,
+            VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)])
         );
 
         assert_eq!(
@@ -1670,12 +1691,15 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200).into())
+                QuoteAmount::with_desired_output(balance!(200).into()),
+                10,
+                false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3)),
-                SwapChunk::new(balance!(2000.32), balance!(178.6))
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
             ])
         );
 
@@ -1684,13 +1708,16 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(500).into())
+                QuoteAmount::with_desired_output(balance!(500).into()),
+                10,
+                true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3)),
-                SwapChunk::new(balance!(2000.32), balance!(178.6)),
-                SwapChunk::new(balance!(2941.7), balance!(255.8)),
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
             ])
         );
 
@@ -1699,13 +1726,16 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(1000).into())
+                QuoteAmount::with_desired_output(balance!(1000).into()),
+                10,
+                false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3)),
-                SwapChunk::new(balance!(2000.32), balance!(178.6)),
-                SwapChunk::new(balance!(2941.7), balance!(255.8)),
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
             ])
         );
 
@@ -1716,9 +1746,12 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(0).into())
+                QuoteAmount::with_desired_input(balance!(0).into()),
+                10,
+                true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::new()
         );
 
@@ -1727,10 +1760,13 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(100).into())
+                QuoteAmount::with_desired_input(balance!(100).into()),
+                10,
+                false
             )
-            .unwrap(),
-            VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685))])
+            .unwrap()
+            .0,
+            VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)])
         );
 
         assert_eq!(
@@ -1738,12 +1774,15 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(200).into())
+                QuoteAmount::with_desired_input(balance!(200).into()),
+                10,
+                true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685)),
-                SwapChunk::new(balance!(139.9), balance!(1371.02))
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
             ])
         );
 
@@ -1752,13 +1791,16 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(500).into())
+                QuoteAmount::with_desired_input(balance!(500).into()),
+                10,
+                false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685)),
-                SwapChunk::new(balance!(139.9), balance!(1371.02)),
-                SwapChunk::new(balance!(261.3), balance!(2482.35)),
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
             ])
         );
 
@@ -1767,13 +1809,16 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(1000).into())
+                QuoteAmount::with_desired_input(balance!(1000).into()),
+                10,
+                true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685)),
-                SwapChunk::new(balance!(139.9), balance!(1371.02)),
-                SwapChunk::new(balance!(261.3), balance!(2482.35)),
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
             ])
         );
 
@@ -1784,9 +1829,12 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(0).into())
+                QuoteAmount::with_desired_output(balance!(0).into()),
+                10,
+                false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::new()
         );
 
@@ -1795,10 +1843,13 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(1000).into())
+                QuoteAmount::with_desired_output(balance!(1000).into()),
+                10,
+                true
             )
-            .unwrap(),
-            VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685))])
+            .unwrap()
+            .0,
+            VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)])
         );
 
         assert_eq!(
@@ -1806,12 +1857,15 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2000).into())
+                QuoteAmount::with_desired_output(balance!(2000).into()),
+                10,
+                false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685)),
-                SwapChunk::new(balance!(139.9), balance!(1371.02))
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
             ])
         );
 
@@ -1820,13 +1874,16 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(5000).into())
+                QuoteAmount::with_desired_output(balance!(5000).into()),
+                10,
+                true
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685)),
-                SwapChunk::new(balance!(139.9), balance!(1371.02)),
-                SwapChunk::new(balance!(261.3), balance!(2482.35)),
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
             ])
         );
 
@@ -1835,13 +1892,16 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(10000).into())
+                QuoteAmount::with_desired_output(balance!(10000).into()),
+                10,
+                false
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685)),
-                SwapChunk::new(balance!(139.9), balance!(1371.02)),
-                SwapChunk::new(balance!(261.3), balance!(2482.35)),
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
             ])
         );
     });
@@ -1855,7 +1915,9 @@ fn should_not_step_quote_with_non_existed_order_book() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200).into())
+                QuoteAmount::with_desired_output(balance!(200).into()),
+                10,
+                true
             ),
             E::UnknownOrderBook
         );
@@ -1865,7 +1927,9 @@ fn should_not_step_quote_with_non_existed_order_book() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2500).into())
+                QuoteAmount::with_desired_output(balance!(2500).into()),
+                10,
+                false
             ),
             E::UnknownOrderBook
         );

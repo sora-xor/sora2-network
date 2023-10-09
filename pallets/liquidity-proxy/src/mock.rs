@@ -110,7 +110,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub const GetNumSamples: usize = 40;
+    pub const GetNumSamples: usize = 1000;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
     pub const ExistentialDeposit: u128 = 0;
@@ -732,12 +732,55 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn step_quote(
-        _target_id: &DEXId,
-        _input_asset_id: &AssetId,
-        _output_asset_id: &AssetId,
-        _amount: QuoteAmount<Balance>,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
-        unimplemented!()
+        dex_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            panic!("Can't exchange");
+        }
+
+        if amount.amount() == 0 {
+            return Ok((VecDeque::new(), Weight::zero()));
+        }
+
+        let step = amount.amount() / recommended_samples_count as Balance;
+
+        let mut chunks = VecDeque::new();
+        let mut sub_in = 0;
+        let mut sub_out = 0;
+        let mut sub_fee = 0;
+
+        for i in 1..=recommended_samples_count {
+            let volume = amount.copy_direction(step * i as Balance);
+
+            let (outcome, _weight) =
+                Self::quote(dex_id, input_asset_id, output_asset_id, volume, deduce_fee)?;
+
+            let (input, output, fee) = match volume {
+                QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                    (desired_amount_in, outcome.amount, outcome.fee)
+                }
+                QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                    (outcome.amount, desired_amount_out, outcome.fee)
+                }
+            };
+
+            let input_chunk = input - sub_in;
+            let output_chunk = output - sub_out;
+            let fee_chunk = fee - sub_fee;
+
+            sub_in = input;
+            sub_out = output;
+            sub_fee = fee;
+
+            chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
+        }
+
+        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
     }
 
     fn exchange(
@@ -786,6 +829,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
         Weight::zero()
     }
 
@@ -1101,12 +1148,43 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn step_quote(
-        _target_id: &DEXId,
-        _input_asset_id: &AssetId,
-        _output_asset_id: &AssetId,
-        _amount: QuoteAmount<Balance>,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
-        unimplemented!()
+        dex_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            panic!("Can't exchange");
+        }
+
+        if amount.amount() == 0 {
+            return Ok((VecDeque::new(), Weight::zero()));
+        }
+
+        let (outcome, _weight) =
+            Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)?;
+
+        let (input, output, fee) = match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                (desired_amount_in, outcome.amount, outcome.fee)
+            }
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                (outcome.amount, desired_amount_out, outcome.fee)
+            }
+        };
+
+        let chunk = SwapChunk::new(
+            input / recommended_samples_count as Balance,
+            output / recommended_samples_count as Balance,
+            fee / recommended_samples_count as Balance,
+        );
+
+        Ok((
+            vec![chunk; recommended_samples_count].into(),
+            Self::step_quote_weight(recommended_samples_count),
+        ))
     }
 
     fn exchange(
@@ -1143,6 +1221,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
         Weight::zero()
     }
 

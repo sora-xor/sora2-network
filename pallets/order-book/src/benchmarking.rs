@@ -650,6 +650,29 @@ benchmarks! {
         // nothing changed
     }
 
+    step_quote {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
+    }: {
+        OrderBookPallet::<T>::step_quote(
+            &DEX.into(),
+            &VAL.into(),
+            &XOR.into(),
+            QuoteAmount::with_desired_output(balance!(2500)),
+            10,
+            true
+        )
+        .unwrap();
+    }
+    verify {
+        // nothing changed
+    }
+
     exchange {
         let caller = alice::<T>();
 

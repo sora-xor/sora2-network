@@ -66,6 +66,7 @@ pub trait WeightInfo {
 	fn set_price_change_config() -> Weight;
 	fn set_price_bias() -> Weight;
 	fn quote() -> Weight;
+	fn step_quote(a: u32, ) -> Weight;
 	fn exchange() -> Weight;
 	fn can_exchange() -> Weight;
 	fn check_rewards() -> Weight;
@@ -206,6 +207,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Minimum execution time: 44_902_000 picoseconds.
 		Weight::from_parts(45_682_000, 28066)
 			.saturating_add(T::DbWeight::get().reads(8_u64))
+	}
+
+	fn step_quote(_a: u32, ) -> Weight {
+		Weight::zero()
 	}
 	/// Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
 	/// Proof Skipped: MulticollateralBondingCurvePool EnabledTargets (max_values: Some(1), max_size: None, mode: Measured)
@@ -451,6 +456,11 @@ impl WeightInfo for () {
 		Weight::from_parts(45_682_000, 28066)
 			.saturating_add(RocksDbWeight::get().reads(8_u64))
 	}
+
+	fn step_quote(_a: u32, ) -> Weight {
+		Weight::zero()
+	}
+
 	/// Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
 	/// Proof Skipped: MulticollateralBondingCurvePool EnabledTargets (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: MulticollateralBondingCurvePool ReservesAcc (r:1 w:0)

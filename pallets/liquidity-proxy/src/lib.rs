@@ -46,14 +46,12 @@ pub mod weights;
 use assets::AssetIdOf;
 use assets::WeightInfo as _;
 use codec::{Decode, Encode};
-use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
     balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, RewardReason, TradingPair, TradingPairSourceManager, VestedRewardsPallet,
-    XSTUSD,
 };
 use core::marker::PhantomData;
 use fallible_iterator::FallibleIterator as _;
@@ -65,12 +63,22 @@ use frame_system::ensure_signed;
 use itertools::Itertools as _;
 use liquidity_aggregator::AggregatedSwapOutcome;
 pub use pallet::*;
-use sp_runtime::traits::{CheckedSub, Zero};
+use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
 pub use weights::WeightInfo;
+
+#[cfg(not(feature = "wip"))] // order-book / ALT
+use {
+    common::prelude::fixnum::ops::{Bounded, Zero as _},
+    common::XSTUSD,
+    sp_runtime::traits::CheckedSub,
+};
+
+#[cfg(feature = "wip")] // order-book / ALT
+use liquidity_aggregator::LiquidityAggregator;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
@@ -960,13 +968,6 @@ impl<T: Config> Pallet<T> {
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
 
-        // The temp solution is to exclude OrderBook source if there are multiple sources.
-        // Will be redesigned in #447
-        #[cfg(feature = "wip")] // order-book
-        if sources.len() > 1 {
-            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
-        }
-
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {
             let src = sources.first().unwrap();
@@ -1005,44 +1006,64 @@ impl<T: Config> Pallet<T> {
             ));
         }
 
-        // Check if we have exactly two sources: the primary market and the secondary market
-        // Do the "smart" swap split (with fallback)
-        // NOTE: we assume here that XST tokens are not added to TBC reserves. If they are in the future, this
-        // logic should be redone!
-        if sources.len() == 2 {
-            let mut primary_market: Option<LiquiditySourceIdOf<T>> = None;
-            let mut secondary_market: Option<LiquiditySourceIdOf<T>> = None;
+        #[cfg(not(feature = "wip"))] // order-book / ALT
+        {
+            // Check if we have exactly two sources: the primary market and the secondary market
+            // Do the "smart" swap split (with fallback)
+            // NOTE: we assume here that XST tokens are not added to TBC reserves. If they are in the future, this
+            // logic should be redone!
+            if sources.len() == 2 {
+                let mut primary_market: Option<LiquiditySourceIdOf<T>> = None;
+                let mut secondary_market: Option<LiquiditySourceIdOf<T>> = None;
 
-            for src in &sources {
-                match src.liquidity_source_index {
-                    // We can't use XST as primary market for smart split, because it use XST asset as base
-                    // and does not support DEXes except Polkaswap
-                    LiquiditySourceType::MulticollateralBondingCurvePool => {
-                        primary_market = Some(src.clone())
+                for src in &sources {
+                    match src.liquidity_source_index {
+                        // We can't use XST as primary market for smart split, because it use XST asset as base
+                        // and does not support DEXes except Polkaswap
+                        LiquiditySourceType::MulticollateralBondingCurvePool => {
+                            primary_market = Some(src.clone())
+                        }
+                        LiquiditySourceType::XYKPool | LiquiditySourceType::MockPool => {
+                            secondary_market = Some(src.clone())
+                        }
+                        _ => (),
                     }
-                    LiquiditySourceType::XYKPool | LiquiditySourceType::MockPool => {
-                        secondary_market = Some(src.clone())
-                    }
-                    _ => (),
                 }
-            }
 
-            if let (Some(primary_mkt), Some(xyk)) = (primary_market, secondary_market) {
-                let outcome = Self::smart_split(
-                    &primary_mkt,
-                    &xyk,
-                    base_asset_id,
-                    input_asset_id,
-                    output_asset_id,
-                    amount.clone(),
-                    skip_info,
-                    deduce_fee,
-                )?;
-                total_weight = total_weight.saturating_add(outcome.2);
-                return Ok((outcome.0, outcome.1, sources, total_weight));
+                if let (Some(primary_mkt), Some(xyk)) = (primary_market, secondary_market) {
+                    let outcome = Self::smart_split(
+                        &primary_mkt,
+                        &xyk,
+                        base_asset_id,
+                        input_asset_id,
+                        output_asset_id,
+                        amount.clone(),
+                        skip_info,
+                        deduce_fee,
+                    )?;
+                    total_weight = total_weight.saturating_add(outcome.2);
+                    return Ok((outcome.0, outcome.1, sources, total_weight));
+                }
             }
         }
 
+        #[cfg(feature = "wip")] // order-book / ALT
+        {
+            let (outcome, rewards, weight) = Self::new_smart_split(
+                &sources,
+                base_asset_id,
+                input_asset_id,
+                output_asset_id,
+                amount.clone(),
+                skip_info,
+                deduce_fee,
+            )?;
+
+            total_weight = total_weight.saturating_add(weight);
+            Ok((outcome, rewards, sources, total_weight))
+        }
+
+        #[cfg(not(feature = "wip"))] // order-book / ALT
         fail!(Error::<T>::UnavailableExchangePath);
     }
 
@@ -1119,6 +1140,47 @@ impl<T: Config> Pallet<T> {
         Ok(sources_set)
     }
 
+    /// Calculates the max potential weight of smart_split / new_smart_split
+    ///
+    /// This function should cover the current code map and all possible calls of some functions that can take a weight.
+    /// The current code map:
+    ///
+    /// smart_split()
+    ///     quote()
+    ///     quote()
+    ///     check_rewards()
+    ///     quote()
+    ///     check_rewards()
+    ///
+    /// The new approach code map:
+    ///
+    /// new_smart_split()
+    ///     step_quote() - max 4 times, because there are 4 liquidity sources
+    ///     check_rewards() - max 4 times, because there are 4 liquidity sources
+    ///
+    /// Dev NOTE: if you change the logic of liquidity proxy, please sustain inner_exchange_weight() and code map above.
+    pub fn smart_split_weight() -> Weight {
+        // Only TBC has rewards weight, all others are zero.
+        // In this case the max value of the sum of rewards weights is TBC weight,
+        // because it could be only one TBC source in the list.
+        // The rewards weight is added once, no matter how many times it was called in the code.
+        let mut weight = T::LiquidityRegistry::check_rewards_weight();
+
+        #[cfg(not(feature = "wip"))] // order-book / ALT
+        {
+            weight = weight.saturating_add(T::LiquidityRegistry::quote_weight().saturating_mul(3));
+        }
+
+        #[cfg(feature = "wip")] // order-book / ALT
+        {
+            weight = weight.saturating_add(
+                T::LiquidityRegistry::step_quote_weight(T::GetNumSamples::get()).saturating_mul(4),
+            );
+        }
+
+        weight
+    }
+
     /// Calculates the max potential weight of inner_exchange
     ///
     /// This function should cover the current code map and all possible calls of some functions that can take a weight.
@@ -1133,32 +1195,17 @@ impl<T: Config> Pallet<T> {
     ///                     list_liquidity_sources()
     ///                     quote()
     ///                     smart_split()
-    ///                         quote()
-    ///                         quote()
-    ///                         check_rewards()
-    ///                         quote()
-    ///                         check_rewards()
     ///         calculate_input_amount() - call only for SwapAmount::WithDesiredOutput
     ///             quote_single()
     ///                 list_liquidity_sources()
     ///                 quote()
     ///                 smart_split()
-    ///                     quote()
-    ///                     quote()
-    ///                     check_rewards()
-    ///                     quote()
-    ///                     check_rewards()
     ///         exchange_sequence_with_input_amount()
     ///             exchange_single()
     ///                 quote_single()
     ///                     list_liquidity_sources()
     ///                     quote()
     ///                     smart_split()
-    ///                         quote()
-    ///                         quote()
-    ///                         check_rewards()
-    ///                         quote()
-    ///                         check_rewards()
     ///                 exchange() - call N times, where N is a count of assets in the path
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain inner_exchange_weight() and code map above.
@@ -1178,13 +1225,10 @@ impl<T: Config> Pallet<T> {
             return REJECTION_WEIGHT;
         };
 
-        let quote_weight = T::LiquidityRegistry::quote_weight();
         let exchange_weight = T::LiquidityRegistry::exchange_weight();
-        let check_rewards_weight = T::LiquidityRegistry::check_rewards_weight();
 
         let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
-            .saturating_add(quote_weight.saturating_mul(4))
-            .saturating_add(check_rewards_weight.saturating_mul(2));
+            .saturating_add(Self::smart_split_weight());
 
         let mut weight = <T as Config>::WeightInfo::new_trivial();
 
@@ -1382,7 +1426,16 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    fn new_smart_split() -> Result<
+    #[cfg(feature = "wip")] // order-book / ALT
+    fn new_smart_split(
+        sources: &Vec<LiquiditySourceIdOf<T>>,
+        base_asset_id: &T::AssetId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        skip_info: bool,
+        deduce_fee: bool,
+    ) -> Result<
         (
             AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
             Rewards<T::AssetId>,
@@ -1390,10 +1443,63 @@ impl<T: Config> Pallet<T> {
         ),
         DispatchError,
     > {
-        // todo (m.tagirov) 447
-        todo!()
+        ensure!(
+            input_asset_id != output_asset_id,
+            Error::<T>::UnavailableExchangePath
+        );
+
+        ensure!(
+            input_asset_id == base_asset_id || output_asset_id == base_asset_id,
+            Error::<T>::UnavailableExchangePath
+        );
+
+        let mut aggregator = LiquidityAggregator::new(amount.variant());
+
+        let mut total_weight = Weight::zero();
+
+        for source in sources {
+            if let Ok((chunks, weight)) = T::LiquidityRegistry::step_quote(
+                source,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                T::GetNumSamples::get(),
+                deduce_fee,
+            ) {
+                aggregator.add_source(source.clone(), chunks);
+                total_weight = total_weight.saturating_add(weight);
+            } else {
+                // skip the source if it returns an error
+                continue;
+            }
+        }
+
+        let (swap_info, aggregate_swap_outcome) = aggregator
+            .aggregate_swap_outcome(amount.amount())
+            .ok_or(Error::<T>::UnavailableExchangePath)?;
+
+        let mut rewards = Rewards::new();
+
+        if !skip_info {
+            for (source, (input, output)) in swap_info {
+                let (mut reward, weight) = T::LiquidityRegistry::check_rewards(
+                    &source,
+                    input_asset_id,
+                    output_asset_id,
+                    input,
+                    output,
+                )
+                .unwrap_or((Vec::new(), Weight::zero()));
+
+                rewards.append(&mut reward);
+                total_weight = total_weight.saturating_add(weight);
+            }
+        }
+
+        Ok((aggregate_swap_outcome, rewards, total_weight))
     }
 
+    #[cfg(not(feature = "wip"))] // order-book / ALT
     /// Implements the "smart" split algorithm.
     ///
     /// - `primary_source_id` - ID of the primary market liquidity source,
@@ -1612,6 +1718,7 @@ impl<T: Config> Pallet<T> {
         ))
     }
 
+    #[cfg(not(feature = "wip"))] // order-book / ALT
     /// Determines the share of a swap that should be exchanged in the primary market
     /// (i.e., the multi-collateral bonding curve pool) based on the current reserves of
     /// the base asset and the collateral asset in the secondary market (e.g., an XYK pool)
@@ -1712,6 +1819,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    #[cfg(not(feature = "wip"))] // order-book / ALT
     /// Determines the share of a swap that should be exchanged in the primary market
     /// (i.e. the multi-collateral bonding curve pool) based on the current reserves of
     /// the base asset and the collateral asset in the secondary market (e.g. an XYK pool)

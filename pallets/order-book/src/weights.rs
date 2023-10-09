@@ -56,6 +56,9 @@ pub trait WeightInfo {
     fn quote() -> Weight {
         Weight::zero()
     }
+    fn step_quote() -> Weight {
+        Weight::zero()
+    }
     fn exchange() -> Weight {
         Weight::zero()
     }
@@ -96,6 +99,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
         Weight::zero()
     }
     fn quote() -> Weight {
+        Weight::zero()
+    }
+    fn step_quote() -> Weight {
         Weight::zero()
     }
     fn exchange() -> Weight {

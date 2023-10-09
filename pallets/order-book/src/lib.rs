@@ -1092,7 +1092,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+        recommended_samples_count: usize,
+        _deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1136,15 +1138,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 PriceVariant::Buy => chunks.push_back(SwapChunk::new(
                     *quote_volume.balance(),
                     *base_volume.balance(),
+                    Balance::zero(),
                 )),
                 PriceVariant::Sell => chunks.push_back(SwapChunk::new(
                     *base_volume.balance(),
                     *quote_volume.balance(),
+                    Balance::zero(),
                 )),
             }
         }
 
-        Ok(chunks)
+        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
     }
 
     fn exchange(
@@ -1321,6 +1325,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn quote_weight() -> Weight {
         <T as Config>::WeightInfo::quote()
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
+        <T as Config>::WeightInfo::step_quote()
     }
 
     fn exchange_weight() -> Weight {

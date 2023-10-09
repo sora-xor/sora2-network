@@ -128,7 +128,9 @@ impl<T: Config>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
-    ) -> Result<VecDeque<SwapChunk<Balance>>, DispatchError> {
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! step_quote {
             ($source_type:ident) => {
@@ -137,6 +139,8 @@ impl<T: Config>
                     input_asset_id,
                     output_asset_id,
                     amount,
+                    recommended_samples_count,
+                    deduce_fee,
                 )
             };
         }
@@ -279,6 +283,24 @@ impl<T: Config>
             .max(T::XSTPool::quote_weight())
             .max(T::XYKPool::quote_weight())
             .max(T::MulticollateralBondingCurvePool::quote_weight())
+    }
+
+    fn step_quote_weight(samples_count: usize) -> Weight {
+        #[allow(unused_mut)] // order-book
+        #[allow(unused_assignments)] // order-book
+        let mut weight = Weight::zero();
+
+        #[cfg(feature = "wip")] // order-book
+        {
+            weight = T::OrderBook::step_quote_weight(samples_count);
+        }
+
+        weight
+            .max(T::XSTPool::step_quote_weight(samples_count))
+            .max(T::XYKPool::step_quote_weight(samples_count))
+            .max(T::MulticollateralBondingCurvePool::step_quote_weight(
+                samples_count,
+            ))
     }
 
     fn exchange_weight() -> Weight {
