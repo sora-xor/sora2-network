@@ -1309,6 +1309,12 @@
 <a href="#1294" id="1294">1294</a>
 <a href="#1295" id="1295">1295</a>
 <a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1596,7 +1602,6 @@
         <span class="doccomment">/// Order book is deleted
         </span>OrderBookDeleted {
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
-            count_of_canceled_orders: u32,
         },
 
         <span class="doccomment">/// Order book status is changed
@@ -1770,6 +1775,10 @@
         </span>SlippageLimitExceeded,
         <span class="doccomment">/// Market orders are allowed only for indivisible assets
         </span>MarketOrdersAllowedOnlyForIndivisibleAssets,
+        <span class="doccomment">/// It is possible to delete an order-book only with the statuses: OnlyCancel or Stop
+        </span>ForbiddenStatusToDeleteOrderBook,
+        <span class="comment">// It is possible to delete only empty order-book
+        </span>OrderBookIsNotEmpty,
     }
 
     <span class="attr">#[pallet::hooks]
@@ -1820,10 +1829,16 @@
             <span class="kw">let </span>order_book =
                 &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span><span class="kw-2">mut </span>data = CacheDataLayer::&lt;T&gt;::new();
-            <span class="kw">let </span>count_of_canceled_orders = order_book.cancel_all_limit_orders(<span class="kw-2">&amp;mut </span>data)<span class="question-mark">? </span><span class="kw">as </span>u32;
+            <span class="macro">ensure!</span>(
+                order_book.status == OrderBookStatus::OnlyCancel
+                    || order_book.status == OrderBookStatus::Stop,
+                Error::&lt;T&gt;::ForbiddenStatusToDeleteOrderBook
+            );
 
-            data.commit();
+            <span class="kw">let </span>is_empty = &lt;LimitOrders&lt;T&gt;&gt;::iter_prefix_values(order_book_id)
+                .next()
+                .is_none();
+            <span class="macro">ensure!</span>(is_empty, Error::&lt;T&gt;::OrderBookIsNotEmpty);
 
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
             </span>{
@@ -1838,10 +1853,7 @@
             <span class="self">Self</span>::deregister_tech_account(order_book_id)<span class="question-mark">?</span>;
             &lt;OrderBooks&lt;T&gt;&gt;::remove(order_book_id);
 
-            <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::OrderBookDeleted {
-                order_book_id,
-                count_of_canceled_orders,
-            });
+            <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::OrderBookDeleted { order_book_id });
             <span class="prelude-val">Ok</span>(().into())
         }
 
