@@ -338,10 +338,6 @@ pub mod pallet {
         InvalidFeePercent,
         /// Asset in which funds are being raised is not supported
         BaseAssetNotSupported,
-        /// Tokens for ilo overflow
-        TokensForILOOverflow,
-        /// Tokens for liquidity overflow
-        TokensForLiquidityOverflow,
     }
 
     #[pallet::call]
@@ -1331,20 +1327,25 @@ pub mod pallet {
 
             let tfi = ((FixedWrapper::from(hard_cap) / FixedWrapper::from(ilo_price))
                 .get()
-                .map_err(|_| Error::<T>::TokensForILOOverflow)?)
+                .map_err(|_| Error::<T>::InvalidNumberOfTokensForILO)?)
             .integral(RoundMode::Ceil);
-
-            if tokens_for_ilo != balance!(tfi) {
+            let tfi_balance = FixedWrapper::from(tfi)
+                .try_into_balance()
+                .map_err(|_| Error::<T>::InvalidNumberOfTokensForILO)?;
+            if tokens_for_ilo != tfi_balance {
                 return Err(Error::<T>::InvalidNumberOfTokensForILO.into());
             }
 
             let tfl = ((FixedWrapper::from(hard_cap) * FixedWrapper::from(liquidity_percent))
                 / FixedWrapper::from(listing_price))
             .get()
-            .map_err(|_| Error::<T>::TokensForLiquidityOverflow)?
+            .map_err(|_| Error::<T>::InvalidNumberOfTokensForLiquidity)?
             .integral(RoundMode::Ceil);
+            let tfl_balance = FixedWrapper::from(tfl)
+                .try_into_balance()
+                .map_err(|_| Error::<T>::InvalidNumberOfTokensForLiquidity)?;
 
-            if tokens_for_liquidity != balance!(tfl) {
+            if tokens_for_liquidity != tfl_balance {
                 return Err(Error::<T>::InvalidNumberOfTokensForLiquidity.into());
             }
 

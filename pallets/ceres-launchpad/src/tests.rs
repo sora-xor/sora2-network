@@ -3787,8 +3787,8 @@ mod tests {
                     balance!(7693),
                     balance!(3000),
                     2,
-                    balance!(600),
                     u128::MAX.into(),
+                    (u128::MAX / 2).into(),
                     balance!(0.2),
                     balance!(0.25),
                     true,
@@ -3805,7 +3805,7 @@ mod tests {
                     current_timestamp + 3,
                     balance!(0.2)
                 ),
-                Error::<Runtime>::TokensForILOOverflow
+                Error::<Runtime>::InvalidNumberOfTokensForILO
             );
         });
     }
