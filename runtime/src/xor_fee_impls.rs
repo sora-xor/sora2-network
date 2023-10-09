@@ -242,6 +242,55 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
                     return false;
                 }
             }
+            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+                dex_id,
+                asset_id,
+                amount,
+                selected_source_types,
+                filter_mode,
+                desired_xor_amount,
+                max_amount_in,
+                ..
+            }) => {
+                // Pay fee as usual
+                if balance > fee {
+                    return false;
+                }
+
+                // Check how much user has input asset
+                let user_input_balance = Currencies::free_balance(*asset_id, who);
+
+                // The amount of input asset needed for this swap is more than the user has, so error
+                if amount.saturating_add(*max_amount_in) > user_input_balance {
+                    return false;
+                }
+
+                let filter = LiquiditySourceFilter::with_mode(
+                    *dex_id,
+                    filter_mode.clone(),
+                    selected_source_types.clone(),
+                );
+                let Ok(swap_result) = LiquidityProxy::quote(
+                        *dex_id,
+                        asset_id,
+                        &XOR,
+                        QuoteAmount::with_desired_output(*desired_xor_amount),
+                        filter,
+                        true,
+                    ) else {
+                        return false;
+                    };
+                if swap_result.amount <= *max_amount_in
+                    && balance
+                        .saturating_add(*desired_xor_amount)
+                        .saturating_sub(Balances::minimum_balance())
+                        >= fee
+                {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
             _ => return false,
         }
     }
