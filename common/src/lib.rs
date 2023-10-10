@@ -31,6 +31,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
+#![feature(int_roundings)]
 
 #[macro_use]
 extern crate alloc;
