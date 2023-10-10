@@ -37,7 +37,7 @@
 extern crate alloc;
 use alloc::string::String;
 use bridge_types::traits::Verifier;
-use bridge_types::{SubNetworkId, H256};
+use bridge_types::{GenericAccount, SubNetworkId, H256};
 use sp_runtime::traits::Keccak256;
 
 mod bags_thresholds;
@@ -2231,6 +2231,21 @@ impl parachain_bridge_app::Config for Runtime {
     type WeightInfo = crate::weights::parachain_bridge_app::WeightInfo<Runtime>;
 }
 
+#[cfg(feature = "wip")]
+impl substrate_bridge_app::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type OutboundChannel = SubstrateBridgeOutboundChannel;
+    type CallOrigin =
+        dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
+    type MessageStatusNotifier = BridgeProxy;
+    type AssetRegistry = BridgeProxy;
+    type AccountIdConverter = impls::LiberlandAccountIdConverter;
+    type AssetIdConverter = SubstrateApp;
+    type BalancePrecisionConverter = impls::GenericBalancePrecisionConverter;
+    type BridgeAssetLocker = BridgeProxy;
+    type WeightInfo = ();
+}
+
 parameter_types! {
     pub const BridgeMaxPeers: u32 = 50;
     // Not as important as some essential transactions (e.g. im_online or similar ones)
@@ -2369,6 +2384,9 @@ construct_runtime! {
         ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
+
+        #[cfg(feature = "wip")] // Liberland
+        SubstrateApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
         // Beefy pallets should be placed after channels

@@ -4628,6 +4628,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
+ "substrate-bridge-app",
  "substrate-bridge-channel",
  "substrate-wasm-builder",
  "technical",
@@ -12921,6 +12922,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-bridge-app"
+version = "0.1.1"
+dependencies = [
+ "bridge-types",
+ "ethabi 17.2.0",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal 0.4.1",
+ "parity-scale-codec",
+ "rlp 0.5.2",
+ "rustc-hex",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
 dependencies = [
@@ -15412,7 +15434,3 @@ dependencies = [
  "libc",
  "pkg-config",
 ]
-
-[[patch.unused]]
-name = "substrate-bridge-app"
-version = "0.1.1"

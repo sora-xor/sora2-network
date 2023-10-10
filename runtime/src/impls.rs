@@ -30,6 +30,7 @@
 
 use core::marker::PhantomData;
 
+use bridge_types::{GenericAccount, GenericBalance};
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
@@ -44,6 +45,7 @@ use frame_support::{
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 use scale_info::TypeInfo;
 use sp_core::U256;
+use sp_runtime::traits::Convert;
 use sp_runtime::{DispatchError, DispatchErrorWithPostInfo};
 
 pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Currency<
@@ -310,8 +312,24 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                 let call: multisig_verifier::Call<crate::Runtime> = msg.clone().into();
                 call.get_dispatch_info()
             }
-            bridge_types::substrate::BridgeCall::SubstrateApp(_) => todo!(),
+            bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
+                // let call: substrate_bridge_app::Call<crate::Runtime> = match msg.clone().try_into() {
+                //     Ok(c) => c,
+                //     Err(_) => return Default::default(),
+                // };
+                // let call: substrate_bridge_app::Call<crate::Runtime> = msg.clone().try_from().unwrap();
+                let call: substrate_bridge_app::Call<crate::Runtime> =
+                    substrate_bridge_app::Call::try_from(msg.clone()).unwrap();
+                call.get_dispatch_info()
+            }
         }
+    }
+}
+
+pub struct LiberlandAccountIdConverter;
+impl Convert<crate::AccountId, GenericAccount> for LiberlandAccountIdConverter {
+    fn convert(a: crate::AccountId) -> GenericAccount {
+        GenericAccount::Sora(a)
     }
 }
 
@@ -346,28 +364,6 @@ impl BalancePrecisionConverter {
     }
 }
 
-impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, crate::Balance>
-    for BalancePrecisionConverter
-{
-    fn from_sidechain(
-        asset_id: &crate::AssetId,
-        sidechain_precision: u8,
-        amount: crate::Balance,
-    ) -> Option<crate::Balance> {
-        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
-        Self::convert_precision(sidechain_precision, thischain_precision, amount)
-    }
-
-    fn to_sidechain(
-        asset_id: &crate::AssetId,
-        sidechain_precision: u8,
-        amount: crate::Balance,
-    ) -> Option<crate::Balance> {
-        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
-        Self::convert_precision(thischain_precision, sidechain_precision, amount)
-    }
-}
-
 impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, U256>
     for BalancePrecisionConverter
 {
@@ -392,6 +388,63 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
     ) -> Option<U256> {
         let thischain_precision = crate::Assets::asset_infos(asset_id).2;
         Self::convert_precision(thischain_precision, sidechain_precision, amount).map(Into::into)
+    }
+}
+
+impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, crate::Balance>
+    for BalancePrecisionConverter
+{
+    fn from_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<crate::Balance> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        Self::convert_precision(sidechain_precision, thischain_precision, amount)
+    }
+
+    fn to_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<crate::Balance> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        Self::convert_precision(thischain_precision, sidechain_precision, amount)
+    }
+}
+
+pub struct GenericBalancePrecisionConverter;
+impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, GenericBalance>
+    for GenericBalancePrecisionConverter
+{
+    fn from_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: GenericBalance,
+    ) -> Option<crate::Balance> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        match amount {
+            GenericBalance::Substrate(val) => BalancePrecisionConverter::convert_precision(
+                sidechain_precision,
+                thischain_precision,
+                val,
+            ),
+            GenericBalance::EVM(_) => None,
+        }
+    }
+
+    fn to_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<bridge_types::GenericBalance> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        let amount = BalancePrecisionConverter::convert_precision(
+            thischain_precision,
+            sidechain_precision,
+            amount,
+        )?;
+        Some(GenericBalance::Substrate(amount))
     }
 }
 
