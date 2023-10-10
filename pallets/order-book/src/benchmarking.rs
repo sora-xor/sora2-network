@@ -325,7 +325,8 @@ benchmarks! {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book::<T>(order_book_id);
+        OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id).unwrap();
+        OrderBookPallet::<T>::change_orderbook_status(RawOrigin::Root.into(), order_book_id, OrderBookStatus::Stop).unwrap();
     }: {
         OrderBookPallet::<T>::delete_orderbook(
             RawOrigin::Root.into(),
@@ -336,7 +337,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookDeleted {
                 order_book_id,
-                count_of_canceled_orders: 12,
             }
             .into(),
         );
