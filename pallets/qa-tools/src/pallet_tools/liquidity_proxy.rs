@@ -111,6 +111,7 @@ pub mod source_initializers {
                 asset_b,
                 *value_a.balance(),
                 *value_b.balance(),
+                // no need for range when the pool is empty
                 *value_a.balance(),
                 *value_b.balance(),
             )

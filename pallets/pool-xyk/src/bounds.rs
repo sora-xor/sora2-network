@@ -31,22 +31,21 @@
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
 
-/// Bounds enum, used for cases than min max limits is used. Also used for cases than values is
-/// Desired by used or Calculated by forumula. Dummy is used to abstract checking.
 #[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub enum Bounds<Balance> {
-    /// This is consequence of computations, and not sed by used.
+    /// A consequence of computations instead of a value set by a user.
     Calculated(Balance),
-    /// This values set by used as fixed and determed value.
+    /// A value set by used as fixed and determined value.
     Desired(Balance),
-    /// This is undetermined value, bounded by some logic or ranges.
+    /// An undetermined value, bounded by some logic or ranges.
     Min(Balance),
     Max(Balance),
-    /// This is determined value than pool is emply, then pool is not empty this works like range.
+    /// A determined value when pool is empty.
+    /// When pool is not empty it works like a range.
     RangeFromDesiredToMin(Balance, Balance),
-    /// This is just unknown value that must be calulated and filled.
+    /// An unknown value that must be calculated and filled.
     Decide,
-    /// This is used in some checks tests and predicates, than value is not needed.
+    /// Used in when value is not needed (checks tests and predicates).
     Dummy,
 }
 
