@@ -29,8 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
@@ -315,10 +313,7 @@ impl<T: Config>
                         output_asset_id,
                     )
                 {
-                    Some(LiquiditySourceId::new(
-                        filter.dex_id.clone(),
-                        source_type.clone(),
-                    ))
+                    Some(LiquiditySourceId::new(filter.dex_id, *source_type))
                 } else {
                     None
                 }
@@ -418,19 +413,12 @@ pub mod pallet {
     pub type EnabledSourceTypes<T: Config> = StorageValue<_, Vec<LiquiditySourceType>, ValueQuery>;
 
     #[pallet::genesis_config]
+    #[derive(Default)]
     pub struct GenesisConfig {
         pub source_types: Vec<LiquiditySourceType>,
     }
 
     #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
-        fn default() -> Self {
-            Self {
-                source_types: Default::default(),
-            }
-        }
-    }
-
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
