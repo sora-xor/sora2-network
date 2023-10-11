@@ -1031,7 +1031,7 @@ parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
     pub const MaxRegistrars: u32 = 20;
-    pub const MaxAdditionalDataLength: u32 = 512;
+    pub const MaxAdditionalDataLength: u32 = 128;
     pub ReferralsReservesAcc: AccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             b"referrals".to_vec(),
