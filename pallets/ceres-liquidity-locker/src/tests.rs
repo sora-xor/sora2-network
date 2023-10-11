@@ -563,14 +563,13 @@ fn should_remove_expired_lockups() {
 #[test]
 fn check_if_has_enough_unlocked_liquidity_pool_does_not_exist() {
     preset_initial(|_dex_id| {
-        assert_eq!(
-            ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
+        assert!(
+            !ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
                 &ALICE(),
                 XOR.into(),
                 DOT.into(),
                 balance!(0.3),
-            ),
-            false
+            )
         );
     });
 }
@@ -578,14 +577,13 @@ fn check_if_has_enough_unlocked_liquidity_pool_does_not_exist() {
 #[test]
 fn check_if_has_enough_unlocked_liquidity_user_is_not_pool_provider() {
     preset_initial(|_dex_id| {
-        assert_eq!(
-            ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
+        assert!(
+            !ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
                 &ALICE(),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
                 balance!(0.3)
-            ),
-            false
+            )
         );
     });
 }
@@ -650,14 +648,13 @@ fn check_if_has_enough_unlocked_liquidity_false() {
             true
         ));
 
-        assert_eq!(
-            ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
+        assert!(
+            !ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
                 &ALICE(),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
                 balance!(10)
-            ),
-            false
+            )
         );
     });
 }
