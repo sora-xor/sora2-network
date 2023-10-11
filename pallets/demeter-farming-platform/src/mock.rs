@@ -11,7 +11,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
+
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
@@ -67,7 +67,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = common::PSWAP;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::new([100u8; 32]);
@@ -303,23 +303,23 @@ impl Default for ExtBuilder {
                 (
                     DEX_A_ID,
                     DEXInfo {
-                        base_asset_id: XOR.into(),
-                        synthetic_base_asset_id: XST.into(),
+                        base_asset_id: XOR,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
                 (
                     DEX_B_ID,
                     DEXInfo {
-                        base_asset_id: XSTUSD.into(),
-                        synthetic_base_asset_id: XST.into(),
+                        base_asset_id: XSTUSD,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
             ],
             endowed_accounts: vec![
-                (ALICE, CERES_ASSET_ID.into(), balance!(1000)),
-                (BOB, CERES_ASSET_ID.into(), balance!(500)),
+                (ALICE, CERES_ASSET_ID, balance!(1000)),
+                (BOB, CERES_ASSET_ID, balance!(500)),
             ],
             initial_permission_owners: vec![
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB]),
