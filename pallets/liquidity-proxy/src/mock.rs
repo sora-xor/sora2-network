@@ -48,7 +48,7 @@ use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcom
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot};
 use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
-use sp_core::H256;
+use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, DispatchError, Perbill, Percent};
@@ -201,6 +201,7 @@ impl Config for Runtime {
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
     type GetADARAccountId = GetADARAccountId;
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
+    type MaxAdditionalDataLength = ConstU32<128>;
 }
 
 impl tokens::Config for Runtime {
