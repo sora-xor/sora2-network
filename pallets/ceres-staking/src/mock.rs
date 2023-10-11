@@ -12,7 +12,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
+
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -185,6 +185,7 @@ impl pallet_balances::Config for Runtime {
     type ReserveIdentifier = ();
 }
 
+#[allow(clippy::type_complexity)]
 pub struct ExtBuilder {
     pub endowed_assets: Vec<(
         AssetId,
