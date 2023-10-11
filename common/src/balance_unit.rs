@@ -1254,7 +1254,7 @@ mod tests {
 
     #[test]
     fn check_into_divisible() {
-        let coefficient = 10u128.pow(18);
+        let coefficient = 10u128.pow(FixedPrecision::U32);
 
         for n in [0, 1, 100, u128::MAX / coefficient] {
             assert_eq!(
@@ -1274,6 +1274,29 @@ mod tests {
                 Some(BalanceUnit::divisible(n))
             );
             assert_eq!(BalanceUnit::indivisible(n).into_divisible(), None);
+        }
+    }
+
+    #[test]
+    fn check_into_indivisible() {
+        let coefficient = 10u128.pow(FixedPrecision::U32);
+
+        for n in [
+            0,
+            1,
+            100,
+            u128::MAX / coefficient,
+            u128::MAX / coefficient + 1,
+            u128::MAX,
+        ] {
+            assert_eq!(
+                BalanceUnit::divisible(n).into_indivisible(RoundMode::Ceil),
+                BalanceUnit::indivisible(n.div_ceil(coefficient))
+            );
+            assert_eq!(
+                BalanceUnit::divisible(n).into_indivisible(RoundMode::Floor),
+                BalanceUnit::indivisible(n.div_floor(coefficient))
+            );
         }
     }
 }
