@@ -29,59 +29,60 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::Config;
-use common::prelude::{BalanceUnit, FixedWrapper};
-
-pub struct XYKPair<T: Config> {
-    pub dex_id: T::DEXId,
-    pub asset_a: T::AssetId,
-    pub asset_b: T::AssetId,
-    /// Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1 `asset_a`)
-    pub price: BalanceUnit,
-    pub slippage_tolerance: FixedWrapper,
-}
-
-impl<T: Config> XYKPair<T> {
-    // `price` - Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1
-    // `asset_a`)
-    pub fn new(
-        dex_id: T::DEXId,
-        asset_a: T::AssetId,
-        asset_b: T::AssetId,
-        price: BalanceUnit,
-        slippage_tolerance: FixedWrapper,
-    ) -> Self {
-        Self {
-            dex_id,
-            asset_a,
-            asset_b,
-            price,
-            slippage_tolerance,
-        }
-    }
-}
 
 pub mod source_initializers {
-    use crate::pallet_tools::liquidity_proxy::XYKPair;
-    use crate::{Config, Error};
+    use crate::{Config, Error, OrderBookFillSettings};
+    use assets::AssetIdOf;
+    use codec::{Decode, Encode};
     use common::prelude::{BalanceUnit, FixedWrapper};
-    use common::{balance, AssetInfoProvider, XOR};
+    use common::{balance, AssetInfoProvider, DexIdOf, XOR};
     use frame_support::dispatch::{DispatchResult, RawOrigin};
-    use frame_support::ensure;
-    use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};
     use sp_runtime::traits::{CheckedMul, CheckedSub};
-    use sp_std::vec::Vec;
+    use sp_runtime::Perbill;
+    use std::fmt::Debug;
+
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    #[scale_info(skip_type_params(T))]
+    pub struct XYKPair<DEXId, AssetId> {
+        pub dex_id: DEXId,
+        pub asset_a: AssetId,
+        pub asset_b: AssetId,
+        /// Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1 `asset_a`)
+        pub price: BalanceUnit,
+        // pub slippage_tolerance: BalanceUnit,
+    }
+
+    impl<DEXId, AssetId> XYKPair<DEXId, AssetId> {
+        // `price` - Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1
+        // `asset_a`)
+        pub fn new(
+            dex_id: DEXId,
+            asset_a: AssetId,
+            asset_b: AssetId,
+            price: BalanceUnit,
+            // slippage_tolerance: Perbill,
+        ) -> Self {
+            Self {
+                dex_id,
+                asset_a,
+                asset_b,
+                price,
+                // slippage_tolerance,
+            }
+        }
+    }
 
     pub fn xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
-        pairs: Vec<XYKPair<T>>,
+        pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
     ) -> DispatchResult {
         for XYKPair {
             dex_id,
             asset_a,
             asset_b,
             price,
-            slippage_tolerance,
+            // slippage_tolerance,
         } in pairs
         {
             if <T as Config>::AssetInfoProvider::is_non_divisible(&asset_a)
@@ -100,18 +101,18 @@ pub mod source_initializers {
             )
             .map_err(|e| e.error)?;
 
-            fn subtract_slippage(
-                value: BalanceUnit,
-                slippage_tolerance: FixedWrapper,
-            ) -> Option<BalanceUnit> {
-                let slippage = BalanceUnit::divisible(slippage_tolerance.try_into_balance().ok()?);
-                let slippage = if !value.is_divisible() {
-                    slippage.into_divisible()?
-                } else {
-                    slippage
-                };
-                value.checked_sub(&value.checked_mul(&slippage)?)
-            }
+            // fn subtract_slippage(
+            //     value: BalanceUnit,
+            //     slippage_tolerance: Perbill,
+            // ) -> Option<BalanceUnit> {
+            //     let slippage = BalanceUnit::divisible(slippage_tolerance.try_into_balance().ok()?);
+            //     let slippage = if !value.is_divisible() {
+            //         slippage.into_divisible()?
+            //     } else {
+            //         slippage
+            //     };
+            //     value.checked_sub(&value.checked_mul(&slippage)?)
+            // }
 
             let value_a: BalanceUnit = if asset_a == XOR.into() {
                 balance!(1000000).into()
@@ -121,10 +122,10 @@ pub mod source_initializers {
             let value_b = value_a
                 .checked_mul(&price)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            let value_a_min = subtract_slippage(value_a, slippage_tolerance.clone())
-                .ok_or(Error::<T>::ArithmeticError)?;
-            let value_b_min = subtract_slippage(value_b, slippage_tolerance)
-                .ok_or(Error::<T>::ArithmeticError)?;
+            // let value_a_min =
+            //     subtract_slippage(value_a, value_a).ok_or(Error::<T>::ArithmeticError)?;
+            // let value_b_min =
+            //     subtract_slippage(value_b, value_b).ok_or(Error::<T>::ArithmeticError)?;
             pool_xyk::Pallet::<T>::deposit_liquidity(
                 RawOrigin::Signed(caller.clone()).into(),
                 dex_id,
@@ -132,8 +133,8 @@ pub mod source_initializers {
                 asset_b,
                 *value_a.balance(),
                 *value_b.balance(),
-                *value_a_min.balance(),
-                *value_b_min.balance(),
+                *value_a.balance(),
+                *value_b.balance(),
             )
             .map_err(|e| e.error)?;
         }

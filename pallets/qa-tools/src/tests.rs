@@ -44,6 +44,7 @@ use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
+use qa_tools::pallet_tools::liquidity_proxy::source_initializers::XYKPair;
 use qa_tools::{settings, Error};
 use sp_runtime::traits::BadOrigin;
 use sp_runtime::DispatchErrorWithPostInfo;
@@ -915,4 +916,21 @@ fn should_fill_orderbook_max_orders_count() {
             4000
         );
     });
+}
+
+#[test]
+fn should_initialize_xyk_pool() {
+    ext().execute_with(|| {
+        QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice()).unwrap();
+        assert_ok!(QAToolsPallet::initialize_xyk(
+            RuntimeOrigin::signed(alice()),
+            vec![XYKPair::new(
+                DEXId::Polkaswap.into(),
+                XOR,
+                VAL,
+                balance!(0.5).into(),
+            )],
+        ));
+        dbg!(1);
+    })
 }

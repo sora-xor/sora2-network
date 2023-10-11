@@ -39,26 +39,29 @@ pub use pallet::*;
 mod tests;
 pub mod weights;
 pub use weights::*;
-mod pallet_tools;
+pub mod pallet_tools;
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use assets::AssetIdOf;
     use common::{
         AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+        DexIdOf,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
-    pub use pallet_tools::order_book::settings;
+    use pallet_tools::liquidity_proxy::source_initializers;
+    pub use pallet_tools::order_book::OrderBookFillSettings;
     use sp_std::prelude::*;
 
     #[pallet::pallet]
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + order_book::Config {
+    pub trait Config: frame_system::Config + order_book::Config + pool_xyk::Config {
         type WeightInfo: WeightInfo;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
@@ -182,6 +185,31 @@ pub mod pallet {
                 bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
+                post_info: PostDispatchInfo {
+                    actual_weight: None,
+                    pays_fee: Pays::No,
+                },
+                error: e,
+            })?;
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
+        pub fn initialize_xyk(
+            origin: OriginFor<T>,
+            pairs: Vec<source_initializers::XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
+        ) -> DispatchResultWithPostInfo {
+            // error messages for unsigned calls are non-informative
+            let who = Self::ensure_in_whitelist(origin)?;
+
+            source_initializers::xyk::<T>(who, pairs).map_err(|e| DispatchErrorWithPostInfo {
                 post_info: PostDispatchInfo {
                     actual_weight: None,
                     pays_fee: Pays::No,
