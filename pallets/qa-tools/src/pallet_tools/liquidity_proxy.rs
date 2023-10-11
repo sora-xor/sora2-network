@@ -122,6 +122,10 @@ pub mod source_initializers {
             let value_b = value_a
                 .checked_mul(&price)
                 .ok_or(Error::<T>::ArithmeticError)?;
+
+            assets::Pallet::<T>::mint_unchecked(&asset_a, &caller, *value_a.balance())?;
+            assets::Pallet::<T>::mint_unchecked(&asset_b, &caller, *value_b.balance())?;
+
             // let value_a_min =
             //     subtract_slippage(value_a, value_a).ok_or(Error::<T>::ArithmeticError)?;
             // let value_b_min =
