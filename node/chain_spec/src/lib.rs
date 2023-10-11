@@ -214,31 +214,25 @@ pub fn predev_net_coded() -> ChainSpec {
                 hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 vec![
                     authority_keys_from_public_keys(
-                        hex!("0x28d3bdf388ac911afa8e6c4394eafaa42d1cdf438ed1128086b1f7d666c5335e"),
-                        hex!("0xb6baf3368395d73159e92579a12adfa7053814419c0ed5a7ef175d0c87e51401"),
-                        hex!("0xb6baf3368395d73159e92579a12adfa7053814419c0ed5a7ef175d0c87e51401"),
-                        hex!("0x9fcd1a31681bff3ca3ac195c11ba8fb0fb6bce3eb61c7cfecf4e4273ea5970af"),
-                        hex!(
-                            "0x02b702b6684a4d93a2c1044e7f8c1e5b42fd4ae24fc2ea571347b45665898de590"
-                        ),
+                        hex!("28d3bdf388ac911afa8e6c4394eafaa42d1cdf438ed1128086b1f7d666c5335e"),
+                        hex!("b6baf3368395d73159e92579a12adfa7053814419c0ed5a7ef175d0c87e51401"),
+                        hex!("b6baf3368395d73159e92579a12adfa7053814419c0ed5a7ef175d0c87e51401"),
+                        hex!("9fcd1a31681bff3ca3ac195c11ba8fb0fb6bce3eb61c7cfecf4e4273ea5970af"),
+                        hex!("02b702b6684a4d93a2c1044e7f8c1e5b42fd4ae24fc2ea571347b45665898de590"),
                     ),
                     authority_keys_from_public_keys(
-                        hex!("0xe0be466ddaabaf864b9dd54905f5e0d410c23265fe4e7925ce2a675f371b8274"),
-                        hex!("0xfacd0165cc40240b8ff234900a4debb632435276b2309b27db83dd9ef67a3d6c"),
-                        hex!("0xfacd0165cc40240b8ff234900a4debb632435276b2309b27db83dd9ef67a3d6c"),
-                        hex!("0x5749c1e8b7a87bd114c3b151eb899feccedbcf6c439c1d7dda0fc29c7179d51c"),
-                        hex!(
-                            "0x03b91512a19d2433c0d4c51c4c31f56e553c5ebfb30c82a0c3573e96377f7e6baf"
-                        ),
+                        hex!("e0be466ddaabaf864b9dd54905f5e0d410c23265fe4e7925ce2a675f371b8274"),
+                        hex!("facd0165cc40240b8ff234900a4debb632435276b2309b27db83dd9ef67a3d6c"),
+                        hex!("facd0165cc40240b8ff234900a4debb632435276b2309b27db83dd9ef67a3d6c"),
+                        hex!("5749c1e8b7a87bd114c3b151eb899feccedbcf6c439c1d7dda0fc29c7179d51c"),
+                        hex!("03b91512a19d2433c0d4c51c4c31f56e553c5ebfb30c82a0c3573e96377f7e6baf"),
                     ),
                     authority_keys_from_public_keys(
-                        hex!("0xc0b48c43b9911da9cb1f2a1ea78ab88c34fe6d27e642f141389986b7276c442b"),
-                        hex!("0x320c24a123419d41b9f07bb1bfa4a15198112851c10c7497c7895284d7ae945f"),
-                        hex!("0x320c24a123419d41b9f07bb1bfa4a15198112851c10c7497c7895284d7ae945f"),
-                        hex!("0x244266d4ced385b782e35c2e5b45db1d5988e5f8abf9b7085d8a52b9b3f642a4"),
-                        hex!(
-                            "0x024a5b7eefee22145c704a71b303d96532ec28736a0e841fd498a73ab325c48c8e"
-                        ),
+                        hex!("c0b48c43b9911da9cb1f2a1ea78ab88c34fe6d27e642f141389986b7276c442b"),
+                        hex!("320c24a123419d41b9f07bb1bfa4a15198112851c10c7497c7895284d7ae945f"),
+                        hex!("320c24a123419d41b9f07bb1bfa4a15198112851c10c7497c7895284d7ae945f"),
+                        hex!("244266d4ced385b782e35c2e5b45db1d5988e5f8abf9b7085d8a52b9b3f642a4"),
+                        hex!("024a5b7eefee22145c704a71b303d96532ec28736a0e841fd498a73ab325c48c8e"),
                     ),
                 ],
                 vec![
