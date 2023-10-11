@@ -97,7 +97,8 @@ determined by filter_mode,</li>
     desired_xor_amount: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>,
     max_amount_in: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>,
     selected_source_types: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="enum" href="../../../../common/primitives/enum.LiquiditySourceType.html" title="enum common::primitives::LiquiditySourceType">LiquiditySourceType</a>&gt;,
-    filter_mode: <a class="enum" href="../../runtime_types/common/primitives/enum.FilterMode.html" title="enum substrate_gen::runtime::runtime_types::common::primitives::FilterMode">FilterMode</a>
+    filter_mode: <a class="enum" href="../../runtime_types/common/primitives/enum.FilterMode.html" title="enum substrate_gen::runtime::runtime_types::common::primitives::FilterMode">FilterMode</a>,
+    additional_data: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.XorlessTransfer.html" title="struct substrate_gen::runtime::liquidity_proxy::calls::XorlessTransfer">XorlessTransfer</a>&gt;</h4></section></summary><div class="docblock"><p>Extrinsic which is enable XORless transfers.
 Internally it’s swaps <code>asset_id</code> to <code>desired_xor_amount</code> of <code>XOR</code> and transfers remaining amount of <code>asset_id</code> to <code>receiver</code>.
 Client apps should specify the XOR amount which should be paid as a fee in <code>desired_xor_amount</code> parameter.
