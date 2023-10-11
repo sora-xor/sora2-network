@@ -97,6 +97,12 @@ pub mod pallet {
         TooManyOrders,
         /// The count of prices to fill is too large.
         TooManyPrices,
+
+        // liquidity proxy errors
+        /// Cannot initialize pool with for non-divisible assets.
+        AssetsMustBeDivisible,
+        /// Error in calculations
+        ArithmeticError,
     }
 
     #[pallet::call]

@@ -19,18 +19,19 @@ common = { path = "../../common", default-features = false }
 rand = { version = "0.8.5", default-features = false }
 rand_chacha = { version = "0.3.1", default-features = false }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 assets = { path = "../assets", default-features = false }
 order-book = { path = "../../pallets/order-book", default-features = false }
+pool-xyk = { path = "../../pallets/pool-xyk", default-features = false }
 
 [dev-dependencies]
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
 framenode-runtime = { path = "../../runtime", default-features = false, features = ["std"] }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 [features]
 default = ["std"]
@@ -41,6 +42,7 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "order-book/std",
+    "pool-xyk/std",
     "scale-info/std",
     "sp-std/std",
 ]

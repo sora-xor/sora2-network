@@ -36,7 +36,6 @@ use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use fixnum::ops::RoundMode;
 use fixnum::typenum::Unsigned;
 use fixnum::ArithmeticError;
-use num_traits::Unsigned;
 use sp_arithmetic::traits::IntegerSquareRoot;
 use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Saturating, Zero};
 
@@ -402,7 +401,7 @@ impl Saturating for BalanceUnit {
 #[derive(Copy, Clone)]
 pub struct Scalar<N>(pub N);
 
-impl<N: Unsigned + Into<u128>> Mul<Scalar<N>> for BalanceUnit {
+impl<N: num_traits::Unsigned + Into<u128>> Mul<Scalar<N>> for BalanceUnit {
     type Output = Self;
 
     fn mul(mut self, rhs: Scalar<N>) -> Self::Output {
@@ -411,7 +410,7 @@ impl<N: Unsigned + Into<u128>> Mul<Scalar<N>> for BalanceUnit {
     }
 }
 
-impl<N: Unsigned + Into<u128>> MulAssign<Scalar<N>> for BalanceUnit {
+impl<N: num_traits::Unsigned + Into<u128>> MulAssign<Scalar<N>> for BalanceUnit {
     fn mul_assign(&mut self, rhs: Scalar<N>) {
         *self = *self * rhs
     }
@@ -419,7 +418,7 @@ impl<N: Unsigned + Into<u128>> MulAssign<Scalar<N>> for BalanceUnit {
 
 // `num_traits::CheckedMul` trait doesn't allow `Rhs` other than `Self`
 impl BalanceUnit {
-    pub fn checked_mul_by_scalar<N: Unsigned + Into<u128> + Copy>(
+    pub fn checked_mul_by_scalar<N: num_traits::Unsigned + Into<u128> + Copy>(
         &self,
         rhs: Scalar<N>,
     ) -> Option<Self> {
