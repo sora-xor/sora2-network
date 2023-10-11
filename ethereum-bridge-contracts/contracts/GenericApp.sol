@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interfaces/IChannelHandler.sol";
 
 contract GenericApp is AccessControl, ReentrancyGuard {
-    IChannelHandler public handler;
+    IChannelHandler public immutable handler;
 
     bytes32 public constant INBOUND_CHANNEL_ROLE =
         keccak256("INBOUND_CHANNEL_ROLE");

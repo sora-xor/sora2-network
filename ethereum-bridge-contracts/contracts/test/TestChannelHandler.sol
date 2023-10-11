@@ -9,6 +9,6 @@ contract TestInboundChannel is ChannelHandler {
     {}
 
     function reset() external onlyOwner {
-        batch_nonce = 0;
+        batchNonce = 0;
     }
 }

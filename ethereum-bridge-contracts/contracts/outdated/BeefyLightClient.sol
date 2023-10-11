@@ -105,7 +105,7 @@ contract BeefyLightClient is ISimplifiedMMRProof, Ownable {
     }
 
     /* State */
-    ISimplifiedMMRVerification public mmrVerification;
+    ISimplifiedMMRVerification public immutable mmrVerification;
 
     // Ring buffer of latest MMR Roots
     mapping(uint256 => bytes32) public latestMMRRoots;

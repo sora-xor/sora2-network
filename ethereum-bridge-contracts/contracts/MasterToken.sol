@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 contract MasterToken is ERC20Burnable, Ownable {
-    bytes32 public sidechainAssetId;
+    bytes32 public immutable sidechainAssetId;
 
     /**
      * @dev Constructor that gives the specified address all of existing tokens.
