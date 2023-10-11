@@ -29,8 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use common::prelude::FixedWrapper;
 use common::{fixed, fixed_wrapper, Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
@@ -452,7 +450,7 @@ pub mod pallet {
                 TrustedRelayers::<T, I>::mutate(|option_relayers| match option_relayers {
                     Some(relayers) => {
                         let to_remove = BTreeSet::from_iter(account_ids);
-                        if to_remove.is_subset(&relayers) {
+                        if to_remove.is_subset(relayers) {
                             for account in &to_remove {
                                 relayers.remove(account);
                             }
@@ -530,30 +528,26 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
             ))
             .collect()?;
         let now = frame_system::Pallet::<T>::block_number();
-        let new_symbols = fallible_iterator::convert(
-            converted_rates
-                .iter()
-                .map(|symbol_rate| Ok::<_, DispatchError>(symbol_rate)),
-        )
-        .fold(
-            BTreeSet::new(),
-            |mut new_symbols_acc, (symbol, rate_value)| {
-                let new_rate = BandRate {
-                    value: *rate_value,
-                    last_updated: resolve_time,
-                    request_id,
-                    dynamic_fee: fixed!(0),
-                    last_updated_block: now,
-                };
-                SymbolRates::<T, I>::mutate(symbol, |option_old_rate| {
-                    if option_old_rate.is_none() {
-                        new_symbols_acc.insert(symbol.clone());
-                    }
-                    f(option_old_rate, new_rate, symbol)
-                })?;
-                Ok(new_symbols_acc)
-            },
-        )?;
+        let new_symbols =
+            fallible_iterator::convert(converted_rates.iter().map(Ok::<_, DispatchError>)).fold(
+                BTreeSet::new(),
+                |mut new_symbols_acc, (symbol, rate_value)| {
+                    let new_rate = BandRate {
+                        value: *rate_value,
+                        last_updated: resolve_time,
+                        request_id,
+                        dynamic_fee: fixed!(0),
+                        last_updated_block: now,
+                    };
+                    SymbolRates::<T, I>::mutate(symbol, |option_old_rate| {
+                        if option_old_rate.is_none() {
+                            new_symbols_acc.insert(symbol.clone());
+                        }
+                        f(option_old_rate, new_rate, symbol)
+                    })?;
+                    Ok(new_symbols_acc)
+                },
+            )?;
 
         T::OnNewSymbolsRelayedHook::on_new_symbols_relayed(Oracle::BandChainFeed, new_symbols)?;
 
