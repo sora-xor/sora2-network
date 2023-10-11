@@ -32,11 +32,13 @@
 //! but they make modify-run iterations during development much quicker
 
 use assets::AssetIdOf;
+use common::prelude::err_pays_no;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, PredefinedAssetId,
     PriceVariant, PSWAP, VAL, XOR, XSTUSD,
 };
-use frame_support::dispatch::{Pays, PostDispatchInfo};
+use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
+use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Hooks;
 use frame_support::{assert_err, assert_ok};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -47,7 +49,6 @@ use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, Order
 use qa_tools::pallet_tools::liquidity_proxy::source_initializers::XYKPair;
 use qa_tools::{settings, Error};
 use sp_runtime::traits::BadOrigin;
-use sp_runtime::DispatchErrorWithPostInfo;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
 pub type QAToolsPallet = qa_tools::Pallet<Runtime>;
@@ -934,6 +935,38 @@ fn should_initialize_xyk_pool() {
                 )
             ],
         ));
-        dbg!(1);
+    })
+}
+
+#[test]
+fn should_not_initialize_existing_pool() {
+    ext().execute_with(|| {
+        QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice()).unwrap();
+        assert_ok!(QAToolsPallet::initialize_xyk(
+            RuntimeOrigin::signed(alice()),
+            vec![
+                XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5).into()),
+                XYKPair::new(
+                    DEXId::PolkaswapXSTUSD.into(),
+                    XSTUSD,
+                    VAL,
+                    balance!(0.5).into()
+                )
+            ],
+        ));
+        assert_eq!(
+            QAToolsPallet::initialize_xyk(
+                RuntimeOrigin::signed(alice()),
+                vec![XYKPair::new(
+                    DEXId::Polkaswap.into(),
+                    XOR,
+                    VAL,
+                    balance!(0.5).into()
+                ),],
+            ),
+            Err(err_pays_no(
+                pool_xyk::Error::<Runtime>::PoolIsAlreadyInitialized
+            ))
+        );
     })
 }
