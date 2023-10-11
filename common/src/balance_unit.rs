@@ -1252,4 +1252,29 @@ mod tests {
         assert_eq!(BalanceUnit::indivisible(123).to_string(), "123");
         assert_eq!(BalanceUnit::indivisible(0).to_string(), "0");
     }
+
+    #[test]
+    fn check_into_divisible() {
+        let coefficient = 10u128.pow(18);
+
+        for n in [0, 1, 100, u128::MAX / coefficient] {
+            assert_eq!(
+                BalanceUnit::divisible(n).into_divisible(),
+                Some(BalanceUnit::divisible(n))
+            );
+            assert_eq!(
+                BalanceUnit::indivisible(n).into_divisible(),
+                Some(BalanceUnit::divisible(n * coefficient))
+            );
+        }
+
+        // overflow
+        for n in [u128::MAX / coefficient + 1, u128::MAX] {
+            assert_eq!(
+                BalanceUnit::divisible(n).into_divisible(),
+                Some(BalanceUnit::divisible(n))
+            );
+            assert_eq!(BalanceUnit::indivisible(n).into_divisible(), None);
+        }
+    }
 }
