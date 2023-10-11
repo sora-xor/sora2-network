@@ -112,7 +112,7 @@ pub struct TradingPair<AssetId> {
 }
 
 impl<AssetId: Eq> TradingPair<AssetId> {
-    pub fn consists_of(&self, asset_id: &AssetId) -> bool {
+    pub fn contains(&self, asset_id: &AssetId) -> bool {
         &self.base_asset_id == asset_id || &self.target_asset_id == asset_id
     }
 }
