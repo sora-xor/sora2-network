@@ -77,6 +77,8 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     // Prices are specified as price steps from the specified best ask price.
     // Amounts are added to min_lot and aligned with lot(amount) step.
 
+    // TODO: check if works for non-divisible
+
     // (price_steps_from_best_bid, amount)
     let buy_orders_steps = [
         (0, OrderVolume::divisible(balance!(168.5))),

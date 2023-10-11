@@ -5,7 +5,7 @@ pub mod source_initializers {
 
     pub fn xst() {}
 
-    /// Create multiple many order books with default parameters if do not exist and
+    /// Create multiple order books with default parameters if do not exist and
     /// fill them according to given parameters.
     ///
     /// Balance for placing the orders is minted automatically, trading pairs are
