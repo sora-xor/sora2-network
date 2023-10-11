@@ -46,8 +46,8 @@ pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
     use common::{
-        AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-        DexIdOf,
+        AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo,
+        Description, DexIdOf, DexInfoProvider,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
@@ -72,6 +72,7 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type QaToolsWhitelistCapacity: Get<u32>;
     }
 

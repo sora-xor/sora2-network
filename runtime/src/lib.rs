@@ -1463,6 +1463,7 @@ parameter_types! {
 #[cfg(feature = "private-net")]
 impl qa_tools::Config for Runtime {
     type AssetInfoProvider = Assets;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
 }

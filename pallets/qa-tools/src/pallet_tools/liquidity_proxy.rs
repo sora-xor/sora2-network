@@ -35,7 +35,7 @@ pub mod source_initializers {
     use assets::AssetIdOf;
     use codec::{Decode, Encode};
     use common::prelude::{BalanceUnit, FixedWrapper};
-    use common::{balance, AssetInfoProvider, DexIdOf, XOR};
+    use common::{balance, AssetInfoProvider, DEXInfo, DexIdOf, DexInfoProvider, TradingPair, XOR};
     use frame_support::dispatch::{DispatchResult, RawOrigin};
     use order_book::{MomentOf, OrderBookId};
     use sp_runtime::traits::{CheckedMul, CheckedSub};
@@ -65,6 +65,27 @@ pub mod source_initializers {
         }
     }
 
+    /// `None` if neither of the assets is base
+    fn trading_pair_from_asset_ids<T: Config>(
+        dex_info: DEXInfo<AssetIdOf<T>>,
+        asset_a: AssetIdOf<T>,
+        asset_b: AssetIdOf<T>,
+    ) -> Option<TradingPair<AssetIdOf<T>>> {
+        if asset_a == dex_info.base_asset_id {
+            Some(TradingPair {
+                base_asset_id: asset_a,
+                target_asset_id: asset_b,
+            })
+        } else if asset_b == dex_info.base_asset_id {
+            Some(TradingPair {
+                base_asset_id: asset_a,
+                target_asset_id: asset_b,
+            })
+        } else {
+            None
+        }
+    }
+
     pub fn xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
         pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
@@ -82,7 +103,21 @@ pub mod source_initializers {
                 return Err(Error::<T>::AssetsMustBeDivisible.into());
             }
 
-            // todo: enable trading pair
+            let dex_info = <T as Config>::DexInfoProvider::get_dex_info(&dex_id)?;
+            let trading_pair = trading_pair_from_asset_ids::<T>(dex_info, asset_a, asset_b)
+                .ok_or(pool_xyk::Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?;
+
+            if !trading_pair::Pallet::<T>::is_trading_pair_enabled(
+                &dex_id,
+                &trading_pair.base_asset_id,
+                &trading_pair.target_asset_id,
+            )? {
+                trading_pair::Pallet::<T>::register_pair(
+                    dex_id,
+                    trading_pair.base_asset_id,
+                    trading_pair.target_asset_id,
+                )?
+            }
 
             pool_xyk::Pallet::<T>::initialize_pool(
                 RawOrigin::Signed(caller.clone()).into(),
