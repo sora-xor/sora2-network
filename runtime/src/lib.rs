@@ -1924,7 +1924,7 @@ impl order_book::Config for Runtime {
     type SyntheticInfoProvider = XSTPool;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
-    type PermissionOrigin = EitherOf<
+    type PermittedOrigin = EitherOf<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
