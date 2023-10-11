@@ -28,18 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::Config;
-
 pub mod source_initializers {
     use crate::{Config, Error, OrderBookFillSettings};
     use assets::AssetIdOf;
     use codec::{Decode, Encode};
-    use common::prelude::{BalanceUnit, FixedWrapper};
+    use common::prelude::BalanceUnit;
     use common::{balance, AssetInfoProvider, DEXInfo, DexIdOf, DexInfoProvider, TradingPair, XOR};
     use frame_support::dispatch::{DispatchResult, RawOrigin};
     use order_book::{MomentOf, OrderBookId};
-    use sp_runtime::traits::{CheckedMul, CheckedSub};
-    use sp_runtime::Perbill;
+    use sp_runtime::traits::CheckedMul;
     use std::fmt::Debug;
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
