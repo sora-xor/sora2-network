@@ -34,7 +34,7 @@
 use assets::AssetIdOf;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, PredefinedAssetId,
-    PriceVariant, PSWAP, VAL, XOR,
+    PriceVariant, PSWAP, VAL, XOR, XSTUSD,
 };
 use frame_support::dispatch::{Pays, PostDispatchInfo};
 use frame_support::traits::Hooks;
@@ -924,12 +924,15 @@ fn should_initialize_xyk_pool() {
         QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice()).unwrap();
         assert_ok!(QAToolsPallet::initialize_xyk(
             RuntimeOrigin::signed(alice()),
-            vec![XYKPair::new(
-                DEXId::Polkaswap.into(),
-                XOR,
-                VAL,
-                balance!(0.5).into(),
-            )],
+            vec![
+                XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5).into()),
+                XYKPair::new(
+                    DEXId::PolkaswapXSTUSD.into(),
+                    XSTUSD,
+                    VAL,
+                    balance!(0.5).into()
+                )
+            ],
         ));
         dbg!(1);
     })
