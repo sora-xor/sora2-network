@@ -14,7 +14,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
+
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
@@ -67,7 +67,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = common::PSWAP;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = 100;
@@ -311,8 +311,8 @@ impl Default for ExtBuilder {
                 },
             )],
             endowed_accounts: vec![
-                (ALICE, CERES_ASSET_ID.into(), balance!(1000)),
-                (BOB, CERES_ASSET_ID.into(), balance!(500)),
+                (ALICE, CERES_ASSET_ID, balance!(1000)),
+                (BOB, CERES_ASSET_ID, balance!(500)),
             ],
             initial_permission_owners: vec![(
                 MANAGE_DEX,
