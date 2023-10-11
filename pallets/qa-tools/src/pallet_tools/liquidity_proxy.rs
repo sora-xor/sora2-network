@@ -50,25 +50,17 @@ pub mod source_initializers {
         pub asset_b: AssetId,
         /// Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1 `asset_a`)
         pub price: BalanceUnit,
-        // pub slippage_tolerance: BalanceUnit,
     }
 
     impl<DEXId, AssetId> XYKPair<DEXId, AssetId> {
         // `price` - Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1
         // `asset_a`)
-        pub fn new(
-            dex_id: DEXId,
-            asset_a: AssetId,
-            asset_b: AssetId,
-            price: BalanceUnit,
-            // slippage_tolerance: Perbill,
-        ) -> Self {
+        pub fn new(dex_id: DEXId, asset_a: AssetId, asset_b: AssetId, price: BalanceUnit) -> Self {
             Self {
                 dex_id,
                 asset_a,
                 asset_b,
                 price,
-                // slippage_tolerance,
             }
         }
     }
@@ -82,7 +74,6 @@ pub mod source_initializers {
             asset_a,
             asset_b,
             price,
-            // slippage_tolerance,
         } in pairs
         {
             if <T as Config>::AssetInfoProvider::is_non_divisible(&asset_a)
@@ -101,19 +92,6 @@ pub mod source_initializers {
             )
             .map_err(|e| e.error)?;
 
-            // fn subtract_slippage(
-            //     value: BalanceUnit,
-            //     slippage_tolerance: Perbill,
-            // ) -> Option<BalanceUnit> {
-            //     let slippage = BalanceUnit::divisible(slippage_tolerance.try_into_balance().ok()?);
-            //     let slippage = if !value.is_divisible() {
-            //         slippage.into_divisible()?
-            //     } else {
-            //         slippage
-            //     };
-            //     value.checked_sub(&value.checked_mul(&slippage)?)
-            // }
-
             let value_a: BalanceUnit = if asset_a == XOR.into() {
                 balance!(1000000).into()
             } else {
@@ -126,10 +104,6 @@ pub mod source_initializers {
             assets::Pallet::<T>::mint_unchecked(&asset_a, &caller, *value_a.balance())?;
             assets::Pallet::<T>::mint_unchecked(&asset_b, &caller, *value_b.balance())?;
 
-            // let value_a_min =
-            //     subtract_slippage(value_a, value_a).ok_or(Error::<T>::ArithmeticError)?;
-            // let value_b_min =
-            //     subtract_slippage(value_b, value_b).ok_or(Error::<T>::ArithmeticError)?;
             pool_xyk::Pallet::<T>::deposit_liquidity(
                 RawOrigin::Signed(caller.clone()).into(),
                 dex_id,
