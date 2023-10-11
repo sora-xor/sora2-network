@@ -90,14 +90,9 @@ pub mod source_initializers {
             {
                 return Err(Error::<T>::AssetsMustBeDivisible.into());
             }
-            let value_a: BalanceUnit = if asset_a == XOR.into() {
-                balance!(1000000).into()
-            } else {
-                balance!(10000).into()
-            };
-            let value_b = value_a
-                .checked_mul(&price)
-                .ok_or(Error::<T>::ArithmeticError)?;
+
+            // todo: enable trading pair
+
             pool_xyk::Pallet::<T>::initialize_pool(
                 RawOrigin::Signed(caller.clone()).into(),
                 dex_id,
@@ -119,6 +114,14 @@ pub mod source_initializers {
                 value.sub(value.mul(slippage))
             }
 
+            let value_a: BalanceUnit = if asset_a == XOR.into() {
+                balance!(1000000).into()
+            } else {
+                balance!(10000).into()
+            };
+            let value_b = value_a
+                .checked_mul(&price)
+                .ok_or(Error::<T>::ArithmeticError)?;
             let value_a_min = subtract_slippage(value_a, slippage_tolerance.clone());
             let value_b_min = subtract_slippage(value_b, slippage_tolerance);
             pool_xyk::Pallet::<T>::deposit_liquidity(
