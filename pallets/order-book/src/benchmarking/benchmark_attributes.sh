@@ -26,7 +26,7 @@ EOF
 eval "$getopt_code"
 
 mkdir benches
-bench_names=( delete_orderbook_ place_limit_order_ cancel_limit_order_first_ cancel_limit_order_last_ execute_market_order_ quote_ exchange_ )
+bench_names=( place_limit_order_ cancel_limit_order_first_ cancel_limit_order_last_ execute_market_order_ quote_ exchange_ )
 for i in $(seq 1 $max_preset)
 do
     # add index to the benchmark name

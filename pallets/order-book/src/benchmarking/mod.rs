@@ -519,8 +519,8 @@ mod benchmarks_inner {
     };
     use preparation::{
         create_and_populate_order_book, prepare_cancel_orderbook_benchmark,
-        prepare_delete_orderbook_benchmark, prepare_market_order_benchmark,
-        prepare_place_orderbook_benchmark, prepare_quote_benchmark, presets::*,
+        prepare_market_order_benchmark, prepare_place_orderbook_benchmark, prepare_quote_benchmark,
+        presets::*,
     };
 
     use frame_system::Pallet as FrameSystem;
@@ -832,87 +832,6 @@ mod benchmarks_inner {
         // 4. paste output here (instead of existing benches)
         // 5. build as usual (with `--release` flag)
         // 6. run with ./benchmark_attributes.sh
-
-        #[extra]
-        delete_orderbook_1 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_1());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_2 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_2());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_3 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_3());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_4 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_4());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_5 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_5());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_6 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_6());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_7 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_7());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_8 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_8());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_9 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_9());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_10 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_10());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_11 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_11());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_12 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_12());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_13 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_13());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_14 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_14());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_15 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_15());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
-        #[extra]
-        delete_orderbook_16 {
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_16());
-        } : { OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }
-
 
         #[extra]
         place_limit_order_1 {

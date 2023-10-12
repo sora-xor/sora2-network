@@ -21,13 +21,6 @@ def generate_fs(range_: range, template: str):
     return codes
 
 
-code_template_delete = """
-        #[extra]
-        delete_orderbook_{} {{
-            let order_book_id = prepare_delete_orderbook_benchmark::<T>(preset_{}());
-        }} : {{ OrderBookPallet::<T>::delete_orderbook(RawOrigin::Root.into(), order_book_id).unwrap() }}
-"""
-
 code_template_place = """
         #[extra]
         place_limit_order_{} {{
@@ -143,7 +136,6 @@ done
 """
 
 templates = [
-    code_template_delete,
     code_template_place,
     code_template_cancel_first,
     code_template_cancel_last,
