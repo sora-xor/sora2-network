@@ -3791,6 +3791,7 @@ fn test_xorless_transfer_works() {
             balance!(10),
             sources,
             filter_mode,
+            Default::default(),
         ));
 
         assert_approx_eq!(
@@ -3839,6 +3840,7 @@ fn test_xorless_transfer_without_swap_works() {
             balance!(0),
             sources,
             filter_mode,
+            Default::default(),
         ));
 
         assert_approx_eq!(
@@ -3883,6 +3885,7 @@ fn test_xorless_transfer_fails_on_swap() {
                 balance!(0.5),
                 sources,
                 filter_mode,
+                Default::default(),
             ),
             Error::<Runtime>::SlippageNotTolerated
         );
@@ -3912,6 +3915,7 @@ fn test_xorless_transfer_fails_on_transfer() {
                 balance!(2),
                 sources,
                 filter_mode,
+                Default::default(),
             ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
