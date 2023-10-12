@@ -34,8 +34,8 @@
 use assets::AssetIdOf;
 use common::prelude::err_pays_no;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, PredefinedAssetId,
-    PriceVariant, PSWAP, VAL, XOR, XSTUSD,
+    balance, AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
+    PredefinedAssetId, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::DispatchResult;
@@ -927,10 +927,33 @@ fn should_initialize_xyk_pool() {
             RuntimeOrigin::signed(alice()),
             vec![
                 XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5).into()),
+                XYKPair::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.5).into()),
+                XYKPair::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(0.5).into()),
+                XYKPair::new(DEXId::Polkaswap.into(), XOR, DAI, balance!(0.5).into()),
+                XYKPair::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5).into()),
+                XYKPair::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5).into()),
                 XYKPair::new(
                     DEXId::PolkaswapXSTUSD.into(),
                     XSTUSD,
                     VAL,
+                    balance!(0.5).into()
+                ),
+                XYKPair::new(
+                    DEXId::PolkaswapXSTUSD.into(),
+                    XSTUSD,
+                    PSWAP,
+                    balance!(0.5).into()
+                ),
+                XYKPair::new(
+                    DEXId::PolkaswapXSTUSD.into(),
+                    XSTUSD,
+                    ETH,
+                    balance!(0.5).into()
+                ),
+                XYKPair::new(
+                    DEXId::PolkaswapXSTUSD.into(),
+                    XSTUSD,
+                    DAI,
                     balance!(0.5).into()
                 )
             ],
