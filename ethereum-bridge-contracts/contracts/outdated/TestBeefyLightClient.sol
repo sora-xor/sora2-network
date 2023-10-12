@@ -11,11 +11,11 @@ contract TestBeefyLightClient is BeefyLightClient {
 
     function reset(
         uint64 startingBeefyBlock,
-        ValidatorSet calldata _currentValidatorSet,
-        ValidatorSet calldata _nextValidatorSet
+        ValidatorSet calldata currentValidatorSet_,
+        ValidatorSet calldata nextValidatorSet_
     ) external onlyOwner {
-        currentValidatorSet = _currentValidatorSet;
-        nextValidatorSet = _nextValidatorSet;
+        currentValidatorSet = currentValidatorSet_;
+        nextValidatorSet = nextValidatorSet_;
         latestBeefyBlock = startingBeefyBlock;
         latestMMRRoots[0] = bytes32(0);
         latestMMRRootIndex = 0;

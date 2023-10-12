@@ -12,12 +12,12 @@ contract MasterToken is ERC20Burnable, Ownable {
      * @dev Constructor that gives the specified address all of existing tokens.
      */
     constructor(
-        string memory name,
-        string memory symbol,
+        string memory name_,
+        string memory symbol_,
         address beneficiary,
         uint256 supply,
         bytes32 sideChainAssetId
-    ) ERC20(name, symbol) {
+    ) ERC20(name_, symbol_) {
         sidechainAssetId = sideChainAssetId;
         _mint(beneficiary, supply);
     }

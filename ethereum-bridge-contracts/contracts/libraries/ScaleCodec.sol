@@ -79,6 +79,7 @@ library ScaleCodec {
     //   * https://graphics.stanford.edu/~seander/bithacks.html#ReverseParallel
 
     function reverse256(uint256 input) internal pure returns (uint256 v) {
+        // slither-disable-start too-many-digits
         v = input;
 
         // swap bytes
@@ -119,9 +120,11 @@ library ScaleCodec {
 
         // swap 16-byte long pairs
         v = (v >> 128) | (v << 128);
+        // slither-disable-end too-many-digits
     }
 
     function reverse128(uint128 input) internal pure returns (uint128 v) {
+        // slither-disable-start too-many-digits
         v = input;
 
         // swap bytes
@@ -141,6 +144,7 @@ library ScaleCodec {
 
         // swap 8-byte long pairs
         v = (v >> 64) | (v << 64);
+        // slither-disable-end too-many-digits
     }
 
     function reverse64(uint64 input) internal pure returns (uint64 v) {

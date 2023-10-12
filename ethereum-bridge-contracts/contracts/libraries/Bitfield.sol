@@ -8,6 +8,7 @@ library Bitfield {
      * @dev Constants used to efficiently calculate the hamming weight of a bitfield. See
      * https://en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation for an explanation of those constants.
      */
+    // slither-disable-start too-many-digits
     uint256 internal constant M1 =
         0x5555555555555555555555555555555555555555555555555555555555555555;
     uint256 internal constant M2 =
@@ -24,6 +25,7 @@ library Bitfield {
         0x0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff;
     uint256 internal constant M128 =
         0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff;
+    // slither-disable-end too-many-digits
 
     using Bits for uint256;
 
