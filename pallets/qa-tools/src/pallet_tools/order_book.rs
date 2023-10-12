@@ -30,7 +30,8 @@
 
 use crate::settings::{RandomAmount, SideFill};
 use crate::Config;
-use common::{Balance, PriceVariant, TradingPairSourceManager};
+use common::fixnum::ops::RoundMode;
+use common::{balance, AssetInfoProvider, Balance, PriceVariant};
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;

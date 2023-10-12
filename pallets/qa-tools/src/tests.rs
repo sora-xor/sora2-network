@@ -35,9 +35,8 @@ use assets::AssetIdOf;
 use common::prelude::err_pays_no;
 use common::{
     balance, AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
-    PredefinedAssetId, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
+    DexIdOf, PredefinedAssetId, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
-use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Hooks;
 use frame_support::{assert_err, assert_ok};
