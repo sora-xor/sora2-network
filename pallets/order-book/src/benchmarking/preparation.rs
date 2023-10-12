@@ -227,33 +227,6 @@ pub fn create_and_populate_order_book<T: Config>(
     .unwrap();
 }
 
-/// Returns id of order book to delete.
-pub fn prepare_delete_orderbook_benchmark<T: Config>(
-    fill_settings: FillSettings<T>,
-) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
-    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
-        dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
-    };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
-        .expect("failed to create an order book");
-    let mut order_book = OrderBookPallet::<T>::order_books(order_book_id).unwrap();
-    let mut data_layer = CacheDataLayer::<T>::new();
-    let _ = fill_order_book_worst_case::<T>(
-        fill_settings.clone(),
-        &mut order_book,
-        &mut data_layer,
-        true,
-        true,
-    );
-    <OrderBooks<T>>::insert(order_book_id, order_book);
-    debug!("Committing data...");
-    data_layer.commit();
-    debug!("Data committed!");
-    order_book_id
-}
-
 /// Places buy orders for worst-case execution.
 ///
 /// If `double_cheapest_order_amount` is true, one order in the lowest price is set for twice of the

@@ -61,8 +61,8 @@ use order_book_imported::{
 
 use crate::test_utils::FillSettings;
 use preparation::{
-    prepare_cancel_orderbook_benchmark, prepare_delete_orderbook_benchmark,
-    prepare_market_order_benchmark, prepare_place_orderbook_benchmark, prepare_quote_benchmark,
+    prepare_cancel_orderbook_benchmark, prepare_market_order_benchmark,
+    prepare_place_orderbook_benchmark, prepare_quote_benchmark,
 };
 
 use Pallet as OrderBookPallet;
