@@ -2450,7 +2450,16 @@ pub mod pallet {
         /// This extrinsic is done as temporary solution for XORless transfers, in future it would be removed
         /// and logic for XORless extrinsics should be moved to xor-fee pallet.
         #[pallet::call_index(6)]
-        #[pallet::weight(Pallet::<T>::swap_weight(dex_id, asset_id, &common::XOR.into(), SwapVariant::WithDesiredOutput).saturating_add(<T as assets::Config>::WeightInfo::transfer()))]
+        #[pallet::weight({
+            let mut weight = <T as assets::Config>::WeightInfo::transfer();
+            if asset_id != &common::XOR.into()
+                && max_amount_in > &Balance::zero()
+                && desired_xor_amount > &Balance::zero()
+            {
+                weight = weight.saturating_add(Pallet::<T>::swap_weight(dex_id, asset_id, &common::XOR.into(), SwapVariant::WithDesiredOutput));
+            }
+            weight
+        })]
         pub fn xorless_transfer(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
@@ -2461,13 +2470,16 @@ pub mod pallet {
             max_amount_in: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
-            additional_data: BoundedVec<u8, T::MaxAdditionalDataLength>,
+            additional_data: Option<BoundedVec<u8, T::MaxAdditionalDataLength>>,
         ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
             ensure!(sender != receiver, Error::<T>::TheSameSenderAndReceiver);
 
             let mut weight = Weight::default();
-            if max_amount_in > Balance::zero() && desired_xor_amount > Balance::zero() {
+            if asset_id != common::XOR.into()
+                && max_amount_in > Balance::zero()
+                && desired_xor_amount > Balance::zero()
+            {
                 weight = weight.saturating_add(Self::inner_swap(
                     sender.clone(),
                     sender.clone(),
@@ -2527,7 +2539,7 @@ pub mod pallet {
             AccountIdOf<T>,
             AccountIdOf<T>,
             Balance,
-            BoundedVec<u8, T::MaxAdditionalDataLength>,
+            Option<BoundedVec<u8, T::MaxAdditionalDataLength>>,
         ),
     }
 
