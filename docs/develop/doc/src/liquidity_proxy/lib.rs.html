@@ -2599,6 +2599,18 @@
 <a href="#2584" id="2584">2584</a>
 <a href="#2585" id="2585">2585</a>
 <a href="#2586" id="2586">2586</a>
+<a href="#2587" id="2587">2587</a>
+<a href="#2588" id="2588">2588</a>
+<a href="#2589" id="2589">2589</a>
+<a href="#2590" id="2590">2590</a>
+<a href="#2591" id="2591">2591</a>
+<a href="#2592" id="2592">2592</a>
+<a href="#2593" id="2593">2593</a>
+<a href="#2594" id="2594">2594</a>
+<a href="#2595" id="2595">2595</a>
+<a href="#2596" id="2596">2596</a>
+<a href="#2597" id="2597">2597</a>
+<a href="#2598" id="2598">2598</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -5051,7 +5063,16 @@
         /// This extrinsic is done as temporary solution for XORless transfers, in future it would be removed
         /// and logic for XORless extrinsics should be moved to xor-fee pallet.
         </span><span class="attr">#[pallet::call_index(<span class="number">6</span>)]
-        #[pallet::weight(Pallet::&lt;T&gt;::swap_weight(dex_id, asset_id, <span class="kw-2">&amp;</span>common::XOR.into(), SwapVariant::WithDesiredOutput).saturating_add(&lt;T <span class="kw">as </span>assets::Config&gt;::WeightInfo::transfer()))]
+        #[pallet::weight({
+            <span class="kw">let </span><span class="kw-2">mut </span>weight = &lt;T <span class="kw">as </span>assets::Config&gt;::WeightInfo::transfer();
+            <span class="kw">if </span>asset_id != <span class="kw-2">&amp;</span>common::XOR.into()
+                &amp;&amp; max_amount_in &gt; <span class="kw-2">&amp;</span>Balance::zero()
+                &amp;&amp; desired_xor_amount &gt; <span class="kw-2">&amp;</span>Balance::zero()
+            {
+                weight = weight.saturating_add(Pallet::&lt;T&gt;::swap_weight(dex_id, asset_id, <span class="kw-2">&amp;</span>common::XOR.into(), SwapVariant::WithDesiredOutput));
+            }
+            weight
+        })]
         </span><span class="kw">pub fn </span>xorless_transfer(
             origin: OriginFor&lt;T&gt;,
             dex_id: T::DEXId,
@@ -5062,13 +5083,16 @@
             max_amount_in: Balance,
             selected_source_types: Vec&lt;LiquiditySourceType&gt;,
             filter_mode: FilterMode,
-            additional_data: BoundedVec&lt;u8, T::MaxAdditionalDataLength&gt;,
+            additional_data: <span class="prelude-ty">Option</span>&lt;BoundedVec&lt;u8, T::MaxAdditionalDataLength&gt;&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>sender = ensure_signed(origin)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(sender != receiver, Error::&lt;T&gt;::TheSameSenderAndReceiver);
 
             <span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::default();
-            <span class="kw">if </span>max_amount_in &gt; Balance::zero() &amp;&amp; desired_xor_amount &gt; Balance::zero() {
+            <span class="kw">if </span>asset_id != common::XOR.into()
+                &amp;&amp; max_amount_in &gt; Balance::zero()
+                &amp;&amp; desired_xor_amount &gt; Balance::zero()
+            {
                 weight = weight.saturating_add(<span class="self">Self</span>::inner_swap(
                     sender.clone(),
                     sender.clone(),
@@ -5128,7 +5152,7 @@
             AccountIdOf&lt;T&gt;,
             AccountIdOf&lt;T&gt;,
             Balance,
-            BoundedVec&lt;u8, T::MaxAdditionalDataLength&gt;,
+            <span class="prelude-ty">Option</span>&lt;BoundedVec&lt;u8, T::MaxAdditionalDataLength&gt;&gt;,
         ),
     }
 
