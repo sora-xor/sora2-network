@@ -14,7 +14,6 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
@@ -73,7 +72,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = common::PSWAP;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = 100;
@@ -304,6 +303,7 @@ impl pallet_balances::Config for Runtime {
     type ReserveIdentifier = ();
 }
 
+#[allow(clippy::type_complexity)]
 pub struct ExtBuilder {
     pub endowed_assets: Vec<(
         AssetId,
@@ -345,9 +345,9 @@ impl Default for ExtBuilder {
                 ),
             ],
             endowed_accounts: vec![
-                (ALICE, CERES_ASSET_ID.into(), balance!(15000)),
-                (BOB, CERES_ASSET_ID.into(), balance!(5)),
-                (CHARLES, CERES_ASSET_ID.into(), balance!(3000)),
+                (ALICE, CERES_ASSET_ID, balance!(15000)),
+                (BOB, CERES_ASSET_ID, balance!(5)),
+                (CHARLES, CERES_ASSET_ID, balance!(3000)),
             ],
             initial_permission_owners: vec![
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB]),
@@ -364,43 +364,44 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
     #[cfg(feature = "runtime-benchmarks")]
     pub fn benchmarking() -> Self {
-        let mut res = Self::default();
-        res.endowed_assets = vec![
-            (
-                CERES_ASSET_ID,
-                ALICE,
-                AssetSymbol(b"CERES".to_vec()),
-                AssetName(b"Ceres".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-            (
-                XOR,
-                ALICE,
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"XOR".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-            (
-                PSWAP,
-                ALICE,
-                AssetSymbol(b"PSWAP".to_vec()),
-                AssetName(b"PSWAP".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-        ];
-        res
+        Self {
+            endowed_assets: vec![
+                (
+                    CERES_ASSET_ID,
+                    ALICE,
+                    AssetSymbol(b"CERES".to_vec()),
+                    AssetName(b"Ceres".to_vec()),
+                    18,
+                    0,
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    XOR,
+                    ALICE,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"XOR".to_vec()),
+                    18,
+                    0,
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    PSWAP,
+                    ALICE,
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"PSWAP".to_vec()),
+                    18,
+                    0,
+                    true,
+                    None,
+                    None,
+                ),
+            ],
+            ..Default::default()
+        }
     }
 
     pub fn build(self) -> sp_io::TestExternalities {

@@ -29,6 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
+
+#[cfg(feature = "wip")] // order-book
+use {
+    crate::order_book::OrderBookId,
+    common::{DEXId, PriceVariant},
+};
+
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
     AccountId, AssetId, Assets, Balance, Balances, Currencies, GetXorFeeAccountId, PoolXYK,
@@ -39,19 +46,19 @@ use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
 use common::{balance, fixed_wrapper, AssetInfoProvider, FilterMode, VAL, XOR};
-use frame_support::assert_ok;
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
 use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::WeightToFee as WeightToFeeTrait;
+use frame_support::{assert_err, assert_ok};
 use frame_system::EventRecord;
 use framenode_chain_spec::ext;
 use log::LevelFilter;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
-use sp_runtime::traits::SignedExtension;
+use sp_runtime::traits::{Dispatchable, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 use xor_fee::extension::ChargeTransactionPayment;
@@ -914,6 +921,394 @@ fn it_works_eth_bridge_pays_no() {
                 LiquidityInfo::Paid(who, None),
                 Some(CustomFeeDetails::Regular(SMALL_FEE))
             ))
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // order-book
+#[test]
+fn fee_not_postponed_place_limit_order() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: None,
+        });
+
+        let quoted_fee =
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0)
+                .unwrap();
+
+        assert_eq!(
+            quoted_fee,
+            LiquidityInfo::Paid(alice(), Some(NegativeImbalance::new(SMALL_FEE)))
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // order-book
+#[test]
+fn withdraw_fee_place_limit_order_with_default_lifetime() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: None,
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &post_info_from_weight(MOCK_WEIGHT),
+            len,
+            &Ok(())
+        )
+        .is_ok());
+
+        let fee = SMALL_FEE / 2;
+
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()).unwrap(),
+            initial_balance - fee
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // order-book
+#[test]
+fn withdraw_fee_place_limit_order_with_some_lifetime() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: Some(259200000),
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &post_info_from_weight(MOCK_WEIGHT),
+            len,
+            &Ok(())
+        )
+        .is_ok());
+
+        let fee = balance!(0.000215);
+
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()).unwrap(),
+            initial_balance - fee
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // order-book
+#[test]
+fn withdraw_fee_place_limit_order_with_error() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: None,
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &post_info_from_weight(MOCK_WEIGHT),
+            len,
+            &Err(order_book::Error::<Runtime>::InvalidLimitOrderPrice.into())
+        )
+        .is_ok());
+
+        let fee = SMALL_FEE;
+
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()).unwrap(),
+            initial_balance - fee
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // order-book
+#[test]
+fn withdraw_fee_place_limit_order_with_crossing_spread() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: None,
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &default_post_info(), // none weight means that the limit was converted into market order
+            len,
+            &Ok(())
+        )
+        .is_ok());
+
+        let fee = SMALL_FEE;
+
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()).unwrap(),
+            initial_balance - fee
+        );
+    });
+}
+
+/// Fee should be postponed until after the transaction
+#[test]
+fn fee_payment_postponed_xorless_transfer() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        increase_balance(alice(), VAL.into(), balance!(1000));
+
+        increase_balance(bob(), XOR.into(), balance!(1000));
+        increase_balance(bob(), VAL.into(), balance!(1000));
+
+        ensure_pool_initialized(XOR.into(), VAL.into());
+        PoolXYK::deposit_liquidity(
+            RuntimeOrigin::signed(bob()),
+            0,
+            XOR.into(),
+            VAL.into(),
+            balance!(500),
+            balance!(500),
+            balance!(450),
+            balance!(450),
+        )
+        .unwrap();
+
+        fill_spot_price();
+
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+
+        let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+            dex_id: 0,
+            asset_id: VAL,
+            // Swap with desired output may return less tokens than requested
+            desired_xor_amount: 0,
+            max_amount_in: 0,
+            amount: balance!(500),
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+            receiver: alice(),
+            additional_data: Default::default(),
+        });
+
+        let quoted_fee =
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&bob(), &call, &dispatch_info, SMALL_FEE, 0)
+                .unwrap();
+
+        assert_eq!(
+            quoted_fee,
+            LiquidityInfo::Paid(bob(), Some(NegativeImbalance::new(SMALL_FEE)))
+        );
+
+        let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+            dex_id: 0,
+            asset_id: VAL,
+            // Swap with desired output may return less tokens than requested
+            desired_xor_amount: SMALL_FEE + 1,
+            max_amount_in: balance!(1),
+            amount: balance!(10),
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+            receiver: bob(),
+            additional_data: Default::default(),
+        });
+
+        let quoted_fee =
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0)
+                .unwrap();
+
+        assert_eq!(quoted_fee, LiquidityInfo::Postponed(alice()));
+
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice()).unwrap(),
+            balance!(0)
+        );
+        assert_eq!(
+            Assets::total_balance(&VAL.into(), &alice()).unwrap(),
+            balance!(1000)
+        );
+
+        let post_info = call.dispatch(RuntimeOrigin::signed(alice())).unwrap();
+
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice()).unwrap(),
+            SMALL_FEE
+        );
+        assert_eq!(
+            Assets::total_balance(&VAL.into(), &alice()).unwrap(),
+            balance!(989.999297892695135178)
+        );
+        assert_eq!(
+            Assets::total_balance(&VAL.into(), &bob()).unwrap(),
+            balance!(510)
+        );
+
+        assert_ok!(xor_fee::Pallet::<Runtime>::correct_and_deposit_fee(
+            &alice(),
+            &dispatch_info,
+            &post_info,
+            SMALL_FEE,
+            0,
+            quoted_fee
+        ));
+
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice()).unwrap(), 0);
+    });
+}
+
+/// Fee should be postponed until after the transaction
+#[test]
+fn fee_payment_postpone_failed_xorless_transfer() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        increase_balance(alice(), VAL.into(), balance!(1000));
+
+        increase_balance(bob(), XOR.into(), balance!(1000));
+        increase_balance(bob(), VAL.into(), balance!(1000));
+
+        ensure_pool_initialized(XOR.into(), VAL.into());
+        PoolXYK::deposit_liquidity(
+            RuntimeOrigin::signed(bob()),
+            0,
+            XOR.into(),
+            VAL.into(),
+            balance!(500),
+            balance!(500),
+            balance!(450),
+            balance!(450),
+        )
+        .unwrap();
+
+        fill_spot_price();
+
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+
+        let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+            dex_id: 0,
+            asset_id: VAL,
+            // Swap with desired output may return less tokens than requested
+            desired_xor_amount: SMALL_FEE + 1,
+            max_amount_in: 1,
+            amount: balance!(10),
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+            receiver: bob(),
+            additional_data: Default::default(),
+        });
+
+        assert_err!(
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0),
+            TransactionValidityError::Invalid(InvalidTransaction::Payment)
+        );
+
+        let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+            dex_id: 0,
+            asset_id: VAL,
+            // Swap with desired output may return less tokens than requested
+            desired_xor_amount: 0,
+            max_amount_in: 0,
+            amount: balance!(500),
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+            receiver: bob(),
+            additional_data: Default::default(),
+        });
+
+        assert_err!(
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0),
+            TransactionValidityError::Invalid(InvalidTransaction::Payment)
         );
     });
 }
