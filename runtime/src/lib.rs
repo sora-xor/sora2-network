@@ -1031,6 +1031,7 @@ parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
     pub const MaxRegistrars: u32 = 20;
+    pub const MaxAdditionalDataLength: u32 = 128;
     pub ReferralsReservesAcc: AccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             b"referrals".to_vec(),
@@ -1058,6 +1059,7 @@ impl liquidity_proxy::Config for Runtime {
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
+    type MaxAdditionalDataLength = MaxAdditionalDataLength;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {

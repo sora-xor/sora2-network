@@ -289,7 +289,6 @@ pub mod pallet {
         /// Order book is deleted
         OrderBookDeleted {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            count_of_canceled_orders: u32,
         },
 
         /// Order book status is changed
@@ -463,6 +462,10 @@ pub mod pallet {
         SlippageLimitExceeded,
         /// Market orders are allowed only for indivisible assets
         MarketOrdersAllowedOnlyForIndivisibleAssets,
+        /// It is possible to delete an order-book only with the statuses: OnlyCancel or Stop
+        ForbiddenStatusToDeleteOrderBook,
+        // It is possible to delete only empty order-book
+        OrderBookIsNotEmpty,
     }
 
     #[pallet::hooks]
@@ -513,10 +516,16 @@ pub mod pallet {
             let order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
 
-            let mut data = CacheDataLayer::<T>::new();
-            let count_of_canceled_orders = order_book.cancel_all_limit_orders(&mut data)? as u32;
+            ensure!(
+                order_book.status == OrderBookStatus::OnlyCancel
+                    || order_book.status == OrderBookStatus::Stop,
+                Error::<T>::ForbiddenStatusToDeleteOrderBook
+            );
 
-            data.commit();
+            let is_empty = <LimitOrders<T>>::iter_prefix_values(order_book_id)
+                .next()
+                .is_none();
+            ensure!(is_empty, Error::<T>::OrderBookIsNotEmpty);
 
             #[cfg(feature = "wip")] // order-book
             {
@@ -531,10 +540,7 @@ pub mod pallet {
             Self::deregister_tech_account(order_book_id)?;
             <OrderBooks<T>>::remove(order_book_id);
 
-            Self::deposit_event(Event::<T>::OrderBookDeleted {
-                order_book_id,
-                count_of_canceled_orders,
-            });
+            Self::deposit_event(Event::<T>::OrderBookDeleted { order_book_id });
             Ok(().into())
         }
 

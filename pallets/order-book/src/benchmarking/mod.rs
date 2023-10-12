@@ -50,12 +50,13 @@ use framenode_runtime::order_book as order_book_imported;
 
 use assets::AssetIdOf;
 use codec::Decode;
-use common::{AssetInfoProvider, DEXId, PriceVariant};
+use common::{AssetInfoProvider, DEXId, PriceVariant, VAL, XOR};
 use frame_support::traits::Time;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use order_book_imported::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBookId, OrderVolume, Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBookId, OrderBookStatus,
+    OrderVolume, Pallet,
 };
 
 use crate::test_utils::FillSettings;
@@ -147,25 +148,31 @@ pub fn assert_orders_numbers<T: Config>(
 pub(crate) mod delete_orderbook_benchmark {
     use super::*;
 
-    pub fn init<T: Config>(settings: FillSettings<T>) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
+    pub fn init<T: Config>(_settings: FillSettings<T>) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
-        prepare_delete_orderbook_benchmark::<T>(settings)
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
+            .unwrap();
+        OrderBookPallet::<T>::change_orderbook_status(
+            RawOrigin::Root.into(),
+            order_book_id,
+            OrderBookStatus::Stop,
+        )
+        .unwrap();
+        order_book_id
     }
 
     pub fn verify<T: Config + core::fmt::Debug>(
-        settings: FillSettings<T>,
+        _settings: FillSettings<T>,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) {
-        assert_last_event::<T>(
-            Event::<T>::OrderBookDeleted {
-                order_book_id,
-                count_of_canceled_orders: settings.max_side_price_count
-                    * settings.max_orders_per_price
-                    * 2,
-            }
-            .into(),
-        );
+        assert_last_event::<T>(Event::<T>::OrderBookDeleted { order_book_id }.into());
         assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
     }
 }
