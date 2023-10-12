@@ -31,9 +31,11 @@
 //! Tests are not essential for this testing helper pallet,
 //! but they make modify-run iterations during development much quicker
 
+use assets::AssetIdOf;
+use common::prelude::err_pays_no;
 use common::{
     balance, AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
-    PredefinedAssetId, VAL, XOR,
+    DexIdOf, PredefinedAssetId, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::{assert_err, assert_ok};
@@ -62,7 +64,7 @@ fn should_create_and_fill_orderbook() {
             quote: AssetId32<PredefinedAssetId>,
             best_bid_price: Balance,
             best_ask_price: Balance,
-        ) {
+        ) -> OrderBookId<AssetIdOf<Runtime>, DexIdOf<Runtime>> {
             let mut start_balance_base =
                 assets::Pallet::<Runtime>::total_balance(&base, &alice()).unwrap();
             let start_balance_quote =
@@ -107,6 +109,7 @@ fn should_create_and_fill_orderbook() {
                 order_book::Pallet::<Runtime>::aggregated_asks(order_book_id).len(),
                 3
             );
+            order_book_id
         }
 
         test_create_and_fill_batch(VAL, XOR, balance!(10), balance!(11));

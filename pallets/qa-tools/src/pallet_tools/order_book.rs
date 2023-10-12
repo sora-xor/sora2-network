@@ -1,4 +1,5 @@
 use crate::Config;
+use common::fixnum::ops::RoundMode;
 use common::{balance, AssetInfoProvider, Balance, PriceVariant};
 use frame_support::pallet_prelude::*;
 use frame_support::sp_runtime::traits::Zero;
@@ -77,8 +78,6 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     // Prices are specified as price steps from the specified best ask price.
     // Amounts are added to min_lot and aligned with lot(amount) step.
 
-    // TODO: check if works for non-divisible
-
     // (price_steps_from_best_bid, amount)
     let buy_orders_steps = [
         (0, OrderVolume::divisible(balance!(168.5))),
@@ -102,6 +101,25 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     let mut data = order_book::cache_data_layer::CacheDataLayer::<T>::new();
 
     for (order_book_id, settings) in fill_settings {
+        fn steps_into_indivisible(
+            steps: impl IntoIterator<Item = (u128, OrderVolume)>,
+        ) -> Vec<(u128, OrderVolume)> {
+            steps
+                .into_iter()
+                .map(|(steps, amount)| (steps, amount.into_indivisible(RoundMode::Floor)))
+                .collect()
+        }
+
+        let (buy_orders_steps, sell_orders_steps) =
+            if <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+                (
+                    steps_into_indivisible(buy_orders_steps),
+                    steps_into_indivisible(sell_orders_steps),
+                )
+            } else {
+                (buy_orders_steps.to_vec(), sell_orders_steps.to_vec())
+            };
+
         fill_order_book(
             &mut data,
             order_book_id,
