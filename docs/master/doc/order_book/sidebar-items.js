@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["cache_data_layer","pallet","storage_data_layer","traits","types","weights"],"struct":["LimitOrder","MarketOrder","OrderBook"],"type":["MomentOf"]};
+window.SIDEBAR_ITEMS = {"mod":["cache_data_layer","fee_calculator","pallet","storage_data_layer","traits","types","weights"],"struct":["LimitOrder","MarketOrder","OrderBook"],"type":["MomentOf"]};

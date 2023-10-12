@@ -1285,6 +1285,36 @@
 <a href="#1270" id="1270">1270</a>
 <a href="#1271" id="1271">1271</a>
 <a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1353,6 +1383,7 @@
 </span><span class="kw">mod </span>benchmarking;
 
 <span class="kw">pub mod </span>cache_data_layer;
+<span class="kw">pub mod </span>fee_calculator;
 <span class="kw">mod </span>limit_order;
 <span class="kw">mod </span>market_order;
 <span class="kw">mod </span>order_book;
@@ -1401,6 +1432,12 @@
         <span class="kw">const </span>MIN_ORDER_LIFESPAN: MomentOf&lt;<span class="self">Self</span>&gt;;
         <span class="kw">const </span>MILLISECS_PER_BLOCK: MomentOf&lt;<span class="self">Self</span>&gt;;
         <span class="kw">const </span>MAX_PRICE_SHIFT: Perbill;
+        <span class="doccomment">/// The soft ratio between min &amp; max order amounts.
+        /// In particular, it defines the optimal number of limit orders that could be executed by one big market order in one block.
+        </span><span class="kw">const </span>SOFT_MIN_MAX_RATIO: usize;
+        <span class="doccomment">/// The soft ratio between min &amp; max order amounts.
+        /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
+        </span><span class="kw">const </span>HARD_MIN_MAX_RATIO: usize;
 
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
@@ -1565,7 +1602,6 @@
         <span class="doccomment">/// Order book is deleted
         </span>OrderBookDeleted {
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
-            count_of_canceled_orders: u32,
         },
 
         <span class="doccomment">/// Order book status is changed
@@ -1739,6 +1775,10 @@
         </span>SlippageLimitExceeded,
         <span class="doccomment">/// Market orders are allowed only for indivisible assets
         </span>MarketOrdersAllowedOnlyForIndivisibleAssets,
+        <span class="doccomment">/// It is possible to delete an order-book only with the statuses: OnlyCancel or Stop
+        </span>ForbiddenStatusToDeleteOrderBook,
+        <span class="comment">// It is possible to delete only empty order-book
+        </span>OrderBookIsNotEmpty,
     }
 
     <span class="attr">#[pallet::hooks]
@@ -1789,10 +1829,16 @@
             <span class="kw">let </span>order_book =
                 &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span><span class="kw-2">mut </span>data = CacheDataLayer::&lt;T&gt;::new();
-            <span class="kw">let </span>count_of_canceled_orders = order_book.cancel_all_limit_orders(<span class="kw-2">&amp;mut </span>data)<span class="question-mark">? </span><span class="kw">as </span>u32;
+            <span class="macro">ensure!</span>(
+                order_book.status == OrderBookStatus::OnlyCancel
+                    || order_book.status == OrderBookStatus::Stop,
+                Error::&lt;T&gt;::ForbiddenStatusToDeleteOrderBook
+            );
 
-            data.commit();
+            <span class="kw">let </span>is_empty = &lt;LimitOrders&lt;T&gt;&gt;::iter_prefix_values(order_book_id)
+                .next()
+                .is_none();
+            <span class="macro">ensure!</span>(is_empty, Error::&lt;T&gt;::OrderBookIsNotEmpty);
 
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
             </span>{
@@ -1807,10 +1853,7 @@
             <span class="self">Self</span>::deregister_tech_account(order_book_id)<span class="question-mark">?</span>;
             &lt;OrderBooks&lt;T&gt;&gt;::remove(order_book_id);
 
-            <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::OrderBookDeleted {
-                order_book_id,
-                count_of_canceled_orders,
-            });
+            <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::OrderBookDeleted { order_book_id });
             <span class="prelude-val">Ok</span>(().into())
         }
 
@@ -1931,7 +1974,7 @@
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">4</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::place_limit_order())]
+        #[pallet::weight(Pallet::&lt;T&gt;::exchange_weight())] </span><span class="comment">// in the worst case the limit order is converted into market order and the exchange occurs
         </span><span class="kw">pub fn </span>place_limit_order(
             origin: OriginFor&lt;T&gt;,
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
@@ -1939,7 +1982,7 @@
             amount: Balance,
             side: PriceVariant,
             lifespan: <span class="prelude-ty">Option</span>&lt;MomentOf&lt;T&gt;&gt;,
-        ) -&gt; DispatchResult {
+        ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>order_book =
                 &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
@@ -1964,12 +2007,27 @@
             );
 
             <span class="kw">let </span><span class="kw-2">mut </span>data = CacheDataLayer::&lt;T&gt;::new();
-            order_book.place_limit_order(order, <span class="kw-2">&amp;mut </span>data)<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>executed_orders_count = order_book.place_limit_order(order, <span class="kw-2">&amp;mut </span>data)<span class="question-mark">?</span>;
 
             data.commit();
             &lt;OrderBooks&lt;T&gt;&gt;::insert(order_book_id, order_book);
 
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="comment">// Note: be careful with changing the weight. The fee depends on it,
+            // the market-maker fee is charged for some weight, and the regular fee for none weight
+            </span><span class="kw">let </span>actual_weight = <span class="kw">if </span>executed_orders_count == <span class="number">0 </span>{
+                <span class="comment">// if the extrinsic just places the limit order, the weight of the placing is returned
+                </span><span class="prelude-val">Some</span>(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::place_limit_order())
+            } <span class="kw">else </span>{
+                <span class="comment">// if the limit order was converted into market order, then None weight is returned
+                // this weight will be replaced with worst case weight - exchange_weight()
+                </span><span class="prelude-val">None
+            </span>};
+
+            <span class="prelude-val">Ok</span>(PostDispatchInfo {
+                actual_weight,
+                pays_fee: Pays::Yes,
+            })
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">5</span>)]
@@ -2278,12 +2336,6 @@
             Error::&lt;T&gt;::NotAllowedQuoteAsset
         );
 
-        <span class="comment">// synthetic asset are forbidden
-        </span><span class="macro">ensure!</span>(
-            !T::SyntheticInfoProvider::is_synthetic(<span class="kw-2">&amp;</span>order_book_id.base),
-            Error::&lt;T&gt;::SyntheticAssetIsForbidden
-        );
-
         T::AssetInfoProvider::ensure_asset_exists(<span class="kw-2">&amp;</span>order_book_id.base)<span class="question-mark">?</span>;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             <span class="kw-2">&amp;</span>order_book_id.dex_id,
@@ -2359,9 +2411,10 @@
 
         <span class="macro">ensure!</span>(deal_info.is_valid(), Error::&lt;T&gt;::PriceCalculationFailed);
 
-        <span class="kw">let </span>fee = <span class="number">0</span>; <span class="comment">// todo (m.tagirov)
+        <span class="comment">// order-book doesn&#39;t take fee
+        </span><span class="kw">let </span>fee = Balance::zero();
 
-        </span><span class="kw">match </span>amount {
+        <span class="kw">match </span>amount {
             QuoteAmount::WithDesiredInput { .. } =&gt; <span class="prelude-val">Ok</span>((
                 SwapOutcome::new(<span class="kw-2">*</span>deal_info.output_amount.value().balance(), fee),
                 <span class="self">Self</span>::quote_weight(),
@@ -2424,12 +2477,13 @@
         <span class="kw">let </span>market_order =
             MarketOrder::&lt;T&gt;::new(sender.clone(), direction, order_book_id, amount, to.clone());
 
-        <span class="kw">let </span>(input_amount, output_amount) =
+        <span class="kw">let </span>(input_amount, output_amount, executed_orders_count) =
             order_book.execute_market_order(market_order, <span class="kw-2">&amp;mut </span>data)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>fee = <span class="number">0</span>; <span class="comment">// todo (m.tagirov)
+        <span class="comment">// order-book doesn&#39;t take fee
+        </span><span class="kw">let </span>fee = Balance::zero();
 
-        </span><span class="kw">let </span>result = <span class="kw">match </span>desired_amount {
+        <span class="kw">let </span>result = <span class="kw">match </span>desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } =&gt; {
                 <span class="macro">ensure!</span>(
                     <span class="kw-2">*</span>output_amount.value().balance() &gt;= min_amount_out,
@@ -2448,7 +2502,10 @@
 
         data.commit();
 
-        <span class="prelude-val">Ok</span>((result, <span class="self">Self</span>::exchange_weight()))
+        <span class="kw">let </span>weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange_single_order()
+            .saturating_mul(executed_orders_count <span class="kw">as </span>u64);
+
+        <span class="prelude-val">Ok</span>((result, weight))
     }
 
     <span class="kw">fn </span>check_rewards(
@@ -2540,9 +2597,10 @@
             Error::&lt;T&gt;::InvalidOrderAmount
         );
 
-        <span class="kw">let </span>fee = <span class="number">0</span>; <span class="comment">// todo (m.tagirov)
+        <span class="comment">// order-book doesn&#39;t take fee
+        </span><span class="kw">let </span>fee = Balance::zero();
 
-        </span><span class="prelude-val">Ok</span>(SwapOutcome::new(<span class="kw-2">*</span>target_amount.balance(), fee))
+        <span class="prelude-val">Ok</span>(SwapOutcome::new(<span class="kw-2">*</span>target_amount.balance(), fee))
     }
 
     <span class="kw">fn </span>quote_weight() -&gt; Weight {
@@ -2550,7 +2608,9 @@
     }
 
     <span class="kw">fn </span>exchange_weight() -&gt; Weight {
-        &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange()
+        <span class="comment">// SOFT_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
+        </span>&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange_single_order()
+            .saturating_mul(&lt;T <span class="kw">as </span>Config&gt;::SOFT_MIN_MAX_RATIO <span class="kw">as </span>u64)
     }
 
     <span class="kw">fn </span>check_rewards_weight() -&gt; Weight {

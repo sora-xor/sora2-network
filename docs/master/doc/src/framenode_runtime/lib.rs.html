@@ -3308,6 +3308,14 @@
 <a href="#3293" id="3293">3293</a>
 <a href="#3294" id="3294">3294</a>
 <a href="#3295" id="3295">3295</a>
+<a href="#3296" id="3296">3296</a>
+<a href="#3297" id="3297">3297</a>
+<a href="#3298" id="3298">3298</a>
+<a href="#3299" id="3299">3299</a>
+<a href="#3300" id="3300">3300</a>
+<a href="#3301" id="3301">3301</a>
+<a href="#3302" id="3302">3302</a>
+<a href="#3303" id="3303">3303</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3566,10 +3574,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">64</span>,
+    spec_version: <span class="number">66</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">64</span>,
+    transaction_version: <span class="number">66</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4341,6 +4349,7 @@
     <span class="kw">pub const </span>MaxSubAccounts: u32 = <span class="number">100</span>;
     <span class="kw">pub const </span>MaxAdditionalFields: u32 = <span class="number">100</span>;
     <span class="kw">pub const </span>MaxRegistrars: u32 = <span class="number">20</span>;
+    <span class="kw">pub const </span>MaxAdditionalDataLength: u32 = <span class="number">128</span>;
     <span class="kw">pub </span>ReferralsReservesAcc: AccountId = {
         <span class="kw">let </span>tech_account_id = TechAccountId::from_generic_pair(
             <span class="string">b&quot;referrals&quot;</span>.to_vec(),
@@ -4368,6 +4377,7 @@
         pallet_collective::EnsureProportionMoreThan&lt;AccountId, TechnicalCollective, <span class="number">1</span>, <span class="number">2</span>&gt;,
         EnsureRoot&lt;AccountId&gt;,
     &gt;;
+    <span class="kw">type </span>MaxAdditionalDataLength = MaxAdditionalDataLength;
 }
 
 <span class="kw">impl </span>mock_liquidity_source::Config&lt;mock_liquidity_source::Instance1&gt; <span class="kw">for </span>Runtime {
@@ -5217,7 +5227,9 @@
     </span><span class="kw">const </span>MIN_ORDER_LIFESPAN: Moment = MILLISECS_PER_BLOCK; <span class="comment">// TODO: order-book clarify
     </span><span class="kw">const </span>MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     <span class="kw">const </span>MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(<span class="number">50</span>); <span class="comment">// TODO: order-book clarify
-    </span><span class="kw">type </span>RuntimeEvent = RuntimeEvent;
+    </span><span class="kw">const </span>SOFT_MIN_MAX_RATIO: usize = <span class="number">1000</span>;
+    <span class="kw">const </span>HARD_MIN_MAX_RATIO: usize = <span class="number">4000</span>;
+    <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OrderId = u128;
     <span class="kw">type </span>Locker = OrderBook;
     <span class="kw">type </span>Unlocker = OrderBook;
@@ -5466,7 +5478,7 @@
     </span>Multisig(&lt;MultisigVerifier <span class="kw">as </span>Verifier&gt;::Proof),
     <span class="doccomment">/// This proof is only used for benchmarking purposes
     </span><span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
-    #[codec(index = <span class="number">2</span>)]
+    #[codec(skip)]
     </span>Empty,
 }
 
@@ -5565,6 +5577,7 @@
     <span class="kw">type </span>OutboundChannel = SubstrateBridgeOutboundChannel;
     <span class="kw">type </span>MaxPeers = BridgeMaxPeers;
     <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::multisig_verifier::WeightInfo&lt;Runtime&gt;;
+    <span class="kw">type </span>ThisNetworkId = ThisNetworkId;
 }
 
 <span class="macro">construct_runtime! </span>{
@@ -5642,17 +5655,11 @@
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
         </span>OrderBook: order_book::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">57</span>,
 
-        <span class="comment">// Trustless bridges
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
-        </span>Mmr: pallet_mmr::{Pallet, Storage} = <span class="number">90</span>,
-        <span class="comment">// In production needed for session keys
-        </span>Beefy: pallet_beefy::{Pallet, Config&lt;T&gt;, Storage} = <span class="number">91</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
-        </span>MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = <span class="number">92</span>,
+        <span class="comment">// Leaf provider should be placed before any pallet which is uses it
+        </span>LeafProvider: leaf_provider::{Pallet, Storage, Event&lt;T&gt;} = <span class="number">99</span>,
 
         <span class="comment">// Generic bridges pallets
-        </span>LeafProvider: leaf_provider::{Pallet, Storage, Event&lt;T&gt;} = <span class="number">99</span>,
-        BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = <span class="number">103</span>,
+        </span>BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = <span class="number">103</span>,
 
         <span class="comment">// Trustless EVM bridge
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
@@ -5680,7 +5687,16 @@
         SubstrateDispatch: dispatch::&lt;Instance2&gt;::{Pallet, Storage, Event&lt;T&gt;, Origin&lt;T&gt;} = <span class="number">108</span>,
         ParachainBridgeApp: parachain_bridge_app::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;, Call} = <span class="number">109</span>,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event&lt;T&gt;, Call, ValidateUnsigned} = <span class="number">110</span>,
-        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event&lt;T&gt;, Call, Config} = <span class="number">111</span>,
+        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event&lt;T&gt;, Call} = <span class="number">111</span>,
+
+        <span class="comment">// Trustless bridges
+        // Beefy pallets should be placed after channels
+        </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
+        </span>Mmr: pallet_mmr::{Pallet, Storage} = <span class="number">90</span>,
+        <span class="comment">// In production needed for session keys
+        </span>Beefy: pallet_beefy::{Pallet, Config&lt;T&gt;, Storage} = <span class="number">91</span>,
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
+        </span>MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = <span class="number">92</span>,
 
         <span class="comment">// Dev
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]

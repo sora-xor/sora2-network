@@ -206,6 +206,10 @@
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -275,6 +279,8 @@
 <span class="kw">pub type </span>MaxU32 = sp_runtime::traits::ConstU32&lt;{ core::u32::MAX }&gt;;
 <span class="kw">pub type </span>UnboundedBridgeMessage = bridge_types::substrate::BridgeMessage&lt;MaxU32&gt;;
 <span class="kw">pub type </span>UnboundedGenericCommitment = bridge_types::GenericCommitment&lt;MaxU32, MaxU32&gt;;
+<span class="kw">pub type </span>UnboundedGenericCommitmentWithBlock&lt;BlockNumber&gt; =
+    bridge_types::types::GenericCommitmentWithBlock&lt;BlockNumber, MaxU32, MaxU32&gt;;
 
 <span class="attr">#[subxt::subxt(
     runtime_metadata_path = <span class="string">&quot;src/bytes/metadata.scale&quot;</span>,
@@ -291,6 +297,8 @@
     </span><span class="kw">use </span><span class="kw">crate</span>::UnboundedBridgeMessage;
     <span class="attr">#[subxt(substitute_type = <span class="string">&quot;bridge_types::GenericCommitment&quot;</span>)]
     </span><span class="kw">use </span><span class="kw">crate</span>::UnboundedGenericCommitment;
+    <span class="attr">#[subxt(substitute_type = <span class="string">&quot;bridge_types::types::GenericCommitmentWithBlock&quot;</span>)]
+    </span><span class="kw">use </span><span class="kw">crate</span>::UnboundedGenericCommitmentWithBlock;
     <span class="attr">#[subxt(substitute_type = <span class="string">&quot;beefy_light_client::SubstrateBridgeMessageProof&quot;</span>)]
     </span><span class="kw">use </span>::beefy_light_client::SubstrateBridgeMessageProof;
     <span class="attr">#[subxt(substitute_type = <span class="string">&quot;bridge_common::beefy_types::BeefyMMRLeaf&quot;</span>)]

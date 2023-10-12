@@ -404,6 +404,16 @@
 <a href="#389" id="389">389</a>
 <a href="#390" id="390">390</a>
 <a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Channel for passing messages from substrate to ethereum.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
@@ -411,11 +421,9 @@
 </span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">use </span>bridge_types::{H256, U256};
-<span class="kw">use </span>codec::Encode;
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::traits::Get;
 <span class="kw">use </span>frame_support::weights::Weight;
-<span class="kw">use </span>sp_io::offchain_index;
 <span class="kw">use </span>sp_std::vec;
 <span class="kw">use </span>traits::MultiCurrency;
 
@@ -557,6 +565,19 @@
         </span><span class="number">10000
     </span>}
 
+    <span class="attr">#[pallet::storage]
+    </span><span class="kw">pub type </span>LatestCommitment&lt;T: Config&gt; = StorageMap&lt;
+        <span class="kw">_</span>,
+        Identity,
+        EVMChainId,
+        bridge_types::types::GenericCommitmentWithBlock&lt;
+            BlockNumberFor&lt;T&gt;,
+            T::MaxMessagesPerCommit,
+            T::MaxMessagePayloadSize,
+        &gt;,
+        OptionQuery,
+    &gt;;
+
     <span class="doccomment">/// The current storage version.
     </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">1</span>);
 
@@ -668,13 +689,12 @@
                     );
                     T::AuxiliaryDigestHandler::add_item(digest_item);
 
-                    <span class="kw">let </span>key =
-                        bridge_types::utils::make_offchain_key(network_id.into(), batch_nonce);
-                    <span class="kw">let </span>offchain_data = bridge_types::types::BridgeOffchainData {
+                    <span class="kw">let </span>commitment = bridge_types::types::GenericCommitmentWithBlock {
                         commitment,
                         block_number: &lt;frame_system::Pallet&lt;T&gt;&gt;::block_number(),
                     };
-                    offchain_index::set(<span class="kw-2">&amp;*</span>key, <span class="kw-2">&amp;</span>offchain_data.encode());
+
+                    LatestCommitment::&lt;T&gt;::insert(network_id, commitment);
 
                     &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::on_initialize(
                         messages_count <span class="kw">as </span>u32,

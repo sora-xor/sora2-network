@@ -52,7 +52,7 @@ var sourcesIndex = JSON.parse('{\
 "oracle_proxy":["",[],["lib.rs","weights.rs"]],\
 "oracle_proxy_rpc":["",[],["lib.rs"]],\
 "oracle_proxy_runtime_api":["",[],["lib.rs"]],\
-"order_book":["",[],["cache_data_layer.rs","lib.rs","limit_order.rs","market_order.rs","order_book.rs","scheduler.rs","storage_data_layer.rs","traits.rs","types.rs","weights.rs"]],\
+"order_book":["",[],["cache_data_layer.rs","fee_calculator.rs","lib.rs","limit_order.rs","market_order.rs","order_book.rs","scheduler.rs","storage_data_layer.rs","traits.rs","types.rs","weights.rs"]],\
 "parachain_gen":["",[],["lib.rs"]],\
 "parse":["",[],["main.rs"]],\
 "permissions":["",[],["lib.rs"]],\

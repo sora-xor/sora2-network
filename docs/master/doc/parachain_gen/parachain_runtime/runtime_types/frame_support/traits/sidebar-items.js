@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["tokens"]};
+window.SIDEBAR_ITEMS = {"mod":["preimages","tokens"]};

@@ -319,14 +319,6 @@
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -447,15 +439,14 @@
 
             SymbolRatesV1::&lt;T&gt;::translate::&lt;<span class="prelude-ty">Option</span>&lt;BandRateV0&gt;, <span class="kw">_</span>&gt;(|_symbol, band_rate| {
                 weight = weight.saturating_add(T::DbWeight::get().reads_writes(<span class="number">1</span>, <span class="number">1</span>));
-                <span class="kw">match </span>band_rate {
-                    <span class="prelude-val">Some</span>(band_rate) =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(BandRateV1 {
+                band_rate.map(|band_rate| {
+                    <span class="prelude-val">Some</span>(BandRateV1 {
                         value: band_rate.value,
                         last_updated: band_rate.last_updated,
                         request_id: band_rate.request_id,
                         dynamic_fee: <span class="macro">fixed!</span>(<span class="number">0</span>),
-                    })),
-                    <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
-                }
+                    })
+                })
             });
 
             StorageVersion::new(<span class="number">1</span>).put::&lt;Pallet&lt;T&gt;&gt;();
@@ -553,16 +544,15 @@
                     symbol,
                     <span class="bool-val">true</span>,
                 );
-                <span class="kw">match </span>band_rate {
-                    <span class="prelude-val">Some</span>(band_rate) =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(BandRateV2 {
+                band_rate.map(|band_rate| {
+                    <span class="prelude-val">Some</span>(BandRateV2 {
                         value: band_rate.value,
                         last_updated: band_rate.last_updated,
                         last_updated_block: now,
                         request_id: band_rate.request_id,
                         dynamic_fee: <span class="macro">fixed!</span>(<span class="number">0</span>),
-                    })),
-                    <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
-                }
+                    })
+                })
             });
 
             StorageVersion::new(<span class="number">2</span>).put::&lt;Pallet&lt;T&gt;&gt;();
@@ -610,13 +600,10 @@
                 <span class="kw">let </span>rates_vec = <span class="macro">vec!</span>[<span class="string">&quot;USD&quot;</span>, <span class="string">&quot;RUB&quot;</span>];
                 rates_vec.iter().cloned().for_each(|symbol| {
                     <span class="macro">assert_eq!</span>(SymbolRatesV1::&lt;Runtime&gt;::get(symbol), <span class="prelude-val">None</span>);
-                    <span class="macro">assert_eq!</span>(
-                        SymbolCheckBlock::&lt;Runtime&gt;::get(
-                            <span class="number">1 </span>+ GetRateStaleBlockPeriod::get(),
-                            symbol
-                        ),
-                        <span class="bool-val">false</span>,
-                    );
+                    <span class="macro">assert!</span>(!SymbolCheckBlock::&lt;Runtime&gt;::get(
+                        <span class="number">1 </span>+ GetRateStaleBlockPeriod::get(),
+                        symbol
+                    ));
                     SymbolRatesV1::&lt;Runtime&gt;::insert(symbol, <span class="prelude-val">Some</span>(sample_rate.clone()));
                 });
 
@@ -628,13 +615,10 @@
                         .expect(<span class="string">&quot;Expected to get rate for the specified symbol&quot;</span>)
                         .last_updated_block;
                     <span class="macro">assert_eq!</span>(last_updated_block, <span class="number">1</span>);
-                    <span class="macro">assert_eq!</span>(
-                        SymbolCheckBlock::&lt;Runtime&gt;::get(
-                            <span class="number">1 </span>+ GetRateStaleBlockPeriod::get(),
-                            symbol
-                        ),
-                        <span class="bool-val">true</span>,
-                    );
+                    <span class="macro">assert!</span>(SymbolCheckBlock::&lt;Runtime&gt;::get(
+                        <span class="number">1 </span>+ GetRateStaleBlockPeriod::get(),
+                        symbol
+                    ));
                 }
                 <span class="macro">assert_eq!</span>(Pallet::&lt;Runtime&gt;::on_chain_storage_version(), <span class="number">2</span>);
             });

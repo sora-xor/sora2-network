@@ -1410,28 +1410,9 @@
 <a href="#1395" id="1395">1395</a>
 <a href="#1396" id="1396">1396</a>
 <a href="#1397" id="1397">1397</a>
-<a href="#1398" id="1398">1398</a>
-<a href="#1399" id="1399">1399</a>
-<a href="#1400" id="1400">1400</a>
-<a href="#1401" id="1401">1401</a>
-<a href="#1402" id="1402">1402</a>
-<a href="#1403" id="1403">1403</a>
-<a href="#1404" id="1404">1404</a>
-<a href="#1405" id="1405">1405</a>
-<a href="#1406" id="1406">1406</a>
-<a href="#1407" id="1407">1407</a>
-<a href="#1408" id="1408">1408</a>
-<a href="#1409" id="1409">1409</a>
-<a href="#1410" id="1410">1410</a>
-<a href="#1411" id="1411">1411</a>
-<a href="#1412" id="1412">1412</a>
-<a href="#1413" id="1413">1413</a>
-<a href="#1414" id="1414">1414</a>
-<a href="#1415" id="1415">1415</a>
-<a href="#1416" id="1416">1416</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
-</span><span class="comment">// TODO #167: fix clippy warnings
-</span><span class="attr">#![allow(clippy::all)]
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::type_complexity)]
 
 </span><span class="kw">pub mod </span>weights;
 
@@ -1505,6 +1486,7 @@
 <span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
 
 <span class="attr">#[frame_support::pallet]
+#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use crate</span>::{ContributionInfo, ContributorsVesting, ILOInfo};
@@ -1811,13 +1793,13 @@
             }
 
             <span class="macro">ensure!</span>(
-                !&lt;ILOs&lt;T&gt;&gt;::contains_key(<span class="kw-2">&amp;</span>asset_id),
+                !&lt;ILOs&lt;T&gt;&gt;::contains_key(asset_id),
                 Error::&lt;T&gt;::ILOAlreadyExists
             );
 
             <span class="comment">// Check if ILO for token already exists
             </span><span class="macro">ensure!</span>(
-                !&lt;ILOs&lt;T&gt;&gt;::contains_key(<span class="kw-2">&amp;</span>asset_id),
+                !&lt;ILOs&lt;T&gt;&gt;::contains_key(asset_id),
                 Error::&lt;T&gt;::ILOAlreadyExists
             );
 
@@ -1828,13 +1810,8 @@
             };
 
             <span class="macro">ensure!</span>(
-                TradingPair::&lt;T&gt;::is_trading_pair_enabled(
-                    <span class="kw-2">&amp;</span>dex_id,
-                    <span class="kw-2">&amp;</span>base_asset.into(),
-                    <span class="kw-2">&amp;</span>asset_id.into()
-                )
-                .unwrap_or(<span class="bool-val">true</span>)
-                    == <span class="bool-val">false</span>,
+                !TradingPair::&lt;T&gt;::is_trading_pair_enabled(<span class="kw-2">&amp;</span>dex_id, <span class="kw-2">&amp;</span>base_asset, <span class="kw-2">&amp;</span>asset_id)
+                    .unwrap_or(<span class="bool-val">true</span>),
                 Error::&lt;T&gt;::CantCreateILOForListedToken
             );
 
@@ -1867,8 +1844,7 @@
 
             <span class="macro">ensure!</span>(
                 CeresBurnFeeAmount::&lt;T&gt;::get()
-                    &lt;= Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>CeresAssetIdOf::&lt;T&gt;::get().into(), <span class="kw-2">&amp;</span>user)
-                        .unwrap_or(<span class="number">0</span>),
+                    &lt;= Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>CeresAssetIdOf::&lt;T&gt;::get(), <span class="kw-2">&amp;</span>user).unwrap_or(<span class="number">0</span>),
                 Error::&lt;T&gt;::NotEnoughCeres
             );
 
@@ -1881,12 +1857,12 @@
             <span class="comment">// Burn CERES as fee
             </span>Assets::&lt;T&gt;::burn(
                 origin,
-                CeresAssetIdOf::&lt;T&gt;::get().into(),
+                CeresAssetIdOf::&lt;T&gt;::get(),
                 CeresBurnFeeAmount::&lt;T&gt;::get(),
             )<span class="question-mark">?</span>;
 
             <span class="comment">// Transfer tokens to pallet
-            </span>Assets::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id.into(), <span class="kw-2">&amp;</span>user, <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(), total_tokens)<span class="question-mark">?</span>;
+            </span>Assets::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user, <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(), total_tokens)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>ilo_info = ILOInfo {
                 ilo_organizer: user.clone(),
@@ -1924,7 +1900,7 @@
                 base_asset,
             };
 
-            &lt;ILOs&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>ilo_info);
+            &lt;ILOs&lt;T&gt;&gt;::insert(asset_id, <span class="kw-2">&amp;</span>ilo_info);
 
             <span class="comment">// Emit an event
             </span><span class="self">Self</span>::deposit_event(Event::ILOCreated(user, asset_id));
@@ -1951,16 +1927,15 @@
 
             <span class="macro">ensure!</span>(
                 CeresForContributionInILO::&lt;T&gt;::get()
-                    &lt;= Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>CeresAssetIdOf::&lt;T&gt;::get().into(), <span class="kw-2">&amp;</span>user)
-                        .unwrap_or(<span class="number">0</span>),
+                    &lt;= Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>CeresAssetIdOf::&lt;T&gt;::get(), <span class="kw-2">&amp;</span>user).unwrap_or(<span class="number">0</span>),
                 Error::&lt;T&gt;::NotEnoughCeres
             );
 
             <span class="comment">// Get ILO info
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ilo_info = &lt;ILOs&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>asset_id).ok_or(Error::&lt;T&gt;::ILODoesNotExist)<span class="question-mark">?</span>;
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ilo_info = &lt;ILOs&lt;T&gt;&gt;::get(asset_id).ok_or(Error::&lt;T&gt;::ILODoesNotExist)<span class="question-mark">?</span>;
 
             <span class="comment">// Get contribution info
-            </span><span class="kw">let </span><span class="kw-2">mut </span>contribution_info = &lt;Contributions&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user);
+            </span><span class="kw">let </span><span class="kw-2">mut </span>contribution_info = &lt;Contributions&lt;T&gt;&gt;::get(asset_id, <span class="kw-2">&amp;</span>user);
 
             <span class="macro">ensure!</span>(
                 ilo_info.start_timestamp &lt; current_timestamp,
@@ -1997,15 +1972,15 @@
 
             <span class="comment">// Transfer base_asset to pallet
             </span>Assets::&lt;T&gt;::transfer_from(
-                <span class="kw-2">&amp;</span>ilo_info.base_asset.into(),
+                <span class="kw-2">&amp;</span>ilo_info.base_asset,
                 <span class="kw-2">&amp;</span>user,
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
                 funds_to_contribute,
             )<span class="question-mark">?</span>;
 
             <span class="comment">// Update storage
-            </span>&lt;ILOs&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>ilo_info);
-            &lt;Contributions&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user, contribution_info);
+            </span>&lt;ILOs&lt;T&gt;&gt;::insert(asset_id, <span class="kw-2">&amp;</span>ilo_info);
+            &lt;Contributions&lt;T&gt;&gt;::insert(asset_id, <span class="kw-2">&amp;</span>user, contribution_info);
 
             <span class="comment">// Emit event
             </span><span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::Contributed(user, asset_id, funds_to_contribute));
@@ -2027,10 +2002,10 @@
             <span class="kw">let </span>current_timestamp = Timestamp::&lt;T&gt;::get();
 
             <span class="comment">// Get ILO info
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ilo_info = &lt;ILOs&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>asset_id).ok_or(Error::&lt;T&gt;::ILODoesNotExist)<span class="question-mark">?</span>;
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ilo_info = &lt;ILOs&lt;T&gt;&gt;::get(asset_id).ok_or(Error::&lt;T&gt;::ILODoesNotExist)<span class="question-mark">?</span>;
 
             <span class="comment">// Get contribution info
-            </span><span class="kw">let </span>contribution_info = &lt;Contributions&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user);
+            </span><span class="kw">let </span>contribution_info = &lt;Contributions&lt;T&gt;&gt;::get(asset_id, <span class="kw-2">&amp;</span>user);
 
             <span class="macro">ensure!</span>(
                 ilo_info.start_timestamp &lt; current_timestamp,
@@ -2053,7 +2028,7 @@
             <span class="kw">let </span>pallet_account = <span class="self">Self</span>::account_id();
             <span class="comment">// Emergency withdraw funds
             </span>Assets::&lt;T&gt;::transfer_from(
-                <span class="kw-2">&amp;</span>ilo_info.base_asset.into(),
+                <span class="kw-2">&amp;</span>ilo_info.base_asset,
                 <span class="kw-2">&amp;</span>pallet_account,
                 <span class="kw-2">&amp;</span>user,
                 funds_to_claim,
@@ -2062,7 +2037,7 @@
             <span class="kw">let </span>penalty = contribution_info.funds_contributed - funds_to_claim;
 
             Assets::&lt;T&gt;::transfer_from(
-                <span class="kw-2">&amp;</span>ilo_info.base_asset.into(),
+                <span class="kw-2">&amp;</span>ilo_info.base_asset,
                 <span class="kw-2">&amp;</span>pallet_account,
                 <span class="kw-2">&amp;</span>PenaltiesAccount::&lt;T&gt;::get(),
                 penalty,
@@ -2072,8 +2047,8 @@
             ilo_info.sold_tokens -= contribution_info.tokens_bought;
 
             <span class="comment">// Update map
-            </span>&lt;ILOs&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>ilo_info);
-            &lt;Contributions&lt;T&gt;&gt;::remove(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user);
+            </span>&lt;ILOs&lt;T&gt;&gt;::insert(asset_id, <span class="kw-2">&amp;</span>ilo_info);
+            &lt;Contributions&lt;T&gt;&gt;::remove(asset_id, <span class="kw-2">&amp;</span>user);
 
             <span class="comment">// Emit event
             </span><span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::EmergencyWithdrawn(
@@ -2096,7 +2071,7 @@
             <span class="kw">let </span>user = ensure_signed(origin.clone())<span class="question-mark">?</span>;
 
             <span class="comment">// Get ILO info of asset_id token
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ilo_info = &lt;ILOs&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>asset_id).ok_or(Error::&lt;T&gt;::ILODoesNotExist)<span class="question-mark">?</span>;
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ilo_info = &lt;ILOs&lt;T&gt;&gt;::get(asset_id).ok_or(Error::&lt;T&gt;::ILODoesNotExist)<span class="question-mark">?</span>;
 
             <span class="kw">if </span>user != ilo_info.ilo_organizer {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::Unauthorized.into());
@@ -2120,19 +2095,19 @@
                 <span class="kw">if </span>!ilo_info.refund_type {
                     Assets::&lt;T&gt;::burn(
                         RawOrigin::Signed(pallet_account).into(),
-                        asset_id.into(),
+                        asset_id,
                         total_tokens,
                     )<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
                     Assets::&lt;T&gt;::transfer_from(
-                        <span class="kw-2">&amp;</span>asset_id.into(),
+                        <span class="kw-2">&amp;</span>asset_id,
                         <span class="kw-2">&amp;</span>pallet_account,
                         <span class="kw-2">&amp;</span>ilo_info.ilo_organizer,
                         total_tokens,
                     )<span class="question-mark">?</span>;
                 }
 
-                &lt;ILOs&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>ilo_info);
+                &lt;ILOs&lt;T&gt;&gt;::insert(asset_id, <span class="kw-2">&amp;</span>ilo_info);
 
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(().into());
             }
@@ -2143,7 +2118,7 @@
             .try_into_balance()
             .unwrap_or(<span class="number">0</span>);
             Assets::&lt;T&gt;::transfer_from(
-                <span class="kw-2">&amp;</span>ilo_info.base_asset.into(),
+                <span class="kw-2">&amp;</span>ilo_info.base_asset,
                 <span class="kw-2">&amp;</span>pallet_account,
                 <span class="kw-2">&amp;</span>AuthorityAccount::&lt;T&gt;::get(),
                 funds_raised_fee,
@@ -2157,7 +2132,7 @@
             .unwrap_or(<span class="number">0</span>);
             <span class="kw">let </span>funds_for_team = raised_funds_without_fee - funds_for_liquidity;
             Assets::&lt;T&gt;::transfer_from(
-                <span class="kw-2">&amp;</span>ilo_info.base_asset.into(),
+                <span class="kw-2">&amp;</span>ilo_info.base_asset,
                 <span class="kw-2">&amp;</span>pallet_account,
                 <span class="kw-2">&amp;</span>ilo_info.ilo_organizer,
                 funds_for_team,
@@ -2172,16 +2147,16 @@
             </span>TradingPair::&lt;T&gt;::register(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 dex_id,
-                ilo_info.base_asset.into(),
-                asset_id.into(),
+                ilo_info.base_asset,
+                asset_id,
             )<span class="question-mark">?</span>;
 
             <span class="comment">// Initialize pool
             </span>PoolXYK::&lt;T&gt;::initialize_pool(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 dex_id,
-                ilo_info.base_asset.into(),
-                asset_id.into(),
+                ilo_info.base_asset,
+                asset_id,
             )<span class="question-mark">?</span>;
 
             <span class="comment">// Deposit liquidity
@@ -2196,8 +2171,8 @@
             PoolXYK::&lt;T&gt;::deposit_liquidity(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 dex_id,
-                ilo_info.base_asset.into(),
-                asset_id.into(),
+                ilo_info.base_asset,
+                asset_id,
                 funds_for_liquidity,
                 tokens_for_liquidity,
                 funds_for_liquidity,
@@ -2207,40 +2182,39 @@
             <span class="comment">// Burn unused tokens for liquidity
             </span>Assets::&lt;T&gt;::burn(
                 RawOrigin::Signed(pallet_account.clone()).into(),
-                asset_id.into(),
+                asset_id,
                 ilo_info.tokens_for_liquidity - tokens_for_liquidity,
             )<span class="question-mark">?</span>;
 
             <span class="comment">// Burn unused tokens for ilo
             </span>Assets::&lt;T&gt;::burn(
                 RawOrigin::Signed(pallet_account.clone()).into(),
-                asset_id.into(),
+                asset_id,
                 ilo_info.tokens_for_ilo - ilo_info.sold_tokens,
             )<span class="question-mark">?</span>;
 
             <span class="comment">// Lock liquidity
             </span><span class="kw">let </span>unlocking_liq_timestamp = current_timestamp
-                + (T::MILLISECONDS_PER_DAY.saturating_mul(ilo_info.lockup_days.into())).into();
+                + (T::MILLISECONDS_PER_DAY.saturating_mul(ilo_info.lockup_days.into()));
             CeresLiquidityLocker::&lt;T&gt;::lock_liquidity(
                 RawOrigin::Signed(pallet_account.clone()).into(),
-                ilo_info.base_asset.into(),
-                asset_id.into(),
+                ilo_info.base_asset,
+                asset_id,
                 unlocking_liq_timestamp,
                 <span class="macro">balance!</span>(<span class="number">1</span>),
                 <span class="bool-val">true</span>,
             )<span class="question-mark">?</span>;
 
             <span class="comment">// Calculate LP tokens
-            </span><span class="kw">let </span>pool_account =
-                PoolXYK::&lt;T&gt;::properties_of_pool(ilo_info.base_asset.into(), asset_id)
-                    .ok_or(Error::&lt;T&gt;::PoolDoesNotExist)<span class="question-mark">?
-                    </span>.<span class="number">0</span>;
+            </span><span class="kw">let </span>pool_account = PoolXYK::&lt;T&gt;::properties_of_pool(ilo_info.base_asset, asset_id)
+                .ok_or(Error::&lt;T&gt;::PoolDoesNotExist)<span class="question-mark">?
+                </span>.<span class="number">0</span>;
             ilo_info.lp_tokens =
                 PoolXYK::&lt;T&gt;::balance_of_pool_provider(pool_account, pallet_account).unwrap_or(<span class="number">0</span>);
 
             ilo_info.succeeded = <span class="bool-val">true</span>;
             ilo_info.finish_timestamp = current_timestamp;
-            &lt;ILOs&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>ilo_info);
+            &lt;ILOs&lt;T&gt;&gt;::insert(asset_id, <span class="kw-2">&amp;</span>ilo_info);
 
             <span class="comment">// Lock team tokens
             </span><span class="kw">if </span>ilo_info.team_vesting.team_vesting_total_tokens != <span class="macro">balance!</span>(<span class="number">0</span>) {
@@ -2253,13 +2227,12 @@
                     .unwrap_or(<span class="number">0</span>);
 
                 <span class="macro">ensure!</span>(
-                    tokens_to_lock
-                        &lt;= Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>asset_id.into(), <span class="kw-2">&amp;</span>user).unwrap_or(<span class="number">0</span>),
+                    tokens_to_lock &lt;= Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user).unwrap_or(<span class="number">0</span>),
                     Error::&lt;T&gt;::NotEnoughTeamTokensToLock
                 );
 
                 <span class="kw">let </span><span class="kw-2">mut </span>unlocking_timestamp =
-                    current_timestamp + ilo_info.team_vesting.team_vesting_period.into();
+                    current_timestamp + ilo_info.team_vesting.team_vesting_period;
                 <span class="kw">let </span>tokens_to_lock_per_period =
                     (FixedWrapper::from(ilo_info.team_vesting.team_vesting_total_tokens)
                         * FixedWrapper::from(ilo_info.team_vesting.team_vesting_percent))
@@ -2269,12 +2242,12 @@
                 <span class="kw">while </span>vesting_amount &gt; <span class="macro">balance!</span>(<span class="number">0</span>) {
                     TokenLocker::&lt;T&gt;::lock_tokens(
                         origin.clone(),
-                        asset_id.clone(),
-                        unlocking_timestamp.clone(),
+                        asset_id,
+                        unlocking_timestamp,
                         tokens_to_lock_per_period,
                     )<span class="question-mark">?</span>;
 
-                    unlocking_timestamp += ilo_info.team_vesting.team_vesting_period.into();
+                    unlocking_timestamp += ilo_info.team_vesting.team_vesting_period;
                     vesting_amount = vesting_amount
                         .checked_sub(ilo_info.team_vesting.team_vesting_percent)
                         .unwrap_or(<span class="macro">balance!</span>(<span class="number">0</span>));
@@ -2282,7 +2255,7 @@
             }
 
             <span class="comment">// Emit an event
-            </span><span class="self">Self</span>::deposit_event(Event::ILOFinished(user.clone(), asset_id));
+            </span><span class="self">Self</span>::deposit_event(Event::ILOFinished(user, asset_id));
 
             <span class="comment">// Return a successful DispatchResult
             </span><span class="prelude-val">Ok</span>(().into())
@@ -2299,7 +2272,7 @@
             <span class="kw">let </span>current_timestamp = Timestamp::&lt;T&gt;::get();
 
             <span class="comment">// Get ILO info
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ilo_info = &lt;ILOs&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>asset_id).ok_or(Error::&lt;T&gt;::ILODoesNotExist)<span class="question-mark">?</span>;
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ilo_info = &lt;ILOs&lt;T&gt;&gt;::get(asset_id).ok_or(Error::&lt;T&gt;::ILODoesNotExist)<span class="question-mark">?</span>;
 
             <span class="kw">if </span>user != ilo_info.ilo_organizer {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::Unauthorized.into());
@@ -2318,15 +2291,14 @@
             <span class="kw">let </span>pallet_account = <span class="self">Self</span>::account_id();
 
             <span class="comment">// Get pool account
-            </span><span class="kw">let </span>pool_account =
-                PoolXYK::&lt;T&gt;::properties_of_pool(ilo_info.base_asset.into(), asset_id)
-                    .ok_or(Error::&lt;T&gt;::PoolDoesNotExist)<span class="question-mark">?
-                    </span>.<span class="number">0</span>;
+            </span><span class="kw">let </span>pool_account = PoolXYK::&lt;T&gt;::properties_of_pool(ilo_info.base_asset, asset_id)
+                .ok_or(Error::&lt;T&gt;::PoolDoesNotExist)<span class="question-mark">?
+                </span>.<span class="number">0</span>;
 
             <span class="comment">// Transfer LP tokens
             </span>PoolXYK::&lt;T&gt;::transfer_lp_tokens(
-                pool_account.clone(),
-                ilo_info.base_asset.into(),
+                pool_account,
+                ilo_info.base_asset,
                 asset_id,
                 pallet_account,
                 user.clone(),
@@ -2336,10 +2308,10 @@
             ilo_info.claimed_lp_tokens = <span class="bool-val">true</span>;
 
             <span class="comment">// Update storage
-            </span>&lt;ILOs&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>ilo_info);
+            </span>&lt;ILOs&lt;T&gt;&gt;::insert(asset_id, <span class="kw-2">&amp;</span>ilo_info);
 
             <span class="comment">// Emit an event
-            </span><span class="self">Self</span>::deposit_event(Event::ClaimedLP(user.clone(), asset_id));
+            </span><span class="self">Self</span>::deposit_event(Event::ClaimedLP(user, asset_id));
 
             <span class="comment">// Return a successful DispatchResult
             </span><span class="prelude-val">Ok</span>(().into())
@@ -2352,16 +2324,16 @@
             <span class="kw">let </span>user = ensure_signed(origin)<span class="question-mark">?</span>;
 
             <span class="comment">// Get ILO info
-            </span><span class="kw">let </span>ilo_info = &lt;ILOs&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>asset_id).ok_or(Error::&lt;T&gt;::ILODoesNotExist)<span class="question-mark">?</span>;
+            </span><span class="kw">let </span>ilo_info = &lt;ILOs&lt;T&gt;&gt;::get(asset_id).ok_or(Error::&lt;T&gt;::ILODoesNotExist)<span class="question-mark">?</span>;
 
             <span class="kw">if </span>!ilo_info.failed &amp;&amp; !ilo_info.succeeded {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::ILOIsNotFinished.into());
             }
 
             <span class="comment">// Get contribution info
-            </span><span class="kw">let </span><span class="kw-2">mut </span>contribution_info = &lt;Contributions&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user);
+            </span><span class="kw">let </span><span class="kw-2">mut </span>contribution_info = &lt;Contributions&lt;T&gt;&gt;::get(asset_id, <span class="kw-2">&amp;</span>user);
             <span class="macro">ensure!</span>(
-                contribution_info.claiming_finished == <span class="bool-val">false</span>,
+                !contribution_info.claiming_finished,
                 Error::&lt;T&gt;::FundsAlreadyClaimed
             );
 
@@ -2371,7 +2343,7 @@
             </span><span class="kw">if </span>ilo_info.failed {
                 <span class="comment">// Claim unused funds
                 </span>Assets::&lt;T&gt;::transfer_from(
-                    <span class="kw-2">&amp;</span>ilo_info.base_asset.into(),
+                    <span class="kw-2">&amp;</span>ilo_info.base_asset,
                     <span class="kw-2">&amp;</span>pallet_account,
                     <span class="kw-2">&amp;</span>user,
                     contribution_info.funds_contributed,
@@ -2385,12 +2357,7 @@
                     .try_into_balance()
                     .unwrap_or(<span class="number">0</span>);
                     <span class="comment">// Claim first time
-                    </span>Assets::&lt;T&gt;::transfer_from(
-                        <span class="kw-2">&amp;</span>asset_id.into(),
-                        <span class="kw-2">&amp;</span>pallet_account,
-                        <span class="kw-2">&amp;</span>user,
-                        tokens_to_claim,
-                    )<span class="question-mark">?</span>;
+                    </span>Assets::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>pallet_account, <span class="kw-2">&amp;</span>user, tokens_to_claim)<span class="question-mark">?</span>;
                     contribution_info.tokens_claimed += tokens_to_claim;
                     <span class="kw">if </span>ilo_info.contributors_vesting.first_release_percent == <span class="macro">balance!</span>(<span class="number">1</span>) {
                         contribution_info.claiming_finished = <span class="bool-val">true</span>;
@@ -2428,12 +2395,7 @@
                     }
 
                     <span class="comment">// Claim tokens
-                    </span>Assets::&lt;T&gt;::transfer_from(
-                        <span class="kw-2">&amp;</span>asset_id.into(),
-                        <span class="kw-2">&amp;</span>pallet_account,
-                        <span class="kw-2">&amp;</span>user,
-                        claimable,
-                    )<span class="question-mark">?</span>;
+                    </span>Assets::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>pallet_account, <span class="kw-2">&amp;</span>user, claimable)<span class="question-mark">?</span>;
                     contribution_info.tokens_claimed += claimable;
                     contribution_info.number_of_claims += (claimable / tokens_per_claim) <span class="kw">as </span>u32;
 
@@ -2450,10 +2412,10 @@
                 }
             }
 
-            &lt;Contributions&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user, contribution_info);
+            &lt;Contributions&lt;T&gt;&gt;::insert(asset_id, <span class="kw-2">&amp;</span>user, contribution_info);
 
             <span class="comment">// Emit an event
-            </span><span class="self">Self</span>::deposit_event(Event::Claimed(user.clone(), asset_id));
+            </span><span class="self">Self</span>::deposit_event(Event::Claimed(user, asset_id));
 
             <span class="prelude-val">Ok</span>(().into())
         }
@@ -2667,8 +2629,7 @@
                         &amp;&amp; !ilo_info.succeeded
                     {
                         <span class="kw">let </span>finish_timestamp = ilo_info.end_timestamp
-                            + (T::MILLISECONDS_PER_DAY.saturating_mul(days_to_finish_ilo.into()))
-                                .into();
+                            + (T::MILLISECONDS_PER_DAY.saturating_mul(days_to_finish_ilo.into()));
                         <span class="kw">if </span>current_timestamp &gt;= finish_timestamp {
                             ilo_info.failed = <span class="bool-val">true</span>;
 
@@ -2677,19 +2638,19 @@
                             <span class="kw">if </span>!ilo_info.refund_type {
                                 <span class="kw">let _ </span>= Assets::&lt;T&gt;::burn(
                                     RawOrigin::Signed(pallet_account.clone()).into(),
-                                    ilo_asset.into(),
+                                    ilo_asset,
                                     total_tokens,
                                 );
                             } <span class="kw">else </span>{
                                 <span class="kw">let _ </span>= Assets::&lt;T&gt;::transfer_from(
-                                    <span class="kw-2">&amp;</span>ilo_asset.into(),
+                                    <span class="kw-2">&amp;</span>ilo_asset,
                                     <span class="kw-2">&amp;</span>pallet_account,
                                     <span class="kw-2">&amp;</span>ilo_info.ilo_organizer,
                                     total_tokens,
                                 );
                             }
 
-                            &lt;ILOs&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>ilo_asset, ilo_info);
+                            &lt;ILOs&lt;T&gt;&gt;::insert(ilo_asset, ilo_info);
                             counter += <span class="number">1</span>;
                         }
                     }
@@ -2709,6 +2670,7 @@
         }
 
         <span class="doccomment">/// Check parameters
+        </span><span class="attr">#[allow(clippy::too_many_arguments)]
         </span><span class="kw">fn </span>check_parameters(
             tokens_for_ilo: Balance,
             tokens_for_liquidity: Balance,
@@ -2841,7 +2803,7 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::InvalidVestingPeriod.into());
             }
 
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
     }
 }
