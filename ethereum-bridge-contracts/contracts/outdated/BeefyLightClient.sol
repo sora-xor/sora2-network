@@ -146,11 +146,11 @@ contract BeefyLightClient is ISimplifiedMMRProof, Ownable {
     /* Public Functions */
     function initialize(
         uint64 startingBeefyBlock,
-        ValidatorSet calldata _currentValidatorSet,
-        ValidatorSet calldata _nextValidatorSet
+        ValidatorSet calldata currentValidatorSet_,
+        ValidatorSet calldata nextValidatorSet_
     ) external onlyOwner {
-        currentValidatorSet = _currentValidatorSet;
-        nextValidatorSet = _nextValidatorSet;
+        currentValidatorSet = currentValidatorSet_;
+        nextValidatorSet = nextValidatorSet_;
         latestBeefyBlock = startingBeefyBlock;
         renounceOwnership();
     }
