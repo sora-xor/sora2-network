@@ -15,7 +15,7 @@ jobs:
         uses: crytic/slither-action@v0.3.0
         id: slither
         with:
-          fail-on: none
+          fail-on: all
           sarif: results.sarif
           slither-config: ethereum-bridge-contracts/slither.config.json
           target: ethereum-bridge-contracts
