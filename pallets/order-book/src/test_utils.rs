@@ -911,4 +911,21 @@ mod test_only {
         }
         total_init_weight
     }
+
+    pub fn update_orderbook_unchecked(
+        order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
+        tick_size: Balance,
+        step_lot_size: Balance,
+        min_lot_size: Balance,
+        max_lot_size: Balance,
+    ) -> OrderBook<Runtime> {
+        let mut order_book = OrderBookPallet::order_books(order_book_id).unwrap();
+        order_book.tick_size.set(tick_size);
+        order_book.step_lot_size.set(step_lot_size);
+        order_book.min_lot_size.set(min_lot_size);
+        order_book.max_lot_size.set(max_lot_size);
+        framenode_runtime::order_book::OrderBooks::<Runtime>::set(order_book_id, Some(order_book));
+
+        OrderBookPallet::order_books(order_book_id).unwrap()
+    }
 }
