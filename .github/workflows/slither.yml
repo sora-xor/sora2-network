@@ -1,0 +1,36 @@
+name: Slither Analysis
+on: [push]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set .env
+        working-directory: ethereum-bridge-contracts
+        run: cp env.template .env
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.3.0
+        id: slither
+        with:
+          fail-on: none
+          continue-on-error: true
+          sarif: results.sarif
+          slither-config: ethereum-bridge-contracts/slither.config.json
+          target: ethereum-bridge-contracts
+          slither-args: --checklist --markdown-root ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/
+
+      - name: ls
+        run: ls
+
+      - name: Create/update checklist as PR comment
+        uses: actions/github-script@v6
+        if: github.event_name == 'push'
+        with:
+          script: |
+            const script = require('.github/scripts/comment')
+            const header = '# Slither report'
+#            const body = `${{ steps.slither.outputs.stdout }}`
+#            await script({ github, context, header, body })

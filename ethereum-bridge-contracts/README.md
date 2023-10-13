@@ -4,7 +4,7 @@ This directory contains smart contracts utilized by the Polkadot-Ethereum Bridge
 
 ## Development
 
-Make sure you use a recent node version, e. g. with [nvm](https://github.com/nvm-sh/nvm#installing-and-updating):
+Make sure you use a recent node version, e.g. with [nvm](https://github.com/nvm-sh/nvm#installing-and-updating):
 
 ```bash
 nvm install 14.16.1
