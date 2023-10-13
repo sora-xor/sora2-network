@@ -118,15 +118,14 @@ pub mod v1 {
 
             SymbolRatesV1::<T>::translate::<Option<BandRateV0>, _>(|_symbol, band_rate| {
                 weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
-                match band_rate {
-                    Some(band_rate) => Some(Some(BandRateV1 {
+                band_rate.map(|band_rate| {
+                    Some(BandRateV1 {
                         value: band_rate.value,
                         last_updated: band_rate.last_updated,
                         request_id: band_rate.request_id,
                         dynamic_fee: fixed!(0),
-                    })),
-                    None => None,
-                }
+                    })
+                })
             });
 
             StorageVersion::new(1).put::<Pallet<T>>();
@@ -224,16 +223,15 @@ pub mod v2 {
                     symbol,
                     true,
                 );
-                match band_rate {
-                    Some(band_rate) => Some(Some(BandRateV2 {
+                band_rate.map(|band_rate| {
+                    Some(BandRateV2 {
                         value: band_rate.value,
                         last_updated: band_rate.last_updated,
                         last_updated_block: now,
                         request_id: band_rate.request_id,
                         dynamic_fee: fixed!(0),
-                    })),
-                    None => None,
-                }
+                    })
+                })
             });
 
             StorageVersion::new(2).put::<Pallet<T>>();
@@ -281,13 +279,10 @@ pub mod v2 {
                 let rates_vec = vec!["USD", "RUB"];
                 rates_vec.iter().cloned().for_each(|symbol| {
                     assert_eq!(SymbolRatesV1::<Runtime>::get(symbol), None);
-                    assert_eq!(
-                        SymbolCheckBlock::<Runtime>::get(
-                            1 + GetRateStaleBlockPeriod::get(),
-                            symbol
-                        ),
-                        false,
-                    );
+                    assert!(!SymbolCheckBlock::<Runtime>::get(
+                        1 + GetRateStaleBlockPeriod::get(),
+                        symbol
+                    ));
                     SymbolRatesV1::<Runtime>::insert(symbol, Some(sample_rate.clone()));
                 });
 
@@ -299,13 +294,10 @@ pub mod v2 {
                         .expect("Expected to get rate for the specified symbol")
                         .last_updated_block;
                     assert_eq!(last_updated_block, 1);
-                    assert_eq!(
-                        SymbolCheckBlock::<Runtime>::get(
-                            1 + GetRateStaleBlockPeriod::get(),
-                            symbol
-                        ),
-                        true,
-                    );
+                    assert!(SymbolCheckBlock::<Runtime>::get(
+                        1 + GetRateStaleBlockPeriod::get(),
+                        symbol
+                    ));
                 }
                 assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
             });
