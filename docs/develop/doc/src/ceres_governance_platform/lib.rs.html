@@ -345,11 +345,7 @@
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
-</span><span class="comment">// TODO #167: fix clippy warnings
-</span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">pub mod </span>migrations;
 <span class="kw">pub mod </span>weights;
@@ -547,7 +543,7 @@
 
             <span class="comment">// Transfer Ceres to pallet
             </span>Assets::&lt;T&gt;::transfer_from(
-                <span class="kw-2">&amp;</span>T::CeresAssetId::get().into(),
+                <span class="kw-2">&amp;</span>T::CeresAssetId::get(),
                 <span class="kw-2">&amp;</span>user,
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
                 number_of_votes,
@@ -638,13 +634,13 @@
             <span class="comment">// Update storage
             </span><span class="kw">let </span><span class="kw-2">mut </span>voting_info = &lt;Voting&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>poll_id, <span class="kw-2">&amp;</span>user);
             <span class="macro">ensure!</span>(
-                voting_info.ceres_withdrawn == <span class="bool-val">false</span>,
+                !voting_info.ceres_withdrawn,
                 Error::&lt;T&gt;::FundsAlreadyWithdrawn
             );
 
             <span class="comment">// Withdraw CERES
             </span>Assets::&lt;T&gt;::transfer_from(
-                <span class="kw-2">&amp;</span>T::CeresAssetId::get().into(),
+                <span class="kw-2">&amp;</span>T::CeresAssetId::get(),
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
                 <span class="kw-2">&amp;</span>user,
                 voting_info.number_of_votes,
