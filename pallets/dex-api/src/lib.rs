@@ -413,12 +413,11 @@ pub mod pallet {
     pub type EnabledSourceTypes<T: Config> = StorageValue<_, Vec<LiquiditySourceType>, ValueQuery>;
 
     #[pallet::genesis_config]
-    #[derive(Default)]
+    #[cfg_attr(feature = "std", derive(Default))]
     pub struct GenesisConfig {
         pub source_types: Vec<LiquiditySourceType>,
     }
 
-    #[cfg(feature = "std")]
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
