@@ -3303,19 +3303,6 @@
 <a href="#3288" id="3288">3288</a>
 <a href="#3289" id="3289">3289</a>
 <a href="#3290" id="3290">3290</a>
-<a href="#3291" id="3291">3291</a>
-<a href="#3292" id="3292">3292</a>
-<a href="#3293" id="3293">3293</a>
-<a href="#3294" id="3294">3294</a>
-<a href="#3295" id="3295">3295</a>
-<a href="#3296" id="3296">3296</a>
-<a href="#3297" id="3297">3297</a>
-<a href="#3298" id="3298">3298</a>
-<a href="#3299" id="3299">3299</a>
-<a href="#3300" id="3300">3300</a>
-<a href="#3301" id="3301">3301</a>
-<a href="#3302" id="3302">3302</a>
-<a href="#3303" id="3303">3303</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3400,8 +3387,6 @@
 <span class="kw">use </span>frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 <span class="kw">use </span>frame_system::offchain::{Account, SigningTypes};
 <span class="kw">use </span>frame_system::EnsureRoot;
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
-</span><span class="kw">use </span>frame_system::EnsureSigned;
 <span class="kw">use </span>hex_literal::hex;
 <span class="kw">use </span>pallet_grandpa::{
     fg_primitives, AuthorityId <span class="kw">as </span>GrandpaId, AuthorityList <span class="kw">as </span>GrandpaAuthorityList,
@@ -5246,18 +5231,7 @@
     <span class="kw">type </span>SyntheticInfoProvider = XSTPool;
     <span class="kw">type </span>DexInfoProvider = DEXManager;
     <span class="kw">type </span>Time = Timestamp;
-    <span class="kw">type </span>ParameterUpdateOrigin = EitherOfDiverse&lt;
-        EnsureSigned&lt;AccountId&gt;,
-        EitherOf&lt;
-            pallet_collective::EnsureProportionMoreThan&lt;AccountId, TechnicalCollective, <span class="number">1</span>, <span class="number">2</span>&gt;,
-            EnsureRoot&lt;AccountId&gt;,
-        &gt;,
-    &gt;;
-    <span class="kw">type </span>StatusUpdateOrigin = EitherOf&lt;
-        pallet_collective::EnsureProportionMoreThan&lt;AccountId, TechnicalCollective, <span class="number">1</span>, <span class="number">2</span>&gt;,
-        EnsureRoot&lt;AccountId&gt;,
-    &gt;;
-    <span class="kw">type </span>RemovalOrigin = EitherOf&lt;
+    <span class="kw">type </span>PermittedOrigin = EitherOf&lt;
         pallet_collective::EnsureProportionMoreThan&lt;AccountId, TechnicalCollective, <span class="number">1</span>, <span class="number">2</span>&gt;,
         EnsureRoot&lt;AccountId&gt;,
     &gt;;

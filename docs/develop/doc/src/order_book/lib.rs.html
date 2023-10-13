@@ -1315,6 +1315,15 @@
 <a href="#1300" id="1300">1300</a>
 <a href="#1301" id="1301">1301</a>
 <a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1417,7 +1426,6 @@
         Blake2_128Concat, Twox128,
     };
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>sp_runtime::Either;
 
     <span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">0</span>);
 
@@ -1486,12 +1494,7 @@
         <span class="kw">type </span>SyntheticInfoProvider: SyntheticInfoProvider&lt;<span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
         <span class="kw">type </span>Time: Time;
-        <span class="kw">type </span>ParameterUpdateOrigin: EnsureOrigin&lt;
-            <span class="self">Self</span>::RuntimeOrigin,
-            Success = Either&lt;<span class="self">Self</span>::AccountId, ()&gt;,
-        &gt;;
-        <span class="kw">type </span>StatusUpdateOrigin: EnsureOrigin&lt;<span class="self">Self</span>::RuntimeOrigin, Success = ()&gt;;
-        <span class="kw">type </span>RemovalOrigin: EnsureOrigin&lt;<span class="self">Self</span>::RuntimeOrigin, Success = ()&gt;;
+        <span class="kw">type </span>PermittedOrigin: EnsureOrigin&lt;<span class="self">Self</span>::RuntimeOrigin, Success = ()&gt;;
         <span class="kw">type </span>WeightInfo: WeightInfo;
     }
 
@@ -1779,6 +1782,8 @@
         </span>ForbiddenStatusToDeleteOrderBook,
         <span class="comment">// It is possible to delete only empty order-book
         </span>OrderBookIsNotEmpty,
+        <span class="doccomment">/// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
+        </span>ForbiddenStatusToUpdateOrderBook,
     }
 
     <span class="attr">#[pallet::hooks]
@@ -1825,7 +1830,7 @@
             origin: OriginFor&lt;T&gt;,
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
         ) -&gt; DispatchResult {
-            T::RemovalOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
+            T::PermittedOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
             <span class="kw">let </span>order_book =
                 &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
 
@@ -1867,18 +1872,15 @@
             min_lot_size: Balance,
             max_lot_size: Balance,
         ) -&gt; DispatchResult {
-            <span class="kw">let </span>origin_check_result = T::ParameterUpdateOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
-            <span class="kw">match </span>origin_check_result {
-                Either::Left(who) =&gt; {
-                    <span class="macro">ensure!</span>(
-                        T::AssetInfoProvider::is_asset_owner(<span class="kw-2">&amp;</span>order_book_id.base, <span class="kw-2">&amp;</span>who),
-                        DispatchError::BadOrigin
-                    );
-                }
-                Either::Right(()) =&gt; (),
-            }
+            T::PermittedOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>order_book =
                 &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
+
+            <span class="macro">ensure!</span>(
+                order_book.status == OrderBookStatus::OnlyCancel
+                    || order_book.status == OrderBookStatus::Stop,
+                Error::&lt;T&gt;::ForbiddenStatusToUpdateOrderBook
+            );
 
             <span class="comment">// Check that values are non-zero
             </span><span class="macro">ensure!</span>(tick_size &gt; Balance::zero(), Error::&lt;T&gt;::InvalidTickSize);
@@ -1910,6 +1912,22 @@
             );
             <span class="macro">ensure!</span>(
                 max_lot_size % step_lot_size == <span class="number">0</span>,
+                Error::&lt;T&gt;::InvalidMaxLotSize
+            );
+
+            <span class="comment">// check the ratio between min &amp; max
+            </span><span class="macro">ensure!</span>(
+                max_lot_size &lt;= min_lot_size.saturating_mul(T::SOFT_MIN_MAX_RATIO <span class="kw">as </span>Balance),
+                Error::&lt;T&gt;::InvalidMaxLotSize
+            );
+
+            <span class="comment">// check the ratio between old min &amp; new max
+            </span><span class="macro">ensure!</span>(
+                max_lot_size
+                    &lt;= order_book
+                        .min_lot_size
+                        .balance()
+                        .saturating_mul(T::HARD_MIN_MAX_RATIO <span class="kw">as </span>Balance),
                 Error::&lt;T&gt;::InvalidMaxLotSize
             );
 
@@ -1960,7 +1978,7 @@
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
             status: OrderBookStatus,
         ) -&gt; DispatchResult {
-            T::StatusUpdateOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
+            T::PermittedOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
             &lt;OrderBooks&lt;T&gt;&gt;::mutate(order_book_id, |order_book| {
                 <span class="kw">let </span>order_book = order_book.as_mut().ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
                 order_book.status = status;
