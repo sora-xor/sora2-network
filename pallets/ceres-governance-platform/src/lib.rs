@@ -1,6 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 pub mod migrations;
 pub mod weights;
@@ -198,7 +196,7 @@ pub mod pallet {
 
             // Transfer Ceres to pallet
             Assets::<T>::transfer_from(
-                &T::CeresAssetId::get().into(),
+                &T::CeresAssetId::get(),
                 &user,
                 &Self::account_id(),
                 number_of_votes,
@@ -289,13 +287,13 @@ pub mod pallet {
             // Update storage
             let mut voting_info = <Voting<T>>::get(&poll_id, &user);
             ensure!(
-                voting_info.ceres_withdrawn == false,
+                !voting_info.ceres_withdrawn,
                 Error::<T>::FundsAlreadyWithdrawn
             );
 
             // Withdraw CERES
             Assets::<T>::transfer_from(
-                &T::CeresAssetId::get().into(),
+                &T::CeresAssetId::get(),
                 &Self::account_id(),
                 &user,
                 voting_info.number_of_votes,
