@@ -355,8 +355,10 @@ benchmarks! {
 
         let tick_size = balance!(0.01);
         let step_lot_size = balance!(1); // limit orders should be aligned according to new step_lot_size
-        let min_lot_size = balance!(1);
-        let max_lot_size = balance!(10000);
+        let min_lot_size = balance!(10);
+        let max_lot_size = balance!(2000);
+
+        OrderBookPallet::<T>::change_orderbook_status(RawOrigin::Root.into(), order_book_id, OrderBookStatus::Stop).unwrap();
     }: {
         OrderBookPallet::<T>::update_orderbook(
             RawOrigin::Root.into(),
