@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MasterToken.sol";
-import "./libraries/ScaleCodec.sol";
 import "./interfaces/IFAReceiver.sol";
 import "./interfaces/IEthTokenReceiver.sol";
 import "./GenericApp.sol";
@@ -16,7 +15,6 @@ import "./GenericApp.sol";
  * into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`.
  */
 contract MigrationApp is GenericApp, IEthTokenReceiver {
-    using ScaleCodec for uint256;
     using SafeERC20 for IERC20;
 
     constructor(address _inbound) GenericApp(_inbound) {}

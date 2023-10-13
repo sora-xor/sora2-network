@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.15;
+// slither-disable-start dead-code
 
 library ScaleCodec {
     // Decodes a SCALE encoded uint256 by converting bytes (big endian) to little endian format
@@ -201,3 +202,4 @@ library ScaleCodec {
         return bytes1(input);
     }
 }
+// slither-disable-end dead-code
