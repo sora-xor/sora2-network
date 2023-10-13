@@ -16,21 +16,23 @@ jobs:
         id: slither
         with:
           fail-on: none
-          continue-on-error: true
           sarif: results.sarif
           slither-config: ethereum-bridge-contracts/slither.config.json
           target: ethereum-bridge-contracts
           slither-args: --checklist --markdown-root ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/
 
-      - name: ls
-        run: ls
+      - name: Push SARIF to DefectDojo
+        # TODO: push to DefectDojo
+        run: ls results.sarif
 
       - name: Create/update checklist as PR comment
         uses: actions/github-script@v6
         if: github.event_name == 'push'
+        env:
+          REPORT: ${{ steps.slither.outputs.stdout }}
         with:
           script: |
             const script = require('.github/scripts/comment')
             const header = '# Slither report'
-#            const body = `${{ steps.slither.outputs.stdout }}`
-#            await script({ github, context, header, body })
+            const { REPORT } = process.env
+            await script({ github, context, header, body: REPORT })
