@@ -37,7 +37,8 @@ pub mod source_initializers {
     use frame_support::dispatch::{DispatchResult, RawOrigin};
     use order_book::{MomentOf, OrderBookId};
     use sp_runtime::traits::CheckedMul;
-    use std::fmt::Debug;
+    use sp_std::fmt::Debug;
+    use sp_std::vec::Vec;
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
