@@ -2219,6 +2219,7 @@ pub mod pallet {
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         type GetADARAccountId: Get<Self::AccountId>;
         type ADARCommissionRatioUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+        type MaxAdditionalDataLength: Get<u32>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
@@ -2449,7 +2450,16 @@ pub mod pallet {
         /// This extrinsic is done as temporary solution for XORless transfers, in future it would be removed
         /// and logic for XORless extrinsics should be moved to xor-fee pallet.
         #[pallet::call_index(6)]
-        #[pallet::weight(Pallet::<T>::swap_weight(dex_id, asset_id, &common::XOR.into(), SwapVariant::WithDesiredOutput).saturating_add(<T as assets::Config>::WeightInfo::transfer()))]
+        #[pallet::weight({
+            let mut weight = <T as assets::Config>::WeightInfo::transfer();
+            if asset_id != &common::XOR.into()
+                && max_amount_in > &Balance::zero()
+                && desired_xor_amount > &Balance::zero()
+            {
+                weight = weight.saturating_add(Pallet::<T>::swap_weight(dex_id, asset_id, &common::XOR.into(), SwapVariant::WithDesiredOutput));
+            }
+            weight
+        })]
         pub fn xorless_transfer(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
@@ -2460,10 +2470,16 @@ pub mod pallet {
             max_amount_in: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
+            additional_data: Option<BoundedVec<u8, T::MaxAdditionalDataLength>>,
         ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
+            ensure!(sender != receiver, Error::<T>::TheSameSenderAndReceiver);
+
             let mut weight = Weight::default();
-            if max_amount_in > Balance::zero() && desired_xor_amount > Balance::zero() {
+            if asset_id != common::XOR.into()
+                && max_amount_in > Balance::zero()
+                && desired_xor_amount > Balance::zero()
+            {
                 weight = weight.saturating_add(Self::inner_swap(
                     sender.clone(),
                     sender.clone(),
@@ -2478,6 +2494,14 @@ pub mod pallet {
 
             assets::Pallet::<T>::transfer_from(&asset_id, &sender, &receiver, amount)?;
             weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
+
+            Self::deposit_event(Event::<T>::XorlessTransfer(
+                asset_id,
+                sender,
+                receiver,
+                amount,
+                additional_data,
+            ));
 
             Ok(PostDispatchInfo {
                 actual_weight: Some(weight),
@@ -2508,6 +2532,15 @@ pub mod pallet {
         /// Batch of swap transfers has been performed
         /// [ADAR Fee, Input amount]
         BatchSwapExecuted(Balance, Balance),
+        /// XORless transfer has been performed
+        /// [Asset Id, Caller Account, Receiver Account, Amount, Additional Data]
+        XorlessTransfer(
+            AssetIdOf<T>,
+            AccountIdOf<T>,
+            AccountIdOf<T>,
+            Balance,
+            Option<BoundedVec<u8, T::MaxAdditionalDataLength>>,
+        ),
     }
 
     #[pallet::error]
@@ -2548,6 +2581,8 @@ pub mod pallet {
         InvalidADARCommissionRatio,
         // Sender don't have enough asset balance
         InsufficientBalance,
+        // Sender and receiver should not be the same
+        TheSameSenderAndReceiver,
     }
 
     #[pallet::type_value]
