@@ -38,7 +38,8 @@ use order_book_imported::{
     cache_data_layer::CacheDataLayer,
     test_utils::{bid_prices_iterator, lifespans_iterator, users_iterator},
     traits::DataLayer,
-    Config, LimitOrder, MomentOf, OrderBook, OrderBookId, OrderBooks, OrderVolume, Pallet,
+    Config, LimitOrder, MomentOf, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderVolume,
+    Pallet,
 };
 
 use assets::AssetIdOf;
@@ -227,6 +228,36 @@ pub fn create_and_populate_order_book<T: Config>(
     .unwrap();
 }
 
+fn update_order_book_with_set_status<T: Config>(
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    tick_size: Balance,
+    step_lot_size: Balance,
+    min_lot_size: Balance,
+    max_lot_size: Balance,
+) {
+    OrderBookPallet::<T>::change_orderbook_status(
+        RawOrigin::Root.into(),
+        order_book_id,
+        OrderBookStatus::Stop,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::update_orderbook(
+        RawOrigin::Root.into(),
+        order_book_id,
+        tick_size,
+        step_lot_size,
+        min_lot_size,
+        max_lot_size,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::change_orderbook_status(
+        RawOrigin::Root.into(),
+        order_book_id,
+        OrderBookStatus::Trade,
+    )
+    .unwrap();
+}
+
 /// Places buy orders for worst-case execution.
 ///
 /// If `double_cheapest_order_amount` is true, one order in the lowest price is set for twice of the
@@ -244,10 +275,13 @@ fn prepare_order_execute_worst_case<T: Config>(
 ) {
     debug!("Update order book to allow to execute all orders at once");
 
-    let max_side_orders =
-        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
-    OrderBookPallet::<T>::update_orderbook(
-        RawOrigin::Root.into(),
+    // maximum number of executed orders is either max the storages allow or `HARD_MIN_MAX_RATIO`,
+    // whichever restricts the most
+    let max_side_orders = sp_std::cmp::min(
+        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
+        T::HARD_MIN_MAX_RATIO as u128,
+    );
+    update_order_book_with_set_status::<T>(
         order_book.order_book_id,
         *order_book.tick_size.balance(),
         *order_book.step_lot_size.balance(),
@@ -260,8 +294,7 @@ fn prepare_order_execute_worst_case<T: Config>(
             order_book.max_lot_size,
         )
         .balance(),
-    )
-    .unwrap();
+    );
     *order_book = OrderBookPallet::order_books(order_book.order_book_id).unwrap();
 
     let mut bid_prices =
