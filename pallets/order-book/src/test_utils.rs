@@ -46,6 +46,7 @@ use codec::Decode;
 use common::prelude::{BalanceUnit, FixedWrapper, Scalar};
 use common::{balance, AssetInfoProvider, Balance, DexIdOf, PriceVariant};
 use frame_support::assert_ok;
+use frame_support::log::{debug, trace};
 use frame_support::traits::{Get, Time};
 use frame_system::RawOrigin;
 use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion, Zero};
@@ -550,6 +551,7 @@ pub fn fill_order_book_side<T: Config>(
     let mut total_payment = Payment::new(order_book.order_book_id);
     let mut to_expire = BTreeMap::<_, Vec<_>>::new();
     for price in prices {
+        debug!("Fill price {}", price);
         fill_price_inner(
             data,
             settings.clone(),
@@ -634,8 +636,8 @@ fn fill_price_inner<T: Config>(
     to_expire: &mut BTreeMap<T::BlockNumber, Vec<T::OrderId>>,
 ) {
     for _ in 0..settings.max_orders_per_price {
-        let Some(user) = users.next() else { break };
-        let Some(lifespan) = lifespans.next() else { break };
+        let Some(user) = users.next() else { debug!("`users` iterator exhausted, stopping placement"); break };
+        let Some(lifespan) = lifespans.next() else { debug!("`users` iterator exhausted, stopping placement"); break };
         let order = LimitOrder::<T>::new(
             order_book.next_order_id(),
             user.clone(),
@@ -663,6 +665,19 @@ fn fill_price_inner<T: Config>(
             .and_modify(|amount| *amount += *lock_amount.value())
             .or_insert(*lock_amount.value());
         // insert the order in storages
+        debug!(
+            "placing next order {:?}",
+            (
+                order_book.next_order_id(),
+                user.clone(),
+                side,
+                price,
+                orders_amount,
+                settings.now.clone(),
+                lifespan,
+                current_block,
+            )
+        );
         data.insert_limit_order(&order_book.order_book_id, order)
             .unwrap();
         // schedule its expiration

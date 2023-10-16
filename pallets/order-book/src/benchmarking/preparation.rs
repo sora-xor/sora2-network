@@ -232,10 +232,10 @@ pub fn create_and_populate_order_book<T: Config>(
 /// If some parameter is `None`, then leave it as is.
 fn update_order_book_with_set_status<T: Config>(
     order_book: &mut OrderBook<T>,
-    tick_size: Option<Balance>,
-    step_lot_size: Option<Balance>,
-    min_lot_size: Option<Balance>,
-    max_lot_size: Option<Balance>,
+    tick_size: Option<OrderPrice>,
+    step_lot_size: Option<OrderVolume>,
+    min_lot_size: Option<OrderVolume>,
+    max_lot_size: Option<OrderVolume>,
 ) {
     OrderBookPallet::<T>::change_orderbook_status(
         RawOrigin::Root.into(),
@@ -243,13 +243,17 @@ fn update_order_book_with_set_status<T: Config>(
         OrderBookStatus::Stop,
     )
     .unwrap();
+    let tick_size = tick_size.unwrap_or(order_book.tick_size);
+    let step_lot_size = step_lot_size.unwrap_or(order_book.step_lot_size);
+    let min_lot_size = min_lot_size.unwrap_or(order_book.min_lot_size);
+    let max_lot_size = max_lot_size.unwrap_or(order_book.max_lot_size);
     OrderBookPallet::<T>::update_orderbook(
         RawOrigin::Root.into(),
         order_book.order_book_id,
-        tick_size.unwrap_or(*order_book.tick_size.balance()),
-        step_lot_size.unwrap_or(*order_book.step_lot_size.balance()),
-        min_lot_size.unwrap_or(*order_book.min_lot_size.balance()),
-        max_lot_size.unwrap_or(*order_book.max_lot_size.balance()),
+        *tick_size.balance(),
+        *step_lot_size.balance(),
+        *min_lot_size.balance(),
+        *max_lot_size.balance(),
     )
     .unwrap();
     OrderBookPallet::<T>::change_orderbook_status(
@@ -258,7 +262,11 @@ fn update_order_book_with_set_status<T: Config>(
         OrderBookStatus::Trade,
     )
     .unwrap();
-    *order_book = OrderBookPallet::order_books(order_book.order_book_id).unwrap()
+
+    order_book.tick_size = tick_size;
+    order_book.step_lot_size = step_lot_size;
+    order_book.min_lot_size = min_lot_size;
+    order_book.max_lot_size = max_lot_size;
 }
 
 /// Places buy orders for worst-case execution.
@@ -284,8 +292,6 @@ fn prepare_order_execute_worst_case<T: Config>(
     OrderVolume,
     PriceVariant,
 ) {
-    *order_book = OrderBookPallet::order_books(order_book.order_book_id).unwrap();
-
     let mut bid_prices =
         bid_prices_iterator(order_book.tick_size, fill_settings.max_side_price_count);
     let orders_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
@@ -360,7 +366,7 @@ fn prepare_order_execute_worst_case<T: Config>(
     // all orders were placed
     #[allow(unused_variables)]
     let orders_to_place = 0;
-    debug!("Filling whole side of the order book");
+    debug!("Filling a side of the order book for worst-case execution");
     fill_order_book_side(
         data,
         fill_settings.clone(),
@@ -377,8 +383,12 @@ fn prepare_order_execute_worst_case<T: Config>(
         .checked_mul_by_scalar(Scalar(max_side_orders))
         .unwrap();
     // new values for min/max lot size to check maximum possible number of executed orders at once
-    let new_max_lot_size = *sp_std::cmp::max(to_execute_volume, order_book.max_lot_size).balance();
-    let new_min_lot_size = new_max_lot_size.div_ceil(T::SOFT_MIN_MAX_RATIO.try_into().unwrap());
+    let new_max_lot_size = sp_std::cmp::max(to_execute_volume, order_book.max_lot_size);
+    let new_min_lot_size = new_max_lot_size.copy_divisibility(
+        new_max_lot_size
+            .balance()
+            .div_ceil(T::SOFT_MIN_MAX_RATIO.try_into().unwrap()),
+    );
     update_order_book_with_set_status::<T>(
         order_book,
         None,
@@ -424,6 +434,16 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         T::HARD_MIN_MAX_RATIO as u128,
     );
 
+    println!("placed worst case side");
+    data_layer.commit();
+    assert_orders_numbers::<T>(
+        order_book_id,
+        Some(max_side_orders as usize),
+        None,
+        None,
+        None,
+    );
+
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let mut fill_user_settings = fill_settings.clone();
     // leave a room for one more order
@@ -439,6 +459,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         author.clone(),
         &mut lifespans,
     );
+    println!("placed user orders");
 
     // fill expiration schedule for a block:
     // skip to an empty block
@@ -469,6 +490,21 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         )
         .unwrap();
     });
+    data_layer.commit();
+    assert_orders_numbers::<T>(
+        order_book_id,
+        Some(max_side_orders as usize),
+        None,
+        Some((
+            author.clone(),
+            sp_std::cmp::min(
+                fill_settings.max_orders_per_user - 1,
+                (fill_settings.max_side_price_count - 1) * fill_settings.max_orders_per_price,
+            ) as usize,
+        )),
+        Some((to_fill.saturated_into::<MomentOf<T>>(), 0usize)),
+    );
+
     fill_expiration_schedule(
         &mut data_layer,
         fill_expiration_settings.clone(),
@@ -478,6 +514,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         &mut users,
         to_fill,
     );
+    println!("placed expirations");
 
     debug!("Committing data...");
     <OrderBooks<T>>::insert(order_book_id, order_book.clone());
