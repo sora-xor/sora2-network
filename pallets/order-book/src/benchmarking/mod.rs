@@ -55,8 +55,8 @@ use frame_support::traits::Time;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use order_book_imported::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBookId, OrderBookStatus,
-    OrderVolume, Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus, OrderPrice, OrderVolume, Pallet,
 };
 
 use crate::test_utils::FillSettings;
@@ -329,7 +329,8 @@ pub(crate) mod cancel_limit_order_benchmark {
 pub(crate) mod execute_market_order_benchmark {
     use super::*;
     use common::prelude::BalanceUnit;
-    use common::{balance, Balance};
+    use common::Balance;
+    use sp_runtime::traits::Zero;
 
     pub struct Context<T: Config> {
         pub caller: T::AccountId,
@@ -338,14 +339,54 @@ pub(crate) mod execute_market_order_benchmark {
         pub side: PriceVariant,
         pub caller_base_balance: Balance,
         pub caller_quote_balance: Balance,
+        pub expected_average_price: OrderPrice,
+    }
+
+    /// `pairs` consists of pairs `(value, weight)`
+    fn weighted_average(pairs: impl IntoIterator<Item = (OrderPrice, OrderVolume)>) -> OrderPrice {
+        let mut weight_sum = BalanceUnit::zero();
+        let mut weight_times_value_sum = BalanceUnit::zero();
+        for (value, weight) in pairs {
+            weight_sum += weight;
+            weight_times_value_sum += weight * value;
+        }
+        weight_times_value_sum / weight_sum
+    }
+
+    fn expected_average_price<T: Config>(
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        side: PriceVariant,
+        is_divisible: bool,
+    ) -> OrderPrice {
+        let aggregated_side = match side {
+            PriceVariant::Buy => OrderBookPallet::<T>::aggregated_asks(order_book_id.clone()),
+            PriceVariant::Sell => OrderBookPallet::<T>::aggregated_bids(order_book_id.clone()),
+        };
+        let mut aggregated_side = aggregated_side.into_iter();
+        // account for partial execution
+        let (worst_price, worst_price_sum) = match side {
+            // for asks it's max price
+            PriceVariant::Buy => aggregated_side.next_back().unwrap(),
+            // for bids - min price
+            PriceVariant::Sell => aggregated_side.next().unwrap(),
+        };
+        let default_order_book = if is_divisible {
+            OrderBook::<T>::default(order_book_id)
+        } else {
+            OrderBook::<T>::default_indivisible(order_book_id)
+        };
+        let worst_price_sum = worst_price_sum - default_order_book.min_lot_size;
+
+        weighted_average(aggregated_side.chain(sp_std::iter::once((worst_price, worst_price_sum))))
     }
 
     pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
         let caller = alice::<T>();
+        let is_divisible = false;
         let (order_book_id, amount, side) =
-            prepare_market_order_benchmark(settings, caller.clone(), false);
+            prepare_market_order_benchmark(settings, caller.clone(), is_divisible);
         let caller_base_balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap();
         let caller_quote_balance =
@@ -357,6 +398,11 @@ pub(crate) mod execute_market_order_benchmark {
             side,
             caller_base_balance,
             caller_quote_balance,
+            expected_average_price: expected_average_price::<T>(
+                order_book_id.clone(),
+                side,
+                is_divisible,
+            ),
         }
     }
 
@@ -368,8 +414,9 @@ pub(crate) mod execute_market_order_benchmark {
             side,
             caller_base_balance,
             caller_quote_balance,
+            expected_average_price,
         } = context;
-        let average_price = balance!(0.000325).into();
+        let average_price = expected_average_price;
         assert_last_event::<T>(
             Event::<T>::MarketOrderExecuted {
                 order_book_id,
