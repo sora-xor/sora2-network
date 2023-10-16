@@ -269,7 +269,8 @@ fn update_order_book_with_set_status<T: Config>(
     order_book.max_lot_size = max_lot_size;
 }
 
-/// Places buy orders for worst-case execution.
+/// Places buy orders for worst-case execution. Fill up max amount allowed by the storages or by
+/// `HARD_MIN_MAX_RATIO`.
 ///
 /// If `double_cheapest_order_amount` is true, one order in the lowest price is set for twice of the
 /// amount; it allows partial execution.
@@ -420,28 +421,16 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
+    let expected_side_orders = sp_std::cmp::min(
+        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
+        T::HARD_MIN_MAX_RATIO as u128,
+    );
 
-    // we consider placing remaining part of the limit order to be worst-case; thus
-    // `double_cheapest_order_amount=false`
     let (users, mut lifespans, _, side) = prepare_order_execute_worst_case::<T>(
         &mut data_layer,
         &mut order_book,
         fill_settings.clone(),
         false,
-    );
-    let max_side_orders = sp_std::cmp::min(
-        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
-        T::HARD_MIN_MAX_RATIO as u128,
-    );
-
-    println!("placed worst case side");
-    data_layer.commit();
-    assert_orders_numbers::<T>(
-        order_book_id,
-        Some(max_side_orders as usize),
-        None,
-        None,
-        None,
     );
 
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
@@ -490,20 +479,6 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         )
         .unwrap();
     });
-    data_layer.commit();
-    assert_orders_numbers::<T>(
-        order_book_id,
-        Some(max_side_orders as usize),
-        None,
-        Some((
-            author.clone(),
-            sp_std::cmp::min(
-                fill_settings.max_orders_per_user - 1,
-                (fill_settings.max_side_price_count - 1) * fill_settings.max_orders_per_price,
-            ) as usize,
-        )),
-        Some((to_fill.saturated_into::<MomentOf<T>>(), 0usize)),
-    );
 
     fill_expiration_schedule(
         &mut data_layer,
@@ -532,13 +507,12 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
             acc.checked_add(&item).unwrap()
         });
     // to place remaining amount as limit order
-    let amount = amount + order_book.min_lot_size;
     let lifespan = to_fill.saturated_into::<MomentOf<T>>();
     assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *amount.balance()).unwrap();
 
     assert_orders_numbers::<T>(
         order_book_id,
-        Some(max_side_orders as usize),
+        Some(expected_side_orders as usize),
         None,
         Some((
             author.clone(),

@@ -220,51 +220,35 @@ pub(crate) mod place_limit_order_benchmark {
             side,
             lifespan,
         } = init_values;
-        let order_id = get_last_order_id::<T>(order_book_id).unwrap();
         assert_orders_numbers::<T>(
             order_book_id,
             Some(0),
             None,
-            // 1 order was placed
             Some((
                 caller.clone(),
                 sp_std::cmp::min(
-                    settings.max_orders_per_user,
-                    (settings.max_side_price_count - 1) * settings.max_orders_per_price + 1,
+                    settings.max_orders_per_user - 1,
+                    (settings.max_side_price_count - 1) * settings.max_orders_per_price,
                 ) as usize,
             )),
-            Some((lifespan, settings.max_expiring_orders_per_block as usize)),
+            Some((
+                lifespan,
+                (settings.max_expiring_orders_per_block - 1) as usize,
+            )),
         );
 
+        // placement of remaining amount is too much of pain and it replaces execution of 4
+        // additional orders.
+        // we don't do it
         assert_last_event::<T>(
-            Event::<T>::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
+            Event::<T>::LimitOrderConvertedToMarketOrder {
                 order_book_id,
                 owner_id: caller.clone(),
-                market_order_direction: side,
-                market_order_amount: OrderAmount::Base(balance!(4096).into()),
-                market_order_average_price: balance!(0.000325).into(),
-                limit_order_id: order_id,
+                direction: side,
+                amount: OrderAmount::Base(balance!(4000).into()),
             }
             .into(),
         );
-
-        let current_block = frame_system::Pallet::<T>::block_number();
-
-        let order_book = order_book_imported::OrderBooks::<T>::get(order_book_id).unwrap();
-        let now = <<T as Config>::Time as Time>::now();
-        let expected_limit_order = LimitOrder::<T>::new(
-            order_id,
-            caller.clone(),
-            PriceVariant::Sell,
-            price.into(),
-            order_book.min_lot_size.into(),
-            now,
-            lifespan,
-            current_block,
-        );
-        let mut order = OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap();
-        order.original_amount = order.amount;
-        assert_eq!(order, expected_limit_order);
     }
 }
 
