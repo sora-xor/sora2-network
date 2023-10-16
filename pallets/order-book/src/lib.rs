@@ -365,7 +365,7 @@ pub mod pallet {
             owner_id: T::AccountId,
             direction: PriceVariant,
             amount: OrderAmount,
-            average_price: OrderVolume,
+            average_price: OrderPrice,
             to: Option<T::AccountId>,
         },
     }
