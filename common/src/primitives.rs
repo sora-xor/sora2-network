@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::traits::{IsRepresentation, PureOrWrapped};
+use bridge_types::GenericAssetId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
 use frame_support::dispatch::TypeInfo;
@@ -237,6 +238,17 @@ where
 {
     fn from(tech_asset: TechAssetId<AssetId>) -> Self {
         Ok(tech_asset.into())
+    }
+}
+
+impl<AssetId> TryFrom<GenericAssetId> for AssetId32<AssetId> {
+    type Error = ();
+
+    fn try_from(asset_id: GenericAssetId) -> Result<Self, Self::Error> {
+        match asset_id {
+            GenericAssetId::Sora(id) => Ok(id.into()),
+            _ => Err(()),
+        }
     }
 }
 

@@ -1937,6 +1937,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "blake2-rfc",
+ "bridge-types",
  "env_logger 0.9.3",
  "fixnum",
  "frame-support",

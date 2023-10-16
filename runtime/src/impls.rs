@@ -291,7 +291,11 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            bridge_types::substrate::BridgeCall::SubstrateApp(_) => todo!(),
+            bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
+                let call: substrate_bridge_app::Call<crate::Runtime> = msg.try_into()?;
+                let call: crate::RuntimeCall = call.into();
+                call.dispatch(origin)
+            }
         }
     }
 }
@@ -313,13 +317,11 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                 call.get_dispatch_info()
             }
             bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
-                // let call: substrate_bridge_app::Call<crate::Runtime> = match msg.clone().try_into() {
-                //     Ok(c) => c,
-                //     Err(_) => return Default::default(),
-                // };
-                // let call: substrate_bridge_app::Call<crate::Runtime> = msg.clone().try_from().unwrap();
                 let call: substrate_bridge_app::Call<crate::Runtime> =
-                    substrate_bridge_app::Call::try_from(msg.clone()).unwrap();
+                    match substrate_bridge_app::Call::try_from(msg.clone()) {
+                        Ok(c) => c,
+                        Err(_) => return Default::default(),
+                    };
                 call.get_dispatch_info()
             }
         }
