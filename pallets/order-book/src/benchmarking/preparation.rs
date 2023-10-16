@@ -448,7 +448,6 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         author.clone(),
         &mut lifespans,
     );
-    println!("placed user orders");
 
     // fill expiration schedule for a block:
     // skip to an empty block
@@ -489,7 +488,6 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         &mut users,
         to_fill,
     );
-    println!("placed expirations");
 
     debug!("Committing data...");
     <OrderBooks<T>>::insert(order_book_id, order_book.clone());
@@ -526,7 +524,6 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
             (fill_settings.max_expiring_orders_per_block - 1) as usize,
         )),
     );
-    println!("asserted inner");
 
     (order_book_id, price, amount, side, lifespan)
 }

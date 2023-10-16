@@ -665,7 +665,7 @@ fn fill_price_inner<T: Config>(
             .and_modify(|amount| *amount += *lock_amount.value())
             .or_insert(*lock_amount.value());
         // insert the order in storages
-        debug!(
+        trace!(
             "placing next order {:?}",
             (
                 order_book.next_order_id(),

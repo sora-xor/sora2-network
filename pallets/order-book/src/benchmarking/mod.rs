@@ -51,7 +51,6 @@ use framenode_runtime::order_book as order_book_imported;
 use assets::AssetIdOf;
 use codec::Decode;
 use common::{AssetInfoProvider, DEXId, PriceVariant, VAL, XOR};
-use frame_support::traits::Time;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use order_book_imported::{
@@ -215,7 +214,7 @@ pub(crate) mod place_limit_order_benchmark {
         let Context {
             caller,
             order_book_id,
-            price,
+            price: _,
             amount: _,
             side,
             lifespan,
