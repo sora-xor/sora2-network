@@ -21,25 +21,12 @@ jobs:
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
         if: steps.filter.outputs.solidity == 'true'
-        id: slither
         with:
           fail-on: none
           sarif: results.sarif
           slither-config: ethereum-bridge-contracts/slither.config.json
           target: ethereum-bridge-contracts
           slither-args: --checklist --markdown-root ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/
-
-      - name: Create/update checklist as PR comment
-        uses: actions/github-script@v6
-        if: github.event_name == 'push' && steps.filter.outputs.solidity == 'true'
-        env:
-          REPORT: ${{ steps.slither.outputs.stdout }}
-        with:
-          script: |
-            const script = require('.github/scripts/comment')
-            const header = '# Slither report'
-            const { REPORT } = process.env
-            await script({ github, context, header, body: REPORT })
 
       - name: Push SARIF to GH
         uses: github/codeql-action/upload-sarif@v2
