@@ -362,7 +362,7 @@ fn prepare_order_execute_worst_case<T: Config>(
         orders_to_place -= 1;
     }
     // any of the iterators can limit number of placed orders; `users` is one of them
-    let mut users = users.take(orders_to_place.try_into().unwrap());
+    let mut limited_users = users.by_ref().take(orders_to_place.try_into().unwrap());
     // all orders were placed
     #[allow(unused_variables)]
     let orders_to_place = 0;
@@ -374,7 +374,7 @@ fn prepare_order_execute_worst_case<T: Config>(
         orders_side,
         orders_amount,
         &mut bid_prices,
-        &mut users,
+        &mut limited_users,
         &mut lifespans,
     );
     debug!("Update order book to allow execution of max # of orders");
@@ -552,6 +552,7 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
             (fill_settings.max_expiring_orders_per_block - 1) as usize,
         )),
     );
+    println!("asserted inner");
 
     (order_book_id, price, amount, side, lifespan)
 }
