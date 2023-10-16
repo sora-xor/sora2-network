@@ -29,7 +29,7 @@ code_template_place = """
                 prepare_place_orderbook_benchmark::<T>(preset_{}(), alice::<T>());
         }}: {{
             OrderBookPallet::<T>::place_limit_order(
-                signer, order_book_id, price, amount, side, Some(lifespan),
+                signer, order_book_id, *price.balance(), *amount.balance(), side, Some(lifespan),
             ).unwrap();
         }}
 """
@@ -60,10 +60,10 @@ code_template_execute = """
         #[extra]
         execute_market_order_{} {{
             let caller = alice::<T>();
-            let (id, amount) = prepare_market_order_benchmark::<T>(preset_{}(), caller.clone(), false);
+            let (id, amount, side) = prepare_market_order_benchmark::<T>(preset_{}(), caller.clone(), false);
         }}: {{
             OrderBookPallet::<T>::execute_market_order(
-                RawOrigin::Signed(caller).into(), id, PriceVariant::Sell, *amount.balance()
+                RawOrigin::Signed(caller).into(), id, side, *amount.balance()
             ).unwrap();
         }}
 """
@@ -83,7 +83,7 @@ code_template_exchange = """
         #[extra]
         exchange_{} {{
             let caller = alice::<T>();
-            let (id, amount) = prepare_market_order_benchmark::<T>(preset_{}(), caller.clone(), true);
+            let (id, amount, _) = prepare_market_order_benchmark::<T>(preset_{}(), caller.clone(), true);
         }} : {{
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
