@@ -273,28 +273,6 @@ fn prepare_order_execute_worst_case<T: Config>(
     impl Iterator<Item = T::AccountId>,
     impl Iterator<Item = u64>,
 ) {
-    debug!("Update order book to allow to execute all orders at once");
-
-    // maximum number of executed orders is either max the storages allow or `HARD_MIN_MAX_RATIO`,
-    // whichever restricts the most
-    let max_side_orders = sp_std::cmp::min(
-        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
-        T::HARD_MIN_MAX_RATIO as u128,
-    );
-    update_order_book_with_set_status::<T>(
-        order_book.order_book_id,
-        *order_book.tick_size.balance(),
-        *order_book.step_lot_size.balance(),
-        *order_book.min_lot_size.balance(),
-        *sp_std::cmp::max(
-            order_book
-                .min_lot_size
-                .checked_mul_by_scalar(Scalar(max_side_orders + 1))
-                .unwrap(),
-            order_book.max_lot_size,
-        )
-        .balance(),
-    );
     *order_book = OrderBookPallet::order_books(order_book.order_book_id).unwrap();
 
     let mut bid_prices =
@@ -362,6 +340,30 @@ fn prepare_order_execute_worst_case<T: Config>(
         &mut bid_prices,
         &mut users,
         &mut lifespans,
+    );
+    debug!("Update order book to allow execution of max # of orders");
+    // maximum number of executed orders is either max the storages allow or `HARD_MIN_MAX_RATIO`,
+    // whichever restricts the most
+    let max_side_orders = sp_std::cmp::min(
+        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
+        T::HARD_MIN_MAX_RATIO as u128,
+    );
+    // new values for min/max lot size to check maximum possible number of executed orders at once
+    let new_max_lot_size = *sp_std::cmp::max(
+        order_book
+            .min_lot_size
+            .checked_mul_by_scalar(Scalar(max_side_orders))
+            .unwrap(),
+        order_book.max_lot_size,
+    )
+    .balance();
+    let new_min_lot_size = new_max_lot_size.div_ceil(T::SOFT_MIN_MAX_RATIO.into());
+    update_order_book_with_set_status::<T>(
+        order_book.order_book_id,
+        *order_book.tick_size.balance(),
+        *order_book.step_lot_size.balance(),
+        new_min_lot_size,
+        new_max_lot_size,
     );
     (users, lifespans)
 }
