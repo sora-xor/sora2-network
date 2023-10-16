@@ -419,8 +419,10 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         fill_settings.clone(),
         false,
     );
-    let max_side_orders =
-        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
+    let max_side_orders = sp_std::cmp::min(
+        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
+        T::HARD_MIN_MAX_RATIO as u128,
+    );
 
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let mut fill_user_settings = fill_settings.clone();
@@ -764,11 +766,13 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
         .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
+    let max_side_orders = sp_std::cmp::min(
+        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
+        T::HARD_MIN_MAX_RATIO as u128,
+    );
 
     if !is_divisible {
         // to allow order book update
-        let max_side_orders =
-            fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128;
         let needed_supply = *sp_std::cmp::max(
             order_book
                 .min_lot_size
@@ -794,6 +798,14 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
     <OrderBooks<T>>::insert(order_book_id, order_book);
     data_layer.commit();
     debug!("Data committed!");
+
+    assert_orders_numbers::<T>(
+        order_book_id,
+        Some(max_side_orders as usize),
+        None,
+        None,
+        None,
+    );
 
     (order_book_id, amount, side)
 }

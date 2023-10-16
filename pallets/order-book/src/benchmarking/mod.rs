@@ -99,6 +99,7 @@ fn get_last_order_id<T: Config>(
     }
 }
 
+/// if `None` then don't compare the value
 pub fn assert_orders_numbers<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     bids: Option<usize>,
