@@ -507,9 +507,7 @@ pub use benchmarks_inner::*;
 #[cfg(not(test))]
 mod benchmarks_inner {
     use common::prelude::SwapAmount;
-    use common::{
-        balance, AssetInfoProvider, AssetName, AssetSymbol, LiquiditySource, PriceVariant, VAL, XOR,
-    };
+    use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, LiquiditySource, VAL, XOR};
     use frame_benchmarking::benchmarks;
     use frame_support::weights::WeightMeter;
     use frame_system::RawOrigin;
@@ -716,7 +714,7 @@ mod benchmarks_inner {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
                 context.order_book_id,
-                PriceVariant::Sell,
+                context.side,
                 *context.amount.balance()
             ).unwrap();
         }
@@ -1794,8 +1792,8 @@ mod benchmarks_inner {
 mod tests {
     use super::*;
 
+    use common::balance;
     use common::prelude::SwapAmount;
-    use common::{balance, PriceVariant};
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
@@ -1860,7 +1858,7 @@ mod tests {
             OrderBookPallet::<Runtime>::execute_market_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
                 context.order_book_id,
-                PriceVariant::Sell,
+                context.side,
                 *context.amount.balance(),
             )
             .unwrap();

@@ -229,34 +229,36 @@ pub fn create_and_populate_order_book<T: Config>(
     .unwrap();
 }
 
+/// If some parameter is `None`, then leave it as is.
 fn update_order_book_with_set_status<T: Config>(
-    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-    tick_size: Balance,
-    step_lot_size: Balance,
-    min_lot_size: Balance,
-    max_lot_size: Balance,
+    order_book: &mut OrderBook<T>,
+    tick_size: Option<Balance>,
+    step_lot_size: Option<Balance>,
+    min_lot_size: Option<Balance>,
+    max_lot_size: Option<Balance>,
 ) {
     OrderBookPallet::<T>::change_orderbook_status(
         RawOrigin::Root.into(),
-        order_book_id,
+        order_book.order_book_id,
         OrderBookStatus::Stop,
     )
     .unwrap();
     OrderBookPallet::<T>::update_orderbook(
         RawOrigin::Root.into(),
-        order_book_id,
-        tick_size,
-        step_lot_size,
-        min_lot_size,
-        max_lot_size,
+        order_book.order_book_id,
+        tick_size.unwrap_or(*order_book.tick_size.balance()),
+        step_lot_size.unwrap_or(*order_book.step_lot_size.balance()),
+        min_lot_size.unwrap_or(*order_book.min_lot_size.balance()),
+        max_lot_size.unwrap_or(*order_book.max_lot_size.balance()),
     )
     .unwrap();
     OrderBookPallet::<T>::change_orderbook_status(
         RawOrigin::Root.into(),
-        order_book_id,
+        order_book.order_book_id,
         OrderBookStatus::Trade,
     )
     .unwrap();
+    *order_book = OrderBookPallet::order_books(order_book.order_book_id).unwrap()
 }
 
 /// Places buy orders for worst-case execution.
@@ -378,11 +380,11 @@ fn prepare_order_execute_worst_case<T: Config>(
     let new_max_lot_size = *sp_std::cmp::max(to_execute_volume, order_book.max_lot_size).balance();
     let new_min_lot_size = new_max_lot_size.div_ceil(T::SOFT_MIN_MAX_RATIO.try_into().unwrap());
     update_order_book_with_set_status::<T>(
-        order_book.order_book_id,
-        *order_book.tick_size.balance(),
-        *order_book.step_lot_size.balance(),
-        new_min_lot_size,
-        new_max_lot_size,
+        order_book,
+        None,
+        None,
+        Some(new_min_lot_size),
+        Some(new_max_lot_size),
     );
     (users, lifespans, to_execute_volume, orders_side.switched())
 }
