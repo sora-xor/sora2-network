@@ -37,19 +37,26 @@ use crate as order_book_imported;
 use framenode_runtime::order_book as order_book_imported;
 
 use order_book_imported::{
-    traits::DataLayer, Asks, Bids, Config, ExpirationsAgenda, LimitOrder, LimitOrders, MarketRole,
-    OrderBook, OrderBookId, OrderPrice, OrderVolume, Pallet, Payment, PriceOrders,
+    traits::DataLayer, Config, ExpirationsAgenda, LimitOrder, MarketRole, OrderBook, OrderBookId,
+    OrderPrice, OrderVolume, Pallet, Payment, PriceOrders,
 };
+#[cfg(feature = "std")]
+use order_book_imported::{Asks, Bids, LimitOrders};
 
 use assets::AssetIdOf;
 use codec::Decode;
-use common::prelude::{BalanceUnit, FixedWrapper, Scalar};
+#[cfg(feature = "std")]
+use common::prelude::FixedWrapper;
+use common::prelude::{BalanceUnit, Scalar};
 use common::{balance, AssetInfoProvider, Balance, DexIdOf, PriceVariant};
 use frame_support::assert_ok;
 use frame_support::log::{debug, trace};
 use frame_support::traits::{Get, Time};
 use frame_system::RawOrigin;
-use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion, Zero};
+#[cfg(feature = "std")]
+use sp_runtime::traits::{CheckedAdd, Zero};
+use sp_runtime::traits::{CheckedMul, SaturatedConversion};
+#[cfg(feature = "std")]
 use sp_runtime::BoundedVec;
 use sp_std::{collections::btree_map::BTreeMap, iter::repeat, vec::Vec};
 
@@ -551,7 +558,7 @@ pub fn fill_order_book_side<T: Config>(
     let mut total_payment = Payment::new(order_book.order_book_id);
     let mut to_expire = BTreeMap::<_, Vec<_>>::new();
     for price in prices {
-        debug!("Fill price {}", price);
+        debug!("Fill price {:?}", price);
         fill_price_inner(
             data,
             settings.clone(),
