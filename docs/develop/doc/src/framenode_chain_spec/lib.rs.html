@@ -2385,6 +2385,96 @@
 <a href="#2370" id="2370">2370</a>
 <a href="#2371" id="2371">2371</a>
 <a href="#2372" id="2372">2372</a>
+<a href="#2373" id="2373">2373</a>
+<a href="#2374" id="2374">2374</a>
+<a href="#2375" id="2375">2375</a>
+<a href="#2376" id="2376">2376</a>
+<a href="#2377" id="2377">2377</a>
+<a href="#2378" id="2378">2378</a>
+<a href="#2379" id="2379">2379</a>
+<a href="#2380" id="2380">2380</a>
+<a href="#2381" id="2381">2381</a>
+<a href="#2382" id="2382">2382</a>
+<a href="#2383" id="2383">2383</a>
+<a href="#2384" id="2384">2384</a>
+<a href="#2385" id="2385">2385</a>
+<a href="#2386" id="2386">2386</a>
+<a href="#2387" id="2387">2387</a>
+<a href="#2388" id="2388">2388</a>
+<a href="#2389" id="2389">2389</a>
+<a href="#2390" id="2390">2390</a>
+<a href="#2391" id="2391">2391</a>
+<a href="#2392" id="2392">2392</a>
+<a href="#2393" id="2393">2393</a>
+<a href="#2394" id="2394">2394</a>
+<a href="#2395" id="2395">2395</a>
+<a href="#2396" id="2396">2396</a>
+<a href="#2397" id="2397">2397</a>
+<a href="#2398" id="2398">2398</a>
+<a href="#2399" id="2399">2399</a>
+<a href="#2400" id="2400">2400</a>
+<a href="#2401" id="2401">2401</a>
+<a href="#2402" id="2402">2402</a>
+<a href="#2403" id="2403">2403</a>
+<a href="#2404" id="2404">2404</a>
+<a href="#2405" id="2405">2405</a>
+<a href="#2406" id="2406">2406</a>
+<a href="#2407" id="2407">2407</a>
+<a href="#2408" id="2408">2408</a>
+<a href="#2409" id="2409">2409</a>
+<a href="#2410" id="2410">2410</a>
+<a href="#2411" id="2411">2411</a>
+<a href="#2412" id="2412">2412</a>
+<a href="#2413" id="2413">2413</a>
+<a href="#2414" id="2414">2414</a>
+<a href="#2415" id="2415">2415</a>
+<a href="#2416" id="2416">2416</a>
+<a href="#2417" id="2417">2417</a>
+<a href="#2418" id="2418">2418</a>
+<a href="#2419" id="2419">2419</a>
+<a href="#2420" id="2420">2420</a>
+<a href="#2421" id="2421">2421</a>
+<a href="#2422" id="2422">2422</a>
+<a href="#2423" id="2423">2423</a>
+<a href="#2424" id="2424">2424</a>
+<a href="#2425" id="2425">2425</a>
+<a href="#2426" id="2426">2426</a>
+<a href="#2427" id="2427">2427</a>
+<a href="#2428" id="2428">2428</a>
+<a href="#2429" id="2429">2429</a>
+<a href="#2430" id="2430">2430</a>
+<a href="#2431" id="2431">2431</a>
+<a href="#2432" id="2432">2432</a>
+<a href="#2433" id="2433">2433</a>
+<a href="#2434" id="2434">2434</a>
+<a href="#2435" id="2435">2435</a>
+<a href="#2436" id="2436">2436</a>
+<a href="#2437" id="2437">2437</a>
+<a href="#2438" id="2438">2438</a>
+<a href="#2439" id="2439">2439</a>
+<a href="#2440" id="2440">2440</a>
+<a href="#2441" id="2441">2441</a>
+<a href="#2442" id="2442">2442</a>
+<a href="#2443" id="2443">2443</a>
+<a href="#2444" id="2444">2444</a>
+<a href="#2445" id="2445">2445</a>
+<a href="#2446" id="2446">2446</a>
+<a href="#2447" id="2447">2447</a>
+<a href="#2448" id="2448">2448</a>
+<a href="#2449" id="2449">2449</a>
+<a href="#2450" id="2450">2450</a>
+<a href="#2451" id="2451">2451</a>
+<a href="#2452" id="2452">2452</a>
+<a href="#2453" id="2453">2453</a>
+<a href="#2454" id="2454">2454</a>
+<a href="#2455" id="2455">2455</a>
+<a href="#2456" id="2456">2456</a>
+<a href="#2457" id="2457">2457</a>
+<a href="#2458" id="2458">2458</a>
+<a href="#2459" id="2459">2459</a>
+<a href="#2460" id="2460">2460</a>
+<a href="#2461" id="2461">2461</a>
+<a href="#2462" id="2462">2462</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2583,6 +2673,96 @@
 
 <span class="kw">pub fn </span>main_net() -&gt; <span class="prelude-ty">Result</span>&lt;ChainSpec, String&gt; {
     ChainSpec::from_json_bytes(<span class="kw-2">&amp;</span><span class="macro">our_include_bytes!</span>(<span class="string">&quot;./bytes/chain_spec_main.json&quot;</span>)[..])
+}
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
+</span><span class="kw">pub fn </span>predev_net_coded() -&gt; ChainSpec {
+    <span class="kw">let </span><span class="kw-2">mut </span>properties = Properties::new();
+    properties.insert(<span class="string">&quot;ss58Format&quot;</span>.into(), SS58Prefix::get().into());
+    properties.insert(<span class="string">&quot;tokenSymbol&quot;</span>.into(), <span class="string">&quot;XOR&quot;</span>.into());
+    properties.insert(<span class="string">&quot;tokenDecimals&quot;</span>.into(), DEFAULT_BALANCE_PRECISION.into());
+    ChainSpec::from_genesis(
+        <span class="string">&quot;SORA-predev Testnet&quot;</span>,
+        <span class="string">&quot;sora-substrate-predev&quot;</span>,
+        ChainType::Development,
+        <span class="kw">move </span>|| {
+            testnet_genesis(
+                <span class="bool-val">true</span>,
+                <span class="macro">hex!</span>(<span class="string">&quot;92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e&quot;</span>).into(),
+                <span class="macro">vec!</span>[
+                    authority_keys_from_public_keys(
+                        <span class="macro">hex!</span>(<span class="string">&quot;28d3bdf388ac911afa8e6c4394eafaa42d1cdf438ed1128086b1f7d666c5335e&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;b6baf3368395d73159e92579a12adfa7053814419c0ed5a7ef175d0c87e51401&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;b6baf3368395d73159e92579a12adfa7053814419c0ed5a7ef175d0c87e51401&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;9fcd1a31681bff3ca3ac195c11ba8fb0fb6bce3eb61c7cfecf4e4273ea5970af&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;02b702b6684a4d93a2c1044e7f8c1e5b42fd4ae24fc2ea571347b45665898de590&quot;</span>),
+                    ),
+                    authority_keys_from_public_keys(
+                        <span class="macro">hex!</span>(<span class="string">&quot;e0be466ddaabaf864b9dd54905f5e0d410c23265fe4e7925ce2a675f371b8274&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;facd0165cc40240b8ff234900a4debb632435276b2309b27db83dd9ef67a3d6c&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;facd0165cc40240b8ff234900a4debb632435276b2309b27db83dd9ef67a3d6c&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;5749c1e8b7a87bd114c3b151eb899feccedbcf6c439c1d7dda0fc29c7179d51c&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;03b91512a19d2433c0d4c51c4c31f56e553c5ebfb30c82a0c3573e96377f7e6baf&quot;</span>),
+                    ),
+                    authority_keys_from_public_keys(
+                        <span class="macro">hex!</span>(<span class="string">&quot;c0b48c43b9911da9cb1f2a1ea78ab88c34fe6d27e642f141389986b7276c442b&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;320c24a123419d41b9f07bb1bfa4a15198112851c10c7497c7895284d7ae945f&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;320c24a123419d41b9f07bb1bfa4a15198112851c10c7497c7895284d7ae945f&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;244266d4ced385b782e35c2e5b45db1d5988e5f8abf9b7085d8a52b9b3f642a4&quot;</span>),
+                        <span class="macro">hex!</span>(<span class="string">&quot;024a5b7eefee22145c704a71b303d96532ec28736a0e841fd498a73ab325c48c8e&quot;</span>),
+                    ),
+                ],
+                <span class="macro">vec!</span>[
+                    <span class="macro">hex!</span>(<span class="string">&quot;a63e5398515c405aba87c13b56d344f1a7d32d2226062fac396d58154d45380a&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;62f53d93e5ab9b26ccb7b9625abfe76a3d5fb3b732c039f3322bfe3f35503401&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;c84c2c4395322b7935bf9eba08a392e5c485b0a984b5c38c8174a89c6b24750c&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;8af75f561b714320205491d7571cf6d3df650143e2862b36c7b823d1de0bd244&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;a492d53531934d57acc5c2a852a724272b0a0d6571cc5b0e2433bebbb334e13c&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;5c6e091530ae1891eb33a9abc24727239b84bf8e458306b7cd4740662343b84c&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;7653840f435e7412fbaf0eb6331206b325de62e036435458a16155c43393f504&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;328be9c672c4fff8ae9065ebdf116a47e1121933616a1d1749ff9bb3356fd542&quot;</span>).into(),
+                ],
+                <span class="macro">vec!</span>[
+                    <span class="macro">hex!</span>(<span class="string">&quot;da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;f57efdde92d350999cb41d1f2b21255d9ba7ae70cf03538ddee42a38f48a5436&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;aa79aa80b94b1cfba69c4a7d60eeb7b469e6411d1f686cc61de8adc8b1b76a69&quot;</span>).into(),
+                ],
+                EthBridgeParams {
+                    xor_master_contract_address: <span class="macro">hex!</span>(<span class="string">&quot;7F62CCd5566c64cfb785f73B3c19653D93e5414c&quot;</span>)
+                        .into(),
+                    xor_contract_address: <span class="macro">hex!</span>(<span class="string">&quot;2F4e425760546600B73D7bD66C80d45c77D1135b&quot;</span>).into(),
+                    val_master_contract_address: <span class="macro">hex!</span>(<span class="string">&quot;e2C58207Cc6dF5565044eccffdf7aeb2DAe89647&quot;</span>)
+                        .into(),
+                    val_contract_address: <span class="macro">hex!</span>(<span class="string">&quot;46d22744E171969f9D32C75E4c192aF79e3bb70E&quot;</span>).into(),
+                    bridge_contract_address: <span class="macro">hex!</span>(<span class="string">&quot;401c6A23a44f72151D90878DF0aa86E77fBde0e2&quot;</span>)
+                        .into(),
+                },
+                <span class="macro">vec!</span>[
+                    <span class="macro">hex!</span>(<span class="string">&quot;a63e5398515c405aba87c13b56d344f1a7d32d2226062fac396d58154d45380a&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;62f53d93e5ab9b26ccb7b9625abfe76a3d5fb3b732c039f3322bfe3f35503401&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;c84c2c4395322b7935bf9eba08a392e5c485b0a984b5c38c8174a89c6b24750c&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;8af75f561b714320205491d7571cf6d3df650143e2862b36c7b823d1de0bd244&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;a492d53531934d57acc5c2a852a724272b0a0d6571cc5b0e2433bebbb334e13c&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;5c6e091530ae1891eb33a9abc24727239b84bf8e458306b7cd4740662343b84c&quot;</span>).into(),
+                ],
+                <span class="macro">vec!</span>[
+                    <span class="macro">hex!</span>(<span class="string">&quot;7653840f435e7412fbaf0eb6331206b325de62e036435458a16155c43393f504&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50&quot;</span>).into(),
+                    <span class="macro">hex!</span>(<span class="string">&quot;e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f&quot;</span>).into(),
+                ],
+                <span class="number">3</span>,
+            )
+        },
+        <span class="macro">vec!</span>[],
+        <span class="prelude-val">None</span>,
+        <span class="prelude-val">Some</span>(<span class="string">&quot;sora-substrate-predev&quot;</span>),
+        <span class="prelude-val">None</span>,
+        <span class="prelude-val">Some</span>(properties),
+        <span class="prelude-val">None</span>,
+    )
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
