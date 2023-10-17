@@ -82,8 +82,6 @@ use frame_election_provider_support::{generate_solution_type, onchain, Sequentia
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
-#[cfg(feature = "wip")] // order-book
-use frame_system::EnsureSigned;
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -1031,6 +1029,7 @@ parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
     pub const MaxRegistrars: u32 = 20;
+    pub const MaxAdditionalDataLength: u32 = 128;
     pub ReferralsReservesAcc: AccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             b"referrals".to_vec(),
@@ -1058,6 +1057,7 @@ impl liquidity_proxy::Config for Runtime {
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
+    type MaxAdditionalDataLength = MaxAdditionalDataLength;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1926,18 +1926,7 @@ impl order_book::Config for Runtime {
     type SyntheticInfoProvider = XSTPool;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
-    type ParameterUpdateOrigin = EitherOfDiverse<
-        EnsureSigned<AccountId>,
-        EitherOf<
-            pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
-            EnsureRoot<AccountId>,
-        >,
-    >;
-    type StatusUpdateOrigin = EitherOf<
-        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
-        EnsureRoot<AccountId>,
-    >;
-    type RemovalOrigin = EitherOf<
+    type PermittedOrigin = EitherOf<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;

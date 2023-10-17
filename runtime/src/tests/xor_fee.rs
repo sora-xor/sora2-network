@@ -1180,6 +1180,7 @@ fn fee_payment_postponed_xorless_transfer() {
             selected_source_types: vec![],
             filter_mode: FilterMode::Disabled,
             receiver: alice(),
+            additional_data: Default::default(),
         });
 
         let quoted_fee =
@@ -1201,6 +1202,7 @@ fn fee_payment_postponed_xorless_transfer() {
             selected_source_types: vec![],
             filter_mode: FilterMode::Disabled,
             receiver: bob(),
+            additional_data: Default::default(),
         });
 
         let quoted_fee =
@@ -1283,6 +1285,7 @@ fn fee_payment_postpone_failed_xorless_transfer() {
             selected_source_types: vec![],
             filter_mode: FilterMode::Disabled,
             receiver: bob(),
+            additional_data: Default::default(),
         });
 
         assert_err!(
@@ -1300,6 +1303,7 @@ fn fee_payment_postpone_failed_xorless_transfer() {
             selected_source_types: vec![],
             filter_mode: FilterMode::Disabled,
             receiver: bob(),
+            additional_data: Default::default(),
         });
 
         assert_err!(
