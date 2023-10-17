@@ -3,12 +3,12 @@ pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../libraries/Bits.sol";
-import "../libraries/Bitfield.sol";
+import "./libraries/Bits.sol";
+import "./libraries/Bitfield.sol";
 import "./libraries/ScaleCodec.sol";
 import "./ISimplifiedMMRProof.sol";
 import "./ISimplifiedMMRVerification.sol";
-import "../libraries/MerkleProof.sol";
+import "./libraries/MerkleProof.sol";
 
 /**
  * @title A entry contract for the Ethereum light client
