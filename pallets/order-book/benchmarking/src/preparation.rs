@@ -55,7 +55,7 @@ use order_book_imported::{
 
 use assets::AssetIdOf;
 use common::prelude::{BalanceUnit, QuoteAmount, Scalar};
-use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
+use common::{Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::debug;
 use frame_benchmarking::Zero;
 use frame_support::traits::Time;
@@ -64,7 +64,6 @@ use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion};
 
 use order_book_benchmarking_imported::{assert_orders_numbers, Config, DEX};
 
-use assets::Pallet as Assets;
 use order_book_imported::Pallet as OrderBookPallet;
 
 /// Places buy orders for worst-case execution. Fill up max amount allowed by the storages or by
