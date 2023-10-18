@@ -38,6 +38,7 @@
 //! The extra benchmarks can be conveniently run through script in this directory. Also they are
 //! generated with `./generate_benchmarks.py`
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "runtime-benchmarks")]
 // order-book
 #![cfg(feature = "wip")]
