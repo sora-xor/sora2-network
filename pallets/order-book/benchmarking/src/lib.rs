@@ -132,6 +132,8 @@ pub fn assert_orders_numbers<T: order_book_benchmarking_imported::Config>(
 #[cfg(not(test))]
 pub use benchmarks_inner::*;
 
+// Separate module in order to disable tests (they do not work with current approach: using
+// runtime)
 #[cfg(not(test))]
 mod benchmarks_inner {
     use common::prelude::SwapAmount;
