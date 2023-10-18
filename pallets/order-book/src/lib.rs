@@ -68,6 +68,9 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+pub mod test_utils;
+
 pub mod cache_data_layer;
 pub mod fee_calculator;
 mod limit_order;
@@ -75,7 +78,6 @@ mod market_order;
 mod order_book;
 mod scheduler;
 pub mod storage_data_layer;
-pub mod test_utils;
 pub mod traits;
 pub mod types;
 

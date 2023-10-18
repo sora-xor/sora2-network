@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg(feature = "wip")] // order-book
+#![cfg(any(test, feature = "runtime-benchmarks"))]
 
 // TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(not(test))]
