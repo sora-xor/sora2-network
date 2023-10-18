@@ -229,6 +229,8 @@ pub fn create_and_populate_order_book<T: Config>(
     .unwrap();
 }
 
+/// Update orderbook with temporarily setting its status to `Stop`.
+///
 /// If some parameter is `None`, then leave it as is.
 fn update_order_book_with_set_status<T: Config>(
     order_book: &mut OrderBook<T>,
@@ -237,6 +239,7 @@ fn update_order_book_with_set_status<T: Config>(
     min_lot_size: Option<OrderVolume>,
     max_lot_size: Option<OrderVolume>,
 ) {
+    let original_status = order_book.status;
     OrderBookPallet::<T>::change_orderbook_status(
         RawOrigin::Root.into(),
         order_book.order_book_id,
@@ -259,7 +262,7 @@ fn update_order_book_with_set_status<T: Config>(
     OrderBookPallet::<T>::change_orderbook_status(
         RawOrigin::Root.into(),
         order_book.order_book_id,
-        OrderBookStatus::Trade,
+        original_status,
     )
     .unwrap();
 
