@@ -36,7 +36,7 @@ use framenode_runtime::order_book as order_book_imported;
 
 use order_book_imported::{
     cache_data_layer::CacheDataLayer,
-    test_utils::{bid_prices_iterator, lifespans_iterator, users_iterator},
+    test_utils::{accounts, bid_prices_iterator, lifespans_iterator, users_iterator},
     traits::DataLayer,
     Config, LimitOrder, MomentOf, OrderBook, OrderBookId, OrderBooks, OrderVolume, Pallet,
 };
@@ -50,7 +50,7 @@ use frame_support::traits::Time;
 use frame_system::RawOrigin;
 use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion};
 
-use crate::benchmarking::{assert_orders_numbers, bob, DEX};
+use crate::benchmarking::{assert_orders_numbers, DEX};
 use crate::test_utils::{
     fill_expiration_schedule, fill_order_book_side, fill_order_book_worst_case, fill_price,
     fill_user_orders, update_order_book_with_set_status, FillSettings,
@@ -74,12 +74,15 @@ use Pallet as OrderBookPallet;
 pub fn create_and_populate_order_book<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
 ) {
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
-        .unwrap();
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
+        order_book_id,
+    )
+    .unwrap();
 
     Assets::<T>::update_balance(
         RawOrigin::Root.into(),
-        bob::<T>(),
+        accounts::bob::<T>(),
         order_book_id.quote,
         balance!(1000000).try_into().unwrap(),
     )
@@ -87,7 +90,7 @@ pub fn create_and_populate_order_book<T: Config>(
 
     Assets::<T>::update_balance(
         RawOrigin::Root.into(),
-        bob::<T>(),
+        accounts::bob::<T>(),
         order_book_id.base,
         balance!(1000000).try_into().unwrap(),
     )
@@ -118,7 +121,7 @@ pub fn create_and_populate_order_book<T: Config>(
     let amount12 = balance!(13.7);
 
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         bp1,
         amount1,
@@ -127,7 +130,7 @@ pub fn create_and_populate_order_book<T: Config>(
     )
     .unwrap();
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         bp2,
         amount2,
@@ -136,7 +139,7 @@ pub fn create_and_populate_order_book<T: Config>(
     )
     .unwrap();
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         bp2,
         amount3,
@@ -145,7 +148,7 @@ pub fn create_and_populate_order_book<T: Config>(
     )
     .unwrap();
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         bp3,
         amount4,
@@ -154,7 +157,7 @@ pub fn create_and_populate_order_book<T: Config>(
     )
     .unwrap();
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         bp3,
         amount5,
@@ -163,7 +166,7 @@ pub fn create_and_populate_order_book<T: Config>(
     )
     .unwrap();
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         bp3,
         amount6,
@@ -173,7 +176,7 @@ pub fn create_and_populate_order_book<T: Config>(
     .unwrap();
 
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         sp1,
         amount7,
@@ -182,7 +185,7 @@ pub fn create_and_populate_order_book<T: Config>(
     )
     .unwrap();
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         sp2,
         amount8,
@@ -191,7 +194,7 @@ pub fn create_and_populate_order_book<T: Config>(
     )
     .unwrap();
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         sp2,
         amount9,
@@ -200,7 +203,7 @@ pub fn create_and_populate_order_book<T: Config>(
     )
     .unwrap();
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         sp3,
         amount10,
@@ -209,7 +212,7 @@ pub fn create_and_populate_order_book<T: Config>(
     )
     .unwrap();
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         sp3,
         amount11,
@@ -218,7 +221,7 @@ pub fn create_and_populate_order_book<T: Config>(
     )
     .unwrap();
     OrderBookPallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         sp3,
         amount12,
@@ -376,8 +379,11 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         base: VAL.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
-        .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
+        order_book_id,
+    )
+    .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
     let expected_side_orders = sp_std::cmp::min(
@@ -421,8 +427,11 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
         base: ETH.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id_2)
-        .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
+        order_book_id_2,
+    )
+    .expect("failed to create an order book");
     let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
     let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
     let mut fill_expiration_settings = fill_settings.clone();
@@ -500,8 +509,11 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
         base: VAL.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
-        .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
+        order_book_id,
+    )
+    .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
@@ -590,8 +602,11 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
         base: ETH.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id_2)
-        .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
+        order_book_id_2,
+    )
+    .expect("failed to create an order book");
     let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
     let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
     let mut fill_expiration_settings = fill_settings.clone();
@@ -636,8 +651,11 @@ pub fn prepare_quote_benchmark<T: Config>(
         base: VAL.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
-        .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
+        order_book_id,
+    )
+    .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
@@ -701,11 +719,11 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
             quote: XOR.into(),
         }
     } else {
-        let creator = bob::<T>();
+        let creator = accounts::bob::<T>();
         frame_system::Pallet::<T>::inc_providers(&creator);
 
         let nft = assets::Pallet::<T>::register_from(
-            &bob::<T>(),
+            &accounts::bob::<T>(),
             common::AssetSymbol(b"NFT".to_vec()),
             common::AssetName(b"Nft".to_vec()),
             0,
@@ -730,8 +748,11 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
         .unwrap();
         id
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id)
-        .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
+        order_book_id,
+    )
+    .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
     let max_side_orders = sp_std::cmp::min(
@@ -749,8 +770,12 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
             order_book.max_lot_size,
         )
         .balance();
-        assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &bob::<T>(), needed_supply)
-            .unwrap();
+        assets::Pallet::<T>::mint_unchecked(
+            &order_book_id.base,
+            &accounts::bob::<T>(),
+            needed_supply,
+        )
+        .unwrap();
     }
 
     let (_, _, amount, side) = prepare_order_execute_worst_case::<T>(

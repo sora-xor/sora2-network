@@ -78,7 +78,7 @@ fn should_work_as_cache() {
         };
 
         let order_id = 1;
-        let owner = alice::<Runtime>();
+        let owner = accounts::alice::<Runtime>();
         let price = balance!(12).into();
         let amount = balance!(100).into();
 
@@ -173,7 +173,7 @@ fn should_work_as_storage() {
         };
 
         let order_id = 1;
-        let owner = alice::<Runtime>();
+        let owner = accounts::alice::<Runtime>();
         let price = balance!(12).into();
         let amount = balance!(100).into();
 
@@ -262,7 +262,7 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
         let order_sell_id1 = 3;
         let order_sell_id2 = 4;
         let order_sell_id3 = 5;
-        let owner = alice::<Runtime>();
+        let owner = accounts::alice::<Runtime>();
         let price1 = balance!(12).into();
         let price2 = balance!(13).into();
         let amount = balance!(10).into();
@@ -369,7 +369,7 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         let order_buy_id = 1;
         let order_sell_id = 2;
-        let owner = alice::<Runtime>();
+        let owner = accounts::alice::<Runtime>();
         let price = balance!(12).into();
         let amount = balance!(10).into();
 
@@ -520,7 +520,7 @@ fn should_not_insert_limit_order(data: &mut impl DataLayer<Runtime>) {
             quote: XOR.into(),
         };
 
-        let owner = alice::<Runtime>();
+        let owner = accounts::alice::<Runtime>();
         let price = balance!(12).into();
         let amount = balance!(10).into();
 
@@ -578,7 +578,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         let order_sell_id1 = 3;
         let order_sell_id2 = 4;
         let order_sell_id3 = 5;
-        let owner = alice::<Runtime>();
+        let owner = accounts::alice::<Runtime>();
         let price1 = balance!(12).into();
         let price2 = balance!(13).into();
         let amount = balance!(10).into();
@@ -1094,7 +1094,7 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         };
 
         let order_id = 1;
-        let owner = alice::<Runtime>();
+        let owner = accounts::alice::<Runtime>();
         let price = balance!(10).into();
         let amount = balance!(100).into();
         let new_amount = balance!(80).into();
@@ -1235,7 +1235,7 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
         };
 
         let order_id = 1;
-        let owner = alice::<Runtime>();
+        let owner = accounts::alice::<Runtime>();
         let price = balance!(10).into();
         let amount = balance!(100).into();
         let new_amount = balance!(0).into();
@@ -1394,7 +1394,7 @@ fn should_not_update_equal_limit_order(data: &mut impl DataLayer<Runtime>) {
 
         let order = LimitOrder::<Runtime>::new(
             order_id,
-            alice::<Runtime>(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(12).into(),
             amount,
@@ -1441,7 +1441,7 @@ fn should_not_update_limit_order_with_bigger_amount(data: &mut impl DataLayer<Ru
 
         let order = LimitOrder::<Runtime>::new(
             order_id,
-            alice::<Runtime>(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(12).into(),
             amount,
@@ -1524,12 +1524,12 @@ fn get_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
         create_empty_order_book::<Runtime>(empty_order_book_id);
 
         assert_eq!(
-            data.get_user_limit_orders(&bob::<Runtime>(), &empty_order_book_id),
+            data.get_user_limit_orders(&accounts::bob::<Runtime>(), &empty_order_book_id),
             None
         );
 
         assert_eq!(
-            data.get_user_limit_orders(&bob::<Runtime>(), &order_book_id)
+            data.get_user_limit_orders(&accounts::bob::<Runtime>(), &order_book_id)
                 .unwrap(),
             vec![1, 3, 5, 7, 9, 11]
         );
@@ -1576,7 +1576,7 @@ fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
 
         // no orders from empty_order_book_id
         assert_eq!(
-            data.get_all_user_limit_orders(&bob::<Runtime>()),
+            data.get_all_user_limit_orders(&accounts::bob::<Runtime>()),
             BTreeMap::from([
                 (
                     order_book_id1,
@@ -1609,7 +1609,7 @@ fn best_bid_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
 
         // rest is for adding/removing orders and checking that it still shows correct results
 
-        let owner = alice::<Runtime>();
+        let owner = accounts::alice::<Runtime>();
         let order_amount = BalanceUnit::divisible(balance!(10.0));
 
         let order1 = LimitOrder::<Runtime>::new(
@@ -1683,7 +1683,7 @@ fn best_ask_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
 
         // rest is for adding/removing orders and checking that it still shows correct results
 
-        let owner = alice::<Runtime>();
+        let owner = accounts::alice::<Runtime>();
         let order_amount = BalanceUnit::divisible(balance!(10.0));
 
         let order1 = LimitOrder::<Runtime>::new(
@@ -1865,7 +1865,7 @@ fn is_user_limit_orders_full_works(data: &mut impl DataLayer<Runtime>) {
             quote: XOR.into(),
         };
         let mut order_book = create_empty_order_book::<Runtime>(order_book_id);
-        let user = alice::<Runtime>();
+        let user = accounts::alice::<Runtime>();
         let fill_settings = FillSettings::max();
         let current_block = frame_system::Pallet::<Runtime>::block_number();
         let mut lifespans = lifespans_iterator::<Runtime>(

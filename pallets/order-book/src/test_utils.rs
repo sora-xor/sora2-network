@@ -44,7 +44,6 @@ use order_book_imported::{
 use order_book_imported::{Asks, Bids, LimitOrders};
 
 use assets::AssetIdOf;
-use codec::Decode;
 #[cfg(feature = "std")]
 use common::prelude::FixedWrapper;
 use common::prelude::{BalanceUnit, Scalar};
@@ -63,36 +62,40 @@ use sp_std::{collections::btree_map::BTreeMap, iter::repeat, vec::Vec};
 pub const DEX: common::DEXId = common::DEXId::Polkaswap;
 pub const INIT_BALANCE: Balance = balance!(1000000);
 
-pub fn alice<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
-    <T as frame_system::Config>::AccountId::decode(&mut &[1u8; 32][..]).unwrap()
-}
+pub mod accounts {
+    use codec::Decode;
 
-pub fn bob<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
-    <T as frame_system::Config>::AccountId::decode(&mut &[2u8; 32][..]).unwrap()
-}
-
-pub fn charlie<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
-    <T as frame_system::Config>::AccountId::decode(&mut &[3u8; 32][..]).unwrap()
-}
-
-pub fn dave<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
-    <T as frame_system::Config>::AccountId::decode(&mut &[4u8; 32][..]).unwrap()
-}
-
-pub fn generate_account<T: frame_system::Config>(
-    seed: u32,
-) -> <T as frame_system::Config>::AccountId {
-    let mut adr = [0u8; 32];
-
-    let mut value = seed;
-    let mut id = 0;
-    while value != 0 {
-        adr[31 - id] = (value % 256) as u8;
-        value = value / 256;
-        id += 1;
+    pub fn alice<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
+        <T as frame_system::Config>::AccountId::decode(&mut &[1u8; 32][..]).unwrap()
     }
 
-    <T as frame_system::Config>::AccountId::decode(&mut &adr[..]).unwrap()
+    pub fn bob<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
+        <T as frame_system::Config>::AccountId::decode(&mut &[2u8; 32][..]).unwrap()
+    }
+
+    pub fn charlie<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
+        <T as frame_system::Config>::AccountId::decode(&mut &[3u8; 32][..]).unwrap()
+    }
+
+    pub fn dave<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
+        <T as frame_system::Config>::AccountId::decode(&mut &[4u8; 32][..]).unwrap()
+    }
+
+    pub fn generate_account<T: frame_system::Config>(
+        seed: u32,
+    ) -> <T as frame_system::Config>::AccountId {
+        let mut adr = [0u8; 32];
+
+        let mut value = seed;
+        let mut id = 0;
+        while value != 0 {
+            adr[31 - id] = (value % 256) as u8;
+            value = value / 256;
+            id += 1;
+        }
+
+        <T as frame_system::Config>::AccountId::decode(&mut &adr[..]).unwrap()
+    }
 }
 
 pub fn free_balance<T: assets::Config + frame_system::Config>(
@@ -149,7 +152,7 @@ pub fn users_iterator<T: Config>(
 ) -> impl Iterator<Item = T::AccountId> {
     let mint_per_user = max_order_amount * Scalar(max_orders_per_user);
     (1..)
-        .map(generate_account::<T>)
+        .map(accounts::generate_account::<T>)
         // each user receives assets that should be enough for placing their orders
         .inspect(move |user| {
             assets::Pallet::<T>::mint_unchecked(
@@ -190,7 +193,7 @@ pub fn create_empty_order_book<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>,
 ) -> OrderBook<T> {
     assert_ok!(Pallet::<T>::create_orderbook(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id
     ));
 
@@ -212,12 +215,12 @@ pub fn create_and_fill_order_book<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>,
 ) -> OrderBook<T> {
     assert_ok!(Pallet::<T>::create_orderbook(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id
     ));
 
-    fill_balance::<T>(bob::<T>(), order_book_id);
-    fill_balance::<T>(charlie::<T>(), order_book_id);
+    fill_balance::<T>(accounts::bob::<T>(), order_book_id);
+    fill_balance::<T>(accounts::charlie::<T>(), order_book_id);
 
     let lifespan = Some(100000u32.into());
 
@@ -246,7 +249,7 @@ pub fn create_and_fill_order_book<T: Config>(
     let amount12 = balance!(13.7);
 
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         bp1,
         amount1,
@@ -254,7 +257,7 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(charlie::<T>()).into(),
+        RawOrigin::Signed(accounts::charlie::<T>()).into(),
         order_book_id,
         bp2,
         amount2,
@@ -262,7 +265,7 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         bp2,
         amount3,
@@ -270,7 +273,7 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(charlie::<T>()).into(),
+        RawOrigin::Signed(accounts::charlie::<T>()).into(),
         order_book_id,
         bp3,
         amount4,
@@ -278,7 +281,7 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         bp3,
         amount5,
@@ -286,7 +289,7 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(charlie::<T>()).into(),
+        RawOrigin::Signed(accounts::charlie::<T>()).into(),
         order_book_id,
         bp3,
         amount6,
@@ -295,7 +298,7 @@ pub fn create_and_fill_order_book<T: Config>(
     ));
 
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         sp1,
         amount7,
@@ -303,7 +306,7 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(charlie::<T>()).into(),
+        RawOrigin::Signed(accounts::charlie::<T>()).into(),
         order_book_id,
         sp2,
         amount8,
@@ -311,7 +314,7 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         sp2,
         amount9,
@@ -319,7 +322,7 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(charlie::<T>()).into(),
+        RawOrigin::Signed(accounts::charlie::<T>()).into(),
         order_book_id,
         sp3,
         amount10,
@@ -327,7 +330,7 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(bob::<T>()).into(),
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
         order_book_id,
         sp3,
         amount11,
@@ -335,7 +338,7 @@ pub fn create_and_fill_order_book<T: Config>(
         lifespan
     ));
     assert_ok!(Pallet::<T>::place_limit_order(
-        RawOrigin::Signed(charlie::<T>()).into(),
+        RawOrigin::Signed(accounts::charlie::<T>()).into(),
         order_book_id,
         sp3,
         amount12,

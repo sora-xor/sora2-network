@@ -44,7 +44,7 @@ fn should_return_error_for_invalid_limit_order_lifespan() {
     let wrong_lifespan1 = 0;
     let order1 = LimitOrder::<Runtime>::new(
         0,
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         balance!(10).into(),
         balance!(100).into(),
@@ -57,7 +57,7 @@ fn should_return_error_for_invalid_limit_order_lifespan() {
     let wrong_lifespan2 = Runtime::MAX_ORDER_LIFESPAN + 1;
     let order2 = LimitOrder::<Runtime>::new(
         0,
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         balance!(10).into(),
         balance!(100).into(),
@@ -73,7 +73,7 @@ fn should_return_error_for_invalid_limit_order_amount() {
     let wrong_amount = balance!(0).into();
     let order = LimitOrder::<Runtime>::new(
         0,
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         balance!(10).into(),
         wrong_amount,
@@ -94,7 +94,7 @@ fn should_return_error_for_invalid_market_order_amount() {
 
     let wrong_amount = balance!(0).into();
     let order = MarketOrder::<Runtime>::new(
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         order_book_id,
         wrong_amount,
@@ -108,7 +108,7 @@ fn should_return_error_for_invalid_limit_order_price() {
     let wrong_price = balance!(0).into();
     let order = LimitOrder::<Runtime>::new(
         0,
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         wrong_price,
         balance!(100).into(),
@@ -129,7 +129,7 @@ fn should_pass_valid_limit_order() {
 
     let mut order = LimitOrder::<Runtime>::new(
         0,
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         price,
         amount,
@@ -156,7 +156,7 @@ fn should_pass_valid_market_order() {
 
     let amount = balance!(10).into();
     let order = MarketOrder::<Runtime>::new(
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         order_book_id,
         amount,
@@ -173,7 +173,7 @@ fn should_not_return_limit_order_deal_amount_with_big_base_limit() {
 
     let buy_order = LimitOrder::<Runtime>::new(
         1,
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         price,
         amount,
@@ -184,7 +184,7 @@ fn should_not_return_limit_order_deal_amount_with_big_base_limit() {
 
     let sell_order = LimitOrder::<Runtime>::new(
         2,
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Sell,
         price,
         amount,
@@ -218,7 +218,7 @@ fn should_return_limit_order_deal_amount() {
 
     let buy_order = LimitOrder::<Runtime>::new(
         1,
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         price,
         amount,
@@ -229,7 +229,7 @@ fn should_return_limit_order_deal_amount() {
 
     let sell_order = LimitOrder::<Runtime>::new(
         2,
-        alice::<Runtime>(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Sell,
         price,
         amount,

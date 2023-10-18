@@ -24,9 +24,9 @@ def generate_fs(range_: range, template: str):
 code_template_place = """
         #[extra]
         place_limit_order_{} {{
-            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
             let (order_book_id, price, amount, side, lifespan) =
-                prepare_place_orderbook_benchmark::<T>(preset_{}(), alice::<T>());
+                prepare_place_orderbook_benchmark::<T>(preset_{}(), accounts::alice::<T>());
         }}: {{
             OrderBookPallet::<T>::place_limit_order(
                 signer, order_book_id, *price.balance(), *amount.balance(), side, Some(lifespan),
@@ -37,9 +37,9 @@ code_template_place = """
 code_template_cancel_first = """
         #[extra]
         cancel_limit_order_first_{} {{
-            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
             let (order_book_id, order_id) =
-                prepare_cancel_orderbook_benchmark(preset_{}::<T>(), alice::<T>(), true);
+                prepare_cancel_orderbook_benchmark(preset_{}::<T>(), accounts::alice::<T>(), true);
         }}: {{
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }}
@@ -48,9 +48,9 @@ code_template_cancel_first = """
 code_template_cancel_last = """
         #[extra]
         cancel_limit_order_last_{} {{
-            let signer = RawOrigin::Signed(alice::<T>()).into();
+            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
             let (order_book_id, order_id) =
-                prepare_cancel_orderbook_benchmark(preset_{}::<T>(), alice::<T>(), false);
+                prepare_cancel_orderbook_benchmark(preset_{}::<T>(), accounts::alice::<T>(), false);
         }}: {{
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }}
@@ -59,7 +59,7 @@ code_template_cancel_last = """
 code_template_execute = """
         #[extra]
         execute_market_order_{} {{
-            let caller = alice::<T>();
+            let caller = accounts::alice::<T>();
             let (id, amount, side) = prepare_market_order_benchmark::<T>(preset_{}(), caller.clone(), false);
         }}: {{
             OrderBookPallet::<T>::execute_market_order(
@@ -82,7 +82,7 @@ code_template_quote = """
 code_template_exchange = """
         #[extra]
         exchange_{} {{
-            let caller = alice::<T>();
+            let caller = accounts::alice::<T>();
             let (id, amount, _) = prepare_market_order_benchmark::<T>(preset_{}(), caller.clone(), true);
         }} : {{
             OrderBookPallet::<T>::exchange(
