@@ -1769,20 +1769,20 @@ fn fill_single_price(
     price: OrderPrice,
     side: PriceVariant,
 ) {
-    let fill_settings = FillSettings::max();
+    let fill_settings = fill_tools::FillSettings::max();
     let amount = order_book.min_lot_size;
-    let mut users = users_iterator::<Runtime>(
+    let mut users = fill_tools::users_iterator::<Runtime>(
         order_book.order_book_id,
         amount,
         price,
         fill_settings.max_orders_per_user,
     );
     let current_block = frame_system::Pallet::<Runtime>::block_number();
-    let mut lifespans = lifespans_iterator::<Runtime>(
+    let mut lifespans = fill_tools::lifespans_iterator::<Runtime>(
         fill_settings.max_expiring_orders_per_block,
         (current_block + 10).into(),
     );
-    fill_price(
+    fill_tools::fill_price(
         data,
         fill_settings,
         &mut order_book,
@@ -1866,9 +1866,9 @@ fn is_user_limit_orders_full_works(data: &mut impl DataLayer<Runtime>) {
         };
         let mut order_book = create_empty_order_book::<Runtime>(order_book_id);
         let user = accounts::alice::<Runtime>();
-        let fill_settings = FillSettings::max();
+        let fill_settings = fill_tools::FillSettings::max();
         let current_block = frame_system::Pallet::<Runtime>::block_number();
-        let mut lifespans = lifespans_iterator::<Runtime>(
+        let mut lifespans = fill_tools::lifespans_iterator::<Runtime>(
             fill_settings.max_expiring_orders_per_block,
             (current_block + 10).into(),
         );
@@ -1876,7 +1876,7 @@ fn is_user_limit_orders_full_works(data: &mut impl DataLayer<Runtime>) {
         assert!(data
             .is_user_limit_orders_full(&user, &order_book_id)
             .is_none());
-        fill_user_orders(
+        fill_tools::fill_user_orders(
             data,
             fill_settings,
             &mut order_book,

@@ -36,7 +36,8 @@ use framenode_runtime::order_book as order_book_imported;
 
 use order_book_imported::{
     cache_data_layer::CacheDataLayer,
-    test_utils::{accounts, bid_prices_iterator, lifespans_iterator, users_iterator},
+    test_utils::accounts,
+    test_utils::fill_tools::{bid_prices_iterator, lifespans_iterator, users_iterator},
     traits::DataLayer,
     Config, LimitOrder, MomentOf, OrderBook, OrderBookId, OrderBooks, OrderVolume, Pallet,
 };
@@ -51,10 +52,11 @@ use frame_system::RawOrigin;
 use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion};
 
 use crate::benchmarking::{assert_orders_numbers, DEX};
-use crate::test_utils::{
+use crate::test_utils::fill_tools::{
     fill_expiration_schedule, fill_order_book_side, fill_order_book_worst_case, fill_price,
-    fill_user_orders, update_order_book_with_set_status, FillSettings,
+    fill_user_orders, FillSettings,
 };
+use crate::test_utils::update_order_book_with_set_status;
 
 use crate::OrderPrice;
 use assets::Pallet as Assets;
@@ -810,7 +812,7 @@ pub mod presets {
     #[cfg(test)]
     use framenode_runtime::order_book as order_book_imported;
 
-    use crate::test_utils::FillSettings;
+    use crate::test_utils::fill_tools::FillSettings;
     use order_book_imported::Config;
 
     macro_rules! generate_presets {

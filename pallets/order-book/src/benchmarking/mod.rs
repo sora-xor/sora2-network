@@ -56,7 +56,7 @@ use order_book_imported::{
     OrderBookStatus, OrderPrice, OrderVolume, Pallet,
 };
 
-use crate::test_utils::{accounts, FillSettings};
+use crate::test_utils::{accounts, fill_tools::FillSettings};
 use preparation::{
     prepare_cancel_orderbook_benchmark, prepare_market_order_benchmark,
     prepare_place_orderbook_benchmark, prepare_quote_benchmark,

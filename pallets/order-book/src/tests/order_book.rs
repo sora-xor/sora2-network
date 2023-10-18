@@ -862,9 +862,11 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
             <Runtime as Config>::MaxExpiringOrdersPerBlock::get();
         let current_block = frame_system::Pallet::<Runtime>::block_number();
 
-        let mut prices = bid_prices_iterator(order_book.tick_size, max_side_price_count)
-            .flat_map(move |price| repeat(price).take(max_orders_per_price as usize));
-        let mut lifespans = lifespans_iterator::<Runtime>(max_expiring_orders_per_block, 3);
+        let mut prices =
+            fill_tools::bid_prices_iterator(order_book.tick_size, max_side_price_count)
+                .flat_map(move |price| repeat(price).take(max_orders_per_price as usize));
+        let mut lifespans =
+            fill_tools::lifespans_iterator::<Runtime>(max_expiring_orders_per_block, 3);
 
         for _ in 0..max_orders_per_user {
             order.id += 1;
