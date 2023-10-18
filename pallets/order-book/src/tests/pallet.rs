@@ -615,7 +615,7 @@ fn should_expire_order() {
 
         // verify state
 
-        let order_id = get_last_order_id(order_book_id).unwrap();
+        let order_id = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         // check
         let expected_order = LimitOrder::<Runtime>::new(
@@ -695,7 +695,7 @@ fn should_cleanup_on_expiring() {
 
         // verify state
 
-        let order_id = get_last_order_id(order_book_id).unwrap();
+        let order_id = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         // check
         let expected_order = LimitOrder::<Runtime>::new(
@@ -748,7 +748,7 @@ fn should_cleanup_on_expiring() {
         // Run to the last block the order should still be available at
         run_to_block(end_of_lifespan_block);
 
-        let order_id = get_last_order_id(order_book_id).unwrap();
+        let order_id = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         // The order is still there
         assert_eq!(
@@ -837,7 +837,7 @@ fn should_enforce_expiration_and_weight_limits() {
                 PriceVariant::Buy,
                 Some(lifespan)
             ));
-            placed_orders.push(get_last_order_id(order_book_id).unwrap());
+            placed_orders.push(get_last_order_id::<Runtime>(order_book_id).unwrap());
         }
         let caller = generate_account::<Runtime>(max_orders_expire_at_block);
         fill_balance::<Runtime>(caller.clone(), order_book_id);

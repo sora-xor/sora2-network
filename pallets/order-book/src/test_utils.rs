@@ -38,7 +38,7 @@ use framenode_runtime::order_book as order_book_imported;
 
 use order_book_imported::{
     traits::DataLayer, Config, ExpirationsAgenda, LimitOrder, MarketRole, OrderBook, OrderBookId,
-    OrderPrice, OrderVolume, Pallet, Payment, PriceOrders,
+    OrderBookStatus, OrderPrice, OrderVolume, Pallet, Payment, PriceOrders,
 };
 #[cfg(feature = "std")]
 use order_book_imported::{Asks, Bids, LimitOrders};
@@ -398,6 +398,76 @@ pub fn create_and_fill_order_book<T: Config>(
     );
 
     Pallet::<T>::order_books(order_book_id).unwrap()
+}
+
+pub fn get_last_order_id<T: Config>(
+    order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>,
+) -> Option<<T as Config>::OrderId> {
+    if let Some(order_book) = Pallet::<T>::order_books(order_book_id) {
+        Some(order_book.last_order_id)
+    } else {
+        None
+    }
+}
+
+pub fn update_orderbook_unchecked<T: Config>(
+    order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>,
+    tick_size: Balance,
+    step_lot_size: Balance,
+    min_lot_size: Balance,
+    max_lot_size: Balance,
+) -> OrderBook<T> {
+    let mut order_book = Pallet::order_books(order_book_id).unwrap();
+    order_book.tick_size.set(tick_size);
+    order_book.step_lot_size.set(step_lot_size);
+    order_book.min_lot_size.set(min_lot_size);
+    order_book.max_lot_size.set(max_lot_size);
+    order_book_imported::OrderBooks::<T>::set(order_book_id, Some(order_book));
+
+    Pallet::order_books(order_book_id).unwrap()
+}
+
+/// Update orderbook with temporarily setting its status to `Stop`.
+///
+/// If some parameter is `None`, then leave it as is.
+pub fn update_order_book_with_set_status<T: Config>(
+    order_book: &mut OrderBook<T>,
+    tick_size: Option<OrderPrice>,
+    step_lot_size: Option<OrderVolume>,
+    min_lot_size: Option<OrderVolume>,
+    max_lot_size: Option<OrderVolume>,
+) {
+    let original_status = order_book.status;
+    Pallet::<T>::change_orderbook_status(
+        RawOrigin::Root.into(),
+        order_book.order_book_id,
+        OrderBookStatus::Stop,
+    )
+    .unwrap();
+    let tick_size = tick_size.unwrap_or(order_book.tick_size);
+    let step_lot_size = step_lot_size.unwrap_or(order_book.step_lot_size);
+    let min_lot_size = min_lot_size.unwrap_or(order_book.min_lot_size);
+    let max_lot_size = max_lot_size.unwrap_or(order_book.max_lot_size);
+    Pallet::<T>::update_orderbook(
+        RawOrigin::Root.into(),
+        order_book.order_book_id,
+        *tick_size.balance(),
+        *step_lot_size.balance(),
+        *min_lot_size.balance(),
+        *max_lot_size.balance(),
+    )
+    .unwrap();
+    Pallet::<T>::change_orderbook_status(
+        RawOrigin::Root.into(),
+        order_book.order_book_id,
+        original_status,
+    )
+    .unwrap();
+
+    order_book.tick_size = tick_size;
+    order_book.step_lot_size = step_lot_size;
+    order_book.min_lot_size = min_lot_size;
+    order_book.max_lot_size = max_lot_size;
 }
 
 #[derive(Clone, Debug)]
@@ -883,44 +953,14 @@ pub use test_only::*;
 #[cfg(test)]
 mod test_only {
     use super::*;
-    use frame_support::assert_ok;
     use frame_support::traits::Hooks;
     use frame_support::weights::Weight;
-    use framenode_runtime::order_book::{self, Config, OrderBookId, Pallet};
-    use framenode_runtime::{Runtime, RuntimeOrigin};
+    use framenode_runtime::order_book::{self, Pallet};
+    use framenode_runtime::Runtime;
 
     pub type E = order_book::Error<Runtime>;
     pub type OrderBookPallet = Pallet<Runtime>;
     pub type DEXId = DexIdOf<Runtime>;
-
-    pub fn fill_balance(
-        account: <Runtime as frame_system::Config>::AccountId,
-        order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
-    ) {
-        assert_ok!(assets::Pallet::<Runtime>::update_balance(
-            RuntimeOrigin::root(),
-            account.clone(),
-            order_book_id.base,
-            INIT_BALANCE.try_into().unwrap()
-        ));
-
-        assert_ok!(assets::Pallet::<Runtime>::update_balance(
-            RuntimeOrigin::root(),
-            account,
-            order_book_id.quote,
-            INIT_BALANCE.try_into().unwrap()
-        ));
-    }
-
-    pub fn get_last_order_id(
-        order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
-    ) -> Option<<Runtime as Config>::OrderId> {
-        if let Some(order_book) = OrderBookPallet::order_books(order_book_id) {
-            Some(order_book.last_order_id)
-        } else {
-            None
-        }
-    }
 
     /// Returns weight spent on initializations
     pub fn run_to_block(n: u32) -> Weight {
@@ -932,22 +972,5 @@ mod test_only {
             total_init_weight += OrderBookPallet::on_initialize(System::block_number());
         }
         total_init_weight
-    }
-
-    pub fn update_orderbook_unchecked(
-        order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
-        tick_size: Balance,
-        step_lot_size: Balance,
-        min_lot_size: Balance,
-        max_lot_size: Balance,
-    ) -> OrderBook<Runtime> {
-        let mut order_book = OrderBookPallet::order_books(order_book_id).unwrap();
-        order_book.tick_size.set(tick_size);
-        order_book.step_lot_size.set(step_lot_size);
-        order_book.min_lot_size.set(min_lot_size);
-        order_book.max_lot_size.set(max_lot_size);
-        framenode_runtime::order_book::OrderBooks::<Runtime>::set(order_book_id, Some(order_book));
-
-        OrderBookPallet::order_books(order_book_id).unwrap()
     }
 }

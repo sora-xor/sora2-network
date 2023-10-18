@@ -38,8 +38,7 @@ use order_book_imported::{
     cache_data_layer::CacheDataLayer,
     test_utils::{bid_prices_iterator, lifespans_iterator, users_iterator},
     traits::DataLayer,
-    Config, LimitOrder, MomentOf, OrderBook, OrderBookId, OrderBookStatus, OrderBooks, OrderVolume,
-    Pallet,
+    Config, LimitOrder, MomentOf, OrderBook, OrderBookId, OrderBooks, OrderVolume, Pallet,
 };
 
 use assets::AssetIdOf;
@@ -54,7 +53,7 @@ use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion};
 use crate::benchmarking::{assert_orders_numbers, bob, DEX};
 use crate::test_utils::{
     fill_expiration_schedule, fill_order_book_side, fill_order_book_worst_case, fill_price,
-    fill_user_orders, FillSettings,
+    fill_user_orders, update_order_book_with_set_status, FillSettings,
 };
 
 use crate::OrderPrice;
@@ -227,49 +226,6 @@ pub fn create_and_populate_order_book<T: Config>(
         lifespan,
     )
     .unwrap();
-}
-
-/// Update orderbook with temporarily setting its status to `Stop`.
-///
-/// If some parameter is `None`, then leave it as is.
-fn update_order_book_with_set_status<T: Config>(
-    order_book: &mut OrderBook<T>,
-    tick_size: Option<OrderPrice>,
-    step_lot_size: Option<OrderVolume>,
-    min_lot_size: Option<OrderVolume>,
-    max_lot_size: Option<OrderVolume>,
-) {
-    let original_status = order_book.status;
-    OrderBookPallet::<T>::change_orderbook_status(
-        RawOrigin::Root.into(),
-        order_book.order_book_id,
-        OrderBookStatus::Stop,
-    )
-    .unwrap();
-    let tick_size = tick_size.unwrap_or(order_book.tick_size);
-    let step_lot_size = step_lot_size.unwrap_or(order_book.step_lot_size);
-    let min_lot_size = min_lot_size.unwrap_or(order_book.min_lot_size);
-    let max_lot_size = max_lot_size.unwrap_or(order_book.max_lot_size);
-    OrderBookPallet::<T>::update_orderbook(
-        RawOrigin::Root.into(),
-        order_book.order_book_id,
-        *tick_size.balance(),
-        *step_lot_size.balance(),
-        *min_lot_size.balance(),
-        *max_lot_size.balance(),
-    )
-    .unwrap();
-    OrderBookPallet::<T>::change_orderbook_status(
-        RawOrigin::Root.into(),
-        order_book.order_book_id,
-        original_status,
-    )
-    .unwrap();
-
-    order_book.tick_size = tick_size;
-    order_book.step_lot_size = step_lot_size;
-    order_book.min_lot_size = min_lot_size;
-    order_book.max_lot_size = max_lot_size;
 }
 
 /// Places buy orders for worst-case execution. Fill up max amount allowed by the storages or by

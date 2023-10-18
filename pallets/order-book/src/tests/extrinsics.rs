@@ -980,7 +980,7 @@ fn should_not_update_order_book_with_wrong_min_deal_amount() {
 
         create_empty_order_book::<Runtime>(order_book_id);
 
-        update_orderbook_unchecked(
+        update_orderbook_unchecked::<Runtime>(
             order_book_id,
             balance!(0.001),
             balance!(0.001),
@@ -1090,7 +1090,7 @@ fn should_not_update_order_book_when_attributes_exceed_total_supply() {
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
-        update_orderbook_unchecked(
+        update_orderbook_unchecked::<Runtime>(
             order_book_id,
             balance!(0.1),
             balance!(0.1),
@@ -1597,7 +1597,7 @@ fn should_place_limit_order() {
             Some(lifespan)
         ));
 
-        let order_id = get_last_order_id(order_book_id).unwrap();
+        let order_id = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         // check
         let expected_order = LimitOrder::<Runtime>::new(
@@ -1709,7 +1709,7 @@ fn should_place_limit_order_with_nft() {
             Some(lifespan)
         ));
 
-        let order_id = get_last_order_id(order_book_id).unwrap();
+        let order_id = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         // check
         let expected_order = LimitOrder::<Runtime>::new(
@@ -1885,7 +1885,7 @@ fn should_place_limit_order_out_of_spread() {
 
         // check state
 
-        let buy_order_id2 = get_last_order_id(order_book_id).unwrap();
+        let buy_order_id2 = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         assert_eq!(
             OrderBookPallet::bids(&order_book_id, &new_bid_price).unwrap(),
@@ -2001,7 +2001,7 @@ fn should_place_limit_order_out_of_spread() {
 
         // check state
 
-        let sell_order_id2 = get_last_order_id(order_book_id).unwrap();
+        let sell_order_id2 = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         assert_eq!(OrderBookPallet::bids(&order_book_id, &bid_price1), None);
         assert_eq!(
