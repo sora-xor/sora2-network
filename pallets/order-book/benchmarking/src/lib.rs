@@ -52,11 +52,17 @@ use framenode_runtime::order_book as order_book_imported;
 #[cfg(not(test))]
 use order_book as order_book_imported;
 
+// TODO: rename to `order_book_benchmarking` after upgrading to nightly-2023-07-01+
+#[cfg(not(test))]
+use crate as order_book_benchmarking_imported;
+#[cfg(test)]
+use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
+
 use assets::AssetIdOf;
 use common::DEXId;
 use frame_system::EventRecord;
 use order_book_imported::Pallet as OrderBookPallet;
-use order_book_imported::{test_utils::accounts, LimitOrder, MomentOf, OrderBookId};
+use order_book_imported::{LimitOrder, MomentOf, OrderBookId};
 
 mod lifecycle;
 mod preparation;
@@ -66,7 +72,9 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 pub struct Pallet<T: Config>(order_book_imported::Pallet<T>);
 pub trait Config: order_book_imported::Config {}
 
-fn assert_last_event<T: Config>(generic_event: <T as order_book_imported::Config>::RuntimeEvent) {
+fn assert_last_event<T: order_book_benchmarking_imported::Config>(
+    generic_event: <T as order_book_imported::Config>::RuntimeEvent,
+) {
     let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
@@ -75,7 +83,7 @@ fn assert_last_event<T: Config>(generic_event: <T as order_book_imported::Config
 }
 
 /// if `None` then don't compare the value
-pub fn assert_orders_numbers<T: Config>(
+pub fn assert_orders_numbers<T: order_book_benchmarking_imported::Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     bids: Option<usize>,
     asks: Option<usize>,

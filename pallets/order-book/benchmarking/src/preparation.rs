@@ -36,6 +36,12 @@ use framenode_runtime::order_book as order_book_imported;
 #[cfg(not(test))]
 use order_book as order_book_imported;
 
+// TODO: rename to `order_book_benchmarking` after upgrading to nightly-2023-07-01+
+#[cfg(not(test))]
+use crate as order_book_benchmarking_imported;
+#[cfg(test)]
+use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
+
 use order_book_imported::test_utils::fill_tools::{
     bid_prices_iterator, fill_expiration_schedule, fill_order_book_side,
     fill_order_book_worst_case, fill_price, fill_user_orders, lifespans_iterator, users_iterator,
@@ -56,7 +62,7 @@ use frame_support::traits::Time;
 use frame_system::RawOrigin;
 use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion};
 
-use crate::{assert_orders_numbers, Config, DEX};
+use order_book_benchmarking_imported::{assert_orders_numbers, Config, DEX};
 
 use assets::Pallet as Assets;
 use order_book_imported::Pallet as OrderBookPallet;
@@ -817,6 +823,7 @@ pub mod presets {
     macro_rules! generate_presets {
         ($($name:ident: $($params:expr),+ $(,)? );+ $(;)? ) => {
             $(
+            #[allow(unused)]
             pub fn $name<T: Config>() -> FillSettings<T> {
                 FillSettings::<T>::new($($params),+)
             }
