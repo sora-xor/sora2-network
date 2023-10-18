@@ -41,49 +41,44 @@
 #![cfg(feature = "runtime-benchmarks")]
 // order-book
 #![cfg(feature = "wip")]
+// too many benchmarks, doesn't compile otherwise
+#![recursion_limit = "512"]
+#![feature(int_roundings)]
 
 // TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
-#[cfg(not(test))]
-use crate as order_book_imported;
 #[cfg(test)]
 use framenode_runtime::order_book as order_book_imported;
+#[cfg(not(test))]
+use order_book as order_book_imported;
 
 use assets::AssetIdOf;
 use common::{AssetInfoProvider, DEXId, PriceVariant, VAL, XOR};
 use frame_system::{EventRecord, RawOrigin};
+use order_book_imported::Pallet as OrderBookPallet;
 use order_book_imported::{
-    Config, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus, OrderPrice, OrderVolume, Pallet,
+    test_utils::{accounts, fill_tools::FillSettings},
+    Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId, OrderBookStatus,
+    OrderPrice, OrderVolume,
 };
 
-use crate::test_utils::{accounts, fill_tools::FillSettings};
 use preparation::{
     prepare_cancel_orderbook_benchmark, prepare_market_order_benchmark,
     prepare_place_orderbook_benchmark, prepare_quote_benchmark,
 };
 
-use Pallet as OrderBookPallet;
-
 mod preparation;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+pub struct Pallet<T: Config>(order_book_imported::Pallet<T>);
+pub trait Config: order_book_imported::Config {}
+
+fn assert_last_event<T: Config>(generic_event: <T as order_book_imported::Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
-}
-
-fn get_last_order_id<T: Config>(
-    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-) -> Option<<T as Config>::OrderId> {
-    if let Some(order_book) = OrderBookPallet::<T>::order_books(order_book_id) {
-        Some(order_book.last_order_id)
-    } else {
-        None
-    }
 }
 
 /// if `None` then don't compare the value
@@ -170,8 +165,8 @@ pub(crate) mod delete_orderbook_benchmark {
 
 pub(crate) mod place_limit_order_benchmark {
     use super::*;
-    use crate::OrderPrice;
     use common::balance;
+    use order_book_imported::OrderPrice;
 
     pub struct Context<T: Config> {
         pub caller: T::AccountId,
@@ -243,9 +238,8 @@ pub(crate) mod place_limit_order_benchmark {
 }
 
 pub(crate) mod cancel_limit_order_benchmark {
-    use common::Balance;
-    // use crate::LimitOrder;
     use super::*;
+    use common::Balance;
 
     pub struct Context<T: Config> {
         pub caller: T::AccountId,
@@ -263,9 +257,11 @@ pub(crate) mod cancel_limit_order_benchmark {
             prepare_cancel_orderbook_benchmark(settings, caller.clone(), first_expiration);
         let order =
             OrderBookPallet::<T>::limit_orders::<_, T::OrderId>(order_book_id, order_id).unwrap();
-        let balance_before =
-            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner)
-                .unwrap();
+        let balance_before = <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+            &order_book_id.quote,
+            &order.owner,
+        )
+        .unwrap();
         Context {
             caller,
             order_book_id,
@@ -293,9 +289,11 @@ pub(crate) mod cancel_limit_order_benchmark {
         );
 
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
-        let balance =
-            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner)
-                .unwrap();
+        let balance = <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+            &order_book_id.quote,
+            &order.owner,
+        )
+        .unwrap();
         let expected_balance = balance_before + deal_amount.balance();
         assert_eq!(balance, expected_balance);
     }
@@ -363,9 +361,17 @@ pub(crate) mod execute_market_order_benchmark {
         let (order_book_id, amount, side) =
             prepare_market_order_benchmark(settings, caller.clone(), is_divisible);
         let caller_base_balance =
-            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap();
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.base,
+                &caller,
+            )
+            .unwrap();
         let caller_quote_balance =
-            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &caller,
+            )
+            .unwrap();
         Context {
             caller,
             order_book_id,
@@ -405,11 +411,19 @@ pub(crate) mod execute_market_order_benchmark {
         );
         assert_orders_numbers::<T>(order_book_id, Some(1), Some(0), None, None);
         assert_eq!(
-            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.base,
+                &caller
+            )
+            .unwrap(),
             caller_base_balance - *amount.balance()
         );
         assert_eq!(
-            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &caller
+            )
+            .unwrap(),
             caller_quote_balance + *(amount * average_price).balance()
         );
     }
@@ -445,8 +459,8 @@ pub(crate) mod quote_benchmark {
 
 pub(crate) mod exchange_single_order_benchmark {
     use super::*;
-    use crate::test_utils::create_and_fill_order_book;
     use common::{balance, Balance, VAL, XOR};
+    use order_book_imported::test_utils::create_and_fill_order_book;
 
     pub struct Context<T: Config> {
         pub caller: T::AccountId,
@@ -478,9 +492,17 @@ pub(crate) mod exchange_single_order_benchmark {
         .unwrap();
 
         let caller_base_balance =
-            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap();
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.base,
+                &caller,
+            )
+            .unwrap();
         let caller_quote_balance =
-            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &caller,
+            )
+            .unwrap();
         Context {
             caller,
             order_book_id,
@@ -513,11 +535,19 @@ pub(crate) mod exchange_single_order_benchmark {
             .into(),
         );
         assert_eq!(
-            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.base,
+                &caller
+            )
+            .unwrap(),
             caller_base_balance - expected_in
         );
         assert_eq!(
-            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &caller
+            )
+            .unwrap(),
             caller_quote_balance + expected_out
         );
     }
@@ -536,10 +566,9 @@ mod benchmarks_inner {
     use sp_runtime::traits::UniqueSaturatedInto;
 
     use super::*;
-    use crate::cache_data_layer::CacheDataLayer;
-    use crate::{
-        Config, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
-        Pallet,
+    use order_book_imported::cache_data_layer::CacheDataLayer;
+    use order_book_imported::{
+        Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
     };
     use preparation::{
         create_and_populate_order_book, prepare_cancel_orderbook_benchmark,
@@ -816,7 +845,7 @@ mod benchmarks_inner {
             let order = OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap();
 
             let balance_before =
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
+                <T as order_book_imported::Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
 
             // should be the slower layer because cache is not warmed up
             let mut data_layer = CacheDataLayer::<T>::new();
@@ -835,7 +864,7 @@ mod benchmarks_inner {
 
             let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
             let balance =
-                <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
+                <T as order_book_imported::Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
             let expected_balance = balance_before + deal_amount.balance();
             assert_eq!(balance, expected_balance);
         }

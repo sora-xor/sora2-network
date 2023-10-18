@@ -29,17 +29,20 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
-#[cfg(not(test))]
-use crate as order_book_imported;
 #[cfg(test)]
 use framenode_runtime::order_book as order_book_imported;
+#[cfg(not(test))]
+use order_book as order_book_imported;
 
+use order_book_imported::test_utils::fill_tools::{
+    bid_prices_iterator, fill_expiration_schedule, fill_order_book_side,
+    fill_order_book_worst_case, fill_price, fill_user_orders, lifespans_iterator, users_iterator,
+    FillSettings,
+};
+use order_book_imported::test_utils::{accounts, update_order_book_with_set_status};
 use order_book_imported::{
-    cache_data_layer::CacheDataLayer,
-    test_utils::accounts,
-    test_utils::fill_tools::{bid_prices_iterator, lifespans_iterator, users_iterator},
-    traits::DataLayer,
-    Config, LimitOrder, MomentOf, OrderBook, OrderBookId, OrderBooks, OrderVolume, Pallet,
+    cache_data_layer::CacheDataLayer, traits::DataLayer, LimitOrder, MomentOf, OrderBook,
+    OrderBookId, OrderBooks, OrderPrice, OrderVolume,
 };
 
 use assets::AssetIdOf;
@@ -51,16 +54,10 @@ use frame_support::traits::Time;
 use frame_system::RawOrigin;
 use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion};
 
-use crate::benchmarking::{assert_orders_numbers, DEX};
-use crate::test_utils::fill_tools::{
-    fill_expiration_schedule, fill_order_book_side, fill_order_book_worst_case, fill_price,
-    fill_user_orders, FillSettings,
-};
-use crate::test_utils::update_order_book_with_set_status;
+use crate::{assert_orders_numbers, Config, DEX};
 
-use crate::OrderPrice;
 use assets::Pallet as Assets;
-use Pallet as OrderBookPallet;
+use order_book_imported::Pallet as OrderBookPallet;
 
 // Creates and populates the order book with the following orders:
 // price | volume | orders
@@ -807,12 +804,12 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
 
 pub mod presets {
     // TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
-    #[cfg(not(test))]
-    use crate as order_book_imported;
     #[cfg(test)]
     use framenode_runtime::order_book as order_book_imported;
+    #[cfg(not(test))]
+    use order_book as order_book_imported;
 
-    use crate::test_utils::fill_tools::FillSettings;
+    use order_book_imported::test_utils::fill_tools::FillSettings;
     use order_book_imported::Config;
 
     macro_rules! generate_presets {

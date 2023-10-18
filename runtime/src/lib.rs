@@ -3093,6 +3093,8 @@ impl_runtime_apis! {
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
+            #[cfg(feature = "wip")] // order-book
+            use order_book_benchmarking::Pallet as OrderBookBench;
 
             let mut list = Vec::<BenchmarkList>::new();
 
@@ -3124,7 +3126,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
             #[cfg(feature = "wip")] // order-book
-            list_benchmark!(list, extra, order_book, OrderBook);
+            list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
             #[cfg(feature = "wip")] // EVM bridge
@@ -3167,12 +3169,16 @@ impl_runtime_apis! {
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
+            #[cfg(feature = "wip")] // order-book
+            use order_book_benchmarking::Pallet as OrderBookBench;
 
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
             impl xst_benchmarking::Config for Runtime {}
+            #[cfg(feature = "wip")] // order-book
+            impl order_book_benchmarking::Config for Runtime {}
 
             let whitelist: Vec<TrackedStorageKey> = vec![
                 // Block Number
@@ -3220,7 +3226,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
             #[cfg(feature = "wip")] // order-book
-            add_benchmark!(params, batches, order_book, OrderBook);
+            add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
             #[cfg(feature = "wip")] // EVM bridge

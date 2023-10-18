@@ -32,8 +32,6 @@
 #![allow(dead_code)] // todo (m.tagirov) remove
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
-// too many benchmarks, doesn't compile otherwise
-#![recursion_limit = "512"]
 #![feature(int_roundings)]
 
 use assets::AssetIdOf;
@@ -64,9 +62,6 @@ pub mod weights;
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
 
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 pub mod test_utils;
