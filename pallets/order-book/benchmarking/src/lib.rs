@@ -143,13 +143,13 @@ mod benchmarks_inner {
 
     use super::*;
     use order_book_imported::cache_data_layer::CacheDataLayer;
+    use order_book_imported::test_utils::{accounts, create_and_fill_order_book};
     use order_book_imported::{
         Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
     };
     use preparation::{
-        create_and_populate_order_book, prepare_cancel_orderbook_benchmark,
-        prepare_market_order_benchmark, prepare_place_orderbook_benchmark, prepare_quote_benchmark,
-        presets::*,
+        prepare_cancel_orderbook_benchmark, prepare_market_order_benchmark,
+        prepare_place_orderbook_benchmark, prepare_quote_benchmark, presets::*,
     };
 
     use frame_system::Pallet as FrameSystem;
@@ -229,7 +229,7 @@ mod benchmarks_inner {
                 quote: XOR.into(),
             };
 
-            create_and_populate_order_book::<T>(order_book_id);
+            create_and_fill_order_book::<T>(order_book_id);
 
             let tick_size = balance!(0.01);
             let step_lot_size = balance!(1); // limit orders should be aligned according to new step_lot_size
@@ -269,7 +269,7 @@ mod benchmarks_inner {
                 quote: XOR.into(),
             };
 
-            create_and_populate_order_book::<T>(order_book_id);
+            create_and_fill_order_book::<T>(order_book_id);
         }: {
             OrderBookPallet::<T>::change_orderbook_status(
                 RawOrigin::Root.into(),
@@ -414,7 +414,7 @@ mod benchmarks_inner {
                 quote: XOR.into(),
             };
 
-            create_and_populate_order_book::<T>(order_book_id);
+            create_and_fill_order_book::<T>(order_book_id);
 
             let order_id = 5u128.unique_saturated_into();
 
