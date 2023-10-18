@@ -1825,7 +1825,6 @@ mod tests {
 
     use common::balance;
     use common::prelude::SwapAmount;
-    use common::test_utils::init_logger;
     use frame_system::RawOrigin;
     use framenode_chain_spec::ext;
     use framenode_runtime::Runtime;
@@ -1848,7 +1847,6 @@ mod tests {
     #[test]
     fn test_benchmark_place() {
         ext().execute_with(|| {
-            init_logger();
             let settings = preset_14::<Runtime>();
             let context = place_limit_order_benchmark::init(settings.clone());
 
