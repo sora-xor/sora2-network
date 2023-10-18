@@ -31,7 +31,7 @@
 #![cfg(feature = "wip")] // order-book
 #![cfg(any(test, feature = "runtime-benchmarks"))]
 
-// TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
+// TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(not(test))]
 use crate as order_book_imported;
 #[cfg(test)]

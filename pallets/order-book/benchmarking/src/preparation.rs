@@ -28,7 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
+//! General preparation logic for the benchmarking.
+
+// TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(test)]
 use framenode_runtime::order_book as order_book_imported;
 #[cfg(not(test))]
@@ -803,7 +805,7 @@ pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
 }
 
 pub mod presets {
-    // TODO: rename by `order_book` after upgrading to nightly-2023-07-01+
+    // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
     #[cfg(test)]
     use framenode_runtime::order_book as order_book_imported;
     #[cfg(not(test))]
