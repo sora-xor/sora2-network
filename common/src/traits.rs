@@ -216,6 +216,28 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
     fn check_rewards_weight() -> Weight;
 }
 
+/// Implements trading pairs LockedLiquiditySources storage
+
+pub trait LockedLiquiditySourcesManager<LiquiditySourceType> {
+    fn get() -> Vec<LiquiditySourceType>;
+    fn set(liquidity_source_types: Vec<LiquiditySourceType>) -> ();
+    fn append(liquidity_source_type: LiquiditySourceType) -> ();
+}
+
+impl<LiquiditySourceType> LockedLiquiditySourcesManager<LiquiditySourceType> for () {
+    fn get() -> Vec<LiquiditySourceType> {
+        todo!()
+    }
+
+    fn set(_liquidity_source_types: Vec<LiquiditySourceType>) -> () {
+        todo!()
+    }
+
+    fn append(_liquidity_source_type: LiquiditySourceType) -> () {
+        todo!()
+    }
+}
+
 /// *Hook*-like trait for oracles to capture newly relayed symbols.
 ///
 /// A struct implementing this trait can be specified in oracle pallet *Config*

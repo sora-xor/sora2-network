@@ -168,6 +168,9 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarketXST = ();
     type SecondaryMarket = ();
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
+    type LockedLiquiditySourcesManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type GetADARAccountId = GetADARAccountId;
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
     type MaxAdditionalDataLength = ConstU32<128>;

@@ -1052,6 +1052,9 @@ impl liquidity_proxy::Config for Runtime {
     type SecondaryMarket = pool_xyk::Pallet<Runtime>;
     type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
     type VestedRewardsPallet = VestedRewards;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type LockedLiquiditySourcesManager = trading_pair::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type GetADARAccountId = GetADARAccountId;
     type ADARCommissionRatioUpdateOrigin = EitherOfDiverse<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,

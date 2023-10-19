@@ -38,7 +38,7 @@ extern crate alloc;
 
 use common::{
     AssetInfoProvider, DexInfoProvider, EnsureDEXManager, EnsureTradingPairExists,
-    LiquiditySourceType, ManagementMode, TradingPairSourceManager,
+    LiquiditySourceType, LockedLiquiditySourcesManager, ManagementMode, TradingPairSourceManager,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -72,6 +72,18 @@ impl<T: Config> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for
             Error::<T>::TradingPairDoesntExist
         );
         Ok(())
+    }
+}
+
+impl<T: Config> LockedLiquiditySourcesManager<LiquiditySourceType> for Pallet<T> {
+    fn get() -> Vec<LiquiditySourceType> {
+        LockedLiquiditySources::<T>::get()
+    }
+    fn set(liquidity_source_types: Vec<LiquiditySourceType>) -> () {
+        LockedLiquiditySources::<T>::set(liquidity_source_types)
+    }
+    fn append(liquidity_source_type: LiquiditySourceType) -> () {
+        LockedLiquiditySources::<T>::append(liquidity_source_type)
     }
 }
 
