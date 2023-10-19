@@ -66,6 +66,8 @@ use order_book_imported::{LimitOrder, MomentOf, OrderBookId};
 
 mod periphery;
 mod preparation;
+#[cfg(test)]
+mod tests;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
@@ -1416,6 +1418,3 @@ mod benchmarks_inner {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;
