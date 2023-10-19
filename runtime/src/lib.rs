@@ -156,6 +156,8 @@ use impls::{
 };
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
+#[cfg(all(feature = "runtime-benchmarks", feature = "wip"))] // order-book
+pub use order_book_benchmarking;
 #[cfg(all(feature = "private-net", feature = "wip"))] // order-book
 pub use qa_tools;
 pub use {
