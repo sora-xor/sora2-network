@@ -203,6 +203,7 @@ impl Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = MockDEXApi;
     type VestedRewardsPallet = MockVestedRewards;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = BuyBackHandlerImpl;
     type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
     type WeightInfo = ();
