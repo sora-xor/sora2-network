@@ -11,7 +11,7 @@ use preparation::presets::*;
 #[test]
 fn test_benchmark_delete_orderbook() {
     ext().execute_with(|| {
-        let settings = preset_14::<Runtime>();
+        let settings = preset_2::<Runtime>();
         let order_book_id = periphery::delete_orderbook_benchmark::init(settings.clone());
 
         OrderBookPallet::<Runtime>::delete_orderbook(RawOrigin::Root.into(), order_book_id)
@@ -24,7 +24,7 @@ fn test_benchmark_delete_orderbook() {
 #[test]
 fn test_benchmark_place() {
     ext().execute_with(|| {
-        let settings = preset_14::<Runtime>();
+        let settings = preset_2::<Runtime>();
         let context = periphery::place_limit_order_benchmark::init(settings.clone());
 
         OrderBookPallet::<Runtime>::place_limit_order(
@@ -44,7 +44,7 @@ fn test_benchmark_place() {
 #[test]
 fn test_benchmark_cancel() {
     ext().execute_with(|| {
-        let settings = preset_14::<Runtime>();
+        let settings = preset_2::<Runtime>();
         let context = periphery::cancel_limit_order_benchmark::init(settings.clone(), false);
 
         OrderBookPallet::<Runtime>::cancel_limit_order(
@@ -61,7 +61,7 @@ fn test_benchmark_cancel() {
 #[test]
 fn test_benchmark_execute_market_order() {
     ext().execute_with(|| {
-        let settings = preset_14::<Runtime>();
+        let settings = preset_2::<Runtime>();
         let context = periphery::execute_market_order_benchmark::init(settings.clone());
 
         OrderBookPallet::<Runtime>::execute_market_order(
@@ -81,7 +81,7 @@ fn test_benchmark_quote() {
     ext().execute_with(|| {
         use common::LiquiditySource;
 
-        let settings = preset_14::<Runtime>();
+        let settings = preset_2::<Runtime>();
         let context = periphery::quote_benchmark::init(settings.clone());
 
         let _ = OrderBookPallet::<Runtime>::quote(
@@ -100,7 +100,7 @@ fn test_benchmark_exchange() {
     ext().execute_with(|| {
         use common::LiquiditySource;
 
-        let settings = preset_14::<Runtime>();
+        let settings = preset_2::<Runtime>();
         let context = periphery::exchange_single_order_benchmark::init(settings.clone());
 
         let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(

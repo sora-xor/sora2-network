@@ -6,7 +6,7 @@ else
     awk="awk"
 fi
 
-max_preset=16
+max_preset=2
 repeat=5
 
 # MacOS default getopt doesn't support long args,

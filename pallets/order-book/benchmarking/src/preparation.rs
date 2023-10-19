@@ -661,21 +661,7 @@ pub mod presets {
 
     // the preset values must not exceed hard limits set in pallet parameters
     generate_presets!(
-        preset_1: 64, 64, 64, 64;
-        preset_2: 64, 64, 128, 64;
-        preset_3: 64, 64, 256, 64;
-        preset_4: 64, 64, 512, 64;
-        preset_5: 64, 64, 1024, 64;
-        preset_6: 64, 64, 2048, 64;
-        preset_7: 64, 64, 4096, 64;
-        preset_8: 64, 64, 64, 128;
-        preset_9: 64, 64, 64, 256;
-        preset_10: 64, 64, 64, 512;
-        preset_11: 64, 64, 128, 128;
-        preset_12: 64, 64, 256, 256;
-        preset_13: 64, 64, 512, 512;
-        preset_14: 64, 64, 1024, 512;
-        preset_15: 64, 64, 2048, 512;
-        preset_16: 64, 64, 4096, 512;
+        preset_1: 1024, 1024, 1024, 512;
+        preset_2: 64, 64, 1024, 512;
     );
 }
