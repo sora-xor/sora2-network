@@ -195,6 +195,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type PriceToolsPallet = ();
     type VestedRewardsPallet = VestedRewards;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = ();
     type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
     type WeightInfo = ();
