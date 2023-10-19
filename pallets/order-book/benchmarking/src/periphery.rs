@@ -28,8 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Benchmark lifecycle: initialization code (run before), benchmarks themselves, post-conditions
-//! checks.
+//! Benchmark periphery: initialization code (run before), post-conditions checks, and running
+//! context.
 //!
 //! Separated for each benchmark.
 

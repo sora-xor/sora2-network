@@ -64,7 +64,7 @@ use frame_system::EventRecord;
 use order_book_imported::Pallet as OrderBookPallet;
 use order_book_imported::{LimitOrder, MomentOf, OrderBookId};
 
-mod lifecycle;
+mod periphery;
 mod preparation;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
@@ -213,7 +213,7 @@ mod benchmarks_inner {
 
         delete_orderbook {
             let settings = preset_14::<T>();
-            let order_book_id = lifecycle::delete_orderbook_benchmark::init(settings.clone());
+            let order_book_id = periphery::delete_orderbook_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::delete_orderbook(
                 RawOrigin::Root.into(),
@@ -221,7 +221,7 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            lifecycle::delete_orderbook_benchmark::verify(settings, order_book_id);
+            periphery::delete_orderbook_benchmark::verify(settings, order_book_id);
         }
 
         update_orderbook {
@@ -293,7 +293,7 @@ mod benchmarks_inner {
 
         place_limit_order {
             let settings = preset_14::<T>();
-            let context = lifecycle::place_limit_order_benchmark::init(settings.clone());
+            let context = periphery::place_limit_order_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::place_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -305,12 +305,12 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            lifecycle::place_limit_order_benchmark::verify(settings, context);
+            periphery::place_limit_order_benchmark::verify(settings, context);
         }
 
         cancel_limit_order_first_expiration {
             let settings = preset_14::<T>();
-            let context = lifecycle::cancel_limit_order_benchmark::init(settings.clone(), true);
+            let context = periphery::cancel_limit_order_benchmark::init(settings.clone(), true);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -319,12 +319,12 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            lifecycle::cancel_limit_order_benchmark::verify(settings, context);
+            periphery::cancel_limit_order_benchmark::verify(settings, context);
         }
 
         cancel_limit_order_last_expiration {
             let settings = preset_14::<T>();
-            let context = lifecycle::cancel_limit_order_benchmark::init(settings.clone(), false);
+            let context = periphery::cancel_limit_order_benchmark::init(settings.clone(), false);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -333,12 +333,12 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            lifecycle::cancel_limit_order_benchmark::verify(settings, context);
+            periphery::cancel_limit_order_benchmark::verify(settings, context);
         }
 
         execute_market_order {
             let settings = preset_14::<T>();
-            let context = lifecycle::execute_market_order_benchmark::init(settings.clone());
+            let context = periphery::execute_market_order_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -348,12 +348,12 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            lifecycle::execute_market_order_benchmark::verify(settings, context);
+            periphery::execute_market_order_benchmark::verify(settings, context);
         }
 
         quote {
             let settings = preset_14::<T>();
-            let context = lifecycle::quote_benchmark::init(settings.clone());
+            let context = periphery::quote_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::quote(
                 &context.dex_id,
@@ -370,7 +370,7 @@ mod benchmarks_inner {
 
         exchange_single_order {
             let settings = preset_14::<T>();
-            let context = lifecycle::exchange_single_order_benchmark::init(settings.clone());
+            let context = periphery::exchange_single_order_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::exchange(
                 &context.caller,
@@ -385,7 +385,7 @@ mod benchmarks_inner {
             .unwrap();
         }
         verify {
-            lifecycle::exchange_single_order_benchmark::verify(settings, context);
+            periphery::exchange_single_order_benchmark::verify(settings, context);
         }
 
         service_base {

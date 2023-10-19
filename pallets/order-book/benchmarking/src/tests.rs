@@ -12,12 +12,12 @@ use preparation::presets::*;
 fn test_benchmark_delete_orderbook() {
     ext().execute_with(|| {
         let settings = preset_14::<Runtime>();
-        let order_book_id = lifecycle::delete_orderbook_benchmark::init(settings.clone());
+        let order_book_id = periphery::delete_orderbook_benchmark::init(settings.clone());
 
         OrderBookPallet::<Runtime>::delete_orderbook(RawOrigin::Root.into(), order_book_id)
             .unwrap();
 
-        lifecycle::delete_orderbook_benchmark::verify(settings, order_book_id);
+        periphery::delete_orderbook_benchmark::verify(settings, order_book_id);
     })
 }
 
@@ -25,7 +25,7 @@ fn test_benchmark_delete_orderbook() {
 fn test_benchmark_place() {
     ext().execute_with(|| {
         let settings = preset_14::<Runtime>();
-        let context = lifecycle::place_limit_order_benchmark::init(settings.clone());
+        let context = periphery::place_limit_order_benchmark::init(settings.clone());
 
         OrderBookPallet::<Runtime>::place_limit_order(
             RawOrigin::Signed(context.caller.clone()).into(),
@@ -37,7 +37,7 @@ fn test_benchmark_place() {
         )
         .unwrap();
 
-        lifecycle::place_limit_order_benchmark::verify(settings, context);
+        periphery::place_limit_order_benchmark::verify(settings, context);
     })
 }
 
@@ -45,7 +45,7 @@ fn test_benchmark_place() {
 fn test_benchmark_cancel() {
     ext().execute_with(|| {
         let settings = preset_14::<Runtime>();
-        let context = lifecycle::cancel_limit_order_benchmark::init(settings.clone(), false);
+        let context = periphery::cancel_limit_order_benchmark::init(settings.clone(), false);
 
         OrderBookPallet::<Runtime>::cancel_limit_order(
             RawOrigin::Signed(context.caller.clone()).into(),
@@ -54,7 +54,7 @@ fn test_benchmark_cancel() {
         )
         .unwrap();
 
-        lifecycle::cancel_limit_order_benchmark::verify(settings, context);
+        periphery::cancel_limit_order_benchmark::verify(settings, context);
     })
 }
 
@@ -62,7 +62,7 @@ fn test_benchmark_cancel() {
 fn test_benchmark_execute_market_order() {
     ext().execute_with(|| {
         let settings = preset_14::<Runtime>();
-        let context = lifecycle::execute_market_order_benchmark::init(settings.clone());
+        let context = periphery::execute_market_order_benchmark::init(settings.clone());
 
         OrderBookPallet::<Runtime>::execute_market_order(
             RawOrigin::Signed(context.caller.clone()).into(),
@@ -72,7 +72,7 @@ fn test_benchmark_execute_market_order() {
         )
         .unwrap();
 
-        lifecycle::execute_market_order_benchmark::verify(settings, context);
+        periphery::execute_market_order_benchmark::verify(settings, context);
     })
 }
 
@@ -82,7 +82,7 @@ fn test_benchmark_quote() {
         use common::LiquiditySource;
 
         let settings = preset_14::<Runtime>();
-        let context = lifecycle::quote_benchmark::init(settings.clone());
+        let context = periphery::quote_benchmark::init(settings.clone());
 
         let _ = OrderBookPallet::<Runtime>::quote(
             &context.dex_id,
@@ -101,7 +101,7 @@ fn test_benchmark_exchange() {
         use common::LiquiditySource;
 
         let settings = preset_14::<Runtime>();
-        let context = lifecycle::exchange_single_order_benchmark::init(settings.clone());
+        let context = periphery::exchange_single_order_benchmark::init(settings.clone());
 
         let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
             &context.caller,
@@ -116,6 +116,6 @@ fn test_benchmark_exchange() {
         )
         .unwrap();
 
-        lifecycle::exchange_single_order_benchmark::verify(settings, context);
+        periphery::exchange_single_order_benchmark::verify(settings, context);
     })
 }
