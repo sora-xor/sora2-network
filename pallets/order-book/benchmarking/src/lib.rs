@@ -147,6 +147,7 @@ mod benchmarks_inner {
 
     use super::*;
     use order_book_imported::cache_data_layer::CacheDataLayer;
+    use order_book_imported::test_utils::fill_tools::FillSettings;
     use order_book_imported::test_utils::{accounts, create_and_fill_order_book};
     use order_book_imported::{
         Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
@@ -214,7 +215,7 @@ mod benchmarks_inner {
         }
 
         delete_orderbook {
-            let settings = preset_2::<T>();
+            let settings = FillSettings::<T>::max();
             let order_book_id = periphery::delete_orderbook_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::delete_orderbook(
@@ -294,7 +295,7 @@ mod benchmarks_inner {
         }
 
         place_limit_order {
-            let settings = preset_2::<T>();
+            let settings = FillSettings::<T>::max();
             let context = periphery::place_limit_order_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::place_limit_order(
@@ -311,7 +312,7 @@ mod benchmarks_inner {
         }
 
         cancel_limit_order_first_expiration {
-            let settings = preset_2::<T>();
+            let settings = FillSettings::<T>::max();
             let context = periphery::cancel_limit_order_benchmark::init(settings.clone(), true);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
@@ -325,7 +326,7 @@ mod benchmarks_inner {
         }
 
         cancel_limit_order_last_expiration {
-            let settings = preset_2::<T>();
+            let settings = FillSettings::<T>::max();
             let context = periphery::cancel_limit_order_benchmark::init(settings.clone(), false);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
@@ -339,7 +340,7 @@ mod benchmarks_inner {
         }
 
         execute_market_order {
-            let settings = preset_2::<T>();
+            let settings = FillSettings::<T>::max();
             let context = periphery::execute_market_order_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::execute_market_order(
@@ -354,7 +355,7 @@ mod benchmarks_inner {
         }
 
         quote {
-            let settings = preset_2::<T>();
+            let settings = FillSettings::<T>::max();
             let context = periphery::quote_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::quote(
@@ -371,7 +372,7 @@ mod benchmarks_inner {
         }
 
         exchange_single_order {
-            let settings = preset_2::<T>();
+            let settings = FillSettings::<T>::max();
             let context = periphery::exchange_single_order_benchmark::init(settings.clone());
         }: {
             OrderBookPallet::<T>::exchange(
