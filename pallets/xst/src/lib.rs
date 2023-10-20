@@ -56,8 +56,9 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    DataFeed, GetMarketInfo, IsTradingPairEnabled, LiquiditySource, LiquiditySourceType,
+    OnSymbolDisabled, PriceVariant, Rate, RegisterPair, RewardReason, SyntheticInfoProvider,
+    TradingPairSourceManager, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
@@ -128,15 +129,14 @@ pub struct SyntheticInfo<Symbol> {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::IsTradingPairEnabled;
     use frame_support::traits::StorageVersion;
     use frame_support::{pallet_prelude::*, Parameter};
     use frame_system::pallet_prelude::*;
 
     // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + technical::Config + common::Config + trading_pair::Config
-    {
+    pub trait Config: frame_system::Config + technical::Config + common::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// AssetId which is convertible to/from XSTUSD
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
@@ -144,6 +144,8 @@ pub mod pallet {
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type Oracle: DataFeed<Self::Symbol, Rate, u64>;
+        type IsTradingPairEnabled: IsTradingPairEnabled<Self::DEXId, Self::AssetId>;
+        type RegisterPair: RegisterPair<Self::DEXId, Self::AssetId>;
         /// Type of symbol received from oracles
         type Symbol: Parameter + From<common::SymbolName> + MaybeSerializeDeserialize;
         /// Maximum tradable amount of XST
@@ -516,7 +518,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn enable_synthetic_trading_pair(synthetic_asset_id: T::AssetId) -> sp_runtime::DispatchResult {
-        if trading_pair::Pallet::<T>::is_trading_pair_enabled(
+        if T::IsTradingPairEnabled::is_trading_pair_enabled(
             &DEXId::Polkaswap.into(),
             &T::GetSyntheticBaseAssetId::get(),
             &synthetic_asset_id,
@@ -524,7 +526,7 @@ impl<T: Config> Pallet<T> {
             return Ok(());
         }
 
-        trading_pair::Pallet::<T>::register_pair(
+        T::RegisterPair::register_pair(
             DEXId::Polkaswap.into(),
             T::GetSyntheticBaseAssetId::get(),
             synthetic_asset_id,

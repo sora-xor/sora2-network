@@ -1707,6 +1707,8 @@ impl xst::Config for Runtime {
     type Oracle = OracleProxy;
     type Symbol = <Runtime as band::Config>::Symbol;
     type TradingPairSourceManager = TradingPair;
+    type IsTradingPairEnabled = trading_pair::Pallet<Runtime>;
+    type RegisterPair = trading_pair::Pallet<Runtime>;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
 }
 
