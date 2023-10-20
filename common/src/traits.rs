@@ -271,6 +271,45 @@ impl<DEXId, AssetId, Origin> RegisterManager<DEXId, AssetId, Origin> for () {
         todo!()
     }
 }
+
+/// Implements trading pair is_trading_pair_enabled
+pub trait IsTradingPairEnabled<DEXId, AssetId> {
+    fn is_trading_pair_enabled(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError>;
+}
+
+impl<DEXId, AssetId> IsTradingPairEnabled<DEXId, AssetId> for () {
+    fn is_trading_pair_enabled(
+        _dex_id: &DEXId,
+        _baset_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError> {
+        todo!()
+    }
+}
+
+/// Implements trading pair register_pair
+pub trait RegisterPair<DEXId, AssetId> {
+    fn register_pair(
+        dex_id: DEXId,
+        base_asset_id: AssetId,
+        target_asset_id: AssetId,
+    ) -> Result<(), DispatchError>;
+}
+
+impl<DEXId, AssetId> RegisterPair<DEXId, AssetId> for () {
+    fn register_pair(
+        _dex_id: DEXId,
+        _baset_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Result<(), DispatchError> {
+        todo!()
+    }
+}
+
 // pub trait RegisterManager
 /// *Hook*-like trait for oracles to capture newly relayed symbols.
 ///

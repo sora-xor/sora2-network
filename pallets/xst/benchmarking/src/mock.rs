@@ -190,6 +190,8 @@ impl xst::Config for Runtime {
     type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = price_tools::Pallet<Runtime>;
+    type IsTradingPairEnabled = trading_pair::Pallet<Runtime>;
+    type RegisterPair = trading_pair::Pallet<Runtime>;
     type Oracle = OracleProxy;
     type Symbol = <Runtime as band::Config>::Symbol;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
