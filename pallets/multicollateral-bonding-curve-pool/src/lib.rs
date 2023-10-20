@@ -873,14 +873,14 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::PoolAlreadyInitializedForPair
             );
             T::PriceToolsPallet::register_asset(&collateral_asset_id)?;
-            T::EnsureTradingPairExists::ensure_trading_pair_exists(
+            <T as pallet::Config>::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &collateral_asset_id,
             )?;
 
             // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-            T::TradingPairSourceManager::enable_source_for_trading_pair(
+            <T as pallet::Config>::TradingPairSourceManager::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &collateral_asset_id,

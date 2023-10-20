@@ -337,6 +337,9 @@ impl Config for Runtime {
         crate::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();

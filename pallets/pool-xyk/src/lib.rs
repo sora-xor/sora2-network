@@ -44,9 +44,10 @@ use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
-    LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
-    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
+    fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
+    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
+    PoolXykPallet, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    TradingPairSourceManager,
 };
 
 mod aliases;
@@ -168,7 +169,7 @@ impl<T: Config> Pallet<T> {
         reserves_account_id: &T::AccountId,
         fees_account_id: &T::AccountId,
     ) -> DispatchResult {
-        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
+        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(dex_id)?;
         let (sorted_asset_a, sorted_asset_b) = if dex_info.base_asset_id == *asset_a {
             (asset_a, asset_b)
         } else if dex_info.base_asset_id == *asset_b {
@@ -181,7 +182,7 @@ impl<T: Config> Pallet<T> {
         };
 
         // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-        trading_pair::Pallet::<T>::enable_source_for_trading_pair(
+        T::TradingPairSourceManager::enable_source_for_trading_pair(
             dex_id,
             sorted_asset_a,
             sorted_asset_b,
@@ -242,7 +243,7 @@ impl<T: Config> Pallet<T> {
         // can be done, check every condition for `PoolIsAlreadyInitialized`.
         if technical::Pallet::<T>::ensure_tech_account_registered(&tech_acc_id).is_ok() {
             if technical::Pallet::<T>::ensure_tech_account_registered(&fee_acc_id).is_ok()
-                && trading_pair::Pallet::<T>::ensure_trading_pair_exists(
+                && T::EnsureTradingPairExists::ensure_trading_pair_exists(
                     &dex_id,
                     &trading_pair.base_asset_id.into(),
                     &trading_pair.target_asset_id.into(),
@@ -269,7 +270,7 @@ impl<T: Config> Pallet<T> {
         input_a_min: Balance,
         input_b_min: Balance,
     ) -> DispatchResult {
-        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             dex_id,
             input_asset_a,
@@ -307,7 +308,7 @@ impl<T: Config> Pallet<T> {
         output_a_min: Balance,
         output_b_min: Balance,
     ) -> DispatchResult {
-        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             dex_id,
             output_asset_a,
@@ -358,7 +359,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        if let Ok(dex_info) = T::DexInfoProvider::get_dex_info(dex_id) {
+        if let Ok(dex_info) = <T as pallet::Config>::DexInfoProvider::get_dex_info(dex_id) {
             let target_asset_id = if *input_asset_id == dex_info.base_asset_id {
                 output_asset_id
             } else if *output_asset_id == dex_info.base_asset_id {
@@ -380,7 +381,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
-        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
+        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -442,7 +443,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
-        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
             *input_asset_id,
@@ -521,7 +522,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
+        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -676,6 +677,13 @@ pub mod pallet {
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type EnsureTradingPairExists: EnsureTradingPairExists<
+            Self::DEXId,
+            Self::AssetId,
+            DispatchError,
+        >;
         type XSTMarketInfo: GetMarketInfo<Self::AssetId>;
         type GetFee: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
