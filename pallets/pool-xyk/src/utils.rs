@@ -32,14 +32,13 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{ensure, fail};
 use orml_traits::GetByKey;
 
+use crate::aliases::{AssetIdOf, TechAccountIdOf, TechAssetIdOf};
+use crate::{bounds::*, pallet};
+use crate::{Config, Error, Pallet, PoolProviders, TotalIssuances};
 use common::prelude::{Balance, SwapAmount};
 use common::{
     AccountIdOf, DexInfoProvider, ToFeeAccount, ToXykTechUnitFromDEXAndTradingPair, TradingPair,
 };
-
-use crate::aliases::{AssetIdOf, TechAccountIdOf, TechAssetIdOf};
-use crate::bounds::*;
-use crate::{Config, Error, Pallet, PoolProviders, TotalIssuances};
 
 impl<T: Config> Pallet<T> {
     pub fn decide_is_fee_from_destination(
@@ -92,7 +91,7 @@ impl<T: Config> Pallet<T> {
         asset_a: T::AssetId,
         asset_b: T::AssetId,
     ) -> Result<(common::TradingPair<TechAssetIdOf<T>>, TechAccountIdOf<T>), DispatchError> {
-        let dexinfo = T::DexInfoProvider::get_dex_info(&dex_id)?;
+        let dexinfo = <T as pallet::Config>::DexInfoProvider::get_dex_info(&dex_id)?;
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
         let ba = base_asset_id;
