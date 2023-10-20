@@ -125,6 +125,7 @@ fn non_root_update_fails() {
 fn it_works_postpone() {
     ExtBuilder::build().execute_with(|| {
         let who = GetPostponeAccountId::get();
+        set_weight_to_fee_multiplier(1);
         assert_eq!(Balances::usable_balance_for_fees(&who), 0);
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(
@@ -157,8 +158,8 @@ fn it_works_postpone() {
             &Ok(()),
         )
         .unwrap();
-        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.3));
-        assert_eq!(XorToVal::<Runtime>::get(), balance!(0.35));
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.9993));
+        assert_eq!(XorToVal::<Runtime>::get(), balance!(0.00035));
     });
 }
 
@@ -281,6 +282,7 @@ fn it_works_should_pays_no() {
 #[test]
 fn it_works_should_post_info_pays_no() {
     ExtBuilder::build().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         let who = bob();
         let _ = Balances::deposit_creating(&who, balance!(1000));
         assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
@@ -303,12 +305,12 @@ fn it_works_should_post_info_pays_no() {
                 who.clone(),
                 LiquidityInfo::<Runtime>::Paid(
                     who.clone(),
-                    Some(pallet_balances::NegativeImbalance::new(balance!(0.7)))
+                    Some(pallet_balances::NegativeImbalance::new(balance!(0.0007)))
                 ),
                 Some(balance!(0.0007)),
             )
         );
-        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.3));
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.9993));
         assert_eq!(
             ChargeTransactionPayment::<Runtime>::post_dispatch(
                 Some(pre),
@@ -445,6 +447,7 @@ fn it_fails_custom_fee_source() {
 #[test]
 fn it_works_referrer_refund() {
     ExtBuilder::build().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         let who = GetReferalAccountId::get();
         let referrer = GetReferrerAccountId::get();
         let _ = Balances::deposit_creating(&who, balance!(1000));
@@ -469,12 +472,12 @@ fn it_works_referrer_refund() {
                 who.clone(),
                 LiquidityInfo::<Runtime>::Paid(
                     who.clone(),
-                    Some(pallet_balances::NegativeImbalance::new(balance!(0.7)))
+                    Some(pallet_balances::NegativeImbalance::new(balance!(0.0007)))
                 ),
                 Some(balance!(0.0007)),
             )
         );
-        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.3));
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.9993));
         ChargeTransactionPayment::<Runtime>::post_dispatch(
             Some(pre),
             &info_from_weight(100.into()),
@@ -483,11 +486,11 @@ fn it_works_referrer_refund() {
             &Ok(()),
         )
         .unwrap();
-        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.3));
+        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(999.9993));
         assert_eq!(
             Balances::usable_balance_for_fees(&referrer),
-            balance!(1000.07)
+            balance!(1000.00007)
         );
-        assert_eq!(XorToVal::<Runtime>::get(), balance!(0.35));
+        assert_eq!(XorToVal::<Runtime>::get(), balance!(0.00035));
     });
 }
