@@ -207,6 +207,7 @@ impl Config for Runtime {
     type BuyBackHandler = BuyBackHandlerImpl;
     type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
     type WeightInfo = ();
+    type RegisterManager = trading_pair::Pallet<Runtime>;
 }
 
 pub struct BuyBackHandlerImpl;
@@ -386,6 +387,8 @@ impl pool_xyk::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
+    type RegisterManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();

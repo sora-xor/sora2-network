@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::pallet::{Config, Pallet};
-use common::{Balance, LiquiditySourceType, ToFeeAccount, TradingPair};
+use common::{Balance, EnabledSourcesManager, ToFeeAccount};
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::WeightMeter;
@@ -43,7 +43,6 @@ use sp_std::prelude::Vec;
 use crate::{PoolProviders, Properties, Reserves, TotalIssuances, WeightInfo};
 use ceres_liquidity_locker::LockerData;
 use demeter_farming_platform::UserInfos;
-use trading_pair::EnabledSources;
 
 pub struct XYKPoolUpgrade<T, L>(core::marker::PhantomData<(T, L)>);
 
@@ -118,16 +117,22 @@ where
         let (_, tech_acc_id) =
             Pallet::<T>::tech_account_from_dex_and_asset_pair(dex_id, base_asset, target_asset)?;
 
-        let pair = TradingPair::<T::AssetId> {
-            base_asset_id: base_asset.clone(),
-            target_asset_id: target_asset.clone(),
-        };
+        // let pair = TradingPair::<T::AssetId> {
+        //     base_asset_id: base_asset.clone(),
+        //     target_asset_id: target_asset.clone(),
+        // };
 
-        EnabledSources::<T>::mutate(&dex_id, &pair, |opt_set| {
-            if let Some(sources) = opt_set.as_mut() {
-                sources.remove(&LiquiditySourceType::XYKPool);
-            }
-        });
+        // EnabledSources::<T>::mutate(&dex_id, &pair, |opt_set| {
+        //     if let Some(sources) = opt_set.as_mut() {
+        //         sources.remove(&LiquiditySourceType::XYKPool);
+        //     }
+        // });
+
+        T::EnabledSourcesManager::mutate_remove(
+            &dex_id,
+            &base_asset.clone(),
+            &target_asset.clone(),
+        );
         Properties::<T>::remove(base_asset, target_asset);
 
         let fee_acc_id = tech_acc_id
