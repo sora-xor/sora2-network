@@ -34,7 +34,7 @@ use crate::{
     PswapRemintInfo, RewardReason,
 };
 use frame_support::dispatch::DispatchResult;
-use frame_support::pallet_prelude::MaybeSerializeDeserialize;
+use frame_support::pallet_prelude::{DispatchResultWithPostInfo, MaybeSerializeDeserialize};
 use frame_support::sp_runtime::traits::BadOrigin;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
@@ -238,6 +238,40 @@ impl<LiquiditySourceType> LockedLiquiditySourcesManager<LiquiditySourceType> for
     }
 }
 
+/// Implements trading pair EnabledSources stroage
+
+pub trait EnabledSourcesManager<DEXId, AssetId> {
+    fn mutate_remove(dex_id: &DEXId, base_asset_id: &AssetId, target_asset_id: &AssetId) -> ();
+}
+
+impl<DEXId, AssetId> EnabledSourcesManager<DEXId, AssetId> for () {
+    fn mutate_remove(_dex_id: &DEXId, _baset_asset_id: &AssetId, _target_asset_id: &AssetId) -> () {
+        todo!()
+    }
+}
+
+/// Implements trading pair register
+
+pub trait RegisterManager<DEXId, AssetId, Origin> {
+    fn register(
+        origin: Origin,
+        dex_id: DEXId,
+        base_asset_id: AssetId,
+        target_asset_id: AssetId,
+    ) -> DispatchResultWithPostInfo;
+}
+
+impl<DEXId, AssetId, Origin> RegisterManager<DEXId, AssetId, Origin> for () {
+    fn register(
+        _origin: Origin,
+        _dex_id: DEXId,
+        _baset_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> DispatchResultWithPostInfo {
+        todo!()
+    }
+}
+// pub trait RegisterManager
 /// *Hook*-like trait for oracles to capture newly relayed symbols.
 ///
 /// A struct implementing this trait can be specified in oracle pallet *Config*

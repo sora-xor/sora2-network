@@ -37,11 +37,13 @@
 extern crate alloc;
 
 use common::{
-    AssetInfoProvider, DexInfoProvider, EnsureDEXManager, EnsureTradingPairExists,
-    LiquiditySourceType, LockedLiquiditySourcesManager, ManagementMode, TradingPairSourceManager,
+    AssetInfoProvider, DexInfoProvider, EnabledSourcesManager, EnsureDEXManager,
+    EnsureTradingPairExists, LiquiditySourceType, LockedLiquiditySourcesManager, ManagementMode,
+    RegisterManager, TradingPairSourceManager,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
+use frame_support::pallet_prelude::DispatchResultWithPostInfo;
 use frame_support::traits::IsType;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
@@ -84,6 +86,36 @@ impl<T: Config> LockedLiquiditySourcesManager<LiquiditySourceType> for Pallet<T>
     }
     fn append(liquidity_source_type: LiquiditySourceType) -> () {
         LockedLiquiditySources::<T>::append(liquidity_source_type)
+    }
+}
+
+impl<T: Config> EnabledSourcesManager<T::DEXId, T::AssetId> for Pallet<T> {
+    fn mutate_remove(
+        dex_id: &T::DEXId,
+        base_asset_id: &T::AssetId,
+        target_asset_id: &T::AssetId,
+    ) -> () {
+        let pair = TradingPair::<T> {
+            base_asset_id: base_asset_id.clone(),
+            target_asset_id: target_asset_id.clone(),
+        };
+        EnabledSources::<T>::mutate(&dex_id, &pair, |opt_set| {
+            if let Some(sources) = opt_set.as_mut() {
+                sources.remove(&LiquiditySourceType::XYKPool);
+            }
+        })
+    }
+}
+impl<T: Config> RegisterManager<T::DEXId, T::AssetId, <T as frame_system::Config>::RuntimeOrigin>
+    for Pallet<T>
+{
+    fn register(
+        origin: <T as frame_system::Config>::RuntimeOrigin,
+        dex_id: T::DEXId,
+        base_asset_id: T::AssetId,
+        target_asset_id: T::AssetId,
+    ) -> DispatchResultWithPostInfo {
+        Self::register(origin.clone(), dex_id, base_asset_id, target_asset_id)
     }
 }
 

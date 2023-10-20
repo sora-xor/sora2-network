@@ -38,7 +38,7 @@
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource,
+    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource, RegisterManager,
     DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
@@ -50,6 +50,7 @@ use sp_std::prelude::*;
 use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
+
 use trading_pair::Pallet as TradingPair;
 
 #[cfg(test)]
@@ -109,7 +110,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
+    T::RegisterManager::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
 
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
     Assets::<T>::mint_to(&DOT.into(), &owner.clone(), &owner.clone(), balance!(50000))?;

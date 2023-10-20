@@ -1,6 +1,8 @@
+use crate::pallet;
 use crate::Pallet;
 use common::balance;
 use common::FromGenericPair;
+use common::RegisterManager;
 use common::TBCD;
 use frame_support::traits::Get;
 use frame_support::traits::OnRuntimeUpgrade;
@@ -72,7 +74,7 @@ where
                 );
                 return <T as frame_system::Config>::DbWeight::get().reads(1);
             }
-            if let Err(err) = trading_pair::Pallet::<T>::register(
+            if let Err(err) = <T as pallet::Config>::RegisterManager::register(
                 frame_system::RawOrigin::Signed(assets_and_permissions_account_id).into(),
                 common::DEXId::Polkaswap.into(),
                 common::XOR.into(),

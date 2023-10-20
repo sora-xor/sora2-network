@@ -643,7 +643,9 @@ use sp_runtime::traits::Zero;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, Fixed, GetMarketInfo, OnPoolCreated};
+    use common::{
+        AccountIdOf, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated, RegisterManager,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -655,7 +657,6 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config
         + technical::Config
-        + trading_pair::Config
         + ceres_liquidity_locker::Config
         + demeter_farming_platform::Config
     {
@@ -679,6 +680,8 @@ pub mod pallet {
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type EnabledSourcesManager: EnabledSourcesManager<Self::DEXId, Self::AssetId>;
+        type RegisterManager: RegisterManager<Self::DEXId, Self::AssetId, Self::RuntimeOrigin>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,

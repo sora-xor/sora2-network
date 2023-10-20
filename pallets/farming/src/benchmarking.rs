@@ -38,7 +38,7 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, XOR};
+use common::{AssetName, AssetSymbol, RegisterManager, DEFAULT_BALANCE_PRECISION, XOR};
 
 use crate::utils;
 
@@ -73,7 +73,7 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) 
         )
         .unwrap();
 
-        assert_ok!(trading_pair::Pallet::<T>::register(
+        assert_ok!(<T as pallet::Config>::RegisterManager::register(
             signed_origin::<T>(asset_owner::<T>()),
             Default::default(),
             xor_asset.clone(),

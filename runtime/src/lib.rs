@@ -1003,6 +1003,8 @@ impl pool_xyk::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
+    type RegisterManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
@@ -1579,6 +1581,7 @@ impl farming::Config for Runtime {
     type SchedulerOriginCaller = OriginCaller;
     type Scheduler = Scheduler;
     type RewardDoublingAssets = FarmingRewardDoublingAssets;
+    type RegisterManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -1683,6 +1686,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type PriceToolsPallet = PriceTools;
     type VestedRewardsPallet = VestedRewards;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type RegisterManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;

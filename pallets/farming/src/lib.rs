@@ -310,6 +310,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
+    use common::RegisterManager;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
     use frame_support::traits::StorageVersion;
@@ -337,6 +338,7 @@ pub mod pallet {
         type RuntimeCall: Parameter;
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
         type Scheduler: Anon<Self::BlockNumber, <Self as Config>::RuntimeCall, Self::SchedulerOriginCaller>;
+        type RegisterManager: RegisterManager<Self::DEXId, Self::AssetId, Self::RuntimeOrigin>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
