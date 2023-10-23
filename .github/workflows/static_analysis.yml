@@ -1,0 +1,36 @@
+name: Cargo fmt & clippy
+
+on: [ push ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  static_analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - uses: arduino/setup-protoc@v2
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo install
+        uses: taiki-e/install-action@v2
+        with:
+          tool: clippy-sarif, sarif-fmt
+
+      - name: cargo fmt
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets --all-features --message-format=json |
+          clippy-sarif | tee results.sarif | sarif-fmt
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: results.sarif
