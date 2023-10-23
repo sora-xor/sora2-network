@@ -36,8 +36,6 @@
 //! All migrated accounts are stored to use when their referrals migrate or when a user attempts to migrate again
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 #[macro_use]
 extern crate alloc;

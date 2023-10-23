@@ -30,8 +30,6 @@
 
 //! Substrate Node Template CLI library.
 #![warn(missing_docs)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 #[macro_use]
 mod service;
