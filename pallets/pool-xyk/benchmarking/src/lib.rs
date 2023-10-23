@@ -51,8 +51,6 @@ use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
 
-use trading_pair::Pallet as TradingPair;
-
 #[cfg(test)]
 mod mock;
 pub struct Pallet<T: Config>(pool_xyk::Pallet<T>);
