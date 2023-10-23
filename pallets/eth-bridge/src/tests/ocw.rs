@@ -53,10 +53,10 @@ fn ocw_should_not_handle_non_finalized_outgoing_request() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            RuntimeOrigin::signed(alice),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
@@ -76,10 +76,10 @@ fn ocw_should_resend_signed_transaction_on_timeout() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            RuntimeOrigin::signed(alice),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
@@ -117,10 +117,10 @@ fn ocw_should_remove_pending_transaction_on_max_retries() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            RuntimeOrigin::signed(alice),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
@@ -144,18 +144,18 @@ fn ocw_should_remove_pending_transaction_on_max_retries() {
 
 #[test]
 fn should_not_abort_request_with_failed_to_send_signed_tx_error() {
-    assert_eq!(Error::FailedToSendSignedTransaction.should_abort(), false);
+    assert!(!Error::FailedToSendSignedTransaction.should_abort());
 
     let mut builder = ExtBuilder::new();
     builder.add_network(
         vec![AssetConfig::Sidechain {
-            id: XOR.into(),
+            id: XOR,
             sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,
         }],
-        Some(vec![(XOR.into(), common::balance!(350000))]),
+        Some(vec![(XOR, common::balance!(350000))]),
         Some(2),
         Default::default(),
     );
@@ -163,10 +163,10 @@ fn should_not_abort_request_with_failed_to_send_signed_tx_error() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            RuntimeOrigin::signed(alice),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
@@ -212,13 +212,13 @@ fn ocw_should_abort_missing_transaction() {
     let mut builder = ExtBuilder::new();
     builder.add_network(
         vec![AssetConfig::Sidechain {
-            id: VAL.into(),
+            id: VAL,
             sidechain_id: sp_core::H160::from_str("0x725c6b8cd3621eba4e0ccc40d532e7025b925a65")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,
         }],
-        Some(vec![(VAL.into(), common::balance!(350000))]),
+        Some(vec![(VAL, common::balance!(350000))]),
         Some(1),
         Default::default(),
     );
@@ -228,7 +228,7 @@ fn ocw_should_abort_missing_transaction() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         let tx_hash = H256([1; 32]);
         assert_ok!(EthBridge::request_from_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice),
             tx_hash,
             IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
             net_id
@@ -254,10 +254,10 @@ fn should_reapprove_on_long_pending() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            RuntimeOrigin::signed(alice),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             10,
             net_id,
@@ -292,13 +292,13 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
     let mut builder = ExtBuilder::new();
     builder.add_network(
         vec![AssetConfig::Sidechain {
-            id: XOR.into(),
+            id: XOR,
             sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,
         }],
-        Some(vec![(XOR.into(), common::balance!(350000))]),
+        Some(vec![(XOR, common::balance!(350000))]),
         Some(1),
         Default::default(),
     );
@@ -306,7 +306,7 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
 
         let mut log = Log::default();
         log.topics = vec![types::H256(hex!(

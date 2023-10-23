@@ -111,7 +111,7 @@ pub fn approve_request(
             0
         };
         let sigs_needed = majority(keypairs.len()) + additional_sigs;
-        let current_status = crate::RequestStatuses::<Runtime>::get(net_id, &request_hash).unwrap();
+        let current_status = crate::RequestStatuses::<Runtime>::get(net_id, request_hash).unwrap();
         ensure!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(account_id.clone()),
@@ -207,7 +207,7 @@ pub fn request_incoming(
     }
     let hash = last_request.hash();
     assert_eq!(
-        crate::RequestStatuses::<Runtime>::get(net_id, &hash).unwrap(),
+        crate::RequestStatuses::<Runtime>::get(net_id, hash).unwrap(),
         RequestStatus::Pending
     );
     Ok(hash)
@@ -240,7 +240,7 @@ pub fn assert_incoming_request_done(
     );
     assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
     assert_eq!(
-        *crate::Requests::get(net_id, &req_hash)
+        *crate::Requests::get(net_id, req_hash)
             .unwrap()
             .as_incoming()
             .unwrap()
@@ -248,12 +248,12 @@ pub fn assert_incoming_request_done(
         incoming_request
     );
     assert_ok!(EthBridge::finalize_incoming_request(
-        RuntimeOrigin::signed(bridge_acc_id.clone()),
+        RuntimeOrigin::signed(bridge_acc_id),
         req_hash,
         net_id,
     ));
     assert_eq!(
-        crate::RequestStatuses::<Runtime>::get(net_id, &req_hash).unwrap(),
+        crate::RequestStatuses::<Runtime>::get(net_id, req_hash).unwrap(),
         RequestStatus::Done
     );
     assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
@@ -276,11 +276,11 @@ pub fn assert_incoming_request_registration_failed(
     );
     assert_ok!(
         EthBridge::register_incoming_request(
-            RuntimeOrigin::signed(bridge_acc_id.clone()),
+            RuntimeOrigin::signed(bridge_acc_id),
             incoming_request.clone(),
         ),
         PostDispatchInfo {
-            pays_fee: Pays::No.into(),
+            pays_fee: Pays::No,
             actual_weight: None
         }
     );

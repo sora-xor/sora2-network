@@ -82,7 +82,7 @@ pub struct OutgoingTransfer<T: Config> {
 impl<T: Config> OutgoingTransfer<T> {
     pub fn sidechain_amount(&self) -> Result<(u128, Balance), Error<T>> {
         let sidechain_precision =
-            crate::SidechainAssetPrecision::<T>::get(self.network_id, &self.asset_id);
+            crate::SidechainAssetPrecision::<T>::get(self.network_id, self.asset_id);
         let thischain_precision = assets::Pallet::<T>::get_asset_info(&self.asset_id).2;
         Pallet::<T>::convert_precision(thischain_precision, sidechain_precision, self.amount)
     }
@@ -94,7 +94,7 @@ impl<T: Config> OutgoingTransfer<T> {
         let currency_id;
         let amount;
         if let Some(token_address) =
-            Pallet::<T>::registered_sidechain_token(self.network_id, &self.asset_id)
+            Pallet::<T>::registered_sidechain_token(self.network_id, self.asset_id)
         {
             currency_id = CurrencyIdEncoded::TokenAddress(token_address);
             let converted_amount = self.sidechain_amount().map(|x| x.0)?;
@@ -148,7 +148,7 @@ impl<T: Config> OutgoingTransfer<T> {
                     Token::FixedBytes(network_id.0.to_vec()).into(),
                 ]),
                 BridgeSignatureVersion::V3 => {
-                    let kind = crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id)
+                    let kind = crate::RegisteredAsset::<T>::get(self.network_id, self.asset_id)
                         .ok_or(Error::<T>::UnsupportedToken)?;
                     let prefix = if kind.is_owned() {
                         "transferOwned"
@@ -185,7 +185,7 @@ impl<T: Config> OutgoingTransfer<T> {
 
     /// Checks that the given asset can be transferred through the bridge.
     pub fn validate(&self) -> Result<(), DispatchError> {
-        if let Some(kind) = crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id) {
+        if let Some(kind) = crate::RegisteredAsset::<T>::get(self.network_id, self.asset_id) {
             if !kind.is_owned() {
                 let dust = self.sidechain_amount().map(|x| x.1)?;
                 ensure!(dust == 0, Error::<T>::NonZeroDust);
@@ -248,7 +248,7 @@ impl<T: Config> OutgoingTransfer<T> {
             let remainder = Assets::<T>::unreserve(&self.asset_id, &bridge_acc, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
             let asset_kind: AssetKind =
-                crate::Pallet::<T>::registered_asset(self.network_id, &self.asset_id)
+                crate::Pallet::<T>::registered_asset(self.network_id, self.asset_id)
                     .ok_or(Error::<T>::UnknownAssetId)?;
             if !asset_kind.is_owned() {
                 // The burn shouldn't fail, because we've just unreserved the needed amount of the asset,
@@ -401,7 +401,7 @@ impl<T: Config> OutgoingAddAsset<T> {
     pub fn validate(&self) -> Result<(), DispatchError> {
         Assets::<T>::ensure_asset_exists(&self.asset_id)?;
         ensure!(
-            crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_none(),
+            crate::RegisteredAsset::<T>::get(self.network_id, self.asset_id).is_none(),
             Error::<T>::TokenIsAlreadyAdded
         );
         Ok(())
@@ -414,7 +414,7 @@ impl<T: Config> OutgoingAddAsset<T> {
     /// Calls `validate` again and registers the asset.
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
-        crate::RegisteredAsset::<T>::insert(self.network_id, &self.asset_id, AssetKind::Thischain);
+        crate::RegisteredAsset::<T>::insert(self.network_id, self.asset_id, AssetKind::Thischain);
         Ok(())
     }
 
@@ -579,7 +579,7 @@ impl<T: Config> OutgoingAddToken<T> {
             Error::<T>::UnsupportedAssetPrecision
         );
         ensure!(
-            crate::RegisteredSidechainAsset::<T>::get(self.network_id, &self.token_address)
+            crate::RegisteredSidechainAsset::<T>::get(self.network_id, self.token_address)
                 .is_none(),
             Error::<T>::SidechainAssetIsAlreadyRegistered
         );
@@ -934,7 +934,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
         if let Some(compat_hash) = self.compat_hash {
             // RemovePeerCompat request need to be processed first
             matches!(
-                RequestStatuses::<T>::get(self.network_id, &compat_hash),
+                RequestStatuses::<T>::get(self.network_id, compat_hash),
                 Some(RequestStatus::Pending)
             )
         } else {
@@ -1085,7 +1085,7 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(&self.network_id);
+        let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(self.network_id);
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 => encode_packed(&[
@@ -1181,7 +1181,7 @@ impl<T: Config> OutgoingMigrate<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(&self.network_id);
+        let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(self.network_id);
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 | BridgeSignatureVersion::V2 => encode_packed(&[
@@ -1321,7 +1321,7 @@ pub fn parse_hash_from_call<T: Config>(
         .get(tx_hash_arg_pos)
         .cloned()
         .and_then(Decoder::<T>::parse_h256)
-        .ok_or_else(|| Error::<T>::FailedToParseTxHashInCall.into())
+        .ok_or(Error::<T>::FailedToParseTxHashInCall)
 }
 
 macro_rules! impl_from_for_outgoing_requests {

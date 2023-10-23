@@ -50,20 +50,20 @@ fn should_approve_outgoing_transfer() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100000u32.into()).unwrap();
         assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            Assets::total_balance(&XOR, &alice).unwrap(),
             100000u32.into()
         );
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
         assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            Assets::total_balance(&XOR, &alice).unwrap(),
             99900u32.into()
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
@@ -76,7 +76,7 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
     let mut builder = ExtBuilder::new();
     builder.add_network(
         vec![AssetConfig::Sidechain {
-            id: USDT.into(),
+            id: USDT,
             sidechain_id: H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
             owned: false,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -90,26 +90,26 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
     ext.execute_with(|| {
         let bridge_acc = &state.networks[&net_id].config.bridge_account_id;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&USDT.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&USDT, &alice, &alice, 100000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            USDT.into(),
+            RuntimeOrigin::signed(alice),
+            USDT,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(Assets::free_balance(&USDT.into(), &bridge_acc).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&USDT, bridge_acc).unwrap(), 0);
         // Sidechain asset was reserved.
         assert_eq!(
-            Assets::total_balance(&USDT.into(), &bridge_acc).unwrap(),
+            Assets::total_balance(&USDT, bridge_acc).unwrap(),
             100u32.into()
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
         // Sidechain asset was burnt.
-        assert_eq!(Assets::total_balance(&USDT.into(), &bridge_acc).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&USDT, bridge_acc).unwrap(), 0);
         assert_eq!(
-            Assets::free_balance(&USDT.into(), &bridge_acc).unwrap(),
-            Assets::total_balance(&USDT.into(), &bridge_acc).unwrap()
+            Assets::free_balance(&USDT, bridge_acc).unwrap(),
+            Assets::total_balance(&USDT, bridge_acc).unwrap()
         );
     });
 }
@@ -131,27 +131,27 @@ fn should_reserve_and_unreserve_thischain_asset_in_outgoing_transfer() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&PSWAP.into(), &alice, &alice, 100000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice),
             PSWAP.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(Assets::free_balance(&PSWAP.into(), &bridge_acc).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&PSWAP.into(), bridge_acc).unwrap(), 0);
         // Thischain asset was reserved.
         assert_eq!(
-            Assets::total_balance(&PSWAP.into(), &bridge_acc).unwrap(),
+            Assets::total_balance(&PSWAP.into(), bridge_acc).unwrap(),
             100u32.into()
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
         // Thischain asset was unreserved.
         assert_eq!(
-            Assets::total_balance(&PSWAP.into(), &bridge_acc).unwrap(),
+            Assets::total_balance(&PSWAP.into(), bridge_acc).unwrap(),
             100u32.into()
         );
         assert_eq!(
-            Assets::free_balance(&PSWAP.into(), &bridge_acc).unwrap(),
-            Assets::total_balance(&PSWAP.into(), &bridge_acc).unwrap()
+            Assets::free_balance(&PSWAP.into(), bridge_acc).unwrap(),
+            Assets::total_balance(&PSWAP.into(), bridge_acc).unwrap()
         );
     });
 }
@@ -166,7 +166,7 @@ fn should_not_transfer() {
         assert_err!(
             EthBridge::transfer_to_sidechain(
                 RuntimeOrigin::signed(alice.clone()),
-                KSM.into(),
+                KSM,
                 EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                 100_u32.into(),
                 net_id,
@@ -174,8 +174,8 @@ fn should_not_transfer() {
             Error::UnsupportedToken
         );
         assert!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            RuntimeOrigin::signed(alice),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_000_000_u32.into(),
             net_id,
@@ -191,18 +191,18 @@ fn should_register_outgoing_transfer() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from([1; 20]),
             100u32.into(),
             net_id,
         ));
         let outgoing_transfer = OutgoingTransfer::<Runtime> {
-            from: alice.clone(),
+            from: alice,
             to: EthAddress::from([1; 20]),
-            asset_id: XOR.into(),
+            asset_id: XOR,
             amount: 100_u32.into(),
             nonce: 3,
             network_id: ETH_NETWORK_ID,
@@ -224,10 +224,10 @@ fn ocw_should_handle_outgoing_request() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            RuntimeOrigin::signed(alice),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
@@ -247,10 +247,10 @@ fn ocw_should_not_handle_outgoing_request_twice() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            RuntimeOrigin::signed(alice),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
