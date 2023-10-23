@@ -9,7 +9,7 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "chain-error",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-framenode-runtime = { git = "https://github.com/sora-xor/sora2-network.git", branch = "develop", default-features = false, features = [
+framenode-runtime = { path = "../runtime", default-features = false, features = [
     "std",
     "private-net",
     "wip",
@@ -19,7 +19,7 @@ hex = "0.4.3"
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 [dependencies]
-common = { git = "https://github.com/sora-xor/sora2-network.git", branch = "develop" }
+common = { path = "../common" }
 subxt = { version = "0.25.0" }
 codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
 scale-info = { version = "2", features = ["derive"] }

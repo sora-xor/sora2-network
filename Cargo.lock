@@ -398,7 +398,7 @@ dependencies = [
 name = "assets"
 version = "1.3.1"
 dependencies = [
- "common 0.1.0",
+ "common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -408,7 +408,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "scale-info",
  "serde",
  "sp-core",
@@ -419,34 +419,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "assets"
-version = "1.3.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "tiny-keccak",
-]
-
-[[package]]
 name = "assets-rpc"
 version = "0.1.0"
 dependencies = [
- "assets-runtime-api 0.1.0",
- "common 0.1.0",
+ "assets-runtime-api",
+ "common",
  "jsonrpsee",
  "parity-scale-codec",
  "serde",
@@ -462,25 +439,11 @@ dependencies = [
 name = "assets-runtime-api"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
+ "common",
  "parity-scale-codec",
  "scale-info",
  "serde",
  "serde_json",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "assets-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "parity-scale-codec",
- "scale-info",
- "serde",
  "sp-api",
  "sp-runtime",
  "sp-std",
@@ -683,13 +646,13 @@ dependencies = [
 name = "band"
 version = "1.0.1"
 dependencies = [
- "common 0.1.0",
+ "common",
  "fallible-iterator 0.3.0",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
- "oracle-proxy 1.0.0",
+ "oracle-proxy",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -698,22 +661,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "xst 1.0.1",
-]
-
-[[package]]
-name = "band"
-version = "1.0.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "fallible-iterator 0.3.0",
- "frame-support",
- "frame-system",
- "hex-literal",
- "parity-scale-codec",
- "scale-info",
- "sp-std",
+ "xst",
 ]
 
 [[package]]
@@ -1099,13 +1047,13 @@ dependencies = [
 name = "bridge-inbound-channel"
 version = "0.1.1"
 dependencies = [
- "assets 1.3.1",
- "bridge-outbound-channel 0.1.1",
+ "assets",
+ "bridge-outbound-channel",
  "bridge-types",
- "common 0.1.0",
+ "common",
  "dispatch",
- "erc20-app 0.1.1",
- "eth-app 0.1.1",
+ "erc20-app",
+ "eth-app",
  "ethabi",
  "frame-benchmarking",
  "frame-support",
@@ -1117,7 +1065,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "rlp",
  "scale-info",
  "serde",
@@ -1126,40 +1074,16 @@ dependencies = [
  "sp-keyring",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
-]
-
-[[package]]
-name = "bridge-inbound-channel"
-version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-types",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ethabi",
- "frame-support",
- "frame-system",
- "once_cell",
- "orml-traits",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
 ]
 
 [[package]]
 name = "bridge-outbound-channel"
 version = "0.1.1"
 dependencies = [
- "assets 1.3.1",
+ "assets",
  "bridge-types",
- "common 0.1.0",
+ "common",
  "ethabi",
  "frame-benchmarking",
  "frame-support",
@@ -1170,7 +1094,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "rlp",
  "scale-info",
  "serde",
@@ -1179,43 +1103,20 @@ dependencies = [
  "sp-keyring",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
-]
-
-[[package]]
-name = "bridge-outbound-channel"
-version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-types",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ethabi",
- "frame-support",
- "frame-system",
- "orml-traits",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
 ]
 
 [[package]]
 name = "bridge-proxy"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "bridge-outbound-channel 0.1.1",
+ "assets",
+ "bridge-outbound-channel",
  "bridge-types",
- "common 0.1.0",
+ "common",
  "dispatch",
- "erc20-app 0.1.1",
- "eth-app 0.1.1",
+ "erc20-app",
+ "eth-app",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -1225,47 +1126,23 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "scale-info",
  "sp-core",
  "sp-io",
  "sp-keyring",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
-]
-
-[[package]]
-name = "bridge-proxy"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-types",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "erc20-app 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "eth-app 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "orml-traits",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
 ]
 
 [[package]]
 name = "bridge-proxy-rpc"
 version = "0.1.0"
 dependencies = [
- "bridge-proxy-runtime-api 0.1.0",
+ "bridge-proxy-runtime-api",
  "bridge-types",
- "common 0.1.0",
+ "common",
  "jsonrpsee",
  "parity-scale-codec",
  "scale-info",
@@ -1281,20 +1158,6 @@ dependencies = [
 [[package]]
 name = "bridge-proxy-runtime-api"
 version = "0.1.0"
-dependencies = [
- "bridge-types",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "bridge-proxy-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -1459,12 +1322,12 @@ dependencies = [
 name = "ceres-governance-platform"
 version = "1.2.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-governance-platform 1.2.0",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-governance-platform",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -1475,111 +1338,63 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "price-tools 1.0.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "ceres-governance-platform"
-version = "1.2.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
 name = "ceres-launchpad"
 version = "1.0.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "ceres-token-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "ceres-token-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
- "multicollateral-bonding-curve-pool 0.3.0",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
- "vested-rewards 1.2.1",
-]
-
-[[package]]
-name = "ceres-launchpad"
-version = "1.0.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ceres-liquidity-locker 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ceres-token-locker 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "pallet-timestamp",
- "parity-scale-codec",
- "pool-xyk 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pswap-distribution 1.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "vested-rewards 1.2.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
 name = "ceres-liquidity-locker"
 version = "1.2.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-support",
  "frame-system",
  "hex-literal",
@@ -1589,52 +1404,30 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "price-tools 1.0.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "ceres-liquidity-locker"
-version = "1.2.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
 name = "ceres-liquidity-locker-benchmarking"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-api 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-api",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -1645,25 +1438,25 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
 name = "ceres-staking"
 version = "1.0.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
+ "assets",
+ "common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -1672,44 +1465,25 @@ dependencies = [
  "orml-tokens",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
-]
-
-[[package]]
-name = "ceres-staking"
-version = "1.0.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
 ]
 
 [[package]]
 name = "ceres-token-locker"
 version = "1.2.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -1719,37 +1493,17 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "ceres-token-locker"
-version = "1.2.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
@@ -1972,37 +1726,6 @@ dependencies = [
  "scale-info",
  "serde",
  "serde_json",
- "smallvec",
- "sp-api",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "static_assertions",
-]
-
-[[package]]
-name = "common"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "blake2-rfc",
- "fixnum",
- "frame-support",
- "frame-system",
- "hex",
- "hex-literal",
- "libsecp256k1",
- "num-traits",
- "orml-currencies",
- "orml-traits",
- "pallet-timestamp",
- "parity-scale-codec",
- "paste",
- "rustc-hex",
- "scale-info",
- "serde",
  "smallvec",
  "sp-api",
  "sp-arithmetic",
@@ -2474,80 +2197,57 @@ dependencies = [
 name = "demeter-farming-platform"
 version = "1.0.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
- "multicollateral-bonding-curve-pool 0.3.0",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
- "vested-rewards 1.2.1",
-]
-
-[[package]]
-name = "demeter-farming-platform"
-version = "1.0.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ceres-liquidity-locker 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "pallet-timestamp",
- "parity-scale-codec",
- "pswap-distribution 1.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
 name = "demeter-farming-platform-benchmarking"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
- "multicollateral-bonding-curve-pool 0.3.0",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -2555,9 +2255,9 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
- "vested-rewards 1.2.1",
+ "technical",
+ "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
@@ -2685,24 +2385,24 @@ dependencies = [
 name = "dex-api"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-support",
  "frame-system",
  "hex-literal",
- "mock-liquidity-source 0.1.0",
+ "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -2710,40 +2410,16 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "dex-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "mock-liquidity-source 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-std",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
 name = "dex-api-rpc"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
- "dex-runtime-api 0.1.0",
+ "common",
+ "dex-runtime-api",
  "jsonrpsee",
  "parity-scale-codec",
  "serde",
@@ -2759,8 +2435,8 @@ dependencies = [
 name = "dex-manager"
 version = "0.2.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
+ "assets",
+ "common",
  "frame-support",
  "frame-system",
  "hex-literal",
@@ -2769,35 +2445,13 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "scale-info",
  "serde",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "dex-manager"
-version = "0.2.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-io",
  "sp-std",
 ]
 
@@ -2805,8 +2459,8 @@ dependencies = [
 name = "dex-manager-rpc"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
- "dex-manager-runtime-api 0.1.0",
+ "common",
+ "dex-manager-runtime-api",
  "jsonrpsee",
  "parity-scale-codec",
  "serde",
@@ -2831,37 +2485,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "dex-manager-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "dex-runtime-api"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "dex-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "common",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -3225,10 +2852,10 @@ checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 name = "erc20-app"
 version = "0.1.1"
 dependencies = [
- "assets 1.3.1",
- "bridge-outbound-channel 0.1.1",
+ "assets",
+ "bridge-outbound-channel",
  "bridge-types",
- "common 0.1.0",
+ "common",
  "dispatch",
  "ethabi",
  "frame-benchmarking",
@@ -3240,7 +2867,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "rlp",
  "rustc-hex",
  "scale-info",
@@ -3250,36 +2877,7 @@ dependencies = [
  "sp-keyring",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
-]
-
-[[package]]
-name = "erc20-app"
-version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-outbound-channel 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-types",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dispatch",
- "ethabi",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "orml-traits",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "rlp",
- "rustc-hex",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
 ]
 
 [[package]]
@@ -3318,9 +2916,9 @@ dependencies = [
 name = "eth-app"
 version = "0.1.1"
 dependencies = [
- "assets 1.3.1",
+ "assets",
  "bridge-types",
- "common 0.1.0",
+ "common",
  "dispatch",
  "ethabi",
  "frame-benchmarking",
@@ -3332,7 +2930,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "rlp",
  "rustc-hex",
  "scale-info",
@@ -3342,43 +2940,17 @@ dependencies = [
  "sp-keyring",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
-]
-
-[[package]]
-name = "eth-app"
-version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-types",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ethabi",
- "frame-support",
- "frame-system",
- "hex-literal",
- "orml-traits",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "rlp",
- "rustc-hex",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
 ]
 
 [[package]]
 name = "eth-bridge"
 version = "0.2.0"
 dependencies = [
- "assets 1.3.1",
+ "assets",
  "async-std",
  "bridge-types",
- "common 0.1.0",
+ "common",
  "env_logger 0.8.4",
  "ethabi",
  "ethabi-contract",
@@ -3403,7 +2975,7 @@ dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
  "parking_lot 0.12.1",
- "permissions 1.1.0",
+ "permissions",
  "rlp",
  "rustc-hex",
  "scale-info",
@@ -3417,45 +2989,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "eth-bridge"
-version = "0.2.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-types",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ethabi",
- "ethabi-contract",
- "ethabi-derive",
- "ethereum-types",
- "frame-support",
- "frame-system",
- "hex-literal",
- "jsonrpc-core",
- "libsecp256k1",
- "once_cell",
- "pallet-multisig 3.2.3",
- "pallet-scheduler",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "rlp",
- "rustc-hex",
- "scale-info",
- "serde",
- "serde_json",
- "sp-core",
- "sp-std",
- "tiny-keccak",
-]
-
-[[package]]
 name = "eth-bridge-rpc"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
- "eth-bridge 0.2.0",
- "eth-bridge-runtime-api 0.1.0",
+ "common",
+ "eth-bridge",
+ "eth-bridge-runtime-api",
  "jsonrpsee",
  "parity-scale-codec",
  "serde",
@@ -3470,19 +3009,6 @@ dependencies = [
 [[package]]
 name = "eth-bridge-runtime-api"
 version = "0.1.0"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "eth-bridge-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -3556,7 +3082,7 @@ name = "ethereum-light-client"
 version = "0.1.1"
 dependencies = [
  "bridge-types",
- "common 0.1.0",
+ "common",
  "ethash",
  "frame-benchmarking",
  "frame-support",
@@ -3572,27 +3098,6 @@ dependencies = [
  "sp-io",
  "sp-keyring",
  "sp-keystore",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "ethereum-light-client"
-version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "bridge-types",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ethash",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "rlp",
- "rustc-hex",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -3650,19 +3155,19 @@ checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
 name = "farming"
 version = "1.2.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "env_logger 0.9.3",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
  "log",
- "mock-liquidity-source 0.1.0",
- "multicollateral-bonding-curve-pool 0.3.0",
+ "mock-liquidity-source",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -3670,9 +3175,9 @@ dependencies = [
  "pallet-scheduler",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "rustc-hex",
  "scale-info",
  "serde",
@@ -3681,45 +3186,16 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
- "vested-rewards 1.2.1",
-]
-
-[[package]]
-name = "farming"
-version = "1.2.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "orml-tokens",
- "orml-traits",
- "pallet-scheduler",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pool-xyk 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "rustc-hex",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "vested-rewards 1.2.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
 name = "farming-rpc"
 version = "0.1.0"
 dependencies = [
- "farming-runtime-api 0.1.0",
+ "farming-runtime-api",
  "jsonrpsee",
  "parity-scale-codec",
  "sp-api",
@@ -3730,17 +3206,6 @@ dependencies = [
 [[package]]
 name = "farming-runtime-api"
 version = "0.1.0"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "sp-api",
- "sp-std",
-]
-
-[[package]]
-name = "farming-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -3767,8 +3232,8 @@ checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 name = "faucet"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
+ "assets",
+ "common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -3778,8 +3243,8 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "rewards 1.3.0",
+ "permissions",
+ "rewards",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -3787,29 +3252,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
-]
-
-[[package]]
-name = "faucet"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "pallet-timestamp",
- "parity-scale-codec",
- "rewards 1.3.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
 ]
 
 [[package]]
@@ -4238,7 +3681,7 @@ dependencies = [
  "bridge-types",
  "clap",
  "clap_lex",
- "common 0.1.0",
+ "common",
  "derive_more",
  "dex-api-rpc",
  "dex-manager-rpc",
@@ -4250,11 +3693,11 @@ dependencies = [
  "frame-benchmarking-cli",
  "frame-remote-externalities",
  "framenode-chain-spec",
- "framenode-runtime 3.0.0",
+ "framenode-runtime",
  "futures 0.3.28",
  "futures-timer",
  "hex-literal",
- "iroha-migration 0.1.0",
+ "iroha-migration",
  "iroha-migration-rpc",
  "jsonrpsee",
  "leaf-provider-rpc",
@@ -4270,7 +3713,7 @@ dependencies = [
  "parity-scale-codec",
  "parking_lot 0.12.1",
  "pswap-distribution-rpc",
- "rewards 1.3.0",
+ "rewards",
  "rewards-rpc",
  "sc-basic-authorship",
  "sc-chain-spec",
@@ -4313,30 +3756,30 @@ dependencies = [
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
  "substrate-prometheus-endpoint",
- "technical 0.1.0",
+ "technical",
  "tokio",
  "trading-pair-rpc",
  "trie-root 0.16.0",
  "try-runtime-cli",
  "vested-rewards-rpc",
- "xor-fee 0.1.0",
+ "xor-fee",
 ]
 
 [[package]]
 name = "framenode-chain-spec"
 version = "3.0.0"
 dependencies = [
- "common 0.1.0",
- "faucet 0.1.0",
+ "common",
+ "faucet",
  "frame-support",
- "framenode-runtime 3.0.0",
+ "framenode-runtime",
  "hex-literal",
- "iroha-migration 0.1.0",
- "order-book 0.1.0",
+ "iroha-migration",
+ "order-book",
  "pallet-multisig 3.2.3",
  "parity-scale-codec",
- "permissions 1.1.0",
- "rewards 1.3.0",
+ "permissions",
+ "rewards",
  "sc-finality-grandpa",
  "sc-network",
  "sc-network-common 0.10.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
@@ -4348,48 +3791,48 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
- "technical 0.1.0",
- "xor-fee 0.1.0",
+ "technical",
+ "xor-fee",
 ]
 
 [[package]]
 name = "framenode-runtime"
 version = "3.0.0"
 dependencies = [
- "assets 1.3.1",
- "assets-runtime-api 0.1.0",
- "band 1.0.1",
+ "assets",
+ "assets-runtime-api",
+ "band",
  "beefy-light-client",
  "beefy-light-client-runtime-api",
  "bridge-data-signer",
- "bridge-inbound-channel 0.1.1",
- "bridge-outbound-channel 0.1.1",
- "bridge-proxy 0.1.0",
- "bridge-proxy-runtime-api 0.1.0",
+ "bridge-inbound-channel",
+ "bridge-outbound-channel",
+ "bridge-proxy",
+ "bridge-proxy-runtime-api",
  "bridge-types",
- "ceres-governance-platform 1.2.0",
- "ceres-launchpad 1.0.0",
- "ceres-liquidity-locker 1.2.0",
+ "ceres-governance-platform",
+ "ceres-launchpad",
+ "ceres-liquidity-locker",
  "ceres-liquidity-locker-benchmarking",
- "ceres-staking 1.0.0",
- "ceres-token-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
+ "ceres-staking",
+ "ceres-token-locker",
+ "common",
+ "demeter-farming-platform",
  "demeter-farming-platform-benchmarking",
- "dex-api 0.1.0",
- "dex-manager 0.2.0",
- "dex-manager-runtime-api 0.1.0",
- "dex-runtime-api 0.1.0",
+ "dex-api",
+ "dex-manager",
+ "dex-manager-runtime-api",
+ "dex-runtime-api",
  "dispatch",
  "env_logger 0.9.3",
- "erc20-app 0.1.1",
- "eth-app 0.1.1",
- "eth-bridge 0.2.0",
- "eth-bridge-runtime-api 0.1.0",
- "ethereum-light-client 0.1.1",
- "farming 1.2.0",
- "farming-runtime-api 0.1.0",
- "faucet 0.1.0",
+ "erc20-app",
+ "eth-app",
+ "eth-bridge",
+ "eth-bridge-runtime-api",
+ "ethereum-light-client",
+ "farming",
+ "farming-runtime-api",
+ "faucet",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -4400,23 +3843,23 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "framenode-chain-spec",
- "hermes-governance-platform 1.2.0",
+ "hermes-governance-platform",
  "hex-literal",
- "iroha-migration 0.1.0",
- "iroha-migration-runtime-api 0.1.0",
+ "iroha-migration",
+ "iroha-migration-runtime-api",
  "leaf-provider",
  "leaf-provider-runtime-api",
- "liquidity-proxy 0.1.0",
- "liquidity-proxy-benchmarking 0.1.0",
- "liquidity-proxy-runtime-api 0.1.0",
+ "liquidity-proxy",
+ "liquidity-proxy-benchmarking",
+ "liquidity-proxy-runtime-api",
  "log",
- "migration-app 0.1.1",
- "mock-liquidity-source 0.1.0",
- "multicollateral-bonding-curve-pool 0.3.0",
+ "migration-app",
+ "mock-liquidity-source",
+ "multicollateral-bonding-curve-pool",
  "multisig-verifier",
- "oracle-proxy 1.0.0",
- "oracle-proxy-runtime-api 1.0.0",
- "order-book 0.1.0",
+ "oracle-proxy",
+ "oracle-proxy-runtime-api",
+ "order-book",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -4452,17 +3895,17 @@ dependencies = [
  "parachain-bridge-app",
  "parity-scale-codec",
  "parity-scale-codec-derive",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
+ "permissions",
+ "pool-xyk",
  "pool-xyk-benchmarking",
- "price-tools 1.0.0",
- "pswap-distribution 1.1.1",
+ "price-tools",
+ "pswap-distribution",
  "pswap-distribution-benchmarking",
- "pswap-distribution-runtime-api 0.1.0",
- "qa-tools 0.1.0",
- "referrals 1.1.0",
- "rewards 1.3.0",
- "rewards-runtime-api 0.1.0",
+ "pswap-distribution-runtime-api",
+ "qa-tools",
+ "referrals",
+ "rewards",
+ "rewards-runtime-api",
  "scale-info",
  "serde",
  "sp-api",
@@ -4485,149 +3928,15 @@ dependencies = [
  "static_assertions",
  "substrate-bridge-channel",
  "substrate-wasm-builder",
- "technical 0.1.0",
+ "technical",
  "tokio",
- "trading-pair 0.1.0",
- "trading-pair-runtime-api 0.1.0",
- "vested-rewards 1.2.1",
- "vested-rewards-runtime-api 0.1.0",
- "xor-fee 0.1.0",
- "xst 1.0.1",
- "xst-benchmarking 0.1.0",
-]
-
-[[package]]
-name = "framenode-runtime"
-version = "3.0.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "assets-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "band 1.0.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "beefy-light-client",
- "beefy-light-client-runtime-api",
- "bridge-data-signer",
- "bridge-inbound-channel 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-outbound-channel 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-proxy 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-proxy-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-types",
- "ceres-governance-platform 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ceres-launchpad 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ceres-liquidity-locker 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ceres-staking 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ceres-token-locker 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "demeter-farming-platform 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dispatch",
- "erc20-app 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "eth-app 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "eth-bridge 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "eth-bridge-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ethereum-light-client 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "farming 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "farming-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "faucet 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-election-provider-support",
- "frame-executive",
- "frame-support",
- "frame-system",
- "frame-system-rpc-runtime-api",
- "frame-try-runtime",
- "hermes-governance-platform 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "hex-literal",
- "iroha-migration 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "iroha-migration-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "leaf-provider",
- "leaf-provider-runtime-api",
- "liquidity-proxy 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "liquidity-proxy-benchmarking 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "liquidity-proxy-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "log",
- "migration-app 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "mock-liquidity-source 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "multicollateral-bonding-curve-pool 0.3.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "multisig-verifier",
- "oracle-proxy 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "oracle-proxy-runtime-api 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "order-book 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-aura",
- "pallet-authorship",
- "pallet-babe",
- "pallet-bags-list",
- "pallet-balances",
- "pallet-beefy",
- "pallet-beefy-mmr",
- "pallet-collective",
- "pallet-democracy",
- "pallet-election-provider-multi-phase",
- "pallet-elections-phragmen",
- "pallet-grandpa",
- "pallet-identity",
- "pallet-im-online",
- "pallet-membership",
- "pallet-mmr",
- "pallet-multisig 3.2.3",
- "pallet-multisig 4.0.0-dev",
- "pallet-offences",
- "pallet-preimage",
- "pallet-randomness-collective-flip",
- "pallet-scheduler",
- "pallet-session",
- "pallet-staking",
- "pallet-sudo",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
- "pallet-utility",
- "parachain-bridge-app",
- "parity-scale-codec",
- "parity-scale-codec-derive",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pool-xyk 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "price-tools 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pswap-distribution 1.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pswap-distribution-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "qa-tools 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "referrals 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "rewards 1.3.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "rewards-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-api",
- "sp-beefy",
- "sp-block-builder",
- "sp-consensus-aura",
- "sp-consensus-babe",
- "sp-core",
- "sp-inherents",
- "sp-mmr-primitives",
- "sp-npos-elections",
- "sp-offchain",
- "sp-runtime",
- "sp-session",
- "sp-staking",
- "sp-std",
- "sp-transaction-pool",
- "sp-version",
- "static_assertions",
- "substrate-bridge-channel",
- "substrate-wasm-builder",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "vested-rewards 1.2.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "vested-rewards-runtime-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "xor-fee 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "xst 1.0.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "xst-benchmarking 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "trading-pair",
+ "trading-pair-runtime-api",
+ "vested-rewards",
+ "vested-rewards-runtime-api",
+ "xor-fee",
+ "xst",
+ "xst-benchmarking",
 ]
 
 [[package]]
@@ -4793,7 +4102,7 @@ dependencies = [
  "frame-election-provider-support",
  "frame-support",
  "frame-system",
- "framenode-runtime 3.0.0",
+ "framenode-runtime",
  "git2",
  "num-format",
  "pallet-staking",
@@ -5024,16 +4333,16 @@ checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 name = "hermes-governance-platform"
 version = "1.2.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-governance-platform 1.2.0",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-governance-platform",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hermes-governance-platform 1.2.0",
+ "hermes-governance-platform",
  "hex-literal",
  "orml-currencies",
  "orml-tokens",
@@ -5041,41 +4350,18 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "price-tools 1.0.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "hermes-governance-platform"
-version = "1.2.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
@@ -5508,10 +4794,10 @@ checksum = "28b29a3cd74f0f4598934efe3aeba42bae0eb4680554128851ebbecb02af14e6"
 name = "iroha-migration"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
+ "assets",
+ "common",
  "ed25519-dalek-iroha",
- "eth-bridge 0.2.0",
+ "eth-bridge",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5523,8 +4809,8 @@ dependencies = [
  "pallet-multisig 4.0.0-dev",
  "parity-scale-codec",
  "parity-util-mem",
- "permissions 1.1.0",
- "referrals 1.1.0",
+ "permissions",
+ "referrals",
  "scale-info",
  "serde",
  "sha3 0.9.1",
@@ -5532,38 +4818,15 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
-]
-
-[[package]]
-name = "iroha-migration"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ed25519-dalek-iroha",
- "eth-bridge 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex",
- "pallet-multisig 4.0.0-dev",
- "parity-scale-codec",
- "referrals 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sha3 0.9.1",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
 ]
 
 [[package]]
 name = "iroha-migration-rpc"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
- "iroha-migration-runtime-api 0.1.0",
+ "common",
+ "iroha-migration-runtime-api",
  "jsonrpsee",
  "sp-api",
  "sp-blockchain",
@@ -5574,14 +4837,6 @@ dependencies = [
 [[package]]
 name = "iroha-migration-runtime-api"
 version = "0.1.0"
-dependencies = [
- "sp-api",
-]
-
-[[package]]
-name = "iroha-migration-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
 dependencies = [
  "sp-api",
 ]
@@ -6540,28 +5795,28 @@ checksum = "3852614a3bd9ca9804678ba6be5e3b8ce76dfc902cae004e3e0c44051b6e88db"
 name = "liquidity-proxy"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-api 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-api",
+ "dex-manager",
  "fallible-iterator 0.2.0",
  "frame-support",
  "frame-system",
  "hex-literal",
  "itertools 0.10.5",
- "mock-liquidity-source 0.1.0",
- "multicollateral-bonding-curve-pool 0.3.0",
+ "mock-liquidity-source",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -6569,109 +5824,55 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
- "vested-rewards 1.2.1",
-]
-
-[[package]]
-name = "liquidity-proxy"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "fallible-iterator 0.2.0",
- "frame-support",
- "frame-system",
- "itertools 0.10.5",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "sp-arithmetic",
- "sp-runtime",
- "sp-std",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
 name = "liquidity-proxy-benchmarking"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-api 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-api",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
- "liquidity-proxy 0.1.0",
- "mock-liquidity-source 0.1.0",
- "multicollateral-bonding-curve-pool 0.3.0",
+ "liquidity-proxy",
+ "mock-liquidity-source",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "price-tools 1.0.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
- "vested-rewards 1.2.1",
-]
-
-[[package]]
-name = "liquidity-proxy-benchmarking"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "liquidity-proxy 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "mock-liquidity-source 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "multicollateral-bonding-curve-pool 0.3.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pool-xyk 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "price-tools 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pswap-distribution 1.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
 name = "liquidity-proxy-rpc"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
+ "common",
  "jsonrpsee",
- "liquidity-proxy-runtime-api 0.1.0",
+ "liquidity-proxy-runtime-api",
  "parity-scale-codec",
  "serde",
  "sp-api",
@@ -6686,21 +5887,7 @@ dependencies = [
 name = "liquidity-proxy-runtime-api"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "liquidity-proxy-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "common",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6899,12 +6086,12 @@ dependencies = [
 name = "migration-app"
 version = "0.1.1"
 dependencies = [
- "assets 1.3.1",
+ "assets",
  "bridge-types",
- "common 0.1.0",
+ "common",
  "dispatch",
- "erc20-app 0.1.1",
- "eth-app 0.1.1",
+ "erc20-app",
+ "eth-app",
  "ethabi",
  "frame-benchmarking",
  "frame-support",
@@ -6915,7 +6102,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "rlp",
  "rustc-hex",
  "scale-info",
@@ -6925,35 +6112,7 @@ dependencies = [
  "sp-keyring",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
-]
-
-[[package]]
-name = "migration-app"
-version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "bridge-types",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "erc20-app 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "eth-app 0.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ethabi",
- "frame-support",
- "frame-system",
- "hex-literal",
- "orml-traits",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "rlp",
- "rustc-hex",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
 ]
 
 [[package]]
@@ -7021,9 +6180,9 @@ dependencies = [
 name = "mock-liquidity-source"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "common",
+ "dex-manager",
  "frame-support",
  "frame-system",
  "hex-literal",
@@ -7032,7 +6191,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -7040,32 +6199,8 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "mock-liquidity-source"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
@@ -7147,27 +6282,27 @@ dependencies = [
 name = "multicollateral-bonding-curve-pool"
 version = "0.3.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-api 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-api",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
- "mock-liquidity-source 0.1.0",
+ "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "price-tools 1.0.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -7175,38 +6310,9 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
- "vested-rewards 1.2.1",
-]
-
-[[package]]
-name = "multicollateral-bonding-curve-pool"
-version = "0.3.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pool-xyk 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "price-tools 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pswap-distribution 1.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
@@ -7586,32 +6692,14 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 name = "oracle-proxy"
 version = "1.0.0"
 dependencies = [
- "band 1.0.1",
- "common 0.1.0",
+ "band",
+ "common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
  "pallet-balances",
  "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "oracle-proxy"
-version = "1.0.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -7626,7 +6714,7 @@ name = "oracle-proxy-rpc"
 version = "1.0.0"
 dependencies = [
  "jsonrpsee",
- "oracle-proxy-runtime-api 1.0.0",
+ "oracle-proxy-runtime-api",
  "parity-scale-codec",
  "sp-api",
  "sp-blockchain",
@@ -7638,21 +6726,7 @@ dependencies = [
 name = "oracle-proxy-runtime-api"
 version = "1.0.0"
 dependencies = [
- "common 0.1.0",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "oracle-proxy-runtime-api"
-version = "1.0.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "common",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -7665,13 +6739,13 @@ dependencies = [
 name = "order-book"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
+ "assets",
+ "common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "framenode-chain-spec",
- "framenode-runtime 3.0.0",
+ "framenode-runtime",
  "hex-literal",
  "orml-tokens",
  "pallet-balances",
@@ -7684,28 +6758,8 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "order-book"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "orml-tokens",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
@@ -8488,7 +7542,7 @@ dependencies = [
 name = "parse"
 version = "0.1.0"
 dependencies = [
- "framenode-runtime 3.0.0",
+ "framenode-runtime",
  "hex",
  "parity-scale-codec",
  "rustc-hex",
@@ -8553,7 +7607,7 @@ checksum = "9b2a4787296e9989611394c33f193f676704af1686e70b8f8033ab5ba9a35a94"
 name = "permissions"
 version = "1.1.0"
 dependencies = [
- "common 0.1.0",
+ "common",
  "frame-support",
  "frame-system",
  "pallet-balances",
@@ -8563,21 +7617,6 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "permissions"
-version = "1.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
  "sp-std",
 ]
 
@@ -8778,75 +7817,47 @@ dependencies = [
 name = "pool-xyk"
 version = "1.2.0"
 dependencies = [
- "assets 1.3.1",
- "band 1.0.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "band",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-support",
  "frame-system",
  "hex-literal",
  "num-traits",
- "oracle-proxy 1.0.0",
+ "oracle-proxy",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "price-tools 1.0.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "price-tools",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
- "xst 1.0.1",
-]
-
-[[package]]
-name = "pool-xyk"
-version = "1.2.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "ceres-liquidity-locker 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "demeter-farming-platform 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "num-traits",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
+ "xst",
 ]
 
 [[package]]
 name = "pool-xyk-benchmarking"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-api 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-api",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -8856,17 +7867,17 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
@@ -8931,26 +7942,26 @@ dependencies = [
 name = "price-tools"
 version = "1.0.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-api 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-api",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
- "mock-liquidity-source 0.1.0",
+ "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -8958,37 +7969,8 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "price-tools"
-version = "1.0.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pool-xyk 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pswap-distribution 1.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
@@ -9165,24 +8147,24 @@ dependencies = [
 name = "pswap-distribution"
 version = "1.1.1"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
- "mock-liquidity-source 0.1.0",
+ "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
+ "permissions",
+ "pool-xyk",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -9190,46 +8172,19 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "pswap-distribution"
-version = "1.1.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
 name = "pswap-distribution-benchmarking"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9240,27 +8195,27 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
 name = "pswap-distribution-rpc"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
+ "common",
  "jsonrpsee",
  "parity-scale-codec",
- "pswap-distribution-runtime-api 0.1.0",
+ "pswap-distribution-runtime-api",
  "serde",
  "sp-api",
  "sp-blockchain",
@@ -9274,7 +8229,7 @@ dependencies = [
 name = "pswap-distribution-runtime-api"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
+ "common",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -9285,53 +8240,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "pswap-distribution-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "qa-tools"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
+ "assets",
+ "common",
  "frame-support",
  "frame-system",
  "framenode-chain-spec",
- "framenode-runtime 3.0.0",
- "order-book 0.1.0",
+ "framenode-runtime",
+ "order-book",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "qa-tools"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "order-book 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "parity-scale-codec",
- "scale-info",
- "sp-std",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "trading-pair",
 ]
 
 [[package]]
@@ -9587,8 +8512,8 @@ dependencies = [
 name = "referrals"
 version = "1.1.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
+ "assets",
+ "common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9598,28 +8523,12 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "referrals"
-version = "1.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "serde",
  "sp-std",
 ]
 
@@ -9685,17 +8594,17 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "common 0.1.0",
- "dex-manager 0.2.0",
+ "common",
+ "dex-manager",
  "env_logger 0.9.3",
  "frame-election-provider-support",
  "frame-remote-externalities",
  "frame-support",
  "frame-system",
- "framenode-runtime 3.0.0",
+ "framenode-runtime",
  "hex",
  "jsonrpsee",
- "liquidity-proxy 0.1.0",
+ "liquidity-proxy",
  "log",
  "parity-scale-codec",
  "serde",
@@ -9706,7 +8615,7 @@ dependencies = [
  "sp-version",
  "thiserror",
  "tokio",
- "xst 1.0.1",
+ "xst",
 ]
 
 [[package]]
@@ -9723,8 +8632,8 @@ dependencies = [
 name = "rewards"
 version = "1.3.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
+ "assets",
+ "common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9736,47 +8645,24 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
-]
-
-[[package]]
-name = "rewards"
-version = "1.3.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex",
- "hex-literal",
- "libsecp256k1",
- "orml-traits",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
 ]
 
 [[package]]
 name = "rewards-rpc"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
+ "common",
  "jsonrpsee",
  "parity-scale-codec",
- "rewards-runtime-api 0.1.0",
+ "rewards-runtime-api",
  "serde",
  "sp-api",
  "sp-blockchain",
@@ -9790,21 +8676,7 @@ dependencies = [
 name = "rewards-runtime-api"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "rewards-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "common",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -12630,8 +11502,8 @@ dependencies = [
  "beefy-light-client",
  "bridge-common",
  "bridge-types",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "framenode-runtime 3.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "common",
+ "framenode-runtime",
  "hex",
  "jsonrpsee",
  "parity-scale-codec",
@@ -12844,9 +11716,9 @@ checksum = "9d0e916b1148c8e263850e1ebcbd046f333e0683c724876bb0da63ea4373dc8a"
 name = "technical"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "common",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -12856,35 +11728,14 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "scale-info",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "trading-pair 0.1.0",
- "twox-hash",
-]
-
-[[package]]
-name = "technical"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "orml-currencies",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
+ "trading-pair",
  "twox-hash",
 ]
 
@@ -13270,9 +12121,9 @@ dependencies = [
 name = "trading-pair"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "common",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -13282,7 +12133,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "scale-info",
  "serde",
  "sp-core",
@@ -13292,31 +12143,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "trading-pair"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-std",
-]
-
-[[package]]
 name = "trading-pair-rpc"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
+ "common",
  "jsonrpsee",
  "parity-scale-codec",
  "serde",
@@ -13326,25 +12156,12 @@ dependencies = [
  "sp-rpc",
  "sp-runtime",
  "sp-std",
- "trading-pair-runtime-api 0.1.0",
+ "trading-pair-runtime-api",
 ]
 
 [[package]]
 name = "trading-pair-runtime-api"
 version = "0.1.0"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "trading-pair-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -13654,27 +12471,27 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 name = "vested-rewards"
 version = "1.2.1"
 dependencies = [
- "assets 1.3.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-manager 0.2.0",
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex",
  "hex-literal",
  "itertools 0.10.5",
- "multicollateral-bonding-curve-pool 0.3.0",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "serde_bytes",
@@ -13683,45 +12500,15 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "vested-rewards"
-version = "1.2.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex",
- "hex-literal",
- "itertools 0.10.5",
- "multicollateral-bonding-curve-pool 0.3.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "serde_bytes",
- "serde_json",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
 name = "vested-rewards-rpc"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
+ "common",
  "jsonrpsee",
  "parity-scale-codec",
  "scale-info",
@@ -13732,28 +12519,14 @@ dependencies = [
  "sp-rpc",
  "sp-runtime",
  "sp-std",
- "vested-rewards-runtime-api 0.1.0",
+ "vested-rewards-runtime-api",
 ]
 
 [[package]]
 name = "vested-rewards-runtime-api"
 version = "0.1.0"
 dependencies = [
- "common 0.1.0",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "vested-rewards-runtime-api"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "common",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -14805,8 +13578,8 @@ dependencies = [
 name = "xor-fee"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "common 0.1.0",
+ "assets",
+ "common",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -14818,7 +13591,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-transaction-payment",
  "parity-scale-codec",
- "permissions 1.1.0",
+ "permissions",
  "scale-info",
  "serde",
  "smallvec",
@@ -14831,54 +13604,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "xor-fee"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "orml-traits",
- "pallet-session",
- "pallet-transaction-payment",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "smallvec",
- "sp-arithmetic",
- "sp-core",
- "sp-runtime",
- "sp-staking",
- "sp-std",
-]
-
-[[package]]
 name = "xst"
 version = "1.0.1"
 dependencies = [
- "assets 1.3.1",
- "band 1.0.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-api 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "band",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-api",
+ "dex-manager",
  "frame-support",
  "frame-system",
  "hex-literal",
- "mock-liquidity-source 0.1.0",
- "oracle-proxy 1.0.0",
+ "mock-liquidity-source",
+ "oracle-proxy",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "price-tools 1.0.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -14886,103 +13636,44 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
-]
-
-[[package]]
-name = "xst"
-version = "1.0.1"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-api 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-support",
- "frame-system",
- "hex-literal",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pool-xyk 1.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "price-tools 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "pswap-distribution 1.1.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
 name = "xst-benchmarking"
 version = "0.1.0"
 dependencies = [
- "assets 1.3.1",
- "band 1.0.1",
- "ceres-liquidity-locker 1.2.0",
- "common 0.1.0",
- "demeter-farming-platform 1.0.0",
- "dex-api 0.1.0",
- "dex-manager 0.2.0",
+ "assets",
+ "band",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-api",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
- "mock-liquidity-source 0.1.0",
- "oracle-proxy 1.0.0",
+ "mock-liquidity-source",
+ "oracle-proxy",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "permissions 1.1.0",
- "pool-xyk 1.2.0",
- "price-tools 1.0.0",
- "pswap-distribution 1.1.1",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
  "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "technical 0.1.0",
- "trading-pair 0.1.0",
- "xst 1.0.1",
-]
-
-[[package]]
-name = "xst-benchmarking"
-version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-network.git?branch=develop#57370c3bde1b29e5dc5862f75dba79d1a0b5f57c"
-dependencies = [
- "assets 1.3.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "band 1.0.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "common 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "dex-manager 0.2.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "mock-liquidity-source 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "oracle-proxy 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "orml-currencies",
- "orml-tokens",
- "parity-scale-codec",
- "permissions 1.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "price-tools 1.0.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "scale-info",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "technical 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "trading-pair 0.1.0 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
- "xst 1.0.1 (git+https://github.com/sora-xor/sora2-network.git?branch=develop)",
+ "technical",
+ "trading-pair",
+ "xst",
 ]
 
 [[package]]
