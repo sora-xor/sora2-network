@@ -1106,8 +1106,6 @@ impl<T: Config> Pallet<T> {
             .tuple_windows()
             .filter_map(|(from, to)| {
                 let pair = Self::weak_sort_pair(&dex_info, *from, *to);
-
-                // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
                 T::TradingPairSourceManager::list_enabled_sources_for_trading_pair(
                     dex_id,
                     &pair.base_asset_id,
@@ -1127,8 +1125,6 @@ impl<T: Config> Pallet<T> {
         let sources_set = fallible_iterator::convert(path.to_vec().iter().tuple_windows().map(
             |(from, to)| -> Result<_, DispatchError> {
                 let pair = Self::weak_sort_pair(&dex_info, *from, *to);
-
-                // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
                 let sources = T::TradingPairSourceManager::list_enabled_sources_for_trading_pair(
                     &dex_id,
                     &pair.base_asset_id,
@@ -2197,7 +2193,6 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config + assets::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;

@@ -134,7 +134,6 @@ pub mod pallet {
     use frame_support::{pallet_prelude::*, Parameter};
     use frame_system::pallet_prelude::*;
 
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config: frame_system::Config + technical::Config + common::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;

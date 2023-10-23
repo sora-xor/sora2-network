@@ -187,7 +187,6 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -880,7 +879,6 @@ impl<T: Config> Pallet<T> {
                 &collateral_asset_id,
             )?;
 
-            // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
             <T as pallet::Config>::TradingPairSourceManager::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),

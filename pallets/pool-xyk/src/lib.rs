@@ -181,7 +181,6 @@ impl<T: Config> Pallet<T> {
             (asset_a_pair.0, asset_b_pair.0)
         };
 
-        // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
         T::TradingPairSourceManager::enable_source_for_trading_pair(
             dex_id,
             sorted_asset_a,
@@ -652,7 +651,6 @@ pub mod pallet {
     use orml_traits::GetByKey;
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

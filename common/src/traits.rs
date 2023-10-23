@@ -217,7 +217,6 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
 }
 
 /// Implements trading pairs LockedLiquiditySources storage
-
 pub trait LockedLiquiditySourcesManager<LiquiditySourceType> {
     fn get() -> Vec<LiquiditySourceType>;
     fn set(liquidity_source_types: Vec<LiquiditySourceType>) -> ();
@@ -239,7 +238,6 @@ impl<LiquiditySourceType> LockedLiquiditySourcesManager<LiquiditySourceType> for
 }
 
 /// Implements trading pair EnabledSources stroage
-
 pub trait EnabledSourcesManager<DEXId, AssetId> {
     fn mutate_remove(dex_id: &DEXId, base_asset_id: &AssetId, target_asset_id: &AssetId) -> ();
 }
