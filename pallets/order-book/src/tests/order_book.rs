@@ -1643,6 +1643,16 @@ fn should_sum_market() {
                 OrderAmount::Quote(balance!(4458.27).into())
             )
         );
+        // impacts all orders
+        assert_eq!(
+            order_book
+                .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(610.7).into())))
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(610.7).into()),
+                OrderAmount::Quote(balance!(6881.32).into())
+            )
+        );
 
         // impacts 1 price
         assert_eq!(
@@ -1672,6 +1682,19 @@ fn should_sum_market() {
             (
                 OrderAmount::Base(balance!(447.10695).into()),
                 OrderAmount::Quote(balance!(4999.999925).into())
+            )
+        );
+        // impacts all orders
+        assert_eq!(
+            order_book
+                .sum_market(
+                    asks.iter(),
+                    Some(OrderAmount::Quote(balance!(6881.32).into()))
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(610.7).into()),
+                OrderAmount::Quote(balance!(6881.32).into())
             )
         );
 
@@ -1714,6 +1737,19 @@ fn should_sum_market() {
                 OrderAmount::Quote(balance!(3926.22).into())
             )
         );
+        // impacts all orders
+        assert_eq!(
+            order_book
+                .sum_market(
+                    bids.iter().rev(),
+                    Some(OrderAmount::Base(balance!(569.7).into()))
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(569.7).into()),
+                OrderAmount::Quote(balance!(5538.37).into())
+            )
+        );
 
         // impacts 1 price
         assert_eq!(
@@ -1752,6 +1788,19 @@ fn should_sum_market() {
             (
                 OrderAmount::Base(balance!(460.39789).into()),
                 OrderAmount::Quote(balance!(4499.999955).into())
+            )
+        );
+        // impacts all orders
+        assert_eq!(
+            order_book
+                .sum_market(
+                    bids.iter().rev(),
+                    Some(OrderAmount::Quote(balance!(5538.37).into()))
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(569.7).into()),
+                OrderAmount::Quote(balance!(5538.37).into())
             )
         );
 
