@@ -718,7 +718,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         if market_base_volume
                             .checked_add(base_volume)
                             .ok_or(Error::<T>::AmountCalculationFailed)?
-                            > base_target
+                            >= base_target
                         {
                             let delta = self.align_amount(
                                 base_target
@@ -743,7 +743,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         if market_quote_volume
                             .checked_add(&quote_volume)
                             .ok_or(Error::<T>::AmountCalculationFailed)?
-                            > quote_target
+                            >= quote_target
                         {
                             // delta in base asset
                             let delta = self.align_amount(
@@ -778,18 +778,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 .ok_or(Error::<T>::AmountCalculationFailed)?;
         }
 
-        // if we exactly match the limit, it means there is enough liquidity
-        if let Some(target_depth) = target_depth {
-            match target_depth {
-                OrderAmount::Base(base_target) if market_base_volume == base_target => {
-                    enough_liquidity = true;
-                }
-                OrderAmount::Quote(quote_target) if market_quote_volume == quote_target => {
-                    enough_liquidity = true;
-                }
-                _ => {} // leave as is
-            }
-        };
         ensure!(
             target_depth.is_none() || enough_liquidity,
             Error::<T>::NotEnoughLiquidityInOrderBook
