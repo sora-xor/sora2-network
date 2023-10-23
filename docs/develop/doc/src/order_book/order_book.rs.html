@@ -1905,7 +1905,7 @@
                         <span class="kw">if </span>market_base_volume
                             .checked_add(base_volume)
                             .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?
-                            </span>&gt; base_limit
+                            </span>&gt;= base_limit
                         {
                             <span class="kw">let </span>delta = <span class="self">self</span>.align_amount(
                                 base_limit
@@ -1930,7 +1930,7 @@
                         <span class="kw">if </span>market_quote_volume
                             .checked_add(<span class="kw-2">&amp;</span>quote_volume)
                             .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?
-                            </span>&gt; quote_limit
+                            </span>&gt;= quote_limit
                         {
                             <span class="comment">// delta in base asset
                             </span><span class="kw">let </span>delta = <span class="self">self</span>.align_amount(
