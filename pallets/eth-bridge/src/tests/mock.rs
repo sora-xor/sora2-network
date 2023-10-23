@@ -918,7 +918,7 @@ impl ExtBuilder {
             .map(|x| (x.clone(), Balance::from(0u32)))
             .collect();
         balances.extend(bridge_accounts.iter().map(|(acc, _)| (acc.clone(), 0)));
-        for (_net_id, ext_network) in &self.networks {
+        for ext_network in self.networks.values() {
             balances.extend(ext_network.ocw_keypairs.iter().map(|x| (x.1.clone(), 0)));
         }
         balances.sort_by_key(|x| x.0.clone());

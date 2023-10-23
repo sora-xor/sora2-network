@@ -308,10 +308,12 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
 
-        let mut log = Log::default();
-        log.topics = vec![types::H256(hex!(
-            "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
-        ))];
+        let mut log = Log {
+            topics: vec![types::H256(hex!(
+                "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+            ))],
+            ..Default::default()
+        };
         let data = ethabi::encode(&[
             ethabi::Token::FixedBytes(alice.encode()),
             ethabi::Token::Uint(types::U256::from(100)),

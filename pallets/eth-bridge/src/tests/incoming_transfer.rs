@@ -530,10 +530,12 @@ fn ocw_should_handle_incoming_request() {
             IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
             net_id
         ));
-        let mut log = Log::default();
-        log.topics = vec![types::H256(hex!(
-            "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
-        ))];
+        let mut log = Log {
+            topics: vec![types::H256(hex!(
+                "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+            ))],
+            ..Default::default()
+        };
         let data = ethabi::encode(&[
             ethabi::Token::FixedBytes(alice.encode()),
             ethabi::Token::Uint(types::U256::from(100)),
@@ -602,10 +604,12 @@ fn ocw_should_not_register_pending_incoming_request() {
             IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
             net_id
         ));
-        let mut log = Log::default();
-        log.topics = vec![types::H256(hex!(
-            "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
-        ))];
+        let mut log = Log {
+            topics: vec![types::H256(hex!(
+                "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+            ))],
+            ..Default::default()
+        };
         let data = ethabi::encode(&[
             ethabi::Token::FixedBytes(alice.encode()),
             ethabi::Token::Uint(types::U256::from(100)),
@@ -666,10 +670,12 @@ fn ocw_should_import_incoming_request() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let mut log = Log::default();
-        log.topics = vec![types::H256(hex!(
-            "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
-        ))];
+        let mut log = Log {
+            topics: vec![types::H256(hex!(
+                "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+            ))],
+            ..Default::default()
+        };
         let data = ethabi::encode(&[
             ethabi::Token::FixedBytes(alice.encode()),
             ethabi::Token::Uint(types::U256::from(100)),
@@ -787,10 +793,12 @@ fn ocw_should_not_import_pending_incoming_request() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let mut log = Log::default();
-        log.topics = vec![types::H256(hex!(
-            "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
-        ))];
+        let mut log = Log {
+            topics: vec![types::H256(hex!(
+                "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+            ))],
+            ..Default::default()
+        };
         let data = ethabi::encode(&[
             ethabi::Token::FixedBytes(alice.encode()),
             ethabi::Token::Uint(types::U256::from(100)),

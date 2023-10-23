@@ -219,6 +219,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Get registered assets and tokens.
+    #[allow(clippy::type_complexity)]
     pub fn get_registered_assets(
         network_id: Option<T::NetworkId>,
     ) -> Result<

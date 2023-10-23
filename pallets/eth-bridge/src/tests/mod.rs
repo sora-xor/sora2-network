@@ -88,6 +88,7 @@ pub fn no_event() -> bool {
     frame_system::Pallet::<Runtime>::events().pop().is_none()
 }
 
+#[allow(clippy::result_large_err)]
 pub fn approve_request(
     state: &State,
     request: OutgoingRequest<Runtime>,
@@ -166,6 +167,7 @@ pub fn last_outgoing_request(net_id: u32) -> Option<(OutgoingRequest<Runtime>, H
     }
 }
 
+#[allow(clippy::result_large_err)]
 pub fn approve_last_request(
     state: &State,
     net_id: u32,
@@ -175,6 +177,7 @@ pub fn approve_last_request(
     Ok((outgoing_request, hash))
 }
 
+#[allow(clippy::result_large_err)]
 pub fn approve_next_request(
     state: &State,
     net_id: u32,
@@ -188,6 +191,7 @@ pub fn approve_next_request(
     Ok((outgoing_request, hash))
 }
 
+#[allow(clippy::result_large_err)]
 pub fn request_incoming(
     account_id: AccountId,
     tx_hash: H256,
@@ -213,6 +217,7 @@ pub fn request_incoming(
     Ok(hash)
 }
 
+#[allow(clippy::result_large_err)]
 pub fn assert_incoming_request_done(
     state: &State,
     incoming_request: IncomingRequest<Runtime>,
@@ -260,6 +265,7 @@ pub fn assert_incoming_request_done(
     Ok(())
 }
 
+#[allow(clippy::result_large_err)]
 pub fn assert_incoming_request_registration_failed(
     state: &State,
     incoming_request: IncomingRequest<Runtime>,

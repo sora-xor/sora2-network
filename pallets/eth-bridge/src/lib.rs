@@ -1226,20 +1226,17 @@ pub mod pallet {
 
     impl<T: Config> Error<T> {
         pub fn should_retry(&self) -> bool {
-            match self {
+            matches!(
+                self,
                 Self::HttpFetchingError
-                | Self::NoLocalAccountForSigning
-                | Self::FailedToSignMessage
-                | Self::JsonDeserializationError => true,
-                _ => false,
-            }
+                    | Self::NoLocalAccountForSigning
+                    | Self::FailedToSignMessage
+                    | Self::JsonDeserializationError
+            )
         }
 
         pub fn should_abort(&self) -> bool {
-            match self {
-                Self::FailedToSendSignedTransaction => false,
-                _ => true,
-            }
+            !matches!(self, Self::FailedToSendSignedTransaction)
         }
     }
 

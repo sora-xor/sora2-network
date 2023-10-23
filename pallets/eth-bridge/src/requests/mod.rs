@@ -816,18 +816,11 @@ impl<T: Config> OffchainRequest<T> {
     }
 
     pub fn is_load_incoming(&self) -> bool {
-        // match self {
-        //     OffchainRequest::LoadIncoming(..) => true,
-        //     _ => false,
-        // }
         matches!(self, OffchainRequest::LoadIncoming(..))
     }
 
     pub fn is_incoming(&self) -> bool {
-        match self {
-            OffchainRequest::Incoming(..) => true,
-            _ => false,
-        }
+        matches!(self, OffchainRequest::Incoming(..))
     }
 
     pub fn should_be_skipped(&self) -> bool {
