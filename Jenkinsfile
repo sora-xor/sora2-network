@@ -11,7 +11,6 @@ def pipeline = new org.rust.AppPipeline(steps: this,
       cargoClippyCmds: ['housekeeping/clippy.sh'],
       buildTestCmds: ['housekeeping/build.sh'],
       buildArtifacts: 'framenode_runtime.compact.compressed.wasm, subwasm_report.json, pallet_list.txt',
-      pushToPublicRegistry: true,
-      nodeVersion: '20.8.0'
+      pushToPublicRegistry: true
 )
 pipeline.runPipeline()
