@@ -65,7 +65,6 @@ use order_book_imported::Pallet as OrderBookPallet;
 use order_book_imported::{LimitOrder, MomentOf, OrderBookId};
 
 mod periphery;
-mod preparation;
 #[cfg(test)]
 mod tests;
 
@@ -152,7 +151,7 @@ mod benchmarks_inner {
     use order_book_imported::{
         Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
     };
-    use preparation::presets::*;
+    use periphery::presets::*;
 
     use frame_system::Pallet as FrameSystem;
     use trading_pair::Pallet as TradingPair;
@@ -468,69 +467,78 @@ mod benchmarks_inner {
 
         #[extra]
         place_limit_order_1 {
-            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
-            let (order_book_id, price, amount, side, lifespan) =
-                preparation::place_limit_order::<T>(preset_1(), accounts::alice::<T>());
+            use periphery::place_limit_order::{init, Context};
+            let Context { caller, order_book_id, price, amount, side, lifespan } =
+                init::<T>(preset_1());
         }: {
             OrderBookPallet::<T>::place_limit_order(
-                signer, order_book_id, *price.balance(), *amount.balance(), side, Some(lifespan),
+                RawOrigin::Signed(caller).into(), order_book_id, *price.balance(), *amount.balance(), side, Some(lifespan),
             ).unwrap();
         }
 
         #[extra]
         place_limit_order_2 {
-            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
-            let (order_book_id, price, amount, side, lifespan) =
-                preparation::place_limit_order::<T>(preset_2(), accounts::alice::<T>());
+            use periphery::place_limit_order::{init, Context};
+            let Context { caller, order_book_id, price, amount, side, lifespan } =
+                init::<T>(preset_2());
         }: {
             OrderBookPallet::<T>::place_limit_order(
-                signer, order_book_id, *price.balance(), *amount.balance(), side, Some(lifespan),
+                RawOrigin::Signed(caller).into(), order_book_id, *price.balance(), *amount.balance(), side, Some(lifespan),
             ).unwrap();
         }
 
 
         #[extra]
         cancel_limit_order_first_1 {
-            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
-            let (order_book_id, order_id) =
-                preparation::cancel_limit_order(preset_1::<T>(), accounts::alice::<T>(), true);
+            use periphery::cancel_limit_order::{init, Context};
+            let Context { caller, order_book_id, order_id, .. } =
+                init::<T>(preset_1::<T>(), true);
         }: {
-            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+            OrderBookPallet::<T>::cancel_limit_order(
+                RawOrigin::Signed(caller).into(), order_book_id, order_id
+            ).unwrap();
         }
 
         #[extra]
         cancel_limit_order_first_2 {
-            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
-            let (order_book_id, order_id) =
-                preparation::cancel_limit_order(preset_2::<T>(), accounts::alice::<T>(), true);
+            use periphery::cancel_limit_order::{init, Context};
+            let Context { caller, order_book_id, order_id, .. } =
+                init::<T>(preset_2::<T>(), true);
         }: {
-            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+            OrderBookPallet::<T>::cancel_limit_order(
+                RawOrigin::Signed(caller).into(), order_book_id, order_id
+            ).unwrap();
         }
 
 
         #[extra]
         cancel_limit_order_last_1 {
-            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
-            let (order_book_id, order_id) =
-                preparation::cancel_limit_order(preset_1::<T>(), accounts::alice::<T>(), false);
+            use periphery::cancel_limit_order::{init, Context};
+            let Context { caller, order_book_id, order_id, .. } =
+                init::<T>(preset_1::<T>(), false);
         }: {
-            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+            OrderBookPallet::<T>::cancel_limit_order(
+                RawOrigin::Signed(caller).into(), order_book_id, order_id
+            ).unwrap();
         }
 
         #[extra]
         cancel_limit_order_last_2 {
-            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
-            let (order_book_id, order_id) =
-                preparation::cancel_limit_order(preset_2::<T>(), accounts::alice::<T>(), false);
+            use periphery::cancel_limit_order::{init, Context};
+            let Context { caller, order_book_id, order_id, .. } =
+                init::<T>(preset_2::<T>(), false);
         }: {
-            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+            OrderBookPallet::<T>::cancel_limit_order(
+                RawOrigin::Signed(caller).into(), order_book_id, order_id
+            ).unwrap();
         }
 
 
         #[extra]
         execute_market_order_1 {
-            let caller = accounts::alice::<T>();
-            let (id, amount, side) = preparation::market_order_execution::<T>(preset_1(), caller.clone(), false);
+            use periphery::execute_market_order::{init, Context};
+            let Context { caller, order_book_id: id, amount, side, .. } =
+                init::<T>(preset_1::<T>());
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(caller).into(), id, side, *amount.balance()
@@ -539,8 +547,9 @@ mod benchmarks_inner {
 
         #[extra]
         execute_market_order_2 {
-            let caller = accounts::alice::<T>();
-            let (id, amount, side) = preparation::market_order_execution::<T>(preset_2(), caller.clone(), false);
+            use periphery::execute_market_order::{init, Context};
+            let Context { caller, order_book_id: id, amount, side, .. } =
+                init::<T>(preset_2::<T>());
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(caller).into(), id, side, *amount.balance()
@@ -550,42 +559,44 @@ mod benchmarks_inner {
 
         #[extra]
         quote_1 {
-            let (dex_id, input_id, output_id, amount, deduce_fee) =
-            preparation::quote::<T>(preset_1());
+            use periphery::quote::{init, Context};
+            let Context { dex_id, input_asset_id, output_asset_id, amount, deduce_fee } =
+                init::<T>(preset_1::<T>());
         }: {
-            OrderBookPallet::<T>::quote(&dex_id, &input_id, &output_id, amount, deduce_fee)
+            OrderBookPallet::<T>::quote(&dex_id, &input_asset_id, &output_asset_id, amount, deduce_fee)
                 .unwrap();
         }
 
         #[extra]
         quote_2 {
-            let (dex_id, input_id, output_id, amount, deduce_fee) =
-            preparation::quote::<T>(preset_2());
+            use periphery::quote::{init, Context};
+            let Context { dex_id, input_asset_id, output_asset_id, amount, deduce_fee } =
+                init::<T>(preset_2::<T>());
         }: {
-            OrderBookPallet::<T>::quote(&dex_id, &input_id, &output_id, amount, deduce_fee)
+            OrderBookPallet::<T>::quote(&dex_id, &input_asset_id, &output_asset_id, amount, deduce_fee)
                 .unwrap();
         }
 
 
         #[extra]
         exchange_1 {
-            let caller = accounts::alice::<T>();
-            let (id, amount, _) = preparation::market_order_execution::<T>(preset_1(), caller.clone(), true);
+            use periphery::exchange_single_order::{init, Context};
+            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init::<T>(preset_1());
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
-                SwapAmount::with_desired_input(*amount.balance(), balance!(0)),
+                SwapAmount::with_desired_input(expected_out, expected_in + balance!(1.5)),
             ).unwrap();
         }
 
         #[extra]
         exchange_2 {
-            let caller = accounts::alice::<T>();
-            let (id, amount, _) = preparation::market_order_execution::<T>(preset_2(), caller.clone(), true);
+            use periphery::exchange_single_order::{init, Context};
+            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init::<T>(preset_2());
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
-                SwapAmount::with_desired_input(*amount.balance(), balance!(0)),
+                SwapAmount::with_desired_input(expected_out, expected_in + balance!(1.5)),
             ).unwrap();
         }
     }

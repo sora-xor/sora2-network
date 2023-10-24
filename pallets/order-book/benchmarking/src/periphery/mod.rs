@@ -56,8 +56,12 @@ use order_book_imported::{
     OrderPrice, OrderVolume,
 };
 
-use crate::preparation::{cancel_limit_order, market_order_execution, place_limit_order, quote};
 use crate::{assert_last_event, assert_orders_numbers, DEX};
+use preparation::{cancel_limit_order, market_order_execution, place_limit_order, quote};
+
+mod preparation;
+
+pub use preparation::presets;
 
 pub(crate) mod delete_orderbook {
     use super::*;

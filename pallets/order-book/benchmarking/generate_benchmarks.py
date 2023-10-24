@@ -24,12 +24,12 @@ def generate_fs(range_: range, template: str):
 code_template_place = """
         #[extra]
         place_limit_order_{} {{
-            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
-            let (order_book_id, price, amount, side, lifespan) =
-                prepare_place_orderbook_benchmark::<T>(preset_{}(), accounts::alice::<T>());
+            use periphery::place_limit_order::{{init, Context}};
+            let Context {{ caller, order_book_id, price, amount, side, lifespan }} =
+                init::<T>(preset_{}());
         }}: {{
             OrderBookPallet::<T>::place_limit_order(
-                signer, order_book_id, *price.balance(), *amount.balance(), side, Some(lifespan),
+                RawOrigin::Signed(caller).into(), order_book_id, *price.balance(), *amount.balance(), side, Some(lifespan),
             ).unwrap();
         }}
 """
@@ -37,30 +37,35 @@ code_template_place = """
 code_template_cancel_first = """
         #[extra]
         cancel_limit_order_first_{} {{
-            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
-            let (order_book_id, order_id) =
-                prepare_cancel_orderbook_benchmark(preset_{}::<T>(), accounts::alice::<T>(), true);
+            use periphery::cancel_limit_order::{{init, Context}};
+            let Context {{ caller, order_book_id, order_id, .. }} =
+                init::<T>(preset_{}::<T>(), true);
         }}: {{
-            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+            OrderBookPallet::<T>::cancel_limit_order(
+                RawOrigin::Signed(caller).into(), order_book_id, order_id
+            ).unwrap();
         }}
 """
 
 code_template_cancel_last = """
         #[extra]
         cancel_limit_order_last_{} {{
-            let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
-            let (order_book_id, order_id) =
-                prepare_cancel_orderbook_benchmark(preset_{}::<T>(), accounts::alice::<T>(), false);
+            use periphery::cancel_limit_order::{{init, Context}};
+            let Context {{ caller, order_book_id, order_id, .. }} =
+                init::<T>(preset_{}::<T>(), false);
         }}: {{
-            OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
+            OrderBookPallet::<T>::cancel_limit_order(
+                RawOrigin::Signed(caller).into(), order_book_id, order_id
+            ).unwrap();
         }}
 """
 
 code_template_execute = """
         #[extra]
         execute_market_order_{} {{
-            let caller = accounts::alice::<T>();
-            let (id, amount, side) = prepare_market_order_benchmark::<T>(preset_{}(), caller.clone(), false);
+            use periphery::execute_market_order::{{init, Context}};
+            let Context {{ caller, order_book_id: id, amount, side, .. }} =
+                init::<T>(preset_{}::<T>());
         }}: {{
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(caller).into(), id, side, *amount.balance()
@@ -71,10 +76,11 @@ code_template_execute = """
 code_template_quote = """
         #[extra]
         quote_{} {{
-            let (dex_id, input_id, output_id, amount, deduce_fee) =
-            prepare_quote_benchmark::<T>(preset_{}());
+            use periphery::quote::{{init, Context}};
+            let Context {{ dex_id, input_asset_id, output_asset_id, amount, deduce_fee }} =
+                init::<T>(preset_{}::<T>());
         }}: {{
-            OrderBookPallet::<T>::quote(&dex_id, &input_id, &output_id, amount, deduce_fee)
+            OrderBookPallet::<T>::quote(&dex_id, &input_asset_id, &output_asset_id, amount, deduce_fee)
                 .unwrap();
         }}
 """
@@ -82,12 +88,12 @@ code_template_quote = """
 code_template_exchange = """
         #[extra]
         exchange_{} {{
-            let caller = accounts::alice::<T>();
-            let (id, amount, _) = prepare_market_order_benchmark::<T>(preset_{}(), caller.clone(), true);
+            use periphery::exchange_single_order::{{init, Context}};
+            let Context {{ caller, order_book_id: id, expected_in, expected_out, .. }} = init::<T>(preset_{}());
         }} : {{
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
-                SwapAmount::with_desired_input(*amount.balance(), balance!(0)),
+                SwapAmount::with_desired_input(expected_out, expected_in + balance!(1.5)),
             ).unwrap();
         }}
 """
