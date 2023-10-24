@@ -223,20 +223,6 @@ pub trait LockedLiquiditySourcesManager<LiquiditySourceType> {
     fn append(liquidity_source_type: LiquiditySourceType) -> ();
 }
 
-impl<LiquiditySourceType> LockedLiquiditySourcesManager<LiquiditySourceType> for () {
-    fn get() -> Vec<LiquiditySourceType> {
-        todo!()
-    }
-
-    fn set(_liquidity_source_types: Vec<LiquiditySourceType>) -> () {
-        todo!()
-    }
-
-    fn append(_liquidity_source_type: LiquiditySourceType) -> () {
-        todo!()
-    }
-}
-
 /// Implements trading pair EnabledSources stroage
 pub trait EnabledSourcesManager<DEXId, AssetId> {
     fn mutate_remove(dex_id: &DEXId, base_asset_id: &AssetId, target_asset_id: &AssetId) -> ();
@@ -259,17 +245,6 @@ pub trait RegisterManager<DEXId, AssetId, Origin> {
     ) -> DispatchResultWithPostInfo;
 }
 
-impl<DEXId, AssetId, Origin> RegisterManager<DEXId, AssetId, Origin> for () {
-    fn register(
-        _origin: Origin,
-        _dex_id: DEXId,
-        _baset_asset_id: AssetId,
-        _target_asset_id: AssetId,
-    ) -> DispatchResultWithPostInfo {
-        todo!()
-    }
-}
-
 /// Implements trading pair is_trading_pair_enabled
 pub trait IsTradingPairEnabled<DEXId, AssetId> {
     fn is_trading_pair_enabled(
@@ -279,16 +254,6 @@ pub trait IsTradingPairEnabled<DEXId, AssetId> {
     ) -> Result<bool, DispatchError>;
 }
 
-impl<DEXId, AssetId> IsTradingPairEnabled<DEXId, AssetId> for () {
-    fn is_trading_pair_enabled(
-        _dex_id: &DEXId,
-        _baset_asset_id: &AssetId,
-        _target_asset_id: &AssetId,
-    ) -> Result<bool, DispatchError> {
-        todo!()
-    }
-}
-
 /// Implements trading pair register_pair
 pub trait RegisterPair<DEXId, AssetId> {
     fn register_pair(
@@ -296,16 +261,6 @@ pub trait RegisterPair<DEXId, AssetId> {
         base_asset_id: AssetId,
         target_asset_id: AssetId,
     ) -> Result<(), DispatchError>;
-}
-
-impl<DEXId, AssetId> RegisterPair<DEXId, AssetId> for () {
-    fn register_pair(
-        _dex_id: DEXId,
-        _baset_asset_id: AssetId,
-        _target_asset_id: AssetId,
-    ) -> Result<(), DispatchError> {
-        todo!()
-    }
 }
 
 // pub trait RegisterManager
