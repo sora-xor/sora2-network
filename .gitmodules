@@ -1,0 +1,3 @@
+[submodule "ethereum-bridge-contracts"]
+	path = ethereum-bridge-contracts
+	url = https://github.com/sora-xor/sora2-federated-bridge-evm-contracts.git
