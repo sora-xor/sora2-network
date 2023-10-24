@@ -62,7 +62,7 @@ use crate::preparation::{
 };
 use crate::{assert_last_event, assert_orders_numbers, DEX};
 
-pub(crate) mod delete_orderbook_benchmark {
+pub(crate) mod delete_orderbook {
     use super::*;
 
     pub fn init<T: Config>(_settings: FillSettings<T>) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
@@ -97,7 +97,7 @@ pub(crate) mod delete_orderbook_benchmark {
     }
 }
 
-pub(crate) mod place_limit_order_benchmark {
+pub(crate) mod place_limit_order {
     use super::*;
     use common::balance;
     use order_book_imported::OrderPrice;
@@ -171,7 +171,7 @@ pub(crate) mod place_limit_order_benchmark {
     }
 }
 
-pub(crate) mod cancel_limit_order_benchmark {
+pub(crate) mod cancel_limit_order {
     use super::*;
     use common::Balance;
 
@@ -233,7 +233,7 @@ pub(crate) mod cancel_limit_order_benchmark {
     }
 }
 
-pub(crate) mod execute_market_order_benchmark {
+pub(crate) mod execute_market_order {
     use super::*;
     use common::prelude::BalanceUnit;
     use common::Balance;
@@ -363,7 +363,7 @@ pub(crate) mod execute_market_order_benchmark {
     }
 }
 
-pub(crate) mod quote_benchmark {
+pub(crate) mod quote {
     use super::*;
     use common::prelude::QuoteAmount;
     use common::Balance;
@@ -391,7 +391,7 @@ pub(crate) mod quote_benchmark {
     }
 }
 
-pub(crate) mod exchange_single_order_benchmark {
+pub(crate) mod exchange_single_order {
     use super::*;
     use common::{balance, Balance, VAL, XOR};
     use order_book_imported::test_utils::create_and_fill_order_book;
