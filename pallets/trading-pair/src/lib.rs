@@ -38,9 +38,8 @@ extern crate alloc;
 
 use common::{
     AssetInfoProvider, DexInfoProvider, EnabledSourcesManager, EnsureDEXManager,
-    EnsureTradingPairExists, IsTradingPairEnabled, LiquiditySourceType,
-    LockedLiquiditySourcesManager, ManagementMode, RegisterManager, RegisterPair,
-    TradingPairSourceManager,
+    EnsureTradingPairExists, LiquiditySourceType, LockedLiquiditySourcesManager, ManagementMode,
+    RegisterManager, TradingPairSourceManager,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -75,26 +74,6 @@ impl<T: Config> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for
             Error::<T>::TradingPairDoesntExist
         );
         Ok(())
-    }
-}
-
-impl<T: Config> IsTradingPairEnabled<T::DEXId, T::AssetId> for Pallet<T> {
-    fn is_trading_pair_enabled(
-        dex_id: &T::DEXId,
-        base_asset_id: &T::AssetId,
-        target_asset_id: &T::AssetId,
-    ) -> Result<bool, DispatchError> {
-        Self::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)
-    }
-}
-
-impl<T: Config> RegisterPair<T::DEXId, T::AssetId> for Pallet<T> {
-    fn register_pair(
-        dex_id: T::DEXId,
-        base_asset_id: T::AssetId,
-        target_asset_id: T::AssetId,
-    ) -> Result<(), DispatchError> {
-        Self::register_pair(dex_id, base_asset_id, target_asset_id)
     }
 }
 
@@ -208,6 +187,22 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
             opt_set.as_mut().unwrap().remove(&source_type)
         });
         Ok(())
+    }
+
+    fn is_trading_pair_enabled(
+        dex_id: &T::DEXId,
+        base_asset_id: &T::AssetId,
+        target_asset_id: &T::AssetId,
+    ) -> Result<bool, DispatchError> {
+        Self::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)
+    }
+
+    fn register_pair(
+        dex_id: T::DEXId,
+        base_asset_id: T::AssetId,
+        target_asset_id: T::AssetId,
+    ) -> Result<(), DispatchError> {
+        Self::register_pair(dex_id, base_asset_id, target_asset_id)
     }
 }
 

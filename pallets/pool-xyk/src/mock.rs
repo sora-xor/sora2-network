@@ -313,8 +313,6 @@ impl xst::Config for Runtime {
     type Symbol = SymbolName;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type IsTradingPairEnabled = trading_pair::Pallet<Runtime>;
-    type RegisterPair = trading_pair::Pallet<Runtime>;
 }
 
 parameter_type_with_key! {
