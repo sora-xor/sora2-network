@@ -724,7 +724,10 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order())]
+        #[pallet::weight(
+            <T as Config>::WeightInfo::cancel_limit_order_first_expiration()
+                .max(<T as Config>::WeightInfo::cancel_limit_order_last_expiration()))
+        ]
         pub fn cancel_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -749,7 +752,15 @@ pub mod pallet {
         }
 
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order().saturating_mul(limit_orders_to_cancel.iter().fold(0, |count, (_, order_ids)| count.saturating_add(order_ids.len() as u64))))]
+        #[pallet::weight({
+            let cancel_limit_order = <T as Config>::WeightInfo::cancel_limit_order_first_expiration()
+                .max(<T as Config>::WeightInfo::cancel_limit_order_last_expiration());
+            let limit_orders_count: u64 = limit_orders_to_cancel
+                .iter()
+                .fold(0, |count, (_, order_ids)| count.saturating_add(order_ids.len() as u64));
+
+            cancel_limit_order.saturating_mul(limit_orders_count)
+        })]
         pub fn cancel_limit_orders_batch(
             origin: OriginFor<T>,
             limit_orders_to_cancel: Vec<(OrderBookId<AssetIdOf<T>, T::DEXId>, Vec<T::OrderId>)>,
