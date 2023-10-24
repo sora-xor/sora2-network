@@ -325,7 +325,8 @@ benchmarks! {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book::<T>(order_book_id);
+        OrderBookPallet::<T>::create_orderbook(RawOrigin::Signed(bob::<T>()).into(), order_book_id).unwrap();
+        OrderBookPallet::<T>::change_orderbook_status(RawOrigin::Root.into(), order_book_id, OrderBookStatus::Stop).unwrap();
     }: {
         OrderBookPallet::<T>::delete_orderbook(
             RawOrigin::Root.into(),
@@ -336,7 +337,6 @@ benchmarks! {
         assert_last_event::<T>(
             Event::<T>::OrderBookDeleted {
                 order_book_id,
-                count_of_canceled_orders: 12,
             }
             .into(),
         );
@@ -355,8 +355,10 @@ benchmarks! {
 
         let tick_size = balance!(0.01);
         let step_lot_size = balance!(1); // limit orders should be aligned according to new step_lot_size
-        let min_lot_size = balance!(1);
-        let max_lot_size = balance!(10000);
+        let min_lot_size = balance!(10);
+        let max_lot_size = balance!(2000);
+
+        OrderBookPallet::<T>::change_orderbook_status(RawOrigin::Root.into(), order_book_id, OrderBookStatus::Stop).unwrap();
     }: {
         OrderBookPallet::<T>::update_orderbook(
             RawOrigin::Root.into(),
@@ -650,7 +652,7 @@ benchmarks! {
         // nothing changed
     }
 
-    exchange {
+    exchange_single_order {
         let caller = alice::<T>();
 
         let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
@@ -677,7 +679,7 @@ benchmarks! {
             &DEX.into(),
             &VAL.into(),
             &XOR.into(),
-            SwapAmount::with_desired_output(balance!(3500), balance!(360)),
+            SwapAmount::with_desired_output(balance!(1685), balance!(170)), // this amount executes only one limit order
         )
         .unwrap();
     }
@@ -687,8 +689,8 @@ benchmarks! {
                 order_book_id,
                 owner_id: caller.clone(),
                 direction: PriceVariant::Sell,
-                amount: OrderAmount::Base(balance!(355.13473).into()),
-                average_price: balance!(9.855414408497867837).into(),
+                amount: OrderAmount::Base(balance!(168.5).into()),
+                average_price: balance!(10).into(),
                 to: None,
             }
             .into(),
@@ -696,11 +698,11 @@ benchmarks! {
 
         assert_eq!(
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller).unwrap(),
-            caller_base_balance - balance!(355.13473)
+            caller_base_balance - balance!(168.5)
         );
         assert_eq!(
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap(),
-            caller_quote_balance + balance!(3499.999935)
+            caller_quote_balance + balance!(1685)
         );
     }
 

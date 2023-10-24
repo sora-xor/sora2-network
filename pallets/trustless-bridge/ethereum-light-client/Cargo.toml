@@ -16,7 +16,7 @@ codec = { version = "3", package = "parity-scale-codec", default-features = fals
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
-hex-literal = { version = "0.3.1", optional = true }
+hex-literal = { version = "0.4.1", optional = true }
 rlp = { version = "0.5.2", default-features = false }
 
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
@@ -39,7 +39,7 @@ bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", features 
 ] }
 sp-keyring = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-keystore = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-hex-literal = { version = "0.3.1" }
+hex-literal = { version = "0.4.1" }
 serde_json = "1.0"
 
 [features]
@@ -66,6 +66,4 @@ runtime-benchmarks = [
     "hex-literal",
 ]
 
-try-runtime = [
-    "frame-support/try-runtime",
-]
+try-runtime = ["frame-support/try-runtime"]

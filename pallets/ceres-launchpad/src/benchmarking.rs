@@ -45,10 +45,10 @@ benchmarks! {
         let current_timestamp = Timestamp::<T>::get();
 
         let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
 
         Assets::<T>::mint(
-            RawOrigin::Signed(asset_owner.clone()).into(),
+            RawOrigin::Signed(asset_owner).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(20000)
@@ -83,7 +83,7 @@ benchmarks! {
         balance!(0.2)
     )
     verify {
-        assert_last_event::<T>(Event::<T>::ILOCreated(caller.clone(), CERES_ASSET_ID.into()).into());
+        assert_last_event::<T>(Event::<T>::ILOCreated(caller, CERES_ASSET_ID.into()).into());
     }
 
     contribute {
@@ -93,7 +93,7 @@ benchmarks! {
         let funds_to_contribute = balance!(800);
 
         let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
 
         Assets::<T>::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
@@ -103,7 +103,7 @@ benchmarks! {
         ).unwrap();
 
         Assets::<T>::mint(
-            RawOrigin::Signed(asset_owner.clone()).into(),
+            RawOrigin::Signed(asset_owner).into(),
             XOR.into(),
             caller.clone(),
             balance!(20000)
@@ -159,7 +159,7 @@ benchmarks! {
         let funds_to_contribute = balance!(800);
 
         let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
 
         Assets::<T>::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
@@ -169,7 +169,7 @@ benchmarks! {
         ).unwrap();
 
         Assets::<T>::mint(
-            RawOrigin::Signed(asset_owner.clone()).into(),
+            RawOrigin::Signed(asset_owner).into(),
             XOR.into(),
             caller.clone(),
             balance!(20000)
@@ -231,7 +231,7 @@ benchmarks! {
         let current_timestamp = Timestamp::<T>::get();
 
         let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
 
         Assets::<T>::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
@@ -241,7 +241,7 @@ benchmarks! {
         ).unwrap();
 
         Assets::<T>::mint(
-            RawOrigin::Signed(asset_owner.clone()).into(),
+            RawOrigin::Signed(asset_owner).into(),
             XOR.into(),
             caller.clone(),
             balance!(10000)
@@ -298,7 +298,7 @@ benchmarks! {
 
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into())
     verify {
-        assert_last_event::<T>(Event::<T>::ILOFinished(caller.clone(), CERES_ASSET_ID.into()).into());
+        assert_last_event::<T>(Event::<T>::ILOFinished(caller, CERES_ASSET_ID.into()).into());
     }
 
     claim_lp_tokens {
@@ -309,7 +309,7 @@ benchmarks! {
         let funds_to_contribute = balance!(800);
 
         let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
 
         Assets::<T>::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
@@ -319,7 +319,7 @@ benchmarks! {
         ).unwrap();
 
         Assets::<T>::mint(
-            RawOrigin::Signed(asset_owner.clone()).into(),
+            RawOrigin::Signed(asset_owner).into(),
             XOR.into(),
             caller.clone(),
             balance!(20000)
@@ -392,7 +392,7 @@ benchmarks! {
         let current_timestamp = Timestamp::<T>::get();
 
         let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
 
         Assets::<T>::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
@@ -402,7 +402,7 @@ benchmarks! {
         ).unwrap();
 
         Assets::<T>::mint(
-            RawOrigin::Signed(asset_owner.clone()).into(),
+            RawOrigin::Signed(asset_owner).into(),
             XOR.into(),
             caller.clone(),
             balance!(10000)
@@ -464,7 +464,7 @@ benchmarks! {
         pallet_timestamp::Now::<T>::put(current_timestamp + 44u32.into());
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into())
     verify {
-        assert_last_event::<T>(Event::<T>::Claimed(caller.clone(), CERES_ASSET_ID.into()).into());
+        assert_last_event::<T>(Event::<T>::Claimed(caller, CERES_ASSET_ID.into()).into());
     }
 
     change_ceres_burn_fee {
@@ -489,7 +489,7 @@ benchmarks! {
         let current_timestamp = Timestamp::<T>::get();
 
         let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
 
         Assets::<T>::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
@@ -506,7 +506,7 @@ benchmarks! {
         ).unwrap();
 
         Assets::<T>::mint(
-            RawOrigin::Signed(asset_owner.clone()).into(),
+            RawOrigin::Signed(asset_owner).into(),
             PSWAP.into(),
             T::GetTechnicalAccountId::get(),
             balance!(10000)
@@ -562,7 +562,7 @@ benchmarks! {
         pallet_timestamp::Now::<T>::put(current_timestamp + 11u32.into());
 
         CeresLaunchpad::<T>::finish_ilo(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Signed(caller).into(),
             CERES_ASSET_ID.into()
         ).unwrap();
 

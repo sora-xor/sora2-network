@@ -32,9 +32,9 @@ use std::collections::BTreeSet;
 
 use crate::prelude::*;
 use crate::relay::messages_subscription::load_digest;
-use crate::substrate::OtherParams;
+use crate::substrate::{BlockNumberOrHash, OtherParams};
 use bridge_types::types::AuxiliaryDigest;
-use bridge_types::{SubNetworkId, H256};
+use bridge_types::{GenericNetworkId, SubNetworkId, H256};
 use sp_core::ecdsa;
 use sp_runtime::traits::Keccak256;
 
@@ -82,12 +82,18 @@ where
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
         let signer = self.signer.expect("signer is needed");
-        let sender_network_id = sender
-            .storage_fetch_or_default(&S::network_id(), ())
-            .await?;
-        let receiver_network_id = receiver
-            .storage_fetch_or_default(&R::network_id(), ())
-            .await?;
+        let sender_network_id = sender.constant_fetch_or_default(&S::network_id())?;
+
+        let GenericNetworkId::Sub(sender_network_id) = sender_network_id else {
+            return Err(anyhow::anyhow!("Error! Sender is NOT a Substrate Network!"));
+        };
+
+        let receiver_network_id = receiver.constant_fetch_or_default(&R::network_id())?;
+
+        let GenericNetworkId::Sub(receiver_network_id) = receiver_network_id else {
+            return Err(anyhow::anyhow!("Error! Reciever is NOT a Substrate Network!"));
+        };
+
         Ok(Relay {
             sender,
             receiver,
@@ -125,7 +131,7 @@ where
             .sender
             .storage_fetch_or_default(
                 &S::bridge_outbound_nonce(self.receiver_network_id.into()),
-                (),
+                BlockNumberOrHash::Finalized,
             )
             .await?;
         Ok(nonce)
@@ -198,7 +204,11 @@ where
             for nonce in (inbound_nonce + 1)..=outbound_nonce {
                 let offchain_data = self
                     .sender
-                    .bridge_commitment(self.receiver_network_id.into(), nonce)
+                    .commitment_with_nonce(
+                        self.receiver_network_id.into(),
+                        nonce,
+                        BlockNumberOrHash::Finalized,
+                    )
                     .await?;
                 let commitment_hash = offchain_data.commitment.hash();
                 let digest: AuxiliaryDigest = load_digest(
@@ -212,7 +222,13 @@ where
                 trace!("Digest hash: {}", digest_hash);
                 let peers = self.receiver_peers().await?;
                 let approvals = self.approvals(digest_hash).await?;
-                if (approvals.len() as u32) < bridge_types::utils::threshold(peers.len() as u32) {
+                let is_already_approved = approvals
+                    .iter()
+                    .filter_map(|approval| approval.recover_prehashed(&digest_hash.0))
+                    .any(|public| self.signer.public() == public);
+                if (approvals.len() as u32) < bridge_types::utils::threshold(peers.len() as u32)
+                    && !is_already_approved
+                {
                     let signature = self.signer.sign_prehashed(&digest_hash.0);
                     let call = S::submit_signature(
                         self.receiver_network_id.into(),

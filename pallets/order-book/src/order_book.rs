@@ -105,13 +105,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.last_order_id
     }
 
-    /// Tries to place the limit order and returns market input & deal input amounts.
-    /// In some cases if the limit order crosses the spread, part or all of the amount could be converted into a market order and as a result, the deal input is not empty.
+    /// Tries to place the limit order and returns the count of executed limit orders (if the limit order crosses the spread and was converted into market order).
     pub fn place_limit_order(
         &self,
         limit_order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
-    ) -> Result<(), DispatchError> {
+    ) -> Result<usize, DispatchError> {
         ensure!(
             self.status == OrderBookStatus::Trade || self.status == OrderBookStatus::PlaceAndCancel,
             Error::<T>::PlacementOfLimitOrdersIsForbidden
@@ -154,6 +153,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let maybe_average_price = market_change.average_deal_price();
         let maybe_deal_amount = market_change.deal_base_amount();
         let (market_input, deal_input) = (market_change.market_input, market_change.deal_input);
+
+        let executed_orders_count = market_change.count_of_executed_orders();
 
         self.apply_market_change(market_change, data)?;
 
@@ -201,7 +202,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
         }
 
-        Ok(())
+        Ok(executed_orders_count)
     }
 
     pub fn cancel_limit_order(
@@ -232,12 +233,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(count)
     }
 
-    /// Executes market order and returns input & output amounts
+    /// Executes market order and returns input & output amounts & count of executed limit orders
     pub fn execute_market_order(
         &self,
         market_order: MarketOrder<T>,
         data: &mut impl DataLayer<T>,
-    ) -> Result<(OrderAmount, OrderAmount), DispatchError> {
+    ) -> Result<(OrderAmount, OrderAmount, usize), DispatchError> {
         ensure!(
             self.status == OrderBookStatus::Trade,
             Error::<T>::TradingIsForbidden
@@ -258,6 +259,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             return Err(Error::<T>::PriceCalculationFailed.into());
         };
 
+        let executed_orders_count = market_change.count_of_executed_orders();
+
         self.apply_market_change(market_change, data)?;
 
         T::Delegate::emit_event(
@@ -271,7 +274,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             },
         );
 
-        Ok((input, output))
+        Ok((input, output, executed_orders_count))
     }
 
     pub fn align_limit_orders(&self, data: &mut impl DataLayer<T>) -> Result<(), DispatchError> {
@@ -714,7 +717,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         if market_base_volume
                             .checked_add(base_volume)
                             .ok_or(Error::<T>::AmountCalculationFailed)?
-                            > base_limit
+                            >= base_limit
                         {
                             let delta = self.align_amount(
                                 base_limit
@@ -739,7 +742,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         if market_quote_volume
                             .checked_add(&quote_volume)
                             .ok_or(Error::<T>::AmountCalculationFailed)?
-                            > quote_limit
+                            >= quote_limit
                         {
                             // delta in base asset
                             let delta = self.align_amount(

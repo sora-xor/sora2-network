@@ -56,7 +56,7 @@ pub trait WeightInfo {
     fn quote() -> Weight {
         Weight::zero()
     }
-    fn exchange() -> Weight {
+    fn exchange_single_order() -> Weight {
         Weight::zero()
     }
     fn service_base() -> Weight {
@@ -98,7 +98,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
     fn quote() -> Weight {
         Weight::zero()
     }
-    fn exchange() -> Weight {
+    fn exchange_single_order() -> Weight {
         Weight::zero()
     }
     fn service_base() -> Weight {

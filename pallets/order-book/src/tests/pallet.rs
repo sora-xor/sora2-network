@@ -1120,7 +1120,6 @@ fn should_quote() {
             SwapOutcome::new(balance!(251.66326).into(), 0)
         );
 
-        // todo (m.tagirov) remake when fee introduced
         // with fee
         assert_eq!(
             OrderBookPallet::quote(
@@ -1390,7 +1389,6 @@ fn should_quote_without_impact() {
             SwapOutcome::new(balance!(250).into(), 0)
         );
 
-        // todo (m.tagirov) remake when fee introduced
         // with fee
         assert_eq!(
             OrderBookPallet::quote_without_impact(

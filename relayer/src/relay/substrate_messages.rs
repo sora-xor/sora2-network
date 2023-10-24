@@ -33,7 +33,7 @@ use std::collections::BTreeMap;
 use super::beefy_syncer::BeefySyncer;
 use crate::ethereum::SignedClientInner;
 use crate::prelude::*;
-use crate::substrate::BlockNumber;
+use crate::substrate::{BlockNumber, BlockNumberOrHash};
 use bridge_types::EVMChainId;
 use bridge_types::{Address, U256};
 use ethereum_gen::{beefy_light_client, inbound_channel, InboundChannel};
@@ -232,7 +232,10 @@ where
     async fn outbound_channel_nonce(&self) -> AnyResult<u64> {
         let nonce = self
             .sender
-            .storage_fetch_or_default(&S::bridge_outbound_nonce(self.chain_id.into()), ())
+            .storage_fetch_or_default(
+                &S::bridge_outbound_nonce(self.chain_id.into()),
+                BlockNumberOrHash::Finalized,
+            )
             .await?;
         Ok(nonce)
     }
@@ -257,7 +260,11 @@ where
                     std::collections::btree_map::Entry::Vacant(v) => {
                         let offchain_data = self
                             .sender
-                            .bridge_commitment(self.chain_id.into(), nonce)
+                            .commitment_with_nonce(
+                                self.chain_id.into(),
+                                nonce,
+                                BlockNumberOrHash::Finalized,
+                            )
                             .await?;
                         v.insert(offchain_data.block_number);
                         offchain_data.block_number
