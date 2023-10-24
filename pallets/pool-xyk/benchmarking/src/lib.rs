@@ -38,8 +38,8 @@
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource, RegisterManager,
-    DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource,
+    TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
@@ -108,7 +108,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    T::RegisterManager::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
+    T::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), DOT.into()).unwrap();
 
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
     Assets::<T>::mint_to(&DOT.into(), &owner.clone(), &owner.clone(), balance!(50000))?;

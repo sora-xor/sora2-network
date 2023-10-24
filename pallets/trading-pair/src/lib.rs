@@ -39,7 +39,7 @@ extern crate alloc;
 use common::{
     AssetInfoProvider, DexInfoProvider, EnabledSourcesManager, EnsureDEXManager,
     EnsureTradingPairExists, LiquiditySourceType, LockedLiquiditySourcesManager, ManagementMode,
-    RegisterManager, TradingPairSourceManager,
+    TradingPairSourceManager,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -104,18 +104,6 @@ impl<T: Config> EnabledSourcesManager<T::DEXId, T::AssetId> for Pallet<T> {
                 sources.remove(&LiquiditySourceType::XYKPool);
             }
         })
-    }
-}
-impl<T: Config> RegisterManager<T::DEXId, T::AssetId, <T as frame_system::Config>::RuntimeOrigin>
-    for Pallet<T>
-{
-    fn register(
-        origin: <T as frame_system::Config>::RuntimeOrigin,
-        dex_id: T::DEXId,
-        base_asset_id: T::AssetId,
-        target_asset_id: T::AssetId,
-    ) -> DispatchResultWithPostInfo {
-        Self::register(origin.clone(), dex_id, base_asset_id, target_asset_id)
     }
 }
 
