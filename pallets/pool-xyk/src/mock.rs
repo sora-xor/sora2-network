@@ -341,7 +341,6 @@ impl Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
-    type RegisterManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();

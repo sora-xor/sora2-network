@@ -55,8 +55,8 @@ use common::BuyBackHandler;
 use common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
     LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
-    ManagementMode, PriceVariant, RegisterManager, RewardReason, TradingPairSourceManager,
-    VestedRewardsPallet, PSWAP, TBCD, VAL, XOR, XST,
+    ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager, VestedRewardsPallet,
+    PSWAP, TBCD, VAL, XOR, XST,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -203,7 +203,6 @@ pub mod pallet {
             Self::AssetId,
             DispatchError,
         >;
-        type RegisterManager: RegisterManager<Self::DEXId, Self::AssetId, Self::RuntimeOrigin>;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;

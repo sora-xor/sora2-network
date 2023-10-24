@@ -261,14 +261,6 @@ impl<DEXId, AssetId> EnabledSourcesManager<DEXId, AssetId> for () {
         todo!()
     }
 }
-pub trait RegisterManager<DEXId, AssetId, Origin> {
-    fn register(
-        origin: Origin,
-        dex_id: DEXId,
-        base_asset_id: AssetId,
-        target_asset_id: AssetId,
-    ) -> DispatchResultWithPostInfo;
-}
 
 /// *Hook*-like trait for oracles to capture newly relayed symbols.
 ///

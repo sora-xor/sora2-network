@@ -642,9 +642,7 @@ use sp_runtime::traits::Zero;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{
-        AccountIdOf, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated, RegisterManager,
-    };
+    use common::{AccountIdOf, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -679,7 +677,6 @@ pub mod pallet {
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type EnabledSourcesManager: EnabledSourcesManager<Self::DEXId, Self::AssetId>;
-        type RegisterManager: RegisterManager<Self::DEXId, Self::AssetId, Self::RuntimeOrigin>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,
