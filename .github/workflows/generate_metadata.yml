@@ -1,0 +1,31 @@
+name: Cargo fmt & clippy
+
+on: [ push ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  static_analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: arduino/setup-protoc@v2
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Generate metadata
+        run: cargo build -p substrate-gen
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: my-artifact
+          path: relayer/substrate-gen/src/bytes/metadata.scale
+
+# TODO
+# see https://docs.github.com/en/rest/actions/artifacts?apiVersion=2022-11-28
+# curl https://api.github.com/repos/sora-xor/sora2-network/actions/artifacts
+
+# rerun workflow https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#re-run-a-workflow
