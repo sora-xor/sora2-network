@@ -120,6 +120,18 @@ pub trait TradingPairSourceManager<DEXId, AssetId> {
         target_asset_id: &AssetId,
         source_type: LiquiditySourceType,
     ) -> DispatchResult;
+
+    fn is_trading_pair_enabled(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError>;
+
+    fn register_pair(
+        dex_id: DEXId,
+        base_asset_id: AssetId,
+        target_asset_id: AssetId,
+    ) -> Result<(), DispatchError>;
 }
 
 impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
@@ -155,6 +167,22 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
         _target_asset_id: &AssetId,
         _source_type: LiquiditySourceType,
     ) -> DispatchResult {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn is_trading_pair_enabled(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn register_pair(
+        _dex_id: DEXId,
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Result<(), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 }
@@ -223,7 +251,7 @@ pub trait LockedLiquiditySourcesManager<LiquiditySourceType> {
     fn append(liquidity_source_type: LiquiditySourceType) -> ();
 }
 
-/// Implements trading pair EnabledSources stroage
+/// Implements trading pair EnabledSources storage
 pub trait EnabledSourcesManager<DEXId, AssetId> {
     fn mutate_remove(dex_id: &DEXId, base_asset_id: &AssetId, target_asset_id: &AssetId) -> ();
 }
@@ -233,9 +261,6 @@ impl<DEXId, AssetId> EnabledSourcesManager<DEXId, AssetId> for () {
         todo!()
     }
 }
-
-/// Implements trading pair register
-
 pub trait RegisterManager<DEXId, AssetId, Origin> {
     fn register(
         origin: Origin,
@@ -245,25 +270,6 @@ pub trait RegisterManager<DEXId, AssetId, Origin> {
     ) -> DispatchResultWithPostInfo;
 }
 
-/// Implements trading pair is_trading_pair_enabled
-pub trait IsTradingPairEnabled<DEXId, AssetId> {
-    fn is_trading_pair_enabled(
-        dex_id: &DEXId,
-        base_asset_id: &AssetId,
-        target_asset_id: &AssetId,
-    ) -> Result<bool, DispatchError>;
-}
-
-/// Implements trading pair register_pair
-pub trait RegisterPair<DEXId, AssetId> {
-    fn register_pair(
-        dex_id: DEXId,
-        base_asset_id: AssetId,
-        target_asset_id: AssetId,
-    ) -> Result<(), DispatchError>;
-}
-
-// pub trait RegisterManager
 /// *Hook*-like trait for oracles to capture newly relayed symbols.
 ///
 /// A struct implementing this trait can be specified in oracle pallet *Config*
