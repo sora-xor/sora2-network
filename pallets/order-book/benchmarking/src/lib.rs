@@ -152,10 +152,7 @@ mod benchmarks_inner {
     use order_book_imported::{
         Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
     };
-    use preparation::{
-        prepare_cancel_orderbook_benchmark, prepare_market_order_benchmark,
-        prepare_place_orderbook_benchmark, prepare_quote_benchmark, presets::*,
-    };
+    use preparation::presets::*;
 
     use frame_system::Pallet as FrameSystem;
     use trading_pair::Pallet as TradingPair;
@@ -473,7 +470,7 @@ mod benchmarks_inner {
         place_limit_order_1 {
             let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
             let (order_book_id, price, amount, side, lifespan) =
-                prepare_place_orderbook_benchmark::<T>(preset_1(), accounts::alice::<T>());
+                preparation::place_limit_order::<T>(preset_1(), accounts::alice::<T>());
         }: {
             OrderBookPallet::<T>::place_limit_order(
                 signer, order_book_id, *price.balance(), *amount.balance(), side, Some(lifespan),
@@ -484,7 +481,7 @@ mod benchmarks_inner {
         place_limit_order_2 {
             let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
             let (order_book_id, price, amount, side, lifespan) =
-                prepare_place_orderbook_benchmark::<T>(preset_2(), accounts::alice::<T>());
+                preparation::place_limit_order::<T>(preset_2(), accounts::alice::<T>());
         }: {
             OrderBookPallet::<T>::place_limit_order(
                 signer, order_book_id, *price.balance(), *amount.balance(), side, Some(lifespan),
@@ -496,7 +493,7 @@ mod benchmarks_inner {
         cancel_limit_order_first_1 {
             let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
             let (order_book_id, order_id) =
-                prepare_cancel_orderbook_benchmark(preset_1::<T>(), accounts::alice::<T>(), true);
+                preparation::cancel_limit_order(preset_1::<T>(), accounts::alice::<T>(), true);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
@@ -505,7 +502,7 @@ mod benchmarks_inner {
         cancel_limit_order_first_2 {
             let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
             let (order_book_id, order_id) =
-                prepare_cancel_orderbook_benchmark(preset_2::<T>(), accounts::alice::<T>(), true);
+                preparation::cancel_limit_order(preset_2::<T>(), accounts::alice::<T>(), true);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
@@ -515,7 +512,7 @@ mod benchmarks_inner {
         cancel_limit_order_last_1 {
             let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
             let (order_book_id, order_id) =
-                prepare_cancel_orderbook_benchmark(preset_1::<T>(), accounts::alice::<T>(), false);
+                preparation::cancel_limit_order(preset_1::<T>(), accounts::alice::<T>(), false);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
@@ -524,7 +521,7 @@ mod benchmarks_inner {
         cancel_limit_order_last_2 {
             let signer = RawOrigin::Signed(accounts::alice::<T>()).into();
             let (order_book_id, order_id) =
-                prepare_cancel_orderbook_benchmark(preset_2::<T>(), accounts::alice::<T>(), false);
+                preparation::cancel_limit_order(preset_2::<T>(), accounts::alice::<T>(), false);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(signer, order_book_id, order_id).unwrap();
         }
@@ -533,7 +530,7 @@ mod benchmarks_inner {
         #[extra]
         execute_market_order_1 {
             let caller = accounts::alice::<T>();
-            let (id, amount, side) = prepare_market_order_benchmark::<T>(preset_1(), caller.clone(), false);
+            let (id, amount, side) = preparation::market_order_execution::<T>(preset_1(), caller.clone(), false);
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(caller).into(), id, side, *amount.balance()
@@ -543,7 +540,7 @@ mod benchmarks_inner {
         #[extra]
         execute_market_order_2 {
             let caller = accounts::alice::<T>();
-            let (id, amount, side) = prepare_market_order_benchmark::<T>(preset_2(), caller.clone(), false);
+            let (id, amount, side) = preparation::market_order_execution::<T>(preset_2(), caller.clone(), false);
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(caller).into(), id, side, *amount.balance()
@@ -554,7 +551,7 @@ mod benchmarks_inner {
         #[extra]
         quote_1 {
             let (dex_id, input_id, output_id, amount, deduce_fee) =
-            prepare_quote_benchmark::<T>(preset_1());
+            preparation::quote::<T>(preset_1());
         }: {
             OrderBookPallet::<T>::quote(&dex_id, &input_id, &output_id, amount, deduce_fee)
                 .unwrap();
@@ -563,7 +560,7 @@ mod benchmarks_inner {
         #[extra]
         quote_2 {
             let (dex_id, input_id, output_id, amount, deduce_fee) =
-            prepare_quote_benchmark::<T>(preset_2());
+            preparation::quote::<T>(preset_2());
         }: {
             OrderBookPallet::<T>::quote(&dex_id, &input_id, &output_id, amount, deduce_fee)
                 .unwrap();
@@ -573,7 +570,7 @@ mod benchmarks_inner {
         #[extra]
         exchange_1 {
             let caller = accounts::alice::<T>();
-            let (id, amount, _) = prepare_market_order_benchmark::<T>(preset_1(), caller.clone(), true);
+            let (id, amount, _) = preparation::market_order_execution::<T>(preset_1(), caller.clone(), true);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
@@ -584,7 +581,7 @@ mod benchmarks_inner {
         #[extra]
         exchange_2 {
             let caller = accounts::alice::<T>();
-            let (id, amount, _) = prepare_market_order_benchmark::<T>(preset_2(), caller.clone(), true);
+            let (id, amount, _) = preparation::market_order_execution::<T>(preset_2(), caller.clone(), true);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,

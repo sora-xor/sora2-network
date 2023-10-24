@@ -56,10 +56,7 @@ use order_book_imported::{
     OrderPrice, OrderVolume,
 };
 
-use crate::preparation::{
-    prepare_cancel_orderbook_benchmark, prepare_market_order_benchmark,
-    prepare_place_orderbook_benchmark, prepare_quote_benchmark,
-};
+use crate::preparation::{cancel_limit_order, market_order_execution, place_limit_order, quote};
 use crate::{assert_last_event, assert_orders_numbers, DEX};
 
 pub(crate) mod delete_orderbook {
@@ -116,7 +113,7 @@ pub(crate) mod place_limit_order {
         frame_system::Pallet::<T>::set_block_number(1u32.into());
         let caller = accounts::alice::<T>();
         let (order_book_id, price, amount, side, lifespan) =
-            prepare_place_orderbook_benchmark::<T>(settings.clone(), caller.clone());
+            place_limit_order::<T>(settings.clone(), caller.clone());
         Context {
             caller,
             order_book_id,
@@ -188,7 +185,7 @@ pub(crate) mod cancel_limit_order {
         frame_system::Pallet::<T>::set_block_number(1u32.into());
         let caller = accounts::alice::<T>();
         let (order_book_id, order_id) =
-            prepare_cancel_orderbook_benchmark(settings, caller.clone(), first_expiration);
+            cancel_limit_order(settings, caller.clone(), first_expiration);
         let order =
             OrderBookPallet::<T>::limit_orders::<_, T::OrderId>(order_book_id, order_id).unwrap();
         let balance_before = <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
@@ -293,7 +290,7 @@ pub(crate) mod execute_market_order {
         let caller = accounts::alice::<T>();
         let is_divisible = false;
         let (order_book_id, amount, side) =
-            prepare_market_order_benchmark(settings, caller.clone(), is_divisible);
+            market_order_execution(settings, caller.clone(), is_divisible);
         let caller_base_balance =
             <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
                 &order_book_id.base,
@@ -379,8 +376,7 @@ pub(crate) mod quote {
     pub fn init<T: Config>(settings: FillSettings<T>) -> Context<T> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
-        let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
-            prepare_quote_benchmark::<T>(settings);
+        let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) = quote::<T>(settings);
         Context {
             dex_id,
             input_asset_id,

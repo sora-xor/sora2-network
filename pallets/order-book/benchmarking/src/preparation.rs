@@ -197,9 +197,11 @@ fn prepare_order_execute_worst_case<T: Config>(
     (users, lifespans, to_execute_volume, orders_side.switched())
 }
 
+/// Prepare benchmark for `place_limit_order` extrinsic.
+///
 /// Returns parameters for placing a limit order;
 /// `author` should not be from `test_utils::generate_account`
-pub fn prepare_place_orderbook_benchmark<T: Config>(
+pub fn place_limit_order<T: Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
 ) -> (
@@ -331,10 +333,12 @@ pub fn prepare_place_orderbook_benchmark<T: Config>(
     (order_book_id, price, amount, side, lifespan)
 }
 
+/// Prepare benchmark for `cancel_limit_order` extrinsic.
+///
 /// Returns parameters for cancelling a limit order.
 /// `expirations_first` switches between two cases; it's not clear which one is heavier.
 /// `author` should not be from `test_utils::generate_account`.
-pub fn prepare_cancel_orderbook_benchmark<T: Config>(
+pub fn cancel_limit_order<T: Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
     place_first_expiring: bool,
@@ -478,7 +482,8 @@ pub fn prepare_cancel_orderbook_benchmark<T: Config>(
     (order_book_id, to_cancel_id)
 }
 
-pub fn prepare_quote_benchmark<T: Config>(
+/// Prepare benchmark for `quote` extrinsic.
+pub fn quote<T: Config>(
     fill_settings: FillSettings<T>,
 ) -> (T::DEXId, T::AssetId, T::AssetId, QuoteAmount<Balance>, bool) {
     let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
@@ -529,7 +534,7 @@ pub fn prepare_quote_benchmark<T: Config>(
     (dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
 }
 
-/// Prepare worst-case scenario for market order execution. In particular, execution of
+/// Prepare worst-case scenario for market order execution (`swap`/`exchange`). In particular, execution of
 /// `HARD_MIN_MAX_RATIO` with partial execution of an order at the end.
 ///
 /// - `fill_settings` - settings for the benchmark; should be within storage constraints.
@@ -538,7 +543,7 @@ pub fn prepare_quote_benchmark<T: Config>(
 /// - `is_divisible` - controls the divisibility of order book base asset.
 ///
 /// Returns parameters necessary for the order execution. `OrderVolume` is in base asset.
-pub fn prepare_market_order_benchmark<T: Config + trading_pair::Config>(
+pub fn market_order_execution<T: Config + trading_pair::Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
     is_divisible: bool,
