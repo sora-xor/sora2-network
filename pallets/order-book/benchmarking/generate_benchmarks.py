@@ -87,13 +87,13 @@ code_template_quote = """
 
 code_template_exchange = """
         #[extra]
-        exchange_{} {{
+        exchange_single_order_{} {{
             use periphery::exchange_single_order::{{init, Context}};
             let Context {{ caller, order_book_id: id, expected_in, expected_out, .. }} = init::<T>(preset_{}());
         }} : {{
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
-                SwapAmount::with_desired_input(expected_out, expected_in + balance!(1.5)),
+                SwapAmount::with_desired_output(expected_out, expected_in + balance!(1.5)),
             ).unwrap();
         }}
 """
