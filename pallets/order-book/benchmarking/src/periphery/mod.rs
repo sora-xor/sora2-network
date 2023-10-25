@@ -57,7 +57,9 @@ use order_book_imported::{
 };
 
 use crate::{assert_last_event, assert_orders_numbers, DEX};
-use preparation::{cancel_limit_order, market_order_execution, place_limit_order, quote};
+use preparation::{
+    cancel_limit_order, market_order_execution, place_limit_order_without_cross_spread, quote,
+};
 
 mod preparation;
 
@@ -100,8 +102,8 @@ pub(crate) mod delete_orderbook {
 
 pub(crate) mod place_limit_order {
     use super::*;
-    use common::balance;
     use order_book_imported::OrderPrice;
+    use sp_runtime::traits::One;
 
     pub struct Context<T: Config> {
         pub caller: T::AccountId,
@@ -110,6 +112,7 @@ pub(crate) mod place_limit_order {
         pub amount: OrderVolume,
         pub side: PriceVariant,
         pub lifespan: MomentOf<T>,
+        pub expected_order_id: T::OrderId,
     }
 
     pub fn init<T: Config>(settings: FillSettings<T>) -> Context<T> {
@@ -117,7 +120,11 @@ pub(crate) mod place_limit_order {
         frame_system::Pallet::<T>::set_block_number(1u32.into());
         let caller = accounts::alice::<T>();
         let (order_book_id, price, amount, side, lifespan) =
-            place_limit_order::<T>(settings.clone(), caller.clone());
+            place_limit_order_without_cross_spread::<T>(settings.clone(), caller.clone());
+        let next_order_id = OrderBookPallet::<T>::order_books(order_book_id)
+            .unwrap()
+            .last_order_id
+            + T::OrderId::one();
         Context {
             caller,
             order_book_id,
@@ -125,6 +132,7 @@ pub(crate) mod place_limit_order {
             amount,
             side,
             lifespan,
+            expected_order_id: next_order_id,
         }
     }
 
@@ -137,35 +145,31 @@ pub(crate) mod place_limit_order {
             order_book_id,
             price: _,
             amount: _,
-            side,
+            side: _,
             lifespan,
+            expected_order_id,
         } = init_values;
+        let expected_bids = sp_std::cmp::min(
+            settings.max_orders_per_user - 1,
+            settings.max_side_price_count * settings.max_orders_per_price,
+        ) as usize;
+        let expected_user_orders = sp_std::cmp::min(
+            settings.max_orders_per_user,
+            settings.max_side_price_count * settings.max_orders_per_price,
+        ) as usize;
         assert_orders_numbers::<T>(
             order_book_id,
-            Some(0),
-            None,
-            Some((
-                caller.clone(),
-                sp_std::cmp::min(
-                    settings.max_orders_per_user - 1,
-                    (settings.max_side_price_count - 1) * settings.max_orders_per_price,
-                ) as usize,
-            )),
-            Some((
-                lifespan,
-                (settings.max_expiring_orders_per_block - 1) as usize,
-            )),
+            Some(expected_bids),
+            Some(settings.max_orders_per_price as usize),
+            Some((caller.clone(), expected_user_orders)),
+            Some((lifespan, settings.max_expiring_orders_per_block as usize)),
         );
 
-        // placement of remaining amount is too much of pain and it replaces execution of 4
-        // additional orders.
-        // we don't do it
         assert_last_event::<T>(
-            Event::<T>::LimitOrderConvertedToMarketOrder {
+            Event::<T>::LimitOrderPlaced {
                 order_book_id,
+                order_id: expected_order_id,
                 owner_id: caller.clone(),
-                direction: side,
-                amount: OrderAmount::Base(balance!(4000).into()),
             }
             .into(),
         );

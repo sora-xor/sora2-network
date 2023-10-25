@@ -43,10 +43,9 @@ use crate as order_book_benchmarking_imported;
 use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
 
 use assets::AssetIdOf;
-use common::prelude::{BalanceUnit, QuoteAmount, Scalar};
+use common::prelude::{QuoteAmount, Scalar};
 use common::{Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::debug;
-use frame_benchmarking::Zero;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
 use order_book_imported::test_utils::fill_tools::{
@@ -59,7 +58,7 @@ use order_book_imported::{
     cache_data_layer::CacheDataLayer, traits::DataLayer, LimitOrder, MomentOf, OrderBook,
     OrderBookId, OrderBooks, OrderPrice, OrderVolume,
 };
-use sp_runtime::traits::{CheckedAdd, CheckedMul, SaturatedConversion};
+use sp_runtime::traits::{CheckedMul, SaturatedConversion};
 
 use order_book_benchmarking_imported::{assert_orders_numbers, Config, DEX};
 
@@ -196,11 +195,12 @@ fn prepare_order_execute_worst_case<T: Config>(
     (users, lifespans, to_execute_volume, orders_side.switched())
 }
 
-/// Prepare benchmark for `place_limit_order` extrinsic.
+/// Prepare benchmark for `place_limit_order` extrinsic. Benchmark only considers placing limit
+/// order without conversion to market (even partially).
 ///
 /// Returns parameters for placing a limit order;
 /// `author` should not be from `test_utils::generate_account`
-pub fn place_limit_order<T: Config>(
+pub fn place_limit_order_without_cross_spread<T: Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
 ) -> (
@@ -222,29 +222,46 @@ pub fn place_limit_order<T: Config>(
     .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
-    let expected_side_orders = sp_std::cmp::min(
-        fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
-        T::HARD_MIN_MAX_RATIO as u128,
-    );
 
-    let (users, mut lifespans, _, side) = prepare_order_execute_worst_case::<T>(
-        &mut data_layer,
-        &mut order_book,
-        fill_settings.clone(),
-        false,
-    );
-
+    let side_to_place = PriceVariant::Sell;
+    let min_price = order_book.tick_size;
+    let price_to_place = min_price
+        .checked_mul_by_scalar(Scalar(T::SOFT_MIN_MAX_RATIO as u128))
+        .unwrap();
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
+
+    // Owners for each placed order
+    let mut users = users_iterator::<T>(
+        order_book.order_book_id,
+        order_amount,
+        order_book.tick_size,
+        fill_settings.max_orders_per_user,
+    );
+    // Lifespans for each placed order
+    let mut lifespans = lifespans_iterator::<T>(fill_settings.max_expiring_orders_per_block, 1);
+
+    // The price where the order is going to be placed should be filled
+    let mut fill_price_settings = fill_settings.clone();
+    fill_price_settings.max_orders_per_price -= 1;
+    fill_price(
+        &mut data_layer,
+        fill_price_settings,
+        &mut order_book,
+        side_to_place,
+        order_amount,
+        price_to_place,
+        &mut users,
+        &mut lifespans,
+    );
+
     let mut fill_user_settings = fill_settings.clone();
     // leave a room for one more order
     fill_user_settings.max_orders_per_user -= 1;
-    // leave a room for the price to execute all buy
-    fill_user_settings.max_side_price_count -= 1;
     fill_user_orders(
         &mut data_layer,
         fill_user_settings,
         &mut order_book,
-        side,
+        side_to_place.switched(),
         order_amount,
         author.clone(),
         &mut lifespans,
@@ -299,37 +316,33 @@ pub fn place_limit_order<T: Config>(
     data_layer.commit();
     debug!("Data committed!");
 
-    let price = order_book.tick_size;
-    // to execute all bids
-    let amount: OrderVolume = data_layer
-        .get_aggregated_bids(&order_book_id)
-        .iter()
-        .map(|(_p, v)| *v)
-        .fold(BalanceUnit::zero(), |acc, item| {
-            acc.checked_add(&item).unwrap()
-        });
-    // to place remaining amount as limit order
     let lifespan = to_fill.saturated_into::<MomentOf<T>>();
-    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *amount.balance()).unwrap();
+    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *order_amount.balance())
+        .unwrap();
+
+    let expected_user_orders = sp_std::cmp::min(
+        fill_settings.max_orders_per_user - 1,
+        fill_settings.max_side_price_count * fill_settings.max_orders_per_price,
+    ) as usize;
 
     assert_orders_numbers::<T>(
         order_book_id,
-        Some(expected_side_orders as usize),
-        None,
-        Some((
-            author.clone(),
-            sp_std::cmp::min(
-                fill_settings.max_orders_per_user - 1,
-                (fill_settings.max_side_price_count - 1) * fill_settings.max_orders_per_price,
-            ) as usize,
-        )),
+        Some(expected_user_orders),
+        Some((fill_settings.max_orders_per_price - 1) as usize),
+        Some((author.clone(), expected_user_orders)),
         Some((
             lifespan,
             (fill_settings.max_expiring_orders_per_block - 1) as usize,
         )),
     );
 
-    (order_book_id, price, amount, side, lifespan)
+    (
+        order_book_id,
+        price_to_place,
+        order_amount,
+        side_to_place,
+        lifespan,
+    )
 }
 
 /// Prepare benchmark for `cancel_limit_order` extrinsic.

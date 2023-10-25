@@ -290,7 +290,7 @@ mod benchmarks_inner {
             assert_eq!(OrderBookPallet::<T>::order_books(order_book_id).unwrap().status, OrderBookStatus::Stop);
         }
 
-        place_limit_order {
+        place_limit_order_without_cross_spread {
             let settings = FillSettings::<T>::max();
             let context = periphery::place_limit_order::init(settings.clone());
         }: {
@@ -468,7 +468,7 @@ mod benchmarks_inner {
         #[extra]
         place_limit_order_1 {
             use periphery::place_limit_order::{init, Context};
-            let Context { caller, order_book_id, price, amount, side, lifespan } =
+            let Context { caller, order_book_id, price, amount, side, lifespan, expected_order_id } =
                 init::<T>(preset_1());
         }: {
             OrderBookPallet::<T>::place_limit_order(
@@ -479,7 +479,7 @@ mod benchmarks_inner {
         #[extra]
         place_limit_order_2 {
             use periphery::place_limit_order::{init, Context};
-            let Context { caller, order_book_id, price, amount, side, lifespan } =
+            let Context { caller, order_book_id, price, amount, side, lifespan, expected_order_id } =
                 init::<T>(preset_2());
         }: {
             OrderBookPallet::<T>::place_limit_order(

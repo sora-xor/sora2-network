@@ -69,7 +69,7 @@ pub trait WeightInfo {
 	fn delete_orderbook() -> Weight;
 	fn update_orderbook() -> Weight;
 	fn change_orderbook_status() -> Weight;
-	fn place_limit_order() -> Weight;
+	fn place_limit_order_without_cross_spread() -> Weight;
 	fn cancel_limit_order_first_expiration() -> Weight;
 	fn cancel_limit_order_last_expiration() -> Weight;
 	fn execute_market_order() -> Weight;
@@ -193,7 +193,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	/// Storage: OrderBook ExpirationsAgenda (r:8 w:8)
 	/// Proof: OrderBook ExpirationsAgenda (max_values: None, max_size: Some(43014), added: 45489, mode: MaxEncodedLen)
-	fn place_limit_order() -> Weight {
+	fn place_limit_order_without_cross_spread() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1313466`
 		//  Estimated: `14128490`
@@ -485,7 +485,7 @@ impl WeightInfo for () {
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	/// Storage: OrderBook ExpirationsAgenda (r:8 w:8)
 	/// Proof: OrderBook ExpirationsAgenda (max_values: None, max_size: Some(43014), added: 45489, mode: MaxEncodedLen)
-	fn place_limit_order() -> Weight {
+	fn place_limit_order_without_cross_spread() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1313466`
 		//  Estimated: `14128490`

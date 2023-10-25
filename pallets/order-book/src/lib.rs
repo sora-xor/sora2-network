@@ -710,7 +710,7 @@ pub mod pallet {
             // the market-maker fee is charged for some weight, and the regular fee for none weight
             let actual_weight = if executed_orders_count == 0 {
                 // if the extrinsic just places the limit order, the weight of the placing is returned
-                Some(<T as Config>::WeightInfo::place_limit_order())
+                Some(<T as Config>::WeightInfo::place_limit_order_without_cross_spread())
             } else {
                 // if the limit order was converted into market order, then None weight is returned
                 // this weight will be replaced with worst case weight - exchange_weight()
