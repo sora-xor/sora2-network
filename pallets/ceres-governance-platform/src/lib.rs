@@ -24,7 +24,7 @@ pub struct VotingInfo<StringLimit: sp_core::Get<u32>> {
     voting_option: BoundedString<StringLimit>,
     /// Number of votes
     number_of_votes: Balance,
-    /// Ceres withdrawn
+    /// Asset withdrawn
     asset_withdrawn: bool,
 }
 
@@ -60,6 +60,8 @@ pub enum StorageVersion {
     V1,
     /// After migrating to timestamp calculation
     V2,
+    /// After migrating to open governance
+    V3,
 }
 
 pub use pallet::*;
@@ -165,7 +167,7 @@ pub mod pallet {
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
-    /// Account which has permissions for changing Hermes minimum amount for voting and creating a poll
+    /// Account which has permissions for creating a poll
     #[pallet::storage]
     #[pallet::getter(fn authority_account)]
     pub type AuthorityAccount<T: Config> =
@@ -174,8 +176,14 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Voting [who, poll, option, balance]
-        Voted(AccountIdOf<T>, H256, BoundedString<T::StringLimit>, Balance),
+        /// Voting [who, poll, option, asset, balance]
+        Voted(
+            AccountIdOf<T>,
+            H256,
+            BoundedString<T::StringLimit>,
+            AssetIdOf<T>,
+            Balance,
+        ),
         /// Create poll [who, title, poll_asset, start_timestamp, end_timestamp]
         Created(
             AccountIdOf<T>,
@@ -184,8 +192,8 @@ pub mod pallet {
             T::Moment,
             T::Moment,
         ),
-        /// Withdrawn [who, balance]
-        Withdrawn(AccountIdOf<T>, Balance),
+        /// Withdrawn [who, poll, asset, balance]
+        Withdrawn(AccountIdOf<T>, H256, AssetIdOf<T>, Balance),
     }
 
     #[pallet::error]
@@ -260,7 +268,7 @@ pub mod pallet {
 
             let mut voting_info = VotingInfo {
                 voting_option,
-                number_of_votes: 0,
+                number_of_votes,
                 asset_withdrawn: false,
             };
 
@@ -271,11 +279,9 @@ pub mod pallet {
                     Error::<T>::VoteDenied
                 );
                 voting_info.number_of_votes += number_of_votes;
-            } else {
-                voting_info.number_of_votes = number_of_votes;
             }
 
-            // Transfer Ceres to pallet
+            // Transfer asset to pallet
             Assets::<T>::transfer_from(
                 &poll_info.poll_asset,
                 &user,
@@ -292,6 +298,7 @@ pub mod pallet {
                 user,
                 poll_id,
                 voting_option,
+                poll_info.poll_asset,
                 number_of_votes,
             ));
 
@@ -390,7 +397,7 @@ pub mod pallet {
                 Error::<T>::FundsAlreadyWithdrawn
             );
 
-            // Withdraw CERES
+            // Withdraw asset
             Assets::<T>::transfer_from(
                 &poll_info.poll_asset,
                 &Self::account_id(),
@@ -402,7 +409,12 @@ pub mod pallet {
             <Voting<T>>::insert(&poll_id, &user, &voting_info);
 
             //Emit event
-            Self::deposit_event(Event::<T>::Withdrawn(user, voting_info.number_of_votes));
+            Self::deposit_event(Event::<T>::Withdrawn(
+                user,
+                poll_id,
+                poll_info.poll_asset,
+                voting_info.number_of_votes,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
