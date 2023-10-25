@@ -717,7 +717,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         if market_base_volume
                             .checked_add(base_volume)
                             .ok_or(Error::<T>::AmountCalculationFailed)?
-                            > base_limit
+                            >= base_limit
                         {
                             let delta = self.align_amount(
                                 base_limit
@@ -742,7 +742,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         if market_quote_volume
                             .checked_add(&quote_volume)
                             .ok_or(Error::<T>::AmountCalculationFailed)?
-                            > quote_limit
+                            >= quote_limit
                         {
                             // delta in base asset
                             let delta = self.align_amount(
