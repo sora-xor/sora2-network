@@ -667,7 +667,10 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(Pallet::<T>::exchange_weight())] // in the worst case the limit order is converted into market order and the exchange occurs
+        #[pallet::weight(
+            Pallet::<T>::exchange_weight()
+                .saturating_add(<T as Config>::WeightInfo::place_limit_order_without_cross_spread())
+        )] // in the worst case the limit order is partially converted into market order and the exchange occurs
         pub fn place_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -713,7 +716,8 @@ pub mod pallet {
                 Some(<T as Config>::WeightInfo::place_limit_order_without_cross_spread())
             } else {
                 // if the limit order was converted into market order, then None weight is returned
-                // this weight will be replaced with worst case weight - exchange_weight()
+                // this weight will be replaced with worst case weight:
+                // exchange_weight() + place_limit_order_without_cross_spread()
                 None
             };
 
@@ -1315,7 +1319,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         // SOFT_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
         <T as Config>::WeightInfo::exchange_single_order()
             .saturating_mul(<T as Config>::SOFT_MIN_MAX_RATIO as u64)
-            .saturating_add(<T as Config>::WeightInfo::place_limit_order_without_cross_spread())
     }
 
     fn check_rewards_weight() -> Weight {
