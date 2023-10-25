@@ -36,7 +36,7 @@ fn main() {
     let metadata: Bytes = OpaqueMetadata::new(framenode_runtime::Runtime::metadata().into()).into();
     let out_dir = PathBuf::from_str(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
         .unwrap()
-        .join("src/bytes");
+        .join("bytes");
     std::fs::create_dir_all(&out_dir).unwrap();
     std::fs::write(out_dir.join("metadata.scale"), metadata.0).unwrap();
     let workspace_root = PathBuf::from_str(&std::env::var("CARGO_MANIFEST_DIR").unwrap())

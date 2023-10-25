@@ -25,3 +25,6 @@ db-stg-chain*
 db?
 
 .vscode/launch.json
+
+# Generated metadata.scale
+substrate-gen/bytes/metadata.scale
