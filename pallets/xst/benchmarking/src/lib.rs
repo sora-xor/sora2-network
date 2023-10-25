@@ -32,6 +32,8 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use assets::Event as AssetsEvent;
 use band::Pallet as Band;

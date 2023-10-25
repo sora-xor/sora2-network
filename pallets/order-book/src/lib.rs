@@ -30,6 +30,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(dead_code)] // todo (m.tagirov) remove
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use assets::AssetIdOf;
 use common::prelude::{
