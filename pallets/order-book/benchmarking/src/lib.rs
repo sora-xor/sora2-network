@@ -466,9 +466,9 @@ mod benchmarks_inner {
         // 6. run with ./benchmark_attributes.sh
 
         #[extra]
-        place_limit_order_1 {
+        place_limit_order_without_cross_spread_1 {
             use periphery::place_limit_order::{init, Context};
-            let Context { caller, order_book_id, price, amount, side, lifespan, expected_order_id } =
+            let Context { caller, order_book_id, price, amount, side, lifespan, .. } =
                 init::<T>(preset_1());
         }: {
             OrderBookPallet::<T>::place_limit_order(
@@ -477,9 +477,9 @@ mod benchmarks_inner {
         }
 
         #[extra]
-        place_limit_order_2 {
+        place_limit_order_without_cross_spread_2 {
             use periphery::place_limit_order::{init, Context};
-            let Context { caller, order_book_id, price, amount, side, lifespan, expected_order_id } =
+            let Context { caller, order_book_id, price, amount, side, lifespan, .. } =
                 init::<T>(preset_2());
         }: {
             OrderBookPallet::<T>::place_limit_order(

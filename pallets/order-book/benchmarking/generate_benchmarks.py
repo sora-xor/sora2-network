@@ -23,9 +23,9 @@ def generate_fs(range_: range, template: str):
 
 code_template_place = """
         #[extra]
-        place_limit_order_{} {{
+        place_limit_order_without_cross_spread_{} {{
             use periphery::place_limit_order::{{init, Context}};
-            let Context {{ caller, order_book_id, price, amount, side, lifespan }} =
+            let Context {{ caller, order_book_id, price, amount, side, lifespan, .. }} =
                 init::<T>(preset_{}());
         }}: {{
             OrderBookPallet::<T>::place_limit_order(
