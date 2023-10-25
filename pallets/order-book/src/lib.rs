@@ -667,10 +667,8 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(
-            Pallet::<T>::exchange_weight()
-                .saturating_add(<T as Config>::WeightInfo::place_limit_order_without_cross_spread())
-        )] // in the worst case the limit order is partially converted into market order and the exchange occurs
+        // in the worst case the limit order is converted into market order and the exchange occurs
+        #[pallet::weight(Pallet::<T>::exchange_weight())]
         pub fn place_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
