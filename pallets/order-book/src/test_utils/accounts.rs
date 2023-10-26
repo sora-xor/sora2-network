@@ -28,56 +28,36 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum Item<Value: PartialEq> {
-    Original(Value),
-    Updated(Value),
-    Removed,
+use codec::Decode;
+
+pub fn alice<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
+    <T as frame_system::Config>::AccountId::decode(&mut &[1u8; 32][..]).unwrap()
 }
 
-impl<Value: PartialEq> Item<Value> {
-    pub fn value(&self) -> Option<&Value> {
-        match self {
-            Item::Original(value) => Some(value),
-            Item::Updated(value) => Some(value),
-            Item::Removed => None,
-        }
-    }
-
-    fn mark_as_updated(&mut self) {
-        let value = core::mem::replace(self, Item::Removed);
-        *self = match value {
-            Item::Original(v) => Item::Updated(v),
-            Item::Updated(v) => Item::Updated(v),
-            Item::Removed => Item::Removed,
-        }
-    }
-
-    pub fn value_mut(&mut self) -> Option<&mut Value> {
-        self.mark_as_updated();
-        match self {
-            Item::Original(value) => Some(value),
-            Item::Updated(value) => Some(value),
-            Item::Removed => None,
-        }
-    }
+pub fn bob<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
+    <T as frame_system::Config>::AccountId::decode(&mut &[2u8; 32][..]).unwrap()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::Item;
+pub fn charlie<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
+    <T as frame_system::Config>::AccountId::decode(&mut &[3u8; 32][..]).unwrap()
+}
 
-    #[test]
-    fn enum_variant_switches() {
-        let mut item: Item<i32> = Item::Original(123);
-        item.mark_as_updated();
-        assert_eq!(item, Item::Updated(123));
-        // should be idempotent
-        item.mark_as_updated();
-        assert_eq!(item, Item::Updated(123));
+pub fn dave<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
+    <T as frame_system::Config>::AccountId::decode(&mut &[4u8; 32][..]).unwrap()
+}
 
-        let mut item: Item<i32> = Item::Removed;
-        item.mark_as_updated();
-        assert_eq!(item, Item::Removed);
+pub fn generate_account<T: frame_system::Config>(
+    seed: u32,
+) -> <T as frame_system::Config>::AccountId {
+    let mut adr = [0u8; 32];
+
+    let mut value = seed;
+    let mut id = 0;
+    while value != 0 {
+        adr[31 - id] = (value % 256) as u8;
+        value = value / 256;
+        id += 1;
     }
+
+    <T as frame_system::Config>::AccountId::decode(&mut &adr[..]).unwrap()
 }
