@@ -29,8 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 extern crate core;
 
@@ -247,7 +245,7 @@ impl<T: Config> Pallet<T> {
     pub fn is_forbidden_filter(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        selected_source_types: &Vec<LiquiditySourceType>,
+        selected_source_types: &[LiquiditySourceType],
         filter_mode: &FilterMode,
     ) -> bool {
         let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
@@ -255,10 +253,7 @@ impl<T: Config> Pallet<T> {
         #[allow(unused_mut)] // order-book
         #[allow(unused_assignments)] // order-book
         // TODO remake
-        let mut is_order_book = match filter_mode {
-            FilterMode::ForbidSelected => true,
-            _ => false,
-        };
+        let mut is_order_book = matches!(filter_mode, FilterMode::ForbidSelected);
 
         #[cfg(feature = "wip")] // order-book
         {
@@ -299,6 +294,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn inner_swap(
         sender: T::AccountId,
         receiver: T::AccountId,
@@ -360,6 +356,7 @@ impl<T: Config> Pallet<T> {
     /// Those individual swaps are subject to liquidity aggregation algorithm.
     ///
     /// This a wrapper for `exchange_single`.
+    #[allow(clippy::type_complexity)]
     pub fn inner_exchange(
         dex_id: T::DEXId,
         sender: &T::AccountId,
@@ -391,6 +388,7 @@ impl<T: Config> Pallet<T> {
 
     /// Exchange sequence of assets, where each pair is a direct exchange.
     /// The swaps path is selected via `select_best_path`
+    #[allow(clippy::type_complexity)]
     fn exchange_sequence(
         dex_info: &DEXInfo<T::AssetId>,
         sender: &T::AccountId,
@@ -460,9 +458,9 @@ impl<T: Config> Pallet<T> {
                     input_amount,
                     filter,
                 )
-                .and_then(|(mut swap, sources, weight)| {
+                .map(|(mut swap, sources, weight)| {
                     swap.amount = input_amount;
-                    Ok((swap, sources, quote_weight.saturating_add(weight)))
+                    (swap, sources, quote_weight.saturating_add(weight))
                 })
             }
         }
@@ -471,6 +469,7 @@ impl<T: Config> Pallet<T> {
     /// Exchange sequence of assets using input amount.
     ///
     /// Performs [`Self::exchange_single()`] for each pair of assets and aggregates the results.
+    #[allow(clippy::type_complexity)]
     fn exchange_sequence_with_input_amount(
         dex_info: &DEXInfo<T::AssetId>,
         sender: &T::AccountId,
@@ -567,8 +566,8 @@ impl<T: Config> Pallet<T> {
             .map(|(from, to)| -> Result<_, DispatchError> {
                 let (quote, _, _, weight) = Self::quote_single(
                     &dex_info.base_asset_id,
-                    &from,
-                    &to,
+                    from,
+                    to,
                     QuoteAmount::with_desired_output(amount),
                     filter.clone(),
                     true,
@@ -583,6 +582,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Performs a swap given a number of liquidity sources and a distribution of the swap amount across the sources.
+    #[allow(clippy::type_complexity)]
     fn exchange_single(
         sender: &T::AccountId,
         receiver: &T::AccountId,
@@ -654,6 +654,7 @@ impl<T: Config> Pallet<T> {
     /// Those individual swaps are subject to liquidity aggregation algorithm.
     ///
     /// This a wrapper for `quote_single`.
+    #[allow(clippy::type_complexity)]
     pub fn inner_quote(
         dex_id: T::DEXId,
         input_asset_id: &T::AssetId,
@@ -678,6 +679,7 @@ impl<T: Config> Pallet<T> {
 
     /// Quote sequence of assets, where each pair is a direct exchange.
     /// Selects swaps path via `select_best_path`
+    #[allow(clippy::type_complexity)]
     fn quote_sequence(
         dex_info: &DEXInfo<T::AssetId>,
         asset_paths: Vec<ExchangePath<T>>,
@@ -715,6 +717,7 @@ impl<T: Config> Pallet<T> {
     /// `QuoteAmount::WithDesiredOutput`
     ///
     /// Returns Result containing a quote result and the selected path
+    #[allow(clippy::type_complexity)]
     fn select_best_path(
         dex_info: &DEXInfo<T::AssetId>,
         asset_paths: Vec<ExchangePath<T>>,
@@ -786,6 +789,7 @@ impl<T: Config> Pallet<T> {
     /// Quote given pairs of assets using `amount_ctr` to construct [`QuoteAmount`] for each pair.
     ///
     /// Performs [`Self::quote_single()`] for each pair and aggregates the results.
+    #[allow(clippy::type_complexity)]
     fn quote_pairs_with_flexible_amount<'asset, F: Fn(Balance) -> QuoteAmount<Balance>>(
         dex_info: &DEXInfo<T::AssetId>,
         asset_pairs: impl Iterator<Item = (&'asset T::AssetId, &'asset T::AssetId)>,
@@ -881,13 +885,14 @@ impl<T: Config> Pallet<T> {
     // Would likely to fail if operating near the limits,
     // because it uses i128 for fixed-point arithmetics.
     // TODO: switch to unsigned internal representation
+    #[allow(clippy::type_complexity)]
     fn calculate_amount_without_impact(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        distribution: &Vec<(
+        distribution: &[(
             LiquiditySourceId<T::DEXId, LiquiditySourceType>,
             QuoteAmount<Balance>,
-        )>,
+        )],
         outcome_amount: u128,
         outcome_without_impact: u128,
         deduce_fee: bool,
@@ -919,7 +924,7 @@ impl<T: Config> Pallet<T> {
 
         // multiply all amounts in distribution to adjust prev quote without impact:
         let distribution = distribution
-            .into_iter()
+            .iter()
             .filter(|(_, part_amount)| part_amount.amount() > balance!(0))
             .map(|(market, amount)| {
                 // Should not overflow unless the amounts are comparable to 10^38 .
@@ -966,6 +971,7 @@ impl<T: Config> Pallet<T> {
     /// - `filter` - a filter composed of a list of liquidity sources IDs to accept or ban for this trade.
     /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
     ///
+    #[allow(clippy::type_complexity)]
     fn quote_single(
         base_asset_id: &T::AssetId,
         input_asset_id: &T::AssetId,
@@ -1004,7 +1010,7 @@ impl<T: Config> Pallet<T> {
                 src,
                 input_asset_id,
                 output_asset_id,
-                amount.into(),
+                amount,
                 deduce_fee,
             )?;
             total_weight = total_weight.saturating_add(weight);
@@ -1064,7 +1070,7 @@ impl<T: Config> Pallet<T> {
                     base_asset_id,
                     input_asset_id,
                     output_asset_id,
-                    amount.clone(),
+                    amount,
                     skip_info,
                     deduce_fee,
                 )?;
@@ -1105,7 +1111,7 @@ impl<T: Config> Pallet<T> {
         path.iter()
             .tuple_windows()
             .filter_map(|(from, to)| {
-                let pair = Self::weak_sort_pair(&dex_info, *from, *to);
+                let pair = Self::weak_sort_pair(dex_info, *from, *to);
 
                 // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
                 trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
@@ -1126,11 +1132,11 @@ impl<T: Config> Pallet<T> {
     ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
         let sources_set = fallible_iterator::convert(path.to_vec().iter().tuple_windows().map(
             |(from, to)| -> Result<_, DispatchError> {
-                let pair = Self::weak_sort_pair(&dex_info, *from, *to);
+                let pair = Self::weak_sort_pair(dex_info, *from, *to);
 
                 // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
                 let sources = trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
-                    &dex_id,
+                    dex_id,
                     &pair.base_asset_id,
                     &pair.target_asset_id,
                 )?;
@@ -1231,7 +1237,7 @@ impl<T: Config> Pallet<T> {
         let mut weights = Vec::new();
 
         for path in trivial_path {
-            if path.0.len() > 0 {
+            if !path.0.is_empty() {
                 let total_exchange_weight = exchange_weight.saturating_mul(path.0.len() as u64 - 1);
                 weights.push(
                     weight
@@ -1266,11 +1272,9 @@ impl<T: Config> Pallet<T> {
         let inner_exchange_weight =
             Self::inner_exchange_weight(dex_id, input, output, swap_variant);
 
-        let weight = <T as Config>::WeightInfo::check_indivisible_assets()
+        <T as Config>::WeightInfo::check_indivisible_assets()
             .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
-            .saturating_add(inner_exchange_weight);
-
-        weight
+            .saturating_add(inner_exchange_weight)
     }
 
     /// Calculates the max potential weight of swap_transfer_batch
@@ -1421,6 +1425,8 @@ impl<T: Config> Pallet<T> {
     /// - `amount` - the amount with "direction" (sell or buy) together with the maximum price impact (slippage).
     /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
     ///
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
     fn smart_split(
         primary_source_id: &LiquiditySourceIdOf<T>,
         secondary_source_id: &LiquiditySourceIdOf<T>,
@@ -1479,7 +1485,7 @@ impl<T: Config> Pallet<T> {
             Self::decide_primary_market_amount_buying_base_asset(
                 base_asset_id,
                 other_asset,
-                amount.clone(),
+                amount,
                 (reserves_base, reserves_other),
             )
             .unwrap_or(
@@ -1491,7 +1497,7 @@ impl<T: Config> Pallet<T> {
             Self::decide_primary_market_amount_selling_base_asset(
                 base_asset_id,
                 other_asset,
-                amount.clone(),
+                amount,
                 (reserves_base, reserves_other),
             )
             .unwrap_or(amount.copy_direction(balance!(0)))
@@ -1515,7 +1521,7 @@ impl<T: Config> Pallet<T> {
                 primary_source_id,
                 input_asset_id,
                 output_asset_id,
-                amount_primary.clone(),
+                amount_primary,
                 deduce_fee,
             )
             .and_then(|(outcome_primary, weight)| {
@@ -1528,10 +1534,10 @@ impl<T: Config> Pallet<T> {
                         secondary_source_id,
                         input_asset_id,
                         output_asset_id,
-                        amount_secondary.clone(),
+                        amount_secondary,
                         deduce_fee,
                     )
-                    .and_then(|(outcome_secondary, weight)| {
+                    .map(|(outcome_secondary, weight)| {
                         total_weight = total_weight.saturating_add(weight);
                         if !skip_info {
                             for info in vec![
@@ -1563,7 +1569,6 @@ impl<T: Config> Pallet<T> {
                             (primary_source_id.clone(), amount_primary),
                             (secondary_source_id.clone(), amount_secondary),
                         ];
-                        Ok(())
                     })
                 } else {
                     best = outcome_primary.amount;
@@ -1583,18 +1588,17 @@ impl<T: Config> Pallet<T> {
             secondary_source_id,
             input_asset_id,
             output_asset_id,
-            amount.clone(),
+            amount,
             deduce_fee,
         )
-        .and_then(|(outcome, weight)| {
+        .map(|(outcome, weight)| {
             total_weight = total_weight.saturating_add(weight);
             if is_better(outcome.amount, best) {
                 best = outcome.amount;
                 total_fee = outcome.fee;
-                distr = vec![(secondary_source_id.clone(), amount.clone())];
+                distr = vec![(secondary_source_id.clone(), amount)];
                 if !skip_info {
-                    let (input_amount, output_amount) =
-                        amount.place_input_and_output(outcome.clone());
+                    let (input_amount, output_amount) = amount.place_input_and_output(outcome);
                     let reward_weight;
                     (rewards, reward_weight) = T::LiquidityRegistry::check_rewards(
                         secondary_source_id,
@@ -1607,7 +1611,6 @@ impl<T: Config> Pallet<T> {
                     total_weight = total_weight.saturating_add(reward_weight);
                 };
             };
-            Ok(())
         });
 
         // Check if we have got a result at either of the steps
@@ -1829,13 +1832,14 @@ impl<T: Config> Pallet<T> {
 
     /// Swaps tokens for the following batch distribution and calculates a remainder.
     /// Remainder is used due to inaccuracy of the quote calculation.
+    #[allow(clippy::too_many_arguments)]
     fn exchange_batch_tokens(
         sender: &T::AccountId,
         num_of_receivers: u128,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         max_input_amount: Balance,
-        selected_source_types: &Vec<LiquiditySourceType>,
+        selected_source_types: &[LiquiditySourceType],
         dex_id: T::DEXId,
         filter_mode: &FilterMode,
         out_amount: Balance,
@@ -1846,14 +1850,14 @@ impl<T: Config> Pallet<T> {
         let filter = LiquiditySourceFilter::with_mode(
             dex_id,
             filter_mode.clone(),
-            selected_source_types.clone(),
+            selected_source_types.to_vec(),
         );
 
         if Self::is_forbidden_filter(
-            &input_asset_id,
-            &output_asset_id,
-            &selected_source_types,
-            &filter_mode,
+            input_asset_id,
+            output_asset_id,
+            selected_source_types,
+            filter_mode,
         ) {
             fail!(Error::<T>::ForbiddenFilter);
         }
@@ -1869,23 +1873,23 @@ impl<T: Config> Pallet<T> {
             weights,
         ) = Self::inner_exchange(
             dex_id,
-            &sender,
-            &sender,
-            &input_asset_id,
-            &output_asset_id,
+            sender,
+            sender,
+            input_asset_id,
+            output_asset_id,
             SwapAmount::WithDesiredOutput {
                 desired_amount_out: out_amount,
                 max_amount_in: max_input_amount,
             },
-            filter.clone(),
+            filter,
         )?;
         total_weight = total_weight.saturating_add(weights);
 
         Self::deposit_event(Event::<T>::Exchange(
             sender.clone(),
             dex_id,
-            input_asset_id.clone(),
-            output_asset_id.clone(),
+            *input_asset_id,
+            *output_asset_id,
             executed_input_amount,
             out_amount,
             fee_amount,
@@ -1893,7 +1897,7 @@ impl<T: Config> Pallet<T> {
         ));
 
         let caller_output_asset_balance =
-            assets::Pallet::<T>::total_balance(&output_asset_id, &sender)?;
+            assets::Pallet::<T>::total_balance(output_asset_id, sender)?;
         let remainder_per_receiver: Balance = if caller_output_asset_balance < out_amount {
             let remainder = out_amount.saturating_sub(caller_output_asset_balance);
             remainder / num_of_receivers + remainder % num_of_receivers
@@ -1910,18 +1914,16 @@ impl<T: Config> Pallet<T> {
         remainder_per_receiver: Balance,
     ) -> Result<Weight, DispatchError> {
         let len = receivers.len();
-        fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
-            |receiver| {
-                assets::Pallet::<T>::transfer_from(
-                    &output_asset_id,
-                    &sender,
-                    &receiver.account_id,
-                    receiver
-                        .target_amount
-                        .saturating_sub(remainder_per_receiver),
-                )
-            },
-        )?;
+        fallible_iterator::convert(receivers.into_iter().map(Ok)).for_each(|receiver| {
+            assets::Pallet::<T>::transfer_from(
+                output_asset_id,
+                sender,
+                &receiver.account_id,
+                receiver
+                    .target_amount
+                    .saturating_sub(remainder_per_receiver),
+            )
+        })?;
         Ok(<T as assets::Config>::WeightInfo::transfer().saturating_mul(len as u64))
     }
 
@@ -1940,7 +1942,7 @@ impl<T: Config> Pallet<T> {
         input_asset_id: &T::AssetId,
         swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
         mut max_input_amount: Balance,
-        selected_source_types: &Vec<LiquiditySourceType>,
+        selected_source_types: &[LiquiditySourceType],
         filter_mode: &FilterMode,
     ) -> Result<(Balance, Balance, Weight), DispatchError> {
         let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
@@ -1949,7 +1951,7 @@ impl<T: Config> Pallet<T> {
 
         let mut total_weight = Weight::zero();
 
-        fallible_iterator::convert(swap_batches.into_iter().map(|val| Ok(val))).for_each(
+        fallible_iterator::convert(swap_batches.into_iter().map(Ok)).for_each(
             |swap_batch_info| {
                 let SwapBatchInfo {
                     outcome_asset_id: asset_id,
@@ -1958,18 +1960,18 @@ impl<T: Config> Pallet<T> {
                     outcome_asset_reuse,
                 } = swap_batch_info;
 
-                let balance = assets::Pallet::<T>::free_balance(&asset_id, &sender)?;
+                let balance = assets::Pallet::<T>::free_balance(&asset_id, sender)?;
 
                 if balance < outcome_asset_reuse {
                     fail!(Error::<T>::InsufficientBalance);
                 }
 
                 // extrinsic fails if there are duplicate output asset ids
-                if !unique_asset_ids.insert(asset_id.clone()) {
+                if !unique_asset_ids.insert(asset_id) {
                     fail!(Error::<T>::AggregationError);
                 }
 
-                if receivers.len() == 0 {
+                if receivers.is_empty() {
                     fail!(Error::<T>::InvalidReceiversInfo);
                 }
 
@@ -1987,14 +1989,14 @@ impl<T: Config> Pallet<T> {
                 ) = if &asset_id != input_asset_id {
                     if !out_amount.is_zero() {
                         Self::exchange_batch_tokens(
-                            &sender,
+                            sender,
                             receivers.len() as u128,
-                            &input_asset_id,
+                            input_asset_id,
                             &asset_id,
                             max_input_amount,
-                            &selected_source_types,
+                            selected_source_types,
                             dex_id,
-                            &filter_mode,
+                            filter_mode,
                             out_amount,
                         )?
                     } else {
@@ -2014,7 +2016,7 @@ impl<T: Config> Pallet<T> {
                     .ok_or(Error::<T>::SlippageNotTolerated)?;
 
                 let transfer_weight = Self::transfer_batch_tokens_unchecked(
-                    &sender,
+                    sender,
                     &asset_id,
                     receivers,
                     remainder_per_receiver,
@@ -2115,6 +2117,10 @@ impl<AssetId, DEXId, AccountId> SwapBatchInfo<AssetId, DEXId, AccountId> {
     pub fn len(&self) -> usize {
         self.receivers.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 pub struct LiquidityProxyBuyBackHandler<T, GetDEXId>(PhantomData<(T, GetDEXId)>);
@@ -2127,7 +2133,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId
         buy_back_asset_id: &T::AssetId,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let owner = assets::Pallet::<T>::asset_owner(&mint_asset_id)
+        let owner = assets::Pallet::<T>::asset_owner(mint_asset_id)
             .ok_or(assets::Error::<T>::AssetIdNotExists)?;
         let transit = T::GetTechnicalAccountId::get();
         assets::Pallet::<T>::mint_to(mint_asset_id, &owner, &transit, amount)?;
@@ -2188,6 +2194,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<T::AssetId>>
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -2236,6 +2243,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
+    #[allow(clippy::too_many_arguments)]
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Perform swap of tokens (input/output defined via SwapAmount direction).

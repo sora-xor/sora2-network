@@ -385,7 +385,7 @@ fn test_poly_quote_exact_output_1_should_pass() {
             &alice(),
             &KSM,
             &DOT,
-            SwapAmount::with_desired_output(balance!(934.572151021276260545), balance!(101)).into(),
+            SwapAmount::with_desired_output(balance!(934.572151021276260545), balance!(101)),
             LiquiditySourceFilter::empty(DEX_A_ID),
         )
         .expect("Failed to swap via LiquiditySource trait");
@@ -483,7 +483,7 @@ fn test_poly_quote_exact_output_2_should_pass() {
             &alice(),
             &DOT,
             &KSM,
-            SwapAmount::with_desired_output(balance!(555.083861089846196673), balance!(501)).into(),
+            SwapAmount::with_desired_output(balance!(555.083861089846196673), balance!(501)),
             LiquiditySourceFilter::empty(DEX_A_ID),
         )
         .expect("Failed to swap via LiquiditySource trait");
@@ -1036,7 +1036,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
             &GetBaseAssetId::get(),
             &DOT,
             QuoteAmount::with_desired_input(balance!(200)),
-            filter.clone(),
+            filter,
             false,
             true,
         )
@@ -1147,7 +1147,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
             &GetBaseAssetId::get(),
             &DOT,
             QuoteAmount::with_desired_output(balance!(1000)),
-            filter.clone(),
+            filter,
             false,
             true,
         )
@@ -1201,7 +1201,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
             rewards,
             vec![(
                 balance!(23.258770902877438466),
-                XOR.into(),
+                XOR,
                 RewardReason::BuyOnBondingCurve
             )]
         );
@@ -1264,7 +1264,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
             &DOT,
             &GetBaseAssetId::get(),
             QuoteAmount::with_desired_output(balance!(100)),
-            filter.clone(),
+            filter,
             false,
             true,
         )
@@ -1327,7 +1327,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
             rewards,
             vec![(
                 balance!(14.388332979612791988),
-                XOR.into(),
+                XOR,
                 RewardReason::BuyOnBondingCurve
             )]
         );
@@ -1390,7 +1390,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
             &DOT,
             &GetBaseAssetId::get(),
             QuoteAmount::with_desired_input(balance!(500)),
-            filter.clone(),
+            filter,
             false,
             true,
         )
@@ -1497,7 +1497,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
             &GetBaseAssetId::get(),
             &DOT,
             QuoteAmount::with_desired_output(balance!(1000)),
-            filter.clone(),
+            filter,
             false,
             true,
         )
@@ -1544,7 +1544,7 @@ fn test_quote_should_return_rewards_for_single_source() {
             &GetBaseAssetId::get(),
             &VAL,
             QuoteAmount::with_desired_output(balance!(100)),
-            filter.clone(),
+            filter,
             false,
             true,
         )
@@ -1553,7 +1553,7 @@ fn test_quote_should_return_rewards_for_single_source() {
         // Mock tbc defined reward as output token amount.
         assert_eq!(
             rewards_forward,
-            vec![(balance!(100), XOR.into(), RewardReason::BuyOnBondingCurve)]
+            vec![(balance!(100), XOR, RewardReason::BuyOnBondingCurve)]
         );
         assert_eq!(rewards_backward, vec![]);
     });
@@ -1570,10 +1570,10 @@ fn test_quote_should_return_rewards_for_multiple_sources() {
     ])
     .build();
     ext.execute_with(|| {
-        MockLiquiditySource::add_reward((balance!(101), PSWAP.into(), RewardReason::Unspecified));
-        MockLiquiditySource2::add_reward((balance!(201), VAL.into(), RewardReason::Unspecified));
-        MockLiquiditySource2::add_reward((balance!(202), XOR.into(), RewardReason::Unspecified));
-        MockLiquiditySource3::add_reward((balance!(301), DOT.into(), RewardReason::Unspecified));
+        MockLiquiditySource::add_reward((balance!(101), PSWAP, RewardReason::Unspecified));
+        MockLiquiditySource2::add_reward((balance!(201), VAL, RewardReason::Unspecified));
+        MockLiquiditySource2::add_reward((balance!(202), XOR, RewardReason::Unspecified));
+        MockLiquiditySource3::add_reward((balance!(301), DOT, RewardReason::Unspecified));
 
         let amount: Balance = balance!(500);
         let QuoteInfo { rewards, .. } = LiquidityProxy::inner_quote(
@@ -1591,10 +1591,10 @@ fn test_quote_should_return_rewards_for_multiple_sources() {
         assert_eq!(
             rewards,
             vec![
-                (balance!(101), PSWAP.into(), RewardReason::Unspecified),
-                (balance!(201), VAL.into(), RewardReason::Unspecified),
-                (balance!(202), XOR.into(), RewardReason::Unspecified),
-                (balance!(301), DOT.into(), RewardReason::Unspecified),
+                (balance!(101), PSWAP, RewardReason::Unspecified),
+                (balance!(201), VAL, RewardReason::Unspecified),
+                (balance!(202), XOR, RewardReason::Unspecified),
+                (balance!(301), DOT, RewardReason::Unspecified),
             ]
         );
     });
@@ -1626,8 +1626,7 @@ fn test_quote_should_work_for_synthetics() {
                 false,
                 true,
             )
-            .expect(&format!("Failed to get a quote for {}-{} pair", from, to))
-            .0;
+            .unwrap_or_else(|_| panic!("Failed to get a quote for {}-{} pair", from, to));
         }
     });
 }
@@ -1746,12 +1745,12 @@ fn test_is_path_available_should_pass_1() {
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap(), true);
+        assert!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap());
     });
 }
 
@@ -1764,12 +1763,12 @@ fn test_is_path_available_should_pass_2() {
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), false);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), false);
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), false);
-        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap(), false);
+        assert!(!LiquidityProxy::is_path_available(0, XOR, VAL).unwrap());
+        assert!(!LiquidityProxy::is_path_available(0, VAL, XOR).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap());
+        assert!(!LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap());
+        assert!(!LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap());
     });
 }
 
@@ -1783,12 +1782,12 @@ fn test_is_path_available_should_pass_3() {
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap(), false);
-        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap(), false);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), false);
-        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap(), false);
+        assert!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap());
+        assert!(!LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap());
+        assert!(!LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap());
+        assert!(!LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap());
+        assert!(!LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap());
     });
 }
 
@@ -1803,12 +1802,12 @@ fn test_is_path_available_should_pass_4() {
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap(), true);
+        assert!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap());
     });
 }
 
@@ -1820,7 +1819,7 @@ fn test_is_path_available_should_pass_5() {
         use LiquiditySourceType::*;
         assets::Pallet::<Runtime>::register_asset_id(
             alice(),
-            XST.into(),
+            XST,
             AssetSymbol(b"XST".to_vec()),
             AssetName(b"SORA Synthetics".to_vec()),
             0,
@@ -1831,7 +1830,7 @@ fn test_is_path_available_should_pass_5() {
         ).expect("failed to register XST asset");
         assets::Pallet::<Runtime>::register_asset_id(
             alice(),
-            XSTUSD.into(),
+            XSTUSD,
             AssetSymbol(b"XSTUSD".to_vec()),
             AssetName(b"SORA Synthetic USD".to_vec()),
             0,
@@ -1848,19 +1847,19 @@ fn test_is_path_available_should_pass_5() {
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &XST, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XST, &XSTUSD, XSTPool).expect("failed to enable source");
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XST).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XSTUSD).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, XST).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XOR, XSTUSD).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XST, XSTUSD).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XST, XOR).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XST, VAL).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XSTUSD, XST).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XSTUSD, XOR).unwrap(), true);
-        assert_eq!(LiquidityProxy::is_path_available(0, XSTUSD, VAL).unwrap(), true);
+        assert!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, VAL, XST).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, VAL, XSTUSD).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XOR, XST).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XOR, XSTUSD).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XST, XSTUSD).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XST, XOR).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XST, VAL).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XSTUSD, XST).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XSTUSD, XOR).unwrap());
+        assert!(LiquidityProxy::is_path_available(0, XSTUSD, VAL).unwrap());
     });
 }
 
@@ -1874,7 +1873,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
     ) {
         let mut ext = ExtBuilder::with_total_supply_and_reserves(
             total_supply,
-            vec![(0, collateral_asset_id, xyk_pool_reserves.clone())],
+            vec![(0, collateral_asset_id, xyk_pool_reserves)],
         )
         .build();
         ext.execute_with(|| {
@@ -1903,7 +1902,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_input(amount_base.clone()),
+                QuoteAmount::with_desired_input(amount_base),
                 filter_both.clone(),
                 false,
                 true,
@@ -1913,7 +1912,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_input(amount_base.clone()),
+                QuoteAmount::with_desired_input(amount_base),
                 filter_xyk.clone(),
                 false,
                 true,
@@ -1926,7 +1925,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_output(amount_base.clone()),
+                QuoteAmount::with_desired_output(amount_base),
                 filter_both.clone(),
                 false,
                 true,
@@ -1936,7 +1935,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_output(amount_base.clone()),
+                QuoteAmount::with_desired_output(amount_base),
                 filter_xyk.clone(),
                 false,
                 true,
@@ -1949,7 +1948,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_input(amount_collateral.clone()),
+                QuoteAmount::with_desired_input(amount_collateral),
                 filter_both.clone(),
                 false,
                 true,
@@ -1959,7 +1958,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_input(amount_collateral.clone()),
+                QuoteAmount::with_desired_input(amount_collateral),
                 filter_xyk.clone(),
                 false,
                 true,
@@ -1972,8 +1971,8 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_output(amount_collateral.clone()),
-                filter_both.clone(),
+                QuoteAmount::with_desired_output(amount_collateral),
+                filter_both,
                 false,
                 true,
             )
@@ -1982,8 +1981,8 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_output(amount_collateral.clone()),
-                filter_xyk.clone(),
+                QuoteAmount::with_desired_output(amount_collateral),
+                filter_xyk,
                 false,
                 true,
             )
@@ -2022,7 +2021,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
     ) {
         let mut ext = ExtBuilder::with_total_supply_and_reserves(
             total_supply,
-            vec![(0, collateral_asset_id, xyk_pool_reserves.clone())],
+            vec![(0, collateral_asset_id, xyk_pool_reserves)],
         )
         .build();
         ext.execute_with(|| {
@@ -2051,7 +2050,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_input(amount_base.clone()),
+                QuoteAmount::with_desired_input(amount_base),
                 filter_both.clone(),
                 false,
                 true,
@@ -2061,7 +2060,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_input(amount_base.clone()),
+                QuoteAmount::with_desired_input(amount_base),
                 filter_xyk.clone(),
                 false,
                 true,
@@ -2074,7 +2073,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_output(amount_base.clone()),
+                QuoteAmount::with_desired_output(amount_base),
                 filter_both.clone(),
                 false,
                 true,
@@ -2084,7 +2083,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_output(amount_base.clone()),
+                QuoteAmount::with_desired_output(amount_base),
                 filter_xyk.clone(),
                 false,
                 true,
@@ -2097,7 +2096,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_input(amount_collateral.clone()),
+                QuoteAmount::with_desired_input(amount_collateral),
                 filter_both.clone(),
                 false,
                 true,
@@ -2107,7 +2106,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_input(amount_collateral.clone()),
+                QuoteAmount::with_desired_input(amount_collateral),
                 filter_xyk.clone(),
                 false,
                 true,
@@ -2120,8 +2119,8 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_output(amount_collateral.clone()),
-                filter_both.clone(),
+                QuoteAmount::with_desired_output(amount_collateral),
+                filter_both,
                 false,
                 true,
             )
@@ -2130,8 +2129,8 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_output(amount_collateral.clone()),
-                filter_xyk.clone(),
+                QuoteAmount::with_desired_output(amount_collateral),
+                filter_xyk,
                 false,
                 true,
             )
@@ -2171,7 +2170,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
     ) {
         let mut ext = ExtBuilder::with_total_supply_and_reserves(
             total_supply,
-            vec![(0, collateral_asset_id, xyk_pool_reserves.clone())],
+            vec![(0, collateral_asset_id, xyk_pool_reserves)],
         )
         .build();
         ext.execute_with(|| {
@@ -2196,7 +2195,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_input(amount_base.clone()),
+                QuoteAmount::with_desired_input(amount_base),
                 filter_both.clone(),
                 false,
                 true,
@@ -2206,7 +2205,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_input(amount_base.clone()),
+                QuoteAmount::with_desired_input(amount_base),
                 filter_mcbc.clone(),
                 false,
                 true,
@@ -2219,7 +2218,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_output(amount_base.clone()),
+                QuoteAmount::with_desired_output(amount_base),
                 filter_both.clone(),
                 false,
                 true,
@@ -2229,7 +2228,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_output(amount_base.clone()),
+                QuoteAmount::with_desired_output(amount_base),
                 filter_mcbc.clone(),
                 false,
                 true,
@@ -2242,7 +2241,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_input(amount_collateral.clone()),
+                QuoteAmount::with_desired_input(amount_collateral),
                 filter_both.clone(),
                 false,
                 true,
@@ -2252,7 +2251,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 &base_asset,
                 &collateral_asset_id,
                 &base_asset,
-                QuoteAmount::with_desired_input(amount_collateral.clone()),
+                QuoteAmount::with_desired_input(amount_collateral),
                 filter_mcbc.clone(),
                 false,
                 true,
@@ -2265,8 +2264,8 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_output(amount_collateral.clone()),
-                filter_both.clone(),
+                QuoteAmount::with_desired_output(amount_collateral),
+                filter_both,
                 false,
                 true,
             )
@@ -2275,8 +2274,8 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_output(amount_collateral.clone()),
-                filter_mcbc.clone(),
+                QuoteAmount::with_desired_output(amount_collateral),
+                filter_mcbc,
                 false,
                 true,
             )
@@ -2359,7 +2358,7 @@ fn test_smart_split_selling_xor_should_fail() {
     ) {
         let mut ext = ExtBuilder::with_total_supply_and_reserves(
             total_supply,
-            vec![(0, collateral_asset_id, xyk_pool_reserves.clone())],
+            vec![(0, collateral_asset_id, xyk_pool_reserves)],
         )
         .build();
         ext.execute_with(|| {
@@ -2380,8 +2379,8 @@ fn test_smart_split_selling_xor_should_fail() {
                 &base_asset,
                 &base_asset,
                 &collateral_asset_id,
-                QuoteAmount::with_desired_output(amount_collateral.clone()),
-                filter_both.clone(),
+                QuoteAmount::with_desired_output(amount_collateral),
+                filter_both,
                 false,
                 true,
             );
@@ -2448,7 +2447,7 @@ fn test_smart_split_error_handling_works() {
     ) {
         let mut ext = ExtBuilder::with_total_supply_and_reserves(
             balance!(350000),
-            vec![(0, collateral_asset_id, xyk_pool_reserves.clone())],
+            vec![(0, collateral_asset_id, xyk_pool_reserves)],
         )
         .build();
         ext.execute_with(|| {
@@ -2503,23 +2502,23 @@ fn selecting_xyk_only_filter_is_forbidden() {
         use FilterMode::*;
 
         // xyk only selection, base case
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &vec![XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &vec![XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &vec![XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &vec![XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &vec![XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, &vec![XYKPool], &AllowSelected), true);
+        assert!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &[XYKPool], &AllowSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &[XYKPool], &AllowSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &[XYKPool], &AllowSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &[XYKPool], &AllowSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &[XYKPool], &AllowSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &[XYKPool], &AllowSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &[XYKPool], &AllowSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, &[XYKPool], &AllowSelected));
 
         // xyk only selection, indirect swaps
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![XYKPool], &AllowSelected), true);
+        assert!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &[XYKPool], &AllowSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &[XYKPool], &AllowSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &[XYKPool], &AllowSelected));
 
         // xyk only selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![XYKPool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![XYKPool], &AllowSelected), false);
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &[XYKPool], &AllowSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &[XYKPool], &AllowSelected));
 
         #[allow(unused_assignments)] // order-book
         let mut sources_except_xyk = Vec::new();
@@ -2534,71 +2533,71 @@ fn selecting_xyk_only_filter_is_forbidden() {
         }
         
         // xyk only selection, base case
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, &sources_except_xyk, &ForbidSelected), true);
+        assert!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &sources_except_xyk, &ForbidSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &sources_except_xyk, &ForbidSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &sources_except_xyk, &ForbidSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &sources_except_xyk, &ForbidSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &sources_except_xyk, &ForbidSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &sources_except_xyk, &ForbidSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &sources_except_xyk, &ForbidSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, &sources_except_xyk, &ForbidSelected));
 
         // xyk only selection, indirect swaps
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &sources_except_xyk, &ForbidSelected), true);
+        assert!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &sources_except_xyk, &ForbidSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &sources_except_xyk, &ForbidSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &sources_except_xyk, &ForbidSelected));
 
         // xyk only selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &sources_except_xyk, &ForbidSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &sources_except_xyk, &ForbidSelected), false);
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &sources_except_xyk, &ForbidSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &sources_except_xyk, &ForbidSelected));
 
         // smart selection, base case
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![], &Disabled), false);
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &[], &Disabled));
 
         // smart selection, indirect swaps
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![], &Disabled), false);
+        assert!(!LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &[], &Disabled));
 
         // smart selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![], &Disabled), false);
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &[], &Disabled));
 
         // tbc only selection, base case
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &[MulticollateralBondingCurvePool], &AllowSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &[MulticollateralBondingCurvePool], &AllowSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &[MulticollateralBondingCurvePool], &AllowSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &[MulticollateralBondingCurvePool], &AllowSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &[MulticollateralBondingCurvePool], &AllowSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &[MulticollateralBondingCurvePool], &AllowSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &[MulticollateralBondingCurvePool], &AllowSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&ETH, &XOR, &[MulticollateralBondingCurvePool], &AllowSelected));
 
         // tbc only selection, indirect swaps
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![], &Disabled), false);
+        assert!(!LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &[], &Disabled));
+        assert!(!LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &[], &Disabled));
 
         // tbc only selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &[MulticollateralBondingCurvePool], &AllowSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &[MulticollateralBondingCurvePool], &AllowSelected));
 
         // hack cases with unavailable sources
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![MockPool, XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, &vec![MockPool, XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![MockPool, XYKPool], &AllowSelected), false);
+        assert!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &[MockPool, XYKPool], &AllowSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, &[MockPool, XYKPool], &AllowSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &[MockPool, XYKPool], &AllowSelected));
 
         sources_except_xyk.push(MockPool);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &sources_except_xyk, &ForbidSelected), false);
+        assert!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &sources_except_xyk, &ForbidSelected));
+        assert!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, &sources_except_xyk, &ForbidSelected));
+        assert!(!LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &sources_except_xyk, &ForbidSelected));
     });
 }
 
@@ -2848,7 +2847,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
             &VAL,
             &KSM,
             QuoteAmount::with_desired_input(amount_val_in),
-            filter.clone(),
+            filter,
             false,
             true,
         )
@@ -3001,7 +3000,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
             &VAL,
             &KSM,
             QuoteAmount::with_desired_output(amount_ksm_out),
-            filter.clone(),
+            filter,
             false,
             true,
         )
@@ -3375,10 +3374,10 @@ fn test_batch_swap_emits_event() {
 
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             RuntimeOrigin::signed(alice()),
-            swap_batches.clone(),
+            swap_batches,
             XOR,
             max_input_amount,
-            sources.clone(),
+            sources,
             filter_mode,
         ));
 
@@ -3753,10 +3752,10 @@ fn test_batch_swap_asset_reuse_fails() {
         assert_noop!(
             LiquidityProxy::swap_transfer_batch(
                 RuntimeOrigin::signed(alice()),
-                swap_batches.clone(),
+                swap_batches,
                 XOR,
                 max_input_amount,
-                sources.clone(),
+                sources,
                 filter_mode,
             ),
             Error::<Runtime>::InsufficientBalance

@@ -41,7 +41,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, ensure, fail, parameter_types};
-use frame_system;
+
 use traits::MultiCurrency;
 
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
@@ -96,18 +96,17 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetLiquidityProxyTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
+
+        TechAccountId::from_generic_pair(
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
             crate::TECH_ACCOUNT_MAIN.to_vec(),
-        );
-        tech_account_id
+        )
     };
     pub GetLiquidityProxyAccountId: AccountId = {
         let tech_account_id = GetLiquidityProxyTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
+
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.")
     };
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
@@ -117,7 +116,7 @@ parameter_types! {
     pub GetFee10: Fixed = fixed_from_basis_points(10u16);
     pub GetFee20: Fixed = fixed_from_basis_points(20u16);
     pub GetFee30: Fixed = fixed_from_basis_points(30u16);
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = common::PSWAP;
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([151; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
@@ -605,7 +604,7 @@ impl MockMCBCPool {
 
 impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for MockMCBCPool {
     fn can_exchange(_dex_id: &DEXId, _input_asset_id: &AssetId, output_asset_id: &AssetId) -> bool {
-        if output_asset_id == &XOR.into() {
+        if output_asset_id == &XOR {
             return true;
         }
         let reserves_tech_account_id =
@@ -639,7 +638,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 Currencies::free_balance(*output_asset_id, &reserves_account_id).into();
             let buy_spot_price: FixedWrapper = Self::_spot_price(output_asset_id).into();
             let sell_spot_price: FixedWrapper = buy_spot_price.clone() * fixed_wrapper!(0.8);
-            let pretended_base_reserves = collateral_reserves.clone() / sell_spot_price.clone();
+            let pretended_base_reserves = collateral_reserves.clone() / sell_spot_price;
 
             let ideal_reserves: FixedWrapper = (buy_spot_price
                 + get_initial_price()
@@ -662,7 +661,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 } => {
                     let input_wrapped: FixedWrapper = desired_amount_in.into();
                     let input_after_fee: FixedWrapper =
-                        input_wrapped * (fixed_wrapper!(1) - extra_fee.clone());
+                        input_wrapped * (fixed_wrapper!(1) - extra_fee);
                     let output_collateral = (input_after_fee.clone() * collateral_reserves)
                         / (pretended_base_reserves + input_after_fee);
                     let output_amount: Balance = output_collateral.try_into_balance().unwrap();
@@ -754,7 +753,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             Ok((
                 vec![(
                     output_amount,
-                    output_asset_id.clone(),
+                    *output_asset_id,
                     RewardReason::BuyOnBondingCurve,
                 )],
                 Weight::zero(),
@@ -993,28 +992,22 @@ impl ExtBuilder {
             for (dex_id, asset, (base_reserve, asset_reserve)) in self.xyk_reserves {
                 let mint_amount: Balance = asset_reserve * 2;
 
-                trading_pair::Pallet::<Runtime>::register(
-                    owner_origin.clone(),
-                    dex_id.into(),
-                    XOR.into(),
-                    asset.into(),
-                )
-                .unwrap();
-                assets::Pallet::<Runtime>::mint_to(&asset.into(), &owner, &owner, mint_amount)
+                trading_pair::Pallet::<Runtime>::register(owner_origin.clone(), dex_id, XOR, asset)
                     .unwrap();
+                assets::Pallet::<Runtime>::mint_to(&asset, &owner, &owner, mint_amount).unwrap();
                 pool_xyk::Pallet::<Runtime>::initialize_pool(
                     owner_origin.clone(),
-                    dex_id.into(),
-                    XOR.into(),
-                    asset.into(),
+                    dex_id,
+                    XOR,
+                    asset,
                 )
                 .unwrap();
                 if asset_reserve != balance!(0) && base_reserve != balance!(0) {
                     pool_xyk::Pallet::<Runtime>::deposit_liquidity(
                         owner_origin.clone(),
-                        dex_id.into(),
-                        XOR.into(),
-                        asset.into(),
+                        dex_id,
+                        XOR,
+                        asset,
                         base_reserve,
                         asset_reserve,
                         balance!(1),
@@ -1046,12 +1039,10 @@ impl MockXSTPool {
 
 impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for MockXSTPool {
     fn can_exchange(_dex_id: &DEXId, input_asset_id: &AssetId, output_asset_id: &AssetId) -> bool {
-        if output_asset_id == &XST.into() && input_asset_id == &XSTUSD.into() {
-            return true;
-        } else if input_asset_id == &XST.into() && output_asset_id == &XSTUSD.into() {
-            return true;
+        if output_asset_id == &XST && input_asset_id == &XSTUSD {
+            true
         } else {
-            return false;
+            input_asset_id == &XST && output_asset_id == &XSTUSD
         }
     }
 

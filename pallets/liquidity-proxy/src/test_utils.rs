@@ -78,7 +78,7 @@ pub fn check_swap_batch_executed_amount(
 }
 
 pub fn check_adar_commission(
-    swap_batches: &Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>>,
+    swap_batches: &[SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>],
     sources: Vec<LiquiditySourceType>,
 ) {
     let actual_input_amount = calculate_swap_batch_input_amount(swap_batches, sources);
@@ -93,7 +93,7 @@ pub fn check_adar_commission(
 }
 
 pub fn calculate_swap_batch_input_amount(
-    swap_batches: &Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>>,
+    swap_batches: &[SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>],
     sources: Vec<LiquiditySourceType>,
 ) -> Balance {
     let actual_input_amount: Balance = swap_batches
@@ -105,7 +105,7 @@ pub fn calculate_swap_batch_input_amount(
                 dex_id,
                 outcome_asset_reuse,
                 ..
-            } = batch.clone();
+            } = batch;
             let target_amount = batch
                 .receivers
                 .into_iter()
@@ -131,7 +131,7 @@ pub fn calculate_swap_batch_input_amount(
 }
 
 pub fn calculate_swap_batch_input_amount_with_adar_commission(
-    swap_batches: &Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>>,
+    swap_batches: &[SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>],
     sources: Vec<LiquiditySourceType>,
 ) -> Balance {
     let amount_in = calculate_swap_batch_input_amount(swap_batches, sources);
