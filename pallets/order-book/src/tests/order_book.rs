@@ -30,7 +30,7 @@
 
 #![cfg(feature = "wip")] // order-book
 
-use crate::tests::test_utils::*;
+use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
 use common::{balance, AssetName, AssetSymbol, PriceVariant, DOT, KSM, VAL, XOR};
@@ -46,6 +46,7 @@ use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_core::Get;
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::iter::repeat;
 
 #[test]
 fn should_create_new() {
@@ -56,7 +57,7 @@ fn should_create_new() {
     };
 
     let expected = OrderBook::<Runtime> {
-        order_book_id: order_book_id,
+        order_book_id,
         status: OrderBookStatus::Trade,
         last_order_id: 0,
         tick_size: balance!(0.001).into(),
@@ -92,7 +93,7 @@ fn should_create_default() {
         tick_size: balance!(0.00001).into(),
         step_lot_size: balance!(0.00001).into(),
         min_lot_size: balance!(1).into(),
-        max_lot_size: balance!(100000).into(),
+        max_lot_size: balance!(1000).into(),
     };
 
     assert_eq!(OrderBook::<Runtime>::default(order_book_id), expected);
@@ -113,7 +114,7 @@ fn should_create_default_indivisible() {
         tick_size: balance!(0.00001).into(),
         step_lot_size: OrderVolume::indivisible(1),
         min_lot_size: OrderVolume::indivisible(1),
-        max_lot_size: OrderVolume::indivisible(100000),
+        max_lot_size: OrderVolume::indivisible(1000),
     };
 
     assert_eq!(
@@ -145,7 +146,7 @@ fn should_increment_order_id() {
 #[test]
 fn should_place_limit_order() {
     ext().execute_with(|| {
-        let owner = alice();
+        let owner = accounts::alice::<Runtime>();
         let mut data = StorageDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -154,8 +155,8 @@ fn should_place_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
-        fill_balance(owner.clone(), order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(owner.clone(), order_book_id);
 
         let order_id = 100;
         let price = balance!(10).into();
@@ -168,7 +169,7 @@ fn should_place_limit_order() {
         let user_orders_before = data
             .get_user_limit_orders(&owner, &order_book_id)
             .unwrap_or_default();
-        let balance_before = free_balance(&order_book_id.quote, &owner);
+        let balance_before = free_balance::<Runtime>(&order_book_id.quote, &owner);
 
         // new order
         let order = LimitOrder::<Runtime>::new(
@@ -178,14 +179,14 @@ fn should_place_limit_order() {
             price,
             amount,
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // place new order
-        assert_ok!(order_book.place_limit_order(order, &mut data));
+        assert_eq!(order_book.place_limit_order(order, &mut data).unwrap(), 0);
 
         // check
         let mut expected_bids = bids_before.clone();
@@ -207,7 +208,7 @@ fn should_place_limit_order() {
             expected_user_orders
         );
 
-        let balance = free_balance(&order_book_id.quote, &owner);
+        let balance = free_balance::<Runtime>(&order_book_id.quote, &owner);
         let expected_balance = balance_before - deal_amount.balance();
         assert_eq!(balance, expected_balance);
     });
@@ -218,7 +219,7 @@ fn should_place_nft_limit_order() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let owner = alice();
+        let owner = accounts::alice::<Runtime>();
         frame_system::Pallet::<Runtime>::inc_providers(&owner);
 
         let nft = assets::Pallet::<Runtime>::register_from(
@@ -261,12 +262,12 @@ fn should_place_nft_limit_order() {
             price,
             amount,
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
         // place new order
-        assert_ok!(order_book.place_limit_order(order, &mut data));
+        assert_eq!(order_book.place_limit_order(order, &mut data).unwrap(), 0);
 
         // check
         assert_eq!(
@@ -282,7 +283,7 @@ fn should_place_nft_limit_order() {
             vec![order_id]
         );
 
-        let balance = free_balance(&order_book_id.base, &owner);
+        let balance = free_balance::<Runtime>(&order_book_id.base, &owner);
         assert_eq!(balance, balance!(0));
     })
 }
@@ -298,8 +299,8 @@ fn should_place_limit_order_out_of_spread() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
-        fill_balance(alice(), order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
         let bid_price1 = balance!(10).into();
         let bid_price2 = balance!(9.8).into();
@@ -311,8 +312,10 @@ fn should_place_limit_order_out_of_spread() {
         let ask_price3 = balance!(11.5).into();
         let new_ask_price = balance!(9.9).into();
 
-        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
-        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        let mut alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        let mut alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
         // check state before
 
@@ -357,16 +360,19 @@ fn should_place_limit_order_out_of_spread() {
         let buy_order_id1 = 101;
         let buy_order1 = LimitOrder::<Runtime>::new(
             buy_order_id1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             new_bid_price,
             balance!(26.3).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(buy_order1, &mut data));
+        assert_eq!(
+            order_book.place_limit_order(buy_order1, &mut data).unwrap(),
+            1
+        );
 
         // check state
 
@@ -409,30 +415,37 @@ fn should_place_limit_order_out_of_spread() {
 
         assert_eq!(
             alice_base_balance + balance!(26.3),
-            free_balance(&order_book_id.base, &alice())
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>())
         );
         assert_eq!(
             alice_quote_balance - balance!(289.3),
-            free_balance(&order_book_id.quote, &alice())
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>())
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
         // buy order 2
         let buy_order_id2 = 102;
         let mut buy_order2 = LimitOrder::<Runtime>::new(
             buy_order_id2,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             new_bid_price,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(buy_order2.clone(), &mut data));
+        assert_eq!(
+            order_book
+                .place_limit_order(buy_order2.clone(), &mut data)
+                .unwrap(),
+            1
+        );
 
         // check state
 
@@ -485,15 +498,17 @@ fn should_place_limit_order_out_of_spread() {
 
         assert_eq!(
             alice_base_balance + balance!(150),
-            free_balance(&order_book_id.base, &alice())
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>())
         );
         assert_eq!(
             alice_quote_balance - balance!(3315),
-            free_balance(&order_book_id.quote, &alice())
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>())
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
         // delete limit order
         assert_ok!(data.delete_limit_order(&order_book_id, buy_order_id2));
@@ -502,16 +517,21 @@ fn should_place_limit_order_out_of_spread() {
         let sell_order_id1 = 201;
         let sell_order1 = LimitOrder::<Runtime>::new(
             sell_order_id1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             new_ask_price,
             balance!(18.5).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(sell_order1, &mut data));
+        assert_eq!(
+            order_book
+                .place_limit_order(sell_order1, &mut data)
+                .unwrap(),
+            1
+        );
 
         // check state
 
@@ -553,30 +573,37 @@ fn should_place_limit_order_out_of_spread() {
 
         assert_eq!(
             alice_base_balance - balance!(18.5),
-            free_balance(&order_book_id.base, &alice())
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>())
         );
         assert_eq!(
             alice_quote_balance + balance!(185),
-            free_balance(&order_book_id.quote, &alice())
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>())
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
         // sell order 2
         let sell_order_id2 = 202;
         let mut sell_order2 = LimitOrder::<Runtime>::new(
             sell_order_id2,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             new_ask_price,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
-        assert_ok!(order_book.place_limit_order(sell_order2.clone(), &mut data));
+        assert_eq!(
+            order_book
+                .place_limit_order(sell_order2.clone(), &mut data)
+                .unwrap(),
+            1
+        );
 
         // check state
 
@@ -629,11 +656,11 @@ fn should_place_limit_order_out_of_spread() {
 
         assert_eq!(
             alice_base_balance - balance!(300),
-            free_balance(&order_book_id.base, &alice())
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>())
         );
         assert_eq!(
             alice_quote_balance + balance!(1500),
-            free_balance(&order_book_id.quote, &alice())
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>())
         );
     });
 }
@@ -652,16 +679,16 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
         let mut order_book = OrderBook::<Runtime>::default(order_book_id);
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
-        fill_balance(alice(), order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
         let mut order = LimitOrder::<Runtime>::new(
             1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(10).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -701,12 +728,12 @@ fn should_not_place_invalid_limit_order() {
 
         let order = LimitOrder::<Runtime>::new(
             1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(10).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -745,10 +772,10 @@ fn should_not_place_invalid_limit_order() {
 fn should_not_place_invalid_nft_limit_order() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
-        frame_system::Pallet::<Runtime>::inc_providers(&alice());
+        frame_system::Pallet::<Runtime>::inc_providers(&accounts::alice::<Runtime>());
 
         let nft = assets::Pallet::<Runtime>::register_from(
-            &alice(),
+            &accounts::alice::<Runtime>(),
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
@@ -769,12 +796,12 @@ fn should_not_place_invalid_nft_limit_order() {
 
         let order = LimitOrder::<Runtime>::new(
             1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(10).into(),
             OrderVolume::indivisible(1),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -815,24 +842,38 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
         let order_book = OrderBook::<Runtime>::default(order_book_id);
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
-        fill_balance(alice(), order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
         let mut order = LimitOrder::<Runtime>::new(
             0,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(10).into(),
             balance!(1).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let max_orders_per_user: u32 = <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get();
+        let max_side_price_count: u32 = <Runtime as Config>::MaxSidePriceCount::get();
+        let max_orders_per_price: u32 = <Runtime as Config>::MaxLimitOrdersForPrice::get();
+        let max_expiring_orders_per_block: u32 =
+            <Runtime as Config>::MaxExpiringOrdersPerBlock::get();
+        let current_block = frame_system::Pallet::<Runtime>::block_number();
+
+        let mut prices =
+            fill_tools::bid_prices_iterator(order_book.tick_size, max_side_price_count)
+                .flat_map(move |price| repeat(price).take(max_orders_per_price as usize));
+        let mut lifespans =
+            fill_tools::lifespans_iterator::<Runtime>(max_expiring_orders_per_block, 3);
 
         for _ in 0..max_orders_per_user {
             order.id += 1;
-            order.price += balance!(0.001).into();
+            order.price = prices.next().unwrap();
+            order.lifespan = lifespans.next().unwrap();
+            order.expires_at =
+                LimitOrder::<Runtime>::resolve_lifespan(current_block, order.lifespan);
             assert_ok!(order_book.place_limit_order(order.clone(), &mut data));
         }
 
@@ -862,31 +903,31 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
 
         let mut buy_order = LimitOrder::<Runtime>::new(
             0,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(10).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let mut sell_order = LimitOrder::<Runtime>::new(
             max_orders_for_price as u128 + 1000,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             balance!(11).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
         for i in 0..max_orders_for_price {
             // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
-            let account = generate_account(i);
+            let account = accounts::generate_account::<Runtime>(i);
 
-            fill_balance(account.clone(), order_book_id);
+            fill_balance::<Runtime>(account.clone(), order_book_id);
 
             buy_order.id += 1;
             buy_order.owner = account.clone();
@@ -934,31 +975,31 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
 
         let mut buy_order = LimitOrder::<Runtime>::new(
             0,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(1000).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let mut sell_order = LimitOrder::<Runtime>::new(
             max_prices_for_side as u128 + 1000,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             balance!(1001).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
         for i in 0..max_prices_for_side {
             // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
-            let account = generate_account(i);
+            let account = accounts::generate_account::<Runtime>(i);
 
-            fill_balance(account.clone(), order_book_id);
+            fill_balance::<Runtime>(account.clone(), order_book_id);
 
             buy_order.id += 1;
             buy_order.owner = account.clone();
@@ -1002,13 +1043,13 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
-        fill_balance(alice(), order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
         let max_price_shift = <Runtime as Config>::MAX_PRICE_SHIFT;
 
-        // values from create_and_fill_order_book()
+        // values from create_and_fill_order_book::<Runtime>()
         let best_bid_price = balance!(10);
         let best_ask_price = balance!(11);
 
@@ -1016,12 +1057,12 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             best_bid_price - max_price_shift * best_bid_price - order_book.tick_size.balance();
         let mut buy_order = LimitOrder::<Runtime>::new(
             101,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             wrong_buy_price.into(),
             balance!(10).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -1029,12 +1070,12 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             best_ask_price + max_price_shift * best_ask_price + order_book.tick_size.balance();
         let mut sell_order = LimitOrder::<Runtime>::new(
             102,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             wrong_sell_price.into(),
             balance!(10).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -1079,29 +1120,29 @@ fn should_not_place_limit_order_in_spread() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let buy_price = balance!(11.1).into(); // above the spread, in the asks zone
         let buy_order = LimitOrder::<Runtime>::new(
             101,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             buy_price,
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let sell_price = balance!(9.9).into(); // below the spread, in the bids zone
         let sell_order = LimitOrder::<Runtime>::new(
             102,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             sell_price,
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -1132,7 +1173,7 @@ fn should_cancel_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order = data.get_limit_order(&order_book_id, 5).unwrap();
 
@@ -1148,7 +1189,7 @@ fn should_cancel_limit_order() {
         let user_orders_before = data
             .get_user_limit_orders(&order.owner, &order_book_id)
             .unwrap_or_default();
-        let balance_before = free_balance(&order_book_id.quote, &order.owner);
+        let balance_before = free_balance::<Runtime>(&order_book_id.quote, &order.owner);
 
         // cancel the limit order
         assert_ok!(order_book.cancel_limit_order(order.clone(), &mut data));
@@ -1176,7 +1217,7 @@ fn should_cancel_limit_order() {
             expected_user_orders
         );
 
-        let balance = free_balance(&order_book_id.quote, &order.owner);
+        let balance = free_balance::<Runtime>(&order_book_id.quote, &order.owner);
         let expected_balance = balance_before + deal_amount.balance();
         assert_eq!(balance, expected_balance);
     });
@@ -1193,16 +1234,16 @@ fn should_not_cancel_unknown_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let unknown_order = LimitOrder::<Runtime>::new(
             1234,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             balance!(10).into(),
             balance!(100).into(),
             10,
-            10000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -1224,7 +1265,7 @@ fn should_not_cancel_limit_order_when_status_doesnt_allow() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         let order2 = data.get_limit_order(&order_book_id, 2).unwrap();
@@ -1251,7 +1292,7 @@ fn should_not_cancel_limit_order_when_status_doesnt_allow() {
 fn should_cancel_all_limit_orders() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
-        let owner = bob();
+        let owner = accounts::bob::<Runtime>();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -1259,7 +1300,7 @@ fn should_cancel_all_limit_orders() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &OrderBookPallet::tech_account_for_order_book(order_book_id.clone()),
@@ -1276,12 +1317,18 @@ fn should_cancel_all_limit_orders() {
             .is_empty());
 
         // some balance is locked in limit orders
-        assert_ne!(free_balance(&order_book_id.base, &owner), INIT_BALANCE);
-        assert_ne!(free_balance(&order_book_id.quote, &owner), INIT_BALANCE);
+        assert_ne!(
+            free_balance::<Runtime>(&order_book_id.base, &owner),
+            INIT_BALANCE
+        );
+        assert_ne!(
+            free_balance::<Runtime>(&order_book_id.quote, &owner),
+            INIT_BALANCE
+        );
 
         // tech account keeps the locked assets
-        assert!(free_balance(&order_book_id.base, &tech_account) > balance!(0));
-        assert!(free_balance(&order_book_id.quote, &tech_account) > balance!(0));
+        assert!(free_balance::<Runtime>(&order_book_id.base, &tech_account) > balance!(0));
+        assert!(free_balance::<Runtime>(&order_book_id.quote, &tech_account) > balance!(0));
 
         // cancel all orders
         assert_ok!(order_book.cancel_all_limit_orders(&mut data));
@@ -1293,16 +1340,22 @@ fn should_cancel_all_limit_orders() {
         assert_eq!(data.get_user_limit_orders(&owner, &order_book_id), None);
 
         // locked balance is unlocked
-        assert_eq!(free_balance(&order_book_id.base, &owner), INIT_BALANCE);
-        assert_eq!(free_balance(&order_book_id.quote, &owner), INIT_BALANCE);
+        assert_eq!(
+            free_balance::<Runtime>(&order_book_id.base, &owner),
+            INIT_BALANCE
+        );
+        assert_eq!(
+            free_balance::<Runtime>(&order_book_id.quote, &owner),
+            INIT_BALANCE
+        );
 
         // tech account balance is empty after canceling of all limit orders
         assert_eq!(
-            free_balance(&order_book_id.base, &tech_account),
+            free_balance::<Runtime>(&order_book_id.base, &tech_account),
             balance!(0)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &tech_account),
+            free_balance::<Runtime>(&order_book_id.quote, &tech_account),
             balance!(0)
         );
     });
@@ -1319,7 +1372,7 @@ fn should_not_get_best_bid_from_empty_order_book() {
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         assert_eq!(order_book.best_bid(&mut data), None);
     });
@@ -1336,7 +1389,7 @@ fn should_get_best_bid() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_eq!(
             order_book.best_bid(&mut data).unwrap(),
@@ -1356,7 +1409,7 @@ fn should_not_get_best_ask_from_empty_order_book() {
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         assert_eq!(order_book.best_ask(&mut data), None);
     });
@@ -1373,7 +1426,7 @@ fn should_get_best_ask() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_eq!(
             order_book.best_ask(&mut data).unwrap(),
@@ -1391,7 +1444,7 @@ fn should_not_get_direction_if_any_asset_is_not_in_order_book_id() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(order_book.get_direction(&DOT, &KSM), E::InvalidAsset);
         assert_err!(order_book.get_direction(&XOR, &KSM), E::InvalidAsset);
@@ -1410,7 +1463,7 @@ fn should_get_direction() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_eq!(
             order_book.get_direction(&XOR, &VAL).unwrap(),
@@ -1432,7 +1485,7 @@ fn should_align_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         // default step = 0.00001
         assert_eq!(
@@ -1485,7 +1538,7 @@ fn should_not_sum_market_if_limit_is_greater_than_liquidity() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let asks = data.get_aggregated_asks(&order_book_id);
         let bids = data.get_aggregated_bids(&order_book_id);
@@ -1529,7 +1582,7 @@ fn should_sum_market_with_zero_limit() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let asks = data.get_aggregated_asks(&order_book_id);
         let bids = data.get_aggregated_bids(&order_book_id);
@@ -1590,7 +1643,7 @@ fn should_sum_market() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let asks = data.get_aggregated_asks(&order_book_id);
         let bids = data.get_aggregated_bids(&order_book_id);
@@ -1625,6 +1678,16 @@ fn should_sum_market() {
                 OrderAmount::Quote(balance!(4458.27).into())
             )
         );
+        // impacts all orders
+        assert_eq!(
+            order_book
+                .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(610.7).into())))
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(610.7).into()),
+                OrderAmount::Quote(balance!(6881.32).into())
+            )
+        );
 
         // impacts 1 price
         assert_eq!(
@@ -1654,6 +1717,19 @@ fn should_sum_market() {
             (
                 OrderAmount::Base(balance!(447.10695).into()),
                 OrderAmount::Quote(balance!(4999.999925).into())
+            )
+        );
+        // impacts all orders
+        assert_eq!(
+            order_book
+                .sum_market(
+                    asks.iter(),
+                    Some(OrderAmount::Quote(balance!(6881.32).into()))
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(610.7).into()),
+                OrderAmount::Quote(balance!(6881.32).into())
             )
         );
 
@@ -1696,6 +1772,19 @@ fn should_sum_market() {
                 OrderAmount::Quote(balance!(3926.22).into())
             )
         );
+        // impacts all orders
+        assert_eq!(
+            order_book
+                .sum_market(
+                    bids.iter().rev(),
+                    Some(OrderAmount::Base(balance!(569.7).into()))
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(569.7).into()),
+                OrderAmount::Quote(balance!(5538.37).into())
+            )
+        );
 
         // impacts 1 price
         assert_eq!(
@@ -1734,6 +1823,19 @@ fn should_sum_market() {
             (
                 OrderAmount::Base(balance!(460.39789).into()),
                 OrderAmount::Quote(balance!(4499.999955).into())
+            )
+        );
+        // impacts all orders
+        assert_eq!(
+            order_book
+                .sum_market(
+                    bids.iter().rev(),
+                    Some(OrderAmount::Quote(balance!(5538.37).into()))
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(569.7).into()),
+                OrderAmount::Quote(balance!(5538.37).into())
             )
         );
 
@@ -1793,7 +1895,7 @@ fn should_not_calculate_deal_with_small_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             order_book.calculate_deal(
@@ -1845,7 +1947,7 @@ fn should_calculate_deal() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_eq!(
             order_book
@@ -1933,10 +2035,10 @@ fn should_not_execute_market_order_with_non_trade_status() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order = MarketOrder::<Runtime>::new(
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             order_book_id,
             balance!(10).into(),
@@ -1974,11 +2076,11 @@ fn should_not_execute_market_order_with_empty_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let wrong_amount = OrderVolume::zero();
         let order = MarketOrder::<Runtime>::new(
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             order_book_id,
             wrong_amount,
@@ -2009,10 +2111,10 @@ fn should_not_execute_market_order_with_invalid_order_book_id() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order = MarketOrder::<Runtime>::new(
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             wrong_order_book_id,
             balance!(100).into(),
@@ -2037,10 +2139,10 @@ fn should_not_execute_market_order_with_invalid_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let order = MarketOrder::<Runtime>::new(
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             order_book_id,
             balance!(1).into(),
@@ -2081,28 +2183,34 @@ fn should_execute_market_order_and_transfer_to_owner() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
-        fill_balance(alice(), order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
-        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
-        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        let mut alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        let mut alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        let mut bob_base_balance = free_balance(&order_book_id.base, &bob());
-        let mut bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        let mut bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        let mut bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        let mut charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        let mut charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        let mut charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        let mut charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
         let mut buy_order = MarketOrder::<Runtime>::new(
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             order_book_id,
             balance!(150).into(),
             None,
         );
         let mut sell_order = MarketOrder::<Runtime>::new(
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             order_book_id,
             balance!(150).into(),
@@ -2133,28 +2241,32 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1650).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                1
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance + balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(1650)
         );
-        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
+            bob_base_balance
+        );
+        assert_eq!(
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance + balance!(1650)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance
         );
         assert_eq!(
@@ -2174,14 +2286,20 @@ fn should_execute_market_order_and_transfer_to_owner() {
             ])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
         // 2nd buy order
         assert_eq!(
@@ -2190,28 +2308,32 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1674.74).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance + balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(1674.74)
         );
-        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
+            bob_base_balance
+        );
+        assert_eq!(
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance + balance!(718.26)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance + balance!(956.48)
         );
         assert_eq!(
@@ -2230,14 +2352,20 @@ fn should_execute_market_order_and_transfer_to_owner() {
             ])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
         // 3rd buy order
         assert_eq!(
@@ -2246,28 +2374,32 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1708.53).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance + balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(1708.53)
         );
-        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
+            bob_base_balance
+        );
+        assert_eq!(
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance + balance!(1287.63)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance + balance!(420.9)
         );
         assert_eq!(
@@ -2283,14 +2415,20 @@ fn should_execute_market_order_and_transfer_to_owner() {
             ])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
         // 1st sell order
         assert_eq!(
@@ -2299,31 +2437,32 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1500).into())
+                OrderAmount::Quote(balance!(1500).into()),
+                1
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance + balance!(1500)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
             bob_base_balance + balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance
         );
         assert_eq!(
@@ -2339,14 +2478,20 @@ fn should_execute_market_order_and_transfer_to_owner() {
             ])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
         // 2nd sell order
         assert_eq!(
@@ -2355,31 +2500,32 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1473.7).into())
+                OrderAmount::Quote(balance!(1473.7).into()),
+                3
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance + balance!(1473.7)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
             bob_base_balance + balance!(54.8)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance + balance!(95.2)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance
         );
         assert_eq!(
@@ -2394,14 +2540,20 @@ fn should_execute_market_order_and_transfer_to_owner() {
             ])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
         // 3rd sell order
         assert_eq!(
@@ -2410,31 +2562,32 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1427.52).into())
+                OrderAmount::Quote(balance!(1427.52).into()),
+                3
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance + balance!(1427.52)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
             bob_base_balance + balance!(93.6)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance + balance!(56.4)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance
         );
         assert_eq!(
@@ -2446,14 +2599,20 @@ fn should_execute_market_order_and_transfer_to_owner() {
             BTreeMap::from([(balance!(9.5).into(), balance!(119.7).into()),])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
         // buy & sell remaining amounts
         buy_order.amount = balance!(160.7).into();
@@ -2465,7 +2624,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05).into()),
-                OrderAmount::Base(balance!(160.7).into())
+                OrderAmount::Base(balance!(160.7).into()),
+                2
             )
         );
         assert_eq!(
@@ -2474,31 +2634,32 @@ fn should_execute_market_order_and_transfer_to_owner() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7).into()),
-                OrderAmount::Quote(balance!(1137.15).into())
+                OrderAmount::Quote(balance!(1137.15).into()),
+                2
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance + balance!(160.7) - balance!(119.7)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(1848.05) + balance!(1137.15)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
             bob_base_balance + balance!(4.7)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance + balance!(1690.5)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance + balance!(115)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance + balance!(157.55)
         );
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
@@ -2518,35 +2679,43 @@ fn should_execute_market_order_and_transfer_to_another_account() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
-        fill_balance(alice(), order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
-        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
-        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        let mut alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        let mut alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        let mut bob_base_balance = free_balance(&order_book_id.base, &bob());
-        let mut bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        let mut bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        let mut bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        let mut charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        let mut charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        let mut charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        let mut charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
-        let mut dave_base_balance = free_balance(&order_book_id.base, &dave());
-        let mut dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        let mut dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        let mut dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         let mut buy_order = MarketOrder::<Runtime>::new(
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             order_book_id,
             balance!(150).into(),
-            Some(dave()),
+            Some(accounts::dave::<Runtime>()),
         );
         let mut sell_order = MarketOrder::<Runtime>::new(
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             order_book_id,
             balance!(150).into(),
-            Some(dave()),
+            Some(accounts::dave::<Runtime>()),
         );
 
         assert_eq!(
@@ -2573,36 +2742,40 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1650).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                1
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(1650)
         );
-        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
+            bob_base_balance
+        );
+        assert_eq!(
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance + balance!(1650)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance + balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance
         );
         assert_eq!(
@@ -2622,17 +2795,25 @@ fn should_execute_market_order_and_transfer_to_another_account() {
             ])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
-        dave_base_balance = free_balance(&order_book_id.base, &dave());
-        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // 2nd buy order
         assert_eq!(
@@ -2641,36 +2822,40 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1674.74).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(1674.74)
         );
-        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
+            bob_base_balance
+        );
+        assert_eq!(
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance + balance!(718.26)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance + balance!(956.48)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance + balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance
         );
         assert_eq!(
@@ -2689,17 +2874,25 @@ fn should_execute_market_order_and_transfer_to_another_account() {
             ])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
-        dave_base_balance = free_balance(&order_book_id.base, &dave());
-        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // 3rd buy order
         assert_eq!(
@@ -2708,28 +2901,32 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1708.53).into()),
-                OrderAmount::Base(balance!(150).into())
+                OrderAmount::Base(balance!(150).into()),
+                3
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(1708.53)
         );
-        assert_eq!(free_balance(&order_book_id.base, &bob()), bob_base_balance);
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
+            bob_base_balance
+        );
+        assert_eq!(
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance + balance!(1287.63)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance + balance!(420.9)
         );
         assert_eq!(
@@ -2737,11 +2934,11 @@ fn should_execute_market_order_and_transfer_to_another_account() {
             BTreeMap::from([(balance!(11.5).into(), balance!(160.7).into())])
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance + balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance
         );
         assert_eq!(
@@ -2753,17 +2950,25 @@ fn should_execute_market_order_and_transfer_to_another_account() {
             ])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
-        dave_base_balance = free_balance(&order_book_id.base, &dave());
-        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // 1st sell order
         assert_eq!(
@@ -2772,39 +2977,40 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1500).into())
+                OrderAmount::Quote(balance!(1500).into()),
+                1
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
             bob_base_balance + balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance + balance!(1500)
         );
         assert_eq!(
@@ -2820,17 +3026,25 @@ fn should_execute_market_order_and_transfer_to_another_account() {
             ])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
-        dave_base_balance = free_balance(&order_book_id.base, &dave());
-        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // 2nd sell order
         assert_eq!(
@@ -2839,39 +3053,40 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1473.7).into())
+                OrderAmount::Quote(balance!(1473.7).into()),
+                3
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
             bob_base_balance + balance!(54.8)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance + balance!(95.2)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance + balance!(1473.7)
         );
         assert_eq!(
@@ -2886,17 +3101,25 @@ fn should_execute_market_order_and_transfer_to_another_account() {
             ])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
-        dave_base_balance = free_balance(&order_book_id.base, &dave());
-        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // 3rd sell order
         assert_eq!(
@@ -2905,39 +3128,40 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(150).into()),
-                OrderAmount::Quote(balance!(1427.52).into())
+                OrderAmount::Quote(balance!(1427.52).into()),
+                3
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(150)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
             bob_base_balance + balance!(93.6)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance + balance!(56.4)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance + balance!(1427.52)
         );
         assert_eq!(
@@ -2949,17 +3173,25 @@ fn should_execute_market_order_and_transfer_to_another_account() {
             BTreeMap::from([(balance!(9.5).into(), balance!(119.7).into()),])
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        bob_base_balance = free_balance(&order_book_id.base, &bob());
-        bob_quote_balance = free_balance(&order_book_id.quote, &bob());
+        bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
 
-        charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
+        charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
 
-        dave_base_balance = free_balance(&order_book_id.base, &dave());
-        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // buy & sell remaining amounts
         buy_order.amount = balance!(160.7).into();
@@ -2971,7 +3203,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05).into()),
-                OrderAmount::Base(balance!(160.7).into())
+                OrderAmount::Base(balance!(160.7).into()),
+                2
             )
         );
         assert_eq!(
@@ -2980,39 +3213,40 @@ fn should_execute_market_order_and_transfer_to_another_account() {
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7).into()),
-                OrderAmount::Quote(balance!(1137.15).into())
+                OrderAmount::Quote(balance!(1137.15).into()),
+                2
             )
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(119.7)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(1848.05)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &bob()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>()),
             bob_base_balance + balance!(4.7)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &bob()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>()),
             bob_quote_balance + balance!(1690.5)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &charlie()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>()),
             charlie_base_balance + balance!(115)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &charlie()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>()),
             charlie_quote_balance + balance!(157.55)
         );
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance + balance!(160.7)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance + balance!(1137.15)
         );
         assert_eq!(data.get_aggregated_asks(&order_book_id), BTreeMap::from([]));
@@ -3031,7 +3265,7 @@ fn should_align_limit_orders() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         // change lot size precision
         order_book.step_lot_size = balance!(1).into();
@@ -3106,12 +3340,12 @@ fn should_not_calculate_market_order_impact_with_empty_side() {
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             order_book.calculate_market_order_impact(
                 MarketOrder::<Runtime>::new(
-                    alice(),
+                    accounts::alice::<Runtime>(),
                     PriceVariant::Buy,
                     order_book_id,
                     balance!(1).into(),
@@ -3124,7 +3358,7 @@ fn should_not_calculate_market_order_impact_with_empty_side() {
         assert_err!(
             order_book.calculate_market_order_impact(
                 MarketOrder::<Runtime>::new(
-                    alice(),
+                    accounts::alice::<Runtime>(),
                     PriceVariant::Sell,
                     order_book_id,
                     balance!(1).into(),
@@ -3148,12 +3382,12 @@ fn should_not_calculate_market_order_impact_if_liquidity_is_not_enough() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             order_book.calculate_market_order_impact(
                 MarketOrder::<Runtime>::new(
-                    alice(),
+                    accounts::alice::<Runtime>(),
                     PriceVariant::Buy,
                     order_book_id,
                     balance!(1000).into(),
@@ -3166,7 +3400,7 @@ fn should_not_calculate_market_order_impact_if_liquidity_is_not_enough() {
         assert_err!(
             order_book.calculate_market_order_impact(
                 MarketOrder::<Runtime>::new(
-                    alice(),
+                    accounts::alice::<Runtime>(),
                     PriceVariant::Sell,
                     order_book_id,
                     balance!(1000).into(),
@@ -3190,7 +3424,7 @@ fn should_calculate_market_order_impact() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
@@ -3228,7 +3462,7 @@ fn should_calculate_market_order_impact() {
             order_book
                 .calculate_market_order_impact(
                     MarketOrder::<Runtime>::new(
-                        alice(),
+                        accounts::alice::<Runtime>(),
                         PriceVariant::Buy,
                         order_book_id,
                         buy_amount1,
@@ -3254,13 +3488,16 @@ fn should_calculate_market_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
-                        BTreeMap::from([(alice(), balance!(1100).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(1100).into())])
                     )]),
                     to_unlock: BTreeMap::from([
-                        (order_book_id.base, BTreeMap::from([(alice(), buy_amount1)])),
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(accounts::alice::<Runtime>(), buy_amount1)])
+                        ),
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(bob(), balance!(1100).into())])
+                            BTreeMap::from([(accounts::bob::<Runtime>(), balance!(1100).into())])
                         )
                     ]),
                 },
@@ -3272,11 +3509,11 @@ fn should_calculate_market_order_impact() {
             order_book
                 .calculate_market_order_impact(
                     MarketOrder::<Runtime>::new(
-                        alice(),
+                        accounts::alice::<Runtime>(),
                         PriceVariant::Buy,
                         order_book_id,
                         buy_amount2,
-                        Some(dave())
+                        Some(accounts::dave::<Runtime>())
                     ),
                     &mut data
                 )
@@ -3304,15 +3541,18 @@ fn should_calculate_market_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
-                        BTreeMap::from([(alice(), balance!(3324.74).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(3324.74).into())])
                     )]),
                     to_unlock: BTreeMap::from([
-                        (order_book_id.base, BTreeMap::from([(dave(), buy_amount2)])),
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(accounts::dave::<Runtime>(), buy_amount2)])
+                        ),
                         (
                             order_book_id.quote,
                             BTreeMap::from([
-                                (bob(), balance!(2368.26).into()),
-                                (charlie(), balance!(956.48).into())
+                                (accounts::bob::<Runtime>(), balance!(2368.26).into()),
+                                (accounts::charlie::<Runtime>(), balance!(956.48).into())
                             ])
                         )
                     ]),
@@ -3325,7 +3565,7 @@ fn should_calculate_market_order_impact() {
             order_book
                 .calculate_market_order_impact(
                     MarketOrder::<Runtime>::new(
-                        alice(),
+                        accounts::alice::<Runtime>(),
                         PriceVariant::Buy,
                         order_book_id,
                         buy_amount3,
@@ -3357,15 +3597,18 @@ fn should_calculate_market_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
-                        BTreeMap::from([(alice(), balance!(6758.27).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(6758.27).into())])
                     )]),
                     to_unlock: BTreeMap::from([
-                        (order_book_id.base, BTreeMap::from([(alice(), buy_amount3)])),
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(accounts::alice::<Runtime>(), buy_amount3)])
+                        ),
                         (
                             order_book_id.quote,
                             BTreeMap::from([
-                                (bob(), balance!(5346.39).into()),
-                                (charlie(), balance!(1411.88).into())
+                                (accounts::bob::<Runtime>(), balance!(5346.39).into()),
+                                (accounts::charlie::<Runtime>(), balance!(1411.88).into())
                             ])
                         )
                     ]),
@@ -3378,11 +3621,11 @@ fn should_calculate_market_order_impact() {
             order_book
                 .calculate_market_order_impact(
                     MarketOrder::<Runtime>::new(
-                        alice(),
+                        accounts::alice::<Runtime>(),
                         PriceVariant::Buy,
                         order_book_id,
                         buy_amount4,
-                        Some(dave())
+                        Some(accounts::dave::<Runtime>())
                     ),
                     &mut data
                 )
@@ -3406,15 +3649,18 @@ fn should_calculate_market_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
-                        BTreeMap::from([(alice(), balance!(4360.52).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(4360.52).into())])
                     )]),
                     to_unlock: BTreeMap::from([
-                        (order_book_id.base, BTreeMap::from([(dave(), buy_amount4)])),
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(accounts::dave::<Runtime>(), buy_amount4)])
+                        ),
                         (
                             order_book_id.quote,
                             BTreeMap::from([
-                                (bob(), balance!(2983.14).into()),
-                                (charlie(), balance!(1377.38).into())
+                                (accounts::bob::<Runtime>(), balance!(2983.14).into()),
+                                (accounts::charlie::<Runtime>(), balance!(1377.38).into())
                             ])
                         )
                     ]),
@@ -3427,7 +3673,7 @@ fn should_calculate_market_order_impact() {
             order_book
                 .calculate_market_order_impact(
                     MarketOrder::<Runtime>::new(
-                        alice(),
+                        accounts::alice::<Runtime>(),
                         PriceVariant::Buy,
                         order_book_id,
                         buy_amount5,
@@ -3457,15 +3703,18 @@ fn should_calculate_market_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
-                        BTreeMap::from([(alice(), balance!(6881.32).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(6881.32).into())])
                     )]),
                     to_unlock: BTreeMap::from([
-                        (order_book_id.base, BTreeMap::from([(alice(), buy_amount5)])),
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(accounts::alice::<Runtime>(), buy_amount5)])
+                        ),
                         (
                             order_book_id.quote,
                             BTreeMap::from([
-                                (bob(), balance!(5346.39).into()),
-                                (charlie(), balance!(1534.93).into())
+                                (accounts::bob::<Runtime>(), balance!(5346.39).into()),
+                                (accounts::charlie::<Runtime>(), balance!(1534.93).into())
                             ])
                         )
                     ]),
@@ -3484,7 +3733,7 @@ fn should_calculate_market_order_impact() {
             order_book
                 .calculate_market_order_impact(
                     MarketOrder::<Runtime>::new(
-                        alice(),
+                        accounts::alice::<Runtime>(),
                         PriceVariant::Sell,
                         order_book_id,
                         sell_amount1,
@@ -3510,14 +3759,17 @@ fn should_calculate_market_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
-                        BTreeMap::from([(alice(), sell_amount1)])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), sell_amount1)])
                     )]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(alice(), balance!(1000).into())])
+                            BTreeMap::from([(accounts::alice::<Runtime>(), balance!(1000).into())])
                         ),
-                        (order_book_id.base, BTreeMap::from([(bob(), sell_amount1)]))
+                        (
+                            order_book_id.base,
+                            BTreeMap::from([(accounts::bob::<Runtime>(), sell_amount1)])
+                        )
                     ]),
                 },
                 ignore_unschedule_error: false
@@ -3528,11 +3780,11 @@ fn should_calculate_market_order_impact() {
             order_book
                 .calculate_market_order_impact(
                     MarketOrder::<Runtime>::new(
-                        alice(),
+                        accounts::alice::<Runtime>(),
                         PriceVariant::Sell,
                         order_book_id,
                         sell_amount2,
-                        Some(dave())
+                        Some(accounts::dave::<Runtime>())
                     ),
                     &mut data
                 )
@@ -3560,18 +3812,21 @@ fn should_calculate_market_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
-                        BTreeMap::from([(alice(), sell_amount2)])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), sell_amount2)])
                     )]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(dave(), balance!(2679.7).into())])
+                            BTreeMap::from([(
+                                accounts::dave::<Runtime>(),
+                                balance!(2679.7).into()
+                            )])
                         ),
                         (
                             order_book_id.base,
                             BTreeMap::from([
-                                (bob(), balance!(174.8).into()),
-                                (charlie(), balance!(95.2).into())
+                                (accounts::bob::<Runtime>(), balance!(174.8).into()),
+                                (accounts::charlie::<Runtime>(), balance!(95.2).into())
                             ])
                         )
                     ]),
@@ -3584,7 +3839,7 @@ fn should_calculate_market_order_impact() {
             order_book
                 .calculate_market_order_impact(
                     MarketOrder::<Runtime>::new(
-                        alice(),
+                        accounts::alice::<Runtime>(),
                         PriceVariant::Sell,
                         order_book_id,
                         sell_amount3,
@@ -3618,18 +3873,21 @@ fn should_calculate_market_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
-                        BTreeMap::from([(alice(), sell_amount3)])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), sell_amount3)])
                     )]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(alice(), balance!(3926.22).into())])
+                            BTreeMap::from([(
+                                accounts::alice::<Runtime>(),
+                                balance!(3926.22).into()
+                            )])
                         ),
                         (
                             order_book_id.base,
                             BTreeMap::from([
-                                (bob(), balance!(248.4).into()),
-                                (charlie(), balance!(151.6).into())
+                                (accounts::bob::<Runtime>(), balance!(248.4).into()),
+                                (accounts::charlie::<Runtime>(), balance!(151.6).into())
                             ])
                         )
                     ]),
@@ -3642,11 +3900,11 @@ fn should_calculate_market_order_impact() {
             order_book
                 .calculate_market_order_impact(
                     MarketOrder::<Runtime>::new(
-                        alice(),
+                        accounts::alice::<Runtime>(),
                         PriceVariant::Sell,
                         order_book_id,
                         sell_amount4,
-                        Some(dave())
+                        Some(accounts::dave::<Runtime>())
                     ),
                     &mut data
                 )
@@ -3670,18 +3928,21 @@ fn should_calculate_market_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
-                        BTreeMap::from([(alice(), sell_amount4)])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), sell_amount4)])
                     )]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(dave(), balance!(3591.82).into())])
+                            BTreeMap::from([(
+                                accounts::dave::<Runtime>(),
+                                balance!(3591.82).into()
+                            )])
                         ),
                         (
                             order_book_id.base,
                             BTreeMap::from([
-                                (bob(), balance!(213.2).into()),
-                                (charlie(), balance!(151.6).into())
+                                (accounts::bob::<Runtime>(), balance!(213.2).into()),
+                                (accounts::charlie::<Runtime>(), balance!(151.6).into())
                             ])
                         )
                     ]),
@@ -3694,7 +3955,7 @@ fn should_calculate_market_order_impact() {
             order_book
                 .calculate_market_order_impact(
                     MarketOrder::<Runtime>::new(
-                        alice(),
+                        accounts::alice::<Runtime>(),
                         PriceVariant::Sell,
                         order_book_id,
                         sell_amount5,
@@ -3724,18 +3985,21 @@ fn should_calculate_market_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
-                        BTreeMap::from([(alice(), sell_amount5)])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), sell_amount5)])
                     )]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(alice(), balance!(5538.37).into())])
+                            BTreeMap::from([(
+                                accounts::alice::<Runtime>(),
+                                balance!(5538.37).into()
+                            )])
                         ),
                         (
                             order_book_id.base,
                             BTreeMap::from([
-                                (bob(), balance!(303.1).into()),
-                                (charlie(), balance!(266.6).into())
+                                (accounts::bob::<Runtime>(), balance!(303.1).into()),
+                                (accounts::charlie::<Runtime>(), balance!(266.6).into())
                             ])
                         )
                     ]),
@@ -3755,11 +4019,11 @@ fn should_calculate_limit_order_impact() {
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         let limit_order_buy = LimitOrder::<Runtime>::new(
             1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(10).into(),
             balance!(100).into(),
@@ -3769,7 +4033,7 @@ fn should_calculate_limit_order_impact() {
         );
         let limit_order_sell = LimitOrder::<Runtime>::new(
             2,
-            bob(),
+            accounts::bob::<Runtime>(),
             PriceVariant::Sell,
             balance!(11).into(),
             balance!(150).into(),
@@ -3796,7 +4060,7 @@ fn should_calculate_limit_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
-                        BTreeMap::from([(alice(), balance!(1000).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(1000).into())])
                     )]),
                     to_unlock: BTreeMap::new(),
                 },
@@ -3822,7 +4086,7 @@ fn should_calculate_limit_order_impact() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
-                        BTreeMap::from([(bob(), balance!(150).into())])
+                        BTreeMap::from([(accounts::bob::<Runtime>(), balance!(150).into())])
                     )]),
                     to_unlock: BTreeMap::new(),
                 },
@@ -3833,7 +4097,7 @@ fn should_calculate_limit_order_impact() {
 }
 
 #[test]
-fn should_calculate_cancelation_limit_order_impact() {
+fn should_calculate_cancellation_limit_order_impact() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -3843,14 +4107,14 @@ fn should_calculate_cancelation_limit_order_impact() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
         let limit_order8 = data.get_limit_order(&order_book_id, 8).unwrap();
 
         assert_eq!(
             order_book
-                .calculate_cancelation_limit_order_impact(limit_order2.clone(), false)
+                .calculate_cancellation_limit_order_impact(limit_order2.clone(), false)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -3882,7 +4146,7 @@ fn should_calculate_cancelation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancelation_limit_order_impact(limit_order2.clone(), true)
+                .calculate_cancellation_limit_order_impact(limit_order2.clone(), true)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -3914,7 +4178,7 @@ fn should_calculate_cancelation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancelation_limit_order_impact(limit_order8.clone(), false)
+                .calculate_cancellation_limit_order_impact(limit_order8.clone(), false)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -3946,7 +4210,7 @@ fn should_calculate_cancelation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancelation_limit_order_impact(limit_order8.clone(), true)
+                .calculate_cancellation_limit_order_impact(limit_order8.clone(), true)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -3979,7 +4243,7 @@ fn should_calculate_cancelation_limit_order_impact() {
 }
 
 #[test]
-fn should_calculate_cancelation_of_all_limit_orders_impact() {
+fn should_calculate_cancellation_of_all_limit_orders_impact() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -3989,7 +4253,7 @@ fn should_calculate_cancelation_of_all_limit_orders_impact() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
@@ -4006,7 +4270,7 @@ fn should_calculate_cancelation_of_all_limit_orders_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancelation_of_all_limit_orders_impact(&mut data)
+                .calculate_cancellation_of_all_limit_orders_impact(&mut data)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -4038,15 +4302,15 @@ fn should_calculate_cancelation_of_all_limit_orders_impact() {
                         (
                             order_book_id.base,
                             BTreeMap::from([
-                                (bob(), balance!(475).into()),
-                                (charlie(), balance!(135.7).into())
+                                (accounts::bob::<Runtime>(), balance!(475).into()),
+                                (accounts::charlie::<Runtime>(), balance!(135.7).into())
                             ])
                         ),
                         (
                             order_book_id.quote,
                             BTreeMap::from([
-                                (bob(), balance!(2977.11).into()),
-                                (charlie(), balance!(2561.26).into())
+                                (accounts::bob::<Runtime>(), balance!(2977.11).into()),
+                                (accounts::charlie::<Runtime>(), balance!(2561.26).into())
                             ])
                         )
                     ]),
@@ -4068,18 +4332,18 @@ fn should_calculate_align_limit_orders_impact() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
-        fill_balance(alice(), order_book_id);
+        let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
         assert_ok!(order_book.place_limit_order(
             LimitOrder::<Runtime>::new(
                 13,
-                alice(),
+                accounts::alice::<Runtime>(),
                 PriceVariant::Buy,
                 balance!(10.1).into(),
                 balance!(1.1).into(),
                 10,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 frame_system::Pallet::<Runtime>::block_number(),
             ),
             &mut data
@@ -4088,7 +4352,7 @@ fn should_calculate_align_limit_orders_impact() {
         // the remaining balance of limit order 13 becomes 0.1 after that
         assert_ok!(order_book.execute_market_order(
             MarketOrder::<Runtime>::new(
-                alice(),
+                accounts::alice::<Runtime>(),
                 PriceVariant::Sell,
                 order_book_id,
                 balance!(1).into(),
@@ -4100,12 +4364,12 @@ fn should_calculate_align_limit_orders_impact() {
         assert_ok!(order_book.place_limit_order(
             LimitOrder::<Runtime>::new(
                 14,
-                alice(),
+                accounts::alice::<Runtime>(),
                 PriceVariant::Buy,
                 balance!(10.1).into(),
                 balance!(1).into(),
                 10,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 frame_system::Pallet::<Runtime>::block_number(),
             ),
             &mut data
@@ -4114,12 +4378,12 @@ fn should_calculate_align_limit_orders_impact() {
         assert_ok!(order_book.place_limit_order(
             LimitOrder::<Runtime>::new(
                 15,
-                alice(),
+                accounts::alice::<Runtime>(),
                 PriceVariant::Sell,
                 balance!(10.9).into(),
                 balance!(1.1).into(),
                 10,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 frame_system::Pallet::<Runtime>::block_number(),
             ),
             &mut data
@@ -4128,7 +4392,7 @@ fn should_calculate_align_limit_orders_impact() {
         // the remaining balance of limit order 15 becomes 0.1 after that
         assert_ok!(order_book.execute_market_order(
             MarketOrder::<Runtime>::new(
-                alice(),
+                accounts::alice::<Runtime>(),
                 PriceVariant::Buy,
                 order_book_id,
                 balance!(1).into(),
@@ -4140,12 +4404,12 @@ fn should_calculate_align_limit_orders_impact() {
         assert_ok!(order_book.place_limit_order(
             LimitOrder::<Runtime>::new(
                 16,
-                alice(),
+                accounts::alice::<Runtime>(),
                 PriceVariant::Sell,
                 balance!(10.9).into(),
                 balance!(1).into(),
                 10,
-                10000,
+                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
                 frame_system::Pallet::<Runtime>::block_number(),
             ),
             &mut data
@@ -4239,17 +4503,17 @@ fn should_calculate_align_limit_orders_impact() {
                         (
                             order_book_id.base,
                             BTreeMap::from([
-                                (alice(), balance!(0.1).into()),
-                                (bob(), balance!(1).into()),
-                                (charlie(), balance!(1.7).into())
+                                (accounts::alice::<Runtime>(), balance!(0.1).into()),
+                                (accounts::bob::<Runtime>(), balance!(1).into()),
+                                (accounts::charlie::<Runtime>(), balance!(1.7).into())
                             ])
                         ),
                         (
                             order_book_id.quote,
                             BTreeMap::from([
-                                (alice(), balance!(1.01).into()),
-                                (bob(), balance!(20.41).into()),
-                                (charlie(), balance!(5.76).into())
+                                (accounts::alice::<Runtime>(), balance!(1.01).into()),
+                                (accounts::bob::<Runtime>(), balance!(20.41).into()),
+                                (accounts::charlie::<Runtime>(), balance!(5.76).into())
                             ])
                         )
                     ]),
@@ -4271,9 +4535,9 @@ fn should_apply_market_change() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
-        fill_balance(alice(), order_book_id);
-        fill_balance(dave(), order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(accounts::dave::<Runtime>(), order_book_id);
 
         let bid_price1 = balance!(10).into();
         let bid_price2 = balance!(9.8).into();
@@ -4296,36 +4560,44 @@ fn should_apply_market_change() {
 
         let new_limit_order1 = LimitOrder::<Runtime>::new(
             new_order_id1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             bid_price1,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let new_limit_order2 = LimitOrder::<Runtime>::new(
             new_order_id2,
-            dave(),
+            accounts::dave::<Runtime>(),
             PriceVariant::Sell,
             ask_price1,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let balance_diff = balance!(50);
 
-        let alice_base_balance = free_balance(&order_book_id.base, &alice());
-        let alice_quote_balance = free_balance(&order_book_id.quote, &alice());
-        let bob_base_balance = free_balance(&order_book_id.base, &bob());
-        let bob_quote_balance = free_balance(&order_book_id.quote, &bob());
-        let charlie_base_balance = free_balance(&order_book_id.base, &charlie());
-        let charlie_quote_balance = free_balance(&order_book_id.quote, &charlie());
-        let dave_base_balance = free_balance(&order_book_id.base, &dave());
-        let dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        let alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        let alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
+        let bob_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>());
+        let bob_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>());
+        let charlie_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>());
+        let charlie_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>());
+        let dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        let dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // check state before
 
@@ -4399,21 +4671,21 @@ fn should_apply_market_change() {
                 to_lock: BTreeMap::from([
                     (
                         order_book_id.base,
-                        BTreeMap::from([(alice(), balance_diff.into())]),
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance_diff.into())]),
                     ),
                     (
                         order_book_id.quote,
-                        BTreeMap::from([(bob(), balance_diff.into())]),
+                        BTreeMap::from([(accounts::bob::<Runtime>(), balance_diff.into())]),
                     ),
                 ]),
                 to_unlock: BTreeMap::from([
                     (
                         order_book_id.base,
-                        BTreeMap::from([(charlie(), balance_diff.into())]),
+                        BTreeMap::from([(accounts::charlie::<Runtime>(), balance_diff.into())]),
                     ),
                     (
                         order_book_id.quote,
-                        BTreeMap::from([(dave(), balance_diff.into())]),
+                        BTreeMap::from([(accounts::dave::<Runtime>(), balance_diff.into())]),
                     ),
                 ]),
             },
@@ -4464,32 +4736,35 @@ fn should_apply_market_change() {
 
         assert_eq!(
             alice_base_balance - balance_diff,
-            free_balance(&order_book_id.base, &alice())
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>())
         );
         assert_eq!(
             alice_quote_balance,
-            free_balance(&order_book_id.quote, &alice())
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>())
         );
-        assert_eq!(bob_base_balance, free_balance(&order_book_id.base, &bob()));
+        assert_eq!(
+            bob_base_balance,
+            free_balance::<Runtime>(&order_book_id.base, &accounts::bob::<Runtime>())
+        );
         assert_eq!(
             bob_quote_balance - balance_diff,
-            free_balance(&order_book_id.quote, &bob())
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::bob::<Runtime>())
         );
         assert_eq!(
             charlie_base_balance + balance_diff,
-            free_balance(&order_book_id.base, &charlie())
+            free_balance::<Runtime>(&order_book_id.base, &accounts::charlie::<Runtime>())
         );
         assert_eq!(
             charlie_quote_balance,
-            free_balance(&order_book_id.quote, &charlie())
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::charlie::<Runtime>())
         );
         assert_eq!(
             dave_base_balance,
-            free_balance(&order_book_id.base, &dave())
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>())
         );
         assert_eq!(
             dave_quote_balance + balance_diff,
-            free_balance(&order_book_id.quote, &dave())
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>())
         );
 
         assert_eq!(
@@ -4514,7 +4789,7 @@ fn should_calculate_market_depth_to_price() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        create_and_fill_order_book::<Runtime>(order_book_id);
 
         let bids = data.get_aggregated_bids(&order_book_id);
         let asks = data.get_aggregated_asks(&order_book_id);
@@ -4693,7 +4968,7 @@ fn should_cross_spread() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let new_bid_price = balance!(11.1).into();
         let new_ask_price = balance!(9.9).into();
@@ -4710,12 +4985,12 @@ fn should_cross_spread() {
         let buy_order_id1 = 101;
         let buy_order1 = LimitOrder::<Runtime>::new(
             buy_order_id1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             new_bid_price,
             balance!(26.3).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4741,16 +5016,16 @@ fn should_cross_spread() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
-                        BTreeMap::from([(alice(), balance!(289.3).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(289.3).into())])
                     ),]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.base,
-                            BTreeMap::from([(alice(), balance!(26.3).into())]),
+                            BTreeMap::from([(accounts::alice::<Runtime>(), balance!(26.3).into())]),
                         ),
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(bob(), balance!(289.3).into())]),
+                            BTreeMap::from([(accounts::bob::<Runtime>(), balance!(289.3).into())]),
                         ),
                     ]),
                 },
@@ -4762,12 +5037,12 @@ fn should_cross_spread() {
         let buy_order_id2 = 102;
         let buy_order2 = LimitOrder::<Runtime>::new(
             buy_order_id2,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             new_bid_price,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4790,16 +5065,19 @@ fn should_cross_spread() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
-                        BTreeMap::from([(alice(), balance!(3312.37).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(3312.37).into())])
                     ),]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.base,
-                            BTreeMap::from([(alice(), balance!(176.3).into())]),
+                            BTreeMap::from([(
+                                accounts::alice::<Runtime>(),
+                                balance!(176.3).into()
+                            )]),
                         ),
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(bob(), balance!(1939.3).into())]),
+                            BTreeMap::from([(accounts::bob::<Runtime>(), balance!(1939.3).into())]),
                         ),
                     ]),
                 },
@@ -4811,12 +5089,12 @@ fn should_cross_spread() {
         let sell_order_id1 = 201;
         let sell_order1 = LimitOrder::<Runtime>::new(
             sell_order_id1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             new_ask_price,
             balance!(18.5).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4842,16 +5120,16 @@ fn should_cross_spread() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
-                        BTreeMap::from([(alice(), balance!(18.5).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(18.5).into())])
                     ),]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.base,
-                            BTreeMap::from([(bob(), balance!(18.5).into())]),
+                            BTreeMap::from([(accounts::bob::<Runtime>(), balance!(18.5).into())]),
                         ),
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(alice(), balance!(185).into())]),
+                            BTreeMap::from([(accounts::alice::<Runtime>(), balance!(185).into())]),
                         ),
                     ]),
                 },
@@ -4863,12 +5141,12 @@ fn should_cross_spread() {
         let sell_order_id2 = 202;
         let sell_order2 = LimitOrder::<Runtime>::new(
             sell_order_id2,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             new_ask_price,
             balance!(300).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4891,16 +5169,16 @@ fn should_cross_spread() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
-                        BTreeMap::from([(alice(), balance!(300).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(300).into())])
                     ),]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.base,
-                            BTreeMap::from([(bob(), balance!(168.5).into())]),
+                            BTreeMap::from([(accounts::bob::<Runtime>(), balance!(168.5).into())]),
                         ),
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(alice(), balance!(1685).into())]),
+                            BTreeMap::from([(accounts::alice::<Runtime>(), balance!(1685).into())]),
                         ),
                     ]),
                 },
@@ -4921,7 +5199,7 @@ fn should_cross_spread_with_small_remaining_amount() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
@@ -4947,12 +5225,12 @@ fn should_cross_spread_with_small_remaining_amount() {
         let buy_order_id1 = 101;
         let buy_order1 = LimitOrder::<Runtime>::new(
             buy_order_id1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(11.1).into(),
             balance!(177).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -4978,18 +5256,18 @@ fn should_cross_spread_with_small_remaining_amount() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
-                        BTreeMap::from([(alice(), balance!(1947.14).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(1947.14).into())])
                     ),]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.base,
-                            BTreeMap::from([(alice(), balance!(177).into())]),
+                            BTreeMap::from([(accounts::alice::<Runtime>(), balance!(177).into())]),
                         ),
                         (
                             order_book_id.quote,
                             BTreeMap::from([
-                                (bob(), balance!(1939.3).into()),
-                                (charlie(), balance!(7.84).into())
+                                (accounts::bob::<Runtime>(), balance!(1939.3).into()),
+                                (accounts::charlie::<Runtime>(), balance!(7.84).into())
                             ]),
                         ),
                     ]),
@@ -5003,12 +5281,12 @@ fn should_cross_spread_with_small_remaining_amount() {
         let buy_order_id2 = 102;
         let buy_order2 = LimitOrder::<Runtime>::new(
             buy_order_id2,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Buy,
             balance!(11.6).into(),
             balance!(611).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -5035,18 +5313,21 @@ fn should_cross_spread_with_small_remaining_amount() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.quote,
-                        BTreeMap::from([(alice(), balance!(6881.32).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(6881.32).into())])
                     ),]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.base,
-                            BTreeMap::from([(alice(), balance!(610.7).into())]),
+                            BTreeMap::from([(
+                                accounts::alice::<Runtime>(),
+                                balance!(610.7).into()
+                            )]),
                         ),
                         (
                             order_book_id.quote,
                             BTreeMap::from([
-                                (bob(), balance!(5346.39).into()),
-                                (charlie(), balance!(1534.93).into())
+                                (accounts::bob::<Runtime>(), balance!(5346.39).into()),
+                                (accounts::charlie::<Runtime>(), balance!(1534.93).into())
                             ]),
                         ),
                     ]),
@@ -5060,12 +5341,12 @@ fn should_cross_spread_with_small_remaining_amount() {
         let sell_order_id1 = 201;
         let sell_order1 = LimitOrder::<Runtime>::new(
             sell_order_id1,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             balance!(9.9).into(),
             balance!(169).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -5091,19 +5372,22 @@ fn should_cross_spread_with_small_remaining_amount() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
-                        BTreeMap::from([(alice(), balance!(169).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(169).into())])
                     ),]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.base,
                             BTreeMap::from([
-                                (bob(), balance!(168.5).into()),
-                                (charlie(), balance!(0.5).into())
+                                (accounts::bob::<Runtime>(), balance!(168.5).into()),
+                                (accounts::charlie::<Runtime>(), balance!(0.5).into())
                             ]),
                         ),
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(alice(), balance!(1689.9).into())]),
+                            BTreeMap::from([(
+                                accounts::alice::<Runtime>(),
+                                balance!(1689.9).into()
+                            )]),
                         ),
                     ]),
                 },
@@ -5116,12 +5400,12 @@ fn should_cross_spread_with_small_remaining_amount() {
         let sell_order_id2 = 202;
         let sell_order2 = LimitOrder::<Runtime>::new(
             sell_order_id2,
-            alice(),
+            accounts::alice::<Runtime>(),
             PriceVariant::Sell,
             balance!(9.4).into(),
             balance!(570).into(),
             10,
-            100000,
+            <Runtime as Config>::MIN_ORDER_LIFESPAN + 100000,
             frame_system::Pallet::<Runtime>::block_number(),
         );
 
@@ -5148,19 +5432,22 @@ fn should_cross_spread_with_small_remaining_amount() {
                     order_book_id,
                     to_lock: BTreeMap::from([(
                         order_book_id.base,
-                        BTreeMap::from([(alice(), balance!(569.7).into())])
+                        BTreeMap::from([(accounts::alice::<Runtime>(), balance!(569.7).into())])
                     ),]),
                     to_unlock: BTreeMap::from([
                         (
                             order_book_id.base,
                             BTreeMap::from([
-                                (bob(), balance!(303.1).into()),
-                                (charlie(), balance!(266.6).into())
+                                (accounts::bob::<Runtime>(), balance!(303.1).into()),
+                                (accounts::charlie::<Runtime>(), balance!(266.6).into())
                             ]),
                         ),
                         (
                             order_book_id.quote,
-                            BTreeMap::from([(alice(), balance!(5538.37).into())]),
+                            BTreeMap::from([(
+                                accounts::alice::<Runtime>(),
+                                balance!(5538.37).into()
+                            )]),
                         ),
                     ]),
                 },

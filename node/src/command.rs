@@ -60,6 +60,7 @@ impl SubstrateCli for Cli {
             // "dev" => framenode_chain_spec::dev_net(),
             // "dev-coded" => Ok(framenode_chain_spec::dev_net_coded()),
             "dev" => Some(framenode_chain_spec::dev_net_coded()),
+            "predev" => Some(framenode_chain_spec::predev_net_coded()),
             "test" => Some(framenode_chain_spec::test_net()?),
             "test-coded" => Some(framenode_chain_spec::staging_net_coded(true)),
             "staging" => Some(framenode_chain_spec::staging_net()?),

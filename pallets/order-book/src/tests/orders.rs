@@ -30,7 +30,7 @@
 
 #![cfg(feature = "wip")] // order-book
 
-use crate::tests::test_utils::*;
+use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::{balance, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
@@ -44,7 +44,7 @@ fn should_return_error_for_invalid_limit_order_lifespan() {
     let wrong_lifespan1 = 0;
     let order1 = LimitOrder::<Runtime>::new(
         0,
-        alice(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         balance!(10).into(),
         balance!(100).into(),
@@ -57,7 +57,7 @@ fn should_return_error_for_invalid_limit_order_lifespan() {
     let wrong_lifespan2 = Runtime::MAX_ORDER_LIFESPAN + 1;
     let order2 = LimitOrder::<Runtime>::new(
         0,
-        alice(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         balance!(10).into(),
         balance!(100).into(),
@@ -73,12 +73,12 @@ fn should_return_error_for_invalid_limit_order_amount() {
     let wrong_amount = balance!(0).into();
     let order = LimitOrder::<Runtime>::new(
         0,
-        alice(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         balance!(10).into(),
         wrong_amount,
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         1,
     );
     assert_err!(order.ensure_valid(), E::InvalidOrderAmount);
@@ -94,7 +94,7 @@ fn should_return_error_for_invalid_market_order_amount() {
 
     let wrong_amount = balance!(0).into();
     let order = MarketOrder::<Runtime>::new(
-        alice(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         order_book_id,
         wrong_amount,
@@ -108,12 +108,12 @@ fn should_return_error_for_invalid_limit_order_price() {
     let wrong_price = balance!(0).into();
     let order = LimitOrder::<Runtime>::new(
         0,
-        alice(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         wrong_price,
         balance!(100).into(),
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         1,
     );
     assert_err!(order.ensure_valid(), E::InvalidLimitOrderPrice);
@@ -129,7 +129,7 @@ fn should_pass_valid_limit_order() {
 
     let mut order = LimitOrder::<Runtime>::new(
         0,
-        alice(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Buy,
         price,
         amount,
@@ -155,8 +155,13 @@ fn should_pass_valid_market_order() {
     };
 
     let amount = balance!(10).into();
-    let order =
-        MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, amount, None);
+    let order = MarketOrder::<Runtime>::new(
+        accounts::alice::<Runtime>(),
+        PriceVariant::Buy,
+        order_book_id,
+        amount,
+        None,
+    );
     assert_ok!(order.ensure_valid());
 }
 
@@ -166,17 +171,25 @@ fn should_not_return_limit_order_deal_amount_with_big_base_limit() {
     let amount = balance!(100).into();
     let base_amount_limit = balance!(101).into();
 
-    let buy_order =
-        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000, 1);
+    let buy_order = LimitOrder::<Runtime>::new(
+        1,
+        accounts::alice::<Runtime>(),
+        PriceVariant::Buy,
+        price,
+        amount,
+        1000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
+        1,
+    );
 
     let sell_order = LimitOrder::<Runtime>::new(
         2,
-        alice(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Sell,
         price,
         amount,
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         1,
     );
 
@@ -203,17 +216,25 @@ fn should_return_limit_order_deal_amount() {
     let price = balance!(11).into();
     let amount = balance!(100).into();
 
-    let buy_order =
-        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000, 1);
+    let buy_order = LimitOrder::<Runtime>::new(
+        1,
+        accounts::alice::<Runtime>(),
+        PriceVariant::Buy,
+        price,
+        amount,
+        1000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
+        1,
+    );
 
     let sell_order = LimitOrder::<Runtime>::new(
         2,
-        alice(),
+        accounts::alice::<Runtime>(),
         PriceVariant::Sell,
         price,
         amount,
         1000,
-        10000,
+        <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
         1,
     );
 

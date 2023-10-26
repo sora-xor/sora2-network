@@ -30,8 +30,8 @@
 
 mod data_layer;
 mod extrinsics;
+mod fee_calculator;
 mod order_book;
 mod orders;
 mod pallet;
-mod test_utils;
 mod types;

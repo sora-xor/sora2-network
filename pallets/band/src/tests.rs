@@ -81,7 +81,7 @@ fn add_and_remove_relayers_should_forbid_non_root_call() {
         );
 
         assert_noop!(
-            Band::remove_relayers(RuntimeOrigin::signed(11), relayers.clone()),
+            Band::remove_relayers(RuntimeOrigin::signed(11), relayers),
             BadOrigin
         );
 
@@ -93,8 +93,7 @@ fn add_and_remove_relayers_should_forbid_non_root_call() {
 fn add_relayers_should_check_if_relayer_was_already_added() {
     new_test_ext().execute_with(|| {
         let relayers = vec![1, 2, 3, 4, 5];
-        Band::add_relayers(RuntimeOrigin::root(), relayers.clone())
-            .expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), relayers).expect("Failed to add relayers");
 
         assert_noop!(
             Band::add_relayers(RuntimeOrigin::root(), vec![1]),
@@ -107,8 +106,7 @@ fn add_relayers_should_check_if_relayer_was_already_added() {
 fn remove_relayers_should_check_if_no_such_relayer_exists() {
     new_test_ext().execute_with(|| {
         let relayers = vec![1, 2, 3, 4, 5];
-        Band::add_relayers(RuntimeOrigin::root(), relayers.clone())
-            .expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), relayers).expect("Failed to add relayers");
 
         assert_noop!(
             Band::remove_relayers(RuntimeOrigin::root(), vec![6]),
@@ -121,8 +119,7 @@ fn remove_relayers_should_check_if_no_such_relayer_exists() {
 fn add_relayers_should_ignore_duplicates() {
     new_test_ext().execute_with(|| {
         let relayers = vec![1, 2, 3, 4, 5, 3, 5, 4];
-        Band::add_relayers(RuntimeOrigin::root(), relayers.clone())
-            .expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), relayers).expect("Failed to add relayers");
 
         assert_eq!(
             Band::trusted_relayers().expect("Expected initialized relayers"),
@@ -135,8 +132,7 @@ fn add_relayers_should_ignore_duplicates() {
 fn remove_relayers_should_ignore_duplicates() {
     new_test_ext().execute_with(|| {
         let relayers = vec![1, 2, 3, 4, 5];
-        Band::add_relayers(RuntimeOrigin::root(), relayers.clone())
-            .expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), relayers).expect("Failed to add relayers");
 
         Band::remove_relayers(RuntimeOrigin::root(), vec![1, 2, 3, 2, 1, 1, 3])
             .expect("Failed to remove relayers");
@@ -524,17 +520,14 @@ fn check_block_symbol_should_work() {
         )
         .expect("Failed to relay rates");
 
-        assert_eq!(
-            SymbolCheckBlock::<Runtime>::get(1 + GetRateStaleBlockPeriod::get(), "USD".to_owned()),
-            true
-        );
+        assert!(SymbolCheckBlock::<Runtime>::get(
+            1 + GetRateStaleBlockPeriod::get(),
+            "USD".to_owned()
+        ));
 
         <Band as Hooks<BlockNumberFor<Runtime>>>::on_initialize(601);
 
-        assert_eq!(
-            SymbolCheckBlock::<Runtime>::get(601u64, "USD".to_owned()),
-            false
-        )
+        assert!(!SymbolCheckBlock::<Runtime>::get(601u64, "USD".to_owned()))
     })
 }
 
@@ -556,25 +549,25 @@ fn set_invalid_dynamic_fee_parameters_should_fail() {
     new_test_ext().execute_with(|| {
         let parameters = FeeCalculationParameters::new(fixed!(-0.1), fixed!(0), fixed!(0));
         assert_eq!(
-            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone(),),
+            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters),
             Err(Error::<Runtime>::InvalidDynamicFeeParameters.into())
         );
 
         let parameters = FeeCalculationParameters::new(fixed!(0), fixed!(-1), fixed!(0));
         assert_eq!(
-            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone(),),
+            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters),
             Err(Error::<Runtime>::InvalidDynamicFeeParameters.into())
         );
 
         let parameters = FeeCalculationParameters::new(fixed!(0), fixed!(0), fixed!(-1));
         assert_eq!(
-            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone(),),
+            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters),
             Err(Error::<Runtime>::InvalidDynamicFeeParameters.into())
         );
 
         let parameters = FeeCalculationParameters::new(fixed!(1), fixed!(0), fixed!(0));
         assert_eq!(
-            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone(),),
+            Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters),
             Err(Error::<Runtime>::InvalidDynamicFeeParameters.into())
         );
     })
@@ -585,7 +578,7 @@ fn should_calculate_dynamic_fee() {
     new_test_ext().execute_with(|| {
         let parameters = FeeCalculationParameters::new(fixed!(0.1), fixed!(0.01), fixed!(0.05));
 
-        Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters.clone())
+        Band::set_dynamic_fee_parameters(RuntimeOrigin::root(), parameters)
             .expect("Expected to set the dynamic fee calculation parameters");
 
         let relayer = 1;
