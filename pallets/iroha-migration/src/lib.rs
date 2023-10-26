@@ -36,11 +36,11 @@
 //! All migrated accounts are stored to use when their referrals migrate or when a user attempts to migrate again
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 #[macro_use]
 extern crate alloc;
+use core::cmp::Ordering;
+
 use alloc::string::String;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -115,8 +115,8 @@ impl<T: Config> Pallet<T> {
 
     fn migrate_weight(
         iroha_address: &String,
-        iroha_public_key: &String,
-        iroha_signature: &String,
+        iroha_public_key: &str,
+        iroha_signature: &str,
     ) -> (Weight, Pays) {
         let pays = if Self::check_migrate(iroha_address, iroha_public_key, iroha_signature).is_ok()
         {
@@ -130,20 +130,20 @@ impl<T: Config> Pallet<T> {
     /// Checks if migration would succeed if the parameters were passed to migrate extrinsic.
     fn check_migrate(
         iroha_address: &String,
-        iroha_public_key: &String,
-        iroha_signature: &String,
+        iroha_public_key: &str,
+        iroha_signature: &str,
     ) -> Result<(), DispatchError> {
         let iroha_public_key = iroha_public_key.to_lowercase();
         let iroha_signature = iroha_signature.to_lowercase();
         ensure!(
-            !MigratedAccounts::<T>::contains_key(&iroha_address),
+            !MigratedAccounts::<T>::contains_key(iroha_address),
             Error::<T>::AccountAlreadyMigrated
         );
         // This account isn't migrated so the abusers couldn't copy signature from the blockchain for single-signature accounts.
-        Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
+        Self::verify_signature(iroha_address, &iroha_public_key, &iroha_signature)?;
         // However, for multi-signature accounts, their signatures can be abused so we continue checking.
         let public_keys =
-            PublicKeys::<T>::try_get(&iroha_address).map_err(|_| Error::<T>::PublicKeyNotFound)?;
+            PublicKeys::<T>::try_get(iroha_address).map_err(|_| Error::<T>::PublicKeyNotFound)?;
         let already_migrated = public_keys
             .iter()
             .find_map(|(already_migrated, key)| {
@@ -160,7 +160,7 @@ impl<T: Config> Pallet<T> {
 
     fn parse_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
         let iroha_public_key =
-            hex::decode(&iroha_public_key).map_err(|_| Error::<T>::PublicKeyParsingFailed)?;
+            hex::decode(iroha_public_key).map_err(|_| Error::<T>::PublicKeyParsingFailed)?;
         let public_key = PublicKey::from_bytes(iroha_public_key.as_slice())
             .map_err(|_| Error::<T>::PublicKeyParsingFailed)?;
         Ok(public_key)
@@ -243,17 +243,17 @@ impl<T: Config> Pallet<T> {
             Self::migrate_account(iroha_address, multi_account)?;
         } else {
             let quorum = Quorums::<T>::get(&iroha_address) as usize;
-            if approval_count == quorum {
-                PendingMultiSigAccounts::<T>::mutate(&iroha_address, |a| {
+            match approval_count.cmp(&quorum) {
+                Ordering::Equal => PendingMultiSigAccounts::<T>::mutate(&iroha_address, |a| {
                     a.approving_accounts.push(account);
                     let migrate_at =
                         frame_system::Pallet::<T>::block_number() + blocks_till_migration::<T>();
                     a.migrate_at = Some(migrate_at);
-                });
-            } else if approval_count < quorum {
-                PendingMultiSigAccounts::<T>::mutate(&iroha_address, |a| {
+                }),
+                Ordering::Less => PendingMultiSigAccounts::<T>::mutate(&iroha_address, |a| {
                     a.approving_accounts.push(account);
-                });
+                }),
+                _ => (),
             }
         }
         Ok(())
@@ -299,7 +299,7 @@ impl<T: Config> Pallet<T> {
             // Free up memory
             Referrers::<T>::remove(iroha_address);
             if let Some(referrer) = MigratedAccounts::<T>::get(&referrer) {
-                referrals::Pallet::<T>::set_referrer_to(&account, referrer)
+                referrals::Pallet::<T>::set_referrer_to(account, referrer)
                     .map_err(|_| Error::<T>::ReferralMigrationFailed)?;
             } else {
                 PendingReferrals::<T>::mutate(&referrer, |referrals| {
@@ -476,6 +476,7 @@ pub mod pallet {
         StorageMap<_, Blake2_128Concat, String, Vec<T::AccountId>, ValueQuery>;
 
     #[pallet::genesis_config]
+    #[allow(clippy::type_complexity)]
     pub struct GenesisConfig<T: Config> {
         pub account_id: Option<T::AccountId>,
         pub iroha_accounts: Vec<(String, Balance, Option<String>, u8, Vec<String>)>,
@@ -494,8 +495,8 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            frame_system::Pallet::<T>::inc_consumers(&self.account_id.as_ref().unwrap()).unwrap();
-            Account::<T>::put(&self.account_id.as_ref().unwrap());
+            frame_system::Pallet::<T>::inc_consumers(self.account_id.as_ref().unwrap()).unwrap();
+            Account::<T>::put(self.account_id.as_ref().unwrap());
 
             for (account_id, balance, referrer, threshold, public_keys) in &self.iroha_accounts {
                 Balances::<T>::insert(account_id, *balance);

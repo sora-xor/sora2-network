@@ -30,7 +30,6 @@
 
 use crate::mock::*;
 use crate::{Error, MigratedAccounts, Pallet, PendingMultiSigAccounts, PendingReferrals};
-use common::prelude::Balance;
 use common::{AssetInfoProvider, VAL};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
@@ -84,13 +83,13 @@ fn test_already_migrated() {
 #[test]
 fn test_migrate_balance() {
     new_test_ext().execute_with(|| {
-        assert_eq!(Assets::free_balance(&VAL, &ALICE).unwrap(), Balance::from(0u128));
+        assert_eq!(Assets::free_balance(&VAL, &ALICE).unwrap(), 0u128);
         assert_ok!(Pallet::<Runtime>::migrate(
             RuntimeOrigin::signed(ALICE),
              "did_sora_balance@sora".to_string(),
               "9a685d77bcd3f60e6cc1e91eedc7a48e11bbcf1a036b920f3bae0372a78A5432".to_string(),
               "233896712f752760713539f56c92534ff8f4f290812e8f129Ce0b513b99cbdffcea95abeed68edd1b0a4e4b52877c13c26c6c89e5bb6bf023ac6c0f4f53c0c02".to_string()));
-              assert_eq!(Assets::free_balance(&VAL, &ALICE).unwrap(), Balance::from(300u128));
+              assert_eq!(Assets::free_balance(&VAL, &ALICE).unwrap(), 300u128);
     });
 }
 
@@ -106,8 +105,8 @@ fn test_migrate_referrer_migrates_first() {
             "did_sora_referral@sora".to_string(),
             "cba1c8c2eeaf287d734bd167b10d762e89c0ee8327a29e04f064ae94086ef1e9".to_string(),
             "dd878f4223026ad274212bf153a59fffff0a84a2ef5c40C60905b1fd2219508296eecd8f56618986352653757628e41fcaaab202cfe6cf3abcc28d7972a68e06".to_string()));
-        assert_eq!(Referrers::<Runtime>::get(&BOB), Some(ALICE));
-        assert!(PendingReferrals::<Runtime>::get(&"did_sora_referrer@sora".to_string()).is_empty());
+        assert_eq!(Referrers::<Runtime>::get(BOB), Some(ALICE));
+        assert!(PendingReferrals::<Runtime>::get("did_sora_referrer@sora".to_string()).is_empty());
     });
 }
 
@@ -119,13 +118,13 @@ fn test_migrate_referral_migrates_first() {
            "did_sora_referral@sora".to_string(),
             "cba1c8c2eeaf287d734bd167b10d762e89c0ee8327A29e04f064ae94086ef1e9".to_string(),
             "dd878f4223026ad274212bf153a59fffff0a84a2Ef5c40c60905b1fd2219508296eecd8f56618986352653757628e41fcaaab202cfe6cf3abcc28d7972a68e06".to_string()));
-        assert_eq!(PendingReferrals::<Runtime>::get(&"did_sora_referrer@sora".to_string()), vec![BOB]);
+        assert_eq!(PendingReferrals::<Runtime>::get("did_sora_referrer@sora".to_string()), vec![BOB]);
         assert_ok!(Pallet::<Runtime>::migrate(
             RuntimeOrigin::signed(ALICE),
              "did_sora_referrer@sora".to_string(),
               "dd54e9efb95531154316cf3e28e2232abab349296dDe94353febc9ebbb3ff283".to_string(),
               "f87bfa375cb4be3ee530ca6d76790b6aac9dbbbbff5dceb58021491a1d83526e31685c8d38f8c2dcb932939599ab4ff6733f0547c362322f1a51a666877ab003".to_string()));
-        assert_eq!(Referrers::<Runtime>::get(&BOB), Some(ALICE));
+        assert_eq!(Referrers::<Runtime>::get(BOB), Some(ALICE));
     });
 }
 
@@ -146,7 +145,7 @@ fn test_migrate_multi_sig() {
             signatories.sort();
             pallet_multisig::Pallet::<Runtime>::multi_account_id(&signatories, 2)
         };
-        assert_eq!(Assets::free_balance(&VAL, &multi_account).unwrap(), Balance::from(0u128));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account).unwrap(), 0u128);
         assert_ok!(Pallet::<Runtime>::migrate(
             RuntimeOrigin::signed(BOB),
             iroha_address.clone(),
@@ -162,7 +161,7 @@ fn test_migrate_multi_sig() {
         );
         assert!(MigratedAccounts::<Runtime>::contains_key(&iroha_address));
         assert!(!PendingMultiSigAccounts::<Runtime>::contains_key(&iroha_address));
-        assert_eq!(Assets::free_balance(&VAL, &multi_account).unwrap(), Balance::from(1000u128));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account).unwrap(), 1000u128);
     });
 }
 
@@ -189,8 +188,8 @@ fn test_migrate_multi_sig_after_timeout() {
             signatories.sort();
             pallet_multisig::Pallet::<Runtime>::multi_account_id(&signatories, 2)
         };
-        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), Balance::from(0u128));
-        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), Balance::from(0u128));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), 0u128);
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), 0u128);
 
         assert_ok!(Pallet::<Runtime>::migrate(
             RuntimeOrigin::signed(BOB),
@@ -201,19 +200,19 @@ fn test_migrate_multi_sig_after_timeout() {
 
         assert!(!MigratedAccounts::<Runtime>::contains_key(&iroha_address));
         assert!(PendingMultiSigAccounts::<Runtime>::contains_key(&iroha_address));
-        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), Balance::from(0u128));
-        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), Balance::from(0u128));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), 0u128);
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), 0u128);
 
         Pallet::<Runtime>::on_initialize(crate::blocks_till_migration::<Runtime>() + 1);
 
         assert!(MigratedAccounts::<Runtime>::contains_key(&iroha_address));
         assert!(!PendingMultiSigAccounts::<Runtime>::contains_key(&iroha_address));
-        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), Balance::from(1000u128));
-        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), Balance::from(0u128));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), 1000u128);
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), 0u128);
 
         assert_noop!(Pallet::<Runtime>::migrate(
             RuntimeOrigin::signed(CHARLIE),
-            iroha_address.clone(),
+            iroha_address,
             "57571ec82cff710143eba60c05d88de14a22799048137162d63C534a8b02dc20".to_string(),
             "3cfd2e95676ec7f4a7eb6f8bf91b447990c1bb4d771784e5e5D6027852eef75c13ad911d6fac9130b24f67e2088c3b908d25c092f87b77ed8a44dcd62572cc0f".to_string()),
             Error::<Runtime>::AccountAlreadyMigrated,
@@ -235,7 +234,7 @@ fn test_migrate_multi_sig_public_key_already_used() {
         assert!(PendingMultiSigAccounts::<Runtime>::contains_key(&iroha_address));
         assert_noop!(Pallet::<Runtime>::migrate(
             RuntimeOrigin::signed(ALICE),
-            iroha_address.clone(),
+            iroha_address,
             "f7d89d39d48a67e4741a612de10650234f9148e84fE9e8b2a9fad322b0d8e5bc".to_string(),
             "d5f6dcc6967aa05df71894dd2c253085b236026efC1c66d4b33ee88dda20fc751b516aef631d1f96919f8cba2e15334022e04ef6602298d6b9820daeefe13e03".to_string()),
             Error::<Runtime>::PublicKeyAlreadyUsed
