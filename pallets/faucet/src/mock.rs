@@ -274,7 +274,7 @@ impl ExtBuilder {
                     None,
                 ),
                 (
-                    VAL.into(),
+                    VAL,
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
@@ -292,7 +292,7 @@ impl ExtBuilder {
         TokensConfig {
             balances: vec![(
                 account_id.clone(),
-                VAL.into(),
+                VAL,
                 (faucet::DEFAULT_LIMIT * FixedWrapper::from(1.5)).into_balance(),
             )],
         }
