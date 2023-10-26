@@ -305,31 +305,31 @@ fn test() {
 
         mock::run_to_block(VESTING_FREQUENCY);
 
-        let alice_reward = *Rewards::<Runtime>::get(&ALICE())
+        let alice_reward = *Rewards::<Runtime>::get(ALICE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
         assert_eq!(alice_reward, balance!(147095.556665051128722662));
 
-        let bob_reward = *Rewards::<Runtime>::get(&BOB())
+        let bob_reward = *Rewards::<Runtime>::get(BOB())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
         assert_eq!(bob_reward, balance!(20230.033841899841271451));
 
-        let charlie_reward = *Rewards::<Runtime>::get(&CHARLIE())
+        let charlie_reward = *Rewards::<Runtime>::get(CHARLIE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
         assert_eq!(charlie_reward, balance!(188323.224128231249527342));
 
-        let dave_reward = *Rewards::<Runtime>::get(&DAVE())
+        let dave_reward = *Rewards::<Runtime>::get(DAVE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
         assert_eq!(dave_reward, balance!(41855.242431516907913566));
 
-        let eve_reward = *Rewards::<Runtime>::get(&EVE())
+        let eve_reward = *Rewards::<Runtime>::get(EVE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
@@ -372,7 +372,7 @@ fn test() {
 
         run_to_block(VESTING_FREQUENCY + VESTING_FREQUENCY);
 
-        let info = Rewards::<Runtime>::get(&ALICE());
+        let info = Rewards::<Runtime>::get(ALICE());
         assert_eq!(
             *info
                 .rewards
@@ -381,7 +381,7 @@ fn test() {
             balance!(362281.956723538535819602)
         );
 
-        let info = Rewards::<Runtime>::get(&BOB());
+        let info = Rewards::<Runtime>::get(BOB());
         // BOB's rewards didn't change
         assert_eq!(
             *info
@@ -391,7 +391,7 @@ fn test() {
             balance!(20230.033841899841271451)
         );
 
-        let info = Rewards::<Runtime>::get(&CHARLIE());
+        let info = Rewards::<Runtime>::get(CHARLIE());
         assert_eq!(
             *info
                 .rewards
@@ -400,7 +400,7 @@ fn test() {
             balance!(395638.161949291391006768)
         );
 
-        let info = Rewards::<Runtime>::get(&DAVE());
+        let info = Rewards::<Runtime>::get(DAVE());
         assert_eq!(
             *info
                 .rewards
@@ -409,7 +409,7 @@ fn test() {
             balance!(73254.876962256299307236)
         );
 
-        let info = Rewards::<Runtime>::get(&EVE());
+        let info = Rewards::<Runtime>::get(EVE());
         assert_eq!(
             *info
                 .rewards

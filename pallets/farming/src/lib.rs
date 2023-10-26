@@ -29,8 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -173,7 +171,7 @@ impl<T: Config> Pallet<T> {
     ) -> Balance {
         let base_asset_amt = pool_xyk::Pallet::<T>::get_base_asset_part_from_pool_account(
             pool,
-            &trading_pair,
+            trading_pair,
             pool_tokens,
         )
         .unwrap_or(0);
@@ -235,7 +233,7 @@ impl<T: Config> Pallet<T> {
         // Vi(t)
         let now_u128: u128 = now.unique_saturated_into();
         let coeff = (FixedWrapper::from(balance!(1))
-            + farmer_farming_time.clone() / FixedWrapper::from(balance!(now_u128)))
+            + farmer_farming_time / FixedWrapper::from(balance!(now_u128)))
         .pow(T::VESTING_COEFF);
 
         coeff * farmer_weight

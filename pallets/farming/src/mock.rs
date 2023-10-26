@@ -114,9 +114,9 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = common::PSWAP;
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
-    pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
+    pub RewardDoublingAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([13; 32]);
@@ -451,7 +451,7 @@ impl Default for ExtBuilder {
                 (CHARLIE(), Scope::Unlimited, preset01.clone()),
                 (DAVE(), Scope::Unlimited, preset01.clone()),
                 (EVE(), Scope::Unlimited, preset01.clone()),
-                (FERDIE(), Scope::Unlimited, preset01.clone()),
+                (FERDIE(), Scope::Unlimited, preset01),
             ],
         }
     }
@@ -492,7 +492,7 @@ impl ExtBuilder {
         assets::GenesisConfig::<Runtime> {
             endowed_assets: vec![
                 (
-                    XOR.into(),
+                    XOR,
                     ALICE(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
@@ -503,7 +503,7 @@ impl ExtBuilder {
                     None,
                 ),
                 (
-                    DOT.into(),
+                    DOT,
                     ALICE(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"DOT".to_vec()),
@@ -514,7 +514,7 @@ impl ExtBuilder {
                     None,
                 ),
                 (
-                    PSWAP.into(),
+                    PSWAP,
                     ALICE(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
@@ -525,7 +525,7 @@ impl ExtBuilder {
                     None,
                 ),
                 (
-                    VAL.into(),
+                    VAL,
                     ALICE(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"VAL".to_vec()),
@@ -536,7 +536,7 @@ impl ExtBuilder {
                     None,
                 ),
                 (
-                    XSTUSD.into(),
+                    XSTUSD,
                     ALICE(),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"XSTUSD".to_vec()),
