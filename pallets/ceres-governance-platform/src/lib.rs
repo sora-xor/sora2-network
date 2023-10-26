@@ -266,8 +266,8 @@ pub mod pallet {
                 Error::<T>::InvalidOption
             );
 
-            let mut voting_info = VotingInfo {
-                voting_option,
+            let voting_info = VotingInfo {
+                voting_option: voting_option.clone(),
                 number_of_votes,
                 asset_withdrawn: false,
             };
@@ -356,7 +356,7 @@ pub mod pallet {
                 poll_asset,
                 poll_start_timestamp,
                 poll_end_timestamp,
-                title,
+                title: title.clone(),
                 description,
                 options,
             };
@@ -366,7 +366,7 @@ pub mod pallet {
             //Emit event
             Self::deposit_event(Event::<T>::Created(
                 user,
-                title,
+                title.clone(),
                 poll_asset,
                 poll_start_timestamp,
                 poll_end_timestamp,
