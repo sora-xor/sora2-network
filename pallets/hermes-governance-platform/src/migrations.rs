@@ -46,13 +46,11 @@ pub fn migrate_voting_and_poll_data<T: Config>() -> Weight {
         |(voting_option, number_of_hermes, hermes_withdrawn)| {
             weight += 1;
 
-            let new_voting_option;
-
-            if voting_option == VotingOption::Yes {
-                new_voting_option = "Yes";
+            let new_voting_option = if voting_option == VotingOption::Yes {
+                "Yes"
             } else {
-                new_voting_option = "No";
-            }
+                "No"
+            };
 
             Some(HermesVotingInfo {
                 voting_option: BoundedString::truncate_from(new_voting_option),
