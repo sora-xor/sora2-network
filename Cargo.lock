@@ -4549,23 +4549,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyper-rustls"
-version = "0.24.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d78e1e73ec14cf7375674f74d7dde185c8206fd9dea6fb6295e8a98098aaa97"
-dependencies = [
- "futures-util",
- "http",
- "hyper",
- "log",
- "rustls 0.21.7",
- "rustls-native-certs",
- "tokio",
- "tokio-rustls 0.24.1",
- "webpki-roots 0.23.1",
-]
-
-[[package]]
 name = "iana-time-zone"
 version = "0.1.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4912,9 +4895,7 @@ version = "0.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "367a292944c07385839818bb71c8d76611138e2dedb0677d035b8da21d29c78b"
 dependencies = [
- "jsonrpsee-client-transport",
  "jsonrpsee-core",
- "jsonrpsee-http-client",
  "jsonrpsee-proc-macros",
  "jsonrpsee-server",
  "jsonrpsee-types",
@@ -4966,25 +4947,6 @@ dependencies = [
  "serde",
  "serde_json",
  "soketto",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "jsonrpsee-http-client"
-version = "0.16.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e5f9fabdd5d79344728521bb65e3106b49ec405a78b66fbff073b72b389fa43"
-dependencies = [
- "async-trait",
- "hyper",
- "hyper-rustls 0.24.1",
- "jsonrpsee-core",
- "jsonrpsee-types",
- "rustc-hash",
- "serde",
- "serde_json",
  "thiserror",
  "tokio",
  "tracing",
@@ -8911,7 +8873,7 @@ checksum = "cd8d6c9f025a446bc4d18ad9632e69aec8f287aa84499ee335599fabd20c3fd8"
 dependencies = [
  "log",
  "ring",
- "rustls-webpki 0.101.6",
+ "rustls-webpki",
  "sct 0.7.0",
 ]
 
@@ -8934,16 +8896,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2d3987094b1d07b653b7dfdc3f70ce9a1da9c51ac18c1b06b662e4f9a0e9f4b2"
 dependencies = [
  "base64 0.21.4",
-]
-
-[[package]]
-name = "rustls-webpki"
-version = "0.100.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f6a5fc258f1c1276dfe3016516945546e2d5383911efc0fc4f1cdc5df3a4ae3"
-dependencies = [
- "ring",
- "untrusted",
 ]
 
 [[package]]
@@ -9644,7 +9596,7 @@ dependencies = [
  "futures 0.3.28",
  "futures-timer",
  "hyper",
- "hyper-rustls 0.23.2",
+ "hyper-rustls",
  "libp2p",
  "num_cpus",
  "once_cell",
@@ -9674,7 +9626,7 @@ dependencies = [
  "futures 0.3.28",
  "futures-timer",
  "hyper",
- "hyper-rustls 0.23.2",
+ "hyper-rustls",
  "libp2p",
  "num_cpus",
  "once_cell",
@@ -10061,29 +10013,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "scale-bits"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dd7aca73785181cc41f0bbe017263e682b585ca660540ba569133901d013ecf"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
-]
-
-[[package]]
-name = "scale-decode"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d823d4be477fc33321f93d08fb6c2698273d044f01362dc27573a750deb7c233"
-dependencies = [
- "parity-scale-codec",
- "scale-bits",
- "scale-info",
- "thiserror",
-]
-
-[[package]]
 name = "scale-info"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10107,23 +10036,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "scale-value"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16a5e7810815bd295da73e4216d1dfbced3c7c7c7054d70fa5f6e4c58123fff4"
-dependencies = [
- "either",
- "frame-metadata",
- "parity-scale-codec",
- "scale-bits",
- "scale-decode",
- "scale-info",
- "serde",
- "thiserror",
- "yap",
 ]
 
 [[package]]
@@ -11498,21 +11410,8 @@ dependencies = [
 name = "substrate-gen"
 version = "0.1.0"
 dependencies = [
- "async-trait",
- "beefy-light-client",
- "bridge-common",
- "bridge-types",
- "common",
  "framenode-runtime",
- "hex",
- "jsonrpsee",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-beefy",
  "sp-core",
- "sp-runtime",
- "subxt",
 ]
 
 [[package]]
@@ -11571,79 +11470,6 @@ name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
-
-[[package]]
-name = "subxt"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3cbc78fd36035a24883eada29e0205b9b1416172530a7d00a60c07d0337db0c"
-dependencies = [
- "bitvec",
- "derivative",
- "frame-metadata",
- "futures 0.3.28",
- "getrandom 0.2.10",
- "hex",
- "jsonrpsee",
- "parity-scale-codec",
- "parking_lot 0.12.1",
- "scale-decode",
- "scale-info",
- "scale-value",
- "serde",
- "serde_json",
- "sp-core",
- "sp-runtime",
- "subxt-macro",
- "subxt-metadata",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "subxt-codegen"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7722c31febf55eb300c73d977da5d65cfd6fb443419b1185b9abcdd9925fd7be"
-dependencies = [
- "darling",
- "frame-metadata",
- "heck",
- "hex",
- "jsonrpsee",
- "parity-scale-codec",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "scale-info",
- "subxt-metadata",
- "syn 1.0.109",
- "tokio",
-]
-
-[[package]]
-name = "subxt-macro"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f64826f2c4ba20e3b2a86ec81a6ae8655ca6b6a4c2a6ccc888b6615efc2df14"
-dependencies = [
- "darling",
- "proc-macro-error",
- "subxt-codegen",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "subxt-metadata"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "869af75e23513538ad0af046af4a97b8d684e8d202e35ff4127ee061c1110813"
-dependencies = [
- "frame-metadata",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
-]
 
 [[package]]
 name = "syn"
@@ -12980,15 +12806,6 @@ dependencies = [
 
 [[package]]
 name = "webpki-roots"
-version = "0.23.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b03058f88386e5ff5310d9111d53f48b17d732b401aeb83a8d5190f2ac459338"
-dependencies = [
- "rustls-webpki 0.100.3",
-]
-
-[[package]]
-name = "webpki-roots"
 version = "0.25.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14247bb57be4f377dfb94c72830b8ce8fc6beac03cf4bf7b9732eadd414123fc"
@@ -13689,12 +13506,6 @@ dependencies = [
  "rand 0.8.5",
  "static_assertions",
 ]
-
-[[package]]
-name = "yap"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fc77f52dc9e9b10d55d3f4462c3b7fc393c4f17975d641542833ab2d3bc26ef"
 
 [[package]]
 name = "yasna"

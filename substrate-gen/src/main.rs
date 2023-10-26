@@ -28,4 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This lib is empty and works as a trigger to generate metadata during the build.
+use sp_core::{Bytes, OpaqueMetadata};
+use std::path::PathBuf;
+use std::str::FromStr;
+
+fn main() {
+    let metadata: Bytes = OpaqueMetadata::new(framenode_runtime::Runtime::metadata().into()).into();
+    let out_dir = PathBuf::from_str(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+        .unwrap()
+        .join("bytes");
+    std::fs::create_dir_all(&out_dir).unwrap();
+    std::fs::write(out_dir.join("metadata.scale"), metadata.0).unwrap();
+}
