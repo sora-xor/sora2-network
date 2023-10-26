@@ -1324,6 +1324,20 @@
 <a href="#1309" id="1309">1309</a>
 <a href="#1310" id="1310">1310</a>
 <a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1358,6 +1372,7 @@
 #![allow(dead_code)] </span><span class="comment">// todo (m.tagirov) remove
 // TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
+#![feature(int_roundings)]
 
 </span><span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>common::prelude::{
@@ -1388,8 +1403,8 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
-</span><span class="kw">mod </span>benchmarking;
+<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;runtime-benchmarks&quot;</span>))]
+</span><span class="kw">pub mod </span>test_utils;
 
 <span class="kw">pub mod </span>cache_data_layer;
 <span class="kw">pub mod </span>fee_calculator;
@@ -1423,7 +1438,7 @@
     <span class="kw">use </span>frame_support::{
         pallet_prelude::{OptionQuery, <span class="kw-2">*</span>},
         traits::Hooks,
-        Blake2_128Concat, Twox128,
+        Blake2_128Concat,
     };
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
@@ -1580,7 +1595,7 @@
     #[pallet::getter(<span class="kw">fn </span>expired_orders_at)]
     </span><span class="kw">pub type </span>ExpirationsAgenda&lt;T: Config&gt; = StorageMap&lt;
         <span class="kw">_</span>,
-        Twox128,
+        Identity,
         T::BlockNumber,
         BoundedVec&lt;(OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;, T::OrderId), T::MaxExpiringOrdersPerBlock&gt;,
         ValueQuery,
@@ -1687,7 +1702,7 @@
             owner_id: T::AccountId,
             direction: PriceVariant,
             amount: OrderAmount,
-            average_price: OrderVolume,
+            average_price: OrderPrice,
             to: <span class="prelude-ty">Option</span>&lt;T::AccountId&gt;,
         },
     }
@@ -1992,7 +2007,8 @@
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">4</span>)]
-        #[pallet::weight(Pallet::&lt;T&gt;::exchange_weight())] </span><span class="comment">// in the worst case the limit order is converted into market order and the exchange occurs
+        </span><span class="comment">// in the worst case the limit order is converted into market order and the exchange occurs
+        </span><span class="attr">#[pallet::weight(Pallet::&lt;T&gt;::exchange_weight())]
         </span><span class="kw">pub fn </span>place_limit_order(
             origin: OriginFor&lt;T&gt;,
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
@@ -2035,10 +2051,11 @@
             // the market-maker fee is charged for some weight, and the regular fee for none weight
             </span><span class="kw">let </span>actual_weight = <span class="kw">if </span>executed_orders_count == <span class="number">0 </span>{
                 <span class="comment">// if the extrinsic just places the limit order, the weight of the placing is returned
-                </span><span class="prelude-val">Some</span>(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::place_limit_order())
+                </span><span class="prelude-val">Some</span>(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::place_limit_order_without_cross_spread())
             } <span class="kw">else </span>{
                 <span class="comment">// if the limit order was converted into market order, then None weight is returned
-                // this weight will be replaced with worst case weight - exchange_weight()
+                // this weight will be replaced with worst case weight:
+                // exchange_weight() + place_limit_order_without_cross_spread()
                 </span><span class="prelude-val">None
             </span>};
 
@@ -2049,7 +2066,10 @@
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">5</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order())]
+        #[pallet::weight(
+            &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order_first_expiration()
+                .max(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order_last_expiration()))
+        ]
         </span><span class="kw">pub fn </span>cancel_limit_order(
             origin: OriginFor&lt;T&gt;,
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
@@ -2074,7 +2094,15 @@
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">6</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order().saturating_mul(limit_orders_to_cancel.iter().fold(<span class="number">0</span>, |count, (<span class="kw">_</span>, order_ids)| count.saturating_add(order_ids.len() <span class="kw">as </span>u64))))]
+        #[pallet::weight({
+            <span class="kw">let </span>cancel_limit_order = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order_first_expiration()
+                .max(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order_last_expiration());
+            <span class="kw">let </span>limit_orders_count: u64 = limit_orders_to_cancel
+                .iter()
+                .fold(<span class="number">0</span>, |count, (<span class="kw">_</span>, order_ids)| count.saturating_add(order_ids.len() <span class="kw">as </span>u64));
+
+            cancel_limit_order.saturating_mul(limit_orders_count)
+        })]
         </span><span class="kw">pub fn </span>cancel_limit_orders_batch(
             origin: OriginFor&lt;T&gt;,
             limit_orders_to_cancel: Vec&lt;(OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;, Vec&lt;T::OrderId&gt;)&gt;,

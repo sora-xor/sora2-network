@@ -309,7 +309,7 @@
             <span class="kw">return</span>;
         };
 
-        <span class="comment">// It&#39;s fine to try and unschedule again inside this method
+        <span class="comment">// It&#39;s fine to fail on unschedule again inside this method
         // since the queue is taken from the storage before this method.
         // (thus `ignore_unschedule_error` is `true`)
         </span><span class="kw">match </span>order_book.cancel_limit_order_unchecked(order, data_layer, <span class="bool-val">true</span>) {

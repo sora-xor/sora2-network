@@ -14,7 +14,7 @@ var sourcesIndex = JSON.parse('{\
 "ceres_liquidity_locker_benchmarking":["",[],["lib.rs"]],\
 "ceres_staking":["",[],["lib.rs","weights.rs"]],\
 "ceres_token_locker":["",[],["lib.rs","migrations.rs","weights.rs"]],\
-"common":["",[["cache_storage",[],["cache_double_map.rs","cache_map.rs","item.rs","mod.rs"]]],["balance_unit.rs","eth.rs","fixed_wrapper.rs","lib.rs","macros.rs","migrations.rs","primitives.rs","serialization.rs","swap_amount.rs","traits.rs","utils.rs","weights.rs"]],\
+"common":["",[["cache_storage",[],["cache_double_map.rs","cache_map.rs","item.rs","mod.rs"]]],["balance_unit.rs","eth.rs","fixed_wrapper.rs","lib.rs","macros.rs","migrations.rs","primitives.rs","serialization.rs","storage.rs","swap_amount.rs","traits.rs","utils.rs","weights.rs"]],\
 "demeter_farming_platform":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "demeter_farming_platform_benchmarking":["",[],["lib.rs"]],\
 "dex_api":["",[],["lib.rs"]],\
@@ -53,6 +53,7 @@ var sourcesIndex = JSON.parse('{\
 "oracle_proxy_rpc":["",[],["lib.rs"]],\
 "oracle_proxy_runtime_api":["",[],["lib.rs"]],\
 "order_book":["",[],["cache_data_layer.rs","fee_calculator.rs","lib.rs","limit_order.rs","market_order.rs","order_book.rs","scheduler.rs","storage_data_layer.rs","traits.rs","types.rs","weights.rs"]],\
+"order_book_benchmarking":["",[],["lib.rs"]],\
 "parachain_gen":["",[],["lib.rs"]],\
 "parse":["",[],["main.rs"]],\
 "permissions":["",[],["lib.rs"]],\

@@ -3303,6 +3303,23 @@
 <a href="#3288" id="3288">3288</a>
 <a href="#3289" id="3289">3289</a>
 <a href="#3290" id="3290">3290</a>
+<a href="#3291" id="3291">3291</a>
+<a href="#3292" id="3292">3292</a>
+<a href="#3293" id="3293">3293</a>
+<a href="#3294" id="3294">3294</a>
+<a href="#3295" id="3295">3295</a>
+<a href="#3296" id="3296">3296</a>
+<a href="#3297" id="3297">3297</a>
+<a href="#3298" id="3298">3298</a>
+<a href="#3299" id="3299">3299</a>
+<a href="#3300" id="3300">3300</a>
+<a href="#3301" id="3301">3301</a>
+<a href="#3302" id="3302">3302</a>
+<a href="#3303" id="3303">3303</a>
+<a href="#3304" id="3304">3304</a>
+<a href="#3305" id="3305">3305</a>
+<a href="#3306" id="3306">3306</a>
+<a href="#3307" id="3307">3307</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3369,7 +3386,7 @@
 </span><span class="kw">use </span>bridge_types::{evm::AdditionalEVMInboundData, U256};
 <span class="kw">use </span>common::prelude::constants::{BIG_FEE, SMALL_FEE};
 <span class="kw">use </span>common::prelude::QuoteAmount;
-<span class="kw">use </span>common::{Description, PredefinedAssetId};
+<span class="kw">use </span>common::{AssetId32, Description, PredefinedAssetId};
 <span class="kw">use </span>common::{XOR, XSTUSD};
 <span class="kw">use </span>constants::currency::deposit;
 <span class="kw">use </span>constants::time::<span class="kw-2">*</span>;
@@ -3461,6 +3478,8 @@
 };
 
 <span class="kw">use </span>frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
+<span class="attr">#[cfg(all(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>, feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// order-book
+</span><span class="kw">pub use </span>order_book_benchmarking;
 <span class="attr">#[cfg(all(feature = <span class="string">&quot;private-net&quot;</span>, feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// order-book
 </span><span class="kw">pub use </span>qa_tools;
 <span class="kw">pub use </span>{
@@ -4194,16 +4213,16 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="comment">// This is common::PredefinedAssetId with 0 index, 2 is size, 0 and 0 is code.
-    </span><span class="kw">pub const </span>GetXorAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::XOR);
-    <span class="kw">pub const </span>GetDotAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::DOT);
-    <span class="kw">pub const </span>GetKsmAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::KSM);
-    <span class="kw">pub const </span>GetUsdAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::USDT);
-    <span class="kw">pub const </span>GetValAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::VAL);
-    <span class="kw">pub const </span>GetPswapAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
-    <span class="kw">pub const </span>GetDaiAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::DAI);
-    <span class="kw">pub const </span>GetEthAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::ETH);
-    <span class="kw">pub const </span>GetXstAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::XST);
-    <span class="kw">pub const </span>GetTbcdAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    </span><span class="kw">pub const </span>GetXorAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XOR);
+    <span class="kw">pub const </span>GetDotAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DOT);
+    <span class="kw">pub const </span>GetKsmAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KSM);
+    <span class="kw">pub const </span>GetUsdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::USDT);
+    <span class="kw">pub const </span>GetValAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::VAL);
+    <span class="kw">pub const </span>GetPswapAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
+    <span class="kw">pub const </span>GetDaiAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DAI);
+    <span class="kw">pub const </span>GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
+    <span class="kw">pub const </span>GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
+    <span class="kw">pub const </span>GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
 
     <span class="kw">pub const </span>GetBaseAssetId: AssetId = GetXorAssetId::get();
     <span class="kw">pub const </span>GetBuyBackAssetId: AssetId = GetXstAssetId::get();
@@ -4267,8 +4286,8 @@
 <span class="kw">impl </span>dex_manager::Config <span class="kw">for </span>Runtime {}
 
 <span class="kw">pub type </span>TechAccountId = common::TechAccountId&lt;AccountId, TechAssetId, DEXId&gt;;
-<span class="kw">pub type </span>TechAssetId = common::TechAssetId&lt;common::PredefinedAssetId&gt;;
-<span class="kw">pub type </span>AssetId = common::AssetId32&lt;common::PredefinedAssetId&gt;;
+<span class="kw">pub type </span>TechAssetId = common::TechAssetId&lt;PredefinedAssetId&gt;;
+<span class="kw">pub type </span>AssetId = AssetId32&lt;PredefinedAssetId&gt;;
 
 <span class="kw">impl </span>technical::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
@@ -5104,7 +5123,7 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>CeresPerDay: Balance = <span class="macro">balance!</span>(<span class="number">6.66666666667</span>);
-    <span class="kw">pub const </span>CeresAssetId: AssetId = common::AssetId32::from_bytes
+    <span class="kw">pub const </span>CeresAssetId: AssetId = AssetId32::from_bytes
         (<span class="macro">hex!</span>(<span class="string">&quot;008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440&quot;</span>));
     <span class="kw">pub const </span>MaximumCeresInStakingPool: Balance = <span class="macro">balance!</span>(<span class="number">14400</span>);
 }
@@ -5208,11 +5227,11 @@
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
 </span><span class="kw">impl </span>order_book::Config <span class="kw">for </span>Runtime {
-    <span class="kw">const </span>MAX_ORDER_LIFESPAN: Moment = <span class="number">30 </span>* (DAYS <span class="kw">as </span>Moment) * MILLISECS_PER_BLOCK; <span class="comment">// 30 days // TODO: order-book clarify
-    </span><span class="kw">const </span>MIN_ORDER_LIFESPAN: Moment = MILLISECS_PER_BLOCK; <span class="comment">// TODO: order-book clarify
+    <span class="kw">const </span>MAX_ORDER_LIFESPAN: Moment = <span class="number">30 </span>* (DAYS <span class="kw">as </span>Moment) * MILLISECS_PER_BLOCK; <span class="comment">// 30 days
+    </span><span class="kw">const </span>MIN_ORDER_LIFESPAN: Moment = (MINUTES <span class="kw">as </span>Moment) * MILLISECS_PER_BLOCK; <span class="comment">// 1 minute
     </span><span class="kw">const </span>MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
-    <span class="kw">const </span>MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(<span class="number">50</span>); <span class="comment">// TODO: order-book clarify
-    </span><span class="kw">const </span>SOFT_MIN_MAX_RATIO: usize = <span class="number">1000</span>;
+    <span class="kw">const </span>MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(<span class="number">50</span>);
+    <span class="kw">const </span>SOFT_MIN_MAX_RATIO: usize = <span class="number">1000</span>;
     <span class="kw">const </span>HARD_MIN_MAX_RATIO: usize = <span class="number">4000</span>;
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OrderId = u128;
@@ -5220,11 +5239,20 @@
     <span class="kw">type </span>Unlocker = OrderBook;
     <span class="kw">type </span>Scheduler = OrderBook;
     <span class="kw">type </span>Delegate = OrderBook;
-    <span class="kw">type </span>MaxOpenedLimitOrdersPerUser = ConstU32&lt;<span class="number">1000</span>&gt;; <span class="comment">// TODO: order-book clarify
-    </span><span class="kw">type </span>MaxLimitOrdersForPrice = ConstU32&lt;<span class="number">10000</span>&gt;; <span class="comment">// TODO: order-book clarify
-    </span><span class="kw">type </span>MaxSidePriceCount = ConstU32&lt;<span class="number">10000</span>&gt;; <span class="comment">// TODO: order-book clarify
-    </span><span class="kw">type </span>MaxExpiringOrdersPerBlock = ConstU32&lt;<span class="number">1000</span>&gt;; <span class="comment">// TODO: order-book clarify
-    </span><span class="kw">type </span>MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
+
+    <span class="comment">// preferably set this and other vec boundaries to an exponent
+    // of 2 because amortized (exponential capacity) growth seems
+    // to allocate (next_power_of_two) bytes anyway.
+    //
+    // or initialize it via `with_capacity` instead.
+    //
+    // this limit is mostly because of requirement to use bounded vectors.
+    // a user can create multiple accounts at any time.
+    </span><span class="kw">type </span>MaxOpenedLimitOrdersPerUser = ConstU32&lt;<span class="number">1024</span>&gt;;
+    <span class="kw">type </span>MaxLimitOrdersForPrice = ConstU32&lt;<span class="number">1024</span>&gt;;
+    <span class="kw">type </span>MaxSidePriceCount = ConstU32&lt;<span class="number">1024</span>&gt;;
+    <span class="kw">type </span>MaxExpiringOrdersPerBlock = ConstU32&lt;<span class="number">512</span>&gt;;
+    <span class="kw">type </span>MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
     <span class="kw">type </span>EnsureTradingPairExists = TradingPair;
     <span class="kw">type </span>TradingPairSourceManager = TradingPair;
     <span class="kw">type </span>AssetInfoProvider = Assets;
@@ -6389,6 +6417,8 @@
             <span class="kw">use </span>ceres_liquidity_locker_benchmarking::Pallet <span class="kw">as </span>CeresLiquidityLockerBench;
             <span class="kw">use </span>demeter_farming_platform_benchmarking::Pallet <span class="kw">as </span>DemeterFarmingPlatformBench;
             <span class="kw">use </span>xst_benchmarking::Pallet <span class="kw">as </span>XSTPoolBench;
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            </span><span class="kw">use </span>order_book_benchmarking::Pallet <span class="kw">as </span>OrderBookBench;
 
             <span class="kw">let </span><span class="kw-2">mut </span>list = Vec::&lt;BenchmarkList&gt;::new();
 
@@ -6420,7 +6450,7 @@
             <span class="macro">list_benchmark!</span>(list, extra, oracle_proxy, OracleProxy);
 
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
-            </span><span class="macro">list_benchmark!</span>(list, extra, order_book, OrderBook);
+            </span><span class="macro">list_benchmark!</span>(list, extra, order_book, OrderBookBench::&lt;Runtime&gt;);
 
             <span class="comment">// Trustless bridge
             </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
@@ -6463,12 +6493,16 @@
             <span class="kw">use </span>ceres_liquidity_locker_benchmarking::Pallet <span class="kw">as </span>CeresLiquidityLockerBench;
             <span class="kw">use </span>demeter_farming_platform_benchmarking::Pallet <span class="kw">as </span>DemeterFarmingPlatformBench;
             <span class="kw">use </span>xst_benchmarking::Pallet <span class="kw">as </span>XSTPoolBench;
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            </span><span class="kw">use </span>order_book_benchmarking::Pallet <span class="kw">as </span>OrderBookBench;
 
             <span class="kw">impl </span>liquidity_proxy_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>pool_xyk_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>pswap_distribution_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>ceres_liquidity_locker_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>xst_benchmarking::Config <span class="kw">for </span>Runtime {}
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            </span><span class="kw">impl </span>order_book_benchmarking::Config <span class="kw">for </span>Runtime {}
 
             <span class="kw">let </span>whitelist: Vec&lt;TrackedStorageKey&gt; = <span class="macro">vec!</span>[
                 <span class="comment">// Block Number
@@ -6516,7 +6550,7 @@
             <span class="macro">add_benchmark!</span>(params, batches, oracle_proxy, OracleProxy);
 
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
-            </span><span class="macro">add_benchmark!</span>(params, batches, order_book, OrderBook);
+            </span><span class="macro">add_benchmark!</span>(params, batches, order_book, OrderBookBench::&lt;Runtime&gt;);
 
             <span class="comment">// Trustless bridge
             </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge

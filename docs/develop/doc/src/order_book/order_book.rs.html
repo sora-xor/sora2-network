@@ -1186,6 +1186,14 @@
 <a href="#1171" id="1171">1171</a>
 <a href="#1172" id="1172">1172</a>
 <a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1272,20 +1280,20 @@
         <span class="self">Self</span>::new(
             order_book_id,
             OrderPrice::divisible(<span class="macro">balance!</span>(<span class="number">0.00001</span>)), <span class="comment">// TODO: order-book clarify
-            </span>OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">0.00001</span>)), <span class="comment">// TODO: order-book clarify
-            </span>OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">1</span>)),      <span class="comment">// TODO: order-book clarify
-            </span>OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">100000</span>)), <span class="comment">// TODO: order-book clarify
-        </span>)
+            </span>OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">0.00001</span>)),
+            OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">1</span>)),
+            OrderVolume::divisible(<span class="macro">balance!</span>(<span class="number">1000</span>)),
+        )
     }
 
     <span class="kw">pub fn </span>default_indivisible(order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new(
             order_book_id,
             OrderPrice::divisible(<span class="macro">balance!</span>(<span class="number">0.00001</span>)), <span class="comment">// TODO: order-book clarify
-            </span>OrderVolume::indivisible(<span class="number">1</span>),              <span class="comment">// TODO: order-book clarify
-            </span>OrderVolume::indivisible(<span class="number">1</span>),              <span class="comment">// TODO: order-book clarify
-            </span>OrderVolume::indivisible(<span class="number">100000</span>),         <span class="comment">// TODO: order-book clarify
-        </span>)
+            </span>OrderVolume::indivisible(<span class="number">1</span>),
+            OrderVolume::indivisible(<span class="number">1</span>),
+            OrderVolume::indivisible(<span class="number">1000</span>),
+        )
     }
 
     <span class="kw">pub fn </span>next_order_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; T::OrderId {
@@ -1412,7 +1420,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, DispatchError&gt; {
-        <span class="kw">let </span>market_change = <span class="self">self</span>.calculate_cancelation_of_all_limit_orders_impact(data)<span class="question-mark">?</span>;
+        <span class="kw">let </span>market_change = <span class="self">self</span>.calculate_cancellation_of_all_limit_orders_impact(data)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>count = market_change.to_cancel.len();
 
@@ -1537,7 +1545,7 @@
         })
     }
 
-    <span class="kw">pub fn </span>calculate_cancelation_limit_order_impact(
+    <span class="kw">pub fn </span>calculate_cancellation_limit_order_impact(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         limit_order: LimitOrder&lt;T&gt;,
         ignore_unschedule_error: bool,
@@ -1576,7 +1584,7 @@
         })
     }
 
-    <span class="kw">pub fn </span>calculate_cancelation_of_all_limit_orders_impact(
+    <span class="kw">pub fn </span>calculate_cancellation_of_all_limit_orders_impact(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
@@ -1607,7 +1615,7 @@
             deal_input: <span class="prelude-val">None</span>,
             deal_output: <span class="prelude-val">None</span>,
             market_input: <span class="prelude-val">None</span>,
-            market_output: <span class="prelude-val">None</span>, <span class="comment">// NA for this case, because all the liquidity of both types go out of market
+            market_output: <span class="prelude-val">None</span>, <span class="comment">// NA for this case, because all the liquidity of both types goes out of market
             </span>to_place: BTreeMap::new(),
             to_part_execute: BTreeMap::new(),
             to_full_execute: BTreeMap::new(),
@@ -1618,7 +1626,7 @@
         })
     }
 
-    <span class="doccomment">/// Calculates how the deal with `taker_base_amount` impacts on the market
+    <span class="doccomment">/// Calculates how the deal with `taker_base_amount` impacts the market
     </span><span class="kw">fn </span>calculate_market_impact&lt;<span class="lifetime">&#39;a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         direction: PriceVariant,
@@ -1882,12 +1890,13 @@
     }
 
     <span class="doccomment">/// Summarizes and returns `base` and `quote` volumes of market depth.
-    /// If `depth_limit` is defined, it counts the maximum possible `base` and `quote` volumes under the limit,
+    /// If `target_depth` is defined, it counts `base` and `quote` volumes under the limit and
+    /// checks if there is enough volume,
     /// Otherwise returns the sum of whole market depth.
     </span><span class="kw">pub fn </span>sum_market&lt;<span class="lifetime">&#39;a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         market_data: <span class="kw">impl </span>Iterator&lt;Item = (<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OrderPrice, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OrderVolume)&gt;,
-        depth_limit: <span class="prelude-ty">Option</span>&lt;OrderAmount&gt;,
+        target_depth: <span class="prelude-ty">Option</span>&lt;OrderAmount&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(OrderAmount, OrderAmount), DispatchError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>market_base_volume = OrderVolume::zero();
         <span class="kw">let </span><span class="kw-2">mut </span>market_quote_volume = OrderVolume::zero();
@@ -1899,16 +1908,16 @@
                 .checked_mul(base_volume)
                 .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(limit) = depth_limit {
-                <span class="kw">match </span>limit {
-                    OrderAmount::Base(base_limit) =&gt; {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(target_depth) = target_depth {
+                <span class="kw">match </span>target_depth {
+                    OrderAmount::Base(base_target) =&gt; {
                         <span class="kw">if </span>market_base_volume
                             .checked_add(base_volume)
                             .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?
-                            </span>&gt;= base_limit
+                            </span>&gt;= base_target
                         {
                             <span class="kw">let </span>delta = <span class="self">self</span>.align_amount(
-                                base_limit
+                                base_target
                                     .checked_sub(<span class="kw-2">&amp;</span>market_base_volume)
                                     .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>,
                             );
@@ -1926,15 +1935,15 @@
                             <span class="kw">break</span>;
                         }
                     }
-                    OrderAmount::Quote(quote_limit) =&gt; {
+                    OrderAmount::Quote(quote_target) =&gt; {
                         <span class="kw">if </span>market_quote_volume
                             .checked_add(<span class="kw-2">&amp;</span>quote_volume)
                             .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?
-                            </span>&gt;= quote_limit
+                            </span>&gt;= quote_target
                         {
                             <span class="comment">// delta in base asset
                             </span><span class="kw">let </span>delta = <span class="self">self</span>.align_amount(
-                                quote_limit
+                                quote_target
                                     .checked_sub(<span class="kw-2">&amp;</span>market_quote_volume)
                                     .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?
                                     </span>.checked_div(price)
@@ -1966,7 +1975,7 @@
         }
 
         <span class="macro">ensure!</span>(
-            depth_limit.is_none() || enough_liquidity,
+            target_depth.is_none() || enough_liquidity,
             Error::&lt;T&gt;::NotEnoughLiquidityInOrderBook
         );
 
@@ -2082,18 +2091,13 @@
         input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PriceVariant, DispatchError&gt; {
-        <span class="kw">match </span><span class="self">self</span>.order_book_id {
-            OrderBookId::&lt;AssetIdOf&lt;T&gt;, <span class="kw">_</span>&gt; { base, quote, .. }
-                <span class="kw">if </span>base == <span class="kw-2">*</span>output_asset_id &amp;&amp; quote == <span class="kw-2">*</span>input_asset_id =&gt;
-            {
-                <span class="prelude-val">Ok</span>(PriceVariant::Buy)
-            }
-            OrderBookId::&lt;AssetIdOf&lt;T&gt;, <span class="kw">_</span>&gt; { base, quote, .. }
-                <span class="kw">if </span>base == <span class="kw-2">*</span>input_asset_id &amp;&amp; quote == <span class="kw-2">*</span>output_asset_id =&gt;
-            {
-                <span class="prelude-val">Ok</span>(PriceVariant::Sell)
-            }
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::&lt;T&gt;::InvalidAsset.into()),
+        <span class="kw">let </span>OrderBookId::&lt;AssetIdOf&lt;T&gt;, <span class="kw">_</span>&gt; { base, quote, .. } = <span class="self">self</span>.order_book_id;
+        <span class="kw">if </span>base == <span class="kw-2">*</span>output_asset_id &amp;&amp; quote == <span class="kw-2">*</span>input_asset_id {
+            <span class="prelude-val">Ok</span>(PriceVariant::Buy)
+        } <span class="kw">else if </span>base == <span class="kw-2">*</span>input_asset_id &amp;&amp; quote == <span class="kw-2">*</span>output_asset_id {
+            <span class="prelude-val">Ok</span>(PriceVariant::Sell)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(Error::&lt;T&gt;::InvalidAsset.into())
         }
     }
 
@@ -2119,7 +2123,7 @@
         ignore_unschedule_error: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>market_change =
-            <span class="self">self</span>.calculate_cancelation_limit_order_impact(limit_order, ignore_unschedule_error)<span class="question-mark">?</span>;
+            <span class="self">self</span>.calculate_cancellation_limit_order_impact(limit_order, ignore_unschedule_error)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.apply_market_change(market_change, data)
     }
@@ -2166,28 +2170,34 @@
         limit_order: <span class="kw-2">&amp;</span>LimitOrder&lt;T&gt;,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(user_orders) =
-            data.get_user_limit_orders(<span class="kw-2">&amp;</span>limit_order.owner, <span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(is_user_orders_full) =
+            data.is_user_limit_orders_full(<span class="kw-2">&amp;</span>limit_order.owner, <span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id)
         {
             <span class="macro">ensure!</span>(
-                !user_orders.is_full(),
+                !is_user_orders_full,
                 Error::&lt;T&gt;::UserHasMaxCountOfOpenedOrders
             );
         }
         <span class="kw">match </span>limit_order.side {
             PriceVariant::Buy =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(bids) = data.get_bids(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, <span class="kw-2">&amp;</span>limit_order.price) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(is_bid_price_full) =
+                    data.is_bid_price_full(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, <span class="kw-2">&amp;</span>limit_order.price)
+                {
                     <span class="macro">ensure!</span>(
-                        !bids.is_full(),
+                        !is_bid_price_full,
                         Error::&lt;T&gt;::PriceReachedMaxCountOfLimitOrders
                     );
+                } <span class="kw">else </span>{
+                    <span class="comment">// there are no orders for the price, thus no entry for the given price.
+                    // if there was an entry, we won&#39;t need to add another price and, therefore,
+                    // check the length
+                    </span><span class="macro">ensure!</span>(
+                        data.get_aggregated_bids_len(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id)
+                            .unwrap_or(<span class="number">0</span>)
+                            &lt; T::MaxSidePriceCount::get() <span class="kw">as </span>usize,
+                        Error::&lt;T&gt;::OrderBookReachedMaxCountOfPricesForSide
+                    );
                 }
-
-                <span class="kw">let </span>agg_bids = data.get_aggregated_bids(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id);
-                <span class="macro">ensure!</span>(
-                    agg_bids.len() &lt; T::MaxSidePriceCount::get() <span class="kw">as </span>usize,
-                    Error::&lt;T&gt;::OrderBookReachedMaxCountOfPricesForSide
-                );
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>((best_bid_price, <span class="kw">_</span>)) = <span class="self">self</span>.best_bid(data) {
                     <span class="kw">if </span>limit_order.price &lt; best_bid_price {
@@ -2202,18 +2212,24 @@
                 }
             }
             PriceVariant::Sell =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(asks) = data.get_asks(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, <span class="kw-2">&amp;</span>limit_order.price) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(is_ask_price_full) =
+                    data.is_ask_price_full(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, <span class="kw-2">&amp;</span>limit_order.price)
+                {
                     <span class="macro">ensure!</span>(
-                        !asks.is_full(),
+                        !is_ask_price_full,
                         Error::&lt;T&gt;::PriceReachedMaxCountOfLimitOrders
                     );
+                } <span class="kw">else </span>{
+                    <span class="comment">// there are no orders for the price, thus no entry for the given price.
+                    // if there was an entry, we won&#39;t need to add another price and, therefore,
+                    // check the length
+                    </span><span class="macro">ensure!</span>(
+                        data.get_aggregated_asks_len(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id)
+                            .unwrap_or(<span class="number">0</span>)
+                            &lt; T::MaxSidePriceCount::get() <span class="kw">as </span>usize,
+                        Error::&lt;T&gt;::OrderBookReachedMaxCountOfPricesForSide
+                    );
                 }
-
-                <span class="kw">let </span>agg_asks = data.get_aggregated_asks(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id);
-                <span class="macro">ensure!</span>(
-                    agg_asks.len() &lt; T::MaxSidePriceCount::get() <span class="kw">as </span>usize,
-                    Error::&lt;T&gt;::OrderBookReachedMaxCountOfPricesForSide
-                );
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>((best_ask_price, <span class="kw">_</span>)) = <span class="self">self</span>.best_ask(data) {
                     <span class="kw">if </span>limit_order.price &gt; best_ask_price {
@@ -2231,14 +2247,14 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>best_bid(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;(OrderPrice, OrderVolume)&gt; {
-        <span class="kw">let </span>bids = data.get_aggregated_bids(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id);
-        bids.iter().max().map(|(k, v)| (<span class="kw-2">*</span>k, <span class="kw-2">*</span>v))
+    <span class="doccomment">/// Returns best bid price and aggregated volume at the price in the order book.
+    </span><span class="kw">pub fn </span>best_bid(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;(OrderPrice, OrderVolume)&gt; {
+        data.best_bid(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id)
     }
 
-    <span class="kw">pub fn </span>best_ask(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;(OrderPrice, OrderVolume)&gt; {
-        <span class="kw">let </span>asks = data.get_aggregated_asks(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id);
-        asks.iter().min().map(|(k, v)| (<span class="kw-2">*</span>k, <span class="kw-2">*</span>v))
+    <span class="doccomment">/// Returns best ask price and aggregated volume at the price in the order book.
+    </span><span class="kw">pub fn </span>best_ask(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;(OrderPrice, OrderVolume)&gt; {
+        data.best_ask(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id)
     }
 
     <span class="kw">fn </span>market_volume(<span class="kw-2">&amp;</span><span class="self">self</span>, side: PriceVariant, data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;) -&gt; OrderVolume {
@@ -2268,7 +2284,7 @@
         MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
         DispatchError,
     &gt; {
-        <span class="kw">let </span>(<span class="kw-2">mut </span>market_amount, <span class="kw-2">mut </span>limit_amout) = <span class="kw">match </span>limit_order.side {
+        <span class="kw">let </span>(<span class="kw-2">mut </span>market_amount, <span class="kw-2">mut </span>limit_amount) = <span class="kw">match </span>limit_order.side {
             PriceVariant::Buy =&gt; <span class="self">Self</span>::calculate_market_depth_to_price(
                 limit_order.side.switched(),
                 limit_order.price,
@@ -2283,19 +2299,19 @@
             ),
         };
 
-        <span class="kw">if </span>limit_amout &lt; <span class="self">self</span>.min_lot_size {
+        <span class="kw">if </span>limit_amount &lt; <span class="self">self</span>.min_lot_size {
             <span class="kw">let </span>market_volume = <span class="self">self</span>.market_volume(limit_order.side.switched(), data);
             <span class="kw">if </span>market_volume
                 .checked_sub(<span class="kw-2">&amp;</span>market_amount)
                 .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?
-                </span>&gt;= limit_amout
+                </span>&gt;= limit_amount
             {
                 market_amount = market_amount
-                    .checked_add(<span class="kw-2">&amp;</span>limit_amout)
+                    .checked_add(<span class="kw-2">&amp;</span>limit_amount)
                     .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
-                limit_amout = OrderVolume::zero();
+                limit_amount = OrderVolume::zero();
             } <span class="kw">else </span>{
-                limit_amout = OrderVolume::zero();
+                limit_amount = OrderVolume::zero();
             }
         }
 
@@ -2312,9 +2328,9 @@
             market_change = <span class="self">self</span>.calculate_market_order_impact(market_order, data)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if </span>!limit_amout.is_zero() {
+        <span class="kw">if </span>!limit_amount.is_zero() {
             <span class="kw">let </span><span class="kw-2">mut </span>new_limit_order = limit_order.clone();
-            new_limit_order.amount = limit_amout;
+            new_limit_order.amount = limit_amount;
             market_change
                 .merge(<span class="self">self</span>.calculate_limit_order_impact(new_limit_order)<span class="question-mark">?</span>)
                 .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
