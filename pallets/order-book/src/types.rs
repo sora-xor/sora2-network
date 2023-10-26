@@ -68,6 +68,17 @@ pub enum OrderBookStatus {
 }
 
 #[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
+pub enum CancelReason {
+    /// User cancels the limit order by themselves
+    Manual,
+
+    /// A lifetime of the order has expired and it is cancelled by the system
+    Expired,
+}
+
+#[derive(
     Encode, Decode, Eq, PartialEq, Clone, Copy, Debug, scale_info::TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -463,10 +474,14 @@ where
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub enum OrderBookEvent<AccountId, OrderId> {
+pub enum OrderBookEvent<AccountId, OrderId, Moment> {
     LimitOrderPlaced {
         order_id: OrderId,
         owner_id: AccountId,
+        side: PriceVariant,
+        price: OrderPrice,
+        amount: OrderVolume,
+        lifetime: Moment,
     },
 
     LimitOrderConvertedToMarketOrder {
@@ -486,18 +501,26 @@ pub enum OrderBookEvent<AccountId, OrderId> {
     LimitOrderCanceled {
         order_id: OrderId,
         owner_id: AccountId,
+        reason: CancelReason,
     },
 
     LimitOrderExecuted {
         order_id: OrderId,
         owner_id: AccountId,
         side: PriceVariant,
+        price: OrderPrice,
         amount: OrderAmount,
+    },
+
+    LimitOrderFilled {
+        order_id: OrderId,
+        owner_id: AccountId,
     },
 
     LimitOrderUpdated {
         order_id: OrderId,
         owner_id: AccountId,
+        new_amount: OrderVolume,
     },
 
     MarketOrderExecuted {

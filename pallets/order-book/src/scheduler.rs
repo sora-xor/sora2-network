@@ -37,7 +37,7 @@
 use crate::weights::WeightInfo;
 use crate::ExpirationsAgenda;
 use crate::{
-    traits::ExpirationScheduler, CacheDataLayer, Config, DataLayer, Error, Event,
+    traits::ExpirationScheduler, CacheDataLayer, CancelReason, Config, DataLayer, Error, Event,
     IncompleteExpirationsSince, OrderBookId, OrderBooks, Pallet,
 };
 use assets::AssetIdOf;
@@ -87,10 +87,11 @@ impl<T: Config> Pallet<T> {
         // (thus `ignore_unschedule_error` is `true`)
         match order_book.cancel_limit_order_unchecked(order, data_layer, true) {
             Ok(_) => {
-                Self::deposit_event(Event::<T>::LimitOrderExpired {
+                Self::deposit_event(Event::<T>::LimitOrderCanceled {
                     order_book_id: *order_book_id,
                     order_id,
                     owner_id: order_owner,
+                    reason: CancelReason::Expired,
                 });
             }
             Err(error) => {

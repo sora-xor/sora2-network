@@ -82,8 +82,8 @@ pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer, Delegate, ExpirationScheduler};
 pub use types::{
-    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent, OrderBookId,
-    OrderBookStatus, OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
+    CancelReason, DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent,
+    OrderBookId, OrderBookStatus, OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -145,7 +145,13 @@ pub mod pallet {
             Self::OrderId,
             DispatchError,
         >;
-        type Delegate: Delegate<Self::AccountId, Self::AssetId, Self::OrderId, Self::DEXId>;
+        type Delegate: Delegate<
+            Self::AccountId,
+            Self::AssetId,
+            Self::OrderId,
+            Self::DEXId,
+            MomentOf<Self>,
+        >;
         type MaxOpenedLimitOrdersPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
         type MaxSidePriceCount: Get<u32>;
@@ -298,6 +304,10 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             order_id: T::OrderId,
             owner_id: T::AccountId,
+            side: PriceVariant,
+            price: OrderPrice,
+            amount: OrderVolume,
+            lifetime: MomentOf<T>,
         },
 
         /// User tried to place the limit order out of the spread. The limit order is converted into a market order.
@@ -319,18 +329,12 @@ pub mod pallet {
             limit_order_id: T::OrderId,
         },
 
-        /// User canceled their limit order
+        /// User canceled their limit order or the limit order has reached the end of its lifespan
         LimitOrderCanceled {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             order_id: T::OrderId,
             owner_id: T::AccountId,
-        },
-
-        /// The limit order has reached the end of its lifespan
-        LimitOrderExpired {
-            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            order_id: T::OrderId,
-            owner_id: T::AccountId,
+            reason: CancelReason,
         },
 
         /// Failed to cancel expired order
@@ -346,7 +350,15 @@ pub mod pallet {
             order_id: T::OrderId,
             owner_id: T::AccountId,
             side: PriceVariant,
+            price: OrderPrice,
             amount: OrderAmount,
+        },
+
+        /// All amount of the limit order is executed
+        LimitOrderFilled {
+            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
         },
 
         /// The limit order is updated
@@ -354,6 +366,7 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             order_id: T::OrderId,
             owner_id: T::AccountId,
+            new_amount: OrderVolume,
         },
 
         /// User executes a deal by the market order
@@ -870,19 +883,30 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
     }
 }
 
-impl<T: Config> Delegate<T::AccountId, T::AssetId, T::OrderId, T::DEXId> for Pallet<T> {
+impl<T: Config> Delegate<T::AccountId, T::AssetId, T::OrderId, T::DEXId, MomentOf<T>>
+    for Pallet<T>
+{
     fn emit_event(
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        event: OrderBookEvent<T::AccountId, T::OrderId>,
+        event: OrderBookEvent<T::AccountId, T::OrderId, MomentOf<T>>,
     ) {
         let event = match event {
-            OrderBookEvent::LimitOrderPlaced { order_id, owner_id } => {
-                Event::<T>::LimitOrderPlaced {
-                    order_book_id,
-                    order_id,
-                    owner_id,
-                }
-            }
+            OrderBookEvent::LimitOrderPlaced {
+                order_id,
+                owner_id,
+                side,
+                price,
+                amount,
+                lifetime,
+            } => Event::<T>::LimitOrderPlaced {
+                order_book_id,
+                order_id,
+                owner_id,
+                side,
+                price,
+                amount,
+                lifetime,
+            },
 
             OrderBookEvent::LimitOrderConvertedToMarketOrder {
                 owner_id,
@@ -910,34 +934,50 @@ impl<T: Config> Delegate<T::AccountId, T::AssetId, T::OrderId, T::DEXId> for Pal
                 limit_order_id,
             },
 
-            OrderBookEvent::LimitOrderCanceled { order_id, owner_id } => {
-                Event::<T>::LimitOrderCanceled {
-                    order_book_id,
-                    order_id,
-                    owner_id,
-                }
-            }
+            OrderBookEvent::LimitOrderCanceled {
+                order_id,
+                owner_id,
+                reason,
+            } => Event::<T>::LimitOrderCanceled {
+                order_book_id,
+                order_id,
+                owner_id,
+                reason,
+            },
 
             OrderBookEvent::LimitOrderExecuted {
                 order_id,
                 owner_id,
                 side,
+                price,
                 amount,
             } => Event::<T>::LimitOrderExecuted {
                 order_book_id,
                 order_id,
                 owner_id,
                 side,
+                price,
                 amount,
             },
 
-            OrderBookEvent::LimitOrderUpdated { order_id, owner_id } => {
-                Event::<T>::LimitOrderUpdated {
+            OrderBookEvent::LimitOrderFilled { order_id, owner_id } => {
+                Event::<T>::LimitOrderFilled {
                     order_book_id,
                     order_id,
                     owner_id,
                 }
             }
+
+            OrderBookEvent::LimitOrderUpdated {
+                order_id,
+                owner_id,
+                new_amount,
+            } => Event::<T>::LimitOrderUpdated {
+                order_book_id,
+                order_id,
+                owner_id,
+                new_amount,
+            },
 
             OrderBookEvent::MarketOrderExecuted {
                 owner_id,
