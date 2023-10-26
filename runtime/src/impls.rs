@@ -30,7 +30,7 @@
 
 use core::marker::PhantomData;
 
-use bridge_types::{GenericAccount, GenericBalance};
+use bridge_types::{GenericAccount, GenericAssetId, GenericBalance};
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
@@ -332,6 +332,13 @@ pub struct LiberlandAccountIdConverter;
 impl Convert<crate::AccountId, GenericAccount> for LiberlandAccountIdConverter {
     fn convert(a: crate::AccountId) -> GenericAccount {
         GenericAccount::Sora(a)
+    }
+}
+
+pub struct LiberlandAssetIdConverter;
+impl Convert<crate::AssetId, GenericAssetId> for LiberlandAssetIdConverter {
+    fn convert(a: crate::AssetId) -> GenericAssetId {
+        GenericAssetId::Sora(a.into())
     }
 }
 
