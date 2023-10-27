@@ -241,9 +241,9 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, DEXId, OrderId, Error> {
     ) -> Result<(), Error>;
 }
 
-pub trait Delegate<AccountId, AssetId, OrderId, DEXId> {
+pub trait Delegate<AccountId, AssetId, OrderId, DEXId, Moment> {
     fn emit_event(
         order_book_id: OrderBookId<AssetId, DEXId>,
-        event: OrderBookEvent<AccountId, OrderId>,
+        event: OrderBookEvent<AccountId, OrderId, Moment>,
     );
 }

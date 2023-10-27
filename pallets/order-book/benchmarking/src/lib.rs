@@ -149,7 +149,8 @@ mod benchmarks_inner {
     use order_book_imported::test_utils::fill_tools::FillSettings;
     use order_book_imported::test_utils::{accounts, create_and_fill_order_book};
     use order_book_imported::{
-        Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
+        CancelReason, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId,
+        OrderBookStatus,
     };
     use periphery::presets::*;
 
@@ -431,10 +432,11 @@ mod benchmarks_inner {
         }
         verify {
             assert_last_event::<T>(
-                Event::<T>::LimitOrderExpired {
+                Event::<T>::LimitOrderCanceled {
                     order_book_id,
                     order_id,
                     owner_id: order.owner.clone(),
+                    reason: CancelReason::Expired,
                 }
                 .into(),
             );
