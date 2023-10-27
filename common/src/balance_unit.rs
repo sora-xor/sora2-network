@@ -34,7 +34,6 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use core::cmp::Ordering;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use fixnum::ops::RoundMode;
-use fixnum::typenum::Unsigned;
 use fixnum::ArithmeticError;
 use num_traits::Unsigned;
 use sp_arithmetic::traits::IntegerSquareRoot;
@@ -184,7 +183,8 @@ impl BalanceUnit {
 
     pub fn into_indivisible(mut self, mode: RoundMode) -> Self {
         if self.is_divisible {
-            let div_coefficient: u128 = 10u128.pow(FixedPrecision::U32.into());
+            let div_coefficient: u128 =
+                10u128.pow(<FixedPrecision as fixnum::typenum::Unsigned>::U32.into());
             self.inner = match mode {
                 RoundMode::Ceil => self.inner.div_ceil(div_coefficient),
                 RoundMode::Floor => self.inner.div_floor(div_coefficient),
@@ -196,7 +196,8 @@ impl BalanceUnit {
 
     pub fn into_divisible(mut self) -> Option<Self> {
         if !self.is_divisible {
-            let div_coefficient: u128 = 10u128.pow(FixedPrecision::U32.into());
+            let div_coefficient: u128 =
+                10u128.pow(<FixedPrecision as fixnum::typenum::Unsigned>::U32.into());
             self.inner = self.inner.checked_mul(div_coefficient)?;
             self.is_divisible = true;
         }
@@ -1255,7 +1256,7 @@ mod tests {
 
     #[test]
     fn check_into_divisible() {
-        let coefficient = 10u128.pow(FixedPrecision::U32);
+        let coefficient = 10u128.pow(<FixedPrecision as fixnum::typenum::Unsigned>::U32.into());
 
         for n in [0, 1, 100, u128::MAX / coefficient] {
             assert_eq!(
@@ -1280,7 +1281,7 @@ mod tests {
 
     #[test]
     fn check_into_indivisible() {
-        let coefficient = 10u128.pow(FixedPrecision::U32);
+        let coefficient = 10u128.pow(<FixedPrecision as fixnum::typenum::Unsigned>::U32.into());
 
         for n in [
             0,

@@ -1,12 +1,9 @@
 pub mod source_initializers {
-    use crate::{Config, Error, OrderBookFillSettings};
-    use assets::AssetIdOf;
+    use crate::{Config, OrderBookFillSettings};
     use codec::{Decode, Encode};
     use common::prelude::BalanceUnit;
-    use common::{balance, AssetInfoProvider, DEXInfo, DexIdOf, DexInfoProvider, TradingPair, XOR};
-    use frame_support::dispatch::{DispatchResult, RawOrigin};
+    use frame_support::dispatch::DispatchResult;
     use order_book::{MomentOf, OrderBookId};
-    use sp_runtime::traits::CheckedMul;
     use sp_std::fmt::Debug;
     use sp_std::vec::Vec;
 
