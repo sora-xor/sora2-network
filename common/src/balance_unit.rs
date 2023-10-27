@@ -195,8 +195,8 @@ impl BalanceUnit {
 
     pub fn into_divisible(mut self) -> Option<Self> {
         if !self.is_divisible {
-            let multiplied = Fixed::try_from(self.inner)?;
-            self.inner = multiplied.into_bits().into();
+            let div_coefficient: u128 = 10u128.pow(FixedPrecision::U32.into());
+            self.inner = self.inner.checked_mul(div_coefficient)?;
             self.is_divisible = true;
         }
         Some(self)
