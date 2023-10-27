@@ -18,7 +18,7 @@ fi
 # If TAG_NAME is defined, build for a specific tag
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
-        featureList='private-net runtime-benchmarks'
+        featureList='private-net runtime-benchmarks wip'
         sudoCheckStatus=0
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
         featureList='private-net include-real-files ready-to-test'
