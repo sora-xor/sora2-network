@@ -69,9 +69,8 @@ pub mod source_initializers {
     use frame_support::ensure;
     use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};
-    use sp_runtime::traits::CheckedMul;
+    use sp_runtime::traits::{CheckedMul, CheckedSub};
     use sp_std::vec::Vec;
-    use std::ops::{Mul, Sub};
 
     pub fn xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
@@ -104,14 +103,14 @@ pub mod source_initializers {
             fn subtract_slippage(
                 value: BalanceUnit,
                 slippage_tolerance: FixedWrapper,
-            ) -> BalanceUnit {
-                let slippage = BalanceUnit::divisible(slippage_tolerance.try_into_balance()?);
+            ) -> Option<BalanceUnit> {
+                let slippage = BalanceUnit::divisible(slippage_tolerance.try_into_balance().ok()?);
                 let slippage = if !value.is_divisible() {
                     slippage.into_divisible()?
                 } else {
                     slippage
                 };
-                value.sub(value.mul(slippage))
+                value.checked_sub(&value.checked_mul(&slippage)?)
             }
 
             let value_a: BalanceUnit = if asset_a == XOR.into() {
@@ -122,8 +121,10 @@ pub mod source_initializers {
             let value_b = value_a
                 .checked_mul(&price)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            let value_a_min = subtract_slippage(value_a, slippage_tolerance.clone());
-            let value_b_min = subtract_slippage(value_b, slippage_tolerance);
+            let value_a_min = subtract_slippage(value_a, slippage_tolerance.clone())
+                .ok_or(Error::<T>::ArithmeticError)?;
+            let value_b_min = subtract_slippage(value_b, slippage_tolerance)
+                .ok_or(Error::<T>::ArithmeticError)?;
             pool_xyk::Pallet::<T>::deposit_liquidity(
                 RawOrigin::Signed(caller.clone()).into(),
                 dex_id,
