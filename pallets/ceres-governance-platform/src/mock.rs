@@ -101,8 +101,12 @@ parameter_types! {
 
 impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type CeresAssetId = CeresAssetId;
+
     type WeightInfo = ();
+    type StringLimit = StringLimit;
+    type OptionsLimit = OptionsLimit;
+    type TitleLimit = TitleLimit;
+    type DescriptionLimit = DescriptionLimit;
 }
 
 parameter_types! {
@@ -245,6 +249,10 @@ parameter_types! {
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
+    pub const StringLimit: u32 = 64;
+    pub const OptionsLimit: u32 = 6;
+    pub const TitleLimit: u32 = 128;
+    pub const DescriptionLimit: u32 = 4096;
 }
 
 impl pallet_balances::Config for Runtime {

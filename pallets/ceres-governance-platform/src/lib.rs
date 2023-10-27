@@ -421,6 +421,7 @@ pub mod pallet {
         }
     }
 
+    /*
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_runtime_upgrade() -> Weight {
@@ -433,6 +434,7 @@ pub mod pallet {
             }
         }
     }
+    */
 
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet

@@ -1,3 +1,4 @@
+/*
 use crate::{Config, PollData, PollInfo, Timestamp};
 use common::convert_block_number_to_timestamp;
 use frame_support::dispatch::Weight;
@@ -44,3 +45,4 @@ pub fn migrate_poll_data<T: Config>() -> Weight {
 
     T::DbWeight::get().reads_writes(weight, weight)
 }
+*/

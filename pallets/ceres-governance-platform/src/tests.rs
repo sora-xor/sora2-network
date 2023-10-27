@@ -1,28 +1,45 @@
 use crate::mock::*;
 use crate::{pallet, Error};
-use common::{balance, generate_storage_instance, AssetInfoProvider, CERES_ASSET_ID};
+use codec::Encode;
+use common::{
+    balance, generate_storage_instance, AssetInfoProvider, BoundedString, CERES_ASSET_ID,
+};
 use frame_support::pallet_prelude::StorageMap;
 use frame_support::storage::types::ValueQuery;
 use frame_support::traits::Hooks;
+use frame_support::BoundedVec;
 use frame_support::PalletId;
 use frame_support::{assert_err, assert_ok, Identity};
+use sp_core::H256;
+use sp_io::hashing::blake2_256;
 use sp_runtime::traits::AccountIdConversion;
 
 #[test]
-fn create_poll_invalid_number_of_option() {
+fn create_poll_unauthorized_account() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 10;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_err!(
             CeresGovernancePlatform::create_poll(
                 RuntimeOrigin::signed(ALICE),
-                poll_id,
-                1,
-                current_timestamp,
-                current_timestamp + 1
+                poll_asset,
+                poll_start_timestamp,
+                poll_end_timestamp,
+                title.try_into().unwrap(),
+                description.try_into().unwrap(),
+                options
             ),
-            Error::<Runtime>::InvalidNumberOfOption
+            Error::<Runtime>::Unauthorized
         );
     });
 }
@@ -31,18 +48,29 @@ fn create_poll_invalid_number_of_option() {
 fn create_poll_invalid_start_timestamp() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
 
-        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 1);
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(1);
+
+        let poll_asset = CERES_ASSET_ID;
+        let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
 
         assert_err!(
             CeresGovernancePlatform::create_poll(
-                RuntimeOrigin::signed(ALICE),
-                poll_id,
-                3,
-                current_timestamp,
-                current_timestamp + 10
+                RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+                CERES_ASSET_ID,
+                poll_start_timestamp,
+                poll_end_timestamp,
+                title.try_into().unwrap(),
+                description.try_into().unwrap(),
+                options
             ),
             Error::<Runtime>::InvalidStartTimestamp
         );
@@ -53,17 +81,123 @@ fn create_poll_invalid_start_timestamp() {
 fn create_poll_invalid_end_timestamp() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(1);
+
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_err!(
             CeresGovernancePlatform::create_poll(
-                RuntimeOrigin::signed(ALICE),
-                poll_id,
-                2,
-                current_timestamp + 1,
-                current_timestamp
+                RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+                CERES_ASSET_ID,
+                poll_start_timestamp,
+                poll_end_timestamp,
+                title.try_into().unwrap(),
+                description.try_into().unwrap(),
+                options
             ),
             Error::<Runtime>::InvalidEndTimestamp
+        );
+    });
+}
+
+#[test]
+fn create_poll_invalid_voting_options() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 10;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+
+        assert_err!(
+            CeresGovernancePlatform::create_poll(
+                RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+                CERES_ASSET_ID,
+                poll_start_timestamp,
+                poll_end_timestamp,
+                title.try_into().unwrap(),
+                description.try_into().unwrap(),
+                options
+            ),
+            Error::<Runtime>::InvalidVotingOptions
+        );
+    });
+}
+
+#[test]
+fn create_poll_too_many_voting_options() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 10;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+        options.try_push("Option 4".try_into().unwrap()).unwrap();
+        options.try_push("Option 5".try_into().unwrap()).unwrap();
+        options.try_push("Option 6".try_into().unwrap()).unwrap();
+
+        assert_err!(
+            CeresGovernancePlatform::create_poll(
+                RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+                CERES_ASSET_ID,
+                poll_start_timestamp,
+                poll_end_timestamp,
+                title.try_into().unwrap(),
+                description.try_into().unwrap(),
+                options
+            ),
+            Error::<Runtime>::TooManyVotingOptions
+        );
+    });
+}
+
+#[test]
+fn create_poll_duplicate_options() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 10;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
+        assert_err!(
+            CeresGovernancePlatform::create_poll(
+                RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+                CERES_ASSET_ID,
+                poll_start_timestamp,
+                poll_end_timestamp,
+                title.try_into().unwrap(),
+                description.try_into().unwrap(),
+                options
+            ),
+            Error::<Runtime>::DuplicateOptions
         );
     });
 }
@@ -72,63 +206,73 @@ fn create_poll_invalid_end_timestamp() {
 fn create_poll_ok() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let number_of_option = 2;
+        let poll_asset = CERES_ASSET_ID;
         let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
-        let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 1;
+        let poll_end_timestamp = poll_start_timestamp + 10;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            number_of_option,
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
             poll_start_timestamp,
-            poll_end_timestamp
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
         ));
-
-        // Check PollData map
-        let poll_info = pallet::PollData::<Runtime>::get(&poll_id);
-        assert_eq!(poll_info.number_of_options, number_of_option);
-        assert_eq!(poll_info.poll_start_timestamp, poll_start_timestamp);
-        assert_eq!(poll_info.poll_end_timestamp, poll_end_timestamp);
-    })
-}
-
-#[test]
-fn create_poll_poll_id_already_exists() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let number_of_option = 2;
-        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
-        let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 1;
-        assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            number_of_option,
-            poll_start_timestamp,
-            poll_end_timestamp
-        ));
-
-        assert_err!(
-            CeresGovernancePlatform::create_poll(
-                RuntimeOrigin::signed(ALICE),
-                poll_id,
-                number_of_option,
-                poll_start_timestamp,
-                poll_end_timestamp
-            ),
-            Error::<Runtime>::PollIdAlreadyExists
-        );
-    })
+    });
 }
 
 #[test]
 fn vote_invalid_number_of_votes() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
+        let user = ALICE;
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Voting option";
+        let number_of_votes = balance!(0);
+
         assert_err!(
-            CeresGovernancePlatform::vote(RuntimeOrigin::signed(ALICE), poll_id, 2, balance!(0)),
+            CeresGovernancePlatform::vote(
+                RuntimeOrigin::signed(ALICE),
+                poll_id,
+                voting_option.try_into().unwrap(),
+                number_of_votes
+            ),
             Error::<Runtime>::InvalidNumberOfVotes
+        );
+    });
+}
+
+#[test]
+fn vote_poll_does_not_exist() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let user = ALICE;
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Voting option";
+        let number_of_votes = balance!(100);
+
+        assert_err!(
+            CeresGovernancePlatform::vote(
+                RuntimeOrigin::signed(ALICE),
+                poll_id,
+                voting_option.try_into().unwrap(),
+                number_of_votes
+            ),
+            Error::<Runtime>::PollDoesNotExist
         );
     });
 }
@@ -137,17 +281,42 @@ fn vote_invalid_number_of_votes() {
 fn vote_poll_is_not_started() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 10;
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            2,
-            current_timestamp + 2,
-            current_timestamp + 10
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
         ));
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 1";
+        let number_of_votes = balance!(100);
+
         assert_err!(
-            CeresGovernancePlatform::vote(RuntimeOrigin::signed(BOB), poll_id, 2, balance!(10)),
+            CeresGovernancePlatform::vote(
+                RuntimeOrigin::signed(ALICE),
+                poll_id,
+                voting_option.try_into().unwrap(),
+                number_of_votes
+            ),
             Error::<Runtime>::PollIsNotStarted
         );
     });
@@ -157,66 +326,143 @@ fn vote_poll_is_not_started() {
 fn vote_poll_is_finished() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 10;
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            2,
-            current_timestamp + 2,
-            current_timestamp + 5
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
         ));
 
-        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(1000);
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 1";
+        let number_of_votes = balance!(100);
 
         assert_err!(
-            CeresGovernancePlatform::vote(RuntimeOrigin::signed(BOB), poll_id, 2, balance!(10)),
+            CeresGovernancePlatform::vote(
+                RuntimeOrigin::signed(ALICE),
+                poll_id,
+                voting_option.try_into().unwrap(),
+                number_of_votes
+            ),
             Error::<Runtime>::PollIsFinished
         );
     });
 }
 
 #[test]
-fn vote_invalid_number_of_option() {
+fn vote_invalid_option() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            3,
-            current_timestamp,
-            current_timestamp + 10
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
         ));
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 5";
+        let number_of_votes = balance!(100);
+
         assert_err!(
-            CeresGovernancePlatform::vote(RuntimeOrigin::signed(ALICE), poll_id, 4, balance!(50)),
-            Error::<Runtime>::InvalidNumberOfOption
+            CeresGovernancePlatform::vote(
+                RuntimeOrigin::signed(ALICE),
+                poll_id,
+                voting_option.try_into().unwrap(),
+                number_of_votes
+            ),
+            Error::<Runtime>::InvalidOption
         );
     });
 }
 
 #[test]
-fn vote_vote_denied() {
+fn vote_denied() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            3,
-            current_timestamp,
-            current_timestamp + 10
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
         ));
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let first_voting_option = "Option 1";
+        let number_of_votes = balance!(100);
+
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            3,
-            balance!(50)
+            poll_id,
+            first_voting_option.try_into().unwrap(),
+            number_of_votes
         ));
+
+        let second_voting_option = "Option 2";
+
         assert_err!(
-            CeresGovernancePlatform::vote(RuntimeOrigin::signed(ALICE), poll_id, 2, balance!(50)),
+            CeresGovernancePlatform::vote(
+                RuntimeOrigin::signed(ALICE),
+                poll_id,
+                second_voting_option.try_into().unwrap(),
+                number_of_votes
+            ),
             Error::<Runtime>::VoteDenied
         );
     });
@@ -226,17 +472,42 @@ fn vote_vote_denied() {
 fn vote_not_enough_funds() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            3,
-            current_timestamp,
-            current_timestamp + 10
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
         ));
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 1";
+        let number_of_votes = balance!(5100);
+
         assert_err!(
-            CeresGovernancePlatform::vote(RuntimeOrigin::signed(ALICE), poll_id, 3, balance!(3100)),
+            CeresGovernancePlatform::vote(
+                RuntimeOrigin::signed(ALICE),
+                poll_id,
+                voting_option.try_into().unwrap(),
+                number_of_votes
+            ),
             Error::<Runtime>::NotEnoughFunds
         );
     });
@@ -246,41 +517,108 @@ fn vote_not_enough_funds() {
 fn vote_ok() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let voting_option = 3;
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
-        let number_of_votes = balance!(300);
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            voting_option,
-            current_timestamp,
-            current_timestamp + 10
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
         ));
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 1";
+        let number_of_votes = balance!(100);
+
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            voting_option,
+            poll_id,
+            voting_option.try_into().unwrap(),
+            number_of_votes
+        ));
+    });
+}
+
+#[test]
+fn vote_multiple_times_ok() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
+        assert_ok!(CeresGovernancePlatform::create_poll(
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
+        ));
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 1";
+        let number_of_votes = balance!(100);
+
+        assert_ok!(CeresGovernancePlatform::vote(
+            RuntimeOrigin::signed(ALICE),
+            poll_id,
+            voting_option.try_into().unwrap(),
             number_of_votes
         ));
 
-        // Check Voting map
-        let voting_info = pallet::Voting::<Runtime>::get(&poll_id, ALICE);
-        assert_eq!(voting_info.voting_option, voting_option);
-        assert_eq!(voting_info.number_of_votes, number_of_votes);
-
-        // Check ALICE's balances
-        assert_eq!(
-            Assets::free_balance(&CERES_ASSET_ID, &ALICE).expect("Failed to query free balance."),
-            balance!(2700)
-        );
-
-        // Check pallet's balances
-        let governance = PalletId(*b"ceresgov").into_account_truncating();
-        assert_eq!(
-            Assets::free_balance(&CERES_ASSET_ID, &governance)
-                .expect("Failed to query free balance."),
+        assert_ok!(CeresGovernancePlatform::vote(
+            RuntimeOrigin::signed(ALICE),
+            poll_id,
+            voting_option.try_into().unwrap(),
             number_of_votes
+        ));
+    });
+}
+
+#[test]
+fn withdraw_poll_does_not_exist() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 1";
+        let number_of_votes = balance!(100);
+
+        assert_err!(
+            CeresGovernancePlatform::withdraw(RuntimeOrigin::signed(ALICE), poll_id),
+            Error::<Runtime>::PollDoesNotExist
         );
     });
 }
@@ -289,18 +627,87 @@ fn vote_ok() {
 fn withdraw_poll_is_not_finished() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            2,
-            current_timestamp,
-            current_timestamp + 10
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
         ));
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 1";
+        let number_of_votes = balance!(100);
+
+        assert_ok!(CeresGovernancePlatform::vote(
+            RuntimeOrigin::signed(ALICE),
+            poll_id,
+            voting_option.try_into().unwrap(),
+            number_of_votes
+        ));
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(99);
+
         assert_err!(
-            CeresGovernancePlatform::withdraw(RuntimeOrigin::signed(BOB), poll_id),
+            CeresGovernancePlatform::withdraw(RuntimeOrigin::signed(ALICE), poll_id),
             Error::<Runtime>::PollIsNotFinished
+        );
+    });
+}
+
+#[test]
+fn withdraw_not_voted() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
+        assert_ok!(CeresGovernancePlatform::create_poll(
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
+        ));
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(101);
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+
+        assert_err!(
+            CeresGovernancePlatform::withdraw(RuntimeOrigin::signed(ALICE), poll_id),
+            Error::<Runtime>::NotVoted
         );
     });
 }
@@ -309,29 +716,47 @@ fn withdraw_poll_is_not_finished() {
 fn withdraw_funds_already_withdrawn() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let voting_option = 2;
-        let number_of_votes = balance!(300);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            voting_option,
-            current_timestamp,
-            current_timestamp + 10
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
         ));
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 1";
+        let number_of_votes = balance!(100);
+
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            voting_option,
+            poll_id,
+            voting_option.try_into().unwrap(),
             number_of_votes
         ));
 
-        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(101);
 
         assert_ok!(CeresGovernancePlatform::withdraw(
             RuntimeOrigin::signed(ALICE),
-            poll_id.clone()
+            poll_id
         ));
 
         assert_err!(
@@ -345,100 +770,47 @@ fn withdraw_funds_already_withdrawn() {
 fn withdraw_ok() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let poll_id = Vec::from([1, 2, 3, 4]);
-        let voting_option = 2;
-        let number_of_votes = balance!(300);
-        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_asset = CERES_ASSET_ID;
+        let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let poll_end_timestamp = poll_start_timestamp + 100;
+        let title = "Title";
+        let description = "Description";
+        let mut options = BoundedVec::default();
+
+        options.try_push("Option 1".try_into().unwrap()).unwrap();
+        options.try_push("Option 2".try_into().unwrap()).unwrap();
+        options.try_push("Option 3".try_into().unwrap()).unwrap();
+
         assert_ok!(CeresGovernancePlatform::create_poll(
-            RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            voting_option,
-            current_timestamp,
-            current_timestamp + 10
+            RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
+            CERES_ASSET_ID,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title.try_into().unwrap(),
+            description.try_into().unwrap(),
+            options
         ));
+
+        let user = CeresGovernancePlatform::authority_account();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+        let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+
+        let poll_id = H256::from(encoded);
+        let voting_option = "Option 1";
+        let number_of_votes = balance!(100);
+
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
-            poll_id.clone(),
-            voting_option,
+            poll_id,
+            voting_option.try_into().unwrap(),
             number_of_votes
         ));
 
-        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(101);
 
         assert_ok!(CeresGovernancePlatform::withdraw(
             RuntimeOrigin::signed(ALICE),
-            poll_id.clone()
+            poll_id
         ));
-
-        // Check Voting map
-        let voting_info = pallet::Voting::<Runtime>::get(&poll_id, ALICE);
-        assert_eq!(voting_info.voting_option, voting_option);
-        assert_eq!(voting_info.number_of_votes, number_of_votes);
-        assert!(voting_info.ceres_withdrawn);
-
-        // Check ALICE's balances
-        assert_eq!(
-            Assets::free_balance(&CERES_ASSET_ID, &ALICE).expect("Failed to query free balance."),
-            balance!(3000)
-        );
-
-        // Check pallet's balances
-        let governance = PalletId(*b"ceresgov").into_account_truncating();
-        assert_eq!(
-            Assets::free_balance(&CERES_ASSET_ID, &governance)
-                .expect("Failed to query free balance."),
-            balance!(0)
-        );
-    })
-}
-
-#[test]
-fn governance_storage_migration_works() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        generate_storage_instance!(CeresGovernancePlatform, PollData);
-        type OldPollData = StorageMap<
-            PollDataOldInstance,
-            Identity,
-            Vec<u8>,
-            (u32, BlockNumber, BlockNumber),
-            ValueQuery,
-        >;
-
-        let poll_id_a = Vec::from([1, 2, 3, 4]);
-        let poll_id_b = Vec::from([1, 2, 3, 5]);
-
-        OldPollData::insert(&poll_id_a, (2, 4482112u64, 4496512u64));
-
-        OldPollData::insert(&poll_id_b, (3, 529942780u64, 529942790u64));
-
-        pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000000);
-        run_to_block(5);
-
-        // Storage migration
-        CeresGovernancePlatform::on_runtime_upgrade();
-
-        let poll_a = pallet::PollData::<Runtime>::get(&poll_id_a);
-        assert_eq!(poll_a.poll_start_timestamp, 26902642000);
-        assert_eq!(poll_a.poll_end_timestamp, 26989042000);
-
-        let poll_b = pallet::PollData::<Runtime>::get(&poll_id_b);
-        assert_eq!(poll_b.poll_start_timestamp, 3179666650000);
-        assert_eq!(poll_b.poll_end_timestamp, 3179666710000);
-
-        // Storage version should be V2 so no changes made
-        pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000000);
-        run_to_block(10);
-
-        // Storage migration
-        CeresGovernancePlatform::on_runtime_upgrade();
-
-        let poll_a = pallet::PollData::<Runtime>::get(&poll_id_a);
-        assert_eq!(poll_a.poll_start_timestamp, 26902642000);
-        assert_eq!(poll_a.poll_end_timestamp, 26989042000);
-
-        let poll_b = pallet::PollData::<Runtime>::get(&poll_id_b);
-        assert_eq!(poll_b.poll_start_timestamp, 3179666650000);
-        assert_eq!(poll_b.poll_end_timestamp, 3179666710000);
     });
 }
