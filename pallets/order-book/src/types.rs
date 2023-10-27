@@ -71,7 +71,7 @@ pub enum OrderBookStatus {
     Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
 )]
 pub enum CancelReason {
-    /// User cancels the limit order by themselves
+    /// User cancels the limit order by themself
     Manual,
 
     /// A lifetime of the order has expired and it is cancelled by the system
