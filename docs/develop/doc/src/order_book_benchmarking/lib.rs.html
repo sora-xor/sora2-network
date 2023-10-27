@@ -616,6 +616,8 @@
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
 <a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -767,7 +769,8 @@
     <span class="kw">use </span>order_book_imported::test_utils::fill_tools::FillSettings;
     <span class="kw">use </span>order_book_imported::test_utils::{accounts, create_and_fill_order_book};
     <span class="kw">use </span>order_book_imported::{
-        Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
+        CancelReason, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId,
+        OrderBookStatus,
     };
     <span class="kw">use </span>periphery::presets::<span class="kw-2">*</span>;
 
@@ -1049,10 +1052,11 @@
         }
         verify {
             assert_last_event::&lt;T&gt;(
-                Event::&lt;T&gt;::LimitOrderExpired {
+                Event::&lt;T&gt;::LimitOrderCanceled {
                     order_book_id,
                     order_id,
                     owner_id: order.owner.clone(),
+                    reason: CancelReason::Expired,
                 }
                 .into(),
             );

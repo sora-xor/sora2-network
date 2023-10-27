@@ -1194,6 +1194,22 @@
 <a href="#1179" id="1179">1179</a>
 <a href="#1180" id="1180">1180</a>
 <a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
+<a href="#1183" id="1183">1183</a>
+<a href="#1184" id="1184">1184</a>
+<a href="#1185" id="1185">1185</a>
+<a href="#1186" id="1186">1186</a>
+<a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1225,9 +1241,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use crate</span>::{
-    DataLayer, DealInfo, Delegate, Error, ExpirationScheduler, LimitOrder, MarketChange,
-    MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId, OrderBookStatus, OrderPrice,
-    OrderVolume, Payment,
+    CancelReason, DataLayer, DealInfo, Delegate, Error, ExpirationScheduler, LimitOrder,
+    MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId,
+    OrderBookStatus, OrderPrice, OrderVolume, Payment,
 };
 <span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
@@ -2010,6 +2026,7 @@
                 OrderBookEvent::LimitOrderCanceled {
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
+                    reason: CancelReason::Manual,
                 },
             );
         }
@@ -2029,9 +2046,18 @@
                 <span class="self">self</span>.order_book_id,
                 OrderBookEvent::LimitOrderExecuted {
                     order_id: limit_order.id,
-                    owner_id: limit_order.owner,
+                    owner_id: limit_order.owner.clone(),
                     side: limit_order.side,
+                    price: limit_order.price,
                     amount: OrderAmount::Base(limit_order.amount),
+                },
+            );
+
+            T::Delegate::emit_event(
+                <span class="self">self</span>.order_book_id,
+                OrderBookEvent::LimitOrderFilled {
+                    order_id: limit_order.id,
+                    owner_id: limit_order.owner,
                 },
             );
         }
@@ -2049,6 +2075,7 @@
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
                     side: limit_order.side,
+                    price: limit_order.price,
                     amount: executed_amount,
                 },
             );
@@ -2066,20 +2093,25 @@
                 OrderBookEvent::LimitOrderUpdated {
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
+                    new_amount: limit_order.amount,
                 },
             );
         }
 
         <span class="kw">for </span>limit_order <span class="kw">in </span>market_change.to_place.into_values() {
-            <span class="kw">let </span>order_id = limit_order.id;
-            <span class="kw">let </span>owner_id = limit_order.owner.clone();
-            <span class="kw">let </span>expires_at = limit_order.expires_at;
-            data.insert_limit_order(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, limit_order)<span class="question-mark">?</span>;
-            T::Scheduler::schedule(expires_at, <span class="self">self</span>.order_book_id, order_id)<span class="question-mark">?</span>;
+            data.insert_limit_order(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, limit_order.clone())<span class="question-mark">?</span>;
+            T::Scheduler::schedule(limit_order.expires_at, <span class="self">self</span>.order_book_id, limit_order.id)<span class="question-mark">?</span>;
 
             T::Delegate::emit_event(
                 <span class="self">self</span>.order_book_id,
-                OrderBookEvent::LimitOrderPlaced { order_id, owner_id },
+                OrderBookEvent::LimitOrderPlaced {
+                    order_id: limit_order.id,
+                    owner_id: limit_order.owner,
+                    side: limit_order.side,
+                    price: limit_order.price,
+                    amount: limit_order.amount,
+                    lifetime: limit_order.lifespan,
+                },
             );
         }
 

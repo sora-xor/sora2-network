@@ -505,10 +505,10 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 }
 
-<span class="kw">pub trait </span>Delegate&lt;AccountId, AssetId, OrderId, DEXId&gt; {
+<span class="kw">pub trait </span>Delegate&lt;AccountId, AssetId, OrderId, DEXId, Moment&gt; {
     <span class="kw">fn </span>emit_event(
         order_book_id: OrderBookId&lt;AssetId, DEXId&gt;,
-        event: OrderBookEvent&lt;AccountId, OrderId&gt;,
+        event: OrderBookEvent&lt;AccountId, OrderId, Moment&gt;,
     );
 }
 </code></pre></div>
