@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::prelude::FixedWrapper;
-use crate::{Balance, Fixed, FixedPrecision};
+use crate::{Balance, FixedPrecision};
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::cmp::Ordering;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};

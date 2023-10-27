@@ -32,10 +32,9 @@
 //! but they make modify-run iterations during development much quicker
 
 use assets::AssetIdOf;
-use common::prelude::err_pays_no;
 use common::{
     balance, AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
-    DexIdOf, PredefinedAssetId, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
+    DexIdOf, PredefinedAssetId, VAL, XOR,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::{assert_err, assert_ok};

@@ -17,6 +17,7 @@ pub mod source_initializers {
         pub price: BalanceUnit,
     }
 
+    #[allow(unused)]
     pub fn xst() {}
 
     /// Create multiple order books with default parameters if do not exist and
