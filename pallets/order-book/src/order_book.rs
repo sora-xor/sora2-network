@@ -29,9 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    DataLayer, DealInfo, Delegate, Error, ExpirationScheduler, LimitOrder, MarketChange,
-    MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId, OrderBookStatus, OrderPrice,
-    OrderVolume, Payment,
+    CancelReason, DataLayer, DealInfo, Delegate, Error, ExpirationScheduler, LimitOrder,
+    MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId,
+    OrderBookStatus, OrderPrice, OrderVolume, Payment,
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -814,6 +814,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 OrderBookEvent::LimitOrderCanceled {
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
+                    reason: CancelReason::Manual,
                 },
             );
         }
@@ -833,9 +834,18 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 self.order_book_id,
                 OrderBookEvent::LimitOrderExecuted {
                     order_id: limit_order.id,
-                    owner_id: limit_order.owner,
+                    owner_id: limit_order.owner.clone(),
                     side: limit_order.side,
+                    price: limit_order.price,
                     amount: OrderAmount::Base(limit_order.amount),
+                },
+            );
+
+            T::Delegate::emit_event(
+                self.order_book_id,
+                OrderBookEvent::LimitOrderFilled {
+                    order_id: limit_order.id,
+                    owner_id: limit_order.owner,
                 },
             );
         }
@@ -853,6 +863,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
                     side: limit_order.side,
+                    price: limit_order.price,
                     amount: executed_amount,
                 },
             );
@@ -870,20 +881,25 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 OrderBookEvent::LimitOrderUpdated {
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
+                    new_amount: limit_order.amount,
                 },
             );
         }
 
         for limit_order in market_change.to_place.into_values() {
-            let order_id = limit_order.id;
-            let owner_id = limit_order.owner.clone();
-            let expires_at = limit_order.expires_at;
-            data.insert_limit_order(&self.order_book_id, limit_order)?;
-            T::Scheduler::schedule(expires_at, self.order_book_id, order_id)?;
+            data.insert_limit_order(&self.order_book_id, limit_order.clone())?;
+            T::Scheduler::schedule(limit_order.expires_at, self.order_book_id, limit_order.id)?;
 
             T::Delegate::emit_event(
                 self.order_book_id,
-                OrderBookEvent::LimitOrderPlaced { order_id, owner_id },
+                OrderBookEvent::LimitOrderPlaced {
+                    order_id: limit_order.id,
+                    owner_id: limit_order.owner,
+                    side: limit_order.side,
+                    price: limit_order.price,
+                    amount: limit_order.amount,
+                    lifetime: limit_order.lifespan,
+                },
             );
         }
 
