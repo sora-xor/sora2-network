@@ -275,8 +275,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `1237740`
 		//  Estimated: `13901187`
 		// Minimum execution time: 163_717_000_000 picoseconds.
-		// TODO: benchmark properly, value was set manually
-		Weight::from_parts(137_612_000_000, 13901187)
+		Weight::from_parts(167_612_000_000, 13901187)
 			.saturating_add(T::DbWeight::get().reads(4028_u64))
 			.saturating_add(T::DbWeight::get().writes(4025_u64))
 	}
@@ -291,8 +290,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `35829`
 		//  Estimated: `78393`
 		// Minimum execution time: 421_000_000 picoseconds.
-		// TODO: benchmark properly, value was set manually
-		Weight::from_parts(330_000_000, 78393)
+		Weight::from_parts(430_000_000, 78393)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 	}
 	/// Storage: DEXManager DEXInfos (r:1 w:0)
@@ -320,8 +318,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `5123`
 		//  Estimated: `154495`
 		// Minimum execution time: 124_000_000 picoseconds.
-		// TODO: benchmark properly, value was set manually
-		Weight::from_parts(50_000_000, 154495)
+		Weight::from_parts(125_000_000, 154495)
 			.saturating_add(T::DbWeight::get().reads(13_u64))
 			.saturating_add(T::DbWeight::get().writes(10_u64))
 	}
