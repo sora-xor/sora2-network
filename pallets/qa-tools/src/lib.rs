@@ -53,7 +53,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use order_book::{MomentOf, OrderBookId};
-    pub use pallet_tools::order_book::OrderBookFillSettings;
+    pub use pallet_tools::order_book::settings;
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -200,7 +200,7 @@ pub mod pallet {
             asks_owner: T::AccountId,
             fill_settings: Vec<(
                 OrderBookId<T::AssetId, T::DEXId>,
-                OrderBookFillSettings<MomentOf<T>>,
+                settings::OrderBookFill<MomentOf<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {
             // error messages for unsigned calls are non-informative

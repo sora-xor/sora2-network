@@ -1,5 +1,5 @@
 pub mod source_initializers {
-    use crate::{Config, OrderBookFillSettings};
+    use crate::{settings, Config};
     use codec::{Decode, Encode};
     use common::prelude::BalanceUnit;
     use frame_support::dispatch::DispatchResult;
@@ -39,7 +39,7 @@ pub mod source_initializers {
         asks_owner: T::AccountId,
         fill_settings: Vec<(
             OrderBookId<T::AssetId, T::DEXId>,
-            OrderBookFillSettings<MomentOf<T>>,
+            settings::OrderBookFill<MomentOf<T>>,
         )>,
     ) -> DispatchResult {
         let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();

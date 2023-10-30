@@ -10,15 +10,43 @@ use order_book::{MomentOf, OrderBook, OrderBookId};
 use order_book::{OrderPrice, OrderVolume};
 use sp_std::prelude::*;
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct OrderBookFillSettings<Moment> {
-    /// Best (highest) price for placed buy orders
-    pub best_bid_price: OrderPrice,
-    /// Best (lowest) price for placed sell orders
-    pub best_ask_price: OrderPrice,
-    /// Lifespan of inserted orders, max by default
-    pub lifespan: Option<Moment>,
+pub mod settings {
+    use codec::{Decode, Encode};
+    use common::Balance;
+    use order_book::OrderAmount;
+
+    /// Parameters for filling one order book side
+    #[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
+    #[cfg_attr(feature = "std", derive(Debug))]
+    pub struct SideFill {
+        /// highest price for bids; lowest for asks
+        pub best_price: Balance,
+        /// lowest price for bids; highest for asks
+        pub worst_price: Balance,
+        pub price_step: Balance,
+        pub orders_per_price: u32,
+        /// Default: `min_lot_size..=max_lot_size`
+        pub amount: Option<RandomAmount>,
+    }
+
+    /// Parameters for orders amount generation
+    #[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
+    #[cfg_attr(feature = "std", derive(Debug))]
+    pub struct RandomAmount {
+        pub max_amount: OrderAmount,
+        pub min_amount: OrderAmount,
+    }
+
+    #[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
+    #[cfg_attr(feature = "std", derive(Debug))]
+    pub struct OrderBookFill<Moment> {
+        /// Best price = highest, worst = lowest.
+        pub bids: SideFill,
+        /// Best price = lowest, worst = highest.
+        pub asks: SideFill,
+        /// Lifespan of inserted orders, max by default
+        pub lifespan: Option<Moment>,
+    }
 }
 
 /// Does not create an order book if it already exists
@@ -70,7 +98,7 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     asks_owner: T::AccountId,
     fill_settings: Vec<(
         OrderBookId<T::AssetId, T::DEXId>,
-        OrderBookFillSettings<MomentOf<T>>,
+        settings::OrderBookFill<MomentOf<T>>,
     )>,
 ) -> Result<(), DispatchError> {
     let now = <T as order_book::Config>::Time::now();
@@ -143,7 +171,7 @@ fn fill_order_book<T: Config>(
     bids_owner: T::AccountId,
     buy_orders_steps: impl Iterator<Item = (u128, OrderVolume)>,
     sell_orders_steps: impl Iterator<Item = (u128, OrderVolume)>,
-    settings: OrderBookFillSettings<MomentOf<T>>,
+    settings: settings::OrderBookFill<MomentOf<T>>,
     now: MomentOf<T>,
 ) -> Result<(), DispatchError> {
     let current_block = frame_system::Pallet::<T>::block_number();
@@ -157,8 +185,9 @@ fn fill_order_book<T: Config>(
     let buy_orders: Vec<_> = buy_orders_steps
         .map(|(price_steps, base)| {
             (
-                settings.best_bid_price
-                    - OrderPrice::divisible(price_steps * (*order_book.tick_size.balance())),
+                OrderPrice::divisible(
+                    settings.bids.best_price - price_steps * (*order_book.tick_size.balance()),
+                ),
                 order_book.align_amount(base + order_book.step_lot_size),
             )
         })
@@ -166,8 +195,9 @@ fn fill_order_book<T: Config>(
     let sell_orders: Vec<_> = sell_orders_steps
         .map(|(price_steps, base)| {
             (
-                settings.best_ask_price
-                    + OrderPrice::divisible(price_steps * (*order_book.tick_size.balance())),
+                OrderPrice::divisible(
+                    settings.asks.best_price + price_steps * (*order_book.tick_size.balance()),
+                ),
                 order_book.align_amount(base + order_book.step_lot_size),
             )
         })

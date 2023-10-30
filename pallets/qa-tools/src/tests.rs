@@ -39,7 +39,7 @@ use common::{
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
-use framenode_runtime::qa_tools::{self, OrderBookFillSettings, WhitelistedCallers};
+use framenode_runtime::qa_tools::{self, settings, WhitelistedCallers};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::OrderBookId;
 use sp_runtime::traits::BadOrigin;
@@ -80,9 +80,21 @@ fn should_create_and_fill_orderbook() {
                 alice(),
                 vec![(
                     order_book_id,
-                    OrderBookFillSettings {
-                        best_bid_price: best_bid_price.into(),
-                        best_ask_price: best_ask_price.into(),
+                    settings::OrderBookFill {
+                        bids: settings::SideFill {
+                            best_price: best_bid_price.into(),
+                            worst_price: best_bid_price.into(),
+                            price_step: 0,
+                            orders_per_price: 1,
+                            amount: None
+                        },
+                        asks: settings::SideFill {
+                            best_price: best_ask_price.into(),
+                            worst_price: best_ask_price.into(),
+                            price_step: 0,
+                            orders_per_price: 1,
+                            amount: None
+                        },
                         lifespan: None,
                     }
                 )]
