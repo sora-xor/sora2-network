@@ -81,8 +81,8 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
     use pallet_timestamp as timestamp;
-    use sp_io::hashing::blake2_256;
     use sp_core::H256;
+    use sp_io::hashing::blake2_256;
     use sp_std::collections::btree_set::BTreeSet;
 
     const PALLET_ID: PalletId = PalletId(*b"ceresgov");
