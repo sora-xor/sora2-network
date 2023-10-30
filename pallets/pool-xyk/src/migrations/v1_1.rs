@@ -20,7 +20,7 @@ pub fn migrate<T: Config>() -> Weight {
     let mut acc_asset_currs = Vec::new();
     Properties::<T>::translate::<(T::AccountId, T::AccountId, T::AssetId), _>(
         |_ba, _ta, (reserves_acc, fee_acc, marker_asset)| {
-            let currency: <T as orml_tokens::Config>::CurrencyId = marker_asset.clone().into();
+            let currency: <T as orml_tokens::Config>::CurrencyId = marker_asset.into();
             acc_asset_currs.push((reserves_acc.clone(), marker_asset, currency));
             Some((reserves_acc, fee_acc))
         },
@@ -42,7 +42,7 @@ pub fn migrate<T: Config>() -> Weight {
                 .find(|(_, _, probe_currency)| probe_currency == &currency)
             {
                 let balance: u128 = data.free.unique_saturated_into();
-                PoolProviders::<T>::insert(&pool_acc, account, balance);
+                PoolProviders::<T>::insert(pool_acc, account, balance);
                 None
             } else {
                 Some(data)
@@ -82,40 +82,40 @@ mod tests {
     #[test]
     fn test() {
         ExtBuilder::default().build().execute_with(|| {
-            let asset1 = AssetId::from_bytes(
-                hex!("0200000700000000000000000000000000000000000000000000000000000000").into(),
-            );
-            let asset2 = AssetId::from_bytes(
-                hex!("0200010700000000000000000000000000000000000000000000000000000000").into(),
-            );
-            let asset3 = AssetId::from_bytes(
-                hex!("0200020700000000000000000000000000000000000000000000000000000000").into(),
-            );
-            let asset4 = AssetId::from_bytes(
-                hex!("0200030700000000000000000000000000000000000000000000000000000000").into(),
-            );
-            let asset5 = AssetId::from_bytes(
-                hex!("0200040700000000000000000000000000000000000000000000000000000000").into(),
-            );
-            let asset6 = AssetId::from_bytes(
-                hex!("0200050700000000000000000000000000000000000000000000000000000000").into(),
-            );
+            let asset1 = AssetId::from_bytes(hex!(
+                "0200000700000000000000000000000000000000000000000000000000000000"
+            ));
+            let asset2 = AssetId::from_bytes(hex!(
+                "0200010700000000000000000000000000000000000000000000000000000000"
+            ));
+            let asset3 = AssetId::from_bytes(hex!(
+                "0200020700000000000000000000000000000000000000000000000000000000"
+            ));
+            let asset4 = AssetId::from_bytes(hex!(
+                "0200030700000000000000000000000000000000000000000000000000000000"
+            ));
+            let asset5 = AssetId::from_bytes(hex!(
+                "0200040700000000000000000000000000000000000000000000000000000000"
+            ));
+            let asset6 = AssetId::from_bytes(hex!(
+                "0200050700000000000000000000000000000000000000000000000000000000"
+            ));
             let set: BTreeSet<AssetId> = vec![asset1, asset2, asset3].into_iter().collect();
             OldMarkerTokensIndex::<AssetId>::put(set);
             OldProperties::<AccountId, AssetId>::insert::<_, _, (AccountId, AccountId, AssetId)>(
                 &asset1,
                 &asset2,
-                (ALICE(), ALICE(), asset3.clone()),
+                (ALICE(), ALICE(), asset3),
             );
             OldProperties::<AccountId, AssetId>::insert::<_, _, (AccountId, AccountId, AssetId)>(
                 &asset4,
                 &asset5,
-                (BOB(), BOB(), asset6.clone()),
+                (BOB(), BOB(), asset6),
             );
 
             assets::Pallet::<Runtime>::register_asset_id(
                 ALICE(),
-                asset3.clone(),
+                asset3,
                 AssetSymbol(b"A".to_vec()),
                 AssetName(b"B".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -131,7 +131,7 @@ mod tests {
 
             assets::Pallet::<Runtime>::register_asset_id(
                 BOB(),
-                asset6.clone(),
+                asset6,
                 AssetSymbol(b"C".to_vec()),
                 AssetName(b"D".to_vec()),
                 DEFAULT_BALANCE_PRECISION,

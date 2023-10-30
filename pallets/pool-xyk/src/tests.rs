@@ -52,8 +52,7 @@ type PresetFunction<'a> = Rc<
             crate::mock::TechAccountId,
             AccountId,
             AccountId,
-        ) -> ()
-        + 'a,
+        ) + 'a,
 >;
 
 #[derive(Clone)]
@@ -97,14 +96,14 @@ impl<'a> crate::Pallet<Runtime> {
 
             assert_ok!(trading_pair::Pallet::<Runtime>::register(
                 RuntimeOrigin::signed(BOB()),
-                dex_id.clone(),
+                dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into()
             ));
 
             assert_ok!(crate::Pallet::<Runtime>::initialize_pool(
                 RuntimeOrigin::signed(BOB()),
-                dex_id.clone(),
+                dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
             ));
@@ -121,13 +120,13 @@ impl<'a> crate::Pallet<Runtime> {
 
             let (tpair, tech_acc_id) =
                 crate::Pallet::<Runtime>::tech_account_from_dex_and_asset_pair(
-                    dex_id.clone(),
+                    dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
                 )
                 .unwrap();
 
-            let fee_acc = tech_acc_id.clone().to_fee_account().unwrap();
+            let fee_acc = tech_acc_id.to_fee_account().unwrap();
             let repr: AccountId =
                 technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
             let fee_repr: AccountId =
@@ -156,16 +155,16 @@ impl<'a> crate::Pallet<Runtime> {
                 balance!(2000000)
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &repr).unwrap(),
                 0
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &repr).unwrap(),
                 0
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr).unwrap(),
                 0
             );
 
@@ -178,7 +177,7 @@ impl<'a> crate::Pallet<Runtime> {
             assert_eq!(
                 pswap_distribution::Pallet::<Runtime>::subscribed_accounts(&fee_repr),
                 Some((
-                    dex_id.clone(),
+                    dex_id,
                     repr.clone(),
                     GetDefaultSubscriptionFrequency::get(),
                     0
@@ -187,10 +186,10 @@ impl<'a> crate::Pallet<Runtime> {
 
             for test in &tests {
                 test(
-                    dex_id.clone(),
-                    gt.clone(),
-                    bp.clone(),
-                    tpair.clone(),
+                    dex_id,
+                    gt,
+                    bp,
+                    tpair,
                     tech_acc_id.clone(),
                     fee_acc.clone(),
                     repr.clone(),
@@ -215,7 +214,7 @@ impl<'a> crate::Pallet<Runtime> {
                 ));
 
                 assert_eq!(
-                    PoolProviders::<Runtime>::get(pool_account, &ALICE()),
+                    PoolProviders::<Runtime>::get(pool_account, ALICE()),
                     Some(balance!(227683.9915321233119024)),
                 );
                 //TODO: total supply check
@@ -768,26 +767,26 @@ fn pool_is_already_initialized_and_other_after_depositliq() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &repr).unwrap(),
                 balance!(144000)
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &repr).unwrap(),
                 balance!(360000)
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &fee_repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &fee_repr).unwrap(),
                 0
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr).unwrap(),
                 0
             );
 
             assert_noop!(
                 crate::Pallet::<Runtime>::initialize_pool(
                     RuntimeOrigin::signed(BOB()),
-                    dex_id.clone(),
+                    dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
                 ),
@@ -821,15 +820,15 @@ fn exchange_desired_output_and_withdraw_cascade() {
                 balance!(1889000)
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &repr).unwrap(),
                 balance!(467027.027027027027027031)
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &repr).unwrap(),
                 balance!(111000)
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr).unwrap(),
                 balance!(322.047222749329068285)
             );
 
@@ -887,15 +886,15 @@ fn exchange_desired_output_and_withdraw_cascade() {
                 1893282356407400019291402
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &repr).unwrap(),
                 449009223589025484939026
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &repr).unwrap(),
                 106717643592599980708598
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr).unwrap(),
                 322047222749329068285
             );
 
@@ -920,15 +919,15 @@ fn exchange_desired_output_and_withdraw_cascade() {
                 1926282356407400019291402
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &repr).unwrap(),
                 650010010596347171825252
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &repr).unwrap(),
                 73717643592599980708598
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr).unwrap(),
                 926864034205663131132
             );
         },
@@ -959,15 +958,15 @@ fn exchange_desired_input() {
                 balance!(1868058.365847885345163285)
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &repr).unwrap(),
                 balance!(392901)
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &repr).unwrap(),
                 balance!(131941.634152114654836715)
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr).unwrap(),
                 balance!(99)
             );
         },
@@ -1046,7 +1045,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_input_base() {
             let new_account = AccountId32::from([33; 32]);
             assets::Pallet::<Runtime>::transfer(
                 RuntimeOrigin::signed(ALICE()),
-                gt.clone(),
+                gt,
                 new_account.clone(),
                 balance!(100000),
             )
@@ -1079,19 +1078,19 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_input_base() {
             )
             .expect("Failed to perform swap.");
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &new_account).unwrap(),
                 0,
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &new_account).unwrap(),
                 balance!(31230.802697411355231672),
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &new_account).unwrap(),
                 outcome.amount,
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &new_account).unwrap(),
                 quote_outcome.amount,
             );
         },
@@ -1106,7 +1105,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_output_base() {
             let new_account = AccountId32::from([3; 32]);
             assets::Pallet::<Runtime>::transfer(
                 RuntimeOrigin::signed(ALICE()),
-                bp.clone(),
+                bp,
                 new_account.clone(),
                 balance!(100000),
             )
@@ -1139,19 +1138,19 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_output_base() {
             )
             .expect("Failed to perform swap.");
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &new_account).unwrap(),
                 0,
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &new_account).unwrap(),
                 balance!(147098.360655737704918032),
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &new_account).unwrap(),
                 outcome.amount,
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &new_account).unwrap(),
                 quote_outcome.amount,
             );
         },
@@ -1166,7 +1165,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_input_base() {
             let new_account = AccountId32::from([3; 32]);
             assets::Pallet::<Runtime>::transfer(
                 RuntimeOrigin::signed(ALICE()),
-                gt.clone(),
+                gt,
                 new_account.clone(),
                 balance!(100000),
             )
@@ -1200,11 +1199,11 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_input_base() {
             )
             .expect("Failed to perform swap.");
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &new_account).unwrap(),
                 0,
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &new_account).unwrap(),
                 desired_out,
             );
             assert_eq!(balance!(100000), quote_outcome.amount,);
@@ -1221,7 +1220,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_output_base() {
             let new_account = AccountId32::from([3; 32]);
             assets::Pallet::<Runtime>::transfer(
                 RuntimeOrigin::signed(ALICE()),
-                bp.clone(),
+                bp,
                 new_account.clone(),
                 balance!(100000),
             )
@@ -1255,11 +1254,11 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_output_base() {
             )
             .expect("Failed to perform swap.");
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&bp, &new_account).unwrap(),
                 1, // TODO: still not enough overestimation due to duducing fee from output, find workaroud to improve precision
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&gt, &new_account).unwrap(),
                 desired_out
             );
             assert_eq!(balance!(100000) - 1, quote_outcome.amount);
@@ -1289,7 +1288,7 @@ fn withdraw_all_liquidity() {
             );
 
             assert_eq!(
-                PoolProviders::<Runtime>::get(&repr, &ALICE()).unwrap(),
+                PoolProviders::<Runtime>::get(&repr, ALICE()).unwrap(),
                 balance!(227683.9915321233119024),
             );
 
@@ -1316,7 +1315,7 @@ fn withdraw_all_liquidity() {
                 balance!(1),
             ));
 
-            assert_eq!(PoolProviders::<Runtime>::get(repr, &ALICE()), None);
+            assert_eq!(PoolProviders::<Runtime>::get(repr, ALICE()), None);
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
@@ -1812,13 +1811,13 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
             RuntimeOrigin::signed(ALICE()),
-            dex_id.clone(),
+            dex_id,
             base_asset,
             target_asset_b
         ));
         assert_ok!(crate::Pallet::<Runtime>::initialize_pool(
             RuntimeOrigin::signed(ALICE()),
-            dex_id.clone(),
+            dex_id,
             base_asset,
             target_asset_b
         ));
@@ -2231,7 +2230,7 @@ fn initialize_pool_with_different_dex() {
             AssetSymbol(b"AT".to_vec()),
             AssetName(b"Apple Tree".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            Balance::from(balance!(10)),
+            balance!(10),
             true,
             None,
             None,
@@ -2242,7 +2241,7 @@ fn initialize_pool_with_different_dex() {
             AssetSymbol(b"GT".to_vec()),
             AssetName(b"Golden Ticket".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            Balance::from(balance!(10)),
+            balance!(10),
             true,
             None,
             None,
@@ -2281,7 +2280,7 @@ fn initialize_pool_with_synthetics() {
             AssetSymbol(b"GT".to_vec()),
             AssetName(b"Golden Ticket".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            Balance::from(balance!(10)),
+            balance!(10),
             true,
             None,
             None,
@@ -2292,7 +2291,7 @@ fn initialize_pool_with_synthetics() {
             AssetSymbol(b"AP".to_vec()),
             AssetName(b"Apple".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            Balance::from(balance!(10)),
+            balance!(10),
             true,
             None,
             None,
@@ -2303,7 +2302,7 @@ fn initialize_pool_with_synthetics() {
             AssetSymbol(b"BP".to_vec()),
             AssetName(b"BlackPepper".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            Balance::from(balance!(10)),
+            balance!(10),
             true,
             None,
             None,
@@ -2350,7 +2349,7 @@ fn initialize_pool_with_synthetics() {
         assert_ok!(xst::Pallet::<Runtime>::enable_synthetic_asset(
             RuntimeOrigin::root(),
             Apple.into(),
-            euro.clone(),
+            euro,
             fixed!(0)
         ));
 

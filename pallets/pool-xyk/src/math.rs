@@ -133,9 +133,9 @@ impl<T: Config> Pallet<T> {
         x_in: &Balance,
         deduce_fee: bool,
     ) -> Result<(Balance, Balance), DispatchError> {
-        let fxw_x = FixedWrapper::from(x.clone());
-        let fxw_y = FixedWrapper::from(y.clone());
-        let fxw_x_in = FixedWrapper::from(x_in.clone());
+        let fxw_x = FixedWrapper::from(*x);
+        let fxw_y = FixedWrapper::from(*y);
+        let fxw_x_in = FixedWrapper::from(*x_in);
         if get_fee_from_destination {
             // output token is xor, user indicates desired input amount
             // y_1 = (x_in * y) / (x + x_in)
@@ -178,14 +178,14 @@ impl<T: Config> Pallet<T> {
         y_out: &Balance,
         deduce_fee: bool,
     ) -> Result<(Balance, Balance), DispatchError> {
-        let fxw_x = FixedWrapper::from(x.clone());
-        let fxw_y = FixedWrapper::from(y.clone());
-        let fxw_y_out = FixedWrapper::from(y_out.clone());
+        let fxw_x = FixedWrapper::from(*x);
+        let fxw_y = FixedWrapper::from(*y);
+        let fxw_y_out = FixedWrapper::from(*y_out);
         if get_fee_from_destination {
             // output token is xor, user indicates desired output amount:
             // y_1 = y_out / (1 - fee)
             // x_in = (x * y_1) / (y - y_1)
-            let fxw_y_out = fxw_y_out.clone() + Fixed::from_bits(1); // by 1 correction to overestimate required input
+            let fxw_y_out = fxw_y_out + Fixed::from_bits(1); // by 1 correction to overestimate required input
             let y_out_with_fee = if deduce_fee {
                 fxw_y_out.clone() / (fixed_wrapper!(1) - fee_fraction)
             } else {
@@ -198,7 +198,7 @@ impl<T: Config> Pallet<T> {
         } else {
             // input token is xor, user indicates desired output amount:
             // x_in * (1 - fee) = (x * y_out) / (y - y_out)
-            let fxw_y_out = fxw_y_out.clone() + Fixed::from_bits(1); // by 1 correction to overestimate required input
+            let fxw_y_out = fxw_y_out + Fixed::from_bits(1); // by 1 correction to overestimate required input
             let nominator = fxw_x * fxw_y_out.clone();
             let denominator = fxw_y - fxw_y_out;
             let x_in_without_fee = nominator / denominator;
@@ -219,10 +219,8 @@ impl<T: Config> Pallet<T> {
         trading_pair: &TradingPair<AssetIdOf<T>>,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let b_in_pool =
-            assets::Pallet::<T>::free_balance(&trading_pair.base_asset_id.into(), pool_acc)?;
-        let t_in_pool =
-            assets::Pallet::<T>::free_balance(&trading_pair.target_asset_id.into(), pool_acc)?;
+        let b_in_pool = assets::Pallet::<T>::free_balance(&trading_pair.base_asset_id, pool_acc)?;
+        let t_in_pool = assets::Pallet::<T>::free_balance(&trading_pair.target_asset_id, pool_acc)?;
         let fxw_liq_in_pool =
             to_fixed_wrapper!(b_in_pool).multiply_and_sqrt(&to_fixed_wrapper!(t_in_pool));
         let fxw_piece = fxw_liq_in_pool / to_fixed_wrapper!(liq_amount);
