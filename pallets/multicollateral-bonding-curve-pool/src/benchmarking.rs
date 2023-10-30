@@ -95,21 +95,9 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         permissions::Scope::Unlimited,
     )
     .unwrap();
-    Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(5000)).unwrap();
-    Assets::<T>::mint_to(
-        &DAI.into(),
-        &owner.clone(),
-        &owner.clone(),
-        balance!(50000000),
-    )
-    .unwrap();
-    Assets::<T>::mint_to(
-        &VAL.into(),
-        &owner.clone(),
-        &owner.clone(),
-        balance!(50000000),
-    )
-    .unwrap();
+    Assets::<T>::mint_to(&XOR.into(), &owner, &owner, balance!(5000)).unwrap();
+    Assets::<T>::mint_to(&DAI.into(), &owner, &owner, balance!(50000000)).unwrap();
+    Assets::<T>::mint_to(&VAL.into(), &owner, &owner, balance!(50000000)).unwrap();
 
     XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())
         .unwrap();
@@ -128,7 +116,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
     XYKPool::<T>::deposit_liquidity(
-        owner_origin.clone(),
+        owner_origin,
         DEX.into(),
         XOR.into(),
         VAL.into(),
@@ -341,7 +329,7 @@ benchmarks! {
         )
         .unwrap();
         Pallet::<T>::initialize_pool(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Signed(caller).into(),
             USDT.into()
         ).unwrap();
 
@@ -388,8 +376,8 @@ benchmarks! {
         .unwrap();
         Assets::<T>::mint_to(
             &USDT.into(),
-            &caller.clone(),
-            &caller.clone(),
+            &caller,
+            &caller,
             balance!(50000000),
         )
         .unwrap();
@@ -421,7 +409,7 @@ benchmarks! {
         // run only for benchmarks, not for tests
         // TODO: remake when unit tests use chainspec
         #[cfg(not(test))]
-        Pallet::<T>::exchange(&caller, &caller, &dex_id, &USDT.into(), &XOR.into(), amount.into()).unwrap();
+        Pallet::<T>::exchange(&caller, &caller, &dex_id, &USDT.into(), &XOR.into(), amount).unwrap();
     }
     verify {
         #[cfg(not(test))]
@@ -459,7 +447,7 @@ benchmarks! {
             USDT.into()
         ).unwrap();
         Pallet::<T>::initialize_pool(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Signed(caller).into(),
             USDT.into()
         ).unwrap();
     }: {
@@ -497,8 +485,8 @@ benchmarks! {
         .unwrap();
         Assets::<T>::mint_to(
             &USDT.into(),
-            &caller.clone(),
-            &caller.clone(),
+            &caller,
+            &caller,
             balance!(50000000),
         )
         .unwrap();
@@ -510,7 +498,7 @@ benchmarks! {
         )
         .unwrap();
         Pallet::<T>::initialize_pool(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Signed(caller).into(),
             USDT.into()
         ).unwrap();
 
