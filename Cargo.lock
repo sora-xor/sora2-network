@@ -4569,6 +4569,7 @@ dependencies = [
  "oracle-proxy",
  "oracle-proxy-runtime-api",
  "order-book",
+ "order-book-benchmarking",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -7769,6 +7770,34 @@ dependencies = [
  "framenode-chain-spec",
  "framenode-runtime",
  "hex-literal 0.4.1",
+ "orml-tokens",
+ "pallet-balances",
+ "pallet-collective",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+]
+
+[[package]]
+name = "order-book-benchmarking"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "framenode-chain-spec",
+ "framenode-runtime",
+ "hex-literal 0.4.1",
+ "order-book",
  "orml-tokens",
  "pallet-balances",
  "pallet-collective",
