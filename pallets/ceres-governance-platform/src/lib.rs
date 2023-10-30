@@ -266,12 +266,6 @@ pub mod pallet {
                 Error::<T>::InvalidOption
             );
 
-            let voting_info = VotingInfo {
-                voting_option: voting_option.clone(),
-                number_of_votes,
-                asset_withdrawn: false,
-            };
-
             // If already voted for one option, then can't vote for another option. But he can increase the number of votes on first option
             if let Some(mut voting_info) = <Voting<T>>::get(&poll_id, &user) {
                 ensure!(
@@ -279,6 +273,14 @@ pub mod pallet {
                     Error::<T>::VoteDenied
                 );
                 voting_info.number_of_votes += number_of_votes;
+                <Voting<T>>::insert(&poll_id, &user, voting_info);
+            } else {
+                let new_voting_info = VotingInfo {
+                    voting_option: voting_option.clone(),
+                    number_of_votes,
+                    asset_withdrawn: false,
+                };
+                <Voting<T>>::insert(&poll_id, &user, new_voting_info);
             }
 
             // Transfer asset to pallet
@@ -289,9 +291,6 @@ pub mod pallet {
                 number_of_votes,
             )
             .map_err(|_assets_err| Error::<T>::NotEnoughFunds)?;
-
-            // Update storage
-            <Voting<T>>::insert(&poll_id, &user, voting_info);
 
             //Emit event
             Self::deposit_event(Event::<T>::Voted(

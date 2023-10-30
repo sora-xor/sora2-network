@@ -1,4 +1,4 @@
-use crate::mock::*;
+use crate::{mock::*, Voting};
 use crate::{pallet, Error};
 use codec::Encode;
 use common::{
@@ -65,7 +65,7 @@ fn create_poll_invalid_start_timestamp() {
         assert_err!(
             CeresGovernancePlatform::create_poll(
                 RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-                CERES_ASSET_ID,
+                poll_asset,
                 poll_start_timestamp,
                 poll_end_timestamp,
                 title.try_into().unwrap(),
@@ -98,7 +98,7 @@ fn create_poll_invalid_end_timestamp() {
         assert_err!(
             CeresGovernancePlatform::create_poll(
                 RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-                CERES_ASSET_ID,
+                poll_asset,
                 poll_start_timestamp,
                 poll_end_timestamp,
                 title.try_into().unwrap(),
@@ -126,7 +126,7 @@ fn create_poll_invalid_voting_options() {
         assert_err!(
             CeresGovernancePlatform::create_poll(
                 RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-                CERES_ASSET_ID,
+                poll_asset,
                 poll_start_timestamp,
                 poll_end_timestamp,
                 title.try_into().unwrap(),
@@ -159,7 +159,7 @@ fn create_poll_too_many_voting_options() {
         assert_err!(
             CeresGovernancePlatform::create_poll(
                 RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-                CERES_ASSET_ID,
+                poll_asset,
                 poll_start_timestamp,
                 poll_end_timestamp,
                 title.try_into().unwrap(),
@@ -190,7 +190,7 @@ fn create_poll_duplicate_options() {
         assert_err!(
             CeresGovernancePlatform::create_poll(
                 RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-                CERES_ASSET_ID,
+                poll_asset,
                 poll_start_timestamp,
                 poll_end_timestamp,
                 title.try_into().unwrap(),
@@ -219,7 +219,7 @@ fn create_poll_ok() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -294,7 +294,7 @@ fn vote_poll_is_not_started() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -339,7 +339,7 @@ fn vote_poll_is_finished() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -386,7 +386,7 @@ fn vote_invalid_option() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -431,7 +431,7 @@ fn vote_denied() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -485,7 +485,7 @@ fn vote_not_enough_funds() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -530,7 +530,7 @@ fn vote_ok() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -572,7 +572,7 @@ fn vote_multiple_times_ok() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -601,6 +601,19 @@ fn vote_multiple_times_ok() {
             voting_option.try_into().unwrap(),
             number_of_votes
         ));
+
+        let pallet_account = PalletId(*b"ceresgov").into_account_truncating();
+        assert_eq!(
+            Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
+                .expect("Failed to query free balance."),
+            balance!(200)
+        );
+
+        // Check ALICE of balance
+        assert_eq!(
+            Assets::free_balance(&CERES_ASSET_ID, &ALICE).expect("Failed to query free balance."),
+            balance!(2800)
+        );
     });
 }
 
@@ -611,10 +624,7 @@ fn withdraw_poll_does_not_exist() {
         let user = CeresGovernancePlatform::authority_account();
         let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
-
         let poll_id = H256::from(encoded);
-        let voting_option = "Option 1";
-        let number_of_votes = balance!(100);
 
         assert_err!(
             CeresGovernancePlatform::withdraw(RuntimeOrigin::signed(ALICE), poll_id),
@@ -640,7 +650,7 @@ fn withdraw_poll_is_not_finished() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -689,7 +699,7 @@ fn withdraw_not_voted() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -729,7 +739,7 @@ fn withdraw_funds_already_withdrawn() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
@@ -783,7 +793,7 @@ fn withdraw_ok() {
 
         assert_ok!(CeresGovernancePlatform::create_poll(
             RuntimeOrigin::signed(CeresGovernancePlatform::authority_account()),
-            CERES_ASSET_ID,
+            poll_asset,
             poll_start_timestamp,
             poll_end_timestamp,
             title.try_into().unwrap(),
