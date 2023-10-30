@@ -34,7 +34,7 @@ use crate::{
     PswapRemintInfo, RewardReason,
 };
 use frame_support::dispatch::DispatchResult;
-use frame_support::pallet_prelude::{DispatchResultWithPostInfo, MaybeSerializeDeserialize};
+use frame_support::pallet_prelude::MaybeSerializeDeserialize;
 use frame_support::sp_runtime::traits::BadOrigin;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
