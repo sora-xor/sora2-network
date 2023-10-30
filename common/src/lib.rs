@@ -53,6 +53,7 @@ pub mod macros;
 pub mod migrations;
 mod primitives;
 pub mod serialization;
+pub mod storage;
 mod swap_amount;
 mod traits;
 pub mod utils;
