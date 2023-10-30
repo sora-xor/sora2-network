@@ -52,8 +52,8 @@ use order_book_benchmarking_imported::Config;
 use order_book_imported::Pallet as OrderBookPallet;
 use order_book_imported::{
     test_utils::{accounts, fill_tools::FillSettings},
-    Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId, OrderBookStatus,
-    OrderPrice, OrderVolume,
+    CancelReason, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus, OrderPrice, OrderVolume,
 };
 
 use crate::{assert_last_event, assert_orders_numbers, DEX};
@@ -143,9 +143,9 @@ pub(crate) mod place_limit_order {
         let Context {
             caller,
             order_book_id,
-            price: _,
-            amount: _,
-            side: _,
+            price,
+            amount,
+            side,
             lifespan,
             expected_order_id,
         } = init_values;
@@ -170,6 +170,10 @@ pub(crate) mod place_limit_order {
                 order_book_id,
                 order_id: expected_order_id,
                 owner_id: caller.clone(),
+                side,
+                price,
+                amount,
+                lifetime: lifespan,
             }
             .into(),
         );
@@ -223,6 +227,7 @@ pub(crate) mod cancel_limit_order {
                 order_book_id,
                 order_id,
                 owner_id: order.owner.clone(),
+                reason: CancelReason::Manual,
             }
             .into(),
         );
