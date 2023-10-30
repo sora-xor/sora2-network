@@ -26,5 +26,8 @@ db?
 
 .vscode/launch.json
 
+# Generated folder for benchmark results (order book extra benchmarks)
+benches/
+
 # Generated metadata.scale
 substrate-gen/bytes/metadata.scale
