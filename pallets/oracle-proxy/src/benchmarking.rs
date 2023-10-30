@@ -41,15 +41,15 @@ use sp_std::prelude::*;
 benchmarks! {
     enable_oracle {
         let oracle = Oracle::BandChainFeed;
-    }: _(RawOrigin::Root, oracle.clone())
+    }: _(RawOrigin::Root, oracle)
     verify {
-        assert_eq!(OracleProxy::<T>::enabled_oracles(), BTreeSet::from([oracle.clone()]));
+        assert_eq!(OracleProxy::<T>::enabled_oracles(), BTreeSet::from([oracle]));
     }
 
     disable_oracle {
         let oracle = Oracle::BandChainFeed;
-        OracleProxy::<T>::enable_oracle(RawOrigin::Root.into(), oracle.clone())?;
-    }: _(RawOrigin::Root, oracle.clone())
+        OracleProxy::<T>::enable_oracle(RawOrigin::Root.into(), oracle)?;
+    }: _(RawOrigin::Root, oracle)
     verify {
         assert_eq!(OracleProxy::<T>::enabled_oracles(), BTreeSet::new());
     }
