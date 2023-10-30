@@ -101,7 +101,6 @@ parameter_types! {
 
 impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-
     type WeightInfo = ();
     type StringLimit = StringLimit;
     type OptionsLimit = OptionsLimit;

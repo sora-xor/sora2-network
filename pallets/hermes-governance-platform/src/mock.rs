@@ -184,8 +184,11 @@ impl demeter_farming_platform::Config for Runtime {
 
 impl ceres_governance_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type CeresAssetId = ();
     type WeightInfo = ();
+    type StringLimit = StringLimit;
+    type OptionsLimit = OptionsLimit;
+    type TitleLimit = TitleLimit;
+    type DescriptionLimit = DescriptionLimit;
 }
 
 impl pool_xyk::Config for Runtime {

@@ -1835,8 +1835,11 @@ impl ceres_token_locker::Config for Runtime {
 }
 
 impl ceres_governance_platform::Config for Runtime {
+    type StringLimit = StringLimit;
+    type OptionsLimit = OptionsLimit;
+    type TitleLimit = TitleLimit;
+    type DescriptionLimit = DescriptionLimit;
     type RuntimeEvent = RuntimeEvent;
-    type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 
