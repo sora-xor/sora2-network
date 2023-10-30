@@ -675,6 +675,7 @@
 <a href="#660" id="660">660</a>
 <a href="#661" id="661">661</a>
 <a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -995,7 +996,8 @@
 		//  Measured:  `5123`
 		//  Estimated: `154495`
 		// Minimum execution time: 124_000_000 picoseconds.
-		</span>Weight::from_parts(<span class="number">125_000_000</span>, <span class="number">154495</span>)
+		// TODO: benchmark properly, value was set manually
+		</span>Weight::from_parts(<span class="number">50_000_000</span>, <span class="number">154495</span>)
 			.saturating_add(T::DbWeight::get().reads(<span class="number">13_u64</span>))
 			.saturating_add(T::DbWeight::get().writes(<span class="number">10_u64</span>))
 	}
