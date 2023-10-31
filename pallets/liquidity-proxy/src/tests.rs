@@ -882,6 +882,68 @@ fn test_swap_shoild_fail_with_non_divisible_assets() {
 }
 
 #[test]
+fn test_swap_with_desired_output_return_precise_amount() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(12000.0)
+        );
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            XOR,
+            USDT,
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out: balance!(100.0),
+                max_amount_in: balance!(1000.0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(12100.0)
+        );
+    });
+}
+
+#[test]
+fn test_swap_with_desired_input_return_precise_amount() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(12000.0)
+        );
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            USDT,
+            XOR,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: balance!(100.0),
+                min_amount_out: balance!(0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(11900.0)
+        );
+    });
+}
+
+#[test]
 #[ignore] // dependency on sampling which is removed
 fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
     let mut ext = ExtBuilder::default().build();

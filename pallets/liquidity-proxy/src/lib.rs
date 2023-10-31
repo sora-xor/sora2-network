@@ -415,12 +415,7 @@ impl<T: Config> Pallet<T> {
                 )
                 .map(|(info, weight)| (info.path, weight))?;
                 Self::exchange_sequence_with_input_amount(
-                    dex_info,
-                    sender,
-                    receiver,
-                    &best_path,
-                    desired_amount_in,
-                    filter,
+                    dex_info, sender, receiver, &best_path, amount, filter,
                 )
                 .and_then(|(swap, sources, weight)| {
                     ensure!(
@@ -453,12 +448,7 @@ impl<T: Config> Pallet<T> {
                 );
 
                 Self::exchange_sequence_with_input_amount(
-                    dex_info,
-                    sender,
-                    receiver,
-                    &best_path,
-                    input_amount,
-                    filter,
+                    dex_info, sender, receiver, &best_path, amount, filter,
                 )
                 .and_then(|(mut swap, sources, weight)| {
                     swap.amount = input_amount;
@@ -476,21 +466,18 @@ impl<T: Config> Pallet<T> {
         sender: &T::AccountId,
         receiver: &T::AccountId,
         assets: &[T::AssetId],
-        input_amount: Balance,
+        input_amount: SwapAmount<Balance>,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         use itertools::EitherOrBoth::*;
 
         let transit_account = T::GetTechnicalAccountId::get();
         let exchange_count = assets.len() - 1;
-
         let sender_iter = sp_std::iter::once(sender)
             .chain(sp_std::iter::repeat(&transit_account).take(exchange_count - 1));
         let receiver_iter = sp_std::iter::repeat(&transit_account)
             .take(exchange_count - 1)
             .chain(sp_std::iter::once(receiver));
-        let mut current_amount = input_amount;
-
         fallible_iterator::convert(
             assets
                 .iter()
@@ -510,20 +497,16 @@ impl<T: Config> Pallet<T> {
                 // Exchange
                 .map(
                     |(from, to, cur_sender, cur_receiver)| -> Result<_, DispatchError> {
-                        let swap_amount =
-                            SwapAmount::with_desired_input(current_amount, Balance::zero());
-
                         let (swap_outcome, sources, weight) = Self::exchange_single(
                             cur_sender,
                             cur_receiver,
                             &dex_info.base_asset_id,
                             from,
                             to,
-                            swap_amount,
+                            input_amount,
                             filter.clone(),
                         )?;
 
-                        current_amount = swap_outcome.amount;
                         Ok((swap_outcome, sources, weight))
                     },
                 ),
@@ -604,7 +587,6 @@ impl<T: Config> Pallet<T> {
                 true,
             )?;
             total_weight = total_weight.saturating_add(weight);
-
             let res = outcome
                 .distribution
                 .into_iter()
