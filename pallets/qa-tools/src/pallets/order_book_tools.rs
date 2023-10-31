@@ -1,5 +1,5 @@
 use crate::Config;
-use common::{balance, AssetInfoProvider, Balance, PriceVariant};
+use common::{balance, AssetInfoProvider, Balance, PriceVariant, TradingPairSourceManager};
 use frame_support::pallet_prelude::*;
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::traits::Time;
@@ -30,12 +30,12 @@ pub fn create_multiple_empty_unchecked<T: Config>(
         .filter(|id| !<order_book::OrderBooks<T>>::contains_key(id))
         .collect();
     for order_book_id in &to_create_ids {
-        if !trading_pair::Pallet::<T>::is_trading_pair_enabled(
+        if T::TradingPairSourceManager::is_trading_pair_enabled(
             &order_book_id.dex_id,
             &order_book_id.quote.into(),
             &order_book_id.base.into(),
         )? {
-            trading_pair::Pallet::<T>::register_pair(
+            T::TradingPairSourceManager::register_pair(
                 order_book_id.dex_id,
                 order_book_id.quote.into(),
                 order_book_id.base.into(),

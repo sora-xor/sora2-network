@@ -170,6 +170,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = MockDEXApi;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
 }
 

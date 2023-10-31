@@ -215,6 +215,7 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 
     #[cfg(feature = "wip")] // order-book
     type OrderBook = ();

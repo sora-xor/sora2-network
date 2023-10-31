@@ -53,8 +53,8 @@ use assets::AssetIdOf;
 use codec::Decode;
 use common::prelude::{QuoteAmount, SwapAmount};
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource, PriceVariant, VAL,
-    XOR,
+    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource, PriceVariant,
+    TradingPairSourceManager, VAL, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Time;
@@ -65,7 +65,6 @@ use sp_runtime::traits::UniqueSaturatedInto;
 
 use assets::Pallet as Assets;
 use frame_system::Pallet as FrameSystem;
-use trading_pair::Pallet as TradingPair;
 use Pallet as OrderBookPallet;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
@@ -291,8 +290,7 @@ benchmarks! {
             quote: XOR.into(),
         };
 
-        TradingPair::<T>::register(
-            RawOrigin::Signed(caller.clone()).into(),
+        T::TradingPairSourceManager::register_pair(
             DEX.into(),
             order_book_id.quote,
             order_book_id.base
@@ -565,8 +563,7 @@ benchmarks! {
             balance!(1000000).try_into().unwrap()
         ).unwrap();
 
-        TradingPair::<T>::register(
-            RawOrigin::Signed(creator.clone()).into(),
+        T::TradingPairSourceManager::register_pair(
             DEX.into(),
             order_book_id.quote,
             order_book_id.base

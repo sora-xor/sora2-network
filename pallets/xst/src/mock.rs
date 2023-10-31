@@ -279,7 +279,7 @@ impl dex_api::Config for Runtime {
     type XYKPool = MockLiquiditySource;
     type XSTPool = XSTPool;
     type MulticollateralBondingCurvePool = ();
-
+    type DexInfoProvider = ();
     #[cfg(feature = "wip")] // order-book
     type OrderBook = ();
 }
@@ -331,6 +331,7 @@ impl pswap_distribution::Config for Runtime {
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
 }
 

@@ -60,7 +60,7 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + order_book::Config + trading_pair::Config {
+    pub trait Config: frame_system::Config + order_book::Config {
         type WeightInfo: WeightInfo;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,

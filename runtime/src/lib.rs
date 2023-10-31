@@ -1107,7 +1107,7 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
-
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
     #[cfg(feature = "wip")] // order-book
     type OrderBook = order_book::Pallet<Runtime>;
 }
@@ -1743,6 +1743,7 @@ impl vested_rewards::Config for Runtime {
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
 }
 
@@ -1816,6 +1817,7 @@ parameter_types! {
 impl ceres_launchpad::Config for Runtime {
     const MILLISECONDS_PER_DAY: Moment = 86_400_000;
     type RuntimeEvent = RuntimeEvent;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ceres_launchpad::weights::SubstrateWeight<Runtime>;
 }
 

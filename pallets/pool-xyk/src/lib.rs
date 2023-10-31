@@ -169,7 +169,7 @@ impl<T: Config> Pallet<T> {
         reserves_account_id: &T::AccountId,
         fees_account_id: &T::AccountId,
     ) -> DispatchResult {
-        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         let (sorted_asset_a, sorted_asset_b) = if dex_info.base_asset_id == *asset_a {
             (asset_a, asset_b)
         } else if dex_info.base_asset_id == *asset_b {
@@ -269,7 +269,7 @@ impl<T: Config> Pallet<T> {
         input_a_min: Balance,
         input_b_min: Balance,
     ) -> DispatchResult {
-        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             dex_id,
             input_asset_a,
@@ -307,7 +307,7 @@ impl<T: Config> Pallet<T> {
         output_a_min: Balance,
         output_b_min: Balance,
     ) -> DispatchResult {
-        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             dex_id,
             output_asset_a,
@@ -358,7 +358,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        if let Ok(dex_info) = <T as pallet::Config>::DexInfoProvider::get_dex_info(dex_id) {
+        if let Ok(dex_info) = T::DexInfoProvider::get_dex_info(dex_id) {
             let target_asset_id = if *input_asset_id == dex_info.base_asset_id {
                 output_asset_id
             } else if *output_asset_id == dex_info.base_asset_id {
@@ -380,7 +380,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
-        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -442,7 +442,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
-        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
             *input_asset_id,
@@ -521,7 +521,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let dex_info = <T as pallet::Config>::DexInfoProvider::get_dex_info(dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,

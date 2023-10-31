@@ -278,6 +278,7 @@ impl dex_api::Config for Runtime {
     type XYKPool = MockLiquiditySource;
     type XSTPool = XSTPool;
     type MulticollateralBondingCurvePool = ();
+    type DexInfoProvider = ();
 
     #[cfg(feature = "wip")] // order-book
     type OrderBook = ();
@@ -376,6 +377,7 @@ impl ceres_liquidity_locker::Config for Runtime {
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
+    type TradingPairSourceManager = ();
     type WeightInfo = ();
 }
 

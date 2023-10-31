@@ -114,6 +114,7 @@ impl frame_system::Config for Runtime {
 impl crate::Config for Runtime {
     const MILLISECONDS_PER_DAY: Self::Moment = 86_400_000;
     type RuntimeEvent = RuntimeEvent;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
 }
 

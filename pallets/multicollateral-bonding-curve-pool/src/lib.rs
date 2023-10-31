@@ -782,7 +782,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         common::with_transaction(|| {
             let base_asset_id = T::GetBaseAssetId::get();
-            let swapped_xor_amount = <T as pallet::Config>::LiquidityProxy::exchange(
+            let swapped_xor_amount = T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
                 holder,
                 holder,

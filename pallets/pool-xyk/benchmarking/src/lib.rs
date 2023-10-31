@@ -67,8 +67,6 @@ fn alice<T: Config>() -> T::AccountId {
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
-        RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
     let _ = Permissions::<T>::assign_permission(
