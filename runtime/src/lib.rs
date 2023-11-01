@@ -1666,7 +1666,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
+    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -1678,7 +1678,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
+    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
 }
 
 parameter_types! {

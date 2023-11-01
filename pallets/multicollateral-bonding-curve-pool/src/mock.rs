@@ -123,7 +123,7 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
-    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
+    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
 construct_runtime! {
@@ -204,7 +204,7 @@ impl Config for Runtime {
     type PriceToolsPallet = MockDEXApi;
     type VestedRewardsPallet = MockVestedRewards;
     type BuyBackHandler = BuyBackHandlerImpl;
-    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
+    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type WeightInfo = ();
 }
 
@@ -454,7 +454,7 @@ impl MockDEXApi {
         Self::add_reserves(vec![
             (XOR, balance!(100000)),
             (VAL, balance!(100000)),
-            (XST, balance!(100000)),
+            (TBCD, balance!(100000)),
             (USDT, balance!(1000000)),
         ])?;
         Ok(())
@@ -736,10 +736,10 @@ impl Default for ExtBuilder {
                 ),
                 (
                     alice(),
-                    XST,
+                    TBCD,
                     balance!(100),
-                    AssetSymbol(b"XST".to_vec()),
-                    AssetName(b"XST".to_vec()),
+                    AssetSymbol(b"TBCD".to_vec()),
+                    AssetName(b"TBCD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
@@ -970,7 +970,7 @@ impl ExtBuilder {
                 DEX_A_ID,
                 trading_pair::TradingPair::<Runtime> {
                     base_asset_id: XOR,
-                    target_asset_id: XST,
+                    target_asset_id: TBCD,
                 },
             )],
         }
@@ -1078,7 +1078,7 @@ impl ExtBuilder {
                     DEX_A_ID,
                     trading_pair::TradingPair::<Runtime> {
                         base_asset_id: XOR,
-                        target_asset_id: XST,
+                        target_asset_id: TBCD,
                     },
                 ),
             ],

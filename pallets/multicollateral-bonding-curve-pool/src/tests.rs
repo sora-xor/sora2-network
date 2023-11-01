@@ -41,7 +41,7 @@ mod tests {
         prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome},
         AssetInfoProvider, AssetName, AssetSymbol, DEXId, Fixed, LiquidityProxyTrait,
         LiquiditySource, LiquiditySourceFilter, PriceVariant, TechPurpose, DAI,
-        DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+        DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XSTUSD,
     };
     use frame_support::assert_err;
     use frame_support::assert_noop;
@@ -2538,10 +2538,10 @@ mod tests {
             ),
             (
                 alice(),
-                XST,
+                TBCD,
                 0,
-                AssetSymbol(b"XST".to_vec()),
-                AssetName(b"XST".to_vec()),
+                AssetSymbol(b"TBCD".to_vec()),
+                AssetName(b"TBCD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
             (
@@ -2650,10 +2650,10 @@ mod tests {
             ),
             (
                 alice(),
-                XST,
+                TBCD,
                 0,
-                AssetSymbol(b"XST".to_vec()),
-                AssetName(b"XST".to_vec()),
+                AssetSymbol(b"TBCD".to_vec()),
+                AssetName(b"TBCD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
             (
@@ -2736,7 +2736,7 @@ mod tests {
                 (XOR, balance!(100000)),
                 (VAL, balance!(100000)),
                 (USDT, balance!(1000000)),
-                (XST, balance!(1000000)),
+                (TBCD, balance!(1000000)),
             ])
             .unwrap();
 
@@ -2804,10 +2804,10 @@ mod tests {
             ),
             (
                 alice(),
-                XST,
+                TBCD,
                 0,
-                AssetSymbol(b"XST".to_vec()),
-                AssetName(b"XST".to_vec()),
+                AssetSymbol(b"TBCD".to_vec()),
+                AssetName(b"TBCD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
             (
@@ -2926,7 +2926,7 @@ mod tests {
                 (XOR, balance!(100000)),
                 (VAL, balance!(100000)),
                 (USDT, balance!(1000000)),
-                (XST, balance!(1000000)),
+                (TBCD, balance!(1000000)),
             ])
             .unwrap();
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
@@ -3095,10 +3095,10 @@ mod tests {
             ),
             (
                 alice(),
-                XST,
+                TBCD,
                 0,
-                AssetSymbol(b"XST".to_vec()),
-                AssetName(b"XST".to_vec()),
+                AssetSymbol(b"TBCD".to_vec()),
+                AssetName(b"TBCD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
             (
@@ -3192,7 +3192,7 @@ mod tests {
                 (XOR, balance!(100000)),
                 (VAL, balance!(100000)),
                 (USDT, balance!(1000000)),
-                (XST, balance!(1000000)),
+                (TBCD, balance!(1000000)),
             ])
             .unwrap();
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
@@ -3235,10 +3235,10 @@ mod tests {
             ),
             (
                 alice(),
-                XST,
+                TBCD,
                 0,
-                AssetSymbol(b"XST".to_vec()),
-                AssetName(b"XST".to_vec()),
+                AssetSymbol(b"TBCD".to_vec()),
+                AssetName(b"TBCD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
             (
@@ -3361,7 +3361,7 @@ mod tests {
 
             // exchange becomes possible, but val is enough only to fulfill one of pending distributions
             MockDEXApi::add_reserves(vec![(VAL, balance!(0.4))]).unwrap();
-            MockDEXApi::add_reserves(vec![(XST, balance!(0.4))]).unwrap();
+            MockDEXApi::add_reserves(vec![(TBCD, balance!(0.4))]).unwrap();
 
             // val is not enough for one of distributions, it's still present
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
