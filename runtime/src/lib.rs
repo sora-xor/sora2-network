@@ -1909,8 +1909,9 @@ impl order_book::Config for Runtime {
     const MIN_ORDER_LIFESPAN: Moment = (MINUTES as Moment) * MILLISECS_PER_BLOCK; // 1 minute
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50);
-    const SOFT_MIN_MAX_RATIO: usize = 1000;
-    const HARD_MIN_MAX_RATIO: usize = 4000;
+    // TODO #809: multiply both ratios by 2
+    const SOFT_MIN_MAX_RATIO: usize = 500;
+    const HARD_MIN_MAX_RATIO: usize = 2000;
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
     type Locker = OrderBook;
