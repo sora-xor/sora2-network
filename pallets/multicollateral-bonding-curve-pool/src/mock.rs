@@ -676,6 +676,7 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+    trading_pairs: Vec<(DEXId, trading_pair::TradingPair<Runtime>)>,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
@@ -734,15 +735,14 @@ impl Default for ExtBuilder {
                     AssetName(b"DAI".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
-                (
-                    alice(),
-                    TBCD,
-                    balance!(100),
-                    AssetSymbol(b"TBCD".to_vec()),
-                    AssetName(b"TBCD".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                ),
             ],
+            trading_pairs: vec![(
+                DEX_A_ID,
+                trading_pair::TradingPair::<Runtime> {
+                    base_asset_id: XOR,
+                    target_asset_id: XST,
+                },
+            )],
             dex_list: vec![(
                 DEX_A_ID,
                 DEXInfo {
@@ -792,6 +792,17 @@ impl ExtBuilder {
             AssetSymbol(b"TBCD".to_vec()),
             AssetName(b"Token Bonding Curve Dollar".to_vec()),
             DEFAULT_BALANCE_PRECISION,
+        ));
+        self
+    }
+
+    pub fn with_tbcd_pool(mut self) -> Self {
+        self.trading_pairs.push((
+            DEX_A_ID,
+            trading_pair::TradingPair::<Runtime> {
+                base_asset_id: XOR,
+                target_asset_id: TBCD,
+            },
         ));
         self
     }
@@ -873,6 +884,36 @@ impl ExtBuilder {
                     free_reserves_account(),
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
+                ),
+            ],
+            trading_pairs: vec![
+                (
+                    DEX_A_ID,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR,
+                        target_asset_id: DAI,
+                    },
+                ),
+                (
+                    DEX_A_ID,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR,
+                        target_asset_id: VAL,
+                    },
+                ),
+                (
+                    DEX_A_ID,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR,
+                        target_asset_id: TBCD,
+                    },
+                ),
+                (
+                    DEX_A_ID,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR,
+                        target_asset_id: XST,
+                    },
                 ),
             ],
             reference_asset_id: USDT,
@@ -966,13 +1007,7 @@ impl ExtBuilder {
         .unwrap();
 
         trading_pair::GenesisConfig::<Runtime> {
-            trading_pairs: vec![(
-                DEX_A_ID,
-                trading_pair::TradingPair::<Runtime> {
-                    base_asset_id: XOR,
-                    target_asset_id: TBCD,
-                },
-            )],
+            trading_pairs: self.trading_pairs,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -1059,29 +1094,7 @@ impl ExtBuilder {
         .unwrap();
 
         trading_pair::GenesisConfig::<Runtime> {
-            trading_pairs: vec![
-                (
-                    DEX_A_ID,
-                    trading_pair::TradingPair::<Runtime> {
-                        base_asset_id: XOR,
-                        target_asset_id: DAI,
-                    },
-                ),
-                (
-                    DEX_A_ID,
-                    trading_pair::TradingPair::<Runtime> {
-                        base_asset_id: XOR,
-                        target_asset_id: VAL,
-                    },
-                ),
-                (
-                    DEX_A_ID,
-                    trading_pair::TradingPair::<Runtime> {
-                        base_asset_id: XOR,
-                        target_asset_id: TBCD,
-                    },
-                ),
-            ],
+            trading_pairs: self.trading_pairs,
         }
         .assimilate_storage(&mut t)
         .unwrap();

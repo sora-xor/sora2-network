@@ -90,8 +90,7 @@ mod tests {
 
     #[test]
     fn should_calculate_price() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ExtBuilder::default().build().execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
@@ -185,122 +184,118 @@ mod tests {
 
     #[test]
     fn should_calculate_tbcd_price() {
-        let mut ext = ExtBuilder::default().with_tbcd().build();
-        ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(Vec::new()).unwrap();
-            let alice = &alice();
-            TradingPair::register(
-                RuntimeOrigin::signed(alice.clone()),
-                DEXId::Polkaswap.into(),
-                XOR,
-                TBCD,
-            )
-            .expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
+        ExtBuilder::default()
+            .with_tbcd()
+            .with_tbcd_pool()
+            .build()
+            .execute_with(|| {
+                MockDEXApi::init().unwrap();
+                let _ = bonding_curve_pool_init(Vec::new()).unwrap();
+                let alice = &alice();
+                MBCPool::initialize_pool_unchecked(TBCD, false)
+                    .expect("Failed to initialize pool.");
 
-            // base case for buy
-            assert_eq!(
-                MBCPool::buy_function(&XOR, &TBCD, PriceVariant::Buy, Fixed::ZERO)
-                    .expect("failed to calculate buy price"),
-                fixed!(100.7),
-            );
-            assert_eq!(
-                MBCPool::buy_price(
-                    &XOR,
-                    &TBCD,
-                    QuoteAmount::with_desired_output(balance!(1000))
-                )
-                .expect("failed to calculate buy assets price"),
-                fixed!(100700.0),
-            );
-            assert_eq!(
-                MBCPool::buy_price(
-                    &XOR,
-                    &TBCD,
-                    QuoteAmount::with_desired_input(balance!(100700.0))
-                )
-                .expect("failed to calculate buy assets price"),
-                fixed!(1000.0),
-            );
+                // base case for buy
+                assert_eq!(
+                    MBCPool::buy_function(&XOR, &TBCD, PriceVariant::Buy, Fixed::ZERO)
+                        .expect("failed to calculate buy price"),
+                    fixed!(100.7),
+                );
+                assert_eq!(
+                    MBCPool::buy_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_output(balance!(1000))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed!(100700.0),
+                );
+                assert_eq!(
+                    MBCPool::buy_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_input(balance!(100700.0))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed!(1000.0),
+                );
 
-            assert_eq!(
-                MBCPool::buy_price(
-                    &XOR,
-                    &TBCD,
-                    QuoteAmount::with_desired_output(balance!(100000))
-                )
-                .expect("failed to calculate buy assets price"),
-                fixed!(10070000.0),
-            );
-            assert_eq!(
-                MBCPool::buy_price(
-                    &XOR,
-                    &TBCD,
-                    QuoteAmount::with_desired_input(balance!(10070000.0))
-                )
-                .expect("failed to calculate buy assets price"),
-                fixed!(100000.0),
-            );
+                assert_eq!(
+                    MBCPool::buy_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_output(balance!(100000))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed!(10070000.0),
+                );
+                assert_eq!(
+                    MBCPool::buy_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_input(balance!(10070000.0))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed!(100000.0),
+                );
 
-            // base case for sell with empty reserves
-            assert_eq!(
-                MBCPool::sell_function(&XOR, &TBCD, Fixed::ZERO)
-                    .expect("failed to calculate sell price"),
-                fixed!(80.56)
-            );
-            assert_noop!(
-                MBCPool::sell_price(
-                    &XOR,
-                    &TBCD,
-                    QuoteAmount::with_desired_output(balance!(100000))
-                ),
-                Error::<Runtime>::NotEnoughReserves,
-            );
-            assert_noop!(
-                MBCPool::sell_price(
-                    &XOR,
-                    &TBCD,
-                    QuoteAmount::with_desired_input(balance!(100000))
-                ),
-                Error::<Runtime>::NotEnoughReserves,
-            );
+                // base case for sell with empty reserves
+                assert_eq!(
+                    MBCPool::sell_function(&XOR, &TBCD, Fixed::ZERO)
+                        .expect("failed to calculate sell price"),
+                    fixed!(80.56)
+                );
+                assert_noop!(
+                    MBCPool::sell_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_output(balance!(100000))
+                    ),
+                    Error::<Runtime>::NotEnoughReserves,
+                );
+                assert_noop!(
+                    MBCPool::sell_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_input(balance!(100000))
+                    ),
+                    Error::<Runtime>::NotEnoughReserves,
+                );
 
-            // base case for sell with some reserves
-            MBCPool::exchange(
-                alice,
-                alice,
-                &DEXId::Polkaswap,
-                &TBCD,
-                &XOR,
-                SwapAmount::with_desired_input(balance!(100000), 0),
-            )
-            .expect("Failed to buy XOR.");
-            assert_eq!(
-                MBCPool::sell_price(
-                    &XOR,
+                // base case for sell with some reserves
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap,
                     &TBCD,
-                    QuoteAmount::with_desired_output(balance!(50000))
-                )
-                .expect("failed to calculate buy assets price"),
-                fixed!(1655.081098973849718635),
-            );
-            assert_eq!(
-                MBCPool::sell_price(
                     &XOR,
-                    &TBCD,
-                    QuoteAmount::with_desired_input(balance!(1655.081098973849718635))
+                    SwapAmount::with_desired_input(balance!(100000), 0),
                 )
-                .expect("failed to calculate buy assets price"),
-                fixed!(50000),
-            );
-        });
+                .expect("Failed to buy XOR.");
+                assert_eq!(
+                    MBCPool::sell_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_output(balance!(50000))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed!(1655.081098973849718635),
+                );
+                assert_eq!(
+                    MBCPool::sell_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_input(balance!(1655.081098973849718635))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed!(50000),
+                );
+            });
     }
 
     #[test]
     fn calculate_price_for_boundary_values() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ExtBuilder::default().build().execute_with(|| {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = alice();
@@ -489,7 +484,7 @@ mod tests {
 
     #[test]
     fn should_exchange_with_empty_reserves() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 USDT,
@@ -523,8 +518,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
@@ -572,7 +567,7 @@ mod tests {
 
     #[test]
     fn should_exchange_tbcd_with_empty_reserves() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 XOR,
@@ -590,18 +585,12 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .with_tbcd_pool()
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(
-                RuntimeOrigin::signed(alice.clone()),
-                DEXId::Polkaswap.into(),
-                XOR,
-                TBCD,
-            )
-            .expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
             assert_swap_outcome(
                 MBCPool::exchange(
@@ -639,7 +628,7 @@ mod tests {
 
     #[test]
     fn should_exchange_with_nearly_full_reserves() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 XOR,
@@ -665,8 +654,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let initial_price: Fixed = fixed!(200);
             crate::InitialPrice::<Runtime>::put(initial_price);
@@ -745,7 +734,7 @@ mod tests {
 
     #[test]
     fn should_exchange_with_full_reserves() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 XOR,
@@ -771,8 +760,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let initial_price: Fixed = fixed!(200);
             crate::InitialPrice::<Runtime>::put(initial_price);
@@ -856,7 +845,7 @@ mod tests {
 
     #[test]
     fn should_not_sell_without_reserves() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 USDT,
@@ -891,8 +880,9 @@ mod tests {
             ),
         ])
         .with_tbcd()
-        .build();
-        ext.execute_with(|| {
+        .with_tbcd_pool()
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -900,13 +890,6 @@ mod tests {
                 DEXId::Polkaswap.into(),
                 XOR,
                 VAL,
-            )
-            .expect("Failed to register trading pair.");
-            TradingPair::register(
-                RuntimeOrigin::signed(alice()),
-                DEXId::Polkaswap.into(),
-                XOR,
-                TBCD,
             )
             .expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
@@ -941,7 +924,7 @@ mod tests {
 
     #[test]
     fn swaps_should_be_additive() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 USDT,
@@ -967,8 +950,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let alice = &alice();
             let _ = bonding_curve_pool_init(Vec::new()).unwrap();
@@ -1029,7 +1012,7 @@ mod tests {
 
     #[test]
     fn should_set_new_reference_token() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 DAI,
@@ -1071,8 +1054,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -1111,7 +1094,7 @@ mod tests {
 
     #[test]
     fn should_set_price_bias() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 DAI,
@@ -1153,8 +1136,8 @@ mod tests {
                 18,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -1197,7 +1180,7 @@ mod tests {
 
     #[test]
     fn should_set_price_change_config() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 DAI,
@@ -1239,8 +1222,8 @@ mod tests {
                 18,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -1288,7 +1271,7 @@ mod tests {
 
     #[test]
     fn test_deducing_fee() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 DAI,
@@ -1330,8 +1313,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -1399,7 +1382,7 @@ mod tests {
 
     #[test]
     fn similar_returns_should_be_identical() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 DAI,
@@ -1441,8 +1424,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -1558,7 +1541,7 @@ mod tests {
 
     #[test]
     fn similar_returns_should_be_identical_tbcd() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 XOR,
@@ -1576,17 +1559,11 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .with_tbcd_pool()
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(
-                RuntimeOrigin::signed(alice()),
-                DEXId::Polkaswap.into(),
-                XOR,
-                TBCD,
-            )
-            .expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
 
             // Buy with desired input
@@ -1693,7 +1670,7 @@ mod tests {
 
     #[test]
     fn should_receive_pswap_reward() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 XOR,
@@ -1743,8 +1720,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -1797,7 +1774,7 @@ mod tests {
 
     #[test]
     fn should_calculate_ideal_reserves() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 XOR,
@@ -1831,8 +1808,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -1876,7 +1853,7 @@ mod tests {
 
     #[test]
     fn should_calculate_actual_reserves() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 XOR,
@@ -1926,8 +1903,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -2009,7 +1986,7 @@ mod tests {
 
     #[test]
     fn fees_for_equivalent_trades_should_match() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 DAI,
@@ -2051,8 +2028,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -2178,7 +2155,7 @@ mod tests {
 
     #[test]
     fn fee_penalties_should_be_applied() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 XOR,
@@ -2228,8 +2205,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -2364,7 +2341,7 @@ mod tests {
 
     #[test]
     fn sequential_rewards_adequacy_check() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 XOR,
@@ -2414,8 +2391,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -2511,7 +2488,7 @@ mod tests {
 
     #[test]
     fn distribution_passes_on_first_attempt() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 USDT,
@@ -2553,8 +2530,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             // secondary market is initialized with enough funds
             MockDEXApi::init().unwrap();
             let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
@@ -2623,7 +2600,7 @@ mod tests {
 
     #[test]
     fn distribution_fails_on_first_attempt() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 USDT,
@@ -2665,8 +2642,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             // secondary market is initialized without funds
             MockDEXApi::init_without_reserves().unwrap();
             let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
@@ -2777,7 +2754,7 @@ mod tests {
 
     #[test]
     fn multiple_pending_distributions_are_executed() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 USDT,
@@ -2819,8 +2796,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             // secondary market is initialized without funds
             MockDEXApi::init_without_reserves().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
@@ -2939,7 +2916,7 @@ mod tests {
 
     #[test]
     fn large_pending_amount_dont_interfere_new_trades() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 USDT,
@@ -2973,8 +2950,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
@@ -3068,7 +3045,7 @@ mod tests {
     #[test]
     fn multiple_pending_distributions_with_large_request_dont_interfere_when_exchange_becomes_available(
     ) {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 USDT,
@@ -3110,8 +3087,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             // secondary market is initialized without funds
             MockDEXApi::init_without_reserves().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
@@ -3208,7 +3185,7 @@ mod tests {
 
     #[test]
     fn xor_exchange_passes_but_val_exchange_fails_reserves_are_reverted() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 USDT,
@@ -3250,8 +3227,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             // secondary market is initialized without funds
             MockDEXApi::init_without_reserves().unwrap();
             let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
@@ -3360,8 +3337,7 @@ mod tests {
             );
 
             // exchange becomes possible, but val is enough only to fulfill one of pending distributions
-            MockDEXApi::add_reserves(vec![(VAL, balance!(0.4))]).unwrap();
-            MockDEXApi::add_reserves(vec![(TBCD, balance!(0.4))]).unwrap();
+            MockDEXApi::add_reserves(vec![(VAL, balance!(0.4)), (TBCD, balance!(1000))]).unwrap();
 
             // val is not enough for one of distributions, it's still present
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
@@ -3407,7 +3383,7 @@ mod tests {
 
     #[test]
     fn rewards_for_small_values() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 USDT,
@@ -3441,8 +3417,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init_without_reserves().unwrap();
             let _ = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
@@ -3480,7 +3456,7 @@ mod tests {
 
     #[test]
     fn price_without_impact_small_amount() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 DAI,
@@ -3522,8 +3498,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -3675,7 +3651,7 @@ mod tests {
 
     #[test]
     fn price_without_impact_large_amount() {
-        let mut ext = ExtBuilder::new(vec![
+        ExtBuilder::new(vec![
             (
                 alice(),
                 DAI,
@@ -3717,8 +3693,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
-        .build();
-        ext.execute_with(|| {
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
