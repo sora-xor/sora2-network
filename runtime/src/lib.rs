@@ -1246,10 +1246,10 @@ impl xor_fee::Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type BuyBackXSTPercent = BuyBackXSTPercent;
+    type BuyBackTBCDPercent = BuyBackTBCDPercent;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
-    type XstId = GetXstAssetId;
+    type TbcdId = GetXstAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
@@ -1580,7 +1580,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetPswapAssetId;
-    type GetXSTAssetId = GetXstAssetId;
+    type GetTBCDAssetId = GetTbcdAssetId;
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -1952,7 +1952,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const BuyBackXSTPercent: Percent = Percent::from_percent(10);
+    pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
 }
 
 // Ethereum bridge pallets
