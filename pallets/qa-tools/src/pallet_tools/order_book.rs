@@ -9,6 +9,7 @@ use order_book::DataLayer;
 use order_book::{MomentOf, OrderBook, OrderBookId};
 use order_book::{OrderPrice, OrderVolume};
 use sp_std::prelude::*;
+use std::iter::repeat;
 
 pub mod settings {
     use codec::{Decode, Encode};
@@ -102,61 +103,18 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     )>,
 ) -> Result<(), DispatchError> {
     let now = <T as order_book::Config>::Time::now();
-
-    // Prices are specified as price steps from the specified best ask price.
-    // Amounts are added to min_lot and aligned with lot(amount) step.
-
-    // (price_steps_from_best_bid, amount)
-    let buy_orders_steps = [
-        (0, OrderVolume::divisible(balance!(168.5))),
-        (1, OrderVolume::divisible(balance!(95.2))),
-        (1, OrderVolume::divisible(balance!(44.7))),
-        (3, OrderVolume::divisible(balance!(56.4))),
-        (3, OrderVolume::divisible(balance!(89.9))),
-        (3, OrderVolume::divisible(balance!(115))),
-    ];
-
-    // (price_steps_from_best_ask, amount)
-    let sell_orders_steps = [
-        (0, OrderVolume::divisible(balance!(176.3))),
-        (1, OrderVolume::divisible(balance!(85.4))),
-        (1, OrderVolume::divisible(balance!(93.2))),
-        (3, OrderVolume::divisible(balance!(36.6))),
-        (3, OrderVolume::divisible(balance!(205.5))),
-        (3, OrderVolume::divisible(balance!(13.7))),
-    ];
-
+    let current_block = frame_system::Pallet::<T>::block_number();
     let mut data = order_book::cache_data_layer::CacheDataLayer::<T>::new();
 
     for (order_book_id, settings) in fill_settings {
-        fn steps_into_indivisible(
-            steps: impl IntoIterator<Item = (u128, OrderVolume)>,
-        ) -> Vec<(u128, OrderVolume)> {
-            steps
-                .into_iter()
-                .map(|(steps, amount)| (steps, amount.into_indivisible(RoundMode::Floor)))
-                .collect()
-        }
-
-        let (buy_orders_steps, sell_orders_steps) =
-            if <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-                (
-                    steps_into_indivisible(buy_orders_steps),
-                    steps_into_indivisible(sell_orders_steps),
-                )
-            } else {
-                (buy_orders_steps.to_vec(), sell_orders_steps.to_vec())
-            };
-
         fill_order_book(
             &mut data,
             order_book_id,
             asks_owner.clone(),
             bids_owner.clone(),
-            buy_orders_steps.into_iter(),
-            sell_orders_steps.into_iter(),
             settings,
             now,
+            current_block,
         )?;
     }
     data.commit();
@@ -169,40 +127,56 @@ fn fill_order_book<T: Config>(
     book_id: OrderBookId<T::AssetId, T::DEXId>,
     asks_owner: T::AccountId,
     bids_owner: T::AccountId,
-    buy_orders_steps: impl Iterator<Item = (u128, OrderVolume)>,
-    sell_orders_steps: impl Iterator<Item = (u128, OrderVolume)>,
     settings: settings::OrderBookFill<MomentOf<T>>,
     now: MomentOf<T>,
+    current_block: BlockNumberFor<T>,
 ) -> Result<(), DispatchError> {
-    let current_block = frame_system::Pallet::<T>::block_number();
     let lifespan = settings
         .lifespan
         .unwrap_or(<T as order_book::Config>::MAX_ORDER_LIFESPAN);
     let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
         .ok_or(crate::Error::<T>::CannotFillUnknownOrderBook)?;
 
-    // Convert price steps and best price to actual prices
-    let buy_orders: Vec<_> = buy_orders_steps
-        .map(|(price_steps, base)| {
-            (
-                OrderPrice::divisible(
-                    settings.bids.best_price - price_steps * (*order_book.tick_size.balance()),
-                ),
-                order_book.align_amount(base + order_book.step_lot_size),
-            )
+    let tick = order_book.tick_size.balance();
+    ensure!(
+        settings.bids.price_step % tick == 0
+            && settings.asks.price_step % tick == 0
+            && settings.bids.best_price % tick == 0
+            && settings.asks.best_price % tick == 0
+            && settings.bids.worst_price % tick == 0
+            && settings.asks.worst_price % tick == 0,
+        crate::Error::<T>::IncorrectPrice
+    );
+
+    let buy_prices = (0..)
+        .map(|step| settings.bids.best_price - step * settings.bids.price_step)
+        .take_while(|price| *price >= settings.bids.worst_price);
+    let sell_prices = (0..)
+        .map(|step| settings.asks.best_price + step * settings.asks.price_step)
+        .take_while(|price| *price <= settings.asks.worst_price);
+
+    let mut order_amount = OrderVolume::indivisible(1);
+    if order_book.step_lot_size.is_divisible() {
+        order_amount = order_amount.into_divisible().unwrap();
+    }
+
+    let buy_orders: Vec<_> = buy_prices
+        .flat_map(|price| {
+            repeat((OrderPrice::divisible(price), order_amount))
+                .take(settings.bids.orders_per_price as usize)
         })
         .collect();
-    let sell_orders: Vec<_> = sell_orders_steps
-        .map(|(price_steps, base)| {
-            (
-                OrderPrice::divisible(
-                    settings.asks.best_price + price_steps * (*order_book.tick_size.balance()),
-                ),
-                order_book.align_amount(base + order_book.step_lot_size),
-            )
+    let sell_orders: Vec<_> = sell_prices
+        .flat_map(|price| {
+            repeat((OrderPrice::divisible(price), order_amount))
+                .take(settings.asks.orders_per_price as usize)
         })
         .collect();
-    // Total amount of quote asset to be locked from `bids_owner`
+
+    dbg!(&buy_orders);
+    dbg!(&sell_orders);
+
+    // Total amount of assets to be locked from `bids_owner`
     let buy_quote_locked: Balance = buy_orders
         .iter()
         .map(|(quote, base)| *(*quote * (*base)).balance())

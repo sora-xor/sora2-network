@@ -74,6 +74,7 @@ fn should_create_and_fill_orderbook() {
                 quote,
             };
             let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
+            let price_step = order_book::OrderBook::<Runtime>::default(order_book_id).tick_size;
             assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::signed(alice()),
                 alice(),
@@ -82,17 +83,17 @@ fn should_create_and_fill_orderbook() {
                     order_book_id,
                     settings::OrderBookFill {
                         bids: settings::SideFill {
-                            best_price: best_bid_price.into(),
-                            worst_price: best_bid_price.into(),
-                            price_step: 0,
-                            orders_per_price: 1,
+                            best_price: best_bid_price,
+                            worst_price: best_bid_price - 2 * *price_step.balance(),
+                            price_step: *price_step.balance(),
+                            orders_per_price: 3,
                             amount: None
                         },
                         asks: settings::SideFill {
-                            best_price: best_ask_price.into(),
-                            worst_price: best_ask_price.into(),
-                            price_step: 0,
-                            orders_per_price: 1,
+                            best_price: best_ask_price,
+                            worst_price: best_ask_price + 2 * *price_step.balance(),
+                            price_step: *price_step.balance(),
+                            orders_per_price: 3,
                             amount: None
                         },
                         lifespan: None,

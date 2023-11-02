@@ -96,6 +96,9 @@ pub mod pallet {
         /// Did not find an order book with given id to fill. Likely an error with
         /// order book creation.
         CannotFillUnknownOrderBook,
+        /// Price step, best price, and worst price must be a multiple of
+        /// order book's tick size
+        IncorrectPrice,
     }
 
     #[pallet::call]
