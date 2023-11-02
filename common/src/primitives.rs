@@ -426,6 +426,18 @@ impl Default for AssetSymbol {
     }
 }
 
+impl From<Vec<u8>> for AssetSymbol {
+    fn from(value: Vec<u8>) -> Self {
+        Self(value)
+    }
+}
+
+impl Into<Vec<u8>> for AssetSymbol {
+    fn into(self) -> Vec<u8> {
+        self.0
+    }
+}
+
 const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
 
 impl IsValid for AssetSymbol {
@@ -469,6 +481,18 @@ impl Display for AssetName {
 impl Default for AssetName {
     fn default() -> Self {
         Self(b"Test".to_vec())
+    }
+}
+
+impl From<Vec<u8>> for AssetName {
+    fn from(value: Vec<u8>) -> Self {
+        Self(value)
+    }
+}
+
+impl Into<Vec<u8>> for AssetName {
+    fn into(self) -> Vec<u8> {
+        self.0
     }
 }
 

@@ -22,8 +22,8 @@ use bridge_types::{
     Address, GenericAccount, GenericNetworkId, GenericTimepoint, H160, H256,
 };
 use codec::{Decode, Encode};
-use common::ReferencePriceProvider;
 use common::{prelude::FixedWrapper, Balance};
+use common::{AssetInfoProvider, ReferencePriceProvider};
 use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::ensure;
 use frame_support::log;
@@ -709,5 +709,9 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::Asset
             symbol: asset_symbol.0,
             precision,
         }
+    }
+
+    fn ensure_asset_exists(asset_id: T::AssetId) -> bool {
+        assets::Pallet::<T>::asset_exists(&asset_id)
     }
 }
