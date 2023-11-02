@@ -22,7 +22,6 @@ frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "p
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 assets = { path = "../assets", default-features = false }
 order-book = { path = "../../pallets/order-book", default-features = false }
-trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }

@@ -1626,7 +1626,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
- "trading-pair",
 ]
 
 [[package]]
@@ -2660,7 +2659,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
- "trading-pair",
 ]
 
 [[package]]
@@ -5110,7 +5108,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
- "trading-pair",
 ]
 
 [[package]]
@@ -7060,7 +7057,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
- "trading-pair",
 ]
 
 [[package]]
@@ -9078,7 +9074,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
- "trading-pair",
 ]
 
 [[package]]
@@ -9291,7 +9286,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
- "trading-pair",
 ]
 
 [[package]]
@@ -9374,7 +9368,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "trading-pair",
 ]
 
 [[package]]
@@ -13244,7 +13237,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "trading-pair",
  "twox-hash",
 ]
 
@@ -14127,7 +14119,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
- "trading-pair",
 ]
 
 [[package]]

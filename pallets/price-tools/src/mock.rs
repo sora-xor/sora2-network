@@ -107,7 +107,6 @@ construct_runtime! {
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
-        TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -153,13 +152,6 @@ impl frame_system::Config for Runtime {
 
 impl dex_manager::Config for Runtime {}
 
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-}
-
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = ();
     type EnsureDEXManager = ();
@@ -170,7 +162,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = MockDEXApi;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type TradingPairSourceManager = ();
     type WeightInfo = ();
 }
 
@@ -289,10 +281,10 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type TradingPairSourceManager = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
+    type EnabledSourcesManager = ();
     type GetFee = GetXykFee;
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = PriceTools;
