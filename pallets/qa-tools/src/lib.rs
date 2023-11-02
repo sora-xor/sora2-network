@@ -203,7 +203,7 @@ pub mod pallet {
             asks_owner: T::AccountId,
             fill_settings: Vec<(
                 OrderBookId<T::AssetId, T::DEXId>,
-                settings::OrderBookFill<MomentOf<T>>,
+                settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {
             // error messages for unsigned calls are non-informative

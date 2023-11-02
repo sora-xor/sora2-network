@@ -74,7 +74,17 @@ fn should_create_and_fill_orderbook() {
                 quote,
             };
             let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
-            let price_step = order_book::OrderBook::<Runtime>::default(order_book_id).tick_size;
+            let (price_step, amount) = if assets::Pallet::<Runtime>::is_non_divisible(&base) {
+                (
+                    order_book::OrderBook::<Runtime>::default_indivisible(order_book_id).tick_size,
+                    1,
+                )
+            } else {
+                (
+                    order_book::OrderBook::<Runtime>::default(order_book_id).tick_size,
+                    balance!(1),
+                )
+            };
             assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::signed(alice()),
                 alice(),
@@ -87,16 +97,17 @@ fn should_create_and_fill_orderbook() {
                             worst_price: best_bid_price - 2 * *price_step.balance(),
                             price_step: *price_step.balance(),
                             orders_per_price: 3,
-                            amount: None
+                            amount: Some(amount..=amount)
                         },
                         asks: settings::SideFill {
                             best_price: best_ask_price,
                             worst_price: best_ask_price + 2 * *price_step.balance(),
                             price_step: *price_step.balance(),
                             orders_per_price: 3,
-                            amount: None
+                            amount: Some(amount..=amount)
                         },
                         lifespan: None,
+                        random_seed: None,
                     }
                 )]
             ));

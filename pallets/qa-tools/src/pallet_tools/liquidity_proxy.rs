@@ -3,6 +3,7 @@ pub mod source_initializers {
     use codec::{Decode, Encode};
     use common::prelude::BalanceUnit;
     use frame_support::dispatch::DispatchResult;
+    use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};
     use sp_std::fmt::Debug;
     use sp_std::vec::Vec;
@@ -37,7 +38,7 @@ pub mod source_initializers {
         asks_owner: T::AccountId,
         fill_settings: Vec<(
             OrderBookId<T::AssetId, T::DEXId>,
-            settings::OrderBookFill<MomentOf<T>>,
+            settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
         )>,
     ) -> DispatchResult {
         let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
