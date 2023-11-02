@@ -82,7 +82,7 @@ fn create_pair_with_xor<T: Config>(
 ) {
     assets::Pallet::<T>::mint(origin.clone(), asset, owner, balance!(1000000)).unwrap();
 
-    <T as pallet::Config>::TradingPairSourceManager::register_pair(
+    <T as Config>::TradingPairSourceManager::register_pair(
         DEXId::Polkaswap.into(),
         XOR.into(),
         asset,

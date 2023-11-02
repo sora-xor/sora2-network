@@ -74,7 +74,7 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) 
         .unwrap();
 
         assert_ok!(
-            <T as pallet::Config>::TradingPairSourceManager::register_pair(
+            <T as Config>::TradingPairSourceManager::register_pair(
                 Default::default(),
                 xor_asset.clone(),
                 other_asset.clone(),

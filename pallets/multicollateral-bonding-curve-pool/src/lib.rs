@@ -872,13 +872,13 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::PoolAlreadyInitializedForPair
             );
             T::PriceToolsPallet::register_asset(&collateral_asset_id)?;
-            <T as pallet::Config>::EnsureTradingPairExists::ensure_trading_pair_exists(
+            <T as Config>::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &collateral_asset_id,
             )?;
 
-            <T as pallet::Config>::TradingPairSourceManager::enable_source_for_trading_pair(
+            <T as Config>::TradingPairSourceManager::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &collateral_asset_id,
@@ -1424,7 +1424,7 @@ impl<T: Config> Pallet<T> {
         let price = if asset_id == &reference_asset_id || asset_id == &common::TBCD.into() {
             balance!(1)
         } else {
-            <T as pallet::Config>::PriceToolsPallet::get_average_price(
+            <T as Config>::PriceToolsPallet::get_average_price(
                 asset_id,
                 &reference_asset_id,
                 price_variant,

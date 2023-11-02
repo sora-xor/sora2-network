@@ -175,7 +175,7 @@ benchmarks! {
             None,
             None
         ).unwrap();
-        <T as pallet::Config>::TradingPairSourceManager::register_pair(
+        <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             USDT.into()
@@ -242,7 +242,7 @@ benchmarks! {
             None,
             None
         ).unwrap();
-        <T as pallet::Config>::TradingPairSourceManager::register_pair( common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
+        <T as Config>::TradingPairSourceManager::register_pair( common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
         MBCPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), USDT.into()).unwrap();
     }: {
         Pallet::<T>::set_optional_reward_multiplier(
@@ -331,7 +331,7 @@ benchmarks! {
             None,
         )
         .unwrap();
-    <T as pallet::Config>::TradingPairSourceManager::register_pair(
+    <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             USDT.into(),
@@ -390,7 +390,7 @@ benchmarks! {
             balance!(50000000),
         )
         .unwrap();
-    <T as pallet::Config>::TradingPairSourceManager::register_pair(
+    <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             USDT.into(),
@@ -448,7 +448,7 @@ benchmarks! {
             None,
             None
         ).unwrap();
-        <T as pallet::Config>::TradingPairSourceManager::register_pair(
+        <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             USDT.into()
@@ -497,7 +497,7 @@ benchmarks! {
             balance!(50000000),
         )
         .unwrap();
-    <T as pallet::Config>::TradingPairSourceManager::register_pair(
+    <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             USDT.into(),

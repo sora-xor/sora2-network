@@ -878,7 +878,7 @@ impl<T: Config> Pallet<T> {
     /// Used for converting XST fee to XOR
     fn convert_fee(fee_amount: Balance) -> Result<Balance, DispatchError> {
         let output_to_base: FixedWrapper =
-            <T as pallet::Config>::PriceToolsPallet::get_average_price(
+            <T as Config>::PriceToolsPallet::get_average_price(
                 &T::GetSyntheticBaseAssetId::get(),
                 &T::GetBaseAssetId::get(),
                 // Since `Buy` is more expensive in case if we are buying XOR

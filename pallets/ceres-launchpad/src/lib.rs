@@ -400,7 +400,7 @@ pub mod pallet {
             };
 
             ensure!(
-                !<T as pallet::Config>::TradingPairSourceManager::is_trading_pair_enabled(
+                !<T as Config>::TradingPairSourceManager::is_trading_pair_enabled(
                     &dex_id,
                     &base_asset,
                     &asset_id
@@ -738,7 +738,7 @@ pub mod pallet {
                 DEXId::PolkaswapXSTUSD.into()
             };
             // Register trading pair
-            <T as pallet::Config>::TradingPairSourceManager::register_pair(
+            <T as Config>::TradingPairSourceManager::register_pair(
                 dex_id,
                 ilo_info.base_asset,
                 asset_id,
