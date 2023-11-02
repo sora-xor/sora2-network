@@ -47,7 +47,7 @@ benchmarks! {
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.into()).unwrap();
         let mut options = BoundedVec::default();
         options.try_push("Yes".try_into().unwrap()).unwrap();
         options.try_push("No".try_into().unwrap()).unwrap();
@@ -70,11 +70,11 @@ benchmarks! {
             options
         };
 
-        pallet::HermesPollData::<T>::insert(&poll_id, &hermes_poll_info);
+        pallet::HermesPollData::<T>::insert(poll_id, &hermes_poll_info);
     }: {
         let _ = HermesGovernancePlatform::<T>::vote(
             RawOrigin::Signed(caller.clone()).into(),
-            poll_id.clone(),
+            poll_id,
             voting_option.try_into().unwrap(),
         ).unwrap();
     }
@@ -89,7 +89,7 @@ benchmarks! {
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
         let hermes_amount = balance!(100000);
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.into()).unwrap();
         let mut options = BoundedVec::default();
         options.try_push("Yes".try_into().unwrap()).unwrap();
         options.try_push("No".try_into().unwrap()).unwrap();
@@ -125,62 +125,7 @@ benchmarks! {
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
         let current_timestamp = Timestamp::<T>::get();
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
-        let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
-        let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
-        let poll_id = H256::from(encoded);
-        let mut options = BoundedVec::default();
-        options.try_push("Yes".try_into().unwrap()).unwrap();
-        options.try_push("No".try_into().unwrap()).unwrap();
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(owner.clone()).into(),
-            HERMES_ASSET_ID.into(),
-            caller.clone(),
-            number_of_hermes
-        );
-
-        let hermes_poll_info = HermesPollInfo {
-            creator: caller.clone(),
-            hermes_locked,
-            poll_start_timestamp,
-            poll_end_timestamp,
-            title: title.try_into().unwrap(),
-            description: description.try_into().unwrap(),
-            creator_hermes_withdrawn: false,
-            options
-        };
-
-        pallet::HermesPollData::<T>::insert(&poll_id, &hermes_poll_info);
-
-        let _ = HermesGovernancePlatform::<T>::vote(
-            RawOrigin::Signed(caller.clone()).into(),
-            poll_id.clone(),
-            voting_option.try_into().unwrap(),
-        );
-
-        let hermes_voting_info = pallet::HermesVotings::<T>::get(&poll_id, &caller).unwrap();
-        pallet_timestamp::Now::<T>::put(current_timestamp + (14401*1000u32).into());
-    }: {
-        let _ = HermesGovernancePlatform::<T>::withdraw_funds_voter(
-            RawOrigin::Signed(caller.clone()).into(),
-            poll_id.clone()
-        );
-    }
-    verify {
-        assert_last_event::<T>(Event::VoterFundsWithdrawn(caller, hermes_voting_info.number_of_hermes).into())
-    }
-
-    withdraw_funds_creator {
-        let caller = alice::<T>();
-        let title = "Title";
-        let description = "Description";
-        let voting_option = "Yes";
-        let number_of_hermes = balance!(200000);
-        let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
-        let poll_start_timestamp = Timestamp::<T>::get();
-        let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.into()).unwrap();
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
@@ -206,7 +151,62 @@ benchmarks! {
             options
         };
 
-        pallet::HermesPollData::<T>::insert(&poll_id, &hermes_poll_info);
+        pallet::HermesPollData::<T>::insert(poll_id, &hermes_poll_info);
+
+        let _ = HermesGovernancePlatform::<T>::vote(
+            RawOrigin::Signed(caller.clone()).into(),
+            poll_id,
+            voting_option.try_into().unwrap(),
+        );
+
+        let hermes_voting_info = pallet::HermesVotings::<T>::get(poll_id, &caller).unwrap();
+        pallet_timestamp::Now::<T>::put(current_timestamp + (14401*1000u32).into());
+    }: {
+        let _ = HermesGovernancePlatform::<T>::withdraw_funds_voter(
+            RawOrigin::Signed(caller.clone()).into(),
+            poll_id
+        );
+    }
+    verify {
+        assert_last_event::<T>(Event::VoterFundsWithdrawn(caller, hermes_voting_info.number_of_hermes).into())
+    }
+
+    withdraw_funds_creator {
+        let caller = alice::<T>();
+        let title = "Title";
+        let description = "Description";
+        let voting_option = "Yes";
+        let number_of_hermes = balance!(200000);
+        let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
+        let poll_start_timestamp = Timestamp::<T>::get();
+        let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.into()).unwrap();
+        let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
+        let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
+        let poll_id = H256::from(encoded);
+        let mut options = BoundedVec::default();
+        options.try_push("Yes".try_into().unwrap()).unwrap();
+        options.try_push("No".try_into().unwrap()).unwrap();
+
+        let _ = Assets::<T>::mint(
+            RawOrigin::Signed(owner).into(),
+            HERMES_ASSET_ID.into(),
+            caller.clone(),
+            number_of_hermes
+        );
+
+        let hermes_poll_info = HermesPollInfo {
+            creator: caller.clone(),
+            hermes_locked,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title: title.try_into().unwrap(),
+            description: description.try_into().unwrap(),
+            creator_hermes_withdrawn: false,
+            options
+        };
+
+        pallet::HermesPollData::<T>::insert(poll_id, &hermes_poll_info);
 
         let pallet_account: AccountIdOf<T> = PalletId(*b"hermsgov").into_account_truncating();
         assert_ok!(Assets::<T>::transfer_from(
@@ -221,7 +221,7 @@ benchmarks! {
     }: {
         let _ = HermesGovernancePlatform::<T>::withdraw_funds_creator(
             RawOrigin::Signed(caller.clone()).into(),
-            poll_id.clone()
+            poll_id
         );
     }
     verify {

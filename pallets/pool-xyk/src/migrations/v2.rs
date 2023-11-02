@@ -43,15 +43,15 @@ mod tests {
     #[test]
     fn test() {
         ExtBuilder::default().build().execute_with(|| {
-            let target_asset_a = AssetId::from_bytes(
-                hex!("0200000700000000000000000000000000000000000000000000000000000000").into(),
-            );
-            let target_asset_b = AssetId::from_bytes(
-                hex!("0200010700000000000000000000000000000000000000000000000000000000").into(),
-            );
-            let target_asset_c = AssetId::from_bytes(
-                hex!("0200020700000000000000000000000000000000000000000000000000000000").into(),
-            );
+            let target_asset_a = AssetId::from_bytes(hex!(
+                "0200000700000000000000000000000000000000000000000000000000000000"
+            ));
+            let target_asset_b = AssetId::from_bytes(hex!(
+                "0200010700000000000000000000000000000000000000000000000000000000"
+            ));
+            let target_asset_c = AssetId::from_bytes(hex!(
+                "0200020700000000000000000000000000000000000000000000000000000000"
+            ));
             OldAccountPools::<Runtime>::insert(
                 ALICE(),
                 BTreeSet::from([target_asset_a, target_asset_b, target_asset_c]),

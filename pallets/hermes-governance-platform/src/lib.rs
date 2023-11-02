@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
 
 mod benchmarking;
 pub mod migrations;
@@ -284,7 +283,7 @@ pub mod pallet {
 
             let current_timestamp = Timestamp::<T>::get();
             let hermes_poll_info =
-                <HermesPollData<T>>::get(&poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
+                <HermesPollData<T>>::get(poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
 
             ensure!(
                 current_timestamp >= hermes_poll_info.poll_start_timestamp,
@@ -303,13 +302,12 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesVotingAmount::<T>::get()
-                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
-                        .unwrap_or(0),
+                    <= Assets::<T>::free_balance(&T::HermesAssetId::get(), &user).unwrap_or(0),
                 Error::<T>::NotEnoughHermesForVoting
             );
 
             ensure!(
-                !<HermesVotings<T>>::contains_key(&poll_id, &user),
+                !<HermesVotings<T>>::contains_key(poll_id, &user),
                 Error::<T>::AlreadyVoted
             );
 
@@ -321,7 +319,7 @@ pub mod pallet {
 
             // Transfer Hermes to pallet
             Assets::<T>::transfer_from(
-                &T::HermesAssetId::get().into(),
+                &T::HermesAssetId::get(),
                 &user,
                 &Self::account_id(),
                 hermes_voting_info.number_of_hermes,
@@ -329,7 +327,7 @@ pub mod pallet {
             .map_err(|_assets_err| Error::<T>::NotEnoughHermesForVoting)?;
 
             // Update storage
-            <HermesVotings<T>>::insert(&poll_id, &user, hermes_voting_info);
+            <HermesVotings<T>>::insert(poll_id, &user, hermes_voting_info);
 
             // Emit event
             Self::deposit_event(Event::<T>::Voted(user, poll_id, voting_option));
@@ -374,8 +372,7 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesAmountForCreatingPoll::<T>::get()
-                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
-                        .unwrap_or(0),
+                    <= Assets::<T>::free_balance(&T::HermesAssetId::get(), &user).unwrap_or(0),
                 Error::<T>::NotEnoughHermesForCreatingPoll
             );
 
@@ -409,18 +406,18 @@ pub mod pallet {
 
             // Transfer Hermes to pallet
             Assets::<T>::transfer_from(
-                &T::HermesAssetId::get().into(),
-                &user.clone(),
+                &T::HermesAssetId::get(),
+                &user,
                 &Self::account_id(),
                 hermes_poll_info.hermes_locked,
             )
             .map_err(|_assets_err| Error::<T>::NotEnoughHermesForCreatingPoll)?;
 
-            <HermesPollData<T>>::insert(&poll_id, hermes_poll_info);
+            <HermesPollData<T>>::insert(poll_id, hermes_poll_info);
 
             // Emit event
             Self::deposit_event(Event::<T>::Created(
-                user.clone(),
+                user,
                 title,
                 poll_start_timestamp,
                 poll_end_timestamp,
@@ -440,7 +437,7 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
             let current_timestamp = Timestamp::<T>::get();
             let hermes_poll_info =
-                <HermesPollData<T>>::get(&poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
+                <HermesPollData<T>>::get(poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
 
             ensure!(
                 current_timestamp > hermes_poll_info.poll_end_timestamp,
@@ -448,23 +445,23 @@ pub mod pallet {
             );
 
             let mut hermes_voting_info =
-                <HermesVotings<T>>::get(&poll_id, &user).ok_or(Error::<T>::NotVoted)?;
+                <HermesVotings<T>>::get(poll_id, &user).ok_or(Error::<T>::NotVoted)?;
 
             ensure!(
-                hermes_voting_info.hermes_withdrawn == false,
+                !hermes_voting_info.hermes_withdrawn,
                 Error::<T>::FundsAlreadyWithdrawn
             );
 
             // Withdraw Hermes
             Assets::<T>::transfer_from(
-                &T::HermesAssetId::get().into(),
+                &T::HermesAssetId::get(),
                 &Self::account_id(),
                 &user,
                 hermes_voting_info.number_of_hermes,
             )?;
 
             hermes_voting_info.hermes_withdrawn = true;
-            <HermesVotings<T>>::insert(&poll_id, &user, &hermes_voting_info);
+            <HermesVotings<T>>::insert(poll_id, &user, &hermes_voting_info);
 
             // Emit event
             Self::deposit_event(Event::<T>::VoterFundsWithdrawn(
@@ -486,7 +483,7 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
             let current_timestamp = Timestamp::<T>::get();
             let mut hermes_poll_info =
-                <HermesPollData<T>>::get(&poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
+                <HermesPollData<T>>::get(poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
 
             ensure!(
                 hermes_poll_info.creator == user,
@@ -499,20 +496,20 @@ pub mod pallet {
             );
 
             ensure!(
-                hermes_poll_info.creator_hermes_withdrawn == false,
+                !hermes_poll_info.creator_hermes_withdrawn,
                 Error::<T>::FundsAlreadyWithdrawn
             );
 
             // Withdraw Creator Hermes
             Assets::<T>::transfer_from(
-                &T::HermesAssetId::get().into(),
+                &T::HermesAssetId::get(),
                 &Self::account_id(),
                 &user,
                 hermes_poll_info.hermes_locked,
             )?;
 
             hermes_poll_info.creator_hermes_withdrawn = true;
-            <HermesPollData<T>>::insert(&poll_id, &hermes_poll_info);
+            <HermesPollData<T>>::insert(poll_id, &hermes_poll_info);
 
             // Emit event
             Self::deposit_event(Event::<T>::CreatorFundsWithdrawn(

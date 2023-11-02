@@ -85,12 +85,9 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
             // Dealing with receiver account, for example case then not swapping to self, but to
             // other account.
-            match &self.receiver_account {
+            if self.receiver_account.is_none() {
                 // Just use `client_account` as same account, swapping to self.
-                None => {
-                    self.receiver_account = self.client_account.clone();
-                }
-                _ => (),
+                self.receiver_account = self.client_account.clone();
             }
         }
 
@@ -105,7 +102,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         } else {
             Some(<assets::Pallet<T>>::free_balance(
                 &self.source.asset,
-                &source_opt.unwrap(),
+                source_opt.unwrap(),
             )?)
         };
         // Source balance of technical account.
@@ -119,20 +116,17 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         }
         if balance_st == 0 && balance_tt == 0 {
             Err(Error::<T>::PoolIsEmpty)?;
-        } else if balance_st <= 0 || balance_tt <= 0 {
+        } else if balance_st == 0 || balance_tt == 0 {
             Err(Error::<T>::PoolIsInvalid)?;
         }
 
-        match self.get_fee_from_destination {
-            None => {
-                let is_fee_from_d = Pallet::<T>::decide_is_fee_from_destination(
-                    base_asset_id,
-                    &self.source.asset,
-                    &self.destination.asset,
-                )?;
-                self.get_fee_from_destination = Some(is_fee_from_d);
-            }
-            _ => (),
+        if self.get_fee_from_destination.is_none() {
+            let is_fee_from_d = Pallet::<T>::decide_is_fee_from_destination(
+                base_asset_id,
+                &self.source.asset,
+                &self.destination.asset,
+            )?;
+            self.get_fee_from_destination = Some(is_fee_from_d);
         }
 
         // Recommended fee, will be used if fee is not specified or for checking if specified.
@@ -258,6 +252,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
             if !abstract_checking {
                 // Checking that balances if correct and large enouth for amounts.
+                #[allow(clippy::if_same_then_else)]
                 if self.get_fee_from_destination.unwrap() {
                     // For source account balance must be not smaller than required with fee.
                     if balance_ss.unwrap() < source_amount {
@@ -353,7 +348,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
             if self.get_fee_from_destination.unwrap() {
                 technical::Pallet::<T>::transfer_in(
                     &self.source.asset,
-                    &source,
+                    source,
                     &self.pool_account,
                     self.source.amount.unwrap(),
                 )?;
@@ -372,13 +367,13 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
             } else {
                 technical::Pallet::<T>::transfer_in(
                     &self.source.asset,
-                    &source,
+                    source,
                     &self.pool_account,
                     self.source.amount.unwrap() - self.fee.unwrap(),
                 )?;
                 technical::Pallet::<T>::transfer_in(
                     &self.source.asset,
-                    &source,
+                    source,
                     self.fee_account.as_ref().unwrap(),
                     self.fee.unwrap(),
                 )?;

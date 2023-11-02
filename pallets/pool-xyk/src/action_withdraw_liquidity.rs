@@ -76,19 +76,13 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         // Dealing with receiver account, for example case then not swapping to self, but to
         // other account.
-        match &self.receiver_account_a {
+        if self.receiver_account_a.is_none() {
             // Just use `client_account` as same account, swapping to self.
-            None => {
-                self.receiver_account_a = self.client_account.clone();
-            }
-            _ => (),
+            self.receiver_account_a = self.client_account.clone();
         }
-        match &self.receiver_account_b {
+        if self.receiver_account_b.is_none() {
             // Just use `client_account` as same account, swapping to self.
-            None => {
-                self.receiver_account_b = self.client_account.clone();
-            }
-            _ => (),
+            self.receiver_account_b = self.client_account.clone();
         }
         let pool_account_repr_sys =
             technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
@@ -96,8 +90,8 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         Pallet::<T>::is_pool_account_valid_for(self.destination.0.asset, &self.pool_account)?;
 
         // Balance of source account for k value.
-        let balance_ks = PoolProviders::<T>::get(&pool_account_repr_sys, &source).unwrap_or(0);
-        if balance_ks <= 0 {
+        let balance_ks = PoolProviders::<T>::get(&pool_account_repr_sys, source).unwrap_or(0);
+        if balance_ks == 0 {
             Err(Error::<T>::AccountBalanceIsInvalid)?;
         }
 
@@ -110,9 +104,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         if balance_bp == 0 && balance_tp == 0 {
             Err(Error::<T>::PoolIsEmpty)?;
-        } else if balance_bp <= 0 {
-            Err(Error::<T>::PoolIsInvalid)?;
-        } else if balance_tp <= 0 {
+        } else if balance_bp == 0 || balance_tp == 0 {
             Err(Error::<T>::PoolIsInvalid)?;
         }
 
@@ -126,13 +118,13 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         let has_enough_unlocked_liquidity =
             ceres_liquidity_locker::Pallet::<T>::check_if_has_enough_unlocked_liquidity(
-                &source,
+                source,
                 self.destination.0.asset,
                 self.destination.1.asset,
                 self.pool_tokens,
             );
         ensure!(
-            has_enough_unlocked_liquidity == true,
+            has_enough_unlocked_liquidity,
             Error::<T>::NotEnoughUnlockedLiquidity
         );
 
@@ -144,7 +136,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                 self.pool_tokens,
             );
         ensure!(
-            has_enough_liquidity_out_of_farming == true,
+            has_enough_liquidity_out_of_farming,
             Error::<T>::NotEnoughLiquidityOutOfFarming
         );
 
@@ -255,7 +247,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                 &self.destination.0.asset,
                 &self.destination.1.asset,
             )?;
-            AccountPools::<T>::mutate(source, &pair.base_asset_id, |set| {
+            AccountPools::<T>::mutate(source, pair.base_asset_id, |set| {
                 set.remove(&pair.target_asset_id)
             });
         }

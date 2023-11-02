@@ -36,7 +36,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
+
 use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
@@ -68,8 +68,8 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub GetBaseAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000").into());
-    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
+    pub GetBaseAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000"));
+    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
     pub const ExistentialDeposit: u128 = 0;
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
@@ -271,11 +271,11 @@ impl demeter_farming_platform::Config for Runtime {
 
 parameter_types! {
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
+
+        TechAccountId::from_generic_pair(
             xst::TECH_ACCOUNT_PREFIX.to_vec(),
             xst::TECH_ACCOUNT_PERMISSIONED.to_vec(),
-        );
-        tech_account_id
+        )
     };
     pub GetSyntheticBaseAssetId: AssetId = BatteryForMusicPlayer.into();
     pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000000);

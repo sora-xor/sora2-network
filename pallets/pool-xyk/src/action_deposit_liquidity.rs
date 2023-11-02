@@ -77,12 +77,9 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
             // Dealing with receiver account, for example case then not swapping to self, but to
             // other account.
-            match &self.receiver_account {
+            if self.receiver_account.is_none() {
                 // Just use `client_account` as same account, swapping to self.
-                None => {
-                    self.receiver_account = self.client_account.clone();
-                }
-                _ => (),
+                self.receiver_account = self.client_account.clone();
             }
         }
 
@@ -99,16 +96,16 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             (
                 Some(<assets::Pallet<T>>::free_balance(
                     &self.source.0.asset,
-                    &source,
+                    source,
                 )?),
                 Some(<assets::Pallet<T>>::free_balance(
                     &self.source.1.asset,
-                    &source,
+                    source,
                 )?),
             )
         };
 
-        if !abstract_checking && (balance_bs.unwrap() <= 0 || balance_ts.unwrap() <= 0) {
+        if !abstract_checking && (balance_bs.unwrap() == 0 || balance_ts.unwrap() == 0) {
             Err(Error::<T>::AccountBalanceIsInvalid)?;
         }
 
@@ -122,9 +119,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let mut empty_pool = false;
         if balance_bp == 0 && balance_tp == 0 {
             empty_pool = true;
-        } else if balance_bp == 0 {
-            Err(Error::<T>::PoolIsInvalid)?;
-        } else if balance_tp == 0 {
+        } else if balance_bp == 0 || balance_tp == 0 {
             Err(Error::<T>::PoolIsInvalid)?;
         }
 
@@ -159,18 +154,16 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     let fxw_init_y = to_fixed_wrapper!(init_y);
                     let fxw_value = fxw_init_x.multiply_and_sqrt(&fxw_init_y);
                     ensure!(
-                        !((fxw_value.clone() * fxw_init_x.clone())
-                            .try_into_balance()
-                            .is_err()
+                        !((fxw_value.clone() * fxw_init_x).try_into_balance().is_err()
                             || (fxw_value.clone() * fxw_init_y).try_into_balance().is_err()),
                         Error::<T>::CalculatedValueIsOutOfDesiredBounds
                     );
-                    let value = to_balance!(fxw_value.clone());
+                    let value = to_balance!(fxw_value);
                     Some(value)
                 }
             } else {
                 let fxw_value: FixedWrapper = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
-                let value = to_balance!(fxw_value.clone());
+                let value = to_balance!(fxw_value);
                 Some(value)
             }
         };
@@ -293,13 +286,13 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
             technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         technical::Pallet::<T>::transfer_in(
             &self.source.0.asset,
-            &source,
+            source,
             &self.pool_account,
             self.source.0.amount.unwrap(),
         )?;
         technical::Pallet::<T>::transfer_in(
             &self.source.1.asset,
-            &source,
+            source,
             &self.pool_account,
             self.source.1.amount.unwrap(),
         )?;
@@ -315,7 +308,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                 &self.source.0.asset,
                 &self.source.1.asset,
             )?;
-            AccountPools::<T>::mutate(receiver_account, &pair.base_asset_id, |set| {
+            AccountPools::<T>::mutate(receiver_account, pair.base_asset_id, |set| {
                 set.insert(pair.target_asset_id)
             });
         }

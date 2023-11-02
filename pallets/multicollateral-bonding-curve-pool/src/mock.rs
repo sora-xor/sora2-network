@@ -93,9 +93,8 @@ pub fn tmp_account() -> AccountId {
 
 pub fn get_pool_reserves_account_id() -> AccountId {
     let reserves_tech_account_id = crate::ReservesAcc::<Runtime>::get();
-    let reserves_account_id =
-        Technical::tech_account_id_to_account_id(&reserves_tech_account_id).unwrap();
-    reserves_account_id
+
+    Technical::tech_account_id_to_account_id(&reserves_tech_account_id).unwrap()
 }
 
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
@@ -114,7 +113,7 @@ parameter_types! {
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
     pub const GetNumSamples: usize = 40;
-    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
+    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([151; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
@@ -217,7 +216,7 @@ impl BuyBackHandler<AccountId, AssetId> for BuyBackHandlerImpl {
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
         let owner = Assets::asset_owner(&mint_asset_id).unwrap();
-        Assets::mint_to(&mint_asset_id, &owner, &tmp_account(), amount)?;
+        Assets::mint_to(mint_asset_id, &owner, &tmp_account(), amount)?;
         let amount =
             Self::buy_back_and_burn(&tmp_account(), mint_asset_id, buy_back_asset_id, amount)?;
         Ok(amount)
@@ -413,7 +412,7 @@ pub type MockPrices =
 
 impl MockDEXApi {
     pub fn with_price(asset_pair: (AssetId, AssetId), price: Balance) {
-        MockPrices::insert(asset_pair.clone(), price);
+        MockPrices::insert(asset_pair, price);
         MockPrices::insert(
             (asset_pair.1, asset_pair.0),
             (fixed_wrapper!(1) / FixedWrapper::from(price))
@@ -423,8 +422,7 @@ impl MockDEXApi {
     }
 
     fn get_mock_source_account() -> Result<(TechAccountId, AccountId), DispatchError> {
-        let tech_account_id =
-            TechAccountId::Pure(DEXId::Polkaswap.into(), TechPurpose::FeeCollector);
+        let tech_account_id = TechAccountId::Pure(DEXId::Polkaswap, TechPurpose::FeeCollector);
         let account_id = Technical::tech_account_id_to_account_id(&tech_account_id)?;
         Ok((tech_account_id, account_id))
     }
@@ -465,11 +463,11 @@ impl MockDEXApi {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
     ) -> bool {
-        MockPrices::contains_key(&(*input_asset_id, *output_asset_id))
+        MockPrices::contains_key((*input_asset_id, *output_asset_id))
     }
 
     fn get_price(input_asset_id: &AssetId, output_asset_id: &AssetId) -> Balance {
-        MockPrices::get(&(*input_asset_id, *output_asset_id)).unwrap()
+        MockPrices::get((*input_asset_id, *output_asset_id)).unwrap()
     }
 
     fn inner_quote(
@@ -659,7 +657,7 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
         _price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         Ok(Self::inner_quote(
-            &DEXId::Polkaswap.into(),
+            &DEXId::Polkaswap,
             input_asset_id,
             output_asset_id,
             QuoteAmount::with_desired_input(balance!(1)),

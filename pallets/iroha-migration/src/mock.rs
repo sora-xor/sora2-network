@@ -229,11 +229,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
         .unwrap();
 
     pallet_balances::GenesisConfig::<Runtime> {
-        balances: vec![
-            (ALICE, 0u128.into()),
-            (BOB, 0u128.into()),
-            (MINTING_ACCOUNT, 0u128.into()),
-        ],
+        balances: vec![(ALICE, 0u128), (BOB, 0u128), (MINTING_ACCOUNT, 0u128)],
     }
     .assimilate_storage(&mut t)
     .unwrap();
@@ -270,7 +266,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
 
     tokens::GenesisConfig::<Runtime> {
         balances: vec![
-            (ALICE, VAL, 0u128.into()),
+            (ALICE, VAL, 0u128),
             (eth_bridge_account_id, VAL, balance!(1000)),
         ],
     }
@@ -279,7 +275,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
 
     technical::GenesisConfig::<Runtime> {
         register_tech_accounts: vec![
-            (MINTING_ACCOUNT, tech_account_id.clone()),
+            (MINTING_ACCOUNT, tech_account_id),
             (eth_bridge_account_id, eth_bridge_tech_account_id),
         ],
     }
@@ -290,7 +286,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
         vec![
             (
                 "did_sora_d9bda3688c6f608ab15c@sora".to_string(),
-                Balance::from(0u128),
+                0u128,
                 None,
                 1,
                 vec![
@@ -299,7 +295,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
             ),
             (
                 "did_sora_balance@sora".to_string(),
-                Balance::from(300u128),
+                300u128,
                 None,
                 1,
                 vec![
@@ -308,7 +304,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
             ),
             (
                 "did_sora_referral@sora".to_string(),
-                Balance::from(0u128),
+                0u128,
                 Some("did_sora_referrer@sora".to_string()),
                 1,
                 vec![
@@ -317,7 +313,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
             ),
             (
                 "did_sora_referrer@sora".to_string(),
-                Balance::from(0u128),
+                0u128,
                 None,
                 1,
                 vec![
@@ -326,7 +322,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
             ),
             (
                 "did_sora_multi_sig@sora".to_string(),
-                Balance::from(1000u128),
+                1000u128,
                 None,
                 2,
                 vec![

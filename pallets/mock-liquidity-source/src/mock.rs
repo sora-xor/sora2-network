@@ -222,16 +222,9 @@ impl trading_pair::Config for Runtime {
     type WeightInfo = ();
 }
 
+#[derive(Default)]
 pub struct ExtBuilder {
     // add additional fields for other pallets genesis
-}
-
-impl Default for ExtBuilder {
-    fn default() -> Self {
-        Self {
-            // add values for mock genesis
-        }
-    }
 }
 
 impl ExtBuilder {

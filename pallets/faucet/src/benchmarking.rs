@@ -53,8 +53,7 @@ fn alice<T: Config>() -> T::AccountId {
 fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
-        RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner).into();
     for _i in 0..n {
         Assets::<T>::register(
             owner_origin.clone(),
@@ -99,7 +98,7 @@ benchmarks! {
     reset_rewards {
         add_assets::<T>(100)?;
         let caller = alice::<T>();
-        let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller.clone()).into();
+        let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller).into();
     }: {
         Pallet::<T>::reset_rewards(caller_origin)?;
     }

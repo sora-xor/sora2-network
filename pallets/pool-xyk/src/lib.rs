@@ -29,8 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::storage::PrefixIterator;
@@ -132,7 +130,7 @@ impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
                 let new_balance = old_balance
                     .checked_sub(pool_tokens)
                     .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
-                *balance = (new_balance != 0).then(|| new_balance);
+                *balance = (new_balance != 0).then_some(new_balance);
                 Ok(())
             });
         result?;
@@ -144,13 +142,13 @@ impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
             && !pool_tokens.is_zero()
         {
             let pair = Pallet::<T>::strict_sort_pair(&asset_a.clone(), &asset_a, &asset_b)?;
-            AccountPools::<T>::mutate(target_account_id.clone(), &pair.base_asset_id, |set| {
+            AccountPools::<T>::mutate(target_account_id.clone(), pair.base_asset_id, |set| {
                 set.insert(pair.target_asset_id)
             });
         }
 
         // Add lp_tokens to target_account
-        result = PoolProviders::<T>::mutate(pool_account.clone(), target_account_id, |balance| {
+        result = PoolProviders::<T>::mutate(pool_account, target_account_id, |balance| {
             *balance = Some(balance.unwrap_or(0) + pool_tokens);
             Ok(())
         });
@@ -220,6 +218,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn initialize_pool_unchecked(
         _source: AccountIdOf<T>,
         dex_id: DEXIdOf<T>,
@@ -259,6 +258,7 @@ impl<T: Config> Pallet<T> {
         Ok((trading_pair, tech_acc_id, fee_acc_id))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn deposit_liquidity_unchecked(
         source: AccountIdOf<T>,
         dex_id: DEXIdOf<T>,
@@ -367,7 +367,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 return false;
             };
 
-            Properties::<T>::contains_key(&dex_info.base_asset_id, &target_asset_id)
+            Properties::<T>::contains_key(dex_info.base_asset_id, target_asset_id)
         } else {
             false
         }
@@ -390,13 +390,13 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
-        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+        let reserve_input = <assets::Pallet<T>>::free_balance(input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Pallet<T>>::free_balance(output_asset_id, &pool_acc_id)?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
             fail!(Error::<T>::PoolIsEmpty);
-        } else if reserve_input <= 0 || reserve_output <= 0 {
+        } else if reserve_input == 0 || reserve_output == 0 {
             fail!(Error::<T>::PoolIsInvalid);
         }
 
@@ -442,14 +442,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
-        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
             *input_asset_id,
             *output_asset_id,
         )?;
         let (source_amount, destination_amount) =
-            Pallet::<T>::get_bounds_from_swap_amount(swap_amount.clone())?;
+            Pallet::<T>::get_bounds_from_swap_amount(swap_amount)?;
         let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
             client_account: None,
             receiver_account: Some(receiver.clone()),
@@ -493,10 +493,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         };
 
         let action = T::PolySwapAction::from(action);
-        let mut action = action.into();
         technical::Pallet::<T>::create_swap_unchecked(
             sender.clone(),
-            &mut action,
+            &action.into(),
             &dex_info.base_asset_id,
         )?;
 
@@ -531,13 +530,13 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
-        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+        let reserve_input = <assets::Pallet<T>>::free_balance(input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Pallet<T>>::free_balance(output_asset_id, &pool_acc_id)?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
             fail!(Error::<T>::PoolIsEmpty);
-        } else if reserve_input <= 0 || reserve_output <= 0 {
+        } else if reserve_input == 0 || reserve_output == 0 {
             fail!(Error::<T>::PoolIsInvalid);
         }
 
@@ -562,16 +561,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     // y_out = y_1 * (1 - fee)
                     let out_with_fee =
                         FixedWrapper::from(desired_amount_in) * input_price_wrt_output;
-                    let output = FixedWrapper::from(out_with_fee.clone())
-                        * (fixed_wrapper!(1) - fee_fraction);
+                    let output = out_with_fee.clone() * (fixed_wrapper!(1) - fee_fraction);
                     let fee_amount = out_with_fee - output.clone();
                     (output, fee_amount)
                 } else {
                     // input token is xor, user indicates desired input amount
                     // x_1 = x_in * (1 - fee)
                     // y_out = x_1 * y / x
-                    let input_without_fee = FixedWrapper::from(desired_amount_in.clone())
-                        * (fixed_wrapper!(1) - fee_fraction);
+                    let input_without_fee =
+                        FixedWrapper::from(desired_amount_in) * (fixed_wrapper!(1) - fee_fraction);
                     let output = input_without_fee.clone() * input_price_wrt_output;
                     let fee_amount = FixedWrapper::from(desired_amount_in) - input_without_fee;
                     (output, fee_amount)
@@ -590,8 +588,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     // output token is xor, user indicates desired output amount:
                     // y_1 = y_out / (1 - fee)
                     // x_in = y_1 / y / x
-                    let output_with_fee = FixedWrapper::from(desired_amount_out.clone())
-                        / (fixed_wrapper!(1) - fee_fraction);
+                    let output_with_fee =
+                        FixedWrapper::from(desired_amount_out) / (fixed_wrapper!(1) - fee_fraction);
                     let fee_amount =
                         output_with_fee.clone() - FixedWrapper::from(desired_amount_out);
                     let input = output_with_fee / input_price_wrt_output;
@@ -639,6 +637,7 @@ impl<T: Config> GetPoolReserves<T::AssetId> for Pallet<T> {
 pub use pallet::*;
 use sp_runtime::traits::Zero;
 
+#[allow(clippy::too_many_arguments)]
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -811,15 +810,10 @@ pub mod pallet {
                 );
 
                 let (trading_pair, tech_account_id, fees_account_id) =
-                    Pallet::<T>::initialize_pool_unchecked(
-                        source.clone(),
-                        dex_id,
-                        asset_a,
-                        asset_b,
-                    )?;
+                    Pallet::<T>::initialize_pool_unchecked(source, dex_id, asset_a, asset_b)?;
 
                 Pallet::<T>::ensure_trading_pair_is_not_restricted(
-                    &trading_pair.map(|a| Into::<T::AssetId>::into(a)),
+                    &trading_pair.map(Into::<T::AssetId>::into),
                 )?;
 
                 let ta_repr =

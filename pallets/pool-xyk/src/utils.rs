@@ -156,7 +156,7 @@ impl<T: Config> Pallet<T> {
                 let new_balance = old_balance
                     .checked_sub(pool_tokens)
                     .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
-                *balance = (new_balance != 0).then(|| new_balance);
+                *balance = (new_balance != 0).then_some(new_balance);
                 if balance.is_none() {
                     // does not return anything, so we don't need to handle errors
                     frame_system::Pallet::<T>::dec_consumers(user_account)
@@ -191,7 +191,7 @@ impl<T: Config> Pallet<T> {
                 Ok(())
             });
         result?;
-        let result: Result<_, Error<T>> = TotalIssuances::<T>::mutate(&pool_account, |issuance| {
+        let result: Result<_, Error<T>> = TotalIssuances::<T>::mutate(pool_account, |issuance| {
             let new_issuance = issuance
                 .unwrap_or(0)
                 .checked_add(pool_tokens)
@@ -212,13 +212,13 @@ impl<T: Config> Pallet<T> {
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
         if asset_a == base_asset_id {
             Ok(TradingPair {
-                base_asset_id: asset_a.clone(),
-                target_asset_id: asset_b.clone(),
+                base_asset_id: *asset_a,
+                target_asset_id: *asset_b,
             })
         } else if asset_b == base_asset_id {
             Ok(TradingPair {
-                base_asset_id: asset_b.clone(),
-                target_asset_id: asset_a.clone(),
+                base_asset_id: *asset_b,
+                target_asset_id: *asset_a,
             })
         } else {
             fail!(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)

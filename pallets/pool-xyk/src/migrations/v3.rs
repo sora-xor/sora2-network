@@ -71,7 +71,7 @@ where
 
         UserInfos::<T>::mutate(&user_account, |user_infos| {
             for user_info in user_infos.iter_mut() {
-                if user_info.is_farm == true
+                if user_info.is_farm
                     && user_info.base_asset == base_asset
                     && user_info.pool_asset == target_asset
                 {
@@ -92,7 +92,7 @@ where
         });
 
         Pallet::<T>::withdraw_liquidity_unchecked(
-            user_account.clone(),
+            user_account,
             dex_id,
             base_asset,
             target_asset,
@@ -119,11 +119,11 @@ where
             Pallet::<T>::tech_account_from_dex_and_asset_pair(dex_id, base_asset, target_asset)?;
 
         let pair = TradingPair::<T::AssetId> {
-            base_asset_id: base_asset.clone(),
-            target_asset_id: target_asset.clone(),
+            base_asset_id: base_asset,
+            target_asset_id: target_asset,
         };
 
-        EnabledSources::<T>::mutate(&dex_id, &pair, |opt_set| {
+        EnabledSources::<T>::mutate(dex_id, pair, |opt_set| {
             if let Some(sources) = opt_set.as_mut() {
                 sources.remove(&LiquiditySourceType::XYKPool);
             }
@@ -137,7 +137,7 @@ where
         technical::Pallet::<T>::deregister_tech_account_id(tech_acc_id)?;
         technical::Pallet::<T>::deregister_tech_account_id(fee_acc_id)?;
 
-        Reserves::<T>::remove(&base_asset, &target_asset);
+        Reserves::<T>::remove(base_asset, target_asset);
 
         TotalIssuances::<T>::remove(&pool_account);
 
@@ -159,7 +159,7 @@ where
             weight_meter.check_accrue(T::DbWeight::get().reads(1));
 
             let pool_account =
-                if let Some(pool_property) = Properties::<T>::get(&base_asset, &target_asset) {
+                if let Some(pool_property) = Properties::<T>::get(base_asset, target_asset) {
                     pool_property.0
                 } else {
                     info!(
@@ -173,7 +173,7 @@ where
                 "Pool with assets {:?} and {:?} reserves before liquidity withdrawal: {:?}",
                 base_asset,
                 target_asset,
-                Reserves::<T>::get(&base_asset, &target_asset)
+                Reserves::<T>::get(base_asset, target_asset)
             );
 
             // `Self::pull_out_user_from_pool` triggers `withdraw_liquidity_unchecked` which modifies `PoolProviders`
@@ -203,7 +203,7 @@ where
                 "Pool with assets {:?} and {:?} reserves after liquidity withdrawal: {:?}",
                 base_asset,
                 target_asset,
-                Reserves::<T>::get(&base_asset, &target_asset)
+                Reserves::<T>::get(base_asset, target_asset)
             );
 
             Self::remove_pool(weight_meter, dex_id, base_asset, target_asset, pool_account)?;

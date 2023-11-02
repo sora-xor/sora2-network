@@ -51,7 +51,7 @@ fn asset_owner<T: Config>() -> T::AccountId {
 }
 
 fn signed_origin<T: Config>(account_id: T::AccountId) -> OriginFor<T> {
-    RawOrigin::Signed(account_id.clone()).into()
+    RawOrigin::Signed(account_id).into()
 }
 
 fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) {
@@ -76,17 +76,17 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) 
         assert_ok!(trading_pair::Pallet::<T>::register(
             signed_origin::<T>(asset_owner::<T>()),
             Default::default(),
-            xor_asset.clone(),
-            other_asset.clone(),
+            xor_asset,
+            other_asset,
         ));
 
         assert_ok!(pool_xyk::Pallet::<T>::initialize_pool(
             signed_origin::<T>(asset_owner::<T>()),
             Default::default(),
-            xor_asset.clone(),
-            other_asset.clone(),
+            xor_asset,
+            other_asset,
         ));
-        let pool = pool_xyk::Properties::<T>::get(xor_asset, other_asset.clone())
+        let pool = pool_xyk::Properties::<T>::get(xor_asset, other_asset)
             .unwrap()
             .0;
         pools.push(pool);
@@ -97,7 +97,7 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) 
 
 fn prepare_good_accounts<T: Config>(count: u32, assets: &[T::AssetId]) {
     let xor_asset: T::AssetId = XOR.into();
-    let xor_owner = assets::Pallet::<T>::asset_owner(&xor_asset).unwrap();
+    let xor_owner = assets::Pallet::<T>::asset_owner(xor_asset).unwrap();
     for other_asset in assets {
         for j in 0..count {
             let account_id = utils::account::<T>(j);
@@ -109,7 +109,7 @@ fn prepare_good_accounts<T: Config>(count: u32, assets: &[T::AssetId]) {
             ));
 
             assert_ok!(assets::Pallet::<T>::mint_to(
-                &other_asset,
+                other_asset,
                 &asset_owner::<T>(),
                 &account_id,
                 balance!(50000),
@@ -119,7 +119,7 @@ fn prepare_good_accounts<T: Config>(count: u32, assets: &[T::AssetId]) {
                 signed_origin::<T>(account_id),
                 Default::default(),
                 XOR.into(),
-                other_asset.clone(),
+                *other_asset,
                 balance!(1.1),
                 balance!(2.2),
                 balance!(1.1),
@@ -155,7 +155,7 @@ benchmarks! {
         prepare_good_accounts::<T>(a, &assets);
         Pallet::<T>::refresh_pools(T::VESTING_FREQUENCY);
         let pool = pools.remove(0);
-        let farmers = PoolFarmers::<T>::get(&pool);
+        let farmers = PoolFarmers::<T>::get(pool);
         let mut accounts = BTreeMap::new();
         Pallet::<T>::prepare_accounts_for_vesting(T::VESTING_FREQUENCY, &mut accounts);
     }: {
