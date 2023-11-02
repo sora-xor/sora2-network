@@ -289,6 +289,10 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
             precision: 18,
         }
     }
+
+    fn ensure_asset_exists(_: AssetId) -> bool {
+        true
+    }
 }
 
 pub struct AppRegistry;
