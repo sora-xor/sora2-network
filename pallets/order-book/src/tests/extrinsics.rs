@@ -737,6 +737,32 @@ fn should_not_update_unknown_order_book() {
 }
 
 #[test]
+fn should_not_update_order_book_with_wrong_tech_status() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book::<Runtime>(order_book_id);
+        lock_order_book::<Runtime>(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1),
+                balance!(1000)
+            ),
+            E::OrderBookIsLocked
+        );
+    });
+}
+
+#[test]
 fn should_not_update_order_book_with_wrong_status() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -785,21 +811,24 @@ fn should_not_update_order_book_with_wrong_status() {
             E::ForbiddenStatusToUpdateOrderBook
         );
 
-        // ok for OnlyCancel
+        // error for OnlyCancel
         assert_ok!(OrderBookPallet::change_orderbook_status(
             RuntimeOrigin::root(),
             order_book_id,
             OrderBookStatus::OnlyCancel
         ));
 
-        assert_ok!(OrderBookPallet::update_orderbook(
-            RuntimeOrigin::root(),
-            order_book_id,
-            balance!(0.01),
-            balance!(0.001),
-            balance!(1),
-            balance!(1000)
-        ));
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1),
+                balance!(1000)
+            ),
+            E::ForbiddenStatusToUpdateOrderBook
+        );
 
         // ok for Stop
         assert_ok!(OrderBookPallet::change_orderbook_status(
@@ -1101,7 +1130,7 @@ fn should_not_update_order_book_when_attributes_exceed_total_supply() {
         assert_ok!(OrderBookPallet::change_orderbook_status(
             RuntimeOrigin::root(),
             order_book_id,
-            OrderBookStatus::OnlyCancel
+            OrderBookStatus::Stop
         ));
 
         assert_err!(
@@ -1291,7 +1320,7 @@ fn should_align_limit_orders_when_update_order_book() {
         assert_ok!(OrderBookPallet::change_orderbook_status(
             RuntimeOrigin::root(),
             order_book_id,
-            OrderBookStatus::OnlyCancel
+            OrderBookStatus::Stop
         ));
 
         let limit_order1 = OrderBookPallet::limit_orders(order_book_id, 1).unwrap();
@@ -1472,6 +1501,56 @@ fn should_not_change_status_of_unknown_order_book() {
                 OrderBookStatus::Trade
             ),
             E::UnknownOrderBook
+        );
+    });
+}
+
+#[test]
+fn should_not_change_status_with_wrong_tech_status() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book::<Runtime>(order_book_id);
+        lock_order_book::<Runtime>(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::change_orderbook_status(
+                RuntimeOrigin::root(),
+                order_book_id,
+                OrderBookStatus::Trade
+            ),
+            E::OrderBookIsLocked
+        );
+
+        assert_err!(
+            OrderBookPallet::change_orderbook_status(
+                RuntimeOrigin::root(),
+                order_book_id,
+                OrderBookStatus::PlaceAndCancel
+            ),
+            E::OrderBookIsLocked
+        );
+
+        assert_err!(
+            OrderBookPallet::change_orderbook_status(
+                RuntimeOrigin::root(),
+                order_book_id,
+                OrderBookStatus::OnlyCancel
+            ),
+            E::OrderBookIsLocked
+        );
+
+        assert_err!(
+            OrderBookPallet::change_orderbook_status(
+                RuntimeOrigin::root(),
+                order_book_id,
+                OrderBookStatus::Stop
+            ),
+            E::OrderBookIsLocked
         );
     });
 }

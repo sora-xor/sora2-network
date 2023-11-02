@@ -31,7 +31,7 @@
 use crate::{
     CancelReason, DataLayer, DealInfo, Delegate, Error, ExpirationScheduler, LimitOrder,
     MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId,
-    OrderBookStatus, OrderPrice, OrderVolume, Payment,
+    OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -59,6 +59,7 @@ where
     pub step_lot_size: OrderVolume, // amount precision
     pub min_lot_size: OrderVolume,
     pub max_lot_size: OrderVolume,
+    pub tech_status: OrderBookTechStatus,
 }
 
 impl<T: crate::Config + Sized> OrderBook<T> {
@@ -77,6 +78,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             step_lot_size,
             min_lot_size,
             max_lot_size,
+            tech_status: OrderBookTechStatus::Ready,
         }
     }
 

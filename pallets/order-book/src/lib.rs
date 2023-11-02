@@ -83,7 +83,8 @@ pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer, Delegate, ExpirationScheduler};
 pub use types::{
     CancelReason, DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent,
-    OrderBookId, OrderBookStatus, OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
+    OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
+    PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -472,6 +473,8 @@ pub mod pallet {
         OrderBookIsNotEmpty,
         /// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
         ForbiddenStatusToUpdateOrderBook,
+        /// Order Book is locked for technical maintenance. Try again later.
+        OrderBookIsLocked,
     }
 
     #[pallet::hooks]
@@ -565,8 +568,12 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
 
             ensure!(
-                order_book.status == OrderBookStatus::OnlyCancel
-                    || order_book.status == OrderBookStatus::Stop,
+                order_book.tech_status == OrderBookTechStatus::Ready,
+                Error::<T>::OrderBookIsLocked
+            );
+
+            ensure!(
+                order_book.status == OrderBookStatus::Stop,
                 Error::<T>::ForbiddenStatusToUpdateOrderBook
             );
 
@@ -669,6 +676,10 @@ pub mod pallet {
             T::PermittedOrigin::ensure_origin(origin)?;
             <OrderBooks<T>>::mutate(order_book_id, |order_book| {
                 let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
+                ensure!(
+                    order_book.tech_status == OrderBookTechStatus::Ready,
+                    Error::<T>::OrderBookIsLocked
+                );
                 order_book.status = status;
                 Ok::<_, Error<T>>(())
             })?;

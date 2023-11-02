@@ -40,7 +40,7 @@ use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
     Config, DataLayer, DealInfo, LimitOrder, MarketChange, MarketOrder, MarketRole, OrderAmount,
-    OrderBook, OrderBookId, OrderBookStatus, OrderVolume, Payment,
+    OrderBook, OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderVolume, Payment,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_core::Get;
@@ -64,6 +64,7 @@ fn should_create_new() {
         step_lot_size: balance!(0.1).into(),
         min_lot_size: balance!(1).into(),
         max_lot_size: balance!(10000).into(),
+        tech_status: OrderBookTechStatus::Ready,
     };
 
     assert_eq!(
@@ -94,6 +95,7 @@ fn should_create_default() {
         step_lot_size: balance!(0.00001).into(),
         min_lot_size: balance!(1).into(),
         max_lot_size: balance!(1000).into(),
+        tech_status: OrderBookTechStatus::Ready,
     };
 
     assert_eq!(OrderBook::<Runtime>::default(order_book_id), expected);
@@ -115,6 +117,7 @@ fn should_create_default_indivisible() {
         step_lot_size: OrderVolume::indivisible(1),
         min_lot_size: OrderVolume::indivisible(1),
         max_lot_size: OrderVolume::indivisible(1000),
+        tech_status: OrderBookTechStatus::Ready,
     };
 
     assert_eq!(
