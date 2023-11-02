@@ -97,14 +97,14 @@ fn should_create_and_fill_orderbook() {
                             worst_price: best_bid_price - 2 * *price_step.balance(),
                             price_step: *price_step.balance(),
                             orders_per_price: 3,
-                            amount: Some(amount..=amount)
+                            amount_range_inclusive: Some((amount, amount))
                         },
                         asks: settings::SideFill {
                             best_price: best_ask_price,
                             worst_price: best_ask_price + 2 * *price_step.balance(),
                             price_step: *price_step.balance(),
                             orders_per_price: 3,
-                            amount: Some(amount..=amount)
+                            amount_range_inclusive: Some((amount, amount))
                         },
                         lifespan: None,
                         random_seed: None,

@@ -1,6 +1,5 @@
 use crate::Config;
-use common::fixnum::ops::RoundMode;
-use common::{balance, AssetInfoProvider, Balance, PriceVariant};
+use common::{AssetInfoProvider, Balance, PriceVariant};
 use frame_support::pallet_prelude::*;
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::traits::Time;
@@ -17,12 +16,10 @@ use std::iter::repeat;
 pub mod settings {
     use codec::{Decode, Encode};
     use common::Balance;
-    use order_book::{OrderAmount, OrderVolume};
-    use std::ops::RangeInclusive;
+    use order_book::OrderVolume;
 
     /// Parameters for filling one order book side
-    #[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
-    #[cfg_attr(feature = "std", derive(Debug))]
+    #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
     pub struct SideFill {
         /// highest price for bids; lowest for asks
         pub best_price: Balance,
@@ -31,7 +28,7 @@ pub mod settings {
         pub price_step: Balance,
         pub orders_per_price: u32,
         /// Default: `min_lot_size..=max_lot_size`
-        pub amount: Option<RangeInclusive<Balance>>,
+        pub amount_range_inclusive: Option<(Balance, Balance)>,
     }
 
     /// Parameters for orders amount generation
@@ -138,6 +135,13 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     Ok(())
 }
 
+fn default_amount_range<T: Config>(order_book: &OrderBook<T>) -> (Balance, Balance) {
+    (
+        *order_book.min_lot_size.balance(),
+        *order_book.max_lot_size.balance(),
+    )
+}
+
 /// Fill a single order book.
 fn fill_order_book<T: Config>(
     data: &mut impl DataLayer<T>,
@@ -172,17 +176,17 @@ fn fill_order_book<T: Config>(
         .map(|step| settings.asks.best_price + step * settings.asks.price_step)
         .take_while(|price| *price <= settings.asks.worst_price);
 
-    let mut order_amount = OrderVolume::indivisible(1);
-    if order_book.step_lot_size.is_divisible() {
-        order_amount = order_amount.into_divisible().unwrap();
-    }
-
     let mut rand_generator = ChaCha8Rng::seed_from_u64(
         settings
             .random_seed
             .unwrap_or(current_block)
             .unique_saturated_into(),
     );
+    let buy_amount_range = settings
+        .bids
+        .amount_range_inclusive
+        .clone()
+        .unwrap_or_else(|| default_amount_range(&order_book));
     let buy_orders: Vec<_> = buy_prices
         .flat_map(|price| {
             repeat(OrderPrice::divisible(price)).take(settings.bids.orders_per_price as usize)
@@ -191,11 +195,16 @@ fn fill_order_book<T: Config>(
             (
                 price,
                 order_book.align_amount(order_book.step_lot_size.copy_divisibility(
-                    rand_generator.gen_range(settings.asks.amount.clone().unwrap()),
+                    rand_generator.gen_range(buy_amount_range.0..=buy_amount_range.1),
                 )),
             )
         })
         .collect();
+    let sell_amount_range = settings
+        .asks
+        .amount_range_inclusive
+        .clone()
+        .unwrap_or_else(|| default_amount_range(&order_book));
     let sell_orders: Vec<_> = sell_prices
         .flat_map(|price| {
             repeat(OrderPrice::divisible(price)).take(settings.asks.orders_per_price as usize)
@@ -204,7 +213,7 @@ fn fill_order_book<T: Config>(
             (
                 price,
                 order_book.align_amount(order_book.step_lot_size.copy_divisibility(
-                    rand_generator.gen_range(settings.asks.amount.clone().unwrap()),
+                    rand_generator.gen_range(sell_amount_range.0..=sell_amount_range.1),
                 )),
             )
         })
