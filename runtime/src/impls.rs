@@ -260,6 +260,46 @@ impl<T: frame_system::Config + pallet_staking::Config> OnUnbalanced<NegativeImba
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct DispatchableSubstrateBridgeCall(bridge_types::substrate::BridgeCall);
 
+#[cfg(not(feature = "wip"))]
+impl Dispatchable for DispatchableSubstrateBridgeCall {
+    type RuntimeOrigin = crate::RuntimeOrigin;
+    type Config = crate::Runtime;
+    type Info = DispatchInfo;
+    type PostInfo = PostDispatchInfo;
+
+    fn dispatch(
+        self,
+        origin: Self::RuntimeOrigin,
+    ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
+        frame_support::log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
+        match self.0 {
+            bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
+                let call: parachain_bridge_app::Call<crate::Runtime> = msg.into();
+                let call: crate::RuntimeCall = call.into();
+                call.dispatch(origin)
+            }
+            bridge_types::substrate::BridgeCall::XCMApp(_msg) => Err(DispatchErrorWithPostInfo {
+                post_info: Default::default(),
+                error: DispatchError::Other("Unavailable"),
+            }),
+            bridge_types::substrate::BridgeCall::DataSigner(msg) => {
+                let call: bridge_data_signer::Call<crate::Runtime> = msg.into();
+                let call: crate::RuntimeCall = call.into();
+                call.dispatch(origin)
+            }
+            bridge_types::substrate::BridgeCall::MultisigVerifier(msg) => {
+                let call: multisig_verifier::Call<crate::Runtime> = msg.into();
+                let call: crate::RuntimeCall = call.into();
+                call.dispatch(origin)
+            }
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => {
+                todo!("not inplemented")
+            }
+        }
+    }
+}
+
+#[cfg(feature = "wip")]
 impl Dispatchable for DispatchableSubstrateBridgeCall {
     type RuntimeOrigin = crate::RuntimeOrigin;
     type Config = crate::Runtime;
@@ -300,6 +340,31 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     }
 }
 
+#[cfg(not(feature = "wip"))]
+impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
+    fn get_dispatch_info(&self) -> DispatchInfo {
+        match &self.0 {
+            bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
+                let call: parachain_bridge_app::Call<crate::Runtime> = msg.clone().into();
+                call.get_dispatch_info()
+            }
+            bridge_types::substrate::BridgeCall::XCMApp(_msg) => Default::default(),
+            bridge_types::substrate::BridgeCall::DataSigner(msg) => {
+                let call: bridge_data_signer::Call<crate::Runtime> = msg.clone().into();
+                call.get_dispatch_info()
+            }
+            bridge_types::substrate::BridgeCall::MultisigVerifier(msg) => {
+                let call: multisig_verifier::Call<crate::Runtime> = msg.clone().into();
+                call.get_dispatch_info()
+            }
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => {
+                todo!("not implemented")
+            }
+        }
+    }
+}
+
+#[cfg(feature = "wip")]
 impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
     fn get_dispatch_info(&self) -> DispatchInfo {
         match &self.0 {
