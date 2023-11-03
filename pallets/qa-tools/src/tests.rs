@@ -55,7 +55,7 @@ pub fn bob() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
 }
 
-fn test_creates_orderbook_with_correct_orders_count(
+fn test_creates_orderbook(
     base: AssetId32<PredefinedAssetId>,
     quote: AssetId32<PredefinedAssetId>,
     best_bid_price: Balance,
@@ -127,18 +127,21 @@ fn test_creates_orderbook_with_correct_orders_count(
 
     let mut data = order_book::storage_data_layer::StorageDataLayer::<Runtime>::new();
 
-    assert_eq!(
-        data.get_all_limit_orders(&order_book_id).len(),
-        steps * 2 * orders_per_price as usize
-    );
+    let limit_orders = data.get_all_limit_orders(&order_book_id);
+
+    assert_eq!(limit_orders.len(), steps * 2 * orders_per_price as usize);
+    let amount_range = amount_range.0..=amount_range.1;
+    assert!(limit_orders
+        .iter()
+        .all(|order| amount_range.contains(order.amount.balance())));
 
     order_book_id
 }
 
 #[test]
-fn should_create_and_fill_orderbook() {
+fn should_create_and_fill_orderbook_fixed_amount() {
     ext().execute_with(|| {
-        test_creates_orderbook_with_correct_orders_count(
+        test_creates_orderbook(
             VAL,
             XOR,
             balance!(10),
@@ -159,14 +162,35 @@ fn should_create_and_fill_orderbook() {
             None,
         )
         .unwrap();
-        test_creates_orderbook_with_correct_orders_count(
-            nft,
+        test_creates_orderbook(nft, XOR, balance!(10), balance!(11), 4, (1, 1));
+    });
+}
+
+#[test]
+fn should_create_and_fill_orderbook_random_amount() {
+    ext().execute_with(|| {
+        test_creates_orderbook(
+            VAL,
             XOR,
             balance!(10),
             balance!(11),
             4,
-            (1, 1),
+            (balance!(1), balance!(10)),
         );
+
+        FrameSystem::inc_providers(&bob());
+        let nft = assets::Pallet::<Runtime>::register_from(
+            &bob(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            1,
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+        test_creates_orderbook(nft, XOR, balance!(10), balance!(11), 4, (1, 10));
     });
 }
 
