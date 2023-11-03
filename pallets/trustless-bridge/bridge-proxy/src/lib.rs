@@ -8,8 +8,8 @@
 // #[cfg(test)]
 // mod test;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+// #[cfg(feature = "runtime-benchmarks")]
+// mod benchmarking;
 pub mod migrations;
 pub mod weights;
 

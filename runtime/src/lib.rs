@@ -3162,7 +3162,7 @@ impl_runtime_apis! {
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, migration_app, MigrationApp);
 
-            list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
+            // list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
             // TODO: fix
             #[cfg(feature = "wip")] // EVM bridge
@@ -3258,7 +3258,7 @@ impl_runtime_apis! {
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, migration_app, MigrationApp);
 
-            add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
+            // add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
             // TODO: fix
             #[cfg(feature = "wip")] // EVM bridge
