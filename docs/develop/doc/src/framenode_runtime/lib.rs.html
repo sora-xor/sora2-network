@@ -5005,7 +5005,7 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
-    <span class="kw">pub const </span>GetSyntheticBaseBuySellLimit: Balance = Balance::MAX;
+    <span class="kw">pub const </span>GetSyntheticBaseBuySellLimit: Balance = <span class="macro">balance!</span>(<span class="number">10000000</span>);
 }
 
 <span class="kw">impl </span>xst::Config <span class="kw">for </span>Runtime {
