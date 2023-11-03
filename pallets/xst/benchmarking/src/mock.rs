@@ -322,7 +322,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
-    type GetXSTAssetId = GetSyntheticBaseAssetId;
+    type GetTBCDAssetId = GetSyntheticBaseAssetId;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
