@@ -34,7 +34,7 @@ jobs:
         run: cargo fmt --check
 
       - name: cargo clippy
-        run: cargo clippy --all-targets --message-format=json -- -D warnings |
+        run: cargo clippy --all-targets --all-features --message-format=json -- -D warnings |
           clippy-sarif | tee results.sarif | sarif-fmt
         shell: bash
 
