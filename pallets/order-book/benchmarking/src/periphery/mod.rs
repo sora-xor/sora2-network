@@ -120,7 +120,7 @@ pub(crate) mod place_limit_order {
         frame_system::Pallet::<T>::set_block_number(1u32.into());
         let caller = accounts::alice::<T>();
         let (order_book_id, price, amount, side, lifespan) =
-            place_limit_order_without_cross_spread::<T>(settings.clone(), caller.clone());
+            place_limit_order_without_cross_spread::<T>(settings, caller.clone());
         let next_order_id = OrderBookPallet::<T>::order_books(order_book_id)
             .unwrap()
             .last_order_id
@@ -169,7 +169,7 @@ pub(crate) mod place_limit_order {
             Event::<T>::LimitOrderPlaced {
                 order_book_id,
                 order_id: expected_order_id,
-                owner_id: caller.clone(),
+                owner_id: caller,
                 side,
                 price,
                 amount,
@@ -276,8 +276,8 @@ pub(crate) mod execute_market_order {
         is_divisible: bool,
     ) -> OrderPrice {
         let aggregated_side = match side {
-            PriceVariant::Buy => OrderBookPallet::<T>::aggregated_asks(order_book_id.clone()),
-            PriceVariant::Sell => OrderBookPallet::<T>::aggregated_bids(order_book_id.clone()),
+            PriceVariant::Buy => OrderBookPallet::<T>::aggregated_asks(order_book_id),
+            PriceVariant::Sell => OrderBookPallet::<T>::aggregated_bids(order_book_id),
         };
         let mut aggregated_side = aggregated_side.into_iter();
         // account for partial execution
@@ -323,11 +323,7 @@ pub(crate) mod execute_market_order {
             side,
             caller_base_balance,
             caller_quote_balance,
-            expected_average_price: expected_average_price::<T>(
-                order_book_id.clone(),
-                side,
-                is_divisible,
-            ),
+            expected_average_price: expected_average_price::<T>(order_book_id, side, is_divisible),
         }
     }
 
