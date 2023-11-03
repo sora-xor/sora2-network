@@ -41,7 +41,7 @@ use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools::{self, settings, WhitelistedCallers};
 use framenode_runtime::{Runtime, RuntimeOrigin};
-use order_book::OrderBookId;
+use order_book::{DataLayer, OrderBookId};
 use sp_runtime::traits::BadOrigin;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
@@ -55,87 +55,97 @@ pub fn bob() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
 }
 
+fn test_creates_orderbook_with_correct_orders_count(
+    base: AssetId32<PredefinedAssetId>,
+    quote: AssetId32<PredefinedAssetId>,
+    best_bid_price: Balance,
+    best_ask_price: Balance,
+    steps: usize,
+    amount_range: (Balance, Balance),
+) -> OrderBookId<AssetIdOf<Runtime>, DexIdOf<Runtime>> {
+    let mut start_balance_base = assets::Pallet::<Runtime>::total_balance(&base, &alice()).unwrap();
+    let start_balance_quote = assets::Pallet::<Runtime>::total_balance(&quote, &alice()).unwrap();
+    let order_book_id = OrderBookId {
+        dex_id: DEXId::Polkaswap.into(),
+        base,
+        quote,
+    };
+    let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
+    let price_step = if assets::Pallet::<Runtime>::is_non_divisible(&base) {
+        order_book::OrderBook::<Runtime>::default_indivisible(order_book_id).tick_size
+    } else {
+        order_book::OrderBook::<Runtime>::default(order_book_id).tick_size
+    };
+    let orders_per_price = 3;
+    assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        RuntimeOrigin::signed(alice()),
+        alice(),
+        alice(),
+        vec![(
+            order_book_id,
+            settings::OrderBookFill {
+                bids: settings::SideFill {
+                    best_price: best_bid_price,
+                    worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
+                    price_step: *price_step.balance(),
+                    orders_per_price,
+                    amount_range_inclusive: Some(amount_range)
+                },
+                asks: settings::SideFill {
+                    best_price: best_ask_price,
+                    worst_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                    price_step: *price_step.balance(),
+                    orders_per_price,
+                    amount_range_inclusive: Some(amount_range)
+                },
+                lifespan: None,
+                random_seed: None,
+            }
+        )]
+    ));
+    assert_eq!(
+        assets::Pallet::<Runtime>::total_balance(&quote, &alice()).unwrap(),
+        start_balance_quote
+    );
+    // 1 nft is minted in case none were owned
+    if start_balance_base == 0 && assets::Pallet::<Runtime>::is_non_divisible(&base) {
+        start_balance_base += 1;
+    }
+    assert_eq!(
+        assets::Pallet::<Runtime>::total_balance(&base, &alice()).unwrap(),
+        start_balance_base
+    );
+
+    assert_eq!(
+        order_book::Pallet::<Runtime>::aggregated_bids(order_book_id).len(),
+        steps
+    );
+    assert_eq!(
+        order_book::Pallet::<Runtime>::aggregated_asks(order_book_id).len(),
+        steps
+    );
+
+    let mut data = order_book::storage_data_layer::StorageDataLayer::<Runtime>::new();
+
+    assert_eq!(
+        data.get_all_limit_orders(&order_book_id).len(),
+        steps * 2 * orders_per_price as usize
+    );
+
+    order_book_id
+}
+
 #[test]
 fn should_create_and_fill_orderbook() {
     ext().execute_with(|| {
-        fn test_create_and_fill_batch(
-            base: AssetId32<PredefinedAssetId>,
-            quote: AssetId32<PredefinedAssetId>,
-            best_bid_price: Balance,
-            best_ask_price: Balance,
-        ) -> OrderBookId<AssetIdOf<Runtime>, DexIdOf<Runtime>> {
-            let mut start_balance_base =
-                assets::Pallet::<Runtime>::total_balance(&base, &alice()).unwrap();
-            let start_balance_quote =
-                assets::Pallet::<Runtime>::total_balance(&quote, &alice()).unwrap();
-            let order_book_id = OrderBookId {
-                dex_id: DEXId::Polkaswap.into(),
-                base,
-                quote,
-            };
-            let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
-            let (price_step, amount) = if assets::Pallet::<Runtime>::is_non_divisible(&base) {
-                (
-                    order_book::OrderBook::<Runtime>::default_indivisible(order_book_id).tick_size,
-                    1,
-                )
-            } else {
-                (
-                    order_book::OrderBook::<Runtime>::default(order_book_id).tick_size,
-                    balance!(1),
-                )
-            };
-            assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
-                RuntimeOrigin::signed(alice()),
-                alice(),
-                alice(),
-                vec![(
-                    order_book_id,
-                    settings::OrderBookFill {
-                        bids: settings::SideFill {
-                            best_price: best_bid_price,
-                            worst_price: best_bid_price - 2 * *price_step.balance(),
-                            price_step: *price_step.balance(),
-                            orders_per_price: 3,
-                            amount_range_inclusive: Some((amount, amount))
-                        },
-                        asks: settings::SideFill {
-                            best_price: best_ask_price,
-                            worst_price: best_ask_price + 2 * *price_step.balance(),
-                            price_step: *price_step.balance(),
-                            orders_per_price: 3,
-                            amount_range_inclusive: Some((amount, amount))
-                        },
-                        lifespan: None,
-                        random_seed: None,
-                    }
-                )]
-            ));
-            assert_eq!(
-                assets::Pallet::<Runtime>::total_balance(&quote, &alice()).unwrap(),
-                start_balance_quote
-            );
-            // 1 nft is minted in case none were owned
-            if start_balance_base == 0 && assets::Pallet::<Runtime>::is_non_divisible(&base) {
-                start_balance_base += 1;
-            }
-            assert_eq!(
-                assets::Pallet::<Runtime>::total_balance(&base, &alice()).unwrap(),
-                start_balance_base
-            );
-
-            assert_eq!(
-                order_book::Pallet::<Runtime>::aggregated_bids(order_book_id).len(),
-                3
-            );
-            assert_eq!(
-                order_book::Pallet::<Runtime>::aggregated_asks(order_book_id).len(),
-                3
-            );
-            order_book_id
-        }
-
-        test_create_and_fill_batch(VAL, XOR, balance!(10), balance!(11));
+        test_creates_orderbook_with_correct_orders_count(
+            VAL,
+            XOR,
+            balance!(10),
+            balance!(11),
+            4,
+            (balance!(1), balance!(1)),
+        );
 
         FrameSystem::inc_providers(&bob());
         let nft = assets::Pallet::<Runtime>::register_from(
@@ -149,7 +159,14 @@ fn should_create_and_fill_orderbook() {
             None,
         )
         .unwrap();
-        test_create_and_fill_batch(nft, XOR, balance!(10), balance!(11));
+        test_creates_orderbook_with_correct_orders_count(
+            nft,
+            XOR,
+            balance!(10),
+            balance!(11),
+            4,
+            (1, 1),
+        );
     });
 }
 
