@@ -440,6 +440,7 @@ impl Default for ExtBuilder {
             reserves: vec![
                 (DEX_A_ID, DOT, (fixed!(5000), fixed!(7000))),
                 (DEX_A_ID, KSM, (fixed!(5500), fixed!(4000))),
+                (DEX_A_ID, XSTUSD, (fixed!(5500), fixed!(4000))),
                 (DEX_B_ID, DOT, (fixed!(100), fixed!(45))),
                 (DEX_C_ID, DOT, (fixed!(520), fixed!(550))),
                 (DEX_D_ID, VAL, (fixed!(1000), fixed!(200000))),
@@ -548,6 +549,14 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    XSTUSD,
+                    balance!(0),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"SORA Synthetic USD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
                 (
@@ -894,7 +903,9 @@ impl ExtBuilder {
         self.xyk_reserves = vec![
             (DEX_A_ID, USDT, (balance!(1000), balance!(1000))),
             (DEX_A_ID, KSM, (balance!(1000), balance!(2000))),
+            (DEX_A_ID, XSTUSD, (balance!(1000), balance!(2000))),
             (DEX_C_ID, USDT, (balance!(600), balance!(10000))),
+            (DEX_C_ID, XSTUSD, (balance!(600), balance!(10000))),
             (DEX_D_ID, USDT, (balance!(1000), balance!(1000))),
         ];
         self.source_types.push(LiquiditySourceType::XYKPool);
