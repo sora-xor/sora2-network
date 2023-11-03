@@ -219,7 +219,7 @@ fn fill_order_book<T: Config>(
         })
         .collect();
 
-    // Total amount of assets to be locked from `bids_owner`
+    // Total amount of assets to be locked
     let buy_quote_locked: Balance = buy_orders
         .iter()
         .map(|(quote, base)| *(*quote * (*base)).balance())
