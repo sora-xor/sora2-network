@@ -12,6 +12,6 @@ def pipeline = new org.rust.AppPipeline(steps: this,
       buildTestCmds: ['housekeeping/build.sh'],
       buildArtifacts: 'framenode_runtime.compact.compressed.wasm, subwasm_report.json, pallet_list.txt',
       pushToPublicRegistry: true,
-      pushTags: ['add_generic_substrate_app': 'generic']
+      pushTags: ['add_generic_substrate_app': 'sora-liberland']
 )
 pipeline.runPipeline()
