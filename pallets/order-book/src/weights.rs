@@ -318,9 +318,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `5123`
 		//  Estimated: `154495`
 		// Minimum execution time: 124_000_000 picoseconds.
-		Weight::from_parts(125_000_000, 154495)
-			.saturating_add(T::DbWeight::get().reads(13_u64))
-			.saturating_add(T::DbWeight::get().writes(10_u64))
+		// TODO: benchmark properly, value was set manually
+		Weight::from_parts(0, 0)
 	}
 	/// Storage: OrderBook IncompleteExpirationsSince (r:1 w:0)
 	/// Proof: OrderBook IncompleteExpirationsSince (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
@@ -608,9 +607,8 @@ impl WeightInfo for () {
 		//  Measured:  `5123`
 		//  Estimated: `154495`
 		// Minimum execution time: 124_000_000 picoseconds.
-		Weight::from_parts(125_000_000, 154495)
-			.saturating_add(RocksDbWeight::get().reads(13_u64))
-			.saturating_add(RocksDbWeight::get().writes(10_u64))
+		// TODO: benchmark properly, value was set manually
+		Weight::from_parts(0, 0)
 	}
 	/// Storage: OrderBook IncompleteExpirationsSince (r:1 w:0)
 	/// Proof: OrderBook IncompleteExpirationsSince (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
