@@ -54,7 +54,7 @@ pub struct PollInfo<
 }
 
 /// Storage version.
-#[derive(Encode, Decode, Eq, PartialEq, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Eq, PartialEq, Debug, scale_info::TypeInfo)]
 pub enum StorageVersion {
     /// Initial version
     V1,
@@ -71,6 +71,7 @@ pub mod pallet {
     use crate::{migrations, PollInfo, StorageVersion, VotingInfo, WeightInfo};
     use common::prelude::Balance;
     use common::BoundedString;
+    use frame_support::log;
     use frame_support::pallet_prelude::OptionQuery;
     use frame_support::pallet_prelude::ValueQuery;
     use frame_support::pallet_prelude::*;
@@ -113,7 +114,7 @@ pub mod pallet {
     type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type AssetIdOf<T> = <T as assets::Config>::AssetId;
+    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -420,20 +421,26 @@ pub mod pallet {
         }
     }
 
-    /*
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_runtime_upgrade() -> Weight {
-            if Self::pallet_storage_version() == StorageVersion::V1 {
-                let weight = migrations::migrate::<T>();
-                PalletStorageVersion::<T>::put(StorageVersion::V2);
-                weight
+            if Self::pallet_storage_version() == StorageVersion::V2 {
+                sp_runtime::runtime_logger::RuntimeLogger::init();
+                log::info!(
+                    "Applying migration to version 2: Migrating to open governance - version 3"
+                );
+
+                if let Err(err) = common::with_transaction(migrations::migrate::<T>) {
+                    log::error!("Failed to migrate: {}", err);
+                } else {
+                    PalletStorageVersion::<T>::put(StorageVersion::V3);
+                }
+                <T as frame_system::Config>::BlockWeights::get().max_block
             } else {
                 Weight::zero()
             }
         }
     }
-    */
 
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet

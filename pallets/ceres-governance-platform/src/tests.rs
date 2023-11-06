@@ -1,15 +1,18 @@
-use crate::{mock::*, Voting};
+use crate::migrations::{OldPollInfo, OldVotingInfo};
+use crate::mock::*;
 use crate::{pallet, Error};
+use codec::Decode;
 use codec::Encode;
 use common::{
     balance, generate_storage_instance, AssetInfoProvider, BoundedString, CERES_ASSET_ID,
 };
-use frame_support::pallet_prelude::StorageMap;
+use frame_support::pallet_prelude::{StorageDoubleMap, StorageMap};
 use frame_support::storage::types::ValueQuery;
 use frame_support::traits::Hooks;
 use frame_support::BoundedVec;
 use frame_support::PalletId;
 use frame_support::{assert_err, assert_ok, Identity};
+use hex_literal::hex;
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
 use sp_runtime::traits::AccountIdConversion;
@@ -822,5 +825,96 @@ fn withdraw_ok() {
             RuntimeOrigin::signed(ALICE),
             poll_id
         ));
+    });
+}
+
+#[test]
+fn ceres_governance_migration_works() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        generate_storage_instance!(CeresGovernancePlatform, PollData);
+        generate_storage_instance!(CeresGovernancePlatform, Voting);
+
+        let user = ALICE;
+        let user1 = BOB;
+        let old_poll_id_a = "16171D34600005D".as_bytes().to_vec();
+        let old_poll_id_b = "16171D346000060".as_bytes().to_vec();
+        //let user_auth = pallet::AuthorityAccount::<Runtime>::get();
+        let bytes = hex!("c4e7d5a63d8e887932bb6dc505dd204005c3ecfb6de5f1f0d3ac0a308b2b2915");
+        let first_poll_creator = AccountId::decode(&mut &bytes[..]).unwrap();
+
+        type OldPollData<Moment> =
+            StorageMap<PollDataOldInstance, Identity, Vec<u8>, OldPollInfo<Moment>, ValueQuery>;
+
+        type OldVoting = StorageDoubleMap<
+            VotingOldInstance,
+            Identity,
+            Vec<u8>,
+            Identity,
+            AccountId,
+            OldVotingInfo,
+            ValueQuery,
+        >;
+
+        let old_voting_info_a = OldVotingInfo {
+            voting_option: 1,
+            number_of_votes: balance!(100),
+            ceres_withdrawn: false,
+        };
+
+        let old_voting_info_b = OldVotingInfo {
+            voting_option: 2,
+            number_of_votes: balance!(100),
+            ceres_withdrawn: false,
+        };
+
+        let old_voting_info_c = OldVotingInfo {
+            voting_option: 2,
+            number_of_votes: balance!(69),
+            ceres_withdrawn: true,
+        };
+
+        let old_poll_info_a = OldPollInfo {
+            number_of_options: 2,
+            poll_start_timestamp: 1647612888000u64,
+            poll_end_timestamp: 1647699288000u64,
+        };
+
+        let old_poll_info_b = OldPollInfo {
+            number_of_options: 2,
+            poll_start_timestamp: 1648804056000u64,
+            poll_end_timestamp: 1648890456000u64,
+        };
+
+        OldPollData::insert(&old_poll_id_a, &old_poll_info_a);
+        OldPollData::insert(&old_poll_id_b, &old_poll_info_b);
+
+        OldVoting::insert(&old_poll_id_a, &user, &old_voting_info_a);
+        OldVoting::insert(&old_poll_id_a, &user1, &old_voting_info_c);
+        OldVoting::insert(&old_poll_id_b, &user1, &old_voting_info_b);
+
+        run_to_block(5);
+
+        pallet::PalletStorageVersion::<Runtime>::put(crate::StorageVersion::V2);
+        assert_eq!(
+            pallet::Pallet::<Runtime>::pallet_storage_version(),
+            crate::StorageVersion::V2
+        );
+
+        //Storage migration
+        pallet::Pallet::<Runtime>::on_runtime_upgrade();
+
+        assert_eq!(
+            pallet::Pallet::<Runtime>::pallet_storage_version(),
+            crate::StorageVersion::V3
+        );
+
+        let nonce_a: <Runtime as frame_system::Config>::Index = 305u32.into();
+        let encoded = (&first_poll_creator, nonce_a).using_encoded(blake2_256);
+        let poll_id_a = H256::from(encoded);
+
+        let poll_a = pallet::PollData::<Runtime>::get(&poll_id_a).unwrap();
+
+        assert_eq!(poll_a.poll_asset, CERES_ASSET_ID);
     });
 }
