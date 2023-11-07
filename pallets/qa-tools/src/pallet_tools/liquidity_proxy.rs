@@ -1,11 +1,8 @@
 pub mod source_initializers {
     use crate::{settings, Config};
-    use codec::{Decode, Encode};
-    use common::prelude::BalanceUnit;
     use frame_support::dispatch::DispatchResult;
     use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};
-    use sp_std::fmt::Debug;
     use sp_std::vec::Vec;
 
     /// Create multiple order books with default parameters if do not exist and
