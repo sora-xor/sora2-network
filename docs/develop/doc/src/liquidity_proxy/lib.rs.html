@@ -2611,6 +2611,49 @@
 <a href="#2596" id="2596">2596</a>
 <a href="#2597" id="2597">2597</a>
 <a href="#2598" id="2598">2598</a>
+<a href="#2599" id="2599">2599</a>
+<a href="#2600" id="2600">2600</a>
+<a href="#2601" id="2601">2601</a>
+<a href="#2602" id="2602">2602</a>
+<a href="#2603" id="2603">2603</a>
+<a href="#2604" id="2604">2604</a>
+<a href="#2605" id="2605">2605</a>
+<a href="#2606" id="2606">2606</a>
+<a href="#2607" id="2607">2607</a>
+<a href="#2608" id="2608">2608</a>
+<a href="#2609" id="2609">2609</a>
+<a href="#2610" id="2610">2610</a>
+<a href="#2611" id="2611">2611</a>
+<a href="#2612" id="2612">2612</a>
+<a href="#2613" id="2613">2613</a>
+<a href="#2614" id="2614">2614</a>
+<a href="#2615" id="2615">2615</a>
+<a href="#2616" id="2616">2616</a>
+<a href="#2617" id="2617">2617</a>
+<a href="#2618" id="2618">2618</a>
+<a href="#2619" id="2619">2619</a>
+<a href="#2620" id="2620">2620</a>
+<a href="#2621" id="2621">2621</a>
+<a href="#2622" id="2622">2622</a>
+<a href="#2623" id="2623">2623</a>
+<a href="#2624" id="2624">2624</a>
+<a href="#2625" id="2625">2625</a>
+<a href="#2626" id="2626">2626</a>
+<a href="#2627" id="2627">2627</a>
+<a href="#2628" id="2628">2628</a>
+<a href="#2629" id="2629">2629</a>
+<a href="#2630" id="2630">2630</a>
+<a href="#2631" id="2631">2631</a>
+<a href="#2632" id="2632">2632</a>
+<a href="#2633" id="2633">2633</a>
+<a href="#2634" id="2634">2634</a>
+<a href="#2635" id="2635">2635</a>
+<a href="#2636" id="2636">2636</a>
+<a href="#2637" id="2637">2637</a>
+<a href="#2638" id="2638">2638</a>
+<a href="#2639" id="2639">2639</a>
+<a href="#2640" id="2640">2640</a>
+<a href="#2641" id="2641">2641</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3922,7 +3965,13 @@
                 weight = weight
                     .saturating_add(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::check_indivisible_assets())
                     .saturating_add(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::is_forbidden_filter())
-                    .saturating_add(inner_exchange_weight);
+                    .saturating_add(&lt;T <span class="kw">as </span>assets::Config&gt;::WeightInfo::transfer()) <span class="comment">// ADAR fee
+                    </span>.saturating_add(inner_exchange_weight);
+            }
+
+            <span class="comment">// ADAR fee withdraw
+            </span><span class="kw">if </span>swap_batch_info.outcome_asset_reuse &gt; <span class="number">0 </span>{
+                weight = weight.saturating_add(&lt;T <span class="kw">as </span>assets::Config&gt;::WeightInfo::transfer());
             }
 
             weight = weight.saturating_add(
@@ -4538,13 +4587,41 @@
         <span class="prelude-val">Ok</span>(&lt;T <span class="kw">as </span>assets::Config&gt;::WeightInfo::transfer().saturating_mul(len <span class="kw">as </span>u64))
     }
 
-    <span class="kw">fn </span>calculate_adar_commission(amount: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span>adar_commission_ratio = FixedWrapper::from(<span class="self">Self</span>::adar_commission_ratio());
+    <span class="kw">fn </span>withdraw_adar_commission(
+        who: <span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt;,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        fee_ratio: Balance,
+        amount: Balance,
+        max_fee_amount: Balance,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
+        <span class="kw">if </span>amount.is_zero() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(Zero::zero());
+        }
+
+        <span class="kw">let </span>adar_commission_ratio = FixedWrapper::from(fee_ratio);
 
         <span class="kw">let </span>adar_commission = (FixedWrapper::from(amount) * adar_commission_ratio)
             .try_into_balance()
             .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::CalculationError)<span class="question-mark">?</span>;
 
+        <span class="macro">ensure!</span>(
+            adar_commission &lt;= max_fee_amount,
+            Error::&lt;T&gt;::SlippageNotTolerated
+        );
+
+        <span class="kw">if </span>adar_commission &gt; <span class="number">0 </span>{
+            assets::Pallet::&lt;T&gt;::transfer_from(
+                <span class="kw-2">&amp;</span>asset_id,
+                <span class="kw-2">&amp;</span>who,
+                <span class="kw-2">&amp;</span>T::GetADARAccountId::get(),
+                adar_commission,
+            )
+            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToTransferAdarCommission)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::ADARFeeWithdrawn(
+                asset_id.clone(),
+                adar_commission,
+            ));
+        }
         <span class="prelude-val">Ok</span>(adar_commission)
     }
 
@@ -4561,6 +4638,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>executed_batch_input_amount = <span class="macro">balance!</span>(<span class="number">0</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>total_weight = Weight::zero();
+
+        <span class="kw">let </span>adar_fee_ratio = <span class="self">Self</span>::adar_commission_ratio();
 
         fallible_iterator::convert(swap_batches.into_iter().map(|val| <span class="prelude-val">Ok</span>(val))).for_each(
             |swap_batch_info| {
@@ -4590,7 +4669,6 @@
                     .iter()
                     .map(|recv| recv.target_amount)
                     .try_fold(Balance::zero(), |acc, val| acc.checked_add(val))
-                    .and_then(|val| val.checked_sub(outcome_asset_reuse))
                     .ok_or(Error::&lt;T&gt;::CalculationError)<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>(executed_input_amount, remainder_per_receiver, weight): (
@@ -4598,7 +4676,19 @@
                     Balance,
                     Weight,
                 ) = <span class="kw">if </span><span class="kw-2">&amp;</span>asset_id != input_asset_id {
-                    <span class="kw">if </span>!out_amount.is_zero() {
+                    <span class="kw">let </span>withdrawn_fee = <span class="self">Self</span>::withdraw_adar_commission(
+                        <span class="kw-2">&amp;</span>sender,
+                        <span class="kw-2">&amp;</span>asset_id,
+                        adar_fee_ratio,
+                        outcome_asset_reuse.min(out_amount),
+                        outcome_asset_reuse,
+                    )<span class="question-mark">?</span>;
+
+                    <span class="kw">let </span>outcome_asset_reuse = outcome_asset_reuse.saturating_sub(withdrawn_fee);
+
+                    <span class="kw">let </span>desired_exchange_amount = out_amount.saturating_sub(outcome_asset_reuse);
+
+                    <span class="kw">if </span>!desired_exchange_amount.is_zero() {
                         <span class="self">Self</span>::exchange_batch_tokens(
                             <span class="kw-2">&amp;</span>sender,
                             receivers.len() <span class="kw">as </span>u128,
@@ -4608,7 +4698,7 @@
                             <span class="kw-2">&amp;</span>selected_source_types,
                             dex_id,
                             <span class="kw-2">&amp;</span>filter_mode,
-                            out_amount,
+                            desired_exchange_amount,
                         )<span class="question-mark">?
                     </span>} <span class="kw">else </span>{
                         (<span class="number">0</span>, <span class="number">0</span>, Weight::zero())
@@ -4636,10 +4726,13 @@
                 <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, DispatchError&gt;::Ok(())
             },
         )<span class="question-mark">?</span>;
-        <span class="kw">let </span>adar_commission = <span class="self">Self</span>::calculate_adar_commission(executed_batch_input_amount)<span class="question-mark">?</span>;
-        max_input_amount
-            .checked_sub(adar_commission)
-            .ok_or(Error::&lt;T&gt;::SlippageNotTolerated)<span class="question-mark">?</span>;
+        <span class="kw">let </span>adar_commission = <span class="self">Self</span>::withdraw_adar_commission(
+            <span class="kw-2">&amp;</span>sender,
+            <span class="kw-2">&amp;</span>input_asset_id,
+            adar_fee_ratio,
+            executed_batch_input_amount,
+            max_input_amount,
+        )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((adar_commission, executed_batch_input_amount, total_weight))
     }
 }
@@ -4963,16 +5056,6 @@
                     <span class="kw-2">&amp;</span>filter_mode,
                 )<span class="question-mark">?</span>;
 
-            <span class="kw">if </span>adar_commission &gt; <span class="macro">balance!</span>(<span class="number">0</span>) {
-                assets::Pallet::&lt;T&gt;::transfer_from(
-                    <span class="kw-2">&amp;</span>input_asset_id,
-                    <span class="kw-2">&amp;</span>who,
-                    <span class="kw-2">&amp;</span>T::GetADARAccountId::get(),
-                    adar_commission,
-                )
-                .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToTransferAdarCommission)<span class="question-mark">?</span>;
-            }
-
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::BatchSwapExecuted(
                 adar_commission,
                 executed_input_amount,
@@ -5143,7 +5226,7 @@
         <span class="doccomment">/// Liquidity source was disabled
         </span>LiquiditySourceDisabled(LiquiditySourceType),
         <span class="doccomment">/// Batch of swap transfers has been performed
-        /// [ADAR Fee, Input amount]
+        /// [Input asset ADAR Fee, Input amount]
         </span>BatchSwapExecuted(Balance, Balance),
         <span class="doccomment">/// XORless transfer has been performed
         /// [Asset Id, Caller Account, Receiver Account, Amount, Additional Data]
@@ -5154,6 +5237,9 @@
             Balance,
             <span class="prelude-ty">Option</span>&lt;BoundedVec&lt;u8, T::MaxAdditionalDataLength&gt;&gt;,
         ),
+        <span class="doccomment">/// ADAR fee which is withdrawn from reused outcome asset amount
+        /// [Asset Id, ADAR Fee]
+        </span>ADARFeeWithdrawn(AssetIdOf&lt;T&gt;, Balance),
     }
 
     <span class="attr">#[pallet::error]
