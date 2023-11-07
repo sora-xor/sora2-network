@@ -810,24 +810,25 @@ fn should_not_update_order_book_with_wrong_status() {
             E::ForbiddenStatusToUpdateOrderBook
         );
 
-        // error for OnlyCancel
+        // ok for OnlyCancel
         assert_ok!(OrderBookPallet::change_orderbook_status(
             RuntimeOrigin::root(),
             order_book_id,
             OrderBookStatus::OnlyCancel
         ));
 
-        assert_err!(
-            OrderBookPallet::update_orderbook(
-                RuntimeOrigin::root(),
-                order_book_id,
-                balance!(0.01),
-                balance!(0.001),
-                balance!(1),
-                balance!(1000)
-            ),
-            E::ForbiddenStatusToUpdateOrderBook
-        );
+        assert_ok!(OrderBookPallet::update_orderbook(
+            RuntimeOrigin::root(),
+            order_book_id,
+            balance!(0.01),
+            balance!(0.001),
+            balance!(1),
+            balance!(1000)
+        ));
+
+        // run to the next block to perform alignment
+        let current_block = FrameSystem::block_number();
+        run_to_block(current_block + 1);
 
         // ok for Stop
         assert_ok!(OrderBookPallet::change_orderbook_status(
@@ -1129,7 +1130,7 @@ fn should_not_update_order_book_when_attributes_exceed_total_supply() {
         assert_ok!(OrderBookPallet::change_orderbook_status(
             RuntimeOrigin::root(),
             order_book_id,
-            OrderBookStatus::Stop
+            OrderBookStatus::OnlyCancel
         ));
 
         assert_err!(
@@ -1319,7 +1320,7 @@ fn should_align_limit_orders_when_update_order_book() {
         assert_ok!(OrderBookPallet::change_orderbook_status(
             RuntimeOrigin::root(),
             order_book_id,
-            OrderBookStatus::Stop
+            OrderBookStatus::OnlyCancel
         ));
 
         let limit_order1 = OrderBookPallet::limit_orders(order_book_id, 1).unwrap();
@@ -1628,7 +1629,7 @@ fn should_not_change_status_of_unknown_order_book() {
 }
 
 #[test]
-fn should_not_change_status_with_wrong_tech_status() {
+fn should_not_change_status_with_updating_tech_status() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),

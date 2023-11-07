@@ -601,7 +601,8 @@ pub mod pallet {
             );
 
             ensure!(
-                order_book.status == OrderBookStatus::Stop,
+                order_book.status == OrderBookStatus::OnlyCancel
+                    || order_book.status == OrderBookStatus::Stop,
                 Error::<T>::ForbiddenStatusToUpdateOrderBook
             );
 
