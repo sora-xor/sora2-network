@@ -1243,24 +1243,24 @@ impl xor_fee::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
+    type XorId = GetXorAssetId;
+    type ValId = GetValAssetId;
+    type TbcdId = GetTbcdAssetId;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type BuyBackXSTPercent = BuyBackXSTPercent;
-    type XorId = GetXorAssetId;
-    type ValId = GetValAssetId;
-    type XstId = GetXstAssetId;
+    type BuyBackTBCDPercent = BuyBackTBCDPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
-    type SessionManager = Staking;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+    type SessionManager = Staking;
+    type ReferrerAccountProvider = Referrals;
+    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
     type WithdrawFee = xor_fee_impls::WithdrawFee;
-    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type ReferrerAccountProvider = Referrals;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -1580,7 +1580,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetPswapAssetId;
-    type GetXSTAssetId = GetXstAssetId;
+    type GetTBCDAssetId = GetTbcdAssetId;
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -1666,7 +1666,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
+    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -1678,12 +1678,12 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
+    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
 }
 
 parameter_types! {
     pub const GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
-    pub const GetSyntheticBaseBuySellLimit: Balance = Balance::MAX;
+    pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000);
 }
 
 impl xst::Config for Runtime {
@@ -1954,7 +1954,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const BuyBackXSTPercent: Percent = Percent::from_percent(10);
+    pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
 }
 
 // Ethereum bridge pallets

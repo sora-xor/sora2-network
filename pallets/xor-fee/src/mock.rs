@@ -28,12 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
+
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, BlockLength, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, VAL,
-    XOR, XST,
+    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
+    VAL, XOR,
 };
 
 use currencies::BasicCurrencyAdapter;
@@ -79,7 +82,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const BuyBackXSTPercent: Percent = Percent::from_percent(10);
+    pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
     pub const ExistentialDeposit: u32 = 0;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
@@ -170,7 +173,7 @@ impl currencies::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = XST;
+    pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
     pub GetBuyBackAccountId: AccountId = account_from_str("buy-back");
@@ -300,10 +303,10 @@ impl Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type BuyBackXSTPercent = BuyBackXSTPercent;
+    type BuyBackTBCDPercent = BuyBackTBCDPercent;
     type XorId = XorId;
     type ValId = ValId;
-    type XstId = GetBuyBackAssetId;
+    type TbcdId = GetBuyBackAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type OnValBurned = ValBurnedAggregator;
@@ -502,10 +505,10 @@ impl ExtBuilder {
                     None,
                 ),
                 (
-                    XST,
+                    TBCD,
                     GetXorFeeAccountId::get(),
-                    AssetSymbol(b"XST".to_vec()),
-                    AssetName(b"XST".to_vec()),
+                    AssetSymbol(b"TBCD".to_vec()),
+                    AssetName(b"TBCD".to_vec()),
                     18,
                     balance!(100),
                     true,
