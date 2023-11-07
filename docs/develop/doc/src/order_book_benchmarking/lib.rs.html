@@ -731,7 +731,7 @@
     <span class="kw">if let </span><span class="prelude-val">Some</span>((user, count)) = user_orders {
         <span class="comment">// user orders of `caller` should be almost full
         </span><span class="macro">assert_eq!</span>(
-            order_book_imported::UserLimitOrders::&lt;T&gt;::get(user.clone(), order_book_id)
+            order_book_imported::UserLimitOrders::&lt;T&gt;::get(user, order_book_id)
                 .unwrap()
                 .len(),
             count
@@ -934,8 +934,8 @@
         }: {
             OrderBookPallet::&lt;T&gt;::cancel_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
-                context.order_book_id.clone(),
-                context.order_id.clone()
+                context.order_book_id,
+                context.order_id
             ).unwrap();
         }
         verify {
@@ -948,8 +948,8 @@
         }: {
             OrderBookPallet::&lt;T&gt;::cancel_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
-                context.order_book_id.clone(),
-                context.order_id.clone()
+                context.order_book_id,
+                context.order_id
             ).unwrap();
         }
         verify {
@@ -973,7 +973,7 @@
 
         quote {
             <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
-            <span class="kw">let </span>context = periphery::quote::init(settings.clone());
+            <span class="kw">let </span>context = periphery::quote::init(settings);
         }: {
             OrderBookPallet::&lt;T&gt;::quote(
                 <span class="kw-2">&amp;</span>context.dex_id,
