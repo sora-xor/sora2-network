@@ -8,19 +8,6 @@ pub mod source_initializers {
     use sp_std::fmt::Debug;
     use sp_std::vec::Vec;
 
-    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-    #[scale_info(skip_type_params(T))]
-    pub struct XYKPair<DEXId, AssetId> {
-        pub dex_id: DEXId,
-        pub asset_a: AssetId,
-        pub asset_b: AssetId,
-        /// Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1 `asset_a`)
-        pub price: BalanceUnit,
-    }
-
-    #[allow(unused)]
-    pub fn xst() {}
-
     /// Create multiple order books with default parameters if do not exist and
     /// fill them according to given parameters.
     ///
