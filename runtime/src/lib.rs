@@ -1243,24 +1243,24 @@ impl xor_fee::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
+    type XorId = GetXorAssetId;
+    type ValId = GetValAssetId;
+    type TbcdId = GetTbcdAssetId;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
     type BuyBackTBCDPercent = BuyBackTBCDPercent;
-    type XorId = GetXorAssetId;
-    type ValId = GetValAssetId;
-    type TbcdId = GetXstAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
-    type SessionManager = Staking;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+    type SessionManager = Staking;
+    type ReferrerAccountProvider = Referrals;
+    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
     type WithdrawFee = xor_fee_impls::WithdrawFee;
-    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type ReferrerAccountProvider = Referrals;
 }
 
 pub struct ConstantFeeMultiplier;
