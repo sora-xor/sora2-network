@@ -9401,7 +9401,6 @@ dependencies = [
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "scale-info",
- "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",

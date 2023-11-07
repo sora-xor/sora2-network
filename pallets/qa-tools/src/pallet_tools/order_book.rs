@@ -9,7 +9,6 @@ use order_book::{MomentOf, OrderBook, OrderBookId};
 use order_book::{OrderPrice, OrderVolume};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
-use sp_arithmetic::traits::UniqueSaturatedInto;
 use sp_std::iter::repeat;
 use sp_std::prelude::*;
 
@@ -176,12 +175,12 @@ fn fill_order_book<T: Config>(
         .map(|step| settings.asks.best_price + step * settings.asks.price_step)
         .take_while(|price| *price <= settings.asks.worst_price);
 
-    let mut rand_generator = ChaCha8Rng::seed_from_u64(
-        settings
-            .random_seed
-            .unwrap_or(current_block)
-            .unique_saturated_into(),
-    );
+    let seed: u64 = settings
+        .random_seed
+        .unwrap_or(current_block)
+        .try_into()
+        .unwrap_or(0);
+    let mut rand_generator = ChaCha8Rng::seed_from_u64(seed);
     let buy_amount_range = settings
         .bids
         .amount_range_inclusive
