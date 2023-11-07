@@ -460,7 +460,7 @@ fn should_check_permissions_for_delete_order_book() {
         assert_ok!(OrderBookPallet::delete_orderbook(
             RawOrigin::Root.into(),
             order_book_id
-        ),);
+        ));
 
         // Only more than half approvals from technical commitee are accepted
 
@@ -485,7 +485,7 @@ fn should_check_permissions_for_delete_order_book() {
             assert_ok!(OrderBookPallet::delete_orderbook(
                 TechnicalRawOrigin::Member(accounts::alice::<Runtime>()).into(),
                 order_book_id
-            ),);
+            ));
             create_empty_order_book::<Runtime>(order_book_id);
         }
         assert_err!(
@@ -1569,7 +1569,7 @@ fn should_check_permissions_for_change_order_book_status() {
             RawOrigin::Root.into(),
             order_book_id,
             OrderBookStatus::Trade
-        ),);
+        ));
 
         // Only more than half approvals from technical commitee are accepted
 
@@ -1590,7 +1590,7 @@ fn should_check_permissions_for_change_order_book_status() {
                 TechnicalRawOrigin::Member(accounts::alice::<Runtime>()).into(),
                 order_book_id,
                 OrderBookStatus::Trade
-            ),);
+            ));
         }
         assert_err!(
             OrderBookPallet::change_orderbook_status(
@@ -1604,7 +1604,7 @@ fn should_check_permissions_for_change_order_book_status() {
             TechnicalRawOrigin::Members(4, 6).into(),
             order_book_id,
             OrderBookStatus::Trade
-        ),);
+        ));
     });
 }
 
@@ -1658,23 +1658,17 @@ fn should_not_change_status_with_updating_tech_status() {
             E::OrderBookIsLocked
         );
 
-        assert_err!(
-            OrderBookPallet::change_orderbook_status(
-                RuntimeOrigin::root(),
-                order_book_id,
-                OrderBookStatus::OnlyCancel
-            ),
-            E::OrderBookIsLocked
-        );
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RuntimeOrigin::root(),
+            order_book_id,
+            OrderBookStatus::OnlyCancel
+        ));
 
-        assert_err!(
-            OrderBookPallet::change_orderbook_status(
-                RuntimeOrigin::root(),
-                order_book_id,
-                OrderBookStatus::Stop
-            ),
-            E::OrderBookIsLocked
-        );
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RuntimeOrigin::root(),
+            order_book_id,
+            OrderBookStatus::Stop
+        ));
     });
 }
 

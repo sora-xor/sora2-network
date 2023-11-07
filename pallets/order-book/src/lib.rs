@@ -706,10 +706,14 @@ pub mod pallet {
             T::PermittedOrigin::ensure_origin(origin)?;
             <OrderBooks<T>>::mutate(order_book_id, |order_book| {
                 let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
-                ensure!(
-                    order_book.tech_status == OrderBookTechStatus::Ready,
-                    Error::<T>::OrderBookIsLocked
-                );
+
+                if order_book.tech_status == OrderBookTechStatus::Updating
+                    && status != OrderBookStatus::OnlyCancel
+                    && status != OrderBookStatus::Stop
+                {
+                    return Err(Error::<T>::OrderBookIsLocked.into());
+                }
+
                 order_book.status = status;
                 Ok::<_, Error<T>>(())
             })?;
