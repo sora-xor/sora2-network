@@ -28,41 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+use sp_core::{Bytes, OpaqueMetadata};
+use std::path::PathBuf;
+use std::str::FromStr;
 
-ethers::contract::abigen!(
-    InboundChannel,
-    "src/bytes/InboundChannel.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    OutboundChannel,
-    "src/bytes/OutboundChannel.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    BeefyLightClient,
-    "src/bytes/BeefyLightClient.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    ETHApp,
-    "src/bytes/ETHApp.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    ERC20App,
-    "src/bytes/ERC20App.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    SidechainApp,
-    "src/bytes/SidechainApp.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    IERC20Metadata,
-    "src/bytes/IERC20Metadata.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    TestToken,
-    "src/bytes/TestToken.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    Bridge,
-    "src/bytes/Bridge.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    Master,
-    "src/bytes/Master.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    MigrationApp,
-    "src/bytes/MigrationApp.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-);
+fn main() {
+    let metadata: Bytes = OpaqueMetadata::new(framenode_runtime::Runtime::metadata().into()).into();
+    let out_dir = PathBuf::from_str(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+        .unwrap()
+        .join("bytes");
+    std::fs::create_dir_all(&out_dir).unwrap();
+    std::fs::write(out_dir.join("metadata.scale"), metadata.0).unwrap();
+}
