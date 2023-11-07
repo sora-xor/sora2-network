@@ -1249,7 +1249,7 @@ impl xor_fee::Config for Runtime {
     type BuyBackTBCDPercent = BuyBackTBCDPercent;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
-    type TbcdId = GetXstAssetId;
+    type TbcdId = GetTbcdAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
