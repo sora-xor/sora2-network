@@ -10,8 +10,8 @@ use order_book::{OrderPrice, OrderVolume};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use sp_arithmetic::traits::UniqueSaturatedInto;
+use sp_std::iter::repeat;
 use sp_std::prelude::*;
-use std::iter::repeat;
 
 pub mod settings {
     use codec::{Decode, Encode};
