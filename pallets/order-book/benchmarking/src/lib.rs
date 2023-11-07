@@ -111,7 +111,7 @@ pub fn assert_orders_numbers<T: order_book_benchmarking_imported::Config>(
     if let Some((user, count)) = user_orders {
         // user orders of `caller` should be almost full
         assert_eq!(
-            order_book_imported::UserLimitOrders::<T>::get(user.clone(), order_book_id)
+            order_book_imported::UserLimitOrders::<T>::get(user, order_book_id)
                 .unwrap()
                 .len(),
             count
@@ -314,8 +314,8 @@ mod benchmarks_inner {
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
-                context.order_book_id.clone(),
-                context.order_id.clone()
+                context.order_book_id,
+                context.order_id
             ).unwrap();
         }
         verify {
@@ -328,8 +328,8 @@ mod benchmarks_inner {
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
-                context.order_book_id.clone(),
-                context.order_id.clone()
+                context.order_book_id,
+                context.order_id
             ).unwrap();
         }
         verify {
@@ -353,7 +353,7 @@ mod benchmarks_inner {
 
         quote {
             let settings = FillSettings::<T>::max();
-            let context = periphery::quote::init(settings.clone());
+            let context = periphery::quote::init(settings);
         }: {
             OrderBookPallet::<T>::quote(
                 &context.dex_id,
