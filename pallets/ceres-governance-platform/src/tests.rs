@@ -839,7 +839,7 @@ fn ceres_governance_migration_works() {
         let user1 = BOB;
         let old_poll_id_a = "16171D34600005D".as_bytes().to_vec();
         let old_poll_id_b = "16171D346000060".as_bytes().to_vec();
-        //let user_auth = pallet::AuthorityAccount::<Runtime>::get();
+        let user_auth = pallet::AuthorityAccount::<Runtime>::get();
         let bytes = hex!("c4e7d5a63d8e887932bb6dc505dd204005c3ecfb6de5f1f0d3ac0a308b2b2915");
         let first_poll_creator = AccountId::decode(&mut &bytes[..]).unwrap();
 
@@ -913,8 +913,42 @@ fn ceres_governance_migration_works() {
         let encoded = (&first_poll_creator, nonce_a).using_encoded(blake2_256);
         let poll_id_a = H256::from(encoded);
 
-        let poll_a = pallet::PollData::<Runtime>::get(&poll_id_a).unwrap();
+        let nonce_b: <Runtime as frame_system::Config>::Index = 15u32.into();
+        let encoded = (&user_auth, nonce_b).using_encoded(blake2_256);
+        let poll_id_b = H256::from(encoded);
+
+        let poll_a = pallet::PollData::<Runtime>::get(poll_id_a).unwrap();
+        let poll_b = pallet::PollData::<Runtime>::get(poll_id_b).unwrap();
 
         assert_eq!(poll_a.poll_asset, CERES_ASSET_ID);
+        assert_eq!(poll_a.poll_start_timestamp, 1647612888000u64);
+        assert_eq!(poll_a.poll_end_timestamp, 1647699288000u64);
+        assert_eq!(poll_a.title, BoundedString::truncate_from(
+                    "Do you want Ceres staking v2 with rewards pool of 300 CERES to go live?"));
+        assert_eq!(poll_a.description, BoundedString::truncate_from(
+            "The Ceres v2 staking pool would have 300 CERES rewards taken from the Ceres Treasury wallet. Staking would have a 14,400 CERES pool limit and would last a month and a half with minimum APR 16.66%."));  
+        assert_eq!(poll_a.options, vec![BoundedString::truncate_from("Yes"), BoundedString::truncate_from("No")]);  
+
+        assert_eq!(poll_b.poll_asset, CERES_ASSET_ID);
+        assert_eq!(poll_b.poll_start_timestamp, 1648804056000u64);
+        assert_eq!(poll_b.poll_end_timestamp, 1648890456000u64);
+        assert_eq!(poll_b.title, BoundedString::truncate_from(
+            "Can Launchpad costs be paid from the Treasury wallet?"));  
+        assert_eq!(poll_b.description, BoundedString::truncate_from("Ceres Launchpad is coming soon with new SORA runtime release. Launchpad requires KYC services which should be paid (about $11,740)."));  
+        assert_eq!(poll_b.options, vec![BoundedString::truncate_from("Yes"), BoundedString::truncate_from("No")]);
+
+        let voting_a = pallet::Voting::<Runtime>::get(poll_id_a, &user).unwrap();
+        let voting_b = pallet::Voting::<Runtime>::get(poll_id_a, &user1).unwrap();
+        let voting_c = pallet::Voting::<Runtime>::get(poll_id_b, &user1).unwrap();
+
+        assert_eq!(voting_a.voting_option, BoundedString::truncate_from("Yes"));
+        assert_eq!(voting_b.voting_option, BoundedString::truncate_from("No"));
+        assert_eq!(voting_c.voting_option, BoundedString::truncate_from("No"));
+        assert_eq!(voting_a.number_of_votes, balance!(100));
+        assert_eq!(voting_b.number_of_votes, balance!(69));
+        assert_eq!(voting_c.number_of_votes, balance!(100));
+        assert_eq!(voting_a.asset_withdrawn, false);
+        assert_eq!(voting_b.asset_withdrawn, true);
+        assert_eq!(voting_c.asset_withdrawn, false);
     });
 }
