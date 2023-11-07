@@ -34,14 +34,14 @@
 use assets::AssetIdOf;
 use common::{
     balance, AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
-    DexIdOf, PredefinedAssetId, VAL, XOR,
+    DexIdOf, PredefinedAssetId, PSWAP, VAL, XOR,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools::{self, settings, WhitelistedCallers};
 use framenode_runtime::{Runtime, RuntimeOrigin};
-use order_book::{DataLayer, OrderBookId};
+use order_book::{DataLayer, LimitOrder, OrderBookId};
 use sp_runtime::traits::BadOrigin;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
@@ -192,6 +192,69 @@ fn should_create_and_fill_orderbook_random_amount() {
         .unwrap();
         test_creates_orderbook(nft, XOR, balance!(10), balance!(11), 4, (1, 10));
     });
+}
+
+#[test]
+fn should_respect_orderbook_seed() {
+    ext().execute_with(|| {
+        let order_book_id_1 = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let order_book_id_2 = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: PSWAP,
+            quote: XOR,
+        };
+        let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
+        let price_step = order_book::OrderBook::<Runtime>::default(order_book_id_1).tick_size;
+        let orders_per_price = 3;
+        let best_bid_price = balance!(10);
+        let best_ask_price = balance!(11);
+        let steps = 4;
+        let amount_range = (balance!(1), balance!(10));
+        let settings = settings::OrderBookFill {
+            bids: settings::SideFill {
+                best_price: best_bid_price,
+                worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
+                price_step: *price_step.balance(),
+                orders_per_price,
+                amount_range_inclusive: Some(amount_range),
+            },
+            asks: settings::SideFill {
+                best_price: best_ask_price,
+                worst_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                price_step: *price_step.balance(),
+                orders_per_price,
+                amount_range_inclusive: Some(amount_range),
+            },
+            lifespan: None,
+            random_seed: None,
+        };
+        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+            RuntimeOrigin::signed(alice()),
+            alice(),
+            alice(),
+            vec![
+                (order_book_id_1, settings.clone()),
+                (order_book_id_2, settings)
+            ]
+        ));
+
+        let mut data = order_book::storage_data_layer::StorageDataLayer::<Runtime>::new();
+        let mut limit_orders_1 = data.get_all_limit_orders(&order_book_id_1);
+        let mut limit_orders_2 = data.get_all_limit_orders(&order_book_id_2);
+        fn cmp_by_id(a: &LimitOrder<Runtime>, b: &LimitOrder<Runtime>) -> sp_std::cmp::Ordering {
+            let a = u128::try_from(a.id).unwrap();
+            let b = u128::try_from(b.id).unwrap();
+            a.cmp(&b)
+        }
+        limit_orders_1.sort_by(cmp_by_id);
+        limit_orders_2.sort_by(cmp_by_id);
+
+        assert_eq!(limit_orders_1, limit_orders_2);
+    })
 }
 
 fn test_whitelist<F: Fn(AccountIdOf<Runtime>) -> DispatchResult>(call: F) {
