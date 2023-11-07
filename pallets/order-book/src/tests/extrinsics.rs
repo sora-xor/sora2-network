@@ -2483,7 +2483,6 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
 }
 
 #[test]
-#[ignore] // it works, but takes a lot of time
 fn should_place_a_lot_of_orders() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {

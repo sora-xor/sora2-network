@@ -961,7 +961,6 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
 }
 
 #[test]
-#[ignore] // it works, but takes a lot of time
 fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
     ext().execute_with(|| {
         let mut data = CacheDataLayer::<Runtime>::new();
@@ -1023,7 +1022,11 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
         }
 
         buy_order.id += 1;
+        buy_order.price -= order_book.tick_size;
+
         sell_order.id += 1;
+        sell_order.price += order_book.tick_size;
+
         assert_err!(
             order_book.place_limit_order(buy_order, &mut data),
             E::OrderBookReachedMaxCountOfPricesForSide

@@ -816,7 +816,6 @@ fn should_cleanup_on_expiring() {
 }
 
 #[test]
-#[ignore] // it works, but takes a lot of time (~2-120 secs depending on settings)
 fn should_enforce_expiration_and_weight_limits() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
