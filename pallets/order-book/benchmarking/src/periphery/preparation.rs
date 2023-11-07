@@ -30,6 +30,9 @@
 
 //! General preparation logic for the benchmarking.
 
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
+
 // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(test)]
 use framenode_runtime::order_book as order_book_imported;
