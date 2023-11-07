@@ -34,17 +34,20 @@
 // Copyright (C) Parity Technologies (UK) Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::traits::{AlignmentScheduler, ExpirationScheduler};
 use crate::weights::WeightInfo;
-use crate::ExpirationsAgenda;
 use crate::{
-    traits::ExpirationScheduler, CacheDataLayer, CancelReason, Config, DataLayer, Error, Event,
-    IncompleteExpirationsSince, OrderBookId, OrderBooks, Pallet,
+    AlignmentCursor, CacheDataLayer, CancelReason, Config, DataLayer, Error, Event,
+    ExpirationsAgenda, IncompleteExpirationsSince, LimitOrder, LimitOrders, OrderBookId,
+    OrderBookTechStatus, OrderBooks, Pallet,
 };
 use assets::AssetIdOf;
 use common::weights::check_accrue_n;
 use frame_support::weights::WeightMeter;
-use sp_runtime::traits::One;
+use sp_runtime::traits::{One, Zero};
 use sp_runtime::{DispatchError, Saturating};
+use sp_std::collections::btree_map::BTreeMap;
+use sp_std::vec::Vec;
 
 impl<T: Config> Pallet<T> {
     pub fn service_single_expiration(
@@ -135,21 +138,40 @@ impl<T: Config> Pallet<T> {
             <T as Config>::WeightInfo::service_single_expiration(),
             expirations.len() as u64,
         );
-        let postponed = expirations.len() as u64 - to_service;
         let mut serviced = 0;
-        while let Some((order_book_id, order_id)) = expirations.last() {
+        while let Some((order_book_id, order_id)) = expirations.pop() {
+            Self::service_single_expiration(data_layer, &order_book_id, order_id);
+            serviced += 1;
             if serviced >= to_service {
                 break;
             }
-            Self::service_single_expiration(data_layer, order_book_id, *order_id);
-            serviced += 1;
-            expirations.pop();
         }
-        if postponed != 0 {
+        if !expirations.is_empty() {
             // Will later continue from this block
             <ExpirationsAgenda<T>>::insert(block, expirations);
+
+            false
+        } else {
+            true
         }
-        postponed == 0
+    }
+
+    pub fn get_limit_orders(
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        start: T::OrderId,
+        count: usize,
+    ) -> Vec<LimitOrder<T>> {
+        if start.is_zero() {
+            <LimitOrders<T>>::iter_prefix_values(order_book_id)
+                .take(count)
+                .collect()
+        } else {
+            let key = <LimitOrders<T>>::hashed_key_for(order_book_id, start);
+            <LimitOrders<T>>::iter_prefix_from(order_book_id, key)
+                .take(count)
+                .map(|(_, value)| value)
+                .collect()
+        }
     }
 }
 
@@ -162,7 +184,7 @@ impl<T: Config>
         DispatchError,
     > for Pallet<T>
 {
-    fn service(current_block: T::BlockNumber, weight: &mut WeightMeter) {
+    fn service_expiration(current_block: T::BlockNumber, weight: &mut WeightMeter) {
         if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
             return;
         }
@@ -185,7 +207,7 @@ impl<T: Config>
         data_layer.commit();
     }
 
-    fn schedule(
+    fn schedule_expiration(
         when: T::BlockNumber,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         order_id: T::OrderId,
@@ -197,7 +219,7 @@ impl<T: Config>
         })
     }
 
-    fn unschedule(
+    fn unschedule_expiration(
         when: T::BlockNumber,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         order_id: T::OrderId,
@@ -209,5 +231,64 @@ impl<T: Config>
             block_expirations.remove(remove_index);
             Ok(())
         })
+    }
+}
+
+impl<T: Config> AlignmentScheduler for Pallet<T> {
+    fn service_alignment(_weight: &mut WeightMeter) {
+        let mut data = CacheDataLayer::<T>::new();
+
+        let mut new_cursors = BTreeMap::new();
+        let mut finished = Vec::new();
+
+        for (order_book_id, cursor) in <AlignmentCursor<T>>::iter() {
+            let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
+                debug_assert!(false, "order-book {order_book_id:?} was not found during alignment");
+                Self::deposit_event(Event::<T>::AlignmentFailure {
+                    order_book_id: order_book_id.clone(),
+                    error: Error::<T>::UnknownOrderBook.into(),
+                });
+                return;
+            };
+
+            let count = T::SOFT_MIN_MAX_RATIO; //todo
+            let limit_orders = Self::get_limit_orders(&order_book_id, cursor, count);
+
+            if let Some(last) = limit_orders.last() {
+                new_cursors.insert(order_book_id, last.id);
+            } else {
+                // it means `limit_orders` is empty
+                finished.push(order_book);
+                continue;
+            };
+
+            match order_book.align_limit_orders(limit_orders, &mut data) {
+                Ok(_) => (),
+                Err(error) => {
+                    debug_assert!(
+                        false,
+                        "Error {error:?} occurs during the alignment of order-book {order_book_id:?}"
+                    );
+                    Self::deposit_event(Event::<T>::AlignmentFailure {
+                        order_book_id: order_book_id,
+                        error,
+                    });
+                    return;
+                }
+            }
+
+            // todo weight
+        }
+
+        data.commit();
+
+        for (order_book_id, new_cursor) in new_cursors {
+            <AlignmentCursor<T>>::insert(order_book_id, new_cursor);
+        }
+
+        for mut order_book in finished {
+            order_book.tech_status = OrderBookTechStatus::Ready;
+            <OrderBooks<T>>::set(order_book.order_book_id, Some(order_book));
+        }
     }
 }

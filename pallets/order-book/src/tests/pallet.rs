@@ -924,7 +924,7 @@ fn should_emit_event_on_expiration_failure() {
         };
         let non_existent_order_id = 1;
         let expiration_block = 2u32.into();
-        assert_ok!(OrderBookPallet::schedule(
+        assert_ok!(OrderBookPallet::schedule_expiration(
             expiration_block,
             non_existent_order_book_id,
             non_existent_order_id

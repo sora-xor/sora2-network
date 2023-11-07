@@ -80,7 +80,9 @@ pub use crate::order_book::OrderBook;
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
-pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer, Delegate, ExpirationScheduler};
+pub use traits::{
+    AlignmentScheduler, CurrencyLocker, CurrencyUnlocker, DataLayer, Delegate, ExpirationScheduler,
+};
 pub use types::{
     CancelReason, DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent,
     OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
@@ -139,13 +141,14 @@ pub mod pallet {
             + scale_info::TypeInfo;
         type Locker: CurrencyLocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
         type Unlocker: CurrencyUnlocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
-        type Scheduler: ExpirationScheduler<
-            Self::BlockNumber,
-            OrderBookId<Self::AssetId, Self::DEXId>,
-            Self::DEXId,
-            Self::OrderId,
-            DispatchError,
-        >;
+        type Scheduler: AlignmentScheduler
+            + ExpirationScheduler<
+                Self::BlockNumber,
+                OrderBookId<Self::AssetId, Self::DEXId>,
+                Self::DEXId,
+                Self::OrderId,
+                DispatchError,
+            >;
         type Delegate: Delegate<
             Self::AccountId,
             Self::AssetId,
@@ -158,6 +161,7 @@ pub mod pallet {
         type MaxSidePriceCount: Get<u32>;
         type MaxExpiringOrdersPerBlock: Get<u32>;
         type MaxExpirationWeightPerBlock: Get<Weight>;
+        type MaxAlignmentWeightPerBlock: Get<Weight>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,
@@ -268,6 +272,16 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    #[pallet::storage]
+    #[pallet::getter(fn alignment_cursor)]
+    pub type AlignmentCursor<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        OrderBookId<AssetIdOf<T>, T::DEXId>,
+        T::OrderId,
+        OptionQuery,
+    >;
+
     /// Earliest block with incomplete expirations;
     /// Weight limit might not allow to finish all expirations for a block, so
     /// they might be operated later.
@@ -338,13 +352,6 @@ pub mod pallet {
             reason: CancelReason,
         },
 
-        /// Failed to cancel expired order
-        ExpirationFailure {
-            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            order_id: T::OrderId,
-            error: DispatchError,
-        },
-
         /// Some amount of the limit order is executed
         LimitOrderExecuted {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -378,6 +385,19 @@ pub mod pallet {
             amount: OrderAmount,
             average_price: OrderPrice,
             to: Option<T::AccountId>,
+        },
+
+        /// Failed to cancel expired order
+        ExpirationFailure {
+            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+            order_id: T::OrderId,
+            error: DispatchError,
+        },
+
+        /// Failed to cancel expired order
+        AlignmentFailure {
+            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+            error: DispatchError,
         },
     }
 
@@ -481,9 +501,17 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Perform scheduled expirations
         fn on_initialize(current_block: T::BlockNumber) -> Weight {
-            let mut weight_counter = WeightMeter::from_limit(T::MaxExpirationWeightPerBlock::get());
-            Self::service(current_block, &mut weight_counter);
-            weight_counter.consumed
+            let mut expiration_weight_counter =
+                WeightMeter::from_limit(T::MaxExpirationWeightPerBlock::get());
+            Self::service_expiration(current_block, &mut expiration_weight_counter);
+
+            let mut alignment_weight_counter =
+                WeightMeter::from_limit(T::MaxAlignmentWeightPerBlock::get());
+            Self::service_alignment(&mut alignment_weight_counter);
+
+            expiration_weight_counter
+                .consumed
+                .saturating_add(alignment_weight_counter.consumed)
         }
     }
 
@@ -657,9 +685,10 @@ pub mod pallet {
             // All new limit orders must meet the requirements of new attributes.
 
             if prev_step_lot_size.balance() % step_lot_size != 0 {
-                let mut data = CacheDataLayer::<T>::new();
-                order_book.align_limit_orders(&mut data)?;
-                data.commit();
+                order_book.tech_status = OrderBookTechStatus::Updating;
+
+                // schedule alignment
+                <AlignmentCursor<T>>::set(order_book_id, Some(T::OrderId::zero()));
             }
             <OrderBooks<T>>::set(order_book_id, Some(order_book));
             Self::deposit_event(Event::<T>::OrderBookUpdated { order_book_id });

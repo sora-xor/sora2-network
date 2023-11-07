@@ -1901,6 +1901,7 @@ impl hermes_governance_platform::Config for Runtime {
 parameter_types! {
     // small value for test environment in order to check postponing expirations
     pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block; // TODO: order-book clarify
+    pub AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
 }
 
 #[cfg(feature = "wip")] // order-book
@@ -1931,6 +1932,7 @@ impl order_book::Config for Runtime {
     type MaxSidePriceCount = ConstU32<1024>;
     type MaxExpiringOrdersPerBlock = ConstU32<512>;
     type MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
+    type MaxAlignmentWeightPerBlock = AlignmentSchedulerMaxWeight;
     type EnsureTradingPairExists = TradingPair;
     type TradingPairSourceManager = TradingPair;
     type AssetInfoProvider = Assets;
