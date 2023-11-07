@@ -36,7 +36,6 @@ jobs:
       - name: cargo clippy
         env:
           SKIP_WASM_BUILD: 1
-          pr: "true"
         run: cargo clippy --all-targets --features private-net,ready-to-test,wip,runtime-benchmarks
           --message-format=json -- -D warnings | clippy-sarif | tee results.sarif | sarif-fmt
         shell: bash

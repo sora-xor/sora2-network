@@ -80,8 +80,8 @@ fn test_benchmark_cancel() {
 
         OrderBookPallet::<Runtime>::cancel_limit_order(
             RawOrigin::Signed(context.caller.clone()).into(),
-            context.order_book_id.clone(),
-            context.order_id.clone(),
+            context.order_book_id,
+            context.order_id,
         )
         .unwrap();
 
@@ -113,7 +113,7 @@ fn test_benchmark_quote() {
         use common::LiquiditySource;
 
         let settings = FillSettings::<Runtime>::max();
-        let context = periphery::quote::init(settings.clone());
+        let context = periphery::quote::init(settings);
 
         let _ = OrderBookPallet::<Runtime>::quote(
             &context.dex_id,

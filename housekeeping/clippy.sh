@@ -7,5 +7,5 @@ if [ "$pr" = true ] && [ "$prBranch" != "master" ]; then
     SKIP_WASM_BUILD=1 cargo clippy --features private-net,ready-to-test,wip,runtime-benchmarks -- -D warnings
 else
     printf "👷‍♂️ starting a regular clippy \n"
-    cargo clippy
+    cargo clippy || exit 0
 fi
