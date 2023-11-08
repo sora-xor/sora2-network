@@ -211,6 +211,33 @@
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -322,7 +349,7 @@
                 .or_default()
                 .iter()
                 .filter_map(|(key2, maybe_item)| {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(value)) = maybe_item.clone().map(|item| item.value().cloned())
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(value)) = maybe_item.as_ref().map(|item| item.value().cloned())
                     {
                         <span class="prelude-val">Some</span>((key2.clone(), value))
                     } <span class="kw">else </span>{
@@ -407,6 +434,33 @@
                 .entry(key2)
                 .or_insert(<span class="prelude-val">Some</span>(Item::Original(value)));
         }
+    }
+
+    <span class="doccomment">/// Returns mutable reference to the cached value if it is,
+    /// otherwise tries to get the value from `Storage`.
+    /// If `Storage` has the value, CacheStorageDoubleMap caches it and returns
+    /// mutable ref to it.
+    /// If `Storage` has no the value, then `None` is kept and returned.
+    ///
+    /// When client calls `get` with the same `keys` again,
+    /// ref to the cached value or None is returned without
+    /// trying to get it from `Storage`.
+    </span><span class="kw">pub fn </span>get_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key1: <span class="kw-2">&amp;</span>Key1, key2: <span class="kw-2">&amp;</span>Key2) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>Value&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(item) = <span class="self">self
+            </span>.cache
+            .entry(key1.clone())
+            .or_default()
+            .entry(key2.clone())
+            .or_insert_with(|| {
+                Storage::try_get(key1, key2)
+                    .ok()
+                    .map(|value| Item::Original(value))
+            })
+        {
+            item.value_mut()
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 }
 </code></pre></div>

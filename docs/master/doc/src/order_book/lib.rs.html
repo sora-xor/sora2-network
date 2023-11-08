@@ -1315,6 +1315,69 @@
 <a href="#1300" id="1300">1300</a>
 <a href="#1301" id="1301">1301</a>
 <a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1349,6 +1412,7 @@
 #![allow(dead_code)] </span><span class="comment">// todo (m.tagirov) remove
 // TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
+#![feature(int_roundings)]
 
 </span><span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>common::prelude::{
@@ -1379,8 +1443,8 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
-</span><span class="kw">mod </span>benchmarking;
+<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;runtime-benchmarks&quot;</span>))]
+</span><span class="kw">pub mod </span>test_utils;
 
 <span class="kw">pub mod </span>cache_data_layer;
 <span class="kw">pub mod </span>fee_calculator;
@@ -1398,8 +1462,8 @@
 <span class="kw">pub use </span>market_order::MarketOrder;
 <span class="kw">pub use </span>traits::{CurrencyLocker, CurrencyUnlocker, DataLayer, Delegate, ExpirationScheduler};
 <span class="kw">pub use </span>types::{
-    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent, OrderBookId,
-    OrderBookStatus, OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
+    CancelReason, DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent,
+    OrderBookId, OrderBookStatus, OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
 };
 <span class="kw">pub use </span>weights::WeightInfo;
 
@@ -1414,10 +1478,9 @@
     <span class="kw">use </span>frame_support::{
         pallet_prelude::{OptionQuery, <span class="kw-2">*</span>},
         traits::Hooks,
-        Blake2_128Concat, Twox128,
+        Blake2_128Concat,
     };
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>sp_runtime::Either;
 
     <span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">0</span>);
 
@@ -1462,7 +1525,13 @@
             <span class="self">Self</span>::OrderId,
             DispatchError,
         &gt;;
-        <span class="kw">type </span>Delegate: Delegate&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId, <span class="self">Self</span>::OrderId, <span class="self">Self</span>::DEXId&gt;;
+        <span class="kw">type </span>Delegate: Delegate&lt;
+            <span class="self">Self</span>::AccountId,
+            <span class="self">Self</span>::AssetId,
+            <span class="self">Self</span>::OrderId,
+            <span class="self">Self</span>::DEXId,
+            MomentOf&lt;<span class="self">Self</span>&gt;,
+        &gt;;
         <span class="kw">type </span>MaxOpenedLimitOrdersPerUser: Get&lt;u32&gt;;
         <span class="kw">type </span>MaxLimitOrdersForPrice: Get&lt;u32&gt;;
         <span class="kw">type </span>MaxSidePriceCount: Get&lt;u32&gt;;
@@ -1486,12 +1555,7 @@
         <span class="kw">type </span>SyntheticInfoProvider: SyntheticInfoProvider&lt;<span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
         <span class="kw">type </span>Time: Time;
-        <span class="kw">type </span>ParameterUpdateOrigin: EnsureOrigin&lt;
-            <span class="self">Self</span>::RuntimeOrigin,
-            Success = Either&lt;<span class="self">Self</span>::AccountId, ()&gt;,
-        &gt;;
-        <span class="kw">type </span>StatusUpdateOrigin: EnsureOrigin&lt;<span class="self">Self</span>::RuntimeOrigin, Success = ()&gt;;
-        <span class="kw">type </span>RemovalOrigin: EnsureOrigin&lt;<span class="self">Self</span>::RuntimeOrigin, Success = ()&gt;;
+        <span class="kw">type </span>PermittedOrigin: EnsureOrigin&lt;<span class="self">Self</span>::RuntimeOrigin, Success = ()&gt;;
         <span class="kw">type </span>WeightInfo: WeightInfo;
     }
 
@@ -1577,7 +1641,7 @@
     #[pallet::getter(<span class="kw">fn </span>expired_orders_at)]
     </span><span class="kw">pub type </span>ExpirationsAgenda&lt;T: Config&gt; = StorageMap&lt;
         <span class="kw">_</span>,
-        Twox128,
+        Identity,
         T::BlockNumber,
         BoundedVec&lt;(OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;, T::OrderId), T::MaxExpiringOrdersPerBlock&gt;,
         ValueQuery,
@@ -1620,6 +1684,10 @@
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
             order_id: T::OrderId,
             owner_id: T::AccountId,
+            side: PriceVariant,
+            price: OrderPrice,
+            amount: OrderVolume,
+            lifetime: MomentOf&lt;T&gt;,
         },
 
         <span class="doccomment">/// User tried to place the limit order out of the spread. The limit order is converted into a market order.
@@ -1641,18 +1709,12 @@
             limit_order_id: T::OrderId,
         },
 
-        <span class="doccomment">/// User canceled their limit order
+        <span class="doccomment">/// User canceled their limit order or the limit order has reached the end of its lifespan
         </span>LimitOrderCanceled {
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
             order_id: T::OrderId,
             owner_id: T::AccountId,
-        },
-
-        <span class="doccomment">/// The limit order has reached the end of its lifespan
-        </span>LimitOrderExpired {
-            order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
-            order_id: T::OrderId,
-            owner_id: T::AccountId,
+            reason: CancelReason,
         },
 
         <span class="doccomment">/// Failed to cancel expired order
@@ -1668,7 +1730,15 @@
             order_id: T::OrderId,
             owner_id: T::AccountId,
             side: PriceVariant,
+            price: OrderPrice,
             amount: OrderAmount,
+        },
+
+        <span class="doccomment">/// All amount of the limit order is executed
+        </span>LimitOrderFilled {
+            order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
         },
 
         <span class="doccomment">/// The limit order is updated
@@ -1676,6 +1746,7 @@
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
             order_id: T::OrderId,
             owner_id: T::AccountId,
+            new_amount: OrderVolume,
         },
 
         <span class="doccomment">/// User executes a deal by the market order
@@ -1684,7 +1755,7 @@
             owner_id: T::AccountId,
             direction: PriceVariant,
             amount: OrderAmount,
-            average_price: OrderVolume,
+            average_price: OrderPrice,
             to: <span class="prelude-ty">Option</span>&lt;T::AccountId&gt;,
         },
     }
@@ -1779,6 +1850,8 @@
         </span>ForbiddenStatusToDeleteOrderBook,
         <span class="comment">// It is possible to delete only empty order-book
         </span>OrderBookIsNotEmpty,
+        <span class="doccomment">/// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
+        </span>ForbiddenStatusToUpdateOrderBook,
     }
 
     <span class="attr">#[pallet::hooks]
@@ -1825,7 +1898,7 @@
             origin: OriginFor&lt;T&gt;,
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
         ) -&gt; DispatchResult {
-            T::RemovalOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
+            T::PermittedOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
             <span class="kw">let </span>order_book =
                 &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
 
@@ -1867,18 +1940,15 @@
             min_lot_size: Balance,
             max_lot_size: Balance,
         ) -&gt; DispatchResult {
-            <span class="kw">let </span>origin_check_result = T::ParameterUpdateOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
-            <span class="kw">match </span>origin_check_result {
-                Either::Left(who) =&gt; {
-                    <span class="macro">ensure!</span>(
-                        T::AssetInfoProvider::is_asset_owner(<span class="kw-2">&amp;</span>order_book_id.base, <span class="kw-2">&amp;</span>who),
-                        DispatchError::BadOrigin
-                    );
-                }
-                Either::Right(()) =&gt; (),
-            }
+            T::PermittedOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>order_book =
                 &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
+
+            <span class="macro">ensure!</span>(
+                order_book.status == OrderBookStatus::OnlyCancel
+                    || order_book.status == OrderBookStatus::Stop,
+                Error::&lt;T&gt;::ForbiddenStatusToUpdateOrderBook
+            );
 
             <span class="comment">// Check that values are non-zero
             </span><span class="macro">ensure!</span>(tick_size &gt; Balance::zero(), Error::&lt;T&gt;::InvalidTickSize);
@@ -1910,6 +1980,22 @@
             );
             <span class="macro">ensure!</span>(
                 max_lot_size % step_lot_size == <span class="number">0</span>,
+                Error::&lt;T&gt;::InvalidMaxLotSize
+            );
+
+            <span class="comment">// check the ratio between min &amp; max
+            </span><span class="macro">ensure!</span>(
+                max_lot_size &lt;= min_lot_size.saturating_mul(T::SOFT_MIN_MAX_RATIO <span class="kw">as </span>Balance),
+                Error::&lt;T&gt;::InvalidMaxLotSize
+            );
+
+            <span class="comment">// check the ratio between old min &amp; new max
+            </span><span class="macro">ensure!</span>(
+                max_lot_size
+                    &lt;= order_book
+                        .min_lot_size
+                        .balance()
+                        .saturating_mul(T::HARD_MIN_MAX_RATIO <span class="kw">as </span>Balance),
                 Error::&lt;T&gt;::InvalidMaxLotSize
             );
 
@@ -1960,7 +2046,7 @@
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
             status: OrderBookStatus,
         ) -&gt; DispatchResult {
-            T::StatusUpdateOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
+            T::PermittedOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
             &lt;OrderBooks&lt;T&gt;&gt;::mutate(order_book_id, |order_book| {
                 <span class="kw">let </span>order_book = order_book.as_mut().ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
                 order_book.status = status;
@@ -1974,7 +2060,8 @@
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">4</span>)]
-        #[pallet::weight(Pallet::&lt;T&gt;::exchange_weight())] </span><span class="comment">// in the worst case the limit order is converted into market order and the exchange occurs
+        </span><span class="comment">// in the worst case the limit order is converted into market order and the exchange occurs
+        </span><span class="attr">#[pallet::weight(Pallet::&lt;T&gt;::exchange_weight())]
         </span><span class="kw">pub fn </span>place_limit_order(
             origin: OriginFor&lt;T&gt;,
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
@@ -2017,10 +2104,11 @@
             // the market-maker fee is charged for some weight, and the regular fee for none weight
             </span><span class="kw">let </span>actual_weight = <span class="kw">if </span>executed_orders_count == <span class="number">0 </span>{
                 <span class="comment">// if the extrinsic just places the limit order, the weight of the placing is returned
-                </span><span class="prelude-val">Some</span>(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::place_limit_order())
+                </span><span class="prelude-val">Some</span>(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::place_limit_order_without_cross_spread())
             } <span class="kw">else </span>{
                 <span class="comment">// if the limit order was converted into market order, then None weight is returned
-                // this weight will be replaced with worst case weight - exchange_weight()
+                // this weight will be replaced with worst case weight:
+                // exchange_weight() + place_limit_order_without_cross_spread()
                 </span><span class="prelude-val">None
             </span>};
 
@@ -2031,7 +2119,10 @@
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">5</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order())]
+        #[pallet::weight(
+            &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order_first_expiration()
+                .max(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order_last_expiration()))
+        ]
         </span><span class="kw">pub fn </span>cancel_limit_order(
             origin: OriginFor&lt;T&gt;,
             order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
@@ -2056,7 +2147,15 @@
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">6</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order().saturating_mul(limit_orders_to_cancel.iter().fold(<span class="number">0</span>, |count, (<span class="kw">_</span>, order_ids)| count.saturating_add(order_ids.len() <span class="kw">as </span>u64))))]
+        #[pallet::weight({
+            <span class="kw">let </span>cancel_limit_order = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order_first_expiration()
+                .max(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_limit_order_last_expiration());
+            <span class="kw">let </span>limit_orders_count: u64 = limit_orders_to_cancel
+                .iter()
+                .fold(<span class="number">0</span>, |count, (<span class="kw">_</span>, order_ids)| count.saturating_add(order_ids.len() <span class="kw">as </span>u64));
+
+            cancel_limit_order.saturating_mul(limit_orders_count)
+        })]
         </span><span class="kw">pub fn </span>cancel_limit_orders_batch(
             origin: OriginFor&lt;T&gt;,
             limit_orders_to_cancel: Vec&lt;(OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;, Vec&lt;T::OrderId&gt;)&gt;,
@@ -2164,19 +2263,30 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; Delegate&lt;T::AccountId, T::AssetId, T::OrderId, T::DEXId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; Delegate&lt;T::AccountId, T::AssetId, T::OrderId, T::DEXId, MomentOf&lt;T&gt;&gt;
+    <span class="kw">for </span>Pallet&lt;T&gt;
+{
     <span class="kw">fn </span>emit_event(
         order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
-        event: OrderBookEvent&lt;T::AccountId, T::OrderId&gt;,
+        event: OrderBookEvent&lt;T::AccountId, T::OrderId, MomentOf&lt;T&gt;&gt;,
     ) {
         <span class="kw">let </span>event = <span class="kw">match </span>event {
-            OrderBookEvent::LimitOrderPlaced { order_id, owner_id } =&gt; {
-                Event::&lt;T&gt;::LimitOrderPlaced {
-                    order_book_id,
-                    order_id,
-                    owner_id,
-                }
-            }
+            OrderBookEvent::LimitOrderPlaced {
+                order_id,
+                owner_id,
+                side,
+                price,
+                amount,
+                lifetime,
+            } =&gt; Event::&lt;T&gt;::LimitOrderPlaced {
+                order_book_id,
+                order_id,
+                owner_id,
+                side,
+                price,
+                amount,
+                lifetime,
+            },
 
             OrderBookEvent::LimitOrderConvertedToMarketOrder {
                 owner_id,
@@ -2204,34 +2314,50 @@
                 limit_order_id,
             },
 
-            OrderBookEvent::LimitOrderCanceled { order_id, owner_id } =&gt; {
-                Event::&lt;T&gt;::LimitOrderCanceled {
-                    order_book_id,
-                    order_id,
-                    owner_id,
-                }
-            }
+            OrderBookEvent::LimitOrderCanceled {
+                order_id,
+                owner_id,
+                reason,
+            } =&gt; Event::&lt;T&gt;::LimitOrderCanceled {
+                order_book_id,
+                order_id,
+                owner_id,
+                reason,
+            },
 
             OrderBookEvent::LimitOrderExecuted {
                 order_id,
                 owner_id,
                 side,
+                price,
                 amount,
             } =&gt; Event::&lt;T&gt;::LimitOrderExecuted {
                 order_book_id,
                 order_id,
                 owner_id,
                 side,
+                price,
                 amount,
             },
 
-            OrderBookEvent::LimitOrderUpdated { order_id, owner_id } =&gt; {
-                Event::&lt;T&gt;::LimitOrderUpdated {
+            OrderBookEvent::LimitOrderFilled { order_id, owner_id } =&gt; {
+                Event::&lt;T&gt;::LimitOrderFilled {
                     order_book_id,
                     order_id,
                     owner_id,
                 }
             }
+
+            OrderBookEvent::LimitOrderUpdated {
+                order_id,
+                owner_id,
+                new_amount,
+            } =&gt; Event::&lt;T&gt;::LimitOrderUpdated {
+                order_book_id,
+                order_id,
+                owner_id,
+                new_amount,
+            },
 
             OrderBookEvent::MarketOrderExecuted {
                 owner_id,

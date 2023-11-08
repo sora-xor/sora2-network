@@ -225,6 +225,7 @@
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -264,7 +265,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::weights::WeightInfo;
 <span class="kw">use </span><span class="kw">crate</span>::ExpirationsAgenda;
 <span class="kw">use crate</span>::{
-    traits::ExpirationScheduler, CacheDataLayer, Config, DataLayer, Error, Event,
+    traits::ExpirationScheduler, CacheDataLayer, CancelReason, Config, DataLayer, Error, Event,
     IncompleteExpirationsSince, OrderBookId, OrderBooks, Pallet,
 };
 <span class="kw">use </span>assets::AssetIdOf;
@@ -309,15 +310,16 @@
             <span class="kw">return</span>;
         };
 
-        <span class="comment">// It&#39;s fine to try and unschedule again inside this method
+        <span class="comment">// It&#39;s fine to fail on unschedule again inside this method
         // since the queue is taken from the storage before this method.
         // (thus `ignore_unschedule_error` is `true`)
         </span><span class="kw">match </span>order_book.cancel_limit_order_unchecked(order, data_layer, <span class="bool-val">true</span>) {
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::LimitOrderExpired {
+                <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::LimitOrderCanceled {
                     order_book_id: <span class="kw-2">*</span>order_book_id,
                     order_id,
                     owner_id: order_owner,
+                    reason: CancelReason::Expired,
                 });
             }
             <span class="prelude-val">Err</span>(error) =&gt; {

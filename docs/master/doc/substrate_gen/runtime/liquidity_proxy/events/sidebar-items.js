@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BatchSwapExecuted","Exchange","LiquiditySourceDisabled","LiquiditySourceEnabled","XorlessTransfer"]};
+window.SIDEBAR_ITEMS = {"struct":["ADARFeeWithdrawn","BatchSwapExecuted","Exchange","LiquiditySourceDisabled","LiquiditySourceEnabled","XorlessTransfer"]};

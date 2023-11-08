@@ -353,6 +353,63 @@
 <a href="#338" id="338">338</a>
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -388,6 +445,7 @@
     MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserLimitOrders, UserOrders,
 };
 <span class="kw">use </span>assets::AssetIdOf;
+<span class="kw">use </span>common::storage::DecodeIsFullDoubleMap;
 <span class="kw">use </span>common::PriceVariant;
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
@@ -413,28 +471,30 @@
         order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
         order: <span class="kw-2">&amp;</span>LimitOrder&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>bids = &lt;Bids&lt;T&gt;&gt;::try_get(order_book_id, order.price).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
-        bids.retain(|x| <span class="kw-2">*</span>x != order.id);
-        <span class="kw">if </span>bids.is_empty() {
-            &lt;Bids&lt;T&gt;&gt;::remove(order_book_id, order.price);
-        } <span class="kw">else </span>{
-            &lt;Bids&lt;T&gt;&gt;::set(order_book_id, order.price, <span class="prelude-val">Some</span>(bids));
-        }
-        <span class="prelude-val">Ok</span>(())
+        &lt;Bids&lt;T&gt;&gt;::mutate(order_book_id, order.price, |bids_opt| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(bids) = bids_opt {
+                bids.retain(|x| <span class="kw-2">*</span>x != order.id);
+                <span class="kw">if </span>bids.is_empty() {
+                    <span class="kw-2">*</span>bids_opt = <span class="prelude-val">None</span>;
+                }
+            }
+            <span class="prelude-val">Ok</span>(())
+        })
     }
 
     <span class="kw">fn </span>remove_from_asks(
         order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
         order: <span class="kw-2">&amp;</span>LimitOrder&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>asks = &lt;Asks&lt;T&gt;&gt;::try_get(order_book_id, order.price).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
-        asks.retain(|x| <span class="kw-2">*</span>x != order.id);
-        <span class="kw">if </span>asks.is_empty() {
-            &lt;Asks&lt;T&gt;&gt;::remove(order_book_id, order.price);
-        } <span class="kw">else </span>{
-            &lt;Asks&lt;T&gt;&gt;::set(order_book_id, order.price, <span class="prelude-val">Some</span>(asks));
-        }
-        <span class="prelude-val">Ok</span>(())
+        &lt;Asks&lt;T&gt;&gt;::mutate(order_book_id, order.price, |asks_opt| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(asks) = asks_opt {
+                asks.retain(|x| <span class="kw-2">*</span>x != order.id);
+                <span class="kw">if </span>asks.is_empty() {
+                    <span class="kw-2">*</span>asks_opt = <span class="prelude-val">None</span>;
+                }
+            }
+            <span class="prelude-val">Ok</span>(())
+        })
     }
 
     <span class="kw">fn </span>add_to_aggregated_bids(
@@ -442,16 +502,16 @@
         price: <span class="kw-2">&amp;</span>OrderPrice,
         value: <span class="kw-2">&amp;</span>OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>bids = &lt;AggregatedBids&lt;T&gt;&gt;::get(order_book_id);
-        <span class="kw">let </span>volume = bids
-            .get(price)
-            .map(|x| <span class="kw-2">*</span>x)
-            .unwrap_or_default()
-            .checked_add(value)
-            .ok_or(())<span class="question-mark">?</span>;
-        bids.try_insert(<span class="kw-2">*</span>price, volume).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
-        &lt;AggregatedBids&lt;T&gt;&gt;::set(order_book_id, bids);
-        <span class="prelude-val">Ok</span>(())
+        &lt;AggregatedBids&lt;T&gt;&gt;::mutate(order_book_id, |bids| {
+            <span class="kw">let </span>volume = bids
+                .get(price)
+                .map(|x| <span class="kw-2">*</span>x)
+                .unwrap_or_default()
+                .checked_add(value)
+                .ok_or(())<span class="question-mark">?</span>;
+            bids.try_insert(<span class="kw-2">*</span>price, volume).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())
+        })
     }
 
     <span class="kw">fn </span>sub_from_aggregated_bids(
@@ -459,20 +519,20 @@
         price: <span class="kw-2">&amp;</span>OrderPrice,
         value: <span class="kw-2">&amp;</span>OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>agg_bids = &lt;AggregatedBids&lt;T&gt;&gt;::try_get(order_book_id).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
-        <span class="kw">let </span>volume = agg_bids
-            .get(price)
-            .map(|x| <span class="kw-2">*</span>x)
-            .ok_or(())<span class="question-mark">?
-            </span>.checked_sub(value)
-            .ok_or(())<span class="question-mark">?</span>;
-        <span class="kw">if </span>volume.is_zero() {
-            agg_bids.remove(price).ok_or(())<span class="question-mark">?</span>;
-        } <span class="kw">else </span>{
-            agg_bids.try_insert(<span class="kw-2">*</span>price, volume).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
-        }
-        &lt;AggregatedBids&lt;T&gt;&gt;::set(order_book_id, agg_bids);
-        <span class="prelude-val">Ok</span>(())
+        &lt;AggregatedBids&lt;T&gt;&gt;::mutate(order_book_id, |agg_bids| {
+            <span class="kw">let </span>volume = agg_bids
+                .get(price)
+                .map(|x| <span class="kw-2">*</span>x)
+                .ok_or(())<span class="question-mark">?
+                </span>.checked_sub(value)
+                .ok_or(())<span class="question-mark">?</span>;
+            <span class="kw">if </span>volume.is_zero() {
+                agg_bids.remove(price).ok_or(())<span class="question-mark">?</span>;
+            } <span class="kw">else </span>{
+                agg_bids.try_insert(<span class="kw-2">*</span>price, volume).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
+            }
+            <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())
+        })
     }
 
     <span class="kw">fn </span>add_to_aggregated_asks(
@@ -480,16 +540,16 @@
         price: <span class="kw-2">&amp;</span>OrderPrice,
         value: <span class="kw-2">&amp;</span>OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>asks = &lt;AggregatedAsks&lt;T&gt;&gt;::get(order_book_id);
-        <span class="kw">let </span>volume = asks
-            .get(price)
-            .map(|x| <span class="kw-2">*</span>x)
-            .unwrap_or_default()
-            .checked_add(value)
-            .ok_or(())<span class="question-mark">?</span>;
-        asks.try_insert(<span class="kw-2">*</span>price, volume).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
-        &lt;AggregatedAsks&lt;T&gt;&gt;::set(order_book_id, asks);
-        <span class="prelude-val">Ok</span>(())
+        &lt;AggregatedAsks&lt;T&gt;&gt;::mutate(order_book_id, |asks| {
+            <span class="kw">let </span>volume = asks
+                .get(price)
+                .map(|x| <span class="kw-2">*</span>x)
+                .unwrap_or_default()
+                .checked_add(value)
+                .ok_or(())<span class="question-mark">?</span>;
+            asks.try_insert(<span class="kw-2">*</span>price, volume).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())
+        })
     }
 
     <span class="kw">fn </span>sub_from_aggregated_asks(
@@ -497,20 +557,20 @@
         price: <span class="kw-2">&amp;</span>OrderPrice,
         value: <span class="kw-2">&amp;</span>OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>agg_asks = &lt;AggregatedAsks&lt;T&gt;&gt;::try_get(order_book_id).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
-        <span class="kw">let </span>volume = agg_asks
-            .get(price)
-            .map(|x| <span class="kw-2">*</span>x)
-            .ok_or(())<span class="question-mark">?
-            </span>.checked_sub(value)
-            .ok_or(())<span class="question-mark">?</span>;
-        <span class="kw">if </span>volume.is_zero() {
-            agg_asks.remove(price).ok_or(())<span class="question-mark">?</span>;
-        } <span class="kw">else </span>{
-            agg_asks.try_insert(<span class="kw-2">*</span>price, volume).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
-        }
-        &lt;AggregatedAsks&lt;T&gt;&gt;::set(order_book_id, agg_asks);
-        <span class="prelude-val">Ok</span>(())
+        &lt;AggregatedAsks&lt;T&gt;&gt;::mutate(order_book_id, |agg_asks| {
+            <span class="kw">let </span>volume = agg_asks
+                .get(price)
+                .map(|x| <span class="kw-2">*</span>x)
+                .ok_or(())<span class="question-mark">?
+                </span>.checked_sub(value)
+                .ok_or(())<span class="question-mark">?</span>;
+            <span class="kw">if </span>volume.is_zero() {
+                agg_asks.remove(price).ok_or(())<span class="question-mark">?</span>;
+            } <span class="kw">else </span>{
+                agg_asks.try_insert(<span class="kw-2">*</span>price, volume).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
+            }
+            <span class="prelude-val">Ok</span>::&lt;(), ()&gt;(())
+        })
     }
 }
 
@@ -520,11 +580,7 @@
         order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
         order_id: T::OrderId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;LimitOrder&lt;T&gt;, DispatchError&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(order) = &lt;LimitOrders&lt;T&gt;&gt;::get(order_book_id, order_id) {
-            <span class="prelude-val">Ok</span>(order)
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownLimitOrder.into())
-        }
+        &lt;LimitOrders&lt;T&gt;&gt;::get(order_book_id, order_id).ok_or(Error::&lt;T&gt;::UnknownLimitOrder.into())
     }
 
     <span class="kw">fn </span>get_all_limit_orders(
@@ -653,12 +709,28 @@
         &lt;Bids&lt;T&gt;&gt;::get(order_book_id, price)
     }
 
+    <span class="kw">fn </span>is_bid_price_full(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        price: <span class="kw-2">&amp;</span>OrderPrice,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
+        &lt;Bids&lt;T&gt;&gt;::decode_is_full(order_book_id, price)
+    }
+
     <span class="kw">fn </span>get_asks(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
         price: <span class="kw-2">&amp;</span>OrderPrice,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;PriceOrders&lt;T::OrderId, T::MaxLimitOrdersForPrice&gt;&gt; {
         &lt;Asks&lt;T&gt;&gt;::get(order_book_id, price)
+    }
+
+    <span class="kw">fn </span>is_ask_price_full(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        price: <span class="kw-2">&amp;</span>OrderPrice,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
+        &lt;Asks&lt;T&gt;&gt;::decode_is_full(order_book_id, price)
     }
 
     <span class="kw">fn </span>get_aggregated_bids(
@@ -668,11 +740,45 @@
         &lt;AggregatedBids&lt;T&gt;&gt;::get(order_book_id)
     }
 
+    <span class="kw">fn </span>get_aggregated_bids_len(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+        &lt;AggregatedBids&lt;T&gt;&gt;::decode_len(order_book_id)
+    }
+
+    <span class="kw">fn </span>best_bid(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;(OrderPrice, OrderVolume)&gt; {
+        &lt;AggregatedBids&lt;T&gt;&gt;::get(order_book_id)
+            .iter()
+            .max()
+            .map(|(k, v)| (<span class="kw-2">*</span>k, <span class="kw-2">*</span>v))
+    }
+
     <span class="kw">fn </span>get_aggregated_asks(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
     ) -&gt; MarketSide&lt;T::MaxSidePriceCount&gt; {
         &lt;AggregatedAsks&lt;T&gt;&gt;::get(order_book_id)
+    }
+
+    <span class="kw">fn </span>get_aggregated_asks_len(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+        &lt;AggregatedAsks&lt;T&gt;&gt;::decode_len(order_book_id)
+    }
+
+    <span class="kw">fn </span>best_ask(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;(OrderPrice, OrderVolume)&gt; {
+        &lt;AggregatedAsks&lt;T&gt;&gt;::get(order_book_id)
+            .iter()
+            .min()
+            .map(|(k, v)| (<span class="kw-2">*</span>k, <span class="kw-2">*</span>v))
     }
 
     <span class="kw">fn </span>get_user_limit_orders(
@@ -681,6 +787,14 @@
         order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;UserOrders&lt;T::OrderId, T::MaxOpenedLimitOrdersPerUser&gt;&gt; {
         &lt;UserLimitOrders&lt;T&gt;&gt;::get(account, order_book_id)
+    }
+
+    <span class="kw">fn </span>is_user_limit_orders_full(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        account: <span class="kw-2">&amp;</span>T::AccountId,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
+        &lt;UserLimitOrders&lt;T&gt;&gt;::decode_is_full(account, order_book_id)
     }
 
     <span class="kw">fn </span>get_all_user_limit_orders(
