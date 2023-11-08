@@ -259,22 +259,12 @@ pub(crate) mod execute_market_order {
         pub expected_average_price: OrderPrice,
     }
 
-    /// `pairs` consists of pairs `(value, weight)`
-    fn weighted_average(pairs: impl IntoIterator<Item = (OrderPrice, OrderVolume)>) -> OrderPrice {
-        let mut weight_sum = BalanceUnit::zero();
-        let mut weight_times_value_sum = BalanceUnit::zero();
-        for (value, weight) in pairs {
-            weight_sum += weight;
-            weight_times_value_sum += weight * value;
-        }
-        weight_times_value_sum / weight_sum
-    }
-
-    fn expected_average_price<T: Config>(
+    /// returns `(expected_base, expected_quote)`
+    pub(crate) fn expected_base_quote<T: Config>(
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         side: PriceVariant,
         is_divisible: bool,
-    ) -> OrderPrice {
+    ) -> (OrderVolume, OrderVolume) {
         let aggregated_side = match side {
             PriceVariant::Buy => OrderBookPallet::<T>::aggregated_asks(order_book_id),
             PriceVariant::Sell => OrderBookPallet::<T>::aggregated_bids(order_book_id),
@@ -293,8 +283,13 @@ pub(crate) mod execute_market_order {
             OrderBook::<T>::default_indivisible(order_book_id)
         };
         let worst_price_sum = worst_price_sum - default_order_book.min_lot_size;
+        let aggregated_side =
+            aggregated_side.chain(sp_std::iter::once((worst_price, worst_price_sum)));
 
-        weighted_average(aggregated_side.chain(sp_std::iter::once((worst_price, worst_price_sum))))
+        let bases_quotes = aggregated_side.map(|(price, volume)| (volume, volume * price));
+        bases_quotes.fold((OrderVolume::zero(), OrderVolume::zero()), |acc, next| {
+            (acc.0 + next.0, acc.1 + next.1)
+        })
     }
 
     pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
@@ -316,6 +311,9 @@ pub(crate) mod execute_market_order {
                 &caller,
             )
             .unwrap();
+        let (expected_base, expected_quote) =
+            expected_base_quote::<T>(order_book_id, side, is_divisible);
+        assert_eq!(amount, expected_base);
         Context {
             caller,
             order_book_id,
@@ -323,7 +321,7 @@ pub(crate) mod execute_market_order {
             side,
             caller_base_balance,
             caller_quote_balance,
-            expected_average_price: expected_average_price::<T>(order_book_id, side, is_divisible),
+            expected_average_price: expected_quote / expected_base,
         }
     }
 
@@ -393,6 +391,100 @@ pub(crate) mod quote {
             amount,
             deduce_fee,
         }
+    }
+}
+
+pub(crate) mod exchange {
+
+    use super::*;
+    use common::Balance;
+
+    pub struct Context<T: Config> {
+        pub caller: T::AccountId,
+        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        pub expected_in: Balance,
+        pub expected_out: Balance,
+        pub caller_base_balance: Balance,
+        pub caller_quote_balance: Balance,
+        pub expected_average_price: OrderPrice,
+    }
+
+    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+        let caller = accounts::alice::<T>();
+        let is_divisible = true;
+        let (order_book_id, amount, side) =
+            market_order_execution(settings, caller.clone(), is_divisible);
+        let caller_base_balance =
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.base,
+                &caller,
+            )
+            .unwrap();
+        let caller_quote_balance =
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &caller,
+            )
+            .unwrap();
+        let (expected_base, expected_quote) =
+            execute_market_order::expected_base_quote::<T>(order_book_id, side, is_divisible);
+        assert_eq!(amount, expected_base);
+        let expected_average_price = expected_quote / expected_base;
+        let (expected_in, expected_out) = match side {
+            PriceVariant::Buy => (expected_quote, expected_base),
+            PriceVariant::Sell => (expected_base, expected_quote),
+        };
+        let (expected_in, expected_out) = (*expected_in.balance(), *expected_out.balance());
+        Context {
+            caller,
+            order_book_id,
+            expected_in,
+            expected_out,
+            caller_base_balance,
+            caller_quote_balance,
+            expected_average_price,
+        }
+    }
+
+    pub fn verify<T: Config + core::fmt::Debug>(_settings: FillSettings<T>, context: Context<T>) {
+        let Context {
+            caller,
+            order_book_id,
+            expected_in,
+            expected_out,
+            caller_base_balance,
+            caller_quote_balance,
+            expected_average_price,
+        } = context;
+        assert_last_event::<T>(
+            Event::<T>::MarketOrderExecuted {
+                order_book_id,
+                owner_id: caller.clone(),
+                direction: PriceVariant::Sell,
+                amount: OrderAmount::Base(expected_in.into()),
+                average_price: expected_average_price,
+                to: None,
+            }
+            .into(),
+        );
+        assert_eq!(
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.base,
+                &caller
+            )
+            .unwrap(),
+            caller_base_balance - expected_in
+        );
+        assert_eq!(
+            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &caller
+            )
+            .unwrap(),
+            caller_quote_balance + expected_out
+        );
     }
 }
 

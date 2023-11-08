@@ -127,6 +127,31 @@ fn test_benchmark_quote() {
 }
 
 #[test]
+fn test_benchmark_exchange() {
+    ext().execute_with(|| {
+        use common::LiquiditySource;
+
+        let settings = FillSettings::<Runtime>::max();
+        let context = periphery::exchange::init(settings.clone());
+
+        let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
+            &context.caller,
+            &context.caller,
+            &context.order_book_id.dex_id,
+            &context.order_book_id.base,
+            &context.order_book_id.quote,
+            SwapAmount::with_desired_output(
+                context.expected_out,
+                context.expected_in + balance!(5),
+            ),
+        )
+        .unwrap();
+
+        periphery::exchange::verify(settings, context);
+    })
+}
+
+#[test]
 fn test_benchmark_exchange_single_order() {
     ext().execute_with(|| {
         use common::LiquiditySource;

@@ -368,6 +368,26 @@ mod benchmarks_inner {
             // nothing changed
         }
 
+        exchange {
+            let settings = FillSettings::<T>::max();
+            let context = periphery::exchange::init(settings.clone());
+        }: {
+            OrderBookPallet::<T>::exchange(
+                &context.caller,
+                &context.caller,
+                &context.order_book_id.dex_id,
+                &context.order_book_id.base,
+                &context.order_book_id.quote,
+                SwapAmount::with_desired_output(
+                    context.expected_out, context.expected_in + balance!(1.5)
+                ),
+            )
+            .unwrap();
+        }
+        verify {
+            periphery::exchange::verify(settings, context);
+        }
+
         exchange_single_order {
             let settings = FillSettings::<T>::max();
             let context = periphery::exchange_single_order::init(settings.clone());
