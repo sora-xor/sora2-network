@@ -33,6 +33,7 @@ use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
 use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount};
+use common::test_utils::assert_event;
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
     Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
@@ -3676,13 +3677,18 @@ fn test_batch_swap_asset_reuse_works() {
             Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
+        assert_approx_eq!(
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            balance!(356400),
+            balance!(0.00001)
+        );
 
         let swap_batches = Vec::from([
             SwapBatchInfo {
                 outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
-                outcome_asset_reuse: balance!(10),
+                outcome_asset_reuse: balance!(20),
             },
             SwapBatchInfo {
                 outcome_asset_id: KSM,
@@ -3712,6 +3718,17 @@ fn test_batch_swap_asset_reuse_works() {
 
         test_utils::check_adar_commission(&swap_batches, sources);
         test_utils::check_swap_batch_executed_amount(swap_batches);
+        assert_event::<Runtime>(
+            crate::Event::<Runtime>::ADARFeeWithdrawn(KSM, balance!(0.025)).into(),
+        );
+        assert_event::<Runtime>(
+            crate::Event::<Runtime>::ADARFeeWithdrawn(USDT, balance!(0.025)).into(),
+        );
+        assert_approx_eq!(
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            balance!(356394.934457262),
+            balance!(0.00001)
+        );
         assert_approx_eq!(
             Assets::free_balance(&KSM, &alice()).unwrap(),
             balance!(1990),
@@ -3719,7 +3736,7 @@ fn test_batch_swap_asset_reuse_works() {
         );
         assert_approx_eq!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
-            balance!(11990),
+            balance!(11989.975),
             balance!(0.00001)
         );
     });

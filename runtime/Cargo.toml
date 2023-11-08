@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.1.0"
+version = "3.1.1"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -82,6 +82,7 @@ multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bondin
 oracle-proxy = { path = "../pallets/oracle-proxy", default-features = false }
 oracle-proxy-runtime-api = { path = "../pallets/oracle-proxy/runtime-api", default-features = false }
 order-book = { path = "../pallets/order-book", default-features = false, optional = true }
+order-book-benchmarking = { path = "../pallets/order-book/benchmarking", default-features = false, optional = true }
 permissions = { path = "../pallets/permissions", default-features = false }
 pool-xyk = { path = "../pallets/pool-xyk", default-features = false }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
@@ -237,6 +238,7 @@ std = [
     "oracle-proxy/std",
     "oracle-proxy-runtime-api/std",
     "order-book/std",
+    "order-book-benchmarking/std",
     "pallet-aura/std",
     "pallet-authorship/std",
     "pallet-babe/std",
@@ -304,6 +306,7 @@ private-net = [
 
 wip = [
     "order-book/wip",
+    "order-book-benchmarking/wip",
     "framenode-chain-spec/wip",
     "common/wip",
     "dex-api/wip",
@@ -361,7 +364,8 @@ runtime-benchmarks = [
     "multicollateral-bonding-curve-pool/runtime-benchmarks",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",
     "oracle-proxy/runtime-benchmarks",
-    "order-book/runtime-benchmarks",
+    "order-book-benchmarking",
+    "order-book-benchmarking/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
     "pool-xyk-benchmarking/runtime-benchmarks",
