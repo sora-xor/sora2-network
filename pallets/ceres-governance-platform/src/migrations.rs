@@ -7,8 +7,8 @@ use frame_support::BoundedVec;
 use hex_literal::hex;
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
-use std::collections::HashMap;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo, Debug)]
 pub struct OldPollInfo<Moment> {
@@ -160,7 +160,7 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     let old_poll_id_d = "16461FA8A000000".as_bytes().to_vec();
 
     // Map Vec<u8> -> H256
-    let mut map = HashMap::<Vec<u8>, H256>::new();
+    let mut map = BTreeMap::<Vec<u8>, H256>::new();
 
     map.insert(old_poll_id_a, poll_id_a);
     map.insert(old_poll_id_b, poll_id_b);
