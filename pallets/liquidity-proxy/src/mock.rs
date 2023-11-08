@@ -1023,6 +1023,8 @@ impl ExtBuilder {
                     .unwrap();
                 }
             }
+            // Set block number to 1 to start events tracking
+            frame_system::Pallet::<Runtime>::set_block_number(1);
         });
 
         ext
