@@ -80,6 +80,7 @@ pub mod pallet {
     use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
+    use common::Fixed;
     use common::{balance, AssetInfoProvider, DEXId, PoolXykPallet, PSWAP, XSTUSD};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
@@ -1327,18 +1328,22 @@ pub mod pallet {
 
             let tfi = ((FixedWrapper::from(hard_cap) / FixedWrapper::from(ilo_price))
                 .get()
-                .unwrap())
+                .map_err(|_| Error::<T>::InvalidNumberOfTokensForILO)?)
             .integral(RoundMode::Ceil);
-            if tokens_for_ilo != balance!(tfi) {
+            let tfi_balance = Fixed::try_from(tfi).unwrap_or(Default::default());
+
+            if tokens_for_ilo != balance!(tfi_balance) {
                 return Err(Error::<T>::InvalidNumberOfTokensForILO.into());
             }
 
             let tfl = ((FixedWrapper::from(hard_cap) * FixedWrapper::from(liquidity_percent))
                 / FixedWrapper::from(listing_price))
             .get()
-            .unwrap()
+            .map_err(|_| Error::<T>::InvalidNumberOfTokensForLiquidity)?
             .integral(RoundMode::Ceil);
-            if tokens_for_liquidity != balance!(tfl) {
+            let tfl_balance = Fixed::try_from(tfl).unwrap_or(Default::default());
+
+            if tokens_for_liquidity != balance!(tfl_balance) {
                 return Err(Error::<T>::InvalidNumberOfTokensForLiquidity.into());
             }
 
