@@ -1354,9 +1354,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn exchange_weight() -> Weight {
-        // SOFT_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
-        <T as Config>::WeightInfo::exchange_single_order()
-            .saturating_mul(<T as Config>::SOFT_MIN_MAX_RATIO as u64)
+        <T as Config>::WeightInfo::exchange()
     }
 
     fn check_rewards_weight() -> Weight {
