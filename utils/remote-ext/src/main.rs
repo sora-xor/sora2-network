@@ -1,14 +1,10 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-#[macro_use]
-extern crate log;
-
 use clap::Parser;
-use common::prelude::{QuoteAmount, SwapVariant};
-use common::{balance, DEXId, DexInfoProvider, LiquiditySourceFilter};
+use common::prelude::SwapVariant;
+use common::{DEXId, DexInfoProvider};
 use frame_remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities};
-use frame_support::traits::OnRuntimeUpgrade;
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
 
