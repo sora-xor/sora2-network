@@ -946,7 +946,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     /// This is useful for expiration of orders where we want to use the universal interface
     /// to remove an order. In such case the schedule already does not have the order, because
     /// it is removed more efficiently than in `unschedule()`
-    pub fn cancel_limit_order_unchecked(
+    pub(crate) fn cancel_limit_order_unchecked(
         &self,
         limit_order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
