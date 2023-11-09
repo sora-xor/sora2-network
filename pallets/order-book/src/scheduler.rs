@@ -118,12 +118,12 @@ impl<T: Config> Pallet<T> {
     ///
     /// Returns `true` if all expirations were processed and `false` if some expirations
     /// need to be retried when more weight is available.
-    pub fn service_block(
+    pub fn service_expiration_block(
         data_layer: &mut impl DataLayer<T>,
         block: T::BlockNumber,
         weight: &mut WeightMeter,
     ) -> bool {
-        if !weight.check_accrue(<T as Config>::WeightInfo::service_block_base()) {
+        if !weight.check_accrue(<T as Config>::WeightInfo::service_expiration_block_base()) {
             return false;
         }
 
@@ -185,17 +185,17 @@ impl<T: Config>
     > for Pallet<T>
 {
     fn service_expiration(current_block: T::BlockNumber, weight: &mut WeightMeter) {
-        if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
+        if !weight.check_accrue(<T as Config>::WeightInfo::service_expiration_base()) {
             return;
         }
 
         let mut incomplete_since = current_block + One::one();
         let mut when = IncompleteExpirationsSince::<T>::take().unwrap_or(current_block);
 
-        let service_block_base_weight = <T as Config>::WeightInfo::service_block_base();
+        let service_block_base_weight = <T as Config>::WeightInfo::service_expiration_block_base();
         let mut data_layer = CacheDataLayer::<T>::new();
         while when <= current_block && weight.can_accrue(service_block_base_weight) {
-            if !Self::service_block(&mut data_layer, when, weight) {
+            if !Self::service_expiration_block(&mut data_layer, when, weight) {
                 incomplete_since = incomplete_since.min(when);
             }
             when.saturating_inc();

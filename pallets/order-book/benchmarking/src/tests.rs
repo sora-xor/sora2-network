@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![cfg(feature = "wip")] // order-book
+
 use super::*;
 
 use common::balance;
@@ -38,6 +40,7 @@ use framenode_runtime::Runtime;
 use order_book::test_utils::fill_tools::FillSettings;
 #[allow(unused)]
 use periphery::presets::*;
+use sp_std::vec::Vec;
 
 #[test]
 fn test_benchmark_delete_orderbook() {
@@ -149,4 +152,22 @@ fn test_benchmark_exchange_single_order() {
 
         periphery::exchange_single_order::verify(settings, context);
     })
+}
+
+#[test]
+fn test_benchmark_align_single_order() {
+    ext().execute_with(|| {
+        let settings = FillSettings::<Runtime>::max();
+        let context = periphery::align_single_order::init(settings);
+
+        let mut data =
+            framenode_runtime::order_book::storage_data_layer::StorageDataLayer::<Runtime>::new();
+
+        context
+            .order_book
+            .align_limit_orders(Vec::from([context.order_to_align.clone()]), &mut data)
+            .unwrap();
+
+        periphery::align_single_order::verify(context);
+    });
 }

@@ -875,7 +875,7 @@ fn should_enforce_expiration_and_weight_limits() {
             assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_some());
         }
 
-        let weight_left_for_single_expiration = <Runtime as Config>::MaxExpirationWeightPerBlock::get() - <Runtime as Config>::WeightInfo::service_base() - <Runtime as Config>::WeightInfo::service_block_base();
+        let weight_left_for_single_expiration = <Runtime as Config>::MaxExpirationWeightPerBlock::get() - <Runtime as Config>::WeightInfo::service_expiration_base() - <Runtime as Config>::WeightInfo::service_expiration_block_base();
         let max_expired_per_block: u64 = min(
             weight_left_for_single_expiration.ref_time() / <Runtime as Config>::WeightInfo::service_single_expiration().ref_time(),
             weight_left_for_single_expiration.proof_size() / <Runtime as Config>::WeightInfo::service_single_expiration().proof_size()
