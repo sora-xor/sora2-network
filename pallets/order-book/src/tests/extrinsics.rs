@@ -33,8 +33,8 @@
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, PriceVariant, DEFAULT_BALANCE_PRECISION, ETH,
-    PSWAP, VAL, XOR, XST, XSTUSD,
+    balance, AssetId32, AssetName, AssetSymbol, Balance, PriceVariant, DEFAULT_BALANCE_PRECISION,
+    ETH, PSWAP, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
@@ -1452,96 +1452,139 @@ fn should_align_limit_orders_when_update_order_book() {
 #[test]
 fn should_align_a_lot_of_limit_orders() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
-        let order_book = create_empty_order_book::<Runtime>(order_book_id);
+        let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
 
-        let mut buy_price: OrderPrice = balance!(1000).into();
-        let mut buy_lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 1000000; // ms
-        let mut sell_price: OrderPrice = balance!(1001).into();
-        let mut sell_lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 1000000; // ms
+        let order_book_id3 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: ETH.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book1 = create_empty_order_book::<Runtime>(order_book_id1);
+        let order_book2 = create_empty_order_book::<Runtime>(order_book_id2);
+        let order_book3 = create_empty_order_book::<Runtime>(order_book_id3);
 
         let init_amount = balance!(10.5);
         let updated_amount = balance!(10);
 
-        let count = <Runtime as Config>::SOFT_MIN_MAX_RATIO;
+        fill_limit_orders_for_align(order_book_id1, init_amount, order_book1.tick_size);
+        fill_limit_orders_for_align(order_book_id2, init_amount, order_book2.tick_size);
+        fill_limit_orders_for_align(order_book_id3, init_amount, order_book3.tick_size);
 
-        for i in 0..count {
-            // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
-            let account = accounts::generate_account::<Runtime>(i as u32);
-
-            fill_balance::<Runtime>(account.clone(), order_book_id);
-
-            buy_price -= order_book.tick_size;
-            sell_price += order_book.tick_size;
-            buy_lifespan += 5000;
-            sell_lifespan += 5000;
-
-            assert_ok!(OrderBookPallet::place_limit_order(
-                RawOrigin::Signed(account.clone()).into(),
-                order_book_id,
-                *buy_price.balance(),
-                init_amount,
-                PriceVariant::Buy,
-                Some(buy_lifespan)
-            ));
-
-            assert_ok!(OrderBookPallet::place_limit_order(
-                RawOrigin::Signed(account).into(),
-                order_book_id,
-                *sell_price.balance(),
-                init_amount,
-                PriceVariant::Sell,
-                Some(sell_lifespan)
-            ));
-        }
-
-        assert_ok!(OrderBookPallet::change_orderbook_status(
-            RuntimeOrigin::root(),
-            order_book_id,
-            OrderBookStatus::Stop
-        ));
-
-        let tick_size = balance!(0.01);
-        let step_lot_size = balance!(1); // change lot size precision
-        let min_lot_size = balance!(1);
-        let max_lot_size = balance!(1000);
-
-        assert_ok!(OrderBookPallet::update_orderbook(
-            RuntimeOrigin::root(),
-            order_book_id,
-            tick_size,
-            step_lot_size,
-            min_lot_size,
-            max_lot_size
-        ));
-
-        assert_eq!(
-            OrderBookPallet::order_books(order_book_id)
-                .unwrap()
-                .tech_status,
-            OrderBookTechStatus::Updating
-        );
+        update_order_book_for_alignment(order_book_id1);
+        update_order_book_for_alignment(order_book_id2);
+        update_order_book_for_alignment(order_book_id3);
 
         // run to the next block to perform alignment
         let current_block = FrameSystem::block_number();
-        run_to_block(current_block + 10);
+        run_to_block(current_block + 6);
 
-        for limit_order in <LimitOrders<Runtime>>::iter_prefix_values(order_book_id) {
-            assert_eq!(*limit_order.amount.balance(), updated_amount);
-        }
-
-        assert_eq!(
-            OrderBookPallet::order_books(order_book_id)
-                .unwrap()
-                .tech_status,
-            OrderBookTechStatus::Ready
-        );
+        check_limit_orders_aligned(order_book_id1, updated_amount);
+        check_limit_orders_aligned(order_book_id2, updated_amount);
+        check_limit_orders_aligned(order_book_id3, updated_amount);
     });
+}
+
+fn fill_limit_orders_for_align(
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
+    init_amount: Balance,
+    tick_size: OrderPrice,
+) {
+    let mut buy_price: OrderPrice = balance!(1000).into();
+    let mut buy_lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 1000000; // ms
+    let mut sell_price: OrderPrice = balance!(1001).into();
+    let mut sell_lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 1000000; // ms
+
+    let count = <Runtime as Config>::SOFT_MIN_MAX_RATIO;
+
+    for i in 0..count {
+        // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
+        let account = accounts::generate_account::<Runtime>(i as u32);
+
+        fill_balance::<Runtime>(account.clone(), order_book_id);
+
+        buy_price -= tick_size;
+        sell_price += tick_size;
+        buy_lifespan += 5000;
+        sell_lifespan += 5000;
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(account.clone()).into(),
+            order_book_id,
+            *buy_price.balance(),
+            init_amount,
+            PriceVariant::Buy,
+            Some(buy_lifespan)
+        ));
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(account).into(),
+            order_book_id,
+            *sell_price.balance(),
+            init_amount,
+            PriceVariant::Sell,
+            Some(sell_lifespan)
+        ));
+    }
+}
+
+fn update_order_book_for_alignment(order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>) {
+    let tick_size = balance!(0.01);
+    let step_lot_size = balance!(1); // change lot size precision
+    let min_lot_size = balance!(1);
+    let max_lot_size = balance!(1000);
+
+    assert_ok!(OrderBookPallet::change_orderbook_status(
+        RuntimeOrigin::root(),
+        order_book_id,
+        OrderBookStatus::Stop
+    ));
+
+    assert_ok!(OrderBookPallet::update_orderbook(
+        RuntimeOrigin::root(),
+        order_book_id,
+        tick_size,
+        step_lot_size,
+        min_lot_size,
+        max_lot_size
+    ));
+
+    assert_eq!(
+        OrderBookPallet::order_books(order_book_id)
+            .unwrap()
+            .tech_status,
+        OrderBookTechStatus::Updating
+    );
+
+    assert_eq!(OrderBookPallet::alignment_cursor(order_book_id).unwrap(), 0);
+}
+
+fn check_limit_orders_aligned(
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
+    updated_amount: Balance,
+) {
+    for limit_order in <LimitOrders<Runtime>>::iter_prefix_values(order_book_id) {
+        assert_eq!(*limit_order.amount.balance(), updated_amount);
+    }
+
+    assert_eq!(
+        OrderBookPallet::order_books(order_book_id)
+            .unwrap()
+            .tech_status,
+        OrderBookTechStatus::Ready
+    );
+
+    assert_eq!(OrderBookPallet::alignment_cursor(order_book_id), None);
 }
 
 #[test]

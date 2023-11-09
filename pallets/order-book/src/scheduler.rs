@@ -137,6 +137,7 @@ impl<T: Config> Pallet<T> {
             weight,
             <T as Config>::WeightInfo::service_single_expiration(),
             expirations.len() as u64,
+            true,
         );
         let mut serviced = 0;
         while let Some((order_book_id, order_id)) = expirations.pop() {
@@ -235,13 +236,23 @@ impl<T: Config>
 }
 
 impl<T: Config> AlignmentScheduler for Pallet<T> {
-    fn service_alignment(_weight: &mut WeightMeter) {
+    fn service_alignment(weight: &mut WeightMeter) {
+        // return if it cannot align even 1 limit order
+        if !weight.check_accrue(<T as Config>::WeightInfo::align_single_order()) {
+            return;
+        }
+
         let mut data = CacheDataLayer::<T>::new();
 
         let mut new_cursors = BTreeMap::new();
         let mut finished = Vec::new();
 
         for (order_book_id, cursor) in <AlignmentCursor<T>>::iter() {
+            // break if it cannot align even 1 limit order for the order-book
+            if !weight.check_accrue(<T as Config>::WeightInfo::align_single_order()) {
+                break;
+            }
+
             let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
                 debug_assert!(false, "order-book {order_book_id:?} was not found during alignment");
                 Self::deposit_event(Event::<T>::AlignmentFailure {
@@ -251,8 +262,14 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
                 return;
             };
 
-            let count = T::SOFT_MIN_MAX_RATIO; //todo
-            let limit_orders = Self::get_limit_orders(&order_book_id, cursor, count);
+            let count = check_accrue_n(
+                weight,
+                <T as Config>::WeightInfo::align_single_order(),
+                T::SOFT_MIN_MAX_RATIO as u64,
+                false,
+            );
+
+            let limit_orders = Self::get_limit_orders(&order_book_id, cursor, count as usize);
 
             if let Some(last) = limit_orders.last() {
                 new_cursors.insert(order_book_id, last.id);
@@ -261,6 +278,11 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
                 finished.push(order_book);
                 continue;
             };
+
+            weight.defensive_saturating_accrue(
+                <T as Config>::WeightInfo::align_single_order()
+                    .saturating_mul(limit_orders.len() as u64),
+            );
 
             match order_book.align_limit_orders(limit_orders, &mut data) {
                 Ok(_) => (),
@@ -276,8 +298,6 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
                     return;
                 }
             }
-
-            // todo weight
         }
 
         data.commit();
@@ -287,6 +307,8 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
         }
 
         for mut order_book in finished {
+            <AlignmentCursor<T>>::remove(order_book.order_book_id);
+
             order_book.tech_status = OrderBookTechStatus::Ready;
             <OrderBooks<T>>::set(order_book.order_book_id, Some(order_book));
         }

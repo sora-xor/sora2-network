@@ -887,7 +887,7 @@ fn should_enforce_expiration_and_weight_limits() {
             // Weight spent must not exceed the limit
             let init_weight_consumed = run_to_block(end_of_lifespan_block + i);
             // Weight does not have partial ordering, so we check for overflow this way:
-            assert!(<Runtime as Config>::MaxExpirationWeightPerBlock::get()
+            assert!(<Runtime as Config>::MaxExpirationWeightPerBlock::get().saturating_add(<Runtime as Config>::MaxAlignmentWeightPerBlock::get())
                 .checked_sub(&init_weight_consumed)
                 .is_some());
         }
