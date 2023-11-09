@@ -2,6 +2,7 @@ use crate::*;
 use codec::{Decode, Encode};
 use common::generate_storage_instance;
 use common::CERES_ASSET_ID;
+use frame_support::log;
 use frame_support::pallet_prelude::*;
 use frame_support::BoundedVec;
 use hex_literal::hex;
@@ -49,7 +50,8 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     options.try_push(BoundedString::truncate_from("No")).ok();
 
     //Drain old data
-    OldPollData::<T::Moment>::drain();
+    let number_of_drained_polls = OldPollData::<T::Moment>::drain().count();
+    log::info!("Number of polls: {}", number_of_drained_polls);
 
     let mut poll_start_timestamp_a: <T as pallet_timestamp::Config>::Moment = 1647612888u32.into();
     poll_start_timestamp_a = poll_start_timestamp_a * 1000u32.into();
