@@ -159,20 +159,22 @@ impl<T: Config> Pallet<T> {
 
     pub fn get_limit_orders(
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
-        start: T::OrderId,
+        maybe_cursor: Option<T::OrderId>,
         count: usize,
     ) -> Vec<LimitOrder<T>> {
-        if start.is_zero() {
-            <LimitOrders<T>>::iter_prefix_values(order_book_id)
-                .take(count)
-                .collect()
-        } else {
-            let key = <LimitOrders<T>>::hashed_key_for(order_book_id, start);
-            <LimitOrders<T>>::iter_prefix_from(order_book_id, key)
-                .take(count)
-                .map(|(_, value)| value)
-                .collect()
+        if let Some(cursor) = maybe_cursor {
+            if !cursor.is_zero() {
+                let key = <LimitOrders<T>>::hashed_key_for(order_book_id, cursor);
+                return <LimitOrders<T>>::iter_prefix_from(order_book_id, key)
+                    .take(count)
+                    .map(|(_, value)| value)
+                    .collect();
+            }
         }
+
+        <LimitOrders<T>>::iter_prefix_values(order_book_id)
+            .take(count)
+            .collect()
     }
 }
 
@@ -238,7 +240,7 @@ impl<T: Config>
 impl<T: Config> AlignmentScheduler for Pallet<T> {
     fn service_alignment(weight: &mut WeightMeter) {
         // return if it cannot align even 1 limit order
-        if !weight.check_accrue(<T as Config>::WeightInfo::align_single_order()) {
+        if !weight.can_accrue(<T as Config>::WeightInfo::align_single_order()) {
             return;
         }
 
@@ -249,7 +251,7 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
 
         for (order_book_id, cursor) in <AlignmentCursor<T>>::iter() {
             // break if it cannot align even 1 limit order for the order-book
-            if !weight.check_accrue(<T as Config>::WeightInfo::align_single_order()) {
+            if !weight.can_accrue(<T as Config>::WeightInfo::align_single_order()) {
                 break;
             }
 
@@ -269,7 +271,7 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
                 false,
             );
 
-            let limit_orders = Self::get_limit_orders(&order_book_id, cursor, count as usize);
+            let limit_orders = Self::get_limit_orders(&order_book_id, Some(cursor), count as usize);
 
             if let Some(last) = limit_orders.last() {
                 new_cursors.insert(order_book_id, last.id);

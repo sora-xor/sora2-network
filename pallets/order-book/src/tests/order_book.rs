@@ -3303,7 +3303,7 @@ fn should_align_limit_orders() {
         assert_eq!(limit_order11.amount, balance!(205.5).into());
         assert_eq!(limit_order12.amount, balance!(13.7).into());
 
-        let limit_orders = OrderBookPallet::get_limit_orders(&order_book_id, 0, 100);
+        let limit_orders = OrderBookPallet::get_limit_orders(&order_book_id, None, 100);
 
         // align
         assert_ok!(order_book.align_limit_orders(limit_orders, &mut data));
@@ -4437,7 +4437,7 @@ fn should_calculate_align_limit_orders_impact() {
         let limit_order13 = data.get_limit_order(&order_book_id, 13).unwrap();
         let limit_order15 = data.get_limit_order(&order_book_id, 15).unwrap();
 
-        let limit_orders = OrderBookPallet::get_limit_orders(&order_book_id, 0, 100);
+        let limit_orders = OrderBookPallet::get_limit_orders(&order_book_id, None, 100);
 
         // empty market change if all limit orders have suitable amount
         assert_eq!(

@@ -705,7 +705,7 @@ pub fn align_single_order<T: Config>(
 
     let (price, _) = aggregated_side.iter().nth(prices_count / 2).unwrap();
 
-    debug!("Filling the price of the cancelled order");
+    debug!("Filling the price of the aligned order");
     let mut price_settings = fill_settings.clone();
     price_settings.max_orders_per_price -= 2;
     let amount = order_book.min_lot_size;
