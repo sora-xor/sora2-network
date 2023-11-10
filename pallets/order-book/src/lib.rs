@@ -1251,8 +1251,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         data.commit();
 
-        let weight = <T as Config>::WeightInfo::exchange_single_order()
-            .saturating_mul(executed_orders_count as u64);
+        let weight = <T as Config>::WeightInfo::exchange(executed_orders_count as u32);
 
         Ok((result, weight))
     }
@@ -1357,7 +1356,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn exchange_weight() -> Weight {
-        <T as Config>::WeightInfo::exchange()
+        <T as Config>::WeightInfo::exchange(T::HARD_MIN_MAX_RATIO.try_into().unwrap())
     }
 
     fn check_rewards_weight() -> Weight {
