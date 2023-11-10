@@ -917,8 +917,8 @@ fn ceres_governance_migration_works() {
         let encoded = (&user_auth, nonce_b).using_encoded(blake2_256);
         let poll_id_b = H256::from(encoded);
 
-        let poll_a = pallet::PollData::<Runtime>::get(poll_id_a).unwrap_or_default();
-        let poll_b = pallet::PollData::<Runtime>::get(poll_id_b).unwrap_or_default();
+        let poll_a = pallet::PollData::<Runtime>::get(poll_id_a).unwrap();
+        let poll_b = pallet::PollData::<Runtime>::get(poll_id_b).unwrap();
 
         assert_eq!(poll_a.poll_asset, CERES_ASSET_ID);
         assert_eq!(poll_a.poll_start_timestamp, 1647612888000u64);
@@ -937,9 +937,9 @@ fn ceres_governance_migration_works() {
         assert_eq!(poll_b.description, BoundedString::truncate_from("Ceres Launchpad is coming soon with new SORA runtime release. Launchpad requires KYC services which should be paid (about $11,740)."));  
         assert_eq!(poll_b.options, vec![BoundedString::truncate_from("Yes"), BoundedString::truncate_from("No")]);
 
-        let voting_a = pallet::Voting::<Runtime>::get(poll_id_a, &user).unwrap_or_default();
-        let voting_b = pallet::Voting::<Runtime>::get(poll_id_a, &user1).unwrap_or_default();
-        let voting_c = pallet::Voting::<Runtime>::get(poll_id_b, &user1).unwrap_or_default();
+        let voting_a = pallet::Voting::<Runtime>::get(poll_id_a, &user).unwrap();
+        let voting_b = pallet::Voting::<Runtime>::get(poll_id_a, &user1).unwrap();
+        let voting_c = pallet::Voting::<Runtime>::get(poll_id_b, &user1).unwrap();
 
         assert_eq!(voting_a.voting_option, BoundedString::truncate_from("Yes"));
         assert_eq!(voting_b.voting_option, BoundedString::truncate_from("No"));
