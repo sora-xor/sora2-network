@@ -62,7 +62,7 @@ benchmarks! {
     }: {
         CeresGovernancePlatform::<T>::vote(
             RawOrigin::Signed(caller.clone()).into(),
-            poll_id.clone(),
+            poll_id,
             voting_option.try_into().unwrap(),
             number_of_votes
         ).unwrap();
@@ -151,7 +151,7 @@ benchmarks! {
         // Vote
         let _ = CeresGovernancePlatform::<T>::vote(
             RawOrigin::Signed(caller.clone()).into(),
-            poll_id.clone(),
+            poll_id,
             voting_option.try_into().unwrap(),
             number_of_votes
         ).unwrap();

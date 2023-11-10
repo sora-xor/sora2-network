@@ -54,9 +54,9 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     log::info!("Number of polls: {}", number_of_drained_polls);
 
     let mut poll_start_timestamp_a: <T as pallet_timestamp::Config>::Moment = 1647612888u32.into();
-    poll_start_timestamp_a = poll_start_timestamp_a * 1000u32.into();
+    poll_start_timestamp_a *= 1000u32.into();
     let mut poll_end_timestamp_a: <T as pallet_timestamp::Config>::Moment = 1647699288u32.into();
-    poll_end_timestamp_a = poll_end_timestamp_a * 1000u32.into();
+    poll_end_timestamp_a *= 1000u32.into();
     let title_a = BoundedString::truncate_from(
         "Do you want Ceres staking v2 with rewards pool of 300 CERES to go live?",
     );
@@ -80,9 +80,9 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     );
 
     let mut poll_start_timestamp_b: <T as pallet_timestamp::Config>::Moment = 1648804056u32.into();
-    poll_start_timestamp_b = poll_start_timestamp_b * 1000u32.into();
+    poll_start_timestamp_b *= 1000u32.into();
     let mut poll_end_timestamp_b: <T as pallet_timestamp::Config>::Moment = 1648890456u32.into();
-    poll_end_timestamp_b = poll_end_timestamp_b * 1000u32.into();
+    poll_end_timestamp_b *= 1000u32.into();
     let title_b =
         BoundedString::truncate_from("Can Launchpad costs be paid from the Treasury wallet?");
     let description_b = BoundedString::truncate_from(
@@ -106,9 +106,9 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     );
 
     let mut poll_start_timestamp_c: <T as pallet_timestamp::Config>::Moment = 1664388000u32.into();
-    poll_start_timestamp_c = poll_start_timestamp_c * 1000u32.into();
+    poll_start_timestamp_c *= 1000u32.into();
     let mut poll_end_timestamp_c: <T as pallet_timestamp::Config>::Moment = 1664560800u32.into();
-    poll_end_timestamp_c = poll_end_timestamp_c * 1000u32.into();
+    poll_end_timestamp_c *= 1000u32.into();
     let title_c = BoundedString::truncate_from(
         "Should DAI and CERES from Treasury be used for providing CERES liquidity on other parachain?",
     );
@@ -131,9 +131,9 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     );
 
     let mut poll_start_timestamp_d: <T as pallet_timestamp::Config>::Moment = 1686934800u32.into();
-    poll_start_timestamp_d = poll_start_timestamp_d * 1000u32.into();
+    poll_start_timestamp_d *= 1000u32.into();
     let mut poll_end_timestamp_d: <T as pallet_timestamp::Config>::Moment = 1687107600u32.into();
-    poll_end_timestamp_d = poll_end_timestamp_d * 1000u32.into();
+    poll_end_timestamp_d *= 1000u32.into();
     let title_d =
         BoundedString::truncate_from("Should XOR/CERES farming pool with CERES rewards be closed?");
     let description_d = BoundedString::truncate_from(
@@ -170,7 +170,7 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     map.insert(old_poll_id_d, poll_id_d);
 
     for old_poll_id in map.keys() {
-        for (account, voting_info) in OldVoting::<T>::drain_prefix(&old_poll_id) {
+        for (account, voting_info) in OldVoting::<T>::drain_prefix(old_poll_id) {
             <Voting<T>>::insert(
                 map.get(old_poll_id).unwrap_or(&H256::zero()),
                 account,

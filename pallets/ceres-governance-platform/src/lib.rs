@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::type_complexity)]
 
 pub mod migrations;
 pub mod weights;
@@ -249,7 +250,7 @@ pub mod pallet {
 
             ensure!(number_of_votes > 0, Error::<T>::InvalidNumberOfVotes);
 
-            let poll_info = <PollData<T>>::get(&poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
+            let poll_info = <PollData<T>>::get(poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
             let current_timestamp = Timestamp::<T>::get();
 
             ensure!(
@@ -268,20 +269,20 @@ pub mod pallet {
             );
 
             // If already voted for one option, then can't vote for another option. But he can increase the number of votes on first option
-            if let Some(mut voting_info) = <Voting<T>>::get(&poll_id, &user) {
+            if let Some(mut voting_info) = <Voting<T>>::get(poll_id, &user) {
                 ensure!(
                     voting_info.voting_option == voting_option,
                     Error::<T>::VoteDenied
                 );
                 voting_info.number_of_votes += number_of_votes;
-                <Voting<T>>::insert(&poll_id, &user, voting_info);
+                <Voting<T>>::insert(poll_id, &user, voting_info);
             } else {
                 let new_voting_info = VotingInfo {
                     voting_option: voting_option.clone(),
                     number_of_votes,
                     asset_withdrawn: false,
                 };
-                <Voting<T>>::insert(&poll_id, &user, new_voting_info);
+                <Voting<T>>::insert(poll_id, &user, new_voting_info);
             }
 
             // Transfer asset to pallet
@@ -361,7 +362,7 @@ pub mod pallet {
                 options,
             };
 
-            <PollData<T>>::insert(&poll_id, poll_info);
+            <PollData<T>>::insert(poll_id, poll_info);
 
             //Emit event
             Self::deposit_event(Event::<T>::Created(
@@ -382,7 +383,7 @@ pub mod pallet {
         pub fn withdraw(origin: OriginFor<T>, poll_id: H256) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            let poll_info = <PollData<T>>::get(&poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
+            let poll_info = <PollData<T>>::get(poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
             let current_timestamp = Timestamp::<T>::get();
 
             ensure!(
@@ -391,7 +392,7 @@ pub mod pallet {
             );
 
             // Update storage
-            let mut voting_info = <Voting<T>>::get(&poll_id, &user).ok_or(Error::<T>::NotVoted)?;
+            let mut voting_info = <Voting<T>>::get(poll_id, &user).ok_or(Error::<T>::NotVoted)?;
             ensure!(
                 !voting_info.asset_withdrawn,
                 Error::<T>::FundsAlreadyWithdrawn
@@ -406,7 +407,7 @@ pub mod pallet {
             )?;
 
             voting_info.asset_withdrawn = true;
-            <Voting<T>>::insert(&poll_id, &user, &voting_info);
+            <Voting<T>>::insert(poll_id, &user, &voting_info);
 
             //Emit event
             Self::deposit_event(Event::<T>::Withdrawn(
