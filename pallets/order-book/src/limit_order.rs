@@ -90,15 +90,13 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
 
     /// Returns block number at which to expire the order.
     /// Aims to expire no earlier than provided lifespan (in ms)
-    fn resolve_lifespan(
+    pub fn resolve_lifespan(
         current_block: BlockNumberFor<T>,
         lifespan: MomentOf<T>,
     ) -> BlockNumberFor<T> {
         let lifespan = lifespan.saturated_into::<u64>();
         let millis_per_block: u64 = T::MILLISECS_PER_BLOCK.saturated_into::<u64>();
-        // ceil (a/b) = (a + b - 1) / b
-        let mut lifespan_blocks =
-            lifespan.saturating_add(millis_per_block).saturating_sub(1) / millis_per_block;
+        let mut lifespan_blocks = lifespan.div_ceil(millis_per_block);
         // Expire after the lifespan ends.
         //
         // For example, if we want an order to live 9000 ms (or 9s, or 9/6=1.5 blocks),
