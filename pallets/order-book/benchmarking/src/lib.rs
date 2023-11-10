@@ -369,7 +369,9 @@ mod benchmarks_inner {
         }
 
         exchange {
-            let settings = FillSettings::<T>::max();
+            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
+            let mut settings = FillSettings::<T>::max();
+            settings.executed_orders_limit = e;
             let context = periphery::exchange::init(settings.clone());
         }: {
             OrderBookPallet::<T>::exchange(
