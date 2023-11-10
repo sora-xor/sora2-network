@@ -172,7 +172,7 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     for old_poll_id in map.keys() {
         for (account, voting_info) in OldVoting::<T>::drain_prefix(&old_poll_id) {
             <Voting<T>>::insert(
-                map.get(old_poll_id).unwrap(),
+                map.get(old_poll_id).unwrap_or(&H256::zero()),
                 account,
                 crate::VotingInfo {
                     voting_option: if voting_info.voting_option == 1u32 {
