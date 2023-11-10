@@ -116,6 +116,9 @@ pub struct FillSettings<T: Config> {
     pub max_orders_per_price: u32,
     pub max_orders_per_user: u32,
     pub max_expiring_orders_per_block: u32,
+    /// Additional constraint from order book that limits number of executed orders at once.
+    /// Does not directly correlate to storage constraints, unlike other parameters.
+    pub executed_orders_limit: u32,
 }
 
 impl<T: Config> FillSettings<T> {
@@ -124,6 +127,7 @@ impl<T: Config> FillSettings<T> {
         max_orders_per_price: u32,
         max_orders_per_user: u32,
         max_expiring_orders_per_block: u32,
+        executed_orders_limit: u32,
     ) -> Self {
         Self {
             now: T::Time::now(),
@@ -131,6 +135,7 @@ impl<T: Config> FillSettings<T> {
             max_orders_per_price,
             max_orders_per_user,
             max_expiring_orders_per_block,
+            executed_orders_limit,
         }
     }
 
@@ -140,6 +145,7 @@ impl<T: Config> FillSettings<T> {
             <T as Config>::MaxLimitOrdersForPrice::get(),
             <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
             <T as Config>::MaxExpiringOrdersPerBlock::get(),
+            <T as Config>::HARD_MIN_MAX_RATIO.try_into().unwrap(),
         )
     }
 }
@@ -193,6 +199,7 @@ pub fn fill_user_orders<T: Config>(
         max_orders_per_price: _,
         max_orders_per_user,
         max_expiring_orders_per_block: _,
+        executed_orders_limit: _,
     } = settings;
     // Since we fill orders of the user, it is the only author
     match side {

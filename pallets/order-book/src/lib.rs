@@ -116,10 +116,13 @@ pub mod pallet {
         const MILLISECS_PER_BLOCK: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
         /// The soft ratio between min & max order amounts.
-        /// In particular, it defines the optimal number of limit orders that could be executed by one big market order in one block.
+        /// In particular, it defines the optimal number of limit orders that could be executed by
+        /// one big market order in one block.
         const SOFT_MIN_MAX_RATIO: usize;
-        /// The soft ratio between min & max order amounts.
-        /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
+        /// The hard ratio between min & max order amounts.
+        /// In particular, it defines the max number of limit orders that could be executed by
+        /// one big market order in one block.
+        /// During update of parameters, the limits must satisfy this ratio.
         const HARD_MIN_MAX_RATIO: usize;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
