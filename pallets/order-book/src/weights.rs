@@ -75,8 +75,9 @@ pub trait WeightInfo {
 	fn execute_market_order() -> Weight;
 	fn quote() -> Weight;
 	fn exchange_single_order() -> Weight;
-	fn service_base() -> Weight;
-	fn service_block_base() -> Weight;
+	fn align_single_order() -> Weight;
+	fn service_expiration_base() -> Weight;
+	fn service_expiration_block_base() -> Weight;
 	fn service_single_expiration() -> Weight;
 }
 
@@ -321,11 +322,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// TODO: benchmark properly, value was set manually
 		Weight::from_parts(0, 0)
 	}
+	fn align_single_order() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `37688`
+		//  Estimated: `85457`
+		// Minimum execution time: 203_056 nanoseconds.
+		Weight::from_parts(212_679_000, 85457)
+			.saturating_add(RocksDbWeight::get().reads(5))
+			.saturating_add(RocksDbWeight::get().writes(4))
+	}
 	/// Storage: OrderBook IncompleteExpirationsSince (r:1 w:0)
 	/// Proof: OrderBook IncompleteExpirationsSince (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
 	/// Storage: OrderBook ExpirationsAgenda (r:1 w:0)
 	/// Proof: OrderBook ExpirationsAgenda (max_values: None, max_size: Some(43014), added: 45489, mode: MaxEncodedLen)
-	fn service_base() -> Weight {
+	fn service_expiration_base() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `109`
 		//  Estimated: `45988`
@@ -335,7 +345,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: OrderBook ExpirationsAgenda (r:1 w:0)
 	/// Proof: OrderBook ExpirationsAgenda (max_values: None, max_size: Some(43014), added: 45489, mode: MaxEncodedLen)
-	fn service_block_base() -> Weight {
+	fn service_expiration_block_base() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `109`
 		//  Estimated: `45489`
@@ -610,11 +620,20 @@ impl WeightInfo for () {
 		// TODO: benchmark properly, value was set manually
 		Weight::from_parts(0, 0)
 	}
+	fn align_single_order() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `37688`
+		//  Estimated: `85457`
+		// Minimum execution time: 203_056 nanoseconds.
+		Weight::from_parts(212_679_000, 85457)
+			.saturating_add(RocksDbWeight::get().reads(5))
+			.saturating_add(RocksDbWeight::get().writes(4))
+	}
 	/// Storage: OrderBook IncompleteExpirationsSince (r:1 w:0)
 	/// Proof: OrderBook IncompleteExpirationsSince (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
 	/// Storage: OrderBook ExpirationsAgenda (r:1 w:0)
 	/// Proof: OrderBook ExpirationsAgenda (max_values: None, max_size: Some(43014), added: 45489, mode: MaxEncodedLen)
-	fn service_base() -> Weight {
+	fn service_expiration_base() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `109`
 		//  Estimated: `45988`
@@ -624,7 +643,7 @@ impl WeightInfo for () {
 	}
 	/// Storage: OrderBook ExpirationsAgenda (r:1 w:0)
 	/// Proof: OrderBook ExpirationsAgenda (max_values: None, max_size: Some(43014), added: 45489, mode: MaxEncodedLen)
-	fn service_block_base() -> Weight {
+	fn service_expiration_block_base() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `109`
 		//  Estimated: `45489`

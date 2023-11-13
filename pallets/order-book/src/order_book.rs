@@ -31,7 +31,7 @@
 use crate::{
     CancelReason, DataLayer, DealInfo, Delegate, Error, ExpirationScheduler, LimitOrder,
     MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId,
-    OrderBookStatus, OrderPrice, OrderVolume, Payment,
+    OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -44,7 +44,7 @@ use frame_support::traits::Get;
 use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero};
 use sp_std::cmp::Ordering;
 use sp_std::collections::btree_map::BTreeMap;
-use sp_std::ops::Add;
+use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, PartialEq, Eq, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
@@ -59,6 +59,7 @@ where
     pub step_lot_size: OrderVolume, // amount precision
     pub min_lot_size: OrderVolume,
     pub max_lot_size: OrderVolume,
+    pub tech_status: OrderBookTechStatus,
 }
 
 impl<T: crate::Config + Sized> OrderBook<T> {
@@ -77,6 +78,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             step_lot_size,
             min_lot_size,
             max_lot_size,
+            tech_status: OrderBookTechStatus::Ready,
         }
     }
 
@@ -101,7 +103,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     }
 
     pub fn next_order_id(&mut self) -> T::OrderId {
-        self.last_order_id = self.last_order_id.add(T::OrderId::one());
+        self.last_order_id = self.last_order_id.saturating_add(T::OrderId::one());
         self.last_order_id
     }
 
@@ -277,9 +279,15 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok((input, output, executed_orders_count))
     }
 
-    pub fn align_limit_orders(&self, data: &mut impl DataLayer<T>) -> Result<(), DispatchError> {
-        let market_change = self.calculate_align_limit_orders_impact(data)?;
-        self.apply_market_change(market_change, data)?;
+    pub fn align_limit_orders(
+        &self,
+        limit_orders: Vec<LimitOrder<T>>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<(), DispatchError> {
+        if !limit_orders.is_empty() {
+            let market_change = self.calculate_align_limit_orders_impact(limit_orders)?;
+            self.apply_market_change(market_change, data)?;
+        }
         Ok(())
     }
 
@@ -574,7 +582,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     pub fn calculate_align_limit_orders_impact(
         &self,
-        data: &mut impl DataLayer<T>,
+        limit_orders: Vec<LimitOrder<T>>,
     ) -> Result<
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
         DispatchError,
@@ -582,8 +590,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let mut limit_orders_to_cancel = BTreeMap::new();
         let mut limit_orders_to_force_update = BTreeMap::new();
         let mut payment = Payment::new(self.order_book_id);
-
-        let limit_orders = data.get_all_limit_orders(&self.order_book_id);
 
         for mut limit_order in limit_orders {
             if limit_order.amount.balance() % self.step_lot_size.balance() != 0 {
@@ -800,7 +806,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         for limit_order in market_change.to_cancel.into_values() {
             data.delete_limit_order(&self.order_book_id, limit_order.id)?;
-            let unschedule_result = T::Scheduler::unschedule(
+            let unschedule_result = T::Scheduler::unschedule_expiration(
                 limit_order.expires_at,
                 self.order_book_id,
                 limit_order.id,
@@ -821,7 +827,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         for limit_order in market_change.to_full_execute.into_values() {
             data.delete_limit_order(&self.order_book_id, limit_order.id)?;
-            let unschedule_result = T::Scheduler::unschedule(
+            let unschedule_result = T::Scheduler::unschedule_expiration(
                 limit_order.expires_at,
                 self.order_book_id,
                 limit_order.id,
@@ -888,7 +894,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         for limit_order in market_change.to_place.into_values() {
             data.insert_limit_order(&self.order_book_id, limit_order.clone())?;
-            T::Scheduler::schedule(limit_order.expires_at, self.order_book_id, limit_order.id)?;
+            T::Scheduler::schedule_expiration(
+                limit_order.expires_at,
+                self.order_book_id,
+                limit_order.id,
+            )?;
 
             T::Delegate::emit_event(
                 self.order_book_id,

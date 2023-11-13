@@ -33,16 +33,16 @@
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, PriceVariant, DEFAULT_BALANCE_PRECISION, ETH,
-    PSWAP, VAL, XOR, XST, XSTUSD,
+    balance, AssetId32, AssetName, AssetSymbol, Balance, PriceVariant, DEFAULT_BALANCE_PRECISION,
+    ETH, PSWAP, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
-    Config, LimitOrder, MarketRole, OrderBook, OrderBookId, OrderBookStatus, OrderPrice,
-    OrderVolume,
+    Config, LimitOrder, LimitOrders, MarketRole, OrderBook, OrderBookId, OrderBookStatus,
+    OrderBookTechStatus, OrderPrice, OrderVolume,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use hex_literal::hex;
@@ -343,7 +343,6 @@ fn should_not_create_order_book_for_user_without_nft() {
 }
 
 #[test]
-#[ignore] // todo (m.tagirov) remove in #542
 fn should_not_create_order_book_for_nft_owner_without_nft() {
     ext().execute_with(|| {
         let caller = accounts::alice::<Runtime>();
@@ -461,7 +460,7 @@ fn should_check_permissions_for_delete_order_book() {
         assert_ok!(OrderBookPallet::delete_orderbook(
             RawOrigin::Root.into(),
             order_book_id
-        ),);
+        ));
 
         // Only more than half approvals from technical commitee are accepted
 
@@ -486,7 +485,7 @@ fn should_check_permissions_for_delete_order_book() {
             assert_ok!(OrderBookPallet::delete_orderbook(
                 TechnicalRawOrigin::Member(accounts::alice::<Runtime>()).into(),
                 order_book_id
-            ),);
+            ));
             create_empty_order_book::<Runtime>(order_book_id);
         }
         assert_err!(
@@ -659,7 +658,7 @@ fn should_check_permissions_for_update_order_book() {
             RawOrigin::Root.into(),
             order_book_id,
             balance!(0.01),
-            balance!(0.001),
+            balance!(0.00001),
             balance!(1),
             balance!(1000)
         ));
@@ -675,7 +674,7 @@ fn should_check_permissions_for_update_order_book() {
                     TechnicalRawOrigin::Member(accounts::alice::<Runtime>()).into(),
                     order_book_id,
                     balance!(0.01),
-                    balance!(0.001),
+                    balance!(0.00001),
                     balance!(1),
                     balance!(1000)
                 ),
@@ -686,7 +685,7 @@ fn should_check_permissions_for_update_order_book() {
                 TechnicalRawOrigin::Member(accounts::alice::<Runtime>()).into(),
                 order_book_id,
                 balance!(0.01),
-                balance!(0.001),
+                balance!(0.00001),
                 balance!(1),
                 balance!(1000)
             ));
@@ -696,7 +695,7 @@ fn should_check_permissions_for_update_order_book() {
                 TechnicalRawOrigin::Members(3, 6).into(),
                 order_book_id,
                 balance!(0.01),
-                balance!(0.001),
+                balance!(0.00001),
                 balance!(1),
                 balance!(1000)
             ),
@@ -706,7 +705,7 @@ fn should_check_permissions_for_update_order_book() {
             TechnicalRawOrigin::Members(4, 6).into(),
             order_book_id,
             balance!(0.01),
-            balance!(0.001),
+            balance!(0.00001),
             balance!(1),
             balance!(1000)
         ));
@@ -732,6 +731,32 @@ fn should_not_update_unknown_order_book() {
                 balance!(1000)
             ),
             E::UnknownOrderBook
+        );
+    });
+}
+
+#[test]
+fn should_not_update_order_book_with_wrong_tech_status() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book::<Runtime>(order_book_id);
+        lock_order_book::<Runtime>(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::update_orderbook(
+                RuntimeOrigin::root(),
+                order_book_id,
+                balance!(0.01),
+                balance!(0.001),
+                balance!(1),
+                balance!(1000)
+            ),
+            E::OrderBookIsLocked
         );
     });
 }
@@ -800,6 +825,10 @@ fn should_not_update_order_book_with_wrong_status() {
             balance!(1),
             balance!(1000)
         ));
+
+        // run to the next block to perform alignment
+        let current_block = FrameSystem::block_number();
+        run_to_block(current_block + 1);
 
         // ok for Stop
         assert_ok!(OrderBookPallet::change_orderbook_status(
@@ -1336,6 +1365,14 @@ fn should_align_limit_orders_when_update_order_book() {
         let min_lot_size = balance!(1);
         let max_lot_size = balance!(1000);
 
+        // check tech status before updating
+        assert_eq!(
+            OrderBookPallet::order_books(order_book_id)
+                .unwrap()
+                .tech_status,
+            OrderBookTechStatus::Ready
+        );
+
         assert_ok!(OrderBookPallet::update_orderbook(
             RuntimeOrigin::root(),
             order_book_id,
@@ -1344,6 +1381,26 @@ fn should_align_limit_orders_when_update_order_book() {
             min_lot_size,
             max_lot_size
         ));
+
+        // check tech status after updating
+        assert_eq!(
+            OrderBookPallet::order_books(order_book_id)
+                .unwrap()
+                .tech_status,
+            OrderBookTechStatus::Updating
+        );
+
+        // run to the next block to perform alignment
+        let current_block = FrameSystem::block_number();
+        run_to_block(current_block + 2);
+
+        // check tech status after alignment
+        assert_eq!(
+            OrderBookPallet::order_books(order_book_id)
+                .unwrap()
+                .tech_status,
+            OrderBookTechStatus::Ready
+        );
 
         let limit_order1 = OrderBookPallet::limit_orders(order_book_id, 1).unwrap();
         let limit_order2 = OrderBookPallet::limit_orders(order_book_id, 2).unwrap();
@@ -1393,6 +1450,144 @@ fn should_align_limit_orders_when_update_order_book() {
 }
 
 #[test]
+fn should_align_a_lot_of_limit_orders() {
+    ext().execute_with(|| {
+        let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: PSWAP.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book_id3 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: ETH.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book1 = create_empty_order_book::<Runtime>(order_book_id1);
+        let order_book2 = create_empty_order_book::<Runtime>(order_book_id2);
+        let order_book3 = create_empty_order_book::<Runtime>(order_book_id3);
+
+        let init_amount = balance!(10.5);
+        let updated_amount = balance!(10);
+
+        fill_limit_orders_for_align(order_book_id1, init_amount, order_book1.tick_size);
+        fill_limit_orders_for_align(order_book_id2, init_amount, order_book2.tick_size);
+        fill_limit_orders_for_align(order_book_id3, init_amount, order_book3.tick_size);
+
+        update_order_book_for_alignment(order_book_id1);
+        update_order_book_for_alignment(order_book_id2);
+        update_order_book_for_alignment(order_book_id3);
+
+        // run to the next block to perform alignment
+        let current_block = FrameSystem::block_number();
+        run_to_block(current_block + 8);
+
+        check_limit_orders_aligned(order_book_id1, updated_amount);
+        check_limit_orders_aligned(order_book_id2, updated_amount);
+        check_limit_orders_aligned(order_book_id3, updated_amount);
+    });
+}
+
+fn fill_limit_orders_for_align(
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
+    init_amount: Balance,
+    tick_size: OrderPrice,
+) {
+    let mut buy_price: OrderPrice = balance!(1000).into();
+    let mut buy_lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 1000000; // ms
+    let mut sell_price: OrderPrice = balance!(1001).into();
+    let mut sell_lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 1000000; // ms
+
+    let count = <Runtime as Config>::SOFT_MIN_MAX_RATIO;
+
+    for i in 0..count {
+        // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
+        let account = accounts::generate_account::<Runtime>(i as u32);
+
+        fill_balance::<Runtime>(account.clone(), order_book_id);
+
+        buy_price -= tick_size;
+        sell_price += tick_size;
+        buy_lifespan += 5000;
+        sell_lifespan += 5000;
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(account.clone()).into(),
+            order_book_id,
+            *buy_price.balance(),
+            init_amount,
+            PriceVariant::Buy,
+            Some(buy_lifespan)
+        ));
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(account).into(),
+            order_book_id,
+            *sell_price.balance(),
+            init_amount,
+            PriceVariant::Sell,
+            Some(sell_lifespan)
+        ));
+    }
+}
+
+fn update_order_book_for_alignment(order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>) {
+    let tick_size = balance!(0.01);
+    let step_lot_size = balance!(1); // change lot size precision
+    let min_lot_size = balance!(1);
+    let max_lot_size = balance!(1000);
+
+    assert_ok!(OrderBookPallet::change_orderbook_status(
+        RuntimeOrigin::root(),
+        order_book_id,
+        OrderBookStatus::Stop
+    ));
+
+    assert_ok!(OrderBookPallet::update_orderbook(
+        RuntimeOrigin::root(),
+        order_book_id,
+        tick_size,
+        step_lot_size,
+        min_lot_size,
+        max_lot_size
+    ));
+
+    assert_eq!(
+        OrderBookPallet::order_books(order_book_id)
+            .unwrap()
+            .tech_status,
+        OrderBookTechStatus::Updating
+    );
+
+    assert_eq!(OrderBookPallet::alignment_cursor(order_book_id).unwrap(), 0);
+}
+
+fn check_limit_orders_aligned(
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
+    updated_amount: Balance,
+) {
+    for limit_order in <LimitOrders<Runtime>>::iter_prefix_values(order_book_id) {
+        assert_eq!(*limit_order.amount.balance(), updated_amount);
+    }
+
+    assert_eq!(
+        OrderBookPallet::order_books(order_book_id)
+            .unwrap()
+            .tech_status,
+        OrderBookTechStatus::Ready
+    );
+
+    assert_eq!(OrderBookPallet::alignment_cursor(order_book_id), None);
+}
+
+#[test]
 fn should_check_permissions_for_change_order_book_status() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -1417,7 +1612,7 @@ fn should_check_permissions_for_change_order_book_status() {
             RawOrigin::Root.into(),
             order_book_id,
             OrderBookStatus::Trade
-        ),);
+        ));
 
         // Only more than half approvals from technical commitee are accepted
 
@@ -1438,7 +1633,7 @@ fn should_check_permissions_for_change_order_book_status() {
                 TechnicalRawOrigin::Member(accounts::alice::<Runtime>()).into(),
                 order_book_id,
                 OrderBookStatus::Trade
-            ),);
+            ));
         }
         assert_err!(
             OrderBookPallet::change_orderbook_status(
@@ -1452,7 +1647,7 @@ fn should_check_permissions_for_change_order_book_status() {
             TechnicalRawOrigin::Members(4, 6).into(),
             order_book_id,
             OrderBookStatus::Trade
-        ),);
+        ));
     });
 }
 
@@ -1473,6 +1668,50 @@ fn should_not_change_status_of_unknown_order_book() {
             ),
             E::UnknownOrderBook
         );
+    });
+}
+
+#[test]
+fn should_not_change_status_with_updating_tech_status() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_empty_order_book::<Runtime>(order_book_id);
+        lock_order_book::<Runtime>(order_book_id);
+
+        assert_err!(
+            OrderBookPallet::change_orderbook_status(
+                RuntimeOrigin::root(),
+                order_book_id,
+                OrderBookStatus::Trade
+            ),
+            E::OrderBookIsLocked
+        );
+
+        assert_err!(
+            OrderBookPallet::change_orderbook_status(
+                RuntimeOrigin::root(),
+                order_book_id,
+                OrderBookStatus::PlaceAndCancel
+            ),
+            E::OrderBookIsLocked
+        );
+
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RuntimeOrigin::root(),
+            order_book_id,
+            OrderBookStatus::OnlyCancel
+        ));
+
+        assert_ok!(OrderBookPallet::change_orderbook_status(
+            RuntimeOrigin::root(),
+            order_book_id,
+            OrderBookStatus::Stop
+        ));
     });
 }
 
@@ -2281,7 +2520,6 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
 }
 
 #[test]
-#[ignore] // it works, but takes a lot of time
 fn should_place_a_lot_of_orders() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {

@@ -40,7 +40,7 @@ use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
     Config, DataLayer, DealInfo, LimitOrder, MarketChange, MarketOrder, MarketRole, OrderAmount,
-    OrderBook, OrderBookId, OrderBookStatus, OrderVolume, Payment,
+    OrderBook, OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderVolume, Payment,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_core::Get;
@@ -64,6 +64,7 @@ fn should_create_new() {
         step_lot_size: balance!(0.1).into(),
         min_lot_size: balance!(1).into(),
         max_lot_size: balance!(10000).into(),
+        tech_status: OrderBookTechStatus::Ready,
     };
 
     assert_eq!(
@@ -94,6 +95,7 @@ fn should_create_default() {
         step_lot_size: balance!(0.00001).into(),
         min_lot_size: balance!(1).into(),
         max_lot_size: balance!(1000).into(),
+        tech_status: OrderBookTechStatus::Ready,
     };
 
     assert_eq!(OrderBook::<Runtime>::default(order_book_id), expected);
@@ -115,6 +117,7 @@ fn should_create_default_indivisible() {
         step_lot_size: OrderVolume::indivisible(1),
         min_lot_size: OrderVolume::indivisible(1),
         max_lot_size: OrderVolume::indivisible(1000),
+        tech_status: OrderBookTechStatus::Ready,
     };
 
     assert_eq!(
@@ -958,7 +961,6 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
 }
 
 #[test]
-#[ignore] // it works, but takes a lot of time
 fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
     ext().execute_with(|| {
         let mut data = CacheDataLayer::<Runtime>::new();
@@ -1020,7 +1022,11 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
         }
 
         buy_order.id += 1;
+        buy_order.price -= order_book.tick_size;
+
         sell_order.id += 1;
+        sell_order.price += order_book.tick_size;
+
         assert_err!(
             order_book.place_limit_order(buy_order, &mut data),
             E::OrderBookReachedMaxCountOfPricesForSide
@@ -3297,8 +3303,10 @@ fn should_align_limit_orders() {
         assert_eq!(limit_order11.amount, balance!(205.5).into());
         assert_eq!(limit_order12.amount, balance!(13.7).into());
 
+        let limit_orders = OrderBookPallet::get_limit_orders(&order_book_id, None, 100);
+
         // align
-        assert_ok!(order_book.align_limit_orders(&mut data));
+        assert_ok!(order_book.align_limit_orders(limit_orders, &mut data));
 
         let limit_order1 = data.get_limit_order(&order_book_id, 1).unwrap();
         let limit_order2 = data.get_limit_order(&order_book_id, 2).unwrap();
@@ -4429,10 +4437,12 @@ fn should_calculate_align_limit_orders_impact() {
         let limit_order13 = data.get_limit_order(&order_book_id, 13).unwrap();
         let limit_order15 = data.get_limit_order(&order_book_id, 15).unwrap();
 
+        let limit_orders = OrderBookPallet::get_limit_orders(&order_book_id, None, 100);
+
         // empty market change if all limit orders have suitable amount
         assert_eq!(
             order_book
-                .calculate_align_limit_orders_impact(&mut data)
+                .calculate_align_limit_orders_impact(limit_orders.clone())
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -4472,7 +4482,7 @@ fn should_calculate_align_limit_orders_impact() {
         // limit orders 6, 14 & 16 are not presented because they already have suitable amount for new step_lot_size
         assert_eq!(
             order_book
-                .calculate_align_limit_orders_impact(&mut data)
+                .calculate_align_limit_orders_impact(limit_orders)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
