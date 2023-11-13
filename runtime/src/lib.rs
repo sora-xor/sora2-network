@@ -336,7 +336,7 @@ parameter_types! {
     pub const TechnicalCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
-    pub SchedulerMaxWeight: Weight = Perbill::from_percent(80) * BlockWeights::get().max_block;
+    pub SchedulerMaxWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
     pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -1900,8 +1900,8 @@ impl hermes_governance_platform::Config for Runtime {
 
 parameter_types! {
     // small value for test environment in order to check postponing expirations
-    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block; // TODO: order-book clarify
-    pub AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
+    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block;
+    pub AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(35) * BlockWeights::get().max_block;
 }
 
 #[cfg(feature = "wip")] // order-book
