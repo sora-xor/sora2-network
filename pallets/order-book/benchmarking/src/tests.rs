@@ -147,7 +147,32 @@ fn test_benchmark_exchange() {
         )
         .unwrap();
 
-        periphery::exchange::verify(settings, context);
+        periphery::exchange::verify(context);
+    })
+}
+
+#[test]
+fn test_benchmark_exchange_scattered() {
+    ext().execute_with(|| {
+        use common::LiquiditySource;
+
+        let settings = FillSettings::<Runtime>::max();
+        let context = periphery::exchange_scattered::init(settings.clone());
+
+        let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
+            &context.caller,
+            &context.caller,
+            &context.order_book_id.dex_id,
+            &context.order_book_id.base,
+            &context.order_book_id.quote,
+            SwapAmount::with_desired_output(
+                context.expected_out,
+                context.expected_in + balance!(5),
+            ),
+        )
+        .unwrap();
+
+        periphery::exchange_scattered::verify(context);
     })
 }
 

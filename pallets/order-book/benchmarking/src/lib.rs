@@ -387,7 +387,29 @@ mod benchmarks_inner {
             .unwrap();
         }
         verify {
-            periphery::exchange::verify(settings, context);
+            periphery::exchange::verify(context);
+        }
+
+        exchange_scattered {
+            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
+            let mut settings = FillSettings::<T>::max();
+            settings.executed_orders_limit = e;
+            let context = periphery::exchange_scattered::init(settings.clone());
+        }: {
+            OrderBookPallet::<T>::exchange(
+                &context.caller,
+                &context.caller,
+                &context.order_book_id.dex_id,
+                &context.order_book_id.base,
+                &context.order_book_id.quote,
+                SwapAmount::with_desired_output(
+                    context.expected_out, context.expected_in + balance!(1.5)
+                ),
+            )
+            .unwrap();
+        }
+        verify {
+            periphery::exchange_scattered::verify(context);
         }
 
         exchange_single_order {

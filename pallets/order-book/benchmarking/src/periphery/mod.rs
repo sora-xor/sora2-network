@@ -259,7 +259,7 @@ pub(crate) mod execute_market_order {
         pub expected_average_price: OrderPrice,
     }
 
-    /// returns `(expected_base, expected_quote)`
+    /// returns `(expected_base, expected_quote)` if executing all orders in `side`
     pub(crate) fn expected_base_quote<T: Config>(
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         side: PriceVariant,
@@ -407,6 +407,7 @@ pub(crate) mod exchange {
         pub caller_base_balance: Balance,
         pub caller_quote_balance: Balance,
         pub expected_average_price: OrderPrice,
+        pub side: PriceVariant,
     }
 
     pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
@@ -445,10 +446,11 @@ pub(crate) mod exchange {
             caller_base_balance,
             caller_quote_balance,
             expected_average_price,
+            side,
         }
     }
 
-    pub fn verify<T: Config + core::fmt::Debug>(_settings: FillSettings<T>, context: Context<T>) {
+    pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
         let Context {
             caller,
             order_book_id,
@@ -457,12 +459,13 @@ pub(crate) mod exchange {
             caller_base_balance,
             caller_quote_balance,
             expected_average_price,
+            side,
         } = context;
         assert_last_event::<T>(
             Event::<T>::MarketOrderExecuted {
                 order_book_id,
                 owner_id: caller.clone(),
-                direction: PriceVariant::Sell,
+                direction: side,
                 amount: OrderAmount::Base(expected_in.into()),
                 average_price: expected_average_price,
                 to: None,
@@ -485,6 +488,48 @@ pub(crate) mod exchange {
             .unwrap(),
             caller_quote_balance + expected_out
         );
+    }
+}
+
+pub(crate) mod exchange_scattered {
+    //! Same as `exchange` benchmark but with orders (more or less) evenly scattered across
+    //! the order book.
+    //!
+    //! This might be slower because of working with storages aggregated by price.
+
+    use super::*;
+
+    pub fn init<T: Config + trading_pair::Config>(
+        settings: FillSettings<T>,
+    ) -> exchange::Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+
+        let max_orders_per_price = settings
+            .executed_orders_limit
+            .div_ceil(settings.max_side_price_count);
+        let scattered_settings = FillSettings {
+            max_orders_per_price,
+            ..settings
+        };
+        let context = exchange::init(scattered_settings);
+        let aggregated_side_executed = match context.side.switched() {
+            PriceVariant::Buy => {
+                order_book_imported::Pallet::<T>::aggregated_bids(context.order_book_id)
+            }
+            PriceVariant::Sell => {
+                order_book_imported::Pallet::<T>::aggregated_asks(context.order_book_id)
+            }
+        };
+        assert_eq!(
+            aggregated_side_executed.len(),
+            settings.max_side_price_count as usize
+        );
+        context
+    }
+
+    pub fn verify<T: Config + core::fmt::Debug>(context: exchange::Context<T>) {
+        exchange::verify(context)
     }
 }
 
