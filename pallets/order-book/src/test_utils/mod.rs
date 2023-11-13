@@ -38,7 +38,8 @@ use crate as order_book_imported;
 use framenode_runtime::order_book as order_book_imported;
 
 use order_book_imported::{
-    Config, OrderBook, OrderBookId, OrderBookStatus, OrderPrice, OrderVolume, Pallet, PriceOrders,
+    Config, OrderBook, OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume,
+    Pallet, PriceOrders,
 };
 
 use assets::AssetIdOf;
@@ -149,6 +150,12 @@ pub fn update_order_book_with_set_status<T: Config>(
     order_book.step_lot_size = step_lot_size;
     order_book.min_lot_size = min_lot_size;
     order_book.max_lot_size = max_lot_size;
+}
+
+pub fn lock_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>) {
+    let mut order_book = Pallet::order_books(order_book_id).unwrap();
+    order_book.tech_status = OrderBookTechStatus::Updating;
+    order_book_imported::OrderBooks::<T>::set(order_book_id, Some(order_book));
 }
 
 pub fn create_empty_order_book<T: Config>(

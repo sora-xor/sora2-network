@@ -70,6 +70,17 @@ pub enum OrderBookStatus {
 #[derive(
     Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
 )]
+pub enum OrderBookTechStatus {
+    /// Order Book is enabled
+    Ready,
+
+    /// Order Book is locked during the updating
+    Updating,
+}
+
+#[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 pub enum CancelReason {
     /// User cancels the limit order by themself
     Manual,
