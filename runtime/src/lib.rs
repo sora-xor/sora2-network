@@ -256,10 +256,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 67,
+    spec_version: 68,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 67,
+    transaction_version: 68,
     state_version: 0,
 };
 
@@ -1683,7 +1683,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 
 parameter_types! {
     pub const GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
-    pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000);
+    pub const GetSyntheticBaseBuySellLimit: Balance = Balance::MAX;
 }
 
 impl xst::Config for Runtime {
