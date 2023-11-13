@@ -54,15 +54,15 @@ async fn main() -> AnyResult<()> {
     let mut ext = create_ext::<framenode_runtime::Block>(client.clone()).await?;
     let _res: AnyResult<()> = ext.execute_with(|| {
         fn aboba(input: AssetIdOf<Runtime>, output: AssetIdOf<Runtime>) -> Weight {
-            let dex_info =
-                dex_manager::Pallet::<Runtime>::get_dex_info(&DEXId::Polkaswap.into()).unwrap();
-            dbg!(
-                liquidity_proxy::ExchangePath::<Runtime>::new_trivial(&dex_info, input, output,)
-                    .unwrap()
-                    .into_iter()
-                    .map(|path| path.0)
-                    .collect::<Vec<_>>()
-            );
+            // let dex_info =
+            //     dex_manager::Pallet::<Runtime>::get_dex_info(&DEXId::Polkaswap.into()).unwrap();
+            // dbg!(
+            //     liquidity_proxy::ExchangePath::<Runtime>::new_trivial(&dex_info, input, output,)
+            //         .unwrap()
+            //         .into_iter()
+            //         .map(|path| path.0)
+            //         .collect::<Vec<_>>()
+            // );
             liquidity_proxy::Pallet::<Runtime>::swap_weight(
                 &DEXId::Polkaswap.into(),
                 &input,
