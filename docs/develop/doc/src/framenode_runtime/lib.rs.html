@@ -3320,6 +3320,8 @@
 <a href="#3305" id="3305">3305</a>
 <a href="#3306" id="3306">3306</a>
 <a href="#3307" id="3307">3307</a>
+<a href="#3308" id="3308">3308</a>
+<a href="#3309" id="3309">3309</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3578,10 +3580,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">66</span>,
+    spec_version: <span class="number">68</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">66</span>,
+    transaction_version: <span class="number">68</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -3658,7 +3660,7 @@
     <span class="kw">pub const </span>TechnicalCollectiveMotionDuration: BlockNumber = <span class="number">5 </span>* DAYS;
     <span class="kw">pub const </span>TechnicalCollectiveMaxProposals: u32 = <span class="number">100</span>;
     <span class="kw">pub const </span>TechnicalCollectiveMaxMembers: u32 = <span class="number">100</span>;
-    <span class="kw">pub </span>SchedulerMaxWeight: Weight = Perbill::from_percent(<span class="number">80</span>) * BlockWeights::get().max_block;
+    <span class="kw">pub </span>SchedulerMaxWeight: Weight = Perbill::from_percent(<span class="number">50</span>) * BlockWeights::get().max_block;
     <span class="kw">pub const </span>MaxScheduledPerBlock: u32 = <span class="number">50</span>;
     <span class="kw">pub </span>OffencesWeightSoftLimit: Weight = Perbill::from_percent(<span class="number">60</span>) * BlockWeights::get().max_block;
     <span class="kw">pub const </span>ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -5005,7 +5007,7 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
-    <span class="kw">pub const </span>GetSyntheticBaseBuySellLimit: Balance = <span class="macro">balance!</span>(<span class="number">10000000</span>);
+    <span class="kw">pub const </span>GetSyntheticBaseBuySellLimit: Balance = Balance::MAX;
 }
 
 <span class="kw">impl </span>xst::Config <span class="kw">for </span>Runtime {
@@ -5222,8 +5224,9 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="comment">// small value for test environment in order to check postponing expirations
-    </span><span class="kw">pub </span>ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(<span class="number">15</span>) * BlockWeights::get().max_block; <span class="comment">// TODO: order-book clarify
-</span>}
+    </span><span class="kw">pub </span>ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(<span class="number">15</span>) * BlockWeights::get().max_block;
+    <span class="kw">pub </span>AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(<span class="number">35</span>) * BlockWeights::get().max_block;
+}
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
 </span><span class="kw">impl </span>order_book::Config <span class="kw">for </span>Runtime {
@@ -5253,6 +5256,7 @@
     <span class="kw">type </span>MaxSidePriceCount = ConstU32&lt;<span class="number">1024</span>&gt;;
     <span class="kw">type </span>MaxExpiringOrdersPerBlock = ConstU32&lt;<span class="number">512</span>&gt;;
     <span class="kw">type </span>MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
+    <span class="kw">type </span>MaxAlignmentWeightPerBlock = AlignmentSchedulerMaxWeight;
     <span class="kw">type </span>EnsureTradingPairExists = TradingPair;
     <span class="kw">type </span>TradingPairSourceManager = TradingPair;
     <span class="kw">type </span>AssetInfoProvider = Assets;

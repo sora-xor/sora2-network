@@ -262,6 +262,10 @@
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -488,21 +492,25 @@
     ///
     /// If the weight limit is reached, it should continue where it&#39;s left at the
     /// next block.
-    </span><span class="kw">fn </span>service(current_block: BlockNumber, weight: <span class="kw-2">&amp;mut </span>WeightMeter);
+    </span><span class="kw">fn </span>service_expiration(current_block: BlockNumber, weight: <span class="kw-2">&amp;mut </span>WeightMeter);
 
     <span class="doccomment">/// Schedule the order for expiration at block `when`.
-    </span><span class="kw">fn </span>schedule(
+    </span><span class="kw">fn </span>schedule_expiration(
         when: BlockNumber,
         order_book_id: OrderBookId,
         order_id: OrderId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
     <span class="doccomment">/// Remove the order from expiration schedule for block `when`.
-    </span><span class="kw">fn </span>unschedule(
+    </span><span class="kw">fn </span>unschedule_expiration(
         when: BlockNumber,
         order_book_id: OrderBookId,
         order_id: OrderId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
+}
+
+<span class="kw">pub trait </span>AlignmentScheduler {
+    <span class="kw">fn </span>service_alignment(weight: <span class="kw-2">&amp;mut </span>WeightMeter);
 }
 
 <span class="kw">pub trait </span>Delegate&lt;AccountId, AssetId, OrderId, DEXId, Moment&gt; {

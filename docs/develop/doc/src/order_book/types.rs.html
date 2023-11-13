@@ -546,6 +546,17 @@
 <a href="#531" id="531">531</a>
 <a href="#532" id="532">532</a>
 <a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -613,6 +624,17 @@
 
     <span class="doccomment">/// All operations with order book are forbidden. Current limit orders are frozen and users cannot cancel them.
     </span>Stop,
+}
+
+<span class="attr">#[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
+</span><span class="kw">pub enum </span>OrderBookTechStatus {
+    <span class="doccomment">/// Order Book is enabled
+    </span>Ready,
+
+    <span class="doccomment">/// Order Book is locked during the updating
+    </span>Updating,
 }
 
 <span class="attr">#[derive(

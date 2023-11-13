@@ -1210,6 +1210,16 @@
 <a href="#1195" id="1195">1195</a>
 <a href="#1196" id="1196">1196</a>
 <a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1243,7 +1253,7 @@
 </span><span class="kw">use crate</span>::{
     CancelReason, DataLayer, DealInfo, Delegate, Error, ExpirationScheduler, LimitOrder,
     MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId,
-    OrderBookStatus, OrderPrice, OrderVolume, Payment,
+    OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
 };
 <span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
@@ -1256,7 +1266,7 @@
 <span class="kw">use </span>sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero};
 <span class="kw">use </span>sp_std::cmp::Ordering;
 <span class="kw">use </span>sp_std::collections::btree_map::BTreeMap;
-<span class="kw">use </span>sp_std::ops::Add;
+<span class="kw">use </span>sp_std::vec::Vec;
 
 <span class="attr">#[derive(Encode, Decode, PartialEq, Eq, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
@@ -1271,6 +1281,7 @@
     </span><span class="kw">pub </span>step_lot_size: OrderVolume, <span class="comment">// amount precision
     </span><span class="kw">pub </span>min_lot_size: OrderVolume,
     <span class="kw">pub </span>max_lot_size: OrderVolume,
+    <span class="kw">pub </span>tech_status: OrderBookTechStatus,
 }
 
 <span class="kw">impl</span>&lt;T: <span class="kw">crate</span>::Config + Sized&gt; OrderBook&lt;T&gt; {
@@ -1289,6 +1300,7 @@
             step_lot_size,
             min_lot_size,
             max_lot_size,
+            tech_status: OrderBookTechStatus::Ready,
         }
     }
 
@@ -1313,7 +1325,7 @@
     }
 
     <span class="kw">pub fn </span>next_order_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; T::OrderId {
-        <span class="self">self</span>.last_order_id = <span class="self">self</span>.last_order_id.add(T::OrderId::one());
+        <span class="self">self</span>.last_order_id = <span class="self">self</span>.last_order_id.saturating_add(T::OrderId::one());
         <span class="self">self</span>.last_order_id
     }
 
@@ -1489,9 +1501,15 @@
         <span class="prelude-val">Ok</span>((input, output, executed_orders_count))
     }
 
-    <span class="kw">pub fn </span>align_limit_orders(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
-        <span class="kw">let </span>market_change = <span class="self">self</span>.calculate_align_limit_orders_impact(data)<span class="question-mark">?</span>;
-        <span class="self">self</span>.apply_market_change(market_change, data)<span class="question-mark">?</span>;
+    <span class="kw">pub fn </span>align_limit_orders(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        limit_orders: Vec&lt;LimitOrder&lt;T&gt;&gt;,
+        data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        <span class="kw">if </span>!limit_orders.is_empty() {
+            <span class="kw">let </span>market_change = <span class="self">self</span>.calculate_align_limit_orders_impact(limit_orders)<span class="question-mark">?</span>;
+            <span class="self">self</span>.apply_market_change(market_change, data)<span class="question-mark">?</span>;
+        }
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1786,7 +1804,7 @@
 
     <span class="kw">pub fn </span>calculate_align_limit_orders_impact(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
+        limit_orders: Vec&lt;LimitOrder&lt;T&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
         DispatchError,
@@ -1794,8 +1812,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>limit_orders_to_cancel = BTreeMap::new();
         <span class="kw">let </span><span class="kw-2">mut </span>limit_orders_to_force_update = BTreeMap::new();
         <span class="kw">let </span><span class="kw-2">mut </span>payment = Payment::new(<span class="self">self</span>.order_book_id);
-
-        <span class="kw">let </span>limit_orders = data.get_all_limit_orders(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id);
 
         <span class="kw">for </span><span class="kw-2">mut </span>limit_order <span class="kw">in </span>limit_orders {
             <span class="kw">if </span>limit_order.amount.balance() % <span class="self">self</span>.step_lot_size.balance() != <span class="number">0 </span>{
@@ -2012,7 +2028,7 @@
 
         <span class="kw">for </span>limit_order <span class="kw">in </span>market_change.to_cancel.into_values() {
             data.delete_limit_order(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, limit_order.id)<span class="question-mark">?</span>;
-            <span class="kw">let </span>unschedule_result = T::Scheduler::unschedule(
+            <span class="kw">let </span>unschedule_result = T::Scheduler::unschedule_expiration(
                 limit_order.expires_at,
                 <span class="self">self</span>.order_book_id,
                 limit_order.id,
@@ -2033,7 +2049,7 @@
 
         <span class="kw">for </span>limit_order <span class="kw">in </span>market_change.to_full_execute.into_values() {
             data.delete_limit_order(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, limit_order.id)<span class="question-mark">?</span>;
-            <span class="kw">let </span>unschedule_result = T::Scheduler::unschedule(
+            <span class="kw">let </span>unschedule_result = T::Scheduler::unschedule_expiration(
                 limit_order.expires_at,
                 <span class="self">self</span>.order_book_id,
                 limit_order.id,
@@ -2100,7 +2116,11 @@
 
         <span class="kw">for </span>limit_order <span class="kw">in </span>market_change.to_place.into_values() {
             data.insert_limit_order(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, limit_order.clone())<span class="question-mark">?</span>;
-            T::Scheduler::schedule(limit_order.expires_at, <span class="self">self</span>.order_book_id, limit_order.id)<span class="question-mark">?</span>;
+            T::Scheduler::schedule_expiration(
+                limit_order.expires_at,
+                <span class="self">self</span>.order_book_id,
+                limit_order.id,
+            )<span class="question-mark">?</span>;
 
             T::Delegate::emit_event(
                 <span class="self">self</span>.order_book_id,

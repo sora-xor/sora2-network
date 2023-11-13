@@ -154,7 +154,7 @@
         is_err: bool,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;Balance&gt; {
         <span class="comment">// if place_limit_order() doesn&#39;t return a weight, it means that the limit order was converted into market order and the exchange fee should be taken
-        // if some error occurred, it means we don&#39;t prvide the reduced market maker fee for this call
+        // if some error occurred, it means we don&#39;t provide the reduced market maker fee for this call
         </span><span class="kw">if </span>!has_weight || is_err {
             <span class="kw">return </span><span class="prelude-val">Some</span>(BASE_FEE);
         }
