@@ -642,7 +642,7 @@
                 <span class="prelude-val">Some</span>(BIG_FEE)
             }
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>RuntimeCall::OrderBook(order_book::Call::update_orderbook { .. }) =&gt; <span class="prelude-val">Some</span>(BIG_FEE),
             RuntimeCall::Assets(..)
             | RuntimeCall::EthBridge(..)
@@ -655,7 +655,7 @@
             | RuntimeCall::Band(..)
             | RuntimeCall::Referrals(..) =&gt; <span class="prelude-val">Some</span>(SMALL_FEE),
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>RuntimeCall::OrderBook(..) =&gt; <span class="prelude-val">Some</span>(SMALL_FEE),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
@@ -667,7 +667,7 @@
     <span class="doccomment">/// Regular call with custom fee without any additional logic
     </span>Regular(Balance),
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
     </span><span class="doccomment">/// OrderBook::place_limit_order custom fee depends on limit order lifetime
     </span>LimitOrderLifetime(<span class="prelude-ty">Option</span>&lt;Moment&gt;),
 }
@@ -682,7 +682,7 @@
         <span class="kw">let </span>fee = <span class="self">Self</span>::base_fee(call)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>details = <span class="kw">match </span>call {
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>RuntimeCall::OrderBook(order_book::Call::place_limit_order { lifespan, .. }) =&gt; {
                 CustomFeeDetails::LimitOrderLifetime(<span class="kw-2">*</span>lifespan)
             }
@@ -836,7 +836,7 @@
         <span class="kw">match </span>fee_details {
             CustomFeeDetails::Regular(fee) =&gt; <span class="prelude-val">Some</span>(fee),
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>CustomFeeDetails::LimitOrderLifetime(lifetime) =&gt; {
                 order_book::fee_calculator::FeeCalculator::&lt;Runtime&gt;::place_limit_order_fee(
                     lifetime,

@@ -1466,7 +1466,7 @@
 <span class="kw">use </span>common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
 </span><span class="kw">use </span>common::LiquiditySourceType;
 <span class="kw">use </span>common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
@@ -1955,7 +1955,7 @@
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
             <span class="self">Self</span>::verify_create_orderbook_params(<span class="kw-2">&amp;</span>who, <span class="kw-2">&amp;</span>order_book_id)<span class="question-mark">?</span>;
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>{
                 T::TradingPairSourceManager::enable_source_for_trading_pair(
                     <span class="kw-2">&amp;</span>order_book_id.dex_id,
@@ -1993,7 +1993,7 @@
                 .is_none();
             <span class="macro">ensure!</span>(is_empty, Error::&lt;T&gt;::OrderBookIsNotEmpty);
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>{
                 T::TradingPairSourceManager::disable_source_for_trading_pair(
                     <span class="kw-2">&amp;</span>order_book_id.dex_id,

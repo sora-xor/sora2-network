@@ -2916,7 +2916,7 @@
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         };
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
         </span>{
             is_order_book = selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::OrderBook);
         }
@@ -3648,7 +3648,7 @@
 
         <span class="comment">// The temp solution is to exclude OrderBook source if there are multiple sources.
         // Will be redesigned in #447
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+        </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
         </span><span class="kw">if </span>sources.len() &gt; <span class="number">1 </span>{
             sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
         }

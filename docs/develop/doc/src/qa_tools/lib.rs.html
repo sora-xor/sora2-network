@@ -311,7 +311,7 @@
 </span><span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
 
 <span class="comment">// private-net to make circular dependencies work
-</span><span class="attr">#[cfg(all(test, feature = <span class="string">&quot;private-net&quot;</span>, feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// order-book
+</span><span class="attr">#[cfg(all(test, feature = <span class="string">&quot;private-net&quot;</span>, feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// order-book
 </span><span class="kw">mod </span>tests;
 <span class="kw">pub mod </span>weights;
 <span class="kw">pub use </span>weights::<span class="kw-2">*</span>;
