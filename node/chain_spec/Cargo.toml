@@ -45,5 +45,5 @@ main-net-coded = []
 test = ["common/test"]
 
 private-net = ["faucet", "framenode-runtime/private-net"]
-wip = ["framenode-runtime/wip", "common/wip", "order-book"]
-ready-to-test = ["framenode-runtime/ready-to-test"]
+wip = ["framenode-runtime/wip"]
+ready-to-test = ["framenode-runtime/ready-to-test", "common/ready-to-test", "order-book"]

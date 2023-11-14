@@ -30,7 +30,7 @@
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 use {
     crate::order_book::OrderBookId,
     common::{DEXId, PriceVariant},
@@ -925,7 +925,7 @@ fn it_works_eth_bridge_pays_no() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 #[test]
 fn fee_not_postponed_place_limit_order() {
     ext().execute_with(|| {
@@ -959,7 +959,7 @@ fn fee_not_postponed_place_limit_order() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_default_lifetime() {
     ext().execute_with(|| {
@@ -1005,7 +1005,7 @@ fn withdraw_fee_place_limit_order_with_default_lifetime() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_some_lifetime() {
     ext().execute_with(|| {
@@ -1051,7 +1051,7 @@ fn withdraw_fee_place_limit_order_with_some_lifetime() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_error() {
     ext().execute_with(|| {
@@ -1097,7 +1097,7 @@ fn withdraw_fee_place_limit_order_with_error() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_crossing_spread() {
     ext().execute_with(|| {

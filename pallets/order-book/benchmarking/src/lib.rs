@@ -41,7 +41,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "runtime-benchmarks")]
 // order-book
-#![cfg(feature = "wip")]
+#![cfg(feature = "ready-to-test")]
 // too many benchmarks, doesn't compile otherwise
 #![recursion_limit = "512"]
 #![feature(int_roundings)]
