@@ -502,6 +502,7 @@ pub enum OrderBookEvent<AccountId, OrderId, Moment> {
         owner_id: AccountId,
         direction: PriceVariant,
         amount: OrderAmount,
+        average_price: OrderPrice,
     },
 
     LimitOrderIsSplitIntoMarketOrderAndLimitOrder {

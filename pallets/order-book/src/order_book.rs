@@ -140,7 +140,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         let order_id = limit_order.id;
         let owner_id = limit_order.owner.clone();
-        let amount = limit_order.amount;
 
         let market_change = if cross_spread {
             if self.status == OrderBookStatus::Trade {
@@ -161,22 +160,30 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.apply_market_change(market_change, data)?;
 
         match (market_input, deal_input) {
+            // nothing goes into the market (as limit order), all goes to the deal (as market order)
             (None, Some(market_order_input)) => {
                 let direction = if market_order_input.is_quote() {
                     PriceVariant::Buy
                 } else {
                     PriceVariant::Sell
                 };
+                let (Some(deal_amount), Some(average_price)) = (maybe_deal_amount, maybe_average_price) else {
+                    // should never happen
+                    return Err(Error::<T>::PriceCalculationFailed.into());
+                };
                 T::Delegate::emit_event(
                     self.order_book_id,
                     OrderBookEvent::LimitOrderConvertedToMarketOrder {
                         owner_id,
                         direction,
-                        amount: OrderAmount::Base(amount),
+                        amount: OrderAmount::Base(deal_amount),
+                        average_price,
                     },
                 );
             }
+            // all goes into the market (as limit order), nothing goes to the deal (as market order)
             (Some(..), None) => (),
+            // some liquidity goes into the market (as limit order) and another part of liquidity goes to the deal (as market order)
             (Some(..), Some(market_order_input)) => {
                 let market_order_direction = if market_order_input.is_quote() {
                     PriceVariant::Buy
