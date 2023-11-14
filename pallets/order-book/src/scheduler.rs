@@ -37,9 +37,9 @@
 use crate::traits::{AlignmentScheduler, ExpirationScheduler};
 use crate::weights::WeightInfo;
 use crate::{
-    AlignmentCursor, CacheDataLayer, CancelReason, Config, DataLayer, Error, Event,
-    ExpirationsAgenda, IncompleteExpirationsSince, LimitOrder, LimitOrders, OrderBookId,
-    OrderBookTechStatus, OrderBooks, Pallet,
+    AlignmentCursor, CacheDataLayer, Config, DataLayer, Error, Event, ExpirationsAgenda,
+    IncompleteExpirationsSince, LimitOrder, LimitOrders, OrderBookId, OrderBookTechStatus,
+    OrderBooks, Pallet,
 };
 use assets::AssetIdOf;
 use common::weights::check_accrue_n;
@@ -73,7 +73,6 @@ impl<T: Config> Pallet<T> {
                 return;
             }
         };
-        let order_owner = order.owner.clone();
         let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
             debug_assert!(false, "apparently removal of order book did not cleanup expiration schedule; \
                 order {:?} is set to expire but corresponding order book {:?} is not found", order_id, order_book_id);
@@ -88,15 +87,8 @@ impl<T: Config> Pallet<T> {
         // It's fine to fail on unschedule again inside this method
         // since the queue is taken from the storage before this method.
         // (thus `ignore_unschedule_error` is `true`)
-        match order_book.cancel_limit_order_unchecked(order, data_layer, true) {
-            Ok(_) => {
-                Self::deposit_event(Event::<T>::LimitOrderCanceled {
-                    order_book_id: *order_book_id,
-                    order_id,
-                    owner_id: order_owner,
-                    reason: CancelReason::Expired,
-                });
-            }
+        match order_book.expire_limit_order(order, data_layer) {
+            Ok(_) => {}
             Err(error) => {
                 debug_assert!(
                     false,

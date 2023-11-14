@@ -140,7 +140,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         let order_id = limit_order.id;
         let owner_id = limit_order.owner.clone();
-        let amount = limit_order.amount;
 
         let market_change = if cross_spread {
             if self.status == OrderBookStatus::Trade {
@@ -161,22 +160,30 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.apply_market_change(market_change, data)?;
 
         match (market_input, deal_input) {
+            // nothing goes into the market (as limit order), all goes to the deal (as market order)
             (None, Some(market_order_input)) => {
                 let direction = if market_order_input.is_quote() {
                     PriceVariant::Buy
                 } else {
                     PriceVariant::Sell
                 };
+                let (Some(deal_amount), Some(average_price)) = (maybe_deal_amount, maybe_average_price) else {
+                    // should never happen
+                    return Err(Error::<T>::PriceCalculationFailed.into());
+                };
                 T::Delegate::emit_event(
                     self.order_book_id,
                     OrderBookEvent::LimitOrderConvertedToMarketOrder {
                         owner_id,
                         direction,
-                        amount: OrderAmount::Base(amount),
+                        amount: OrderAmount::Base(deal_amount),
+                        average_price,
                     },
                 );
             }
+            // all goes into the market (as limit order), nothing goes to the deal (as market order)
             (Some(..), None) => (),
+            // some liquidity goes into the market (as limit order) and another part of liquidity goes to the deal (as market order)
             (Some(..), Some(market_order_input)) => {
                 let market_order_direction = if market_order_input.is_quote() {
                     PriceVariant::Buy
@@ -219,20 +226,29 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::CancellationOfLimitOrdersIsForbidden
         );
 
-        self.cancel_limit_order_unchecked(limit_order, data, false)
+        self.cancel_limit_order_unchecked(limit_order, CancelReason::Manual, data, false)
     }
 
     pub fn cancel_all_limit_orders(
         &self,
+        reason: CancelReason,
         data: &mut impl DataLayer<T>,
     ) -> Result<usize, DispatchError> {
-        let market_change = self.calculate_cancellation_of_all_limit_orders_impact(data)?;
+        let market_change = self.calculate_cancellation_of_all_limit_orders_impact(reason, data)?;
 
         let count = market_change.to_cancel.len();
 
         self.apply_market_change(market_change, data)?;
 
         Ok(count)
+    }
+
+    pub fn expire_limit_order(
+        &self,
+        limit_order: LimitOrder<T>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<(), DispatchError> {
+        self.cancel_limit_order_unchecked(limit_order, CancelReason::Expired, data, true)
     }
 
     /// Executes market order and returns input & output amounts & count of executed limit orders
@@ -360,6 +376,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     pub fn calculate_cancellation_limit_order_impact(
         &self,
         limit_order: LimitOrder<T>,
+        reason: CancelReason,
         ignore_unschedule_error: bool,
     ) -> Result<
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
@@ -379,7 +396,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .and_modify(|pay| *pay = pay.saturating_add(*unlock_amount.value()))
             .or_insert(*unlock_amount.value());
 
-        limit_orders_to_cancel.insert(limit_order.id, limit_order);
+        limit_orders_to_cancel.insert(limit_order.id, (limit_order, reason));
 
         Ok(MarketChange {
             deal_input: None,
@@ -398,6 +415,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     pub fn calculate_cancellation_of_all_limit_orders_impact(
         &self,
+        reason: CancelReason,
         data: &mut impl DataLayer<T>,
     ) -> Result<
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
@@ -420,7 +438,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 .and_modify(|pay| *pay = pay.saturating_add(*unlock_amount.value()))
                 .or_insert(*unlock_amount.value());
 
-            limit_orders_to_cancel.insert(limit_order.id, limit_order);
+            limit_orders_to_cancel.insert(limit_order.id, (limit_order, reason));
         }
 
         Ok(MarketChange {
@@ -594,7 +612,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         for mut limit_order in limit_orders {
             if limit_order.amount.balance() % self.step_lot_size.balance() != 0 {
                 let refund = if limit_order.amount < self.step_lot_size {
-                    limit_orders_to_cancel.insert(limit_order.id, limit_order.clone());
+                    limit_orders_to_cancel
+                        .insert(limit_order.id, (limit_order.clone(), CancelReason::Aligned));
                     limit_order.amount
                 } else {
                     let amount = self.align_amount(limit_order.amount);
@@ -804,7 +823,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .payment
             .execute_all::<T::Locker, T::Unlocker>()?;
 
-        for limit_order in market_change.to_cancel.into_values() {
+        for (limit_order, reason) in market_change.to_cancel.into_values() {
             data.delete_limit_order(&self.order_book_id, limit_order.id)?;
             let unschedule_result = T::Scheduler::unschedule_expiration(
                 limit_order.expires_at,
@@ -820,7 +839,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 OrderBookEvent::LimitOrderCanceled {
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
-                    reason: CancelReason::Manual,
+                    reason,
                 },
             );
         }
@@ -946,14 +965,18 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     /// This is useful for expiration of orders where we want to use the universal interface
     /// to remove an order. In such case the schedule already does not have the order, because
     /// it is removed more efficiently than in `unschedule()`
-    pub(crate) fn cancel_limit_order_unchecked(
+    fn cancel_limit_order_unchecked(
         &self,
         limit_order: LimitOrder<T>,
+        reason: CancelReason,
         data: &mut impl DataLayer<T>,
         ignore_unschedule_error: bool,
     ) -> Result<(), DispatchError> {
-        let market_change =
-            self.calculate_cancellation_limit_order_impact(limit_order, ignore_unschedule_error)?;
+        let market_change = self.calculate_cancellation_limit_order_impact(
+            limit_order,
+            reason,
+            ignore_unschedule_error,
+        )?;
 
         self.apply_market_change(market_change, data)
     }

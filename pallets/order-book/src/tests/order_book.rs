@@ -39,8 +39,9 @@ use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
-    Config, DataLayer, DealInfo, LimitOrder, MarketChange, MarketOrder, MarketRole, OrderAmount,
-    OrderBook, OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderVolume, Payment,
+    CancelReason, Config, DataLayer, DealInfo, LimitOrder, MarketChange, MarketOrder, MarketRole,
+    OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderVolume,
+    Payment,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_core::Get;
@@ -1337,7 +1338,7 @@ fn should_cancel_all_limit_orders() {
         assert!(free_balance::<Runtime>(&order_book_id.quote, &tech_account) > balance!(0));
 
         // cancel all orders
-        assert_ok!(order_book.cancel_all_limit_orders(&mut data));
+        assert_ok!(order_book.cancel_all_limit_orders(CancelReason::Manual, &mut data));
 
         // empty after canceling of all limit orders
         assert!(data.get_all_limit_orders(&order_book_id).is_empty());
@@ -4122,7 +4123,11 @@ fn should_calculate_cancellation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancellation_limit_order_impact(limit_order2.clone(), false)
+                .calculate_cancellation_limit_order_impact(
+                    limit_order2.clone(),
+                    CancelReason::Manual,
+                    false
+                )
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -4132,7 +4137,7 @@ fn should_calculate_cancellation_limit_order_impact() {
                 to_place: BTreeMap::from([]),
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
-                to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
+                to_cancel: BTreeMap::from([(2, (limit_order2.clone(), CancelReason::Manual))]),
                 to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
@@ -4154,7 +4159,11 @@ fn should_calculate_cancellation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancellation_limit_order_impact(limit_order2.clone(), true)
+                .calculate_cancellation_limit_order_impact(
+                    limit_order2.clone(),
+                    CancelReason::Expired,
+                    true
+                )
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -4164,7 +4173,7 @@ fn should_calculate_cancellation_limit_order_impact() {
                 to_place: BTreeMap::from([]),
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
-                to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
+                to_cancel: BTreeMap::from([(2, (limit_order2.clone(), CancelReason::Expired))]),
                 to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
@@ -4186,7 +4195,11 @@ fn should_calculate_cancellation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancellation_limit_order_impact(limit_order8.clone(), false)
+                .calculate_cancellation_limit_order_impact(
+                    limit_order8.clone(),
+                    CancelReason::Aligned,
+                    false
+                )
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -4196,7 +4209,7 @@ fn should_calculate_cancellation_limit_order_impact() {
                 to_place: BTreeMap::from([]),
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
-                to_cancel: BTreeMap::from([(8, limit_order8.clone())]),
+                to_cancel: BTreeMap::from([(8, (limit_order8.clone(), CancelReason::Aligned))]),
                 to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
@@ -4218,7 +4231,11 @@ fn should_calculate_cancellation_limit_order_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancellation_limit_order_impact(limit_order8.clone(), true)
+                .calculate_cancellation_limit_order_impact(
+                    limit_order8.clone(),
+                    CancelReason::Expired,
+                    true
+                )
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -4228,7 +4245,7 @@ fn should_calculate_cancellation_limit_order_impact() {
                 to_place: BTreeMap::from([]),
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
-                to_cancel: BTreeMap::from([(8, limit_order8.clone())]),
+                to_cancel: BTreeMap::from([(8, (limit_order8.clone(), CancelReason::Expired))]),
                 to_force_update: BTreeMap::from([]),
                 payment: Payment {
                     order_book_id,
@@ -4278,7 +4295,7 @@ fn should_calculate_cancellation_of_all_limit_orders_impact() {
 
         assert_eq!(
             order_book
-                .calculate_cancellation_of_all_limit_orders_impact(&mut data)
+                .calculate_cancellation_of_all_limit_orders_impact(CancelReason::Manual, &mut data)
                 .unwrap(),
             MarketChange {
                 deal_input: None,
@@ -4289,18 +4306,18 @@ fn should_calculate_cancellation_of_all_limit_orders_impact() {
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
                 to_cancel: BTreeMap::from([
-                    (1, limit_order1),
-                    (2, limit_order2),
-                    (3, limit_order3),
-                    (4, limit_order4),
-                    (5, limit_order5),
-                    (6, limit_order6),
-                    (7, limit_order7),
-                    (8, limit_order8),
-                    (9, limit_order9),
-                    (10, limit_order10),
-                    (11, limit_order11),
-                    (12, limit_order12),
+                    (1, (limit_order1, CancelReason::Manual)),
+                    (2, (limit_order2, CancelReason::Manual)),
+                    (3, (limit_order3, CancelReason::Manual)),
+                    (4, (limit_order4, CancelReason::Manual)),
+                    (5, (limit_order5, CancelReason::Manual)),
+                    (6, (limit_order6, CancelReason::Manual)),
+                    (7, (limit_order7, CancelReason::Manual)),
+                    (8, (limit_order8, CancelReason::Manual)),
+                    (9, (limit_order9, CancelReason::Manual)),
+                    (10, (limit_order10, CancelReason::Manual)),
+                    (11, (limit_order11, CancelReason::Manual)),
+                    (12, (limit_order12, CancelReason::Manual)),
                 ]),
                 to_force_update: BTreeMap::from([]),
                 payment: Payment {
@@ -4492,7 +4509,10 @@ fn should_calculate_align_limit_orders_impact() {
                 to_place: BTreeMap::from([]),
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([]),
-                to_cancel: BTreeMap::from([(13, limit_order13), (15, limit_order15)]),
+                to_cancel: BTreeMap::from([
+                    (13, (limit_order13, CancelReason::Aligned)),
+                    (15, (limit_order15, CancelReason::Aligned))
+                ]),
                 to_force_update: BTreeMap::from([
                     (1, limit_order1),
                     (2, limit_order2),
@@ -4674,7 +4694,7 @@ fn should_apply_market_change() {
                 ),
             ]),
             to_full_execute: BTreeMap::from([(8, limit_order8.clone())]),
-            to_cancel: BTreeMap::from([(2, limit_order2.clone())]),
+            to_cancel: BTreeMap::from([(2, (limit_order2.clone(), CancelReason::Manual))]),
             to_force_update: BTreeMap::from([]),
             payment: Payment {
                 order_book_id,
