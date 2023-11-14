@@ -416,7 +416,7 @@ pub(crate) mod exchange {
         let caller = accounts::alice::<T>();
         let is_divisible = true;
         let (order_book_id, amount, side) =
-            market_order_execution(settings, caller.clone(), is_divisible);
+            market_order_execution(settings.clone(), caller.clone(), is_divisible);
         let caller_base_balance =
             <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
                 &order_book_id.base,
@@ -432,6 +432,21 @@ pub(crate) mod exchange {
         let (expected_base, expected_quote) =
             execute_market_order::expected_base_quote::<T>(order_book_id, side, is_divisible);
         assert_eq!(amount, expected_base);
+        let expected_orders = sp_std::cmp::min(
+            settings.executed_orders_limit,
+            settings.max_side_price_count * settings.max_orders_per_price,
+        ) as usize;
+        let (expected_bids, expected_asks) = match side {
+            PriceVariant::Buy => (0, expected_orders),
+            PriceVariant::Sell => (expected_orders, 0),
+        };
+        assert_orders_numbers::<T>(
+            order_book_id,
+            Some(expected_bids),
+            Some(expected_asks),
+            None,
+            None,
+        );
         let expected_average_price = expected_quote / expected_base;
         let (expected_in, expected_out) = match side {
             PriceVariant::Buy => (expected_quote, expected_base),
