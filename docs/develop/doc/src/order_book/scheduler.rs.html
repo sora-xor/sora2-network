@@ -323,14 +323,6 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -370,9 +362,9 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::traits::{AlignmentScheduler, ExpirationScheduler};
 <span class="kw">use </span><span class="kw">crate</span>::weights::WeightInfo;
 <span class="kw">use crate</span>::{
-    AlignmentCursor, CacheDataLayer, CancelReason, Config, DataLayer, Error, Event,
-    ExpirationsAgenda, IncompleteExpirationsSince, LimitOrder, LimitOrders, OrderBookId,
-    OrderBookTechStatus, OrderBooks, Pallet,
+    AlignmentCursor, CacheDataLayer, Config, DataLayer, Error, Event, ExpirationsAgenda,
+    IncompleteExpirationsSince, LimitOrder, LimitOrders, OrderBookId, OrderBookTechStatus,
+    OrderBooks, Pallet,
 };
 <span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>common::weights::check_accrue_n;
@@ -406,7 +398,6 @@
                 <span class="kw">return</span>;
             }
         };
-        <span class="kw">let </span>order_owner = order.owner.clone();
         <span class="kw">let </span><span class="prelude-val">Some</span>(order_book) = &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id) <span class="kw">else </span>{
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;apparently removal of order book did not cleanup expiration schedule; \
                 order {:?} is set to expire but corresponding order book {:?} is not found&quot;</span>, order_id, order_book_id);
@@ -421,15 +412,8 @@
         <span class="comment">// It&#39;s fine to fail on unschedule again inside this method
         // since the queue is taken from the storage before this method.
         // (thus `ignore_unschedule_error` is `true`)
-        </span><span class="kw">match </span>order_book.cancel_limit_order_unchecked(order, data_layer, <span class="bool-val">true</span>) {
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::LimitOrderCanceled {
-                    order_book_id: <span class="kw-2">*</span>order_book_id,
-                    order_id,
-                    owner_id: order_owner,
-                    reason: CancelReason::Expired,
-                });
-            }
+        </span><span class="kw">match </span>order_book.expire_limit_order(order, data_layer) {
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
             <span class="prelude-val">Err</span>(error) =&gt; {
                 <span class="macro">debug_assert!</span>(
                     <span class="bool-val">false</span>,

@@ -1423,6 +1423,9 @@
 <a href="#1408" id="1408">1408</a>
 <a href="#1409" id="1409">1409</a>
 <a href="#1410" id="1410">1410</a>
+<a href="#1411" id="1411">1411</a>
+<a href="#1412" id="1412">1412</a>
+<a href="#1413" id="1413">1413</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1756,6 +1759,7 @@
             owner_id: T::AccountId,
             direction: PriceVariant,
             amount: OrderAmount,
+            average_price: OrderPrice,
         },
 
         <span class="doccomment">/// User tried to place the limit order out of the spread.
@@ -2382,11 +2386,13 @@
                 owner_id,
                 direction,
                 amount,
+                average_price,
             } =&gt; Event::&lt;T&gt;::LimitOrderConvertedToMarketOrder {
                 order_book_id,
                 owner_id,
                 direction,
                 amount,
+                average_price,
             },
 
             OrderBookEvent::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {

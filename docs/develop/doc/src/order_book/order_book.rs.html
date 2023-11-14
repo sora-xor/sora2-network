@@ -1220,6 +1220,29 @@
 <a href="#1205" id="1205">1205</a>
 <a href="#1206" id="1206">1206</a>
 <a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1362,7 +1385,6 @@
 
         <span class="kw">let </span>order_id = limit_order.id;
         <span class="kw">let </span>owner_id = limit_order.owner.clone();
-        <span class="kw">let </span>amount = limit_order.amount;
 
         <span class="kw">let </span>market_change = <span class="kw">if </span>cross_spread {
             <span class="kw">if </span><span class="self">self</span>.status == OrderBookStatus::Trade {
@@ -1383,23 +1405,31 @@
         <span class="self">self</span>.apply_market_change(market_change, data)<span class="question-mark">?</span>;
 
         <span class="kw">match </span>(market_input, deal_input) {
-            (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(market_order_input)) =&gt; {
+            <span class="comment">// nothing goes into the market (as limit order), all goes to the deal (as market order)
+            </span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(market_order_input)) =&gt; {
                 <span class="kw">let </span>direction = <span class="kw">if </span>market_order_input.is_quote() {
                     PriceVariant::Buy
                 } <span class="kw">else </span>{
                     PriceVariant::Sell
+                };
+                <span class="kw">let </span>(<span class="prelude-val">Some</span>(deal_amount), <span class="prelude-val">Some</span>(average_price)) = (maybe_deal_amount, maybe_average_price) <span class="kw">else </span>{
+                    <span class="comment">// should never happen
+                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::PriceCalculationFailed.into());
                 };
                 T::Delegate::emit_event(
                     <span class="self">self</span>.order_book_id,
                     OrderBookEvent::LimitOrderConvertedToMarketOrder {
                         owner_id,
                         direction,
-                        amount: OrderAmount::Base(amount),
+                        amount: OrderAmount::Base(deal_amount),
+                        average_price,
                     },
                 );
             }
-            (<span class="prelude-val">Some</span>(..), <span class="prelude-val">None</span>) =&gt; (),
-            (<span class="prelude-val">Some</span>(..), <span class="prelude-val">Some</span>(market_order_input)) =&gt; {
+            <span class="comment">// all goes into the market (as limit order), nothing goes to the deal (as market order)
+            </span>(<span class="prelude-val">Some</span>(..), <span class="prelude-val">None</span>) =&gt; (),
+            <span class="comment">// some liquidity goes into the market (as limit order) and another part of liquidity goes to the deal (as market order)
+            </span>(<span class="prelude-val">Some</span>(..), <span class="prelude-val">Some</span>(market_order_input)) =&gt; {
                 <span class="kw">let </span>market_order_direction = <span class="kw">if </span>market_order_input.is_quote() {
                     PriceVariant::Buy
                 } <span class="kw">else </span>{
@@ -1441,20 +1471,29 @@
             Error::&lt;T&gt;::CancellationOfLimitOrdersIsForbidden
         );
 
-        <span class="self">self</span>.cancel_limit_order_unchecked(limit_order, data, <span class="bool-val">false</span>)
+        <span class="self">self</span>.cancel_limit_order_unchecked(limit_order, CancelReason::Manual, data, <span class="bool-val">false</span>)
     }
 
     <span class="kw">pub fn </span>cancel_all_limit_orders(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
+        reason: CancelReason,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, DispatchError&gt; {
-        <span class="kw">let </span>market_change = <span class="self">self</span>.calculate_cancellation_of_all_limit_orders_impact(data)<span class="question-mark">?</span>;
+        <span class="kw">let </span>market_change = <span class="self">self</span>.calculate_cancellation_of_all_limit_orders_impact(reason, data)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>count = market_change.to_cancel.len();
 
         <span class="self">self</span>.apply_market_change(market_change, data)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(count)
+    }
+
+    <span class="kw">pub fn </span>expire_limit_order(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        limit_order: LimitOrder&lt;T&gt;,
+        data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        <span class="self">self</span>.cancel_limit_order_unchecked(limit_order, CancelReason::Expired, data, <span class="bool-val">true</span>)
     }
 
     <span class="doccomment">/// Executes market order and returns input &amp; output amounts &amp; count of executed limit orders
@@ -1582,6 +1621,7 @@
     <span class="kw">pub fn </span>calculate_cancellation_limit_order_impact(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         limit_order: LimitOrder&lt;T&gt;,
+        reason: CancelReason,
         ignore_unschedule_error: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
@@ -1601,7 +1641,7 @@
             .and_modify(|pay| <span class="kw-2">*</span>pay = pay.saturating_add(<span class="kw-2">*</span>unlock_amount.value()))
             .or_insert(<span class="kw-2">*</span>unlock_amount.value());
 
-        limit_orders_to_cancel.insert(limit_order.id, limit_order);
+        limit_orders_to_cancel.insert(limit_order.id, (limit_order, reason));
 
         <span class="prelude-val">Ok</span>(MarketChange {
             deal_input: <span class="prelude-val">None</span>,
@@ -1620,6 +1660,7 @@
 
     <span class="kw">pub fn </span>calculate_cancellation_of_all_limit_orders_impact(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
+        reason: CancelReason,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
@@ -1642,7 +1683,7 @@
                 .and_modify(|pay| <span class="kw-2">*</span>pay = pay.saturating_add(<span class="kw-2">*</span>unlock_amount.value()))
                 .or_insert(<span class="kw-2">*</span>unlock_amount.value());
 
-            limit_orders_to_cancel.insert(limit_order.id, limit_order);
+            limit_orders_to_cancel.insert(limit_order.id, (limit_order, reason));
         }
 
         <span class="prelude-val">Ok</span>(MarketChange {
@@ -1816,7 +1857,8 @@
         <span class="kw">for </span><span class="kw-2">mut </span>limit_order <span class="kw">in </span>limit_orders {
             <span class="kw">if </span>limit_order.amount.balance() % <span class="self">self</span>.step_lot_size.balance() != <span class="number">0 </span>{
                 <span class="kw">let </span>refund = <span class="kw">if </span>limit_order.amount &lt; <span class="self">self</span>.step_lot_size {
-                    limit_orders_to_cancel.insert(limit_order.id, limit_order.clone());
+                    limit_orders_to_cancel
+                        .insert(limit_order.id, (limit_order.clone(), CancelReason::Aligned));
                     limit_order.amount
                 } <span class="kw">else </span>{
                     <span class="kw">let </span>amount = <span class="self">self</span>.align_amount(limit_order.amount);
@@ -2026,7 +2068,7 @@
             .payment
             .execute_all::&lt;T::Locker, T::Unlocker&gt;()<span class="question-mark">?</span>;
 
-        <span class="kw">for </span>limit_order <span class="kw">in </span>market_change.to_cancel.into_values() {
+        <span class="kw">for </span>(limit_order, reason) <span class="kw">in </span>market_change.to_cancel.into_values() {
             data.delete_limit_order(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id, limit_order.id)<span class="question-mark">?</span>;
             <span class="kw">let </span>unschedule_result = T::Scheduler::unschedule_expiration(
                 limit_order.expires_at,
@@ -2042,7 +2084,7 @@
                 OrderBookEvent::LimitOrderCanceled {
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
-                    reason: CancelReason::Manual,
+                    reason,
                 },
             );
         }
@@ -2168,14 +2210,18 @@
     /// This is useful for expiration of orders where we want to use the universal interface
     /// to remove an order. In such case the schedule already does not have the order, because
     /// it is removed more efficiently than in `unschedule()`
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>cancel_limit_order_unchecked(
+    </span><span class="kw">fn </span>cancel_limit_order_unchecked(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         limit_order: LimitOrder&lt;T&gt;,
+        reason: CancelReason,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
         ignore_unschedule_error: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
-        <span class="kw">let </span>market_change =
-            <span class="self">self</span>.calculate_cancellation_limit_order_impact(limit_order, ignore_unschedule_error)<span class="question-mark">?</span>;
+        <span class="kw">let </span>market_change = <span class="self">self</span>.calculate_cancellation_limit_order_impact(
+            limit_order,
+            reason,
+            ignore_unschedule_error,
+        )<span class="question-mark">?</span>;
 
         <span class="self">self</span>.apply_market_change(market_change, data)
     }
