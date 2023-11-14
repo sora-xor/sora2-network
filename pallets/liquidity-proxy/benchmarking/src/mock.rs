@@ -294,7 +294,7 @@ impl dex_api::Config for Runtime {
     type XSTPool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
 
-    #[cfg(feature = "wip")] // order-book
+    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
 }
 

@@ -280,7 +280,7 @@ impl dex_api::Config for Runtime {
     type XSTPool = XSTPool;
     type MulticollateralBondingCurvePool = ();
 
-    #[cfg(feature = "wip")] // order-book
+    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
 }
 
