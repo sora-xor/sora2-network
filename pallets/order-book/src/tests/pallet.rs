@@ -816,7 +816,6 @@ fn should_cleanup_on_expiring() {
 }
 
 #[test]
-#[ignore] // it works, but takes a lot of time (~2-120 secs depending on settings)
 fn should_enforce_expiration_and_weight_limits() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -876,7 +875,7 @@ fn should_enforce_expiration_and_weight_limits() {
             assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_some());
         }
 
-        let weight_left_for_single_expiration = <Runtime as Config>::MaxExpirationWeightPerBlock::get() - <Runtime as Config>::WeightInfo::service_base() - <Runtime as Config>::WeightInfo::service_block_base();
+        let weight_left_for_single_expiration = <Runtime as Config>::MaxExpirationWeightPerBlock::get() - <Runtime as Config>::WeightInfo::service_expiration_base() - <Runtime as Config>::WeightInfo::service_expiration_block_base();
         let max_expired_per_block: u64 = min(
             weight_left_for_single_expiration.ref_time() / <Runtime as Config>::WeightInfo::service_single_expiration().ref_time(),
             weight_left_for_single_expiration.proof_size() / <Runtime as Config>::WeightInfo::service_single_expiration().proof_size()
@@ -888,7 +887,7 @@ fn should_enforce_expiration_and_weight_limits() {
             // Weight spent must not exceed the limit
             let init_weight_consumed = run_to_block(end_of_lifespan_block + i);
             // Weight does not have partial ordering, so we check for overflow this way:
-            assert!(<Runtime as Config>::MaxExpirationWeightPerBlock::get()
+            assert!(<Runtime as Config>::MaxExpirationWeightPerBlock::get().saturating_add(<Runtime as Config>::MaxAlignmentWeightPerBlock::get())
                 .checked_sub(&init_weight_consumed)
                 .is_some());
         }
@@ -924,7 +923,7 @@ fn should_emit_event_on_expiration_failure() {
         };
         let non_existent_order_id = 1;
         let expiration_block = 2u32.into();
-        assert_ok!(OrderBookPallet::schedule(
+        assert_ok!(OrderBookPallet::schedule_expiration(
             expiration_block,
             non_existent_order_book_id,
             non_existent_order_id
