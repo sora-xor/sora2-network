@@ -1,8 +1,7 @@
 use crate::migrations::{OldPollInfo, OldVotingInfo};
 use crate::mock::*;
 use crate::{pallet, Error};
-use codec::Decode;
-use codec::Encode;
+use codec::{Decode, Encode};
 use common::{
     balance, generate_storage_instance, AssetInfoProvider, BoundedString, CERES_ASSET_ID,
 };
