@@ -331,6 +331,7 @@ pub mod pallet {
             owner_id: T::AccountId,
             direction: PriceVariant,
             amount: OrderAmount,
+            average_price: OrderPrice,
         },
 
         /// User tried to place the limit order out of the spread.
@@ -957,11 +958,13 @@ impl<T: Config> Delegate<T::AccountId, T::AssetId, T::OrderId, T::DEXId, MomentO
                 owner_id,
                 direction,
                 amount,
+                average_price,
             } => Event::<T>::LimitOrderConvertedToMarketOrder {
                 order_book_id,
                 owner_id,
                 direction,
                 amount,
+                average_price,
             },
 
             OrderBookEvent::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {

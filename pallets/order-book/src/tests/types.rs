@@ -36,7 +36,8 @@ use common::{balance, PriceVariant, DAI, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
-    Config, DealInfo, LimitOrder, MarketChange, OrderAmount, OrderBookId, OrderVolume, Payment,
+    CancelReason, Config, DealInfo, LimitOrder, MarketChange, OrderAmount, OrderBookId,
+    OrderVolume, Payment,
 };
 use framenode_runtime::Runtime;
 use sp_std::collections::btree_map::BTreeMap;
@@ -843,15 +844,18 @@ fn should_fail_market_change_merge() {
         )]),
         to_cancel: BTreeMap::from([(
             2,
-            LimitOrder::<Runtime>::new(
-                2,
-                accounts::alice::<Runtime>(),
-                PriceVariant::Buy,
-                balance!(10).into(),
-                balance!(100).into(),
-                1000,
-                <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
-                100,
+            (
+                LimitOrder::<Runtime>::new(
+                    2,
+                    accounts::alice::<Runtime>(),
+                    PriceVariant::Buy,
+                    balance!(10).into(),
+                    balance!(100).into(),
+                    1000,
+                    <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
+                    100,
+                ),
+                CancelReason::Manual,
             ),
         )]),
         to_force_update: BTreeMap::from([(
@@ -1077,9 +1081,9 @@ fn check_market_change_merge() {
             (order_id3, order3_origin.clone()),
         ]),
         to_cancel: BTreeMap::from([
-            (order_id1, order1_origin.clone()),
-            (order_id2, order2_origin.clone()),
-            (order_id3, order3_origin.clone()),
+            (order_id1, (order1_origin.clone(), CancelReason::Manual)),
+            (order_id2, (order2_origin.clone(), CancelReason::Manual)),
+            (order_id3, (order3_origin.clone(), CancelReason::Manual)),
         ]),
         to_force_update: BTreeMap::from([
             (order_id1, order1_origin.clone()),
@@ -1120,8 +1124,8 @@ fn check_market_change_merge() {
             (order_id5, order5_origin.clone()),
         ]),
         to_cancel: BTreeMap::from([
-            (order_id4, order4_origin.clone()),
-            (order_id5, order5_origin.clone()),
+            (order_id4, (order4_origin.clone(), CancelReason::Manual)),
+            (order_id5, (order5_origin.clone(), CancelReason::Manual)),
         ]),
         to_force_update: BTreeMap::from([
             (order_id4, order4_origin.clone()),
@@ -1192,11 +1196,11 @@ fn check_market_change_merge() {
                 (order_id5, order5_origin.clone()),
             ]),
             to_cancel: BTreeMap::from([
-                (order_id1, order1_origin.clone()),
-                (order_id2, order2_origin.clone()),
-                (order_id3, order3_origin.clone()),
-                (order_id4, order4_origin.clone()),
-                (order_id5, order5_origin.clone()),
+                (order_id1, (order1_origin.clone(), CancelReason::Manual)),
+                (order_id2, (order2_origin.clone(), CancelReason::Manual)),
+                (order_id3, (order3_origin.clone(), CancelReason::Manual)),
+                (order_id4, (order4_origin.clone(), CancelReason::Manual)),
+                (order_id5, (order5_origin.clone(), CancelReason::Manual)),
             ]),
             to_force_update: BTreeMap::from([
                 (order_id1, order1_origin.clone()),
@@ -1249,9 +1253,9 @@ fn check_market_change_merge() {
             (order_id5, order5_origin.clone()),
         ]),
         to_cancel: BTreeMap::from([
-            (order_id1, order1_other.clone()),
-            (order_id2, order2_origin.clone()),
-            (order_id5, order5_origin.clone()),
+            (order_id1, (order1_origin.clone(), CancelReason::Manual)),
+            (order_id2, (order2_origin.clone(), CancelReason::Manual)),
+            (order_id5, (order5_origin.clone(), CancelReason::Manual)),
         ]),
         to_force_update: BTreeMap::from([
             (order_id1, order1_other.clone()),
@@ -1314,10 +1318,10 @@ fn check_market_change_merge() {
                 (order_id5, order5_origin.clone()),
             ]),
             to_cancel: BTreeMap::from([
-                (order_id1, order1_other.clone()),
-                (order_id2, order2_origin.clone()),
-                (order_id3, order3_origin.clone()),
-                (order_id5, order5_origin.clone()),
+                (order_id1, (order1_origin.clone(), CancelReason::Manual)),
+                (order_id2, (order2_origin.clone(), CancelReason::Manual)),
+                (order_id3, (order3_origin.clone(), CancelReason::Manual)),
+                (order_id5, (order5_origin.clone(), CancelReason::Manual)),
             ]),
             to_force_update: BTreeMap::from([
                 (order_id1, order1_other.clone()),
@@ -1369,9 +1373,9 @@ fn check_market_change_merge() {
             (order_id3, order3_other.clone()),
         ]),
         to_cancel: BTreeMap::from([
-            (order_id1, order1_other.clone()),
-            (order_id2, order2_other.clone()),
-            (order_id3, order3_other.clone()),
+            (order_id1, (order1_other.clone(), CancelReason::Manual)),
+            (order_id2, (order2_other.clone(), CancelReason::Manual)),
+            (order_id3, (order3_other.clone(), CancelReason::Manual)),
         ]),
         to_force_update: BTreeMap::from([
             (order_id1, order1_other.clone()),
@@ -1425,9 +1429,9 @@ fn check_market_change_merge() {
                 (order_id3, order3_other.clone()),
             ]),
             to_cancel: BTreeMap::from([
-                (order_id1, order1_other.clone()),
-                (order_id2, order2_other.clone()),
-                (order_id3, order3_other.clone()),
+                (order_id1, (order1_other.clone(), CancelReason::Manual)),
+                (order_id2, (order2_other.clone(), CancelReason::Manual)),
+                (order_id3, (order3_other.clone(), CancelReason::Manual)),
             ]),
             to_force_update: BTreeMap::from([
                 (order_id1, order1_other.clone()),
@@ -1491,7 +1495,10 @@ fn check_market_change_count_of_executed_orders() {
                 (LimitOrder::<Runtime>, OrderAmount),
             >::new(),
             to_full_execute: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
-            to_cancel: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_cancel: BTreeMap::<
+                <Runtime as Config>::OrderId,
+                (LimitOrder::<Runtime>, CancelReason),
+            >::new(),
             to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
             payment: empty_payment.clone(),
             ignore_unschedule_error: false,
@@ -1524,7 +1531,10 @@ fn check_market_change_count_of_executed_orders() {
                 ),
             )]),
             to_full_execute: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
-            to_cancel: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_cancel: BTreeMap::<
+                <Runtime as Config>::OrderId,
+                (LimitOrder::<Runtime>, CancelReason),
+            >::new(),
             to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
             payment: empty_payment.clone(),
             ignore_unschedule_error: false,
@@ -1557,7 +1567,10 @@ fn check_market_change_count_of_executed_orders() {
                     100,
                 ),
             )]),
-            to_cancel: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_cancel: BTreeMap::<
+                <Runtime as Config>::OrderId,
+                (LimitOrder::<Runtime>, CancelReason),
+            >::new(),
             to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
             payment: empty_payment.clone(),
             ignore_unschedule_error: false,
@@ -1602,7 +1615,10 @@ fn check_market_change_count_of_executed_orders() {
                     100,
                 ),
             )]),
-            to_cancel: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_cancel: BTreeMap::<
+                <Runtime as Config>::OrderId,
+                (LimitOrder::<Runtime>, CancelReason),
+            >::new(),
             to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
             payment: empty_payment.clone(),
             ignore_unschedule_error: false,
@@ -1693,7 +1709,10 @@ fn check_market_change_count_of_executed_orders() {
                     ),
                 )
             ]),
-            to_cancel: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
+            to_cancel: BTreeMap::<
+                <Runtime as Config>::OrderId,
+                (LimitOrder::<Runtime>, CancelReason),
+            >::new(),
             to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
             payment: empty_payment.clone(),
             ignore_unschedule_error: false,
