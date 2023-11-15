@@ -618,6 +618,22 @@
 <a href="#603" id="603">603</a>
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -661,7 +677,7 @@
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 #![cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
 </span><span class="comment">// order-book
-</span><span class="attr">#![cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+</span><span class="attr">#![cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
 </span><span class="comment">// too many benchmarks, doesn&#39;t compile otherwise
 </span><span class="attr">#![recursion_limit = <span class="string">&quot;512&quot;</span>]
 #![feature(int_roundings)]
@@ -763,6 +779,7 @@
     <span class="kw">use </span>frame_support::weights::WeightMeter;
     <span class="kw">use </span>frame_system::RawOrigin;
     <span class="kw">use </span>sp_runtime::traits::UniqueSaturatedInto;
+    <span class="kw">use </span>sp_std::vec::Vec;
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>order_book_imported::cache_data_layer::CacheDataLayer;
@@ -1008,22 +1025,37 @@
             periphery::exchange_single_order::verify(settings, context);
         }
 
-        service_base {
+        align_single_order {
+            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
+            <span class="kw">let </span>context = periphery::align_single_order::init(settings);
+
+            <span class="kw">let </span><span class="kw-2">mut </span>data = order_book_imported::storage_data_layer::StorageDataLayer::&lt;T&gt;::new();
+        }: {
+            context
+            .order_book
+            .align_limit_orders(Vec::from([context.order_to_align.clone()]), <span class="kw-2">&amp;mut </span>data)
+            .unwrap();
+        }
+        verify {
+            periphery::align_single_order::verify(context);
+        }
+
+        service_expiration_base {
             <span class="kw">let </span><span class="kw-2">mut </span>weight = WeightMeter::max_limit();
             <span class="kw">let </span>block_number = <span class="number">0u32</span>.unique_saturated_into();
         }: {
-            OrderBookPallet::&lt;T&gt;::service(block_number, <span class="kw-2">&amp;mut </span>weight);
+            OrderBookPallet::&lt;T&gt;::service_expiration(block_number, <span class="kw-2">&amp;mut </span>weight);
         }
         verify {}
 
-        service_block_base {
+        service_expiration_block_base {
             <span class="kw">let </span><span class="kw-2">mut </span>weight = WeightMeter::max_limit();
             <span class="kw">let </span>block_number = <span class="number">0u32</span>.unique_saturated_into();
             <span class="comment">// should be the slower layer because cache is not
             // warmed up
             </span><span class="kw">let </span><span class="kw-2">mut </span>data_layer = CacheDataLayer::&lt;T&gt;::new();
         }: {
-            OrderBookPallet::&lt;T&gt;::service_block(<span class="kw-2">&amp;mut </span>data_layer, block_number, <span class="kw-2">&amp;mut </span>weight);
+            OrderBookPallet::&lt;T&gt;::service_expiration_block(<span class="kw-2">&amp;mut </span>data_layer, block_number, <span class="kw-2">&amp;mut </span>weight);
         }
         verify {}
 

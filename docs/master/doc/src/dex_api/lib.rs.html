@@ -531,7 +531,7 @@
             MulticollateralBondingCurvePool =&gt; <span class="macro">can_exchange!</span>(MulticollateralBondingCurvePool),
             XSTPool =&gt; <span class="macro">can_exchange!</span>(XSTPool),
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>OrderBook =&gt; <span class="macro">can_exchange!</span>(OrderBook),
 
             MockPool =&gt; <span class="macro">can_exchange!</span>(MockLiquiditySource),
@@ -566,7 +566,7 @@
             MulticollateralBondingCurvePool =&gt; <span class="macro">quote!</span>(MulticollateralBondingCurvePool),
             XSTPool =&gt; <span class="macro">quote!</span>(XSTPool),
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>OrderBook =&gt; <span class="macro">quote!</span>(OrderBook),
 
             MockPool =&gt; <span class="macro">quote!</span>(MockLiquiditySource),
@@ -603,7 +603,7 @@
             MulticollateralBondingCurvePool =&gt; <span class="macro">exchange!</span>(MulticollateralBondingCurvePool),
             XSTPool =&gt; <span class="macro">exchange!</span>(XSTPool),
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>OrderBook =&gt; <span class="macro">exchange!</span>(OrderBook),
 
             MockPool =&gt; <span class="macro">exchange!</span>(MockLiquiditySource),
@@ -638,7 +638,7 @@
             MulticollateralBondingCurvePool =&gt; <span class="macro">check_rewards!</span>(MulticollateralBondingCurvePool),
             XSTPool =&gt; <span class="macro">check_rewards!</span>(XSTPool),
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>OrderBook =&gt; <span class="macro">check_rewards!</span>(OrderBook),
 
             MockPool =&gt; <span class="macro">check_rewards!</span>(MockLiquiditySource),
@@ -675,7 +675,7 @@
             }
             XSTPool =&gt; <span class="macro">quote_without_impact!</span>(XSTPool),
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
             </span>OrderBook =&gt; <span class="macro">quote_without_impact!</span>(OrderBook),
 
             MockPool =&gt; <span class="macro">quote_without_impact!</span>(MockLiquiditySource),
@@ -691,7 +691,7 @@
         </span><span class="attr">#[allow(unused_assignments)] </span><span class="comment">// order-book
         </span><span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::zero();
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
         </span>{
             weight = T::OrderBook::quote_weight();
         }
@@ -707,7 +707,7 @@
         </span><span class="attr">#[allow(unused_assignments)] </span><span class="comment">// order-book
         </span><span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::zero();
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
         </span>{
             weight = T::OrderBook::exchange_weight();
         }
@@ -723,7 +723,7 @@
         </span><span class="attr">#[allow(unused_assignments)] </span><span class="comment">// order-book
         </span><span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::zero();
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
         </span>{
             weight = T::OrderBook::check_rewards_weight();
         }
@@ -844,7 +844,7 @@
             DispatchError,
         &gt;;
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// order-book
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
         </span><span class="kw">type </span>OrderBook: LiquiditySource&lt;
             <span class="self">Self</span>::DEXId,
             <span class="self">Self</span>::AccountId,
