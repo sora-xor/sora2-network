@@ -399,7 +399,10 @@ pub(crate) mod execute_market_order_scattered {
         };
         assert_eq!(
             aggregated_side_executed.len(),
-            settings.max_side_price_count as usize
+            sp_std::cmp::min(
+                settings.max_side_price_count,
+                settings.executed_orders_limit
+            ) as usize
         );
         context
     }
@@ -579,7 +582,10 @@ pub(crate) mod exchange_scattered {
         };
         assert_eq!(
             aggregated_side_executed.len(),
-            settings.max_side_price_count as usize
+            sp_std::cmp::min(
+                settings.max_side_price_count,
+                settings.executed_orders_limit
+            ) as usize
         );
         context
     }
