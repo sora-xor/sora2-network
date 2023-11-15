@@ -33,6 +33,7 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+use std::iter::Peekable;
 // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(test)]
 use framenode_runtime::order_book as order_book_imported;
@@ -49,7 +50,6 @@ use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, Scalar};
 use common::{Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::debug;
-use frame_support::log::trace;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
 use order_book_imported::test_utils::fill_tools::{
@@ -151,13 +151,11 @@ fn prepare_order_execute_worst_case<T: Config>(
     double_worst_order_amount: bool,
     scatter: bool,
 ) -> (
-    impl Iterator<Item = T::AccountId>,
-    impl Iterator<Item = u64>,
+    Peekable<impl Iterator<Item = T::AccountId>>,
+    Peekable<impl Iterator<Item = u64>>,
     OrderVolume,
     PriceVariant,
 ) {
-    let mut bid_prices =
-        bid_prices_iterator(order_book.tick_size, fill_settings.max_side_price_count);
     let orders_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let orders_side = PriceVariant::Buy;
     let max_price = order_book.tick_size * Scalar(2 * fill_settings.max_side_price_count);
@@ -168,9 +166,11 @@ fn prepare_order_execute_worst_case<T: Config>(
         orders_amount,
         max_price, // still mint max to reuse the iter later
         fill_settings.max_orders_per_user,
-    );
+    )
+    .peekable();
     // Lifespans for each placed order
-    let mut lifespans = lifespans_iterator::<T>(fill_settings.max_expiring_orders_per_block, 1);
+    let mut lifespans =
+        lifespans_iterator::<T>(fill_settings.max_expiring_orders_per_block, 1).peekable();
     // maximum number of executed orders is either max the storages allow or the value from
     // the settings, whichever restricts the most
     let max_side_orders = sp_std::cmp::min(
@@ -179,6 +179,10 @@ fn prepare_order_execute_worst_case<T: Config>(
     );
     let mut orders_to_place = max_side_orders;
     let (mut settings_1st, settings_2nd) = worst_case_settings_parts(fill_settings, scatter);
+    let mut bid_prices = bid_prices_iterator(
+        order_book.tick_size,
+        settings_1st.max_side_price_count + settings_2nd.max_side_price_count,
+    );
 
     if double_worst_order_amount {
         // The worst price is a special case:
@@ -232,23 +236,30 @@ fn prepare_order_execute_worst_case<T: Config>(
             .expect("Must have at least one price in the first part");
     }
     // any of the iterators can limit number of placed orders; `users` is one of them
-    let mut limited_users = users.by_ref().take(orders_to_place.try_into().unwrap());
+    let mut limited_users = users
+        .by_ref()
+        .take(orders_to_place.try_into().unwrap())
+        .peekable(); // would be great to reuse the peekable inside; not sure how
+
     debug!("Filling a side of the order book for worst-case execution");
-    trace!(
+    debug!(
         "Filling 1st part with settings ({:?} orders)",
         settings_1st.max_side_price_count * settings_1st.max_orders_per_price
     );
+    let mut bid_prices_1st = bid_prices
+        .by_ref()
+        .take(settings_1st.max_side_price_count as usize);
     fill_order_book_side(
         data,
         settings_1st.clone(),
         order_book,
         orders_side,
         orders_amount,
-        &mut bid_prices,
+        &mut bid_prices_1st,
         &mut limited_users,
         &mut lifespans,
     );
-    trace!(
+    debug!(
         "Filling 2nd part with settings ({:?} orders)",
         settings_2nd.max_side_price_count * settings_2nd.max_orders_per_price
     );
@@ -262,6 +273,7 @@ fn prepare_order_execute_worst_case<T: Config>(
         &mut limited_users,
         &mut lifespans,
     );
+
     // all orders were placed
     #[allow(unused_variables)]
     let orders_to_place = 0;
@@ -330,9 +342,11 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
         order_amount,
         order_book.tick_size,
         fill_settings.max_orders_per_user,
-    );
+    )
+    .peekable();
     // Lifespans for each placed order
-    let mut lifespans = lifespans_iterator::<T>(fill_settings.max_expiring_orders_per_block, 1);
+    let mut lifespans =
+        lifespans_iterator::<T>(fill_settings.max_expiring_orders_per_block, 1).peekable();
 
     // The price where the order is going to be placed should be filled
     let mut fill_price_settings = fill_settings.clone();
@@ -385,14 +399,16 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
     // leave a room for 1
     fill_expiration_settings.max_expiring_orders_per_block -= 1;
     // mint other base asset as well
-    let mut users = users.inspect(move |user| {
-        assets::Pallet::<T>::mint_unchecked(
-            &order_book_id_2.base,
-            &user,
-            *order_amount_2.balance(),
-        )
-        .unwrap();
-    });
+    let mut users = users
+        .inspect(move |user| {
+            assets::Pallet::<T>::mint_unchecked(
+                &order_book_id_2.base,
+                &user,
+                *order_amount_2.balance(),
+            )
+            .unwrap();
+        })
+        .peekable();
 
     fill_expiration_schedule(
         &mut data_layer,
@@ -558,14 +574,16 @@ pub fn cancel_limit_order<T: Config>(
     // we add one more separately
     fill_expiration_settings.max_expiring_orders_per_block -= 1;
     // mint other base asset as well
-    let mut users = users.inspect(move |user| {
-        assets::Pallet::<T>::mint_unchecked(
-            &order_book_id_2.base,
-            &user,
-            *order_amount_2.balance(),
-        )
-        .unwrap();
-    });
+    let mut users = users
+        .inspect(move |user| {
+            assets::Pallet::<T>::mint_unchecked(
+                &order_book_id_2.base,
+                &user,
+                *order_amount_2.balance(),
+            )
+            .unwrap();
+        })
+        .peekable();
     fill_expiration_schedule(
         &mut data_layer,
         fill_expiration_settings.clone(),
