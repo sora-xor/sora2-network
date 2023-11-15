@@ -3,7 +3,7 @@
 
 use clap::Parser;
 use common::prelude::SwapVariant;
-use common::{DEXId, DexInfoProvider};
+use common::DEXId;
 use frame_remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities};
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
