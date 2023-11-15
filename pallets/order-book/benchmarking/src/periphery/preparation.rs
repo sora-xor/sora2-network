@@ -33,7 +33,6 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use std::iter::Peekable;
 // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(test)]
 use framenode_runtime::order_book as order_book_imported;
@@ -63,6 +62,7 @@ use order_book_imported::{
     OrderBookId, OrderBooks, OrderPrice, OrderVolume,
 };
 use sp_runtime::traits::{CheckedMul, SaturatedConversion, Scale};
+use sp_std::iter::Peekable;
 
 use order_book_benchmarking_imported::{assert_orders_numbers, Config, DEX};
 
