@@ -89,10 +89,10 @@ fn test_benchmark_cancel() {
     })
 }
 
-#[test]
-fn test_benchmark_execute_market_order() {
+fn test_benchmark_execute_market_order(executed_orders_limit: u32) {
     ext().execute_with(|| {
-        let settings = FillSettings::<Runtime>::max();
+        let mut settings = FillSettings::<Runtime>::max();
+        settings.executed_orders_limit = executed_orders_limit;
         let context = periphery::execute_market_order::init(settings.clone());
 
         OrderBookPallet::<Runtime>::execute_market_order(
@@ -105,6 +105,16 @@ fn test_benchmark_execute_market_order() {
 
         periphery::execute_market_order::verify(context);
     })
+}
+
+#[test]
+fn test_benchmark_execute_market_order_max_orders() {
+    test_benchmark_execute_market_order(FillSettings::<Runtime>::max().executed_orders_limit);
+}
+
+#[test]
+fn test_benchmark_execute_market_order_one_order() {
+    test_benchmark_execute_market_order(1);
 }
 
 #[test]
@@ -144,12 +154,12 @@ fn test_benchmark_quote() {
     })
 }
 
-#[test]
-fn test_benchmark_exchange() {
+fn test_benchmark_exchange(executed_orders_limit: u32) {
     ext().execute_with(|| {
         use common::LiquiditySource;
 
-        let settings = FillSettings::<Runtime>::max();
+        let mut settings = FillSettings::<Runtime>::max();
+        settings.executed_orders_limit = executed_orders_limit;
         let context = periphery::exchange::init(settings.clone());
 
         let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
@@ -170,11 +180,21 @@ fn test_benchmark_exchange() {
 }
 
 #[test]
-fn test_benchmark_exchange_scattered() {
+fn test_benchmark_exchange_max_orders() {
+    test_benchmark_exchange(FillSettings::<Runtime>::max().executed_orders_limit);
+}
+
+#[test]
+fn test_benchmark_exchange_one_order() {
+    test_benchmark_exchange(1);
+}
+
+fn test_benchmark_exchange_scattered(executed_orders_limit: u32) {
     ext().execute_with(|| {
         use common::LiquiditySource;
 
-        let settings = FillSettings::<Runtime>::max();
+        let mut settings = FillSettings::<Runtime>::max();
+        settings.executed_orders_limit = executed_orders_limit;
         let context = periphery::exchange_scattered::init(settings.clone());
 
         let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
@@ -192,6 +212,15 @@ fn test_benchmark_exchange_scattered() {
 
         periphery::exchange_scattered::verify(context);
     })
+}
+
+#[test]
+fn test_benchmark_exchange_scattered_max_orders() {
+    test_benchmark_exchange_scattered(FillSettings::<Runtime>::max().executed_orders_limit);
+}
+#[test]
+fn test_benchmark_exchange_scattered_one_order() {
+    test_benchmark_exchange_scattered(1);
 }
 
 #[test]
