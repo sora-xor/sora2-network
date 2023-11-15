@@ -68,7 +68,7 @@ use common::{AssetId32, Description, PredefinedAssetId};
 use common::{XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 use frame_support::traits::EitherOf;
 use frame_support::weights::ConstantMultiplier;
 
@@ -156,9 +156,9 @@ use impls::{
 };
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
-#[cfg(all(feature = "runtime-benchmarks", feature = "wip"))] // order-book
+#[cfg(all(feature = "runtime-benchmarks", feature = "ready-to-test"))] // order-book
 pub use order_book_benchmarking;
-#[cfg(all(feature = "private-net", feature = "wip"))] // order-book
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 pub use qa_tools;
 pub use {
     assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
@@ -336,7 +336,7 @@ parameter_types! {
     pub const TechnicalCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
-    pub SchedulerMaxWeight: Weight = Perbill::from_percent(80) * BlockWeights::get().max_block;
+    pub SchedulerMaxWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
     pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -1103,7 +1103,7 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
 
-    #[cfg(feature = "wip")] // order-book
+    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = order_book::Pallet<Runtime>;
 }
 
@@ -1451,7 +1451,7 @@ parameter_types! {
     pub QaToolsWhitelistCapacity: u32 = 512;
 }
 
-#[cfg(all(feature = "private-net", feature = "wip"))] // order-book
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 impl qa_tools::Config for Runtime {
     type AssetInfoProvider = Assets;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
@@ -1900,10 +1900,11 @@ impl hermes_governance_platform::Config for Runtime {
 
 parameter_types! {
     // small value for test environment in order to check postponing expirations
-    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block; // TODO: order-book clarify
+    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block;
+    pub AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(35) * BlockWeights::get().max_block;
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 impl order_book::Config for Runtime {
     const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days
     const MIN_ORDER_LIFESPAN: Moment = (MINUTES as Moment) * MILLISECS_PER_BLOCK; // 1 minute
@@ -1931,6 +1932,7 @@ impl order_book::Config for Runtime {
     type MaxSidePriceCount = ConstU32<1024>;
     type MaxExpiringOrdersPerBlock = ConstU32<512>;
     type MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
+    type MaxAlignmentWeightPerBlock = AlignmentSchedulerMaxWeight;
     type EnsureTradingPairExists = TradingPair;
     type TradingPairSourceManager = TradingPair;
     type AssetInfoProvider = Assets;
@@ -2332,7 +2334,7 @@ construct_runtime! {
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
         // Leaf provider should be placed before any pallet which is uses it
@@ -2385,7 +2387,7 @@ construct_runtime! {
         // Available only for test net
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
-        #[cfg(all(feature = "private-net", feature = "wip"))] // order-book
+        #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
         QATools: qa_tools::{Pallet, Call} = 112,
     }
 }
@@ -3095,7 +3097,7 @@ impl_runtime_apis! {
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             use order_book_benchmarking::Pallet as OrderBookBench;
 
             let mut list = Vec::<BenchmarkList>::new();
@@ -3127,7 +3129,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
@@ -3171,7 +3173,7 @@ impl_runtime_apis! {
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             use order_book_benchmarking::Pallet as OrderBookBench;
 
             impl liquidity_proxy_benchmarking::Config for Runtime {}
@@ -3179,7 +3181,7 @@ impl_runtime_apis! {
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
             impl xst_benchmarking::Config for Runtime {}
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             impl order_book_benchmarking::Config for Runtime {}
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -3227,7 +3229,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge

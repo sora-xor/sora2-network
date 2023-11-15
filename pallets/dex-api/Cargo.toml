@@ -68,4 +68,4 @@ std = [
 
 try-runtime = ["frame-support/try-runtime"]
 
-wip = ["common/wip"]
+ready-to-test = ["common/ready-to-test"]

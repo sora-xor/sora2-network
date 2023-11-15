@@ -76,7 +76,7 @@ impl<T: Config>
             MulticollateralBondingCurvePool => can_exchange!(MulticollateralBondingCurvePool),
             XSTPool => can_exchange!(XSTPool),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             OrderBook => can_exchange!(OrderBook),
 
             MockPool => can_exchange!(MockLiquiditySource),
@@ -111,7 +111,7 @@ impl<T: Config>
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
             XSTPool => quote!(XSTPool),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             OrderBook => quote!(OrderBook),
 
             MockPool => quote!(MockLiquiditySource),
@@ -148,7 +148,7 @@ impl<T: Config>
             MulticollateralBondingCurvePool => exchange!(MulticollateralBondingCurvePool),
             XSTPool => exchange!(XSTPool),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             OrderBook => exchange!(OrderBook),
 
             MockPool => exchange!(MockLiquiditySource),
@@ -183,7 +183,7 @@ impl<T: Config>
             MulticollateralBondingCurvePool => check_rewards!(MulticollateralBondingCurvePool),
             XSTPool => check_rewards!(XSTPool),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             OrderBook => check_rewards!(OrderBook),
 
             MockPool => check_rewards!(MockLiquiditySource),
@@ -220,7 +220,7 @@ impl<T: Config>
             }
             XSTPool => quote_without_impact!(XSTPool),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             OrderBook => quote_without_impact!(OrderBook),
 
             MockPool => quote_without_impact!(MockLiquiditySource),
@@ -236,7 +236,7 @@ impl<T: Config>
         #[allow(unused_assignments)] // order-book
         let mut weight = Weight::zero();
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             weight = T::OrderBook::quote_weight();
         }
@@ -252,7 +252,7 @@ impl<T: Config>
         #[allow(unused_assignments)] // order-book
         let mut weight = Weight::zero();
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             weight = T::OrderBook::exchange_weight();
         }
@@ -268,7 +268,7 @@ impl<T: Config>
         #[allow(unused_assignments)] // order-book
         let mut weight = Weight::zero();
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             weight = T::OrderBook::check_rewards_weight();
         }
@@ -389,7 +389,7 @@ pub mod pallet {
             DispatchError,
         >;
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         type OrderBook: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
