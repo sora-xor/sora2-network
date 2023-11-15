@@ -109,7 +109,11 @@ fn test_benchmark_execute_market_order(executed_orders_limit: u32) {
 
 #[test]
 fn test_benchmark_execute_market_order_max_orders() {
-    test_benchmark_execute_market_order(FillSettings::<Runtime>::max().executed_orders_limit);
+    test_benchmark_execute_market_order(
+        <Runtime as order_book_imported::Config>::HARD_MIN_MAX_RATIO
+            .try_into()
+            .unwrap(),
+    );
 }
 
 #[test]
@@ -181,7 +185,11 @@ fn test_benchmark_exchange(executed_orders_limit: u32) {
 
 #[test]
 fn test_benchmark_exchange_max_orders() {
-    test_benchmark_exchange(FillSettings::<Runtime>::max().executed_orders_limit);
+    test_benchmark_exchange(
+        <Runtime as order_book_imported::Config>::HARD_MIN_MAX_RATIO
+            .try_into()
+            .unwrap(),
+    );
 }
 
 #[test]
@@ -216,7 +224,11 @@ fn test_benchmark_exchange_scattered(executed_orders_limit: u32) {
 
 #[test]
 fn test_benchmark_exchange_scattered_max_orders() {
-    test_benchmark_exchange_scattered(FillSettings::<Runtime>::max().executed_orders_limit);
+    test_benchmark_exchange_scattered(
+        <Runtime as order_book_imported::Config>::HARD_MIN_MAX_RATIO
+            .try_into()
+            .unwrap(),
+    );
 }
 #[test]
 fn test_benchmark_exchange_scattered_one_order() {
