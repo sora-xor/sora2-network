@@ -1923,17 +1923,6 @@ fn test_is_path_available_should_pass_5() {
             None,
             None,
         ).expect("failed to register XST asset");
-        assets::Pallet::<Runtime>::register_asset_id(
-            alice(),
-            XSTUSD.into(),
-            AssetSymbol(b"XSTUSD".to_vec()),
-            AssetName(b"SORA Synthetic USD".to_vec()),
-            0,
-            Balance::from(0u32),
-            true,
-            None,
-            None,
-        ).expect("failed to register XSTUSD asset");
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, XST).expect("failed to register pair");
@@ -3869,7 +3858,8 @@ fn test_xorless_transfer_works() {
         );
         assert_eq!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
-            balance!(356400)
+            // 356400 - 1600 XOR, deduction for synthetic XSTUSD in mock
+            balance!(354800)
         );
 
         let filter_mode = FilterMode::AllowSelected;
@@ -3896,7 +3886,7 @@ fn test_xorless_transfer_works() {
         );
         assert_approx_eq!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
-            balance!(356401),
+            balance!(354801),
             balance!(0.01)
         );
         assert_approx_eq!(
@@ -3918,7 +3908,7 @@ fn test_xorless_transfer_without_swap_works() {
         );
         assert_eq!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
-            balance!(356400)
+            balance!(354800)
         );
 
         let filter_mode = FilterMode::AllowSelected;
@@ -3945,7 +3935,7 @@ fn test_xorless_transfer_without_swap_works() {
         );
         assert_approx_eq!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
-            balance!(356400),
+            balance!(354800),
             balance!(0.01)
         );
         assert_approx_eq!(

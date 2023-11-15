@@ -1173,7 +1173,6 @@ fn fee_payment_postponed_xorless_transfer() {
         let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
             dex_id: 0,
             asset_id: VAL,
-            // Swap with desired output may return less tokens than requested
             desired_xor_amount: 0,
             max_amount_in: 0,
             amount: balance!(500),
@@ -1195,8 +1194,7 @@ fn fee_payment_postponed_xorless_transfer() {
         let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
             dex_id: 0,
             asset_id: VAL,
-            // Swap with desired output may return less tokens than requested
-            desired_xor_amount: SMALL_FEE + 1,
+            desired_xor_amount: SMALL_FEE,
             max_amount_in: balance!(1),
             amount: balance!(10),
             selected_source_types: vec![],
@@ -1228,7 +1226,7 @@ fn fee_payment_postponed_xorless_transfer() {
         );
         assert_eq!(
             Assets::total_balance(&VAL.into(), &alice()).unwrap(),
-            balance!(989.999297892695135178)
+            balance!(989.999297892695135179)
         );
         assert_eq!(
             Assets::total_balance(&VAL.into(), &bob()).unwrap(),
@@ -1278,8 +1276,7 @@ fn fee_payment_postpone_failed_xorless_transfer() {
         let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
             dex_id: 0,
             asset_id: VAL,
-            // Swap with desired output may return less tokens than requested
-            desired_xor_amount: SMALL_FEE + 1,
+            desired_xor_amount: SMALL_FEE,
             max_amount_in: 1,
             amount: balance!(10),
             selected_source_types: vec![],
@@ -1296,7 +1293,6 @@ fn fee_payment_postpone_failed_xorless_transfer() {
         let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
             dex_id: 0,
             asset_id: VAL,
-            // Swap with desired output may return less tokens than requested
             desired_xor_amount: 0,
             max_amount_in: 0,
             amount: balance!(500),
