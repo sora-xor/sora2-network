@@ -21,7 +21,4 @@ liquidity-proxy-runtime-api = { path = "../runtime-api" }
 common = { path = "../../../common" }
 
 [features]
-wip = [
-    "common/wip",
-    "liquidity-proxy-runtime-api/wip",
-]
+ready-to-test = ["common/ready-to-test", "liquidity-proxy-runtime-api/ready-to-test"]
