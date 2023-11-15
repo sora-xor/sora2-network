@@ -108,6 +108,24 @@ fn test_benchmark_execute_market_order() {
 }
 
 #[test]
+fn test_benchmark_execute_market_order_scattered() {
+    ext().execute_with(|| {
+        let settings = FillSettings::<Runtime>::max();
+        let context = periphery::execute_market_order_scattered::init(settings.clone());
+
+        OrderBookPallet::<Runtime>::execute_market_order(
+            RawOrigin::Signed(context.caller.clone()).into(),
+            context.order_book_id,
+            context.side,
+            *context.amount.balance(),
+        )
+        .unwrap();
+
+        periphery::execute_market_order_scattered::verify(context);
+    })
+}
+
+#[test]
 fn test_benchmark_quote() {
     ext().execute_with(|| {
         use common::LiquiditySource;

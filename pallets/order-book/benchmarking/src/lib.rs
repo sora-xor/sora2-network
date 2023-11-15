@@ -351,6 +351,21 @@ mod benchmarks_inner {
             periphery::execute_market_order::verify(context);
         }
 
+        execute_market_order_scattered {
+            let settings = FillSettings::<T>::max();
+            let context = periphery::execute_market_order_scattered::init(settings.clone());
+        }: {
+            OrderBookPallet::<T>::execute_market_order(
+                RawOrigin::Signed(context.caller.clone()).into(),
+                context.order_book_id,
+                context.side,
+                *context.amount.balance()
+            ).unwrap();
+        }
+        verify {
+            periphery::execute_market_order_scattered::verify(context);
+        }
+
         quote {
             let settings = FillSettings::<T>::max();
             let context = periphery::quote::init(settings);
