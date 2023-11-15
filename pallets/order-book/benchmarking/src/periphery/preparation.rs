@@ -49,6 +49,7 @@ use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, Scalar};
 use common::{Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::debug;
+use frame_support::log::trace;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
 use order_book_imported::test_utils::fill_tools::{
@@ -61,16 +62,79 @@ use order_book_imported::{
     cache_data_layer::CacheDataLayer, traits::DataLayer, LimitOrder, MomentOf, OrderBook,
     OrderBookId, OrderBooks, OrderPrice, OrderVolume,
 };
-use sp_runtime::traits::{CheckedMul, SaturatedConversion};
+use sp_runtime::traits::{CheckedMul, SaturatedConversion, Scale};
 
 use order_book_benchmarking_imported::{assert_orders_numbers, Config, DEX};
 
 use order_book_imported::Pallet as OrderBookPallet;
 
+/// In order to scatter, the orders must be placed in the following way:
+///
+/// ```text
+/// 1st part                    2nd part
+/// ==========================|
+/// ==========================|========================
+///
+/// worst price                              best_price
+/// ```
+///
+/// Returns `(settings_for_1st_part, settings_for_2nd_part)`
+///
+/// If not `scattered`, 2nd part is empty
+///
+fn worst_case_settings_parts<T: Config>(
+    fill_settings: FillSettings<T>,
+    scattered: bool,
+) -> (FillSettings<T>, FillSettings<T>) {
+    if scattered {
+        let max_side_orders = sp_std::cmp::min(
+            fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
+            fill_settings.executed_orders_limit as u128,
+        );
+        // the orders are to be placed as even as possible, having either
+        // `ceil(max_side_orders/max_side_price_count)` or `floor(max_side_orders/max_side_price_count)`
+        // orders in each price
+
+        // first part: `ceil(..)`
+        let settings_1st = FillSettings {
+            max_orders_per_price: max_side_orders
+                .div_ceil(fill_settings.max_side_price_count as u128)
+                .try_into()
+                .unwrap(),
+            max_side_price_count: max_side_orders
+                .rem(fill_settings.max_side_price_count as u128)
+                .try_into()
+                .unwrap(),
+            ..fill_settings
+        };
+        // second part: `floor(..)`
+        let settings_2nd = FillSettings {
+            max_orders_per_price: max_side_orders
+                .div_floor(fill_settings.max_side_price_count as u128)
+                .try_into()
+                .unwrap(),
+            max_side_price_count: fill_settings.max_side_price_count
+                - settings_1st.max_side_price_count,
+            ..fill_settings
+        };
+        (settings_1st, settings_2nd)
+    } else {
+        let empty_settings = FillSettings {
+            now: fill_settings.now,
+            max_side_price_count: 0,
+            max_orders_per_price: 0,
+            max_orders_per_user: 0,
+            max_expiring_orders_per_block: 0,
+            executed_orders_limit: 0,
+        };
+        (fill_settings, empty_settings)
+    }
+}
+
 /// Places buy orders for worst-case execution. Fill up max amount allowed by the storages or by
 /// `fill_settings.executed_orders_limit`.
 ///
-/// If `double_cheapest_order_amount` is true, one order in the lowest price is set for twice of the
+/// If `double_worst_order_amount` is true, one order in the worst price is set for twice of the
 /// amount; it allows partial execution.
 ///
 /// Price of the order to execute is minimal possible in the order book.
@@ -78,13 +142,14 @@ use order_book_imported::Pallet as OrderBookPallet;
 /// Returns:
 /// - iterators in the same way as `fill_order_book_worst_case`
 /// - volume of an order for worst-case execution (for partial execution of the last one, in case
-/// `double_cheapest_order_amount` is true)
+/// `double_worst_order_amount` is true)
 /// - price variant of the order
 fn prepare_order_execute_worst_case<T: Config>(
     data: &mut impl DataLayer<T>,
     order_book: &mut OrderBook<T>,
     fill_settings: FillSettings<T>,
-    double_cheapest_order_amount: bool,
+    double_worst_order_amount: bool,
+    scatter: bool,
 ) -> (
     impl Iterator<Item = T::AccountId>,
     impl Iterator<Item = u64>,
@@ -113,14 +178,16 @@ fn prepare_order_execute_worst_case<T: Config>(
         fill_settings.executed_orders_limit as u128,
     );
     let mut orders_to_place = max_side_orders;
+    let (mut settings_1st, settings_2nd) = worst_case_settings_parts(fill_settings, scatter);
 
-    if double_cheapest_order_amount {
-        // The cheapest price is a special case:
+    if double_worst_order_amount {
+        // The worst price is a special case:
         // the last order in the price has double of the amount to allow partial execution
-        debug!("Filling cheapest price to allow partial execution of one order");
+        debug!("Filling worst price to allow partial execution of one order");
+        // it always falls into `settings_1st`
         let min_price = bid_prices.next().unwrap();
 
-        let mut fill_price_settings = fill_settings.clone();
+        let mut fill_price_settings = settings_1st.clone();
         fill_price_settings.max_orders_per_price = sp_std::cmp::min(
             orders_to_place.try_into().unwrap_or(u32::MAX),
             fill_price_settings.max_orders_per_price,
@@ -159,13 +226,35 @@ fn prepare_order_execute_worst_case<T: Config>(
         .unwrap();
         order_book.place_limit_order(order, data).unwrap();
         orders_to_place -= 1;
+        settings_1st.max_side_price_count = settings_1st
+            .max_side_price_count
+            .checked_sub(1)
+            .expect("Must have at least one price in the first part");
     }
     // any of the iterators can limit number of placed orders; `users` is one of them
     let mut limited_users = users.by_ref().take(orders_to_place.try_into().unwrap());
     debug!("Filling a side of the order book for worst-case execution");
+    trace!(
+        "Filling 1st part with settings ({:?} orders)",
+        settings_1st.max_side_price_count * settings_1st.max_orders_per_price
+    );
     fill_order_book_side(
         data,
-        fill_settings.clone(),
+        settings_1st.clone(),
+        order_book,
+        orders_side,
+        orders_amount,
+        &mut bid_prices,
+        &mut limited_users,
+        &mut lifespans,
+    );
+    trace!(
+        "Filling 2nd part with settings ({:?} orders)",
+        settings_2nd.max_side_price_count * settings_2nd.max_orders_per_price
+    );
+    fill_order_book_side(
+        data,
+        settings_2nd.clone(),
         order_book,
         orders_side,
         orders_amount,
@@ -176,6 +265,7 @@ fn prepare_order_execute_worst_case<T: Config>(
     // all orders were placed
     #[allow(unused_variables)]
     let orders_to_place = 0;
+    assert!(limited_users.next().is_none(), "did not place all orders");
     debug!("Update order book to allow execution of max # of orders");
     let to_execute_volume = order_book
         .min_lot_size
@@ -557,12 +647,14 @@ pub fn quote<T: Config>(
 /// - `author` - the account from which the order is going to be executed. It should not be from
 /// `test_utils::generate_account`.
 /// - `is_divisible` - controls the divisibility of order book base asset.
+/// - `scatter` - if true, spreads orders across all prices (as even as possible).
 ///
 /// Returns parameters necessary for the order execution. `OrderVolume` is in base asset.
 pub fn market_order_execution<T: Config + trading_pair::Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
     is_divisible: bool,
+    scatter: bool,
 ) -> (
     OrderBookId<AssetIdOf<T>, T::DEXId>,
     OrderVolume,
@@ -639,6 +731,7 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
         &mut order_book,
         fill_settings.clone(),
         true,
+        scatter,
     );
 
     assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *amount.balance()).unwrap();

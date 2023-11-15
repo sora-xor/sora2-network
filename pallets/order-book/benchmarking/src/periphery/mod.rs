@@ -292,13 +292,14 @@ pub(crate) mod execute_market_order {
         })
     }
 
-    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
-        // https://github.com/paritytech/polkadot-sdk/issues/383
-        frame_system::Pallet::<T>::set_block_number(1u32.into());
+    pub(crate) fn init_inner<T: Config + trading_pair::Config>(
+        settings: FillSettings<T>,
+        scatter: bool,
+    ) -> Context<T> {
         let caller = accounts::alice::<T>();
         let is_divisible = false;
         let (order_book_id, amount, side) =
-            market_order_execution(settings, caller.clone(), is_divisible);
+            market_order_execution(settings, caller.clone(), is_divisible, scatter);
         let caller_base_balance =
             <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
                 &order_book_id.base,
@@ -325,7 +326,13 @@ pub(crate) mod execute_market_order {
         }
     }
 
-    pub fn verify<T: Config + core::fmt::Debug>(_settings: FillSettings<T>, context: Context<T>) {
+    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+        init_inner(settings, false)
+    }
+
+    pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
         let Context {
             caller,
             order_book_id,
@@ -364,6 +371,41 @@ pub(crate) mod execute_market_order {
             .unwrap(),
             caller_quote_balance + *(amount * average_price).balance()
         );
+    }
+}
+
+pub(crate) mod execute_market_order_scattered {
+    //! Same as `execute_market_order` benchmark but with orders evenly spread across
+    //! the order book.
+    //!
+    //! This might be slower because of working with storages aggregated by price.
+
+    use super::*;
+
+    pub fn init<T: Config + trading_pair::Config>(
+        settings: FillSettings<T>,
+    ) -> execute_market_order::Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+
+        let context = execute_market_order::init_inner(settings.clone(), true);
+        let aggregated_side_executed = match context.side.switched() {
+            PriceVariant::Buy => {
+                order_book_imported::Pallet::<T>::aggregated_bids(context.order_book_id)
+            }
+            PriceVariant::Sell => {
+                order_book_imported::Pallet::<T>::aggregated_asks(context.order_book_id)
+            }
+        };
+        assert_eq!(
+            aggregated_side_executed.len(),
+            settings.max_side_price_count as usize
+        );
+        context
+    }
+
+    pub fn verify<T: Config + core::fmt::Debug>(context: execute_market_order::Context<T>) {
+        execute_market_order::verify(context)
     }
 }
 
@@ -410,13 +452,14 @@ pub(crate) mod exchange {
         pub side: PriceVariant,
     }
 
-    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
-        // https://github.com/paritytech/polkadot-sdk/issues/383
-        frame_system::Pallet::<T>::set_block_number(1u32.into());
+    pub(crate) fn init_inner<T: Config + trading_pair::Config>(
+        settings: FillSettings<T>,
+        scatter: bool,
+    ) -> Context<T> {
         let caller = accounts::alice::<T>();
         let is_divisible = true;
         let (order_book_id, amount, side) =
-            market_order_execution(settings.clone(), caller.clone(), is_divisible);
+            market_order_execution(settings.clone(), caller.clone(), is_divisible, scatter);
         let caller_base_balance =
             <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
                 &order_book_id.base,
@@ -463,6 +506,12 @@ pub(crate) mod exchange {
             expected_average_price,
             side,
         }
+    }
+
+    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+        init_inner(settings, false)
     }
 
     pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
@@ -519,15 +568,7 @@ pub(crate) mod exchange_scattered {
     ) -> exchange::Context<T> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
-
-        let max_orders_per_price = settings
-            .executed_orders_limit
-            .div_ceil(settings.max_side_price_count);
-        let scattered_settings = FillSettings {
-            max_orders_per_price,
-            ..settings
-        };
-        let context = exchange::init(scattered_settings);
+        let context = exchange::init_inner(settings.clone(), true);
         let aggregated_side_executed = match context.side.switched() {
             PriceVariant::Buy => {
                 order_book_imported::Pallet::<T>::aggregated_bids(context.order_book_id)

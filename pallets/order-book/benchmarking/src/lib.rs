@@ -348,7 +348,7 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            periphery::execute_market_order::verify(settings, context);
+            periphery::execute_market_order::verify(context);
         }
 
         quote {

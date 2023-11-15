@@ -103,7 +103,7 @@ fn test_benchmark_execute_market_order() {
         )
         .unwrap();
 
-        periphery::execute_market_order::verify(settings, context);
+        periphery::execute_market_order::verify(context);
     })
 }
 
