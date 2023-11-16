@@ -44,14 +44,15 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     let poll_asset: AssetIdOf<T> = CERES_ASSET_ID.into();
     let user = AuthorityAccount::<T>::get();
     let bytes = hex!("c4e7d5a63d8e887932bb6dc505dd204005c3ecfb6de5f1f0d3ac0a308b2b2915");
-    let first_poll_creator = AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap();
+    let first_poll_creator =
+        AccountIdOf::<T>::decode(&mut &bytes[..]).map_err(|_| "Failed to decode AccountId")?;
     let mut options = BoundedVec::default();
     options.try_push(BoundedString::truncate_from("Yes")).ok();
     options.try_push(BoundedString::truncate_from("No")).ok();
 
     //Drain old data
     let number_of_drained_polls = OldPollData::<T::Moment>::drain().count();
-    log::info!("Number of polls: {}", number_of_drained_polls);
+    log::info!("Number of drained polls: {}", number_of_drained_polls);
 
     let mut poll_start_timestamp_a: <T as pallet_timestamp::Config>::Moment = 1647612888u32.into();
     poll_start_timestamp_a *= 1000u32.into();
@@ -175,11 +176,7 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
                 map.get(old_poll_id).unwrap_or(&H256::zero()),
                 account,
                 crate::VotingInfo {
-                    voting_option: if voting_info.voting_option == 1u32 {
-                        BoundedString::truncate_from("Yes")
-                    } else {
-                        BoundedString::truncate_from("No")
-                    },
+                    voting_option: voting_info.voting_option,
                     number_of_votes: voting_info.number_of_votes,
                     asset_withdrawn: voting_info.ceres_withdrawn,
                 },

@@ -19,10 +19,9 @@ pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[scale_info(skip_type_params(StringLimit))]
-pub struct VotingInfo<StringLimit: sp_core::Get<u32>> {
+pub struct VotingInfo {
     /// Voting option
-    voting_option: BoundedString<StringLimit>,
+    voting_option: u32,
     /// Number of votes
     number_of_votes: Balance,
     /// Asset withdrawn
@@ -125,15 +124,8 @@ pub mod pallet {
     /// A vote of a particular user for a particular poll
     #[pallet::storage]
     #[pallet::getter(fn votings)]
-    pub type Voting<T: Config> = StorageDoubleMap<
-        _,
-        Identity,
-        H256,
-        Identity,
-        AccountIdOf<T>,
-        VotingInfo<T::StringLimit>,
-        OptionQuery,
-    >;
+    pub type Voting<T: Config> =
+        StorageDoubleMap<_, Identity, H256, Identity, AccountIdOf<T>, VotingInfo, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn poll_data)]
@@ -179,13 +171,7 @@ pub mod pallet {
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Voting [who, poll, option, asset, balance]
-        Voted(
-            AccountIdOf<T>,
-            H256,
-            BoundedString<T::StringLimit>,
-            AssetIdOf<T>,
-            Balance,
-        ),
+        Voted(AccountIdOf<T>, H256, u32, AssetIdOf<T>, Balance),
         /// Create poll [who, title, poll_asset, start_timestamp, end_timestamp]
         Created(
             AccountIdOf<T>,
@@ -243,7 +229,7 @@ pub mod pallet {
         pub fn vote(
             origin: OriginFor<T>,
             poll_id: H256,
-            voting_option: BoundedString<T::StringLimit>,
+            voting_option: u32,
             number_of_votes: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -263,8 +249,10 @@ pub mod pallet {
                 Error::<T>::PollIsFinished
             );
 
+            // Check if voting option is valid, if not return error
+            let number_of_options = poll_info.options.len() as u32;
             ensure!(
-                poll_info.options.contains(&voting_option),
+                voting_option <= number_of_options && voting_option > 0u32,
                 Error::<T>::InvalidOption
             );
 
@@ -278,7 +266,7 @@ pub mod pallet {
                 <Voting<T>>::insert(poll_id, &user, voting_info);
             } else {
                 let new_voting_info = VotingInfo {
-                    voting_option: voting_option.clone(),
+                    voting_option,
                     number_of_votes,
                     asset_withdrawn: false,
                 };

@@ -240,7 +240,7 @@ fn vote_invalid_number_of_votes() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Voting option";
+        let voting_option = 0u32;
         let number_of_votes = balance!(0);
 
         assert_err!(
@@ -264,7 +264,7 @@ fn vote_poll_does_not_exist() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Voting option";
+        let voting_option = 1u32;
         let number_of_votes = balance!(100);
 
         assert_err!(
@@ -309,7 +309,7 @@ fn vote_poll_is_not_started() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Option 1";
+        let voting_option = 2u32;
         let number_of_votes = balance!(100);
 
         assert_err!(
@@ -356,7 +356,7 @@ fn vote_poll_is_finished() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Option 1";
+        let voting_option = 1u32;
         let number_of_votes = balance!(100);
 
         assert_err!(
@@ -401,7 +401,7 @@ fn vote_invalid_option() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Option 5";
+        let voting_option = 4u32;
         let number_of_votes = balance!(100);
 
         assert_err!(
@@ -446,7 +446,7 @@ fn vote_denied() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let first_voting_option = "Option 1";
+        let first_voting_option = 2u32;
         let number_of_votes = balance!(100);
 
         assert_ok!(CeresGovernancePlatform::vote(
@@ -456,7 +456,7 @@ fn vote_denied() {
             number_of_votes
         ));
 
-        let second_voting_option = "Option 2";
+        let second_voting_option = 1u32;
 
         assert_err!(
             CeresGovernancePlatform::vote(
@@ -500,7 +500,7 @@ fn vote_not_enough_funds() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Option 1";
+        let voting_option = 2u32;
         let number_of_votes = balance!(5100);
 
         assert_err!(
@@ -545,7 +545,7 @@ fn vote_ok() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Option 1";
+        let voting_option = 1u32;
         let number_of_votes = balance!(100);
 
         assert_ok!(CeresGovernancePlatform::vote(
@@ -587,7 +587,7 @@ fn vote_multiple_times_ok() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Option 1";
+        let voting_option = 2u32;
         let number_of_votes = balance!(100);
 
         assert_ok!(CeresGovernancePlatform::vote(
@@ -665,7 +665,7 @@ fn withdraw_poll_is_not_finished() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Option 1";
+        let voting_option = 2u32;
         let number_of_votes = balance!(100);
 
         assert_ok!(CeresGovernancePlatform::vote(
@@ -754,7 +754,7 @@ fn withdraw_funds_already_withdrawn() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Option 1";
+        let voting_option = 1u32;
         let number_of_votes = balance!(100);
 
         assert_ok!(CeresGovernancePlatform::vote(
@@ -787,7 +787,8 @@ fn withdraw_ok() {
         let poll_end_timestamp = poll_start_timestamp + 100;
         let title = "Title";
         let description = "Description";
-        let mut options = BoundedVec::default();
+        let mut options: BoundedVec<BoundedString<StringLimit>, OptionsLimit> =
+            BoundedVec::default();
 
         options.try_push("Option 1".try_into().unwrap()).unwrap();
         options.try_push("Option 2".try_into().unwrap()).unwrap();
@@ -808,7 +809,7 @@ fn withdraw_ok() {
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
-        let voting_option = "Option 1";
+        let voting_option = 3u32;
         let number_of_votes = balance!(100);
 
         assert_ok!(CeresGovernancePlatform::vote(
@@ -940,9 +941,9 @@ fn ceres_governance_migration_works() {
         let voting_b = pallet::Voting::<Runtime>::get(poll_id_a, user1).unwrap();
         let voting_c = pallet::Voting::<Runtime>::get(poll_id_b, user1).unwrap();
 
-        assert_eq!(voting_a.voting_option, BoundedString::truncate_from("Yes"));
-        assert_eq!(voting_b.voting_option, BoundedString::truncate_from("No"));
-        assert_eq!(voting_c.voting_option, BoundedString::truncate_from("No"));
+        assert_eq!(voting_a.voting_option, 1u32);
+        assert_eq!(voting_b.voting_option, 2u32);
+        assert_eq!(voting_c.voting_option, 2u32);
         assert_eq!(voting_a.number_of_votes, balance!(100));
         assert_eq!(voting_b.number_of_votes, balance!(69));
         assert_eq!(voting_c.number_of_votes, balance!(100));
