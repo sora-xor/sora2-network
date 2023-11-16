@@ -808,7 +808,10 @@ pub mod pallet {
         }
 
         #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::execute_market_order())]
+        #[pallet::weight(
+            <T as Config>::WeightInfo::execute_market_order()
+                .max(<T as Config>::WeightInfo::execute_market_order_scattered())
+        )]
         pub fn execute_market_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -1251,7 +1254,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         data.commit();
 
-        let weight = <T as Config>::WeightInfo::exchange(executed_orders_count as u32);
+        let weight = <T as Config>::WeightInfo::exchange(executed_orders_count as u32).max(
+            <T as Config>::WeightInfo::exchange_scattered(executed_orders_count as u32),
+        );
 
         Ok((result, weight))
     }
@@ -1356,7 +1361,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn exchange_weight() -> Weight {
-        <T as Config>::WeightInfo::exchange(T::HARD_MIN_MAX_RATIO.try_into().unwrap())
+        <T as Config>::WeightInfo::exchange(T::HARD_MIN_MAX_RATIO.try_into().unwrap()).max(
+            <T as Config>::WeightInfo::exchange_scattered(
+                T::HARD_MIN_MAX_RATIO.try_into().unwrap(),
+            ),
+        )
     }
 
     fn check_rewards_weight() -> Weight {
