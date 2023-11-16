@@ -53,16 +53,7 @@ async fn main() -> AnyResult<()> {
     let client = Arc::new(client);
     let mut ext = create_ext::<framenode_runtime::Block>(client.clone()).await?;
     let _res: AnyResult<()> = ext.execute_with(|| {
-        fn aboba(input: AssetIdOf<Runtime>, output: AssetIdOf<Runtime>) -> Weight {
-            // let dex_info =
-            //     dex_manager::Pallet::<Runtime>::get_dex_info(&DEXId::Polkaswap.into()).unwrap();
-            // dbg!(
-            //     liquidity_proxy::ExchangePath::<Runtime>::new_trivial(&dex_info, input, output,)
-            //         .unwrap()
-            //         .into_iter()
-            //         .map(|path| path.0)
-            //         .collect::<Vec<_>>()
-            // );
+        fn get_path_weight(input: AssetIdOf<Runtime>, output: AssetIdOf<Runtime>) -> Weight {
             liquidity_proxy::Pallet::<Runtime>::swap_weight(
                 &DEXId::Polkaswap.into(),
                 &input,
@@ -71,13 +62,13 @@ async fn main() -> AnyResult<()> {
             )
         }
         // Base -> Basic
-        let path_2_weight = aboba(common::XOR, common::PSWAP);
+        let path_2_weight = get_path_weight(common::XOR, common::PSWAP);
 
         // Basic -> Basic
-        let path_3_weight = aboba(common::VAL, common::PSWAP);
+        let path_3_weight = get_path_weight(common::VAL, common::PSWAP);
 
         // Synthetic -> Basic
-        let path_4_weight = aboba(common::XSTUSD, common::PSWAP);
+        let path_4_weight = get_path_weight(common::XSTUSD, common::PSWAP);
 
         dbg!(path_2_weight);
         dbg!(path_3_weight);
@@ -85,6 +76,20 @@ async fn main() -> AnyResult<()> {
         let execute_order_weight =
             <Runtime as framenode_runtime::order_book::Config>::WeightInfo::execute_market_order();
         dbg!(execute_order_weight);
+        let execute_order_weight_scattered =
+            <Runtime as framenode_runtime::order_book::Config>::WeightInfo::execute_market_order_scattered();
+        dbg!(execute_order_weight_scattered);
+
+        println!("\\\\\\\\\\\nexchange weights\n");
+        let max_orders = <Runtime as framenode_runtime::order_book::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
+        for n in [1, max_orders/2, max_orders] {
+            let exchange = <Runtime as framenode_runtime::order_book::Config>::WeightInfo::exchange(n);
+            let exchange_scattered = <Runtime as framenode_runtime::order_book::Config>::WeightInfo::exchange_scattered(n);
+            println!("{n} order(-s):");
+            dbg!(exchange);
+            dbg!(exchange_scattered);
+            println!();
+        }
         Ok(())
     });
     Ok(())
