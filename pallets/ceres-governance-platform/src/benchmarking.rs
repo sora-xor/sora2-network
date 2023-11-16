@@ -66,12 +66,12 @@ benchmarks! {
         CeresGovernancePlatform::<T>::vote(
             RawOrigin::Signed(caller.clone()).into(),
             poll_id,
-            voting_option.try_into().unwrap(),
+            voting_option,
             number_of_votes
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::<T>::Voted(caller, poll_id, voting_option.try_into().unwrap(), asset_id.into(), number_of_votes).into());
+        assert_last_event::<T>(Event::<T>::Voted(caller, poll_id, voting_option, asset_id.into(), number_of_votes).into());
     }
 
     create_poll {
@@ -160,7 +160,7 @@ benchmarks! {
         let _ = CeresGovernancePlatform::<T>::vote(
             RawOrigin::Signed(caller.clone()).into(),
             poll_id,
-            voting_option.try_into().unwrap(),
+            voting_option,
             number_of_votes
         ).unwrap();
 
