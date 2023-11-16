@@ -247,7 +247,7 @@ fn vote_invalid_number_of_votes() {
             CeresGovernancePlatform::vote(
                 RuntimeOrigin::signed(ALICE),
                 poll_id,
-                voting_option.try_into().unwrap(),
+                voting_option,
                 number_of_votes
             ),
             Error::<Runtime>::InvalidNumberOfVotes
@@ -271,7 +271,7 @@ fn vote_poll_does_not_exist() {
             CeresGovernancePlatform::vote(
                 RuntimeOrigin::signed(ALICE),
                 poll_id,
-                voting_option.try_into().unwrap(),
+                voting_option,
                 number_of_votes
             ),
             Error::<Runtime>::PollDoesNotExist
@@ -316,7 +316,7 @@ fn vote_poll_is_not_started() {
             CeresGovernancePlatform::vote(
                 RuntimeOrigin::signed(ALICE),
                 poll_id,
-                voting_option.try_into().unwrap(),
+                voting_option,
                 number_of_votes
             ),
             Error::<Runtime>::PollIsNotStarted
@@ -363,7 +363,7 @@ fn vote_poll_is_finished() {
             CeresGovernancePlatform::vote(
                 RuntimeOrigin::signed(ALICE),
                 poll_id,
-                voting_option.try_into().unwrap(),
+                voting_option,
                 number_of_votes
             ),
             Error::<Runtime>::PollIsFinished
@@ -408,7 +408,7 @@ fn vote_invalid_option() {
             CeresGovernancePlatform::vote(
                 RuntimeOrigin::signed(ALICE),
                 poll_id,
-                voting_option.try_into().unwrap(),
+                voting_option,
                 number_of_votes
             ),
             Error::<Runtime>::InvalidOption
@@ -452,7 +452,7 @@ fn vote_denied() {
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
             poll_id,
-            first_voting_option.try_into().unwrap(),
+            first_voting_option,
             number_of_votes
         ));
 
@@ -462,7 +462,7 @@ fn vote_denied() {
             CeresGovernancePlatform::vote(
                 RuntimeOrigin::signed(ALICE),
                 poll_id,
-                second_voting_option.try_into().unwrap(),
+                second_voting_option,
                 number_of_votes
             ),
             Error::<Runtime>::VoteDenied
@@ -507,7 +507,7 @@ fn vote_not_enough_funds() {
             CeresGovernancePlatform::vote(
                 RuntimeOrigin::signed(ALICE),
                 poll_id,
-                voting_option.try_into().unwrap(),
+                voting_option,
                 number_of_votes
             ),
             Error::<Runtime>::NotEnoughFunds
@@ -551,7 +551,7 @@ fn vote_ok() {
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
             poll_id,
-            voting_option.try_into().unwrap(),
+            voting_option,
             number_of_votes
         ));
     });
@@ -593,14 +593,14 @@ fn vote_multiple_times_ok() {
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
             poll_id,
-            voting_option.try_into().unwrap(),
+            voting_option,
             number_of_votes
         ));
 
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
             poll_id,
-            voting_option.try_into().unwrap(),
+            voting_option,
             number_of_votes
         ));
 
@@ -671,7 +671,7 @@ fn withdraw_poll_is_not_finished() {
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
             poll_id,
-            voting_option.try_into().unwrap(),
+            voting_option,
             number_of_votes
         ));
 
@@ -760,7 +760,7 @@ fn withdraw_funds_already_withdrawn() {
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
             poll_id,
-            voting_option.try_into().unwrap(),
+            voting_option,
             number_of_votes
         ));
 
@@ -815,7 +815,7 @@ fn withdraw_ok() {
         assert_ok!(CeresGovernancePlatform::vote(
             RuntimeOrigin::signed(ALICE),
             poll_id,
-            voting_option.try_into().unwrap(),
+            voting_option,
             number_of_votes
         ));
 
