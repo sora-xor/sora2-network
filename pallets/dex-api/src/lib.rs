@@ -339,6 +339,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + common::Config + trading_pair::Config + assets::Config
     {
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type MockLiquiditySource: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
@@ -411,8 +412,65 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Liquidity source is already enabled
+        LiquiditySourceAlreadyEnabled,
+        /// Liquidity source is already disabled
+        LiquiditySourceAlreadyDisabled,
+    }
+
+    #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// Liquidity source is enabled
+        LiquiditySourceEnabled(LiquiditySourceType),
+        /// Liquidity source is disabled
+        LiquiditySourceDisabled(LiquiditySourceType),
+    }
+
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
+        #[pallet::weight(Weight::zero())] // todo
+        pub fn enable_liquidity_source(
+            origin: OriginFor<T>,
+            source: LiquiditySourceType,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+
+            let mut sources = EnabledSourceTypes::<T>::get();
+            ensure!(
+                !sources.contains(&source),
+                Error::<T>::LiquiditySourceAlreadyEnabled
+            );
+            sources.push(source);
+            EnabledSourceTypes::<T>::put(sources);
+            Self::deposit_event(Event::<T>::LiquiditySourceEnabled(source));
+
+            Ok(().into())
+        }
+
+        #[pallet::call_index(1)]
+        #[pallet::weight(Weight::zero())] // todo
+        pub fn disable_liquidity_source(
+            origin: OriginFor<T>,
+            source: LiquiditySourceType,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+
+            let mut sources = EnabledSourceTypes::<T>::get();
+            ensure!(
+                sources.contains(&source),
+                Error::<T>::LiquiditySourceAlreadyDisabled
+            );
+            sources.retain(|&x| x != source);
+            EnabledSourceTypes::<T>::put(sources);
+            Self::deposit_event(Event::<T>::LiquiditySourceDisabled(source));
+
+            Ok(().into())
+        }
+    }
 
     #[pallet::storage]
     pub type EnabledSourceTypes<T: Config> = StorageValue<_, Vec<LiquiditySourceType>, ValueQuery>;
