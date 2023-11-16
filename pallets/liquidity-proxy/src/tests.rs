@@ -889,25 +889,25 @@ fn test_swap_with_desired_output_return_precise_amount() {
         let sources = [LiquiditySourceType::XYKPool].to_vec();
 
         assert_eq!(
-            Assets::free_balance(&USDT, &alice()).unwrap(),
-            balance!(12000.0)
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            balance!(354800.0)
         );
 
         assert_ok!(LiquidityProxy::swap(
             RuntimeOrigin::signed(alice()),
             DEX_A_ID,
-            XOR,
             USDT,
+            XOR,
             SwapAmount::WithDesiredOutput {
-                desired_amount_out: balance!(100.0),
-                max_amount_in: balance!(1000.0)
+                desired_amount_out: balance!(52.789948793749670063),
+                max_amount_in: balance!(10000.0)
             },
             sources.clone(),
             filter_mode,
         ));
         assert_eq!(
-            Assets::free_balance(&USDT, &alice()).unwrap(),
-            balance!(12100.0)
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            balance!(354852.789948793749670063)
         );
     });
 }
@@ -944,7 +944,7 @@ fn test_swap_with_desired_input_return_precise_amount() {
 }
 
 #[test]
-fn test_swap_with_multi_steps_desired_output_return_precise_amount() {
+fn test_swap_with_multi_steps_desired_input_return_precise_amount() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         let filter_mode = FilterMode::AllowSelected;
@@ -958,19 +958,18 @@ fn test_swap_with_multi_steps_desired_output_return_precise_amount() {
         assert_ok!(LiquidityProxy::swap(
             RuntimeOrigin::signed(alice()),
             DEX_A_ID,
-            USDT,
             XSTUSD,
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out: balance!(100.0),
-                max_amount_in: balance!(10000.0)
+            USDT,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: balance!(100.0),
+                min_amount_out: balance!(0)
             },
             sources.clone(),
             filter_mode,
         ));
-
         assert_eq!(
             Assets::free_balance(&XSTUSD, &alice()).unwrap(),
-            balance!(12100.0)
+            balance!(11900.0)
         );
     });
 }

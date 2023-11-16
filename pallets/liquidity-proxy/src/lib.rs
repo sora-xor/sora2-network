@@ -478,58 +478,167 @@ impl<T: Config> Pallet<T> {
         let receiver_iter = sp_std::iter::repeat(&transit_account)
             .take(exchange_count - 1)
             .chain(sp_std::iter::once(receiver));
-        fallible_iterator::convert(
-            assets
-                .iter()
-                .tuple_windows()
-                .zip_longest(sender_iter)
-                .zip_longest(receiver_iter)
-                .map(|zip| match zip {
-                    Both(Both((from, to), cur_sender), cur_receiver) => {
-                        (from, to, cur_sender, cur_receiver)
-                    }
-                    // Sanity check. Should never happen
-                    _ => panic!(
-                        "Exchanging failed, iterator invariants are broken - \
-                         this is a programmer error"
-                    ),
-                })
-                // Exchange
-                .map(
-                    |(from, to, cur_sender, cur_receiver)| -> Result<_, DispatchError> {
-                        let (swap_outcome, sources, weight) = Self::exchange_single(
-                            cur_sender,
-                            cur_receiver,
-                            &dex_info.base_asset_id,
-                            from,
-                            to,
-                            input_amount,
-                            filter.clone(),
-                        )?;
+        let mut current_amount = match input_amount {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out: _,
+            } => desired_amount_in,
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in: _,
+            } => desired_amount_out,
+        };
 
-                        Ok((swap_outcome, sources, weight))
-                    },
-                ),
-        )
-        // Exchange aggregation
-        .fold(
+        match (input_amount, exchange_count) {
             (
-                SwapOutcome::new(balance!(0), balance!(0)),
-                Vec::new(),
-                Weight::zero(),
-            ),
-            |(mut outcome, mut sources, mut total_weight),
-             (swap_outcome, swap_sources, swap_weight)| {
-                outcome.amount = swap_outcome.amount;
-                outcome.fee = swap_outcome
-                    .fee
-                    .checked_add(swap_outcome.fee)
-                    .ok_or(Error::<T>::CalculationError)?;
-                merge_two_vectors_unique(&mut sources, swap_sources);
-                total_weight = total_weight.saturating_add(swap_weight);
-                Ok((outcome, sources, total_weight))
-            },
-        )
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out: _,
+                    max_amount_in: _,
+                },
+                exchange_count,
+            ) if exchange_count > 1 => {
+                fallible_iterator::convert(
+                    assets
+                        .iter()
+                        .rev()
+                        .tuple_windows()
+                        .zip_longest(sender_iter)
+                        .zip_longest(receiver_iter)
+                        .map(|zip| match zip {
+                            Both(Both((from, to), cur_sender), cur_receiver) => {
+                                (from, to, cur_sender, cur_receiver)
+                            }
+                            // Sanity check. Should never happen
+                            _ => panic!(
+                                "Exchanging failed, iterator invariants are broken - \
+                                 this is a programmer error"
+                            ),
+                        })
+                        // Exchange
+                        .map(
+                            |(from, to, cur_sender, cur_receiver)| -> Result<_, DispatchError> {
+                                let swap_amount = match input_amount {
+                                    SwapAmount::WithDesiredInput {
+                                        desired_amount_in: _amount_base,
+                                        min_amount_out,
+                                    } => SwapAmount::WithDesiredInput {
+                                        desired_amount_in: current_amount,
+                                        min_amount_out,
+                                    },
+                                    SwapAmount::WithDesiredOutput {
+                                        desired_amount_out: _,
+                                        max_amount_in,
+                                    } => SwapAmount::WithDesiredOutput {
+                                        desired_amount_out: current_amount,
+                                        max_amount_in,
+                                    },
+                                };
+                                let (swap_outcome, sources, weight) = Self::exchange_single(
+                                    cur_sender,
+                                    cur_receiver,
+                                    &dex_info.base_asset_id,
+                                    to,
+                                    from,
+                                    swap_amount,
+                                    filter.clone(),
+                                )?;
+                                current_amount = swap_outcome.amount;
+                                Ok((swap_outcome, sources, weight))
+                            },
+                        ),
+                )
+                // Exchange aggregation
+                .fold(
+                    (
+                        SwapOutcome::new(balance!(0), balance!(0)),
+                        Vec::new(),
+                        Weight::zero(),
+                    ),
+                    |(mut outcome, mut sources, mut total_weight),
+                     (swap_outcome, swap_sources, swap_weight)| {
+                        outcome.amount = swap_outcome.amount;
+                        outcome.fee = swap_outcome
+                            .fee
+                            .checked_add(swap_outcome.fee)
+                            .ok_or(Error::<T>::CalculationError)?;
+                        merge_two_vectors_unique(&mut sources, swap_sources);
+                        total_weight = total_weight.saturating_add(swap_weight);
+                        Ok((outcome, sources, total_weight))
+                    },
+                )
+            }
+            _ => {
+                fallible_iterator::convert(
+                    assets
+                        .iter()
+                        .tuple_windows()
+                        .zip_longest(sender_iter)
+                        .zip_longest(receiver_iter)
+                        .map(|zip| match zip {
+                            Both(Both((from, to), cur_sender), cur_receiver) => {
+                                (from, to, cur_sender, cur_receiver)
+                            }
+                            // Sanity check. Should never happen
+                            _ => panic!(
+                                "Exchanging failed, iterator invariants are broken - \
+                                 this is a programmer error"
+                            ),
+                        })
+                        // Exchange
+                        .map(
+                            |(from, to, cur_sender, cur_receiver)| -> Result<_, DispatchError> {
+                                let swap_amount = match input_amount {
+                                    SwapAmount::WithDesiredInput {
+                                        desired_amount_in: _amount_base,
+                                        min_amount_out,
+                                    } => SwapAmount::WithDesiredInput {
+                                        desired_amount_in: current_amount,
+                                        min_amount_out,
+                                    },
+                                    SwapAmount::WithDesiredOutput {
+                                        desired_amount_out: _,
+                                        max_amount_in,
+                                    } => SwapAmount::WithDesiredOutput {
+                                        desired_amount_out: current_amount,
+                                        max_amount_in,
+                                    },
+                                };
+
+                                let (swap_outcome, sources, weight) = Self::exchange_single(
+                                    cur_sender,
+                                    cur_receiver,
+                                    &dex_info.base_asset_id,
+                                    from,
+                                    to,
+                                    swap_amount,
+                                    filter.clone(),
+                                )?;
+                                current_amount = swap_outcome.amount;
+                                Ok((swap_outcome, sources, weight))
+                            },
+                        ),
+                )
+                // Exchange aggregation
+                .fold(
+                    (
+                        SwapOutcome::new(balance!(0), balance!(0)),
+                        Vec::new(),
+                        Weight::zero(),
+                    ),
+                    |(mut outcome, mut sources, mut total_weight),
+                     (swap_outcome, swap_sources, swap_weight)| {
+                        outcome.amount = swap_outcome.amount;
+                        outcome.fee = swap_outcome
+                            .fee
+                            .checked_add(swap_outcome.fee)
+                            .ok_or(Error::<T>::CalculationError)?;
+                        merge_two_vectors_unique(&mut sources, swap_sources);
+                        total_weight = total_weight.saturating_add(swap_weight);
+                        Ok((outcome, sources, total_weight))
+                    },
+                )
+            }
+        }
     }
 
     /// Calculate the input amount for a given `output_amount` for a sequence of direct swaps.
