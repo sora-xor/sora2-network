@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["migrate","migrate_poll_data"]};
+window.SIDEBAR_ITEMS = {"fn":["migrate"],"struct":["OldPollInfo","OldVotingInfo"]};

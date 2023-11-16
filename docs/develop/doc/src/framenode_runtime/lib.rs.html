@@ -3322,6 +3322,9 @@
 <a href="#3307" id="3307">3307</a>
 <a href="#3308" id="3308">3308</a>
 <a href="#3309" id="3309">3309</a>
+<a href="#3310" id="3310">3310</a>
+<a href="#3311" id="3311">3311</a>
+<a href="#3312" id="3312">3312</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -5161,8 +5164,11 @@
 }
 
 <span class="kw">impl </span>ceres_governance_platform::Config <span class="kw">for </span>Runtime {
+    <span class="kw">type </span>StringLimit = StringLimit;
+    <span class="kw">type </span>OptionsLimit = OptionsLimit;
+    <span class="kw">type </span>TitleLimit = TitleLimit;
+    <span class="kw">type </span>DescriptionLimit = DescriptionLimit;
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
-    <span class="kw">type </span>CeresAssetId = CeresAssetId;
     <span class="kw">type </span>WeightInfo = ceres_governance_platform::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
