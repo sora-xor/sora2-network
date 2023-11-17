@@ -376,10 +376,10 @@ impl<T: Config> Pallet<T> {
 
         common::with_transaction(|| {
             let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
-            let maybe_path =
+            let maybe_paths =
                 ExchangePath::<T>::new_trivial(&dex_info, *input_asset_id, *output_asset_id);
             let total_weight = <T as Config>::WeightInfo::new_trivial();
-            maybe_path
+            maybe_paths
                 .map_or(Err(Error::<T>::UnavailableExchangePath.into()), |paths| {
                     Self::exchange_sequence(&dex_info, sender, receiver, paths, amount, &filter)
                 })
@@ -1204,7 +1204,7 @@ impl<T: Config> Pallet<T> {
         };
 
         // Get trivial path or return weight that will be rejected
-        let Some(trivial_path) = ExchangePath::<T>::new_trivial(&dex_info, *input, *output) else {
+        let Some(trivial_paths) = ExchangePath::<T>::new_trivial(&dex_info, *input, *output) else {
             return REJECTION_WEIGHT;
         };
 
@@ -1220,7 +1220,7 @@ impl<T: Config> Pallet<T> {
 
         // in quote_pairs_with_flexible_amount()
         weight =
-            weight.saturating_add(quote_single_weight.saturating_mul(trivial_path.len() as u64));
+            weight.saturating_add(quote_single_weight.saturating_mul(trivial_paths.len() as u64));
 
         // in calculate_input_amount()
         weight = weight.saturating_add(match swap_variant {
@@ -1230,7 +1230,7 @@ impl<T: Config> Pallet<T> {
 
         let mut weights = Vec::new();
 
-        for path in trivial_path {
+        for path in trivial_paths {
             if path.0.len() > 0 {
                 let total_exchange_weight = exchange_weight.saturating_mul(path.0.len() as u64 - 1);
                 weights.push(
