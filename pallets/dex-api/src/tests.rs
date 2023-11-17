@@ -35,6 +35,7 @@ use common::{
     balance, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, DOT, XOR,
 };
+use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
 
 type DexApi = Pallet<Runtime>;
@@ -137,6 +138,28 @@ fn test_different_reserves_should_pass() {
         assert_eq!(
             res2.unwrap().0.amount,
             balance!(114.415463055560109513) // for reserves: 6000 XOR, 7000 DOT, 30bp fee
+        );
+    })
+}
+
+#[test]
+fn test_enable_disable_liquidity_source_unauthorized() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        assert_err!(
+            DexApi::enable_liquidity_source(
+                RuntimeOrigin::signed(alice()),
+                LiquiditySourceType::XYKPool
+            ),
+            BadOrigin
+        );
+
+        assert_err!(
+            DexApi::disable_liquidity_source(
+                RuntimeOrigin::signed(bob()),
+                LiquiditySourceType::XYKPool
+            ),
+            BadOrigin
         );
     })
 }
