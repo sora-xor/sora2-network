@@ -419,6 +419,10 @@ where
         output_asset_id: &AssetId,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceIndex>,
     ) -> Result<Vec<LiquiditySourceId<DEXId, LiquiditySourceIndex>>, Error>;
+
+    fn exchange_weight_filtered(
+        enabled_sources: Vec<LiquiditySourceId<DEXId, LiquiditySourceIndex>>,
+    ) -> Weight;
 }
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;

@@ -325,6 +325,34 @@ impl<T: Config>
             })
             .collect())
     }
+
+    fn exchange_weight_filtered(
+        enabled_sources: Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>,
+    ) -> Weight {
+        enabled_sources
+            .iter()
+            .map(|source| match source.liquidity_source_index {
+                LiquiditySourceType::XYKPool => T::XYKPool::exchange_weight(),
+                LiquiditySourceType::MulticollateralBondingCurvePool => {
+                    T::MulticollateralBondingCurvePool::exchange_weight()
+                }
+                LiquiditySourceType::XSTPool => T::XSTPool::exchange_weight(),
+                LiquiditySourceType::OrderBook => {
+                    // order-book
+                    if cfg!(feature = "wip") {
+                        T::OrderBook::exchange_weight()
+                    } else {
+                        Weight::zero()
+                    }
+                }
+                LiquiditySourceType::BondingCurvePool
+                | LiquiditySourceType::MockPool
+                | LiquiditySourceType::MockPool2
+                | LiquiditySourceType::MockPool3
+                | LiquiditySourceType::MockPool4 => Weight::zero(),
+            })
+            .fold(Weight::zero(), |acc, next| acc.saturating_add(next))
+    }
 }
 pub use pallet::*;
 
