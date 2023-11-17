@@ -330,6 +330,8 @@ impl dex_api::Config for Runtime {
 
     #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = (); // todo
+
+    type WeightInfo = ();
 }
 
 impl trading_pair::Config for Runtime {

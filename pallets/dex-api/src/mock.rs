@@ -163,6 +163,8 @@ impl Config for Runtime {
 
     #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
+
+    type WeightInfo = ();
 }
 
 impl tokens::Config for Runtime {

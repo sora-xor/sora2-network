@@ -339,6 +339,7 @@ runtime-benchmarks = [
     "ceres-liquidity-locker-benchmarking/runtime-benchmarks",
     "demeter-farming-platform-benchmarking",
     "demeter-farming-platform-benchmarking/runtime-benchmarks",
+    "dex-api/runtime-benchmarks",
     "ceres-staking/runtime-benchmarks",
     "ceres-token-locker/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",

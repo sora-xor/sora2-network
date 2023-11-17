@@ -190,6 +190,8 @@ impl dex_api::Config for Runtime {
 
     #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
+
+    type WeightInfo = ();
 }
 
 impl technical::Config for Runtime {

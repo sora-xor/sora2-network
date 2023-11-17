@@ -41,11 +41,16 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
 use sp_std::vec::Vec;
 
+mod benchmarking;
+pub mod weights;
+
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+
+pub use weights::WeightInfo;
 
 impl<T: Config>
     LiquiditySource<
@@ -331,6 +336,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use crate::WeightInfo;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -398,6 +404,8 @@ pub mod pallet {
             Balance,
             DispatchError,
         >;
+
+        type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.
@@ -432,7 +440,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(Weight::zero())] // todo
+        #[pallet::weight(<T as Config>::WeightInfo::enable_liquidity_source())]
         pub fn enable_liquidity_source(
             origin: OriginFor<T>,
             source: LiquiditySourceType,
@@ -452,7 +460,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(Weight::zero())] // todo
+        #[pallet::weight(<T as Config>::WeightInfo::disable_liquidity_source())]
         pub fn disable_liquidity_source(
             origin: OriginFor<T>,
             source: LiquiditySourceType,
