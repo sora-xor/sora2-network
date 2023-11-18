@@ -157,8 +157,8 @@ impl Config for Runtime {
     type MockLiquiditySource4 =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
     type MulticollateralBondingCurvePool = ();
-    type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
+    type XYKPool = pool_xyk::Pallet<Runtime>;
 
     #[cfg(feature = "wip")] // order-book
     type OrderBook = ();

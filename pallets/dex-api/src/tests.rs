@@ -31,10 +31,12 @@
 use crate::mock::*;
 use crate::Pallet;
 use common::prelude::QuoteAmount;
+use common::DEXId::Polkaswap;
 use common::{
-    balance, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    balance, DexIdOf, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, DOT, XOR,
 };
+use frame_support::weights::Weight;
 
 type DexApi = Pallet<Runtime>;
 
@@ -137,5 +139,105 @@ fn test_different_reserves_should_pass() {
             res2.unwrap().0.amount,
             balance!(114.415463055560109513) // for reserves: 6000 XOR, 7000 DOT, 30bp fee
         );
+    })
+}
+
+#[test]
+fn test_exchange_weight_filtered_calculates() {
+    framenode_chain_spec::ext().execute_with(|| {
+        let dex_id = Polkaswap.into();
+        let xyk_weight =
+            <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::XYKPool>::exchange_weight();
+        let multicollateral_weight =
+            <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::MulticollateralBondingCurvePool>::exchange_weight();
+        let xst_weight =
+            <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::XYKPool>::exchange_weight();
+        let order_book_weight =
+            <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::OrderBook>::exchange_weight();
+
+        fn exchange_weight_filtered(enabled_sources: Vec<&LiquiditySourceId<DexIdOf<framenode_runtime::Runtime>, LiquiditySourceType>>) -> Weight {
+            framenode_runtime::dex_api::Pallet::<framenode_runtime::Runtime>::exchange_weight_filtered(enabled_sources.into_iter().cloned().collect())
+        }
+
+        let xyk_source = LiquiditySourceId::new(dex_id, LiquiditySourceType::XYKPool);
+        let multicollateral_source = LiquiditySourceId::new(dex_id, LiquiditySourceType::MulticollateralBondingCurvePool);
+        let xst_source = LiquiditySourceId::new(dex_id, LiquiditySourceType::XYKPool);
+        #[cfg(feature = "wip")] // order-book
+        let order_book_source = LiquiditySourceId::new(dex_id, LiquiditySourceType::OrderBook);
+
+        assert_eq!(exchange_weight_filtered(vec![]), Weight::zero());
+        assert_eq!(exchange_weight_filtered(vec![&xyk_source]), xyk_weight);
+        assert_eq!(exchange_weight_filtered(vec![&multicollateral_source]), multicollateral_weight);
+        assert_eq!(exchange_weight_filtered(vec![&xst_source]), xst_weight);
+        #[cfg(feature = "wip")] // order-book
+        assert_eq!(exchange_weight_filtered(vec![&order_book_source]), order_book_weight);
+        assert_eq!(
+            exchange_weight_filtered(vec![&xyk_source, &xst_source]),
+            xyk_weight
+                .saturating_add(xst_weight)
+        );
+        assert_eq!(
+            exchange_weight_filtered(
+                vec![&xyk_source, &xst_source, &multicollateral_source]
+            ),
+            xyk_weight
+                .saturating_add(xst_weight)
+                .saturating_add(multicollateral_weight)
+        );
+        #[cfg(feature = "wip")] // order-book
+        assert_eq!(
+            exchange_weight_filtered(
+                vec![&xyk_source, &xst_source, &multicollateral_source, &order_book_source]
+            ),
+            xyk_weight
+                .saturating_add(xst_weight)
+                .saturating_add(multicollateral_weight)
+                .saturating_add(order_book_weight)
+        );
+    })
+}
+
+#[test]
+fn test_exchange_weight_filtered_matches_exchange_weight() {
+    framenode_chain_spec::ext().execute_with(|| {
+        let dex_id = Polkaswap.into();
+        let all_sources = vec![
+            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::BondingCurvePool,
+            LiquiditySourceType::MulticollateralBondingCurvePool,
+            LiquiditySourceType::MockPool,
+            LiquiditySourceType::MockPool2,
+            LiquiditySourceType::MockPool3,
+            LiquiditySourceType::MockPool4,
+            LiquiditySourceType::XSTPool,
+            #[cfg(feature = "wip")] // order-book
+            LiquiditySourceType::OrderBook,
+        ];
+        // add new source to `all_sources` if new enum variant is created.
+        // enum is solely for detecting new variants and making compile errors :)
+        match all_sources[0] {
+            LiquiditySourceType::XYKPool
+            | LiquiditySourceType::BondingCurvePool
+            | LiquiditySourceType::MulticollateralBondingCurvePool
+            | LiquiditySourceType::MockPool
+            | LiquiditySourceType::MockPool2
+            | LiquiditySourceType::MockPool3
+            | LiquiditySourceType::MockPool4
+            | LiquiditySourceType::XSTPool => (),
+            #[cfg(feature = "wip")] // order-book
+            LiquiditySourceType::OrderBook => (),
+        }
+        let all_sources: Vec<_> = all_sources
+            .into_iter()
+            .map(|source| LiquiditySourceId::new(dex_id, source))
+            .collect();
+        assert_eq!(
+            framenode_runtime::dex_api::Pallet::<
+                framenode_runtime::Runtime,
+            >::exchange_weight_filtered(all_sources),
+            framenode_runtime::dex_api::Pallet::<
+                framenode_runtime::Runtime,
+            >::exchange_weight(),
+        )
     })
 }
