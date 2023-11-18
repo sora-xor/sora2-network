@@ -345,7 +345,7 @@ impl<T: Config>
                 | LiquiditySourceType::MockPool3
                 | LiquiditySourceType::MockPool4 => Weight::zero(),
             })
-            .fold(Weight::zero(), |acc, next| acc.saturating_add(next))
+            .fold(Weight::zero(), |acc, next| acc.max(next))
     }
 }
 pub use pallet::*;

@@ -174,15 +174,15 @@ fn test_exchange_weight_filtered_calculates() {
         assert_eq!(
             exchange_weight_filtered(vec![&xyk_source, &xst_source]),
             xyk_weight
-                .saturating_add(xst_weight)
+                .max(xst_weight)
         );
         assert_eq!(
             exchange_weight_filtered(
                 vec![&xyk_source, &xst_source, &multicollateral_source]
             ),
             xyk_weight
-                .saturating_add(xst_weight)
-                .saturating_add(multicollateral_weight)
+                .max(xst_weight)
+                .max(multicollateral_weight)
         );
         #[cfg(feature = "wip")] // order-book
         assert_eq!(
@@ -190,9 +190,9 @@ fn test_exchange_weight_filtered_calculates() {
                 vec![&xyk_source, &xst_source, &multicollateral_source, &order_book_source]
             ),
             xyk_weight
-                .saturating_add(xst_weight)
-                .saturating_add(multicollateral_weight)
-                .saturating_add(order_book_weight)
+                .max(xst_weight)
+                .max(multicollateral_weight)
+                .max(order_book_weight)
         );
     })
 }
