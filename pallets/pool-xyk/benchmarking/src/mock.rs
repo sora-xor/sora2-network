@@ -92,7 +92,7 @@ construct_runtime! {
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage},
+        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -208,6 +208,7 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type MockLiquiditySource = ();
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
@@ -218,6 +219,8 @@ impl dex_api::Config for Runtime {
 
     #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
+
+    type WeightInfo = ();
 }
 
 impl technical::Config for Runtime {

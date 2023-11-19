@@ -256,10 +256,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 64,
+    spec_version: 69,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 64,
+    transaction_version: 69,
     state_version: 0,
 };
 
@@ -1091,6 +1091,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
 }
 
 impl dex_api::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type MockLiquiditySource =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
@@ -1105,6 +1106,8 @@ impl dex_api::Config for Runtime {
 
     #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = order_book::Pallet<Runtime>;
+
+    type WeightInfo = dex_api::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_multisig::Config for Runtime {
@@ -2310,7 +2313,7 @@ construct_runtime! {
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
         TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
         Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 29,
-        DEXAPI: dex_api::{Pallet, Call, Storage, Config} = 30,
+        DEXAPI: dex_api::{Pallet, Call, Storage, Config, Event<T>} = 30,
         EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 31,
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Config<T>, Event<T>} = 32,
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
@@ -3110,6 +3113,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, faucet, Faucet);
             list_benchmark!(list, extra, farming, Farming);
             list_benchmark!(list, extra, iroha_migration, IrohaMigration);
+            list_benchmark!(list, extra, dex_api, DEXAPI);
             list_benchmark!(list, extra, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             list_benchmark!(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             list_benchmark!(list, extra, pswap_distribution, PswapDistributionBench::<Runtime>);
@@ -3210,6 +3214,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
+            add_benchmark!(params, batches, dex_api, DEXAPI);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             add_benchmark!(params, batches, pswap_distribution, PswapDistributionBench::<Runtime>);
