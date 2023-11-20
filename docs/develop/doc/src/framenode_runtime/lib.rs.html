@@ -3325,6 +3325,11 @@
 <a href="#3310" id="3310">3310</a>
 <a href="#3311" id="3311">3311</a>
 <a href="#3312" id="3312">3312</a>
+<a href="#3313" id="3313">3313</a>
+<a href="#3314" id="3314">3314</a>
+<a href="#3315" id="3315">3315</a>
+<a href="#3316" id="3316">3316</a>
+<a href="#3317" id="3317">3317</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3583,10 +3588,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">68</span>,
+    spec_version: <span class="number">69</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">68</span>,
+    transaction_version: <span class="number">69</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4418,6 +4423,7 @@
 }
 
 <span class="kw">impl </span>dex_api::Config <span class="kw">for </span>Runtime {
+    <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>MockLiquiditySource =
         mock_liquidity_source::Pallet&lt;Runtime, mock_liquidity_source::Instance1&gt;;
     <span class="kw">type </span>MockLiquiditySource2 =
@@ -4432,6 +4438,8 @@
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
     </span><span class="kw">type </span>OrderBook = order_book::Pallet&lt;Runtime&gt;;
+
+    <span class="kw">type </span>WeightInfo = dex_api::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="kw">impl </span>pallet_multisig::Config <span class="kw">for </span>Runtime {
@@ -5637,7 +5645,7 @@
         Council: pallet_collective::&lt;Instance1&gt;::{Pallet, Call, Storage, Origin&lt;T&gt;, Event&lt;T&gt;, Config&lt;T&gt;} = <span class="number">27</span>,
         TechnicalCommittee: pallet_collective::&lt;Instance2&gt;::{Pallet, Call, Storage, Origin&lt;T&gt;, Event&lt;T&gt;, Config&lt;T&gt;} = <span class="number">28</span>,
         Democracy: pallet_democracy::{Pallet, Call, Storage, Config&lt;T&gt;, Event&lt;T&gt;} = <span class="number">29</span>,
-        DEXAPI: dex_api::{Pallet, Call, Storage, Config} = <span class="number">30</span>,
+        DEXAPI: dex_api::{Pallet, Call, Storage, Config, Event&lt;T&gt;} = <span class="number">30</span>,
         EthBridge: eth_bridge::{Pallet, Call, Storage, Config&lt;T&gt;, Event&lt;T&gt;} = <span class="number">31</span>,
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Config&lt;T&gt;, Event&lt;T&gt;} = <span class="number">32</span>,
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">33</span>,
@@ -6437,6 +6445,7 @@
             </span><span class="macro">list_benchmark!</span>(list, extra, faucet, Faucet);
             <span class="macro">list_benchmark!</span>(list, extra, farming, Farming);
             <span class="macro">list_benchmark!</span>(list, extra, iroha_migration, IrohaMigration);
+            <span class="macro">list_benchmark!</span>(list, extra, dex_api, DEXAPI);
             <span class="macro">list_benchmark!</span>(list, extra, liquidity_proxy, LiquidityProxyBench::&lt;Runtime&gt;);
             <span class="macro">list_benchmark!</span>(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             <span class="macro">list_benchmark!</span>(list, extra, pswap_distribution, PswapDistributionBench::&lt;Runtime&gt;);
@@ -6537,6 +6546,7 @@
             </span><span class="macro">add_benchmark!</span>(params, batches, faucet, Faucet);
             <span class="macro">add_benchmark!</span>(params, batches, farming, Farming);
             <span class="macro">add_benchmark!</span>(params, batches, iroha_migration, IrohaMigration);
+            <span class="macro">add_benchmark!</span>(params, batches, dex_api, DEXAPI);
             <span class="macro">add_benchmark!</span>(params, batches, liquidity_proxy, LiquidityProxyBench::&lt;Runtime&gt;);
             <span class="macro">add_benchmark!</span>(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             <span class="macro">add_benchmark!</span>(params, batches, pswap_distribution, PswapDistributionBench::&lt;Runtime&gt;);
