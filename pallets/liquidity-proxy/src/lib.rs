@@ -957,8 +957,14 @@ impl<T: Config> Pallet<T> {
         Ok(accumulated_without_impact)
     }
 
-    /// Retains only sources available for `quote`
-    fn filter_quote_liquidity_sources(sources: &mut Vec<LiquiditySourceIdOf<T>>) {
+    /// Obtains only sources available for `quote`
+    fn list_quote_liquidity_sources(
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+    ) -> Vec<LiquiditySourceIdOf<T>> {
+        let mut sources =
+            T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
         let locked = trading_pair::LockedLiquiditySources::<T>::get();
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         // The temp solution is to exclude OrderBook source if there are multiple sources.
@@ -967,6 +973,7 @@ impl<T: Config> Pallet<T> {
         if sources.len() > 1 {
             sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
         }
+        sources
     }
 
     /// Computes the optimal distribution across available liquidity sources to execute the requested trade
@@ -995,10 +1002,8 @@ impl<T: Config> Pallet<T> {
         ),
         DispatchError,
     > {
-        let mut sources =
-            T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
+        let sources = Self::list_quote_liquidity_sources(input_asset_id, output_asset_id, filter);
         let mut total_weight = <T as Config>::WeightInfo::list_liquidity_sources();
-        Self::filter_quote_liquidity_sources(&mut sources);
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
 
         // Check if we have exactly one source => no split required
