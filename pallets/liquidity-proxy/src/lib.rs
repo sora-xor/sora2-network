@@ -58,7 +58,7 @@ use frame_system::ensure_signed;
 use itertools::Itertools as _;
 pub use pallet::*;
 use sp_runtime::traits::{CheckedSub, Zero};
-use sp_runtime::DispatchError;
+use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
@@ -957,6 +957,18 @@ impl<T: Config> Pallet<T> {
         Ok(accumulated_without_impact)
     }
 
+    /// Retains only sources available for `quote`
+    fn filter_quote_liquidity_sources(sources: &mut Vec<LiquiditySourceIdOf<T>>) {
+        let locked = trading_pair::LockedLiquiditySources::<T>::get();
+        sources.retain(|x| !locked.contains(&x.liquidity_source_index));
+        // The temp solution is to exclude OrderBook source if there are multiple sources.
+        // Will be redesigned in #447
+        #[cfg(feature = "wip")] // order-book
+        if sources.len() > 1 {
+            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
+        }
+    }
+
     /// Computes the optimal distribution across available liquidity sources to execute the requested trade
     /// given the input and output assets, the trade amount and a liquidity sources filter.
     ///
@@ -986,16 +998,8 @@ impl<T: Config> Pallet<T> {
         let mut sources =
             T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
         let mut total_weight = <T as Config>::WeightInfo::list_liquidity_sources();
-        let locked = trading_pair::LockedLiquiditySources::<T>::get();
-        sources.retain(|x| !locked.contains(&x.liquidity_source_index));
+        Self::filter_quote_liquidity_sources(&mut sources);
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
-
-        // The temp solution is to exclude OrderBook source if there are multiple sources.
-        // Will be redesigned in #447
-        #[cfg(feature = "wip")] // order-book
-        if sources.len() > 1 {
-            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
-        }
 
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {
