@@ -29,12 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::Pallet;
+use crate::{EnabledSourceTypes, Error, Pallet};
 use common::prelude::QuoteAmount;
 use common::{
     balance, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, DOT, XOR,
 };
+use frame_support::error::BadOrigin;
+use frame_support::{assert_err, assert_ok};
 
 type DexApi = Pallet<Runtime>;
 
@@ -136,6 +138,164 @@ fn test_different_reserves_should_pass() {
         assert_eq!(
             res2.unwrap().0.amount,
             balance!(114.415463055560109513) // for reserves: 6000 XOR, 7000 DOT, 30bp fee
+        );
+    })
+}
+
+#[test]
+fn test_enable_disable_liquidity_source_unauthorized() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        assert_err!(
+            DexApi::enable_liquidity_source(
+                RuntimeOrigin::signed(alice()),
+                LiquiditySourceType::XYKPool
+            ),
+            BadOrigin
+        );
+
+        assert_err!(
+            DexApi::disable_liquidity_source(
+                RuntimeOrigin::signed(bob()),
+                LiquiditySourceType::XYKPool
+            ),
+            BadOrigin
+        );
+    })
+}
+
+#[test]
+fn test_liquidity_source_should_enable() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // check before
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4
+            ]
+        );
+
+        // enable source
+        assert_ok!(DexApi::enable_liquidity_source(
+            RuntimeOrigin::root(),
+            LiquiditySourceType::XYKPool
+        ));
+
+        // check after
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4,
+                LiquiditySourceType::XYKPool
+            ]
+        );
+    })
+}
+
+#[test]
+fn test_liquidity_source_should_not_enable_twice() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // check before
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4
+            ]
+        );
+
+        // try to enable already enabled source
+        assert_err!(
+            DexApi::enable_liquidity_source(RuntimeOrigin::root(), LiquiditySourceType::MockPool2),
+            Error::<Runtime>::LiquiditySourceAlreadyEnabled
+        );
+
+        // check after
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4,
+            ]
+        );
+    })
+}
+
+#[test]
+fn test_liquidity_source_should_disable() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // check before
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4
+            ]
+        );
+
+        // disable source
+        assert_ok!(DexApi::disable_liquidity_source(
+            RuntimeOrigin::root(),
+            LiquiditySourceType::MockPool3
+        ));
+
+        // check after
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool4,
+            ]
+        );
+    })
+}
+
+#[test]
+fn test_liquidity_source_should_not_disable_twice() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // check before
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4
+            ]
+        );
+
+        // try to disable already disabled source
+        assert_err!(
+            DexApi::disable_liquidity_source(RuntimeOrigin::root(), LiquiditySourceType::XYKPool),
+            Error::<Runtime>::LiquiditySourceAlreadyDisabled
+        );
+
+        // check after
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4,
+            ]
         );
     })
 }
