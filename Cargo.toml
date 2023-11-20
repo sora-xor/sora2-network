@@ -280,6 +280,7 @@ members = [
     "pallets/trustless-bridge/bridge-proxy",
     "pallets/trustless-bridge/bridge-proxy/rpc",
     "pallets/trustless-bridge/bridge-proxy/runtime-api",
+    "pallets/kensetsu",
     "pallets/band",
     "pallets/qa-tools",
     "relayer",
