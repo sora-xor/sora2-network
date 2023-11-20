@@ -2660,6 +2660,7 @@ dependencies = [
  "common",
  "demeter-farming-platform",
  "dex-manager",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal 0.4.1",
