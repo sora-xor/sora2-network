@@ -444,20 +444,31 @@ impl<T: Config> Pallet<T> {
                     true,
                 )
                 .map(|(info, weight)| (info.path, weight))?;
-                let (input_amount, weight) =
-                    Self::calculate_input_amount(dex_info, &best_path, desired_amount_out, filter)?;
+                let (input_amount, weight) = Self::calculate_desired_output_path(
+                    dex_info,
+                    &best_path,
+                    desired_amount_out,
+                    filter,
+                )?;
                 let quote_weight = quote_weight.saturating_add(weight);
                 ensure!(
                     input_amount <= max_amount_in,
                     Error::<T>::SlippageNotTolerated
                 );
+                // x USDT -> y XOR
+                // y XOR -> desired_amount_out XSTUSD
+                // x <= max_amount_in
+                // y = quote(XOR, XSTUSD, with_desired_output(desired_amount_out, Balance::MAX))
+                // x = quote(USDT, XOR, with_desired_output(y, max_amount_in))
+                // let exchange_path = [(USDT, XOR, x, y), (XOR, XSTUSD, y, desired_amount_out)]
+                // swap(USDT, XOR, with_desired_output(y, x))
+                // swap(XOR, XSTUSD, with_desired_output(desired_amount_out, y))
 
-                Self::exchange_sequence_with_input_amount(
+                Self::exchange_sequence_with_output_amount(
                     dex_info,
                     sender,
                     receiver,
-                    &best_path,
-                    input_amount,
+                    &exchange_path,
                     filter,
                 )
                 .and_then(|(mut swap, sources, weight)| {
@@ -466,6 +477,16 @@ impl<T: Config> Pallet<T> {
                 })
             }
         }
+    }
+
+    /// Exchange sequence of assets using desired output exchange path.
+    fn exchange_sequence_with_input_amount(
+        dex_info: &DEXInfo<T::AssetId>,
+        best_path: &[T::AssetId],
+        desired_amount_out: Balance,
+        max_amount_in: Balance,
+        filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+    ) -> Result<(Vec<(T::AssetId, T::AssetId, Balance, Balance)>, Weight), DispatchError> {
     }
 
     /// Exchange sequence of assets using input amount.
@@ -547,6 +568,17 @@ impl<T: Config> Pallet<T> {
                 Ok((outcome, sources, total_weight))
             },
         )
+    }
+
+    /// Exchange sequence of assets using desired output exchange path.
+    fn exchange_sequence_with_output_amount(
+        dex_info: &DEXInfo<T::AssetId>,
+        sender: &T::AccountId,
+        receiver: &T::AccountId,
+        exchange_path: &[(T::AssetId, T::AssetId, Balance, Balance)], // [input_asset, output_asset, desired_amount_out, max_amount_in]
+        input_amount: Balance,
+        filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
     }
 
     /// Calculate the input amount for a given `output_amount` for a sequence of direct swaps.
