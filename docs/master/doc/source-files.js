@@ -17,7 +17,7 @@ var sourcesIndex = JSON.parse('{\
 "common":["",[["cache_storage",[],["cache_double_map.rs","cache_map.rs","item.rs","mod.rs"]]],["balance_unit.rs","eth.rs","fixed_wrapper.rs","lib.rs","macros.rs","migrations.rs","primitives.rs","serialization.rs","storage.rs","swap_amount.rs","traits.rs","utils.rs","weights.rs"]],\
 "demeter_farming_platform":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "demeter_farming_platform_benchmarking":["",[],["lib.rs"]],\
-"dex_api":["",[],["lib.rs"]],\
+"dex_api":["",[],["lib.rs","weights.rs"]],\
 "dex_api_rpc":["",[],["lib.rs"]],\
 "dex_manager":["",[["migrations",[],["mod.rs"]]],["lib.rs"]],\
 "dex_manager_rpc":["",[],["lib.rs"]],\

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["TransactionApi"]};
+window.SIDEBAR_ITEMS = {"struct":["DisableLiquiditySource","EnableLiquiditySource","TransactionApi"]};
