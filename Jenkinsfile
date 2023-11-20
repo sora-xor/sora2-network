@@ -1,4 +1,4 @@
-@Library('jenkins-library') _
+@Library('jenkins-library@feature/DOPS-2587-add-deepsecrets') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
