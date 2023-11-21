@@ -175,12 +175,8 @@ fn fill_order_book<T: Config>(
         .map(|step| settings.asks.best_price + step * settings.asks.price_step)
         .take_while(|price| *price <= settings.asks.worst_price);
 
-    let seed: u64 = settings
-        .random_seed
-        .unwrap_or(current_block)
-        .try_into()
-        .unwrap_or(0)
-        .into();
+    let seed = settings.random_seed.unwrap_or(current_block);
+    let seed = <BlockNumberFor<T> as TryInto<u64>>::try_into(seed).unwrap_or(0);
     let mut rand_generator = ChaCha8Rng::seed_from_u64(seed);
     let buy_amount_range = settings
         .bids
