@@ -275,7 +275,7 @@ pub mod pallet {
     pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, T::BlockNumber>;
 
     #[pallet::event]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    #[pallet::generate_deposit(pub fn deposit_event)]
     pub enum Event<T: Config> {
         /// New order book is created by user
         OrderBookCreated {

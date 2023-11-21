@@ -98,6 +98,10 @@ pub fn create_multiple_empty_unchecked<T: Config>(
 
     for order_book_id in to_create_ids {
         order_book::Pallet::<T>::create_orderbook_unchecked(&order_book_id)?;
+        order_book::Pallet::deposit_event(order_book::Event::<T>::OrderBookCreated {
+            order_book_id,
+            creator: who.clone(),
+        });
     }
     Ok(())
 }
