@@ -254,7 +254,7 @@ fn fill_order_book<T: Config>(
         current_block,
     )?;
 
-    <order_book::OrderBooks<T>>::set(book_id, Some(order_book));
+    <order_book::OrderBooks<T>>::insert(book_id, order_book);
     Ok(())
 }
 

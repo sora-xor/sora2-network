@@ -654,7 +654,7 @@ pub mod pallet {
                 order_book.align_limit_orders(&mut data)?;
                 data.commit();
             }
-            <OrderBooks<T>>::set(order_book_id, Some(order_book));
+            <OrderBooks<T>>::insert(order_book_id, order_book);
             Self::deposit_event(Event::<T>::OrderBookUpdated { order_book_id });
             Ok(().into())
         }
