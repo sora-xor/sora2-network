@@ -275,7 +275,7 @@ pub mod pallet {
     pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, T::BlockNumber>;
 
     #[pallet::event]
-    #[pallet::generate_deposit(pub fn deposit_event)]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// New order book is created by user
         OrderBookCreated {
@@ -1116,6 +1116,14 @@ impl<T: Config> Pallet<T> {
         };
         <OrderBooks<T>>::insert(order_book_id, order_book);
         Self::register_tech_account(*order_book_id)
+    }
+}
+
+#[cfg(feature = "expose-deposit-event")]
+impl<T: Config> Pallet<T> {
+    /// Specifically created for `qa-tools` pallet
+    pub fn deposit_event_exposed(event: Event<T>) {
+        Self::deposit_event(event)
     }
 }
 

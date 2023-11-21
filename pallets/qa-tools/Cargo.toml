@@ -23,7 +23,7 @@ sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 assets = { path = "../assets", default-features = false }
-order-book = { path = "../../pallets/order-book", default-features = false }
+order-book = { path = "../../pallets/order-book", default-features = false, features = ["expose-deposit-event"] }
 trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
