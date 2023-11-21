@@ -32,13 +32,15 @@ use crate::mock::*;
 use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
 use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
-use common::prelude::{AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount};
+use common::prelude::{
+    AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapVariant,
+};
 use common::test_utils::assert_event;
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
-    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
-    ReferencePriceProvider, RewardReason, TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP,
-    USDT, VAL, XOR, XST, XSTUSD,
+    Fixed, LiquidityProxyTrait, LiquidityRegistry, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, ReferencePriceProvider, RewardReason, TradingPairSourceManager, DAI, DOT,
+    ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
@@ -791,6 +793,27 @@ fn test_sell_however_big_amount_base_should_pass() {
         )
         .expect("Failed to swap assets");
         assert!(outcome.amount > 0 && outcome.amount < balance!(180));
+    });
+}
+
+#[test]
+fn test_swap_weight_calculates_correctly() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let swap_1_weight = LiquidityProxy::swap_weight(
+            &DEX_D_ID,
+            &PSWAP,
+            &XOR,
+            SwapVariant::WithDesiredOutput,
+            &Vec::new(),
+            &FilterMode::Disabled,
+        );
+        let supported_types = DexApi::get_supported_types();
+        let sources = DexApi::list_liquidity_sources(
+            &PSWAP,
+            &XOR,
+            &LiquiditySourceFilter::with_mode(DEX_D_ID, FilterMode::Disabled, Vec::new()),
+        );
     });
 }
 
