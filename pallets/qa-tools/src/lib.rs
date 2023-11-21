@@ -61,6 +61,8 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + order_book::Config + trading_pair::Config {
+        /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type WeightInfo: WeightInfo;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
@@ -81,6 +83,13 @@ pub mod pallet {
     #[pallet::getter(fn whitelisted_callers)]
     pub type WhitelistedCallers<T: Config> =
         StorageValue<_, BoundedBTreeSet<T::AccountId, T::QaToolsWhitelistCapacity>>;
+
+    #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        AddedToWhitelist { user: T::AccountId },
+        RemovedFromWhitelist { user: T::AccountId },
+    }
 
     #[pallet::error]
     pub enum Error<T> {
@@ -117,12 +126,13 @@ pub mod pallet {
                     None => option_whitelist.insert(BoundedBTreeSet::new()),
                 };
                 whitelist
-                    .try_insert(account)
+                    .try_insert(account.clone())
                     .map_err(|_| Error::<T>::WhitelistFull)?
                     .then_some(())
                     .ok_or(Error::<T>::AlreadyInWhitelist)?;
                 Ok::<(), Error<T>>(())
             })?;
+            Self::deposit_event(Event::<T>::AddedToWhitelist { user: account });
             Ok(().into())
         }
 
@@ -146,6 +156,7 @@ pub mod pallet {
                     Ok::<(), Error<T>>(())
                 }
             })?;
+            Self::deposit_event(Event::<T>::RemovedFromWhitelist { user: account });
             Ok(().into())
         }
 
