@@ -417,7 +417,7 @@ where
     fn list_liquidity_sources(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceIndex>,
+        filter: &LiquiditySourceFilter<DEXId, LiquiditySourceIndex>,
     ) -> Result<Vec<LiquiditySourceId<DEXId, LiquiditySourceIndex>>, Error>;
 
     fn exchange_weight_filtered(

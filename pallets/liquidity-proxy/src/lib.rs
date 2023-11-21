@@ -58,7 +58,7 @@ use frame_system::ensure_signed;
 use itertools::Itertools as _;
 pub use pallet::*;
 use sp_runtime::traits::{CheckedSub, Zero};
-use sp_runtime::{DispatchError, DispatchResult};
+use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
@@ -961,10 +961,10 @@ impl<T: Config> Pallet<T> {
     fn list_quote_liquidity_sources(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Vec<LiquiditySourceIdOf<T>> {
+        filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+    ) -> Result<Vec<LiquiditySourceIdOf<T>>, DispatchError> {
         let mut sources =
-            T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
+            T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, &filter)?;
         let locked = trading_pair::LockedLiquiditySources::<T>::get();
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         // The temp solution is to exclude OrderBook source if there are multiple sources.
@@ -973,7 +973,7 @@ impl<T: Config> Pallet<T> {
         if sources.len() > 1 {
             sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
         }
-        sources
+        Ok(sources)
     }
 
     /// Computes the optimal distribution across available liquidity sources to execute the requested trade
@@ -1002,7 +1002,7 @@ impl<T: Config> Pallet<T> {
         ),
         DispatchError,
     > {
-        let sources = Self::list_quote_liquidity_sources(input_asset_id, output_asset_id, filter);
+        let sources = Self::list_quote_liquidity_sources(input_asset_id, output_asset_id, &filter)?;
         let mut total_weight = <T as Config>::WeightInfo::list_liquidity_sources();
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
 
@@ -1206,6 +1206,7 @@ impl<T: Config> Pallet<T> {
         input: &T::AssetId,
         output: &T::AssetId,
         swap_variant: SwapVariant,
+        filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Weight {
         // Get DEX info or return weight that will be rejected
         let Ok(dex_info) = T::DexInfoProvider::get_dex_info(dex_id) else {
@@ -1218,7 +1219,6 @@ impl<T: Config> Pallet<T> {
         };
 
         let quote_weight = T::LiquidityRegistry::quote_weight();
-        let exchange_weight = T::LiquidityRegistry::exchange_weight();
         let check_rewards_weight = T::LiquidityRegistry::check_rewards_weight();
 
         let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
@@ -1241,7 +1241,24 @@ impl<T: Config> Pallet<T> {
 
         for path in trivial_paths {
             if path.0.len() > 0 {
-                let total_exchange_weight = exchange_weight.saturating_mul(path.0.len() as u64 - 1);
+                let path_weights =
+                    path.0
+                        .iter()
+                        .tuple_windows()
+                        .map(|(input_asset_id, output_asset_id)| {
+                            let exchange_sources = Self::list_quote_liquidity_sources(
+                                input_asset_id,
+                                output_asset_id,
+                                &filter,
+                            )
+                            .unwrap_or(Vec::new());
+                            // if no sources - extrinsic should fail; thus weight is not spent
+                            let single_exchange_weight =
+                                T::LiquidityRegistry::exchange_weight_filtered(exchange_sources);
+                            single_exchange_weight
+                        });
+                let total_exchange_weight =
+                    path_weights.fold(Weight::zero(), |acc, next| acc.saturating_add(next));
                 weights.push(
                     weight
                         .saturating_add(quote_single_weight)
@@ -1271,9 +1288,16 @@ impl<T: Config> Pallet<T> {
         input: &T::AssetId,
         output: &T::AssetId,
         swap_variant: SwapVariant,
+        selected_source_types: &Vec<LiquiditySourceType>,
+        filter_mode: &FilterMode,
     ) -> Weight {
+        let filter = LiquiditySourceFilter::with_mode(
+            *dex_id,
+            filter_mode.clone(),
+            selected_source_types.clone(),
+        );
         let inner_exchange_weight =
-            Self::inner_exchange_weight(dex_id, input, output, swap_variant);
+            Self::inner_exchange_weight(dex_id, input, output, swap_variant, filter);
 
         let weight = <T as Config>::WeightInfo::check_indivisible_assets()
             .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
@@ -1303,16 +1327,25 @@ impl<T: Config> Pallet<T> {
     pub fn swap_transfer_batch_weight(
         swap_batches: &Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
         input: &T::AssetId,
+        selected_source_types: &Vec<LiquiditySourceType>,
+        filter_mode: &FilterMode,
     ) -> Weight {
         let mut weight = Weight::zero();
 
         for swap_batch_info in swap_batches {
             if input != &swap_batch_info.outcome_asset_id {
+                let filter = LiquiditySourceFilter::with_mode(
+                    swap_batch_info.dex_id,
+                    filter_mode.clone(),
+                    selected_source_types.clone(),
+                );
+
                 let inner_exchange_weight = Self::inner_exchange_weight(
                     &swap_batch_info.dex_id,
                     input,
                     &swap_batch_info.outcome_asset_id,
                     SwapVariant::WithDesiredOutput,
+                    filter,
                 );
 
                 weight = weight
@@ -2307,7 +2340,7 @@ pub mod pallet {
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         #[pallet::call_index(0)]
-        #[pallet::weight(Pallet::<T>::swap_weight(dex_id, input_asset_id, output_asset_id, (*swap_amount).into()))]
+        #[pallet::weight(Pallet::<T>::swap_weight(dex_id, input_asset_id, output_asset_id, (*swap_amount).into(), selected_source_types, filter_mode))]
         pub fn swap(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
@@ -2345,7 +2378,7 @@ pub mod pallet {
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         #[pallet::call_index(1)]
-        #[pallet::weight(Pallet::<T>::swap_weight(dex_id, input_asset_id, output_asset_id, (*swap_amount).into()))]
+        #[pallet::weight(Pallet::<T>::swap_weight(dex_id, input_asset_id, output_asset_id, (*swap_amount).into(), selected_source_types, filter_mode))]
         pub fn swap_transfer(
             origin: OriginFor<T>,
             receiver: T::AccountId,
@@ -2388,7 +2421,7 @@ pub mod pallet {
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         #[transactional]
         #[pallet::call_index(2)]
-        #[pallet::weight(Pallet::<T>::swap_transfer_batch_weight(swap_batches, input_asset_id))]
+        #[pallet::weight(Pallet::<T>::swap_transfer_batch_weight(swap_batches, input_asset_id, selected_source_types, filter_mode))]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
             swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
@@ -2505,7 +2538,7 @@ pub mod pallet {
                 && max_amount_in > &Balance::zero()
                 && desired_xor_amount > &Balance::zero()
             {
-                weight = weight.saturating_add(Pallet::<T>::swap_weight(dex_id, asset_id, &common::XOR.into(), SwapVariant::WithDesiredOutput));
+                weight = weight.saturating_add(Pallet::<T>::swap_weight(dex_id, asset_id, &common::XOR.into(), SwapVariant::WithDesiredOutput, selected_source_types, filter_mode));
             }
             weight
         })]

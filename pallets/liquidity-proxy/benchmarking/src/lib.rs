@@ -152,7 +152,7 @@ benchmarks! {
             .to_vec()
         );
     }: {
-        T::LiquidityRegistry::list_liquidity_sources(&from_asset, &to_asset, filter).unwrap();
+        T::LiquidityRegistry::list_liquidity_sources(&from_asset, &to_asset, &filter).unwrap();
     }
     verify {
     }

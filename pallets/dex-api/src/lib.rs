@@ -301,7 +301,7 @@ impl<T: Config>
     fn list_liquidity_sources(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+        filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>, DispatchError> {
         let supported_types = Self::get_supported_types();
         T::DexInfoProvider::ensure_dex_exists(&filter.dex_id)?;
