@@ -1119,7 +1119,7 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-#[cfg(feature = "expose-deposit-event")]
+#[cfg(feature = "private-net")]
 impl<T: Config> Pallet<T> {
     /// Specifically created for `qa-tools` pallet
     pub fn deposit_event_exposed(event: Event<T>) {

@@ -68,4 +68,7 @@ try-runtime = ["frame-support/try-runtime"]
 
 wip = ["framenode-chain-spec/wip", "framenode-runtime/wip", "common/wip"]
 
-expose-deposit-event = []
+private-net = [
+    "framenode-chain-spec/private-net",
+    "framenode-runtime/private-net",
+]
