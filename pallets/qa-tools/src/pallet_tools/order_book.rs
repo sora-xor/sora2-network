@@ -63,7 +63,7 @@ pub mod settings {
     }
 }
 
-/// Does not create an order book if it already exists
+/// Does not create order books that already exist
 ///
 /// `who` is just some account. Used to mint non-divisible assets for creating corresponding
 /// order book(-s).
@@ -106,11 +106,7 @@ pub fn create_multiple_empty_unchecked<T: Config>(
     Ok(())
 }
 
-/// Place orders into the orderbook.
-///
-/// In fill settings, `best_bid_price` should be at least 3 price steps from the
-/// lowest accepted price, and `best_ask_price` - at least 3 steps below
-/// maximum price.
+/// Place orders into the order books.
 pub fn fill_multiple_empty_unchecked<T: Config>(
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
