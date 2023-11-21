@@ -179,7 +179,8 @@ fn fill_order_book<T: Config>(
         .random_seed
         .unwrap_or(current_block)
         .try_into()
-        .unwrap_or(0);
+        .unwrap_or(0)
+        .into();
     let mut rand_generator = ChaCha8Rng::seed_from_u64(seed);
     let buy_amount_range = settings
         .bids
