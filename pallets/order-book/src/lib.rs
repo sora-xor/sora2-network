@@ -104,6 +104,7 @@ pub mod pallet {
         Blake2_128Concat,
     };
     use frame_system::pallet_prelude::*;
+    use sp_runtime::Either;
 
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -180,7 +181,11 @@ pub mod pallet {
         type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type Time: Time;
-        type PermittedOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
+        type PermittedCreateOrigin: EnsureOrigin<
+            Self::RuntimeOrigin,
+            Success = Either<Self::AccountId, ()>,
+        >;
+        type PermittedEditOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
         type WeightInfo: WeightInfo;
     }
 
@@ -295,7 +300,8 @@ pub mod pallet {
         /// New order book is created by user
         OrderBookCreated {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            creator: T::AccountId,
+            /// `creator` contains an address if the order book is created for an indivisible asset by the asset holder, or `None` if it is created by root / tech committee
+            creator: Option<T::AccountId>,
         },
 
         /// Order book is deleted
@@ -524,8 +530,26 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::verify_create_orderbook_params(&who, &order_book_id)?;
+            let origin_check_result = T::PermittedCreateOrigin::ensure_origin(origin)?;
+            let maybe_who = match origin_check_result {
+                Either::Left(who) => {
+                    if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+                        // nft
+                        // ensure the user has nft
+                        ensure!(
+                            T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
+                                > Balance::zero(),
+                            Error::<T>::UserHasNoNft
+                        );
+                        Some(who)
+                    } else {
+                        return Err(DispatchError::BadOrigin);
+                    }
+                }
+                Either::Right(()) => None,
+            };
+
+            Self::verify_create_orderbook_params(&order_book_id)?;
 
             #[cfg(feature = "ready-to-test")] // order-book
             {
@@ -539,7 +563,7 @@ pub mod pallet {
             Self::create_orderbook_unchecked(&order_book_id)?;
             Self::deposit_event(Event::<T>::OrderBookCreated {
                 order_book_id,
-                creator: who,
+                creator: maybe_who,
             });
             Ok(().into())
         }
@@ -550,7 +574,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         ) -> DispatchResult {
-            T::PermittedOrigin::ensure_origin(origin)?;
+            T::PermittedEditOrigin::ensure_origin(origin)?;
             let order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
 
@@ -592,7 +616,7 @@ pub mod pallet {
             min_lot_size: Balance,
             max_lot_size: Balance,
         ) -> DispatchResult {
-            T::PermittedOrigin::ensure_origin(origin)?;
+            T::PermittedEditOrigin::ensure_origin(origin)?;
             let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
 
@@ -704,7 +728,7 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             status: OrderBookStatus,
         ) -> DispatchResult {
-            T::PermittedOrigin::ensure_origin(origin)?;
+            T::PermittedEditOrigin::ensure_origin(origin)?;
             <OrderBooks<T>>::mutate(order_book_id, |order_book| {
                 let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
 
@@ -1111,7 +1135,6 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn verify_create_orderbook_params(
-        who: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         ensure!(
@@ -1141,15 +1164,6 @@ impl<T: Config> Pallet<T> {
             !<OrderBooks<T>>::contains_key(order_book_id),
             Error::<T>::OrderBookAlreadyExists
         );
-
-        if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-            // nft
-            // ensure the user has nft
-            ensure!(
-                T::AssetInfoProvider::total_balance(&order_book_id.base, &who)? > Balance::zero(),
-                Error::<T>::UserHasNoNft
-            );
-        };
         Ok(())
     }
 

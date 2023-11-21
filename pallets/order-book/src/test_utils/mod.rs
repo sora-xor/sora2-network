@@ -162,7 +162,7 @@ pub fn create_empty_order_book<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>,
 ) -> OrderBook<T> {
     assert_ok!(Pallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
+        RawOrigin::Root.into(),
         order_book_id
     ));
 
@@ -184,7 +184,7 @@ pub fn create_and_fill_order_book<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>,
 ) -> OrderBook<T> {
     assert_ok!(Pallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
+        RawOrigin::Root.into(),
         order_book_id
     ));
 

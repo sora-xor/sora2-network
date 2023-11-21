@@ -29,9 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::Config;
-use common::{balance, AssetInfoProvider, Balance, PriceVariant};
+use common::{balance, Balance, PriceVariant};
 use frame_support::pallet_prelude::*;
-use frame_support::sp_runtime::traits::Zero;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use order_book::DataLayer;
@@ -52,7 +51,6 @@ pub struct OrderBookFillSettings<Moment> {
 
 /// Does not create an order book if it already exists
 pub fn create_multiple_empty_unchecked<T: Config>(
-    who: &T::AccountId,
     order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
 ) -> Result<(), DispatchError> {
     let to_create_ids: Vec<_> = order_book_ids
@@ -71,13 +69,7 @@ pub fn create_multiple_empty_unchecked<T: Config>(
                 order_book_id.base.into(),
             )?;
         }
-        if <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base)
-            && <T as Config>::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
-                == Balance::zero()
-        {
-            assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &who, 1)?;
-        }
-        order_book::Pallet::<T>::verify_create_orderbook_params(who, &order_book_id)?;
+        order_book::Pallet::<T>::verify_create_orderbook_params(&order_book_id)?;
     }
 
     for order_book_id in to_create_ids {
