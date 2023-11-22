@@ -1,4 +1,4 @@
-@Library('jenkins-library@feature/DOPS-2746/rust_sonar_dojo_slither') _
+@Library('jenkins-library') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
