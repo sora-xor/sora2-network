@@ -218,11 +218,8 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
         base: VAL.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
-        order_book_id,
-    )
-    .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id)
+        .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
@@ -283,11 +280,8 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
         base: ETH.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
-        order_book_id_2,
-    )
-    .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id_2)
+        .expect("failed to create an order book");
     let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
     let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
     let mut fill_expiration_settings = fill_settings.clone();
@@ -363,11 +357,8 @@ pub fn cancel_limit_order<T: Config>(
         base: VAL.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
-        order_book_id,
-    )
-    .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id)
+        .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
@@ -456,11 +447,8 @@ pub fn cancel_limit_order<T: Config>(
         base: ETH.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
-        order_book_id_2,
-    )
-    .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id_2)
+        .expect("failed to create an order book");
     let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
     let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
     let mut fill_expiration_settings = fill_settings.clone();
@@ -506,11 +494,8 @@ pub fn quote<T: Config>(
         base: VAL.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
-        order_book_id,
-    )
-    .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id)
+        .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
@@ -603,11 +588,8 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
         .unwrap();
         id
     };
-    OrderBookPallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
-        order_book_id,
-    )
-    .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id)
+        .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
     let max_side_orders = sp_std::cmp::min(
@@ -673,11 +655,8 @@ pub fn align_single_order<T: Config>(
         PriceVariant::Sell => (false, true),
     };
 
-    OrderBookPallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
-        order_book_id,
-    )
-    .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id)
+        .expect("failed to create an order book");
 
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();

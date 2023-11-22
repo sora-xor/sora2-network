@@ -201,7 +201,7 @@ mod benchmarks_inner {
             assert_last_event::<T>(
                 Event::<T>::OrderBookCreated {
                     order_book_id,
-                    creator: caller,
+                    creator: Some(caller),
                 }
                 .into(),
             );

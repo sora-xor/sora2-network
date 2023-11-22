@@ -78,11 +78,7 @@ pub(crate) mod delete_orderbook {
             quote: XOR.into(),
         };
 
-        OrderBookPallet::<T>::create_orderbook(
-            RawOrigin::Signed(accounts::bob::<T>()).into(),
-            order_book_id,
-        )
-        .unwrap();
+        OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id).unwrap();
         OrderBookPallet::<T>::change_orderbook_status(
             RawOrigin::Root.into(),
             order_book_id,
