@@ -36,6 +36,7 @@ use common::{
     balance, AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
     DexIdOf, PredefinedAssetId, PriceVariant, PSWAP, VAL, XOR,
 };
+use frame_support::dispatch::{Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::{assert_err, assert_ok};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -45,6 +46,7 @@ use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use qa_tools::{settings, Error, WhitelistedCallers};
 use sp_runtime::traits::BadOrigin;
+use sp_runtime::DispatchErrorWithPostInfo;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
 pub type QAToolsPallet = qa_tools::Pallet<Runtime>;
@@ -385,6 +387,9 @@ fn should_reject_incorrect_orderbook_fill_settings() {
             lifespan: None,
             random_seed: None,
         };
+        let mut err: DispatchErrorWithPostInfo<PostDispatchInfo> =
+            Error::<Runtime>::IncorrectPrice.into();
+        err.post_info.pays_fee = Pays::No;
         assert_err!(
             QAToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::signed(alice()),
@@ -392,7 +397,7 @@ fn should_reject_incorrect_orderbook_fill_settings() {
                 alice(),
                 vec![(order_book_id, settings)]
             ),
-            Error::<Runtime>::IncorrectPrice
+            err
         );
         let mut bids_settings = correct_bids_settings;
         bids_settings.price_step = 0;
@@ -409,7 +414,7 @@ fn should_reject_incorrect_orderbook_fill_settings() {
                 alice(),
                 vec![(order_book_id, settings)]
             ),
-            Error::<Runtime>::IncorrectPrice
+            err
         );
     });
 }
