@@ -316,7 +316,7 @@ pub fn liberland_dev_net_coded() -> ChainSpec {
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     ChainSpec::from_genesis(
-        "SORA-dev Testnet",
+        "SORA Liberland Bridge Testnet",
         "sora-liberland-dev",
         ChainType::Development,
         move || {
