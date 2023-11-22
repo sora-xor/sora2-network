@@ -176,7 +176,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = Self::ensure_in_whitelist(origin)?;
 
-            // replace with more convenient `with_pays_fee` when/if available
+            // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
             pallet_tools::order_book::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
                 .map_err(|e| DispatchErrorWithPostInfo {
@@ -195,8 +195,8 @@ pub mod pallet {
             })
         }
 
-        /// Initialize order book liquidity source. Create multiple many order books with default
-        /// parameters if do not exist and fill them according to given parameters.
+        /// Initialize order book liquidity source. Create multiple order books with default
+        /// parameters (if don't exist yet) and fill them according to given parameters.
         ///
         /// Balance for placing the orders is minted automatically, trading pairs are
         /// created if needed.
@@ -206,8 +206,6 @@ pub mod pallet {
         /// - `bids_owner`: Creator of the buy orders placed on the order books,
         /// - `asks_owner`: Creator of the sell orders placed on the order books,
         /// - `fill_settings`: Parameters for placing the orders in each order book.
-        /// `best_bid_price` should be at least 3 price steps from the lowest accepted price,
-        /// and `best_ask_price` - at least 3 steps below maximum price,
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_batch())]
         pub fn order_book_create_and_fill_batch(
@@ -219,7 +217,7 @@ pub mod pallet {
                 settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {
-            // error messages for unsigned calls are non-informative
+            // Error messages for unsigned calls are non-informative
             let who = Self::ensure_in_whitelist(origin)?;
 
             pallet_tools::liquidity_proxy::source_initializers::order_book::<T>(

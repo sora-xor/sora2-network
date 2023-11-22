@@ -46,7 +46,7 @@ use sp_std::prelude::*;
 pub mod settings {
     use codec::{Decode, Encode};
     use common::Balance;
-    use std::ops::{Range, RangeInclusive};
+    use sp_std::ops::{Range, RangeInclusive};
 
     /// Parameters for filling one order book side
     #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
@@ -62,8 +62,7 @@ pub mod settings {
     }
 
     /// Parameters for orders amount generation
-    #[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
-    #[cfg_attr(feature = "std", derive(Debug))]
+    #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
     pub struct RandomAmount {
         min: Balance,
         max: Balance,
@@ -218,8 +217,8 @@ fn fill_order_book<T: Config>(
     let seed = settings.random_seed.unwrap_or(current_block);
     let seed = <BlockNumberFor<T> as TryInto<u64>>::try_into(seed).unwrap_or(0);
     let mut seed_generator = ChaCha8Rng::seed_from_u64(seed);
-    // we create separate RNGs seeded for each value in order to have random as independent from
-    // other values as possible.
+    // RNGs for each value are seeded separately.
+    // This allows to have random as independent from other values as possible.
     // E.g. choosing to generate bids should not affect amounts of asks.
     let mut buy_amount_generator = ChaCha8Rng::seed_from_u64(seed_generator.next_u64());
     let mut sell_amount_generator = ChaCha8Rng::seed_from_u64(seed_generator.next_u64());
@@ -248,7 +247,7 @@ fn fill_order_book<T: Config>(
             })
             .collect();
 
-        // Total amount of assets to be locked
+        // total amount of assets to be locked
         let buy_quote_locked: Balance = buy_orders
             .iter()
             .map(|(quote, base)| *(*quote * (*base)).balance())
@@ -294,7 +293,7 @@ fn fill_order_book<T: Config>(
             })
             .collect();
 
-        // Total amount of assets to be locked
+        // total amount of assets to be locked
         let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| *base.balance()).sum();
         // mint required amount to make this extrinsic self-sufficient
         assets::Pallet::<T>::mint_unchecked(&book_id.base, &asks_owner, sell_base_locked)?;
