@@ -317,7 +317,7 @@ pub fn liberland_dev_net_coded() -> ChainSpec {
     properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     ChainSpec::from_genesis(
         "SORA-dev Testnet",
-        "sora-luberland-dev",
+        "sora-liberland-dev",
         ChainType::Development,
         move || {
             testnet_genesis(
