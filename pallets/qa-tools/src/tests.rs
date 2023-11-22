@@ -38,10 +38,11 @@ use common::{
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::{assert_err, assert_ok};
+use frame_system::pallet_prelude::BlockNumberFor;
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools::{self, settings, WhitelistedCallers};
 use framenode_runtime::{Runtime, RuntimeOrigin};
-use order_book::{DataLayer, LimitOrder, OrderBookId};
+use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use sp_runtime::traits::BadOrigin;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
@@ -324,6 +325,31 @@ fn should_keep_orderbook_randomness_independent() {
         }
         asks_1.sort_by(cmp_by_id);
         asks_2.sort_by(cmp_by_id);
+        fn order_without_id<T: qa_tools::Config>(
+            order: LimitOrder<T>,
+        ) -> (
+            T::AccountId,
+            PriceVariant,
+            OrderPrice,
+            OrderVolume,
+            OrderVolume,
+            MomentOf<T>,
+            MomentOf<T>,
+            BlockNumberFor<T>,
+        ) {
+            (
+                order.owner,
+                order.side,
+                order.price,
+                order.original_amount,
+                order.amount,
+                order.time,
+                order.lifespan,
+                order.expires_at,
+            )
+        }
+        let asks_1: Vec<_> = asks_1.into_iter().map(order_without_id).collect();
+        let asks_2: Vec<_> = asks_2.into_iter().map(order_without_id).collect();
 
         assert_eq!(asks_1, asks_2);
     })
