@@ -8,13 +8,14 @@ use common::ContentSource;
 use common::Description;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
-use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, PSWAP, VAL, XOR, XST};
+use common::{
+    balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST,
+};
 use common::{AssetName, XSTUSD};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
@@ -73,7 +74,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = common::PSWAP;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = 100;
@@ -120,12 +121,12 @@ impl crate::Config for Runtime {
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const GetBuyBackAssetId: AssetId = XST;
+    pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
+    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
 impl assets::Config for Runtime {
@@ -197,7 +198,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type PriceToolsPallet = ();
     type VestedRewardsPallet = VestedRewards;
     type BuyBackHandler = ();
-    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
+    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type WeightInfo = ();
 }
 
@@ -240,7 +241,7 @@ impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetXSTAssetId = GetBuyBackAssetId;
+    type GetTBCDAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -304,6 +305,7 @@ impl pallet_balances::Config for Runtime {
     type ReserveIdentifier = ();
 }
 
+#[allow(clippy::type_complexity)]
 pub struct ExtBuilder {
     pub endowed_assets: Vec<(
         AssetId,
@@ -345,9 +347,9 @@ impl Default for ExtBuilder {
                 ),
             ],
             endowed_accounts: vec![
-                (ALICE, CERES_ASSET_ID.into(), balance!(15000)),
-                (BOB, CERES_ASSET_ID.into(), balance!(5)),
-                (CHARLES, CERES_ASSET_ID.into(), balance!(3000)),
+                (ALICE, CERES_ASSET_ID, balance!(15000)),
+                (BOB, CERES_ASSET_ID, balance!(5)),
+                (CHARLES, CERES_ASSET_ID, balance!(3000)),
             ],
             initial_permission_owners: vec![
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB]),
@@ -364,43 +366,44 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
     #[cfg(feature = "runtime-benchmarks")]
     pub fn benchmarking() -> Self {
-        let mut res = Self::default();
-        res.endowed_assets = vec![
-            (
-                CERES_ASSET_ID,
-                ALICE,
-                AssetSymbol(b"CERES".to_vec()),
-                AssetName(b"Ceres".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-            (
-                XOR,
-                ALICE,
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"XOR".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-            (
-                PSWAP,
-                ALICE,
-                AssetSymbol(b"PSWAP".to_vec()),
-                AssetName(b"PSWAP".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-        ];
-        res
+        Self {
+            endowed_assets: vec![
+                (
+                    CERES_ASSET_ID,
+                    ALICE,
+                    AssetSymbol(b"CERES".to_vec()),
+                    AssetName(b"Ceres".to_vec()),
+                    18,
+                    0,
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    XOR,
+                    ALICE,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"XOR".to_vec()),
+                    18,
+                    0,
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    PSWAP,
+                    ALICE,
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"PSWAP".to_vec()),
+                    18,
+                    0,
+                    true,
+                    None,
+                    None,
+                ),
+            ],
+            ..Default::default()
+        }
     }
 
     pub fn build(self) -> sp_io::TestExternalities {

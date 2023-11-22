@@ -33,6 +33,7 @@ use crate::{
     MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserLimitOrders, UserOrders,
 };
 use assets::AssetIdOf;
+use common::storage::DecodeIsFullDoubleMap;
 use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
@@ -58,28 +59,30 @@ impl<T: Config> StorageDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         order: &LimitOrder<T>,
     ) -> Result<(), ()> {
-        let mut bids = <Bids<T>>::try_get(order_book_id, order.price).map_err(|_| ())?;
-        bids.retain(|x| *x != order.id);
-        if bids.is_empty() {
-            <Bids<T>>::remove(order_book_id, order.price);
-        } else {
-            <Bids<T>>::set(order_book_id, order.price, Some(bids));
-        }
-        Ok(())
+        <Bids<T>>::mutate(order_book_id, order.price, |bids_opt| {
+            if let Some(bids) = bids_opt {
+                bids.retain(|x| *x != order.id);
+                if bids.is_empty() {
+                    *bids_opt = None;
+                }
+            }
+            Ok(())
+        })
     }
 
     fn remove_from_asks(
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         order: &LimitOrder<T>,
     ) -> Result<(), ()> {
-        let mut asks = <Asks<T>>::try_get(order_book_id, order.price).map_err(|_| ())?;
-        asks.retain(|x| *x != order.id);
-        if asks.is_empty() {
-            <Asks<T>>::remove(order_book_id, order.price);
-        } else {
-            <Asks<T>>::set(order_book_id, order.price, Some(asks));
-        }
-        Ok(())
+        <Asks<T>>::mutate(order_book_id, order.price, |asks_opt| {
+            if let Some(asks) = asks_opt {
+                asks.retain(|x| *x != order.id);
+                if asks.is_empty() {
+                    *asks_opt = None;
+                }
+            }
+            Ok(())
+        })
     }
 
     fn add_to_aggregated_bids(
@@ -87,16 +90,16 @@ impl<T: Config> StorageDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut bids = <AggregatedBids<T>>::get(order_book_id);
-        let volume = bids
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_add(value)
-            .ok_or(())?;
-        bids.try_insert(*price, volume).map_err(|_| ())?;
-        <AggregatedBids<T>>::set(order_book_id, bids);
-        Ok(())
+        <AggregatedBids<T>>::mutate(order_book_id, |bids| {
+            let volume = bids
+                .get(price)
+                .map(|x| *x)
+                .unwrap_or_default()
+                .checked_add(value)
+                .ok_or(())?;
+            bids.try_insert(*price, volume).map_err(|_| ())?;
+            Ok::<(), ()>(())
+        })
     }
 
     fn sub_from_aggregated_bids(
@@ -104,20 +107,20 @@ impl<T: Config> StorageDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut agg_bids = <AggregatedBids<T>>::try_get(order_book_id).map_err(|_| ())?;
-        let volume = agg_bids
-            .get(price)
-            .map(|x| *x)
-            .ok_or(())?
-            .checked_sub(value)
-            .ok_or(())?;
-        if volume.is_zero() {
-            agg_bids.remove(price).ok_or(())?;
-        } else {
-            agg_bids.try_insert(*price, volume).map_err(|_| ())?;
-        }
-        <AggregatedBids<T>>::set(order_book_id, agg_bids);
-        Ok(())
+        <AggregatedBids<T>>::mutate(order_book_id, |agg_bids| {
+            let volume = agg_bids
+                .get(price)
+                .map(|x| *x)
+                .ok_or(())?
+                .checked_sub(value)
+                .ok_or(())?;
+            if volume.is_zero() {
+                agg_bids.remove(price).ok_or(())?;
+            } else {
+                agg_bids.try_insert(*price, volume).map_err(|_| ())?;
+            }
+            Ok::<(), ()>(())
+        })
     }
 
     fn add_to_aggregated_asks(
@@ -125,16 +128,16 @@ impl<T: Config> StorageDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut asks = <AggregatedAsks<T>>::get(order_book_id);
-        let volume = asks
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_add(value)
-            .ok_or(())?;
-        asks.try_insert(*price, volume).map_err(|_| ())?;
-        <AggregatedAsks<T>>::set(order_book_id, asks);
-        Ok(())
+        <AggregatedAsks<T>>::mutate(order_book_id, |asks| {
+            let volume = asks
+                .get(price)
+                .map(|x| *x)
+                .unwrap_or_default()
+                .checked_add(value)
+                .ok_or(())?;
+            asks.try_insert(*price, volume).map_err(|_| ())?;
+            Ok::<(), ()>(())
+        })
     }
 
     fn sub_from_aggregated_asks(
@@ -142,20 +145,20 @@ impl<T: Config> StorageDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut agg_asks = <AggregatedAsks<T>>::try_get(order_book_id).map_err(|_| ())?;
-        let volume = agg_asks
-            .get(price)
-            .map(|x| *x)
-            .ok_or(())?
-            .checked_sub(value)
-            .ok_or(())?;
-        if volume.is_zero() {
-            agg_asks.remove(price).ok_or(())?;
-        } else {
-            agg_asks.try_insert(*price, volume).map_err(|_| ())?;
-        }
-        <AggregatedAsks<T>>::set(order_book_id, agg_asks);
-        Ok(())
+        <AggregatedAsks<T>>::mutate(order_book_id, |agg_asks| {
+            let volume = agg_asks
+                .get(price)
+                .map(|x| *x)
+                .ok_or(())?
+                .checked_sub(value)
+                .ok_or(())?;
+            if volume.is_zero() {
+                agg_asks.remove(price).ok_or(())?;
+            } else {
+                agg_asks.try_insert(*price, volume).map_err(|_| ())?;
+            }
+            Ok::<(), ()>(())
+        })
     }
 }
 
@@ -165,11 +168,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         order_id: T::OrderId,
     ) -> Result<LimitOrder<T>, DispatchError> {
-        if let Some(order) = <LimitOrders<T>>::get(order_book_id, order_id) {
-            Ok(order)
-        } else {
-            Err(Error::<T>::UnknownLimitOrder.into())
-        }
+        <LimitOrders<T>>::get(order_book_id, order_id).ok_or(Error::<T>::UnknownLimitOrder.into())
     }
 
     fn get_all_limit_orders(
@@ -298,12 +297,28 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         <Bids<T>>::get(order_book_id, price)
     }
 
+    fn is_bid_price_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool> {
+        <Bids<T>>::decode_is_full(order_book_id, price)
+    }
+
     fn get_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
         <Asks<T>>::get(order_book_id, price)
+    }
+
+    fn is_ask_price_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool> {
+        <Asks<T>>::decode_is_full(order_book_id, price)
     }
 
     fn get_aggregated_bids(
@@ -313,11 +328,45 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         <AggregatedBids<T>>::get(order_book_id)
     }
 
+    fn get_aggregated_bids_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<usize> {
+        <AggregatedBids<T>>::decode_len(order_book_id)
+    }
+
+    fn best_bid(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)> {
+        <AggregatedBids<T>>::get(order_book_id)
+            .iter()
+            .max()
+            .map(|(k, v)| (*k, *v))
+    }
+
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount> {
         <AggregatedAsks<T>>::get(order_book_id)
+    }
+
+    fn get_aggregated_asks_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<usize> {
+        <AggregatedAsks<T>>::decode_len(order_book_id)
+    }
+
+    fn best_ask(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)> {
+        <AggregatedAsks<T>>::get(order_book_id)
+            .iter()
+            .min()
+            .map(|(k, v)| (*k, *v))
     }
 
     fn get_user_limit_orders(
@@ -326,6 +375,14 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>> {
         <UserLimitOrders<T>>::get(account, order_book_id)
+    }
+
+    fn is_user_limit_orders_full(
+        &mut self,
+        account: &T::AccountId,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<bool> {
+        <UserLimitOrders<T>>::decode_is_full(account, order_book_id)
     }
 
     fn get_all_user_limit_orders(

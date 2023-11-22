@@ -32,12 +32,13 @@
 #![allow(dead_code)] // todo (m.tagirov) remove
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
+#![feature(int_roundings)]
 
 use assets::AssetIdOf;
 use common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
@@ -62,10 +63,11 @@ pub mod weights;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+pub mod test_utils;
 
 pub mod cache_data_layer;
+pub mod fee_calculator;
 mod limit_order;
 mod market_order;
 mod order_book;
@@ -78,10 +80,13 @@ pub use crate::order_book::OrderBook;
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
-pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer, Delegate, ExpirationScheduler};
+pub use traits::{
+    AlignmentScheduler, CurrencyLocker, CurrencyUnlocker, DataLayer, Delegate, ExpirationScheduler,
+};
 pub use types::{
-    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent, OrderBookId,
-    OrderBookStatus, OrderPrice, OrderVolume, Payment, PriceOrders, UserOrders,
+    CancelReason, DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent,
+    OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
+    PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -96,10 +101,9 @@ pub mod pallet {
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
         traits::Hooks,
-        Blake2_128Concat, Twox128,
+        Blake2_128Concat,
     };
     use frame_system::pallet_prelude::*;
-    use sp_runtime::Either;
 
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -114,6 +118,12 @@ pub mod pallet {
         const MIN_ORDER_LIFESPAN: MomentOf<Self>;
         const MILLISECS_PER_BLOCK: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
+        /// The soft ratio between min & max order amounts.
+        /// In particular, it defines the optimal number of limit orders that could be executed by one big market order in one block.
+        const SOFT_MIN_MAX_RATIO: usize;
+        /// The soft ratio between min & max order amounts.
+        /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
+        const HARD_MIN_MAX_RATIO: usize;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -131,19 +141,27 @@ pub mod pallet {
             + scale_info::TypeInfo;
         type Locker: CurrencyLocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
         type Unlocker: CurrencyUnlocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
-        type Scheduler: ExpirationScheduler<
-            Self::BlockNumber,
-            OrderBookId<Self::AssetId, Self::DEXId>,
-            Self::DEXId,
+        type Scheduler: AlignmentScheduler
+            + ExpirationScheduler<
+                Self::BlockNumber,
+                OrderBookId<Self::AssetId, Self::DEXId>,
+                Self::DEXId,
+                Self::OrderId,
+                DispatchError,
+            >;
+        type Delegate: Delegate<
+            Self::AccountId,
+            Self::AssetId,
             Self::OrderId,
-            DispatchError,
+            Self::DEXId,
+            MomentOf<Self>,
         >;
-        type Delegate: Delegate<Self::AccountId, Self::AssetId, Self::OrderId, Self::DEXId>;
         type MaxOpenedLimitOrdersPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
         type MaxSidePriceCount: Get<u32>;
         type MaxExpiringOrdersPerBlock: Get<u32>;
         type MaxExpirationWeightPerBlock: Get<Weight>;
+        type MaxAlignmentWeightPerBlock: Get<Weight>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,
@@ -162,12 +180,7 @@ pub mod pallet {
         type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type Time: Time;
-        type ParameterUpdateOrigin: EnsureOrigin<
-            Self::RuntimeOrigin,
-            Success = Either<Self::AccountId, ()>,
-        >;
-        type StatusUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
-        type RemovalOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
+        type PermittedOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
         type WeightInfo: WeightInfo;
     }
 
@@ -253,10 +266,20 @@ pub mod pallet {
     #[pallet::getter(fn expired_orders_at)]
     pub type ExpirationsAgenda<T: Config> = StorageMap<
         _,
-        Twox128,
+        Identity,
         T::BlockNumber,
         BoundedVec<(OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId), T::MaxExpiringOrdersPerBlock>,
         ValueQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn alignment_cursor)]
+    pub type AlignmentCursor<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        OrderBookId<AssetIdOf<T>, T::DEXId>,
+        T::OrderId,
+        OptionQuery,
     >;
 
     /// Earliest block with incomplete expirations;
@@ -278,7 +301,6 @@ pub mod pallet {
         /// Order book is deleted
         OrderBookDeleted {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            count_of_canceled_orders: u32,
         },
 
         /// Order book status is changed
@@ -297,6 +319,10 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             order_id: T::OrderId,
             owner_id: T::AccountId,
+            side: PriceVariant,
+            price: OrderPrice,
+            amount: OrderVolume,
+            lifetime: MomentOf<T>,
         },
 
         /// User tried to place the limit order out of the spread. The limit order is converted into a market order.
@@ -305,6 +331,7 @@ pub mod pallet {
             owner_id: T::AccountId,
             direction: PriceVariant,
             amount: OrderAmount,
+            average_price: OrderPrice,
         },
 
         /// User tried to place the limit order out of the spread.
@@ -318,18 +345,47 @@ pub mod pallet {
             limit_order_id: T::OrderId,
         },
 
-        /// User canceled their limit order
+        /// User canceled their limit order or the limit order has reached the end of its lifespan
         LimitOrderCanceled {
+            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
+            reason: CancelReason,
+        },
+
+        /// Some amount of the limit order is executed
+        LimitOrderExecuted {
+            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
+            side: PriceVariant,
+            price: OrderPrice,
+            amount: OrderAmount,
+        },
+
+        /// All amount of the limit order is executed
+        LimitOrderFilled {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             order_id: T::OrderId,
             owner_id: T::AccountId,
         },
 
-        /// The limit order has reached the end of its lifespan
-        LimitOrderExpired {
+        /// The limit order is updated
+        LimitOrderUpdated {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             order_id: T::OrderId,
             owner_id: T::AccountId,
+            new_amount: OrderVolume,
+        },
+
+        /// User executes a deal by the market order
+        MarketOrderExecuted {
+            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+            owner_id: T::AccountId,
+            direction: PriceVariant,
+            amount: OrderAmount,
+            average_price: OrderPrice,
+            to: Option<T::AccountId>,
         },
 
         /// Failed to cancel expired order
@@ -339,30 +395,10 @@ pub mod pallet {
             error: DispatchError,
         },
 
-        /// Some amount of the limit order is executed
-        LimitOrderExecuted {
+        /// Failed to cancel expired order
+        AlignmentFailure {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            order_id: T::OrderId,
-            owner_id: T::AccountId,
-            side: PriceVariant,
-            amount: OrderAmount,
-        },
-
-        /// The limit order is updated
-        LimitOrderUpdated {
-            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            order_id: T::OrderId,
-            owner_id: T::AccountId,
-        },
-
-        /// User executes a deal by the market order
-        MarketOrderExecuted {
-            order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            owner_id: T::AccountId,
-            direction: PriceVariant,
-            amount: OrderAmount,
-            average_price: OrderVolume,
-            to: Option<T::AccountId>,
+            error: DispatchError,
         },
     }
 
@@ -452,15 +488,31 @@ pub mod pallet {
         SlippageLimitExceeded,
         /// Market orders are allowed only for indivisible assets
         MarketOrdersAllowedOnlyForIndivisibleAssets,
+        /// It is possible to delete an order-book only with the statuses: OnlyCancel or Stop
+        ForbiddenStatusToDeleteOrderBook,
+        // It is possible to delete only empty order-book
+        OrderBookIsNotEmpty,
+        /// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
+        ForbiddenStatusToUpdateOrderBook,
+        /// Order Book is locked for technical maintenance. Try again later.
+        OrderBookIsLocked,
     }
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Perform scheduled expirations
         fn on_initialize(current_block: T::BlockNumber) -> Weight {
-            let mut weight_counter = WeightMeter::from_limit(T::MaxExpirationWeightPerBlock::get());
-            Self::service(current_block, &mut weight_counter);
-            weight_counter.consumed
+            let mut expiration_weight_counter =
+                WeightMeter::from_limit(T::MaxExpirationWeightPerBlock::get());
+            Self::service_expiration(current_block, &mut expiration_weight_counter);
+
+            let mut alignment_weight_counter =
+                WeightMeter::from_limit(T::MaxAlignmentWeightPerBlock::get());
+            Self::service_alignment(&mut alignment_weight_counter);
+
+            expiration_weight_counter
+                .consumed
+                .saturating_add(alignment_weight_counter.consumed)
         }
     }
 
@@ -475,7 +527,7 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::verify_create_orderbook_params(&who, &order_book_id)?;
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             {
                 T::TradingPairSourceManager::enable_source_for_trading_pair(
                     &order_book_id.dex_id,
@@ -498,16 +550,22 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         ) -> DispatchResult {
-            T::RemovalOrigin::ensure_origin(origin)?;
+            T::PermittedOrigin::ensure_origin(origin)?;
             let order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
 
-            let mut data = CacheDataLayer::<T>::new();
-            let count_of_canceled_orders = order_book.cancel_all_limit_orders(&mut data)? as u32;
+            ensure!(
+                order_book.status == OrderBookStatus::OnlyCancel
+                    || order_book.status == OrderBookStatus::Stop,
+                Error::<T>::ForbiddenStatusToDeleteOrderBook
+            );
 
-            data.commit();
+            let is_empty = <LimitOrders<T>>::iter_prefix_values(order_book_id)
+                .next()
+                .is_none();
+            ensure!(is_empty, Error::<T>::OrderBookIsNotEmpty);
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             {
                 T::TradingPairSourceManager::disable_source_for_trading_pair(
                     &order_book_id.dex_id,
@@ -520,10 +578,7 @@ pub mod pallet {
             Self::deregister_tech_account(order_book_id)?;
             <OrderBooks<T>>::remove(order_book_id);
 
-            Self::deposit_event(Event::<T>::OrderBookDeleted {
-                order_book_id,
-                count_of_canceled_orders,
-            });
+            Self::deposit_event(Event::<T>::OrderBookDeleted { order_book_id });
             Ok(().into())
         }
 
@@ -537,18 +592,20 @@ pub mod pallet {
             min_lot_size: Balance,
             max_lot_size: Balance,
         ) -> DispatchResult {
-            let origin_check_result = T::ParameterUpdateOrigin::ensure_origin(origin)?;
-            match origin_check_result {
-                Either::Left(who) => {
-                    ensure!(
-                        T::AssetInfoProvider::is_asset_owner(&order_book_id.base, &who),
-                        DispatchError::BadOrigin
-                    );
-                }
-                Either::Right(()) => (),
-            }
+            T::PermittedOrigin::ensure_origin(origin)?;
             let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+
+            ensure!(
+                order_book.tech_status == OrderBookTechStatus::Ready,
+                Error::<T>::OrderBookIsLocked
+            );
+
+            ensure!(
+                order_book.status == OrderBookStatus::OnlyCancel
+                    || order_book.status == OrderBookStatus::Stop,
+                Error::<T>::ForbiddenStatusToUpdateOrderBook
+            );
 
             // Check that values are non-zero
             ensure!(tick_size > Balance::zero(), Error::<T>::InvalidTickSize);
@@ -583,6 +640,22 @@ pub mod pallet {
                 Error::<T>::InvalidMaxLotSize
             );
 
+            // check the ratio between min & max
+            ensure!(
+                max_lot_size <= min_lot_size.saturating_mul(T::SOFT_MIN_MAX_RATIO as Balance),
+                Error::<T>::InvalidMaxLotSize
+            );
+
+            // check the ratio between old min & new max
+            ensure!(
+                max_lot_size
+                    <= order_book
+                        .min_lot_size
+                        .balance()
+                        .saturating_mul(T::HARD_MIN_MAX_RATIO as Balance),
+                Error::<T>::InvalidMaxLotSize
+            );
+
             if !T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
                 // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
                 // The min possible deal amount = `tick_size` * `step_lot_size`.
@@ -614,9 +687,10 @@ pub mod pallet {
             // All new limit orders must meet the requirements of new attributes.
 
             if prev_step_lot_size.balance() % step_lot_size != 0 {
-                let mut data = CacheDataLayer::<T>::new();
-                order_book.align_limit_orders(&mut data)?;
-                data.commit();
+                order_book.tech_status = OrderBookTechStatus::Updating;
+
+                // schedule alignment
+                <AlignmentCursor<T>>::set(order_book_id, Some(T::OrderId::zero()));
             }
             <OrderBooks<T>>::set(order_book_id, Some(order_book));
             Self::deposit_event(Event::<T>::OrderBookUpdated { order_book_id });
@@ -630,9 +704,17 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             status: OrderBookStatus,
         ) -> DispatchResult {
-            T::StatusUpdateOrigin::ensure_origin(origin)?;
+            T::PermittedOrigin::ensure_origin(origin)?;
             <OrderBooks<T>>::mutate(order_book_id, |order_book| {
                 let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
+
+                if order_book.tech_status == OrderBookTechStatus::Updating
+                    && status != OrderBookStatus::OnlyCancel
+                    && status != OrderBookStatus::Stop
+                {
+                    return Err(Error::<T>::OrderBookIsLocked.into());
+                }
+
                 order_book.status = status;
                 Ok::<_, Error<T>>(())
             })?;
@@ -644,7 +726,8 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::place_limit_order())]
+        // in the worst case the limit order is converted into market order and the exchange occurs
+        #[pallet::weight(Pallet::<T>::exchange_weight())]
         pub fn place_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -652,7 +735,7 @@ pub mod pallet {
             amount: Balance,
             side: PriceVariant,
             lifespan: Option<MomentOf<T>>,
-        ) -> DispatchResult {
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
@@ -677,16 +760,35 @@ pub mod pallet {
             );
 
             let mut data = CacheDataLayer::<T>::new();
-            order_book.place_limit_order(order, &mut data)?;
+
+            let executed_orders_count = order_book.place_limit_order(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
 
-            Ok(().into())
+            // Note: be careful with changing the weight. The fee depends on it,
+            // the market-maker fee is charged for some weight, and the regular fee for none weight
+            let actual_weight = if executed_orders_count == 0 {
+                // if the extrinsic just places the limit order, the weight of the placing is returned
+                Some(<T as Config>::WeightInfo::place_limit_order_without_cross_spread())
+            } else {
+                // if the limit order was converted into market order, then None weight is returned
+                // this weight will be replaced with worst case weight:
+                // exchange_weight() + place_limit_order_without_cross_spread()
+                None
+            };
+
+            Ok(PostDispatchInfo {
+                actual_weight,
+                pays_fee: Pays::Yes,
+            })
         }
 
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order())]
+        #[pallet::weight(
+            <T as Config>::WeightInfo::cancel_limit_order_first_expiration()
+                .max(<T as Config>::WeightInfo::cancel_limit_order_last_expiration()))
+        ]
         pub fn cancel_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -711,7 +813,15 @@ pub mod pallet {
         }
 
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order().saturating_mul(limit_orders_to_cancel.iter().fold(0, |count, (_, order_ids)| count.saturating_add(order_ids.len() as u64))))]
+        #[pallet::weight({
+            let cancel_limit_order = <T as Config>::WeightInfo::cancel_limit_order_first_expiration()
+                .max(<T as Config>::WeightInfo::cancel_limit_order_last_expiration());
+            let limit_orders_count: u64 = limit_orders_to_cancel
+                .iter()
+                .fold(0, |count, (_, order_ids)| count.saturating_add(order_ids.len() as u64));
+
+            cancel_limit_order.saturating_mul(limit_orders_count)
+        })]
         pub fn cancel_limit_orders_batch(
             origin: OriginFor<T>,
             limit_orders_to_cancel: Vec<(OrderBookId<AssetIdOf<T>, T::DEXId>, Vec<T::OrderId>)>,
@@ -819,29 +929,42 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
     }
 }
 
-impl<T: Config> Delegate<T::AccountId, T::AssetId, T::OrderId, T::DEXId> for Pallet<T> {
+impl<T: Config> Delegate<T::AccountId, T::AssetId, T::OrderId, T::DEXId, MomentOf<T>>
+    for Pallet<T>
+{
     fn emit_event(
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        event: OrderBookEvent<T::AccountId, T::OrderId>,
+        event: OrderBookEvent<T::AccountId, T::OrderId, MomentOf<T>>,
     ) {
         let event = match event {
-            OrderBookEvent::LimitOrderPlaced { order_id, owner_id } => {
-                Event::<T>::LimitOrderPlaced {
-                    order_book_id,
-                    order_id,
-                    owner_id,
-                }
-            }
+            OrderBookEvent::LimitOrderPlaced {
+                order_id,
+                owner_id,
+                side,
+                price,
+                amount,
+                lifetime,
+            } => Event::<T>::LimitOrderPlaced {
+                order_book_id,
+                order_id,
+                owner_id,
+                side,
+                price,
+                amount,
+                lifetime,
+            },
 
             OrderBookEvent::LimitOrderConvertedToMarketOrder {
                 owner_id,
                 direction,
                 amount,
+                average_price,
             } => Event::<T>::LimitOrderConvertedToMarketOrder {
                 order_book_id,
                 owner_id,
                 direction,
                 amount,
+                average_price,
             },
 
             OrderBookEvent::LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
@@ -859,34 +982,50 @@ impl<T: Config> Delegate<T::AccountId, T::AssetId, T::OrderId, T::DEXId> for Pal
                 limit_order_id,
             },
 
-            OrderBookEvent::LimitOrderCanceled { order_id, owner_id } => {
-                Event::<T>::LimitOrderCanceled {
-                    order_book_id,
-                    order_id,
-                    owner_id,
-                }
-            }
+            OrderBookEvent::LimitOrderCanceled {
+                order_id,
+                owner_id,
+                reason,
+            } => Event::<T>::LimitOrderCanceled {
+                order_book_id,
+                order_id,
+                owner_id,
+                reason,
+            },
 
             OrderBookEvent::LimitOrderExecuted {
                 order_id,
                 owner_id,
                 side,
+                price,
                 amount,
             } => Event::<T>::LimitOrderExecuted {
                 order_book_id,
                 order_id,
                 owner_id,
                 side,
+                price,
                 amount,
             },
 
-            OrderBookEvent::LimitOrderUpdated { order_id, owner_id } => {
-                Event::<T>::LimitOrderUpdated {
+            OrderBookEvent::LimitOrderFilled { order_id, owner_id } => {
+                Event::<T>::LimitOrderFilled {
                     order_book_id,
                     order_id,
                     owner_id,
                 }
             }
+
+            OrderBookEvent::LimitOrderUpdated {
+                order_id,
+                owner_id,
+                new_amount,
+            } => Event::<T>::LimitOrderUpdated {
+                order_book_id,
+                order_id,
+                owner_id,
+                new_amount,
+            },
 
             OrderBookEvent::MarketOrderExecuted {
                 owner_id,
@@ -991,12 +1130,6 @@ impl<T: Config> Pallet<T> {
             Error::<T>::NotAllowedQuoteAsset
         );
 
-        // synthetic asset are forbidden
-        ensure!(
-            !T::SyntheticInfoProvider::is_synthetic(&order_book_id.base),
-            Error::<T>::SyntheticAssetIsForbidden
-        );
-
         T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             &order_book_id.dex_id,
@@ -1072,7 +1205,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
 
-        let fee = 0; // todo (m.tagirov)
+        // order-book doesn't take fee
+        let fee = Balance::zero();
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((
@@ -1137,10 +1271,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let market_order =
             MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to.clone());
 
-        let (input_amount, output_amount) =
+        let (input_amount, output_amount, executed_orders_count) =
             order_book.execute_market_order(market_order, &mut data)?;
 
-        let fee = 0; // todo (m.tagirov)
+        // order-book doesn't take fee
+        let fee = Balance::zero();
 
         let result = match desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } => {
@@ -1161,7 +1296,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         data.commit();
 
-        Ok((result, Self::exchange_weight()))
+        let weight = <T as Config>::WeightInfo::exchange_single_order()
+            .saturating_mul(executed_orders_count as u64);
+
+        Ok((result, weight))
     }
 
     fn check_rewards(
@@ -1253,7 +1391,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Error::<T>::InvalidOrderAmount
         );
 
-        let fee = 0; // todo (m.tagirov)
+        // order-book doesn't take fee
+        let fee = Balance::zero();
 
         Ok(SwapOutcome::new(*target_amount.balance(), fee))
     }
@@ -1263,7 +1402,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn exchange_weight() -> Weight {
-        <T as Config>::WeightInfo::exchange()
+        // SOFT_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
+        <T as Config>::WeightInfo::exchange_single_order()
+            .saturating_mul(<T as Config>::SOFT_MIN_MAX_RATIO as u64)
     }
 
     fn check_rewards_weight() -> Weight {

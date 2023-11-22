@@ -697,7 +697,7 @@ pub enum LiquiditySourceType {
     MockPool4,
     XSTPool,
 
-    #[cfg(feature = "wip")] // order-book
+    #[cfg(feature = "ready-to-test")] // order-book
     OrderBook,
 }
 
@@ -1028,7 +1028,7 @@ impl Default for RewardReason {
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default, scale_info::TypeInfo)]
 pub struct PswapRemintInfo {
     pub liquidity_providers: Balance,
-    pub buy_back_xst: Balance,
+    pub buy_back_tbcd: Balance,
     pub vesting: Balance,
 }
 

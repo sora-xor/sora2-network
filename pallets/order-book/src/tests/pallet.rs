@@ -28,17 +28,16 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "wip")] // order-book
+#![cfg(feature = "ready-to-test")] // order-book
 
 use core::cmp::min;
 
-use crate::tests::test_utils::*;
+use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::test_utils::assert_last_event;
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant,
-    VAL, XOR, XSTUSD,
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
@@ -54,9 +53,11 @@ use sp_std::collections::btree_map::BTreeMap;
 
 fn should_register_technical_account() {
     ext().execute_with(|| {
-        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&alice());
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&accounts::alice::<
+            Runtime,
+        >());
         let nft = assets::Pallet::<Runtime>::register_from(
-            &alice(),
+            &accounts::alice::<Runtime>(),
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
@@ -104,7 +105,7 @@ fn test_lock_unlock_same_account(
     amount_to_lock: Balance,
     account: &<Runtime as frame_system::Config>::AccountId,
 ) {
-    let balance_before = free_balance(asset_id, account);
+    let balance_before = free_balance::<Runtime>(asset_id, account);
 
     assert_ok!(OrderBookPallet::lock_liquidity(
         account,
@@ -113,7 +114,7 @@ fn test_lock_unlock_same_account(
         amount_to_lock.into()
     ));
 
-    let balance_after_lock = free_balance(asset_id, account);
+    let balance_after_lock = free_balance::<Runtime>(asset_id, account);
     assert_eq!(balance_after_lock, balance_before - amount_to_lock);
 
     assert_ok!(OrderBookPallet::unlock_liquidity(
@@ -123,7 +124,7 @@ fn test_lock_unlock_same_account(
         amount_to_lock.into()
     ));
 
-    let balance_after_unlock = free_balance(asset_id, account);
+    let balance_after_unlock = free_balance::<Runtime>(asset_id, account);
     assert_eq!(balance_before, balance_after_unlock);
 }
 
@@ -134,8 +135,8 @@ fn test_lock_unlock_other_account(
     lock_account: &<Runtime as frame_system::Config>::AccountId,
     unlock_account: &<Runtime as frame_system::Config>::AccountId,
 ) {
-    let lock_account_balance_before = free_balance(asset_id, lock_account);
-    let unlock_account_balance_before = free_balance(asset_id, unlock_account);
+    let lock_account_balance_before = free_balance::<Runtime>(asset_id, lock_account);
+    let unlock_account_balance_before = free_balance::<Runtime>(asset_id, unlock_account);
 
     assert_ok!(OrderBookPallet::lock_liquidity(
         lock_account,
@@ -144,7 +145,7 @@ fn test_lock_unlock_other_account(
         amount_to_lock.into()
     ));
 
-    let lock_account_balance_after_lock = free_balance(asset_id, lock_account);
+    let lock_account_balance_after_lock = free_balance::<Runtime>(asset_id, lock_account);
     assert_eq!(
         lock_account_balance_after_lock,
         lock_account_balance_before - amount_to_lock
@@ -157,7 +158,7 @@ fn test_lock_unlock_other_account(
         amount_to_lock.into()
     ));
 
-    let unlock_account_balance_after_unlock = free_balance(asset_id, unlock_account);
+    let unlock_account_balance_after_unlock = free_balance::<Runtime>(asset_id, unlock_account);
     assert_eq!(
         unlock_account_balance_after_unlock,
         unlock_account_balance_before + amount_to_lock
@@ -172,9 +173,9 @@ fn test_lock_unlock_other_accounts(
     unlock_account1: &<Runtime as frame_system::Config>::AccountId,
     unlock_account2: &<Runtime as frame_system::Config>::AccountId,
 ) {
-    let lock_account_balance_before = free_balance(asset_id, lock_account);
-    let unlock_account_balance_before1 = free_balance(asset_id, unlock_account1);
-    let unlock_account_balance_before2 = free_balance(asset_id, unlock_account2);
+    let lock_account_balance_before = free_balance::<Runtime>(asset_id, lock_account);
+    let unlock_account_balance_before1 = free_balance::<Runtime>(asset_id, unlock_account1);
+    let unlock_account_balance_before2 = free_balance::<Runtime>(asset_id, unlock_account2);
 
     assert_ok!(OrderBookPallet::lock_liquidity(
         lock_account,
@@ -183,7 +184,7 @@ fn test_lock_unlock_other_accounts(
         amount_to_lock.into()
     ));
 
-    let lock_account_balance_after_lock = free_balance(asset_id, lock_account);
+    let lock_account_balance_after_lock = free_balance::<Runtime>(asset_id, lock_account);
     assert_eq!(
         lock_account_balance_after_lock,
         lock_account_balance_before - amount_to_lock
@@ -203,13 +204,13 @@ fn test_lock_unlock_other_accounts(
         &unlocks
     ));
 
-    let unlock_account_balance_after_unlock1 = free_balance(asset_id, unlock_account1);
+    let unlock_account_balance_after_unlock1 = free_balance::<Runtime>(asset_id, unlock_account1);
     assert_eq!(
         unlock_account_balance_after_unlock1,
         unlock_account_balance_before1 + unlock_amount1
     );
 
-    let unlock_account_balance_after_unlock2 = free_balance(asset_id, unlock_account2);
+    let unlock_account_balance_after_unlock2 = free_balance::<Runtime>(asset_id, unlock_account2);
     assert_eq!(
         unlock_account_balance_after_unlock2,
         unlock_account_balance_before2 + unlock_amount2
@@ -223,7 +224,7 @@ fn should_lock_unlock_base_asset() {
         let amount_to_mint = amount_to_lock * 2;
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
-            alice(),
+            accounts::alice::<Runtime>(),
             XOR,
             amount_to_mint.try_into().unwrap()
         ));
@@ -236,19 +237,30 @@ fn should_lock_unlock_base_asset() {
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(order_book_id, &XOR, amount_to_lock, &alice());
+        test_lock_unlock_same_account(
+            order_book_id,
+            &XOR,
+            amount_to_lock,
+            &accounts::alice::<Runtime>(),
+        );
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(order_book_id, &XOR, amount_to_lock, &alice(), &bob());
+        test_lock_unlock_other_account(
+            order_book_id,
+            &XOR,
+            amount_to_lock,
+            &accounts::alice::<Runtime>(),
+            &accounts::bob::<Runtime>(),
+        );
 
         // Alice -> Bob & Charlie
         test_lock_unlock_other_accounts(
             order_book_id,
             &XOR,
             amount_to_lock,
-            &alice(),
-            &bob(),
-            &charlie(),
+            &accounts::alice::<Runtime>(),
+            &accounts::bob::<Runtime>(),
+            &accounts::charlie::<Runtime>(),
         );
     });
 }
@@ -260,7 +272,7 @@ fn should_lock_unlock_other_asset() {
         let amount_to_mint = amount_to_lock * 2;
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
-            alice(),
+            accounts::alice::<Runtime>(),
             VAL,
             amount_to_mint.try_into().unwrap()
         ));
@@ -273,20 +285,33 @@ fn should_lock_unlock_other_asset() {
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(order_book_id, &VAL, amount_to_lock, &alice());
+        test_lock_unlock_same_account(
+            order_book_id,
+            &VAL,
+            amount_to_lock,
+            &accounts::alice::<Runtime>(),
+        );
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(order_book_id, &VAL, amount_to_lock, &alice(), &bob());
+        test_lock_unlock_other_account(
+            order_book_id,
+            &VAL,
+            amount_to_lock,
+            &accounts::alice::<Runtime>(),
+            &accounts::bob::<Runtime>(),
+        );
     });
 }
 
 #[test]
 fn should_lock_unlock_indivisible_nft() {
     ext().execute_with(|| {
-        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&alice());
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&accounts::alice::<
+            Runtime,
+        >());
 
         let nft = assets::Pallet::<Runtime>::register_from(
-            &alice(),
+            &accounts::alice::<Runtime>(),
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
@@ -305,20 +330,28 @@ fn should_lock_unlock_indivisible_nft() {
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(order_book_id, &nft, 1, &alice());
+        test_lock_unlock_same_account(order_book_id, &nft, 1, &accounts::alice::<Runtime>());
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(order_book_id, &nft, 1, &alice(), &bob());
+        test_lock_unlock_other_account(
+            order_book_id,
+            &nft,
+            1,
+            &accounts::alice::<Runtime>(),
+            &accounts::bob::<Runtime>(),
+        );
     });
 }
 
 #[test]
 fn should_lock_unlock_multiple_indivisible_nfts() {
     ext().execute_with(|| {
-        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&alice());
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&accounts::alice::<
+            Runtime,
+        >());
 
         let nft = assets::Pallet::<Runtime>::register_from(
-            &alice(),
+            &accounts::alice::<Runtime>(),
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
@@ -337,7 +370,14 @@ fn should_lock_unlock_multiple_indivisible_nfts() {
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         // Alice -> Bob & Charlie
-        test_lock_unlock_other_accounts(order_book_id, &nft, 4, &alice(), &bob(), &charlie());
+        test_lock_unlock_other_accounts(
+            order_book_id,
+            &nft,
+            4,
+            &accounts::alice::<Runtime>(),
+            &accounts::bob::<Runtime>(),
+            &accounts::charlie::<Runtime>(),
+        );
     });
 }
 
@@ -348,7 +388,7 @@ fn should_not_lock_insufficient_base_asset() {
         let amount_to_mint = balance!(9.9);
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
-            alice(),
+            accounts::alice::<Runtime>(),
             XOR,
             amount_to_mint.try_into().unwrap()
         ));
@@ -361,7 +401,12 @@ fn should_not_lock_insufficient_base_asset() {
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_err!(
-            OrderBookPallet::lock_liquidity(&alice(), order_book_id, &XOR, amount_to_lock.into()),
+            OrderBookPallet::lock_liquidity(
+                &accounts::alice::<Runtime>(),
+                order_book_id,
+                &XOR,
+                amount_to_lock.into()
+            ),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
     });
@@ -374,7 +419,7 @@ fn should_not_lock_insufficient_other_asset() {
         let amount_to_mint = balance!(9.9);
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
-            alice(),
+            accounts::alice::<Runtime>(),
             VAL,
             amount_to_mint.try_into().unwrap()
         ));
@@ -387,7 +432,12 @@ fn should_not_lock_insufficient_other_asset() {
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_err!(
-            OrderBookPallet::lock_liquidity(&alice(), order_book_id, &VAL, amount_to_lock.into()),
+            OrderBookPallet::lock_liquidity(
+                &accounts::alice::<Runtime>(),
+                order_book_id,
+                &VAL,
+                amount_to_lock.into()
+            ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -396,8 +446,8 @@ fn should_not_lock_insufficient_other_asset() {
 #[test]
 fn should_not_lock_insufficient_nft() {
     ext().execute_with(|| {
-        let caller = alice();
-        let creator = bob();
+        let caller = accounts::alice::<Runtime>();
+        let creator = accounts::bob::<Runtime>();
         framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&creator);
 
         let nft = assets::Pallet::<Runtime>::register_from(
@@ -439,7 +489,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
         let amount_to_try_unlock = balance!(10.1);
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
-            alice(),
+            accounts::alice::<Runtime>(),
             XOR,
             amount_to_mint.try_into().unwrap()
         ));
@@ -452,7 +502,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_ok!(OrderBookPallet::lock_liquidity(
-            &alice(),
+            &accounts::alice::<Runtime>(),
             order_book_id,
             &XOR,
             amount_to_lock.into()
@@ -460,7 +510,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
 
         assert_err!(
             OrderBookPallet::unlock_liquidity(
-                &alice(),
+                &accounts::alice::<Runtime>(),
                 order_book_id,
                 &XOR,
                 amount_to_try_unlock.into()
@@ -478,7 +528,7 @@ fn should_not_unlock_more_other_that_tech_account_has() {
         let amount_to_try_unlock = balance!(10.1);
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
-            alice(),
+            accounts::alice::<Runtime>(),
             VAL,
             amount_to_mint.try_into().unwrap()
         ));
@@ -491,7 +541,7 @@ fn should_not_unlock_more_other_that_tech_account_has() {
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         assert_ok!(OrderBookPallet::lock_liquidity(
-            &alice(),
+            &accounts::alice::<Runtime>(),
             order_book_id,
             &VAL,
             amount_to_lock.into()
@@ -499,7 +549,7 @@ fn should_not_unlock_more_other_that_tech_account_has() {
 
         assert_err!(
             OrderBookPallet::unlock_liquidity(
-                &alice(),
+                &accounts::alice::<Runtime>(),
                 order_book_id,
                 &VAL,
                 amount_to_try_unlock.into()
@@ -512,10 +562,12 @@ fn should_not_unlock_more_other_that_tech_account_has() {
 #[test]
 fn should_not_unlock_more_nft_that_tech_account_has() {
     ext().execute_with(|| {
-        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&alice());
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&accounts::alice::<
+            Runtime,
+        >());
 
         let nft = assets::Pallet::<Runtime>::register_from(
-            &alice(),
+            &accounts::alice::<Runtime>(),
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
@@ -535,7 +587,7 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
 
         assert_err!(
             OrderBookPallet::unlock_liquidity(
-                &alice(),
+                &accounts::alice::<Runtime>(),
                 order_book_id,
                 &nft,
                 OrderVolume::indivisible(1)
@@ -548,25 +600,25 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
 #[test]
 fn should_expire_order() {
     ext().execute_with(|| {
-        let caller = alice();
+        let caller = accounts::alice::<Runtime>();
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
-        fill_balance(caller.clone(), order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(caller.clone(), order_book_id);
 
         let price: OrderPrice = balance!(10).into();
         let amount: OrderVolume = balance!(100).into();
-        let lifespan = 10000;
+        let lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
-        // the lifespan of 10000 ms corresponds to at least
-        // ceil(10000 / 6000) = 2 blocks of the order lifespan;
-        // at this block the order should still be available
-        let end_of_lifespan_block = current_block + 2;
+        // the lifespan of N ms corresponds to at least
+        // ceil(N / 6000) blocks of the order being available
+        let end_of_lifespan_block = current_block
+            + <u32>::try_from(lifespan.div_ceil(<Runtime as Config>::MILLISECS_PER_BLOCK)).unwrap();
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
 
@@ -581,7 +633,7 @@ fn should_expire_order() {
 
         // verify state
 
-        let order_id = get_last_order_id(order_book_id).unwrap();
+        let order_id = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         // check
         let expected_order = LimitOrder::<Runtime>::new(
@@ -620,25 +672,25 @@ fn should_expire_order() {
 #[test]
 fn should_cleanup_on_expiring() {
     ext().execute_with(|| {
-        let caller = alice();
+        let caller = accounts::alice::<Runtime>();
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
 
-        create_empty_order_book(order_book_id);
-        fill_balance(caller.clone(), order_book_id);
+        create_empty_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(caller.clone(), order_book_id);
 
         let price: OrderPrice = balance!(10).into();
         let amount: OrderVolume = balance!(100).into();
-        let lifespan = 10000;
+        let lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
-        // the lifespan of 10000 ms corresponds to at least
-        // ceil(10000 / 6000) = 2 blocks of the order lifespan;
-        // at this block the order should still be available
-        let end_of_lifespan_block = current_block + 2;
+        // the lifespan of N ms corresponds to at least
+        // ceil(N / 6000) blocks of the order being available
+        let end_of_lifespan_block = current_block
+            + <u32>::try_from(lifespan.div_ceil(<Runtime as Config>::MILLISECS_PER_BLOCK)).unwrap();
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
 
@@ -648,9 +700,7 @@ fn should_cleanup_on_expiring() {
         let price_volume_before = agg_bids_before.get(&price).cloned().unwrap_or_default();
         let user_orders_before =
             OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap_or_default();
-        let balance_before =
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                .unwrap();
+        let balance_before = free_balance::<Runtime>(&order_book_id.quote, &caller);
 
         assert_ok!(OrderBookPallet::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
@@ -663,7 +713,7 @@ fn should_cleanup_on_expiring() {
 
         // verify state
 
-        let order_id = get_last_order_id(order_book_id).unwrap();
+        let order_id = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         // check
         let expected_order = LimitOrder::<Runtime>::new(
@@ -709,16 +759,14 @@ fn should_cleanup_on_expiring() {
             user_orders_with_order
         );
 
-        let balance =
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                .unwrap();
+        let balance = free_balance::<Runtime>(&order_book_id.quote, &caller);
         let balance_with_order = balance_before - deal_amount.balance();
         assert_eq!(balance, balance_with_order);
 
         // Run to the last block the order should still be available at
         run_to_block(end_of_lifespan_block);
 
-        let order_id = get_last_order_id(order_book_id).unwrap();
+        let order_id = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         // The order is still there
         assert_eq!(
@@ -738,8 +786,7 @@ fn should_cleanup_on_expiring() {
             user_orders_with_order
         );
         assert_eq!(
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                .unwrap(),
+            free_balance::<Runtime>(&order_book_id.quote, &caller),
             balance_with_order
         );
 
@@ -762,15 +809,13 @@ fn should_cleanup_on_expiring() {
             user_orders_before
         );
         assert_eq!(
-            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
-                .unwrap(),
+            free_balance::<Runtime>(&order_book_id.quote, &caller),
             balance_before
         );
     })
 }
 
 #[test]
-#[ignore] // it works, but takes a lot of time (~2-120 secs depending on settings)
 fn should_enforce_expiration_and_weight_limits() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -778,17 +823,17 @@ fn should_enforce_expiration_and_weight_limits() {
             base: VAL.into(),
             quote: XOR.into(),
         };
-        let order_book = create_empty_order_book(order_book_id);
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
 
         let price = balance!(10);
         let amount = balance!(100);
-        let lifespan = 10000;
+        let lifespan = <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000;
         let now = 1234;
         let current_block = frame_system::Pallet::<Runtime>::block_number();
-        // the lifespan of 10000 ms corresponds to at least
-        // ceil(10000 / 6000) = 2 blocks of the order lifespan;
-        // at this block the order should still be available
-        let end_of_lifespan_block = current_block + 2;
+        // the lifespan of N ms corresponds to at least
+        // ceil(N / 6000) blocks of the order being available
+        let end_of_lifespan_block = current_block
+            + <u32>::try_from(lifespan.div_ceil(<Runtime as Config>::MILLISECS_PER_BLOCK)).unwrap();
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
 
@@ -797,10 +842,10 @@ fn should_enforce_expiration_and_weight_limits() {
 
         for i in 0..max_orders_expire_at_block {
             // in order to avoid cap on orders from single account
-            let caller = generate_account(i);
+            let caller = accounts::generate_account::<Runtime>(i);
             // in order to avoid cap on orders for a single price
             let price = price + order_book.tick_size.balance() * i as u128;
-            fill_balance(caller.clone(), order_book_id);
+            fill_balance::<Runtime>(caller.clone(), order_book_id);
             assert_ok!(OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
                 order_book_id,
@@ -809,10 +854,10 @@ fn should_enforce_expiration_and_weight_limits() {
                 PriceVariant::Buy,
                 Some(lifespan)
             ));
-            placed_orders.push(get_last_order_id(order_book_id).unwrap());
+            placed_orders.push(get_last_order_id::<Runtime>(order_book_id).unwrap());
         }
-        let caller = generate_account(max_orders_expire_at_block);
-        fill_balance(caller.clone(), order_book_id);
+        let caller = accounts::generate_account::<Runtime>(max_orders_expire_at_block);
+        fill_balance::<Runtime>(caller.clone(), order_book_id);
         assert_err!(
             OrderBookPallet::place_limit_order(
                 RawOrigin::Signed(caller.clone()).into(),
@@ -830,7 +875,7 @@ fn should_enforce_expiration_and_weight_limits() {
             assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_some());
         }
 
-        let weight_left_for_single_expiration = <Runtime as Config>::MaxExpirationWeightPerBlock::get() - <Runtime as Config>::WeightInfo::service_base() - <Runtime as Config>::WeightInfo::service_block_base();
+        let weight_left_for_single_expiration = <Runtime as Config>::MaxExpirationWeightPerBlock::get() - <Runtime as Config>::WeightInfo::service_expiration_base() - <Runtime as Config>::WeightInfo::service_expiration_block_base();
         let max_expired_per_block: u64 = min(
             weight_left_for_single_expiration.ref_time() / <Runtime as Config>::WeightInfo::service_single_expiration().ref_time(),
             weight_left_for_single_expiration.proof_size() / <Runtime as Config>::WeightInfo::service_single_expiration().proof_size()
@@ -842,7 +887,7 @@ fn should_enforce_expiration_and_weight_limits() {
             // Weight spent must not exceed the limit
             let init_weight_consumed = run_to_block(end_of_lifespan_block + i);
             // Weight does not have partial ordering, so we check for overflow this way:
-            assert!(<Runtime as Config>::MaxExpirationWeightPerBlock::get()
+            assert!(<Runtime as Config>::MaxExpirationWeightPerBlock::get().saturating_add(<Runtime as Config>::MaxAlignmentWeightPerBlock::get())
                 .checked_sub(&init_weight_consumed)
                 .is_some());
         }
@@ -878,7 +923,7 @@ fn should_emit_event_on_expiration_failure() {
         };
         let non_existent_order_id = 1;
         let expiration_block = 2u32.into();
-        assert_ok!(OrderBookPallet::schedule(
+        assert_ok!(OrderBookPallet::schedule_expiration(
             expiration_block,
             non_existent_order_book_id,
             non_existent_order_id
@@ -1007,7 +1052,7 @@ fn can_exchange() {
             quote: XOR.into(),
         };
 
-        let _ = create_empty_order_book(order_book_id);
+        let _ = create_empty_order_book::<Runtime>(order_book_id);
 
         assert!(OrderBookPallet::can_exchange(&DEX.into(), &XOR, &VAL));
         assert!(OrderBookPallet::can_exchange(&DEX.into(), &VAL, &XOR));
@@ -1065,7 +1110,7 @@ fn should_quote() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
 
         // without fee
         assert_eq!(
@@ -1120,7 +1165,6 @@ fn should_quote() {
             SwapOutcome::new(balance!(251.66326).into(), 0)
         );
 
-        // todo (m.tagirov) remake when fee introduced
         // with fee
         assert_eq!(
             OrderBookPallet::quote(
@@ -1212,7 +1256,7 @@ fn should_not_quote_with_empty_side() {
             quote: XOR.into(),
         };
 
-        let _ = create_empty_order_book(order_book_id);
+        let _ = create_empty_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::quote(
@@ -1247,7 +1291,7 @@ fn should_not_quote_with_small_amount() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::quote(
@@ -1304,7 +1348,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::quote(
@@ -1339,7 +1383,7 @@ fn should_quote_without_impact() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
 
         // without fee
         assert_eq!(
@@ -1390,7 +1434,6 @@ fn should_quote_without_impact() {
             SwapOutcome::new(balance!(250).into(), 0)
         );
 
-        // todo (m.tagirov) remake when fee introduced
         // with fee
         assert_eq!(
             OrderBookPallet::quote_without_impact(
@@ -1478,7 +1521,7 @@ fn should_not_quote_without_impact_with_empty_side() {
             quote: XOR.into(),
         };
 
-        let _ = create_empty_order_book(order_book_id);
+        let _ = create_empty_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::quote_without_impact(
@@ -1513,7 +1556,7 @@ fn should_not_quote_without_impact_with_small_amount() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
 
         assert_err!(
             OrderBookPallet::quote_without_impact(
@@ -1570,17 +1613,19 @@ fn should_exchange_and_transfer_to_owner() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
-        fill_balance(alice(), order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
-        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
-        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        let mut alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        let mut alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
         // buy with desired output
         assert_eq!(
             OrderBookPallet::exchange(
-                &alice(),
-                &alice(),
+                &accounts::alice::<Runtime>(),
+                &accounts::alice::<Runtime>(),
                 &DEX.into(),
                 &XOR,
                 &VAL,
@@ -1592,22 +1637,24 @@ fn should_exchange_and_transfer_to_owner() {
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance + balance!(200)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(2204.74)
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
         // buy with desired input
         assert_eq!(
             OrderBookPallet::exchange(
-                &alice(),
-                &alice(),
+                &accounts::alice::<Runtime>(),
+                &accounts::alice::<Runtime>(),
                 &DEX.into(),
                 &XOR,
                 &VAL,
@@ -1619,22 +1666,24 @@ fn should_exchange_and_transfer_to_owner() {
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance + balance!(177.95391)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(1999.999965)
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
         // sell with desired output
         assert_eq!(
             OrderBookPallet::exchange(
-                &alice(),
-                &alice(),
+                &accounts::alice::<Runtime>(),
+                &accounts::alice::<Runtime>(),
                 &DEX.into(),
                 &VAL,
                 &XOR,
@@ -1646,22 +1695,24 @@ fn should_exchange_and_transfer_to_owner() {
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(200.64285)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance + balance!(1999.99993)
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
         // sell with desired input
         assert_eq!(
             OrderBookPallet::exchange(
-                &alice(),
-                &alice(),
+                &accounts::alice::<Runtime>(),
+                &accounts::alice::<Runtime>(),
                 &DEX.into(),
                 &VAL,
                 &XOR,
@@ -1673,11 +1724,11 @@ fn should_exchange_and_transfer_to_owner() {
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(200)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance + balance!(1932.327145)
         );
     });
@@ -1692,20 +1743,24 @@ fn should_exchange_and_transfer_to_another_account() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
-        fill_balance(alice(), order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
-        let mut alice_base_balance = free_balance(&order_book_id.base, &alice());
-        let mut alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        let mut alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        let mut alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        let mut dave_base_balance = free_balance(&order_book_id.base, &dave());
-        let mut dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        let mut dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        let mut dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // buy with desired output
         assert_eq!(
             OrderBookPallet::exchange(
-                &alice(),
-                &dave(),
+                &accounts::alice::<Runtime>(),
+                &accounts::dave::<Runtime>(),
                 &DEX.into(),
                 &XOR,
                 &VAL,
@@ -1717,34 +1772,38 @@ fn should_exchange_and_transfer_to_another_account() {
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(2204.74)
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance + balance!(200)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        dave_base_balance = free_balance(&order_book_id.base, &dave());
-        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // buy with desired input
         assert_eq!(
             OrderBookPallet::exchange(
-                &alice(),
-                &dave(),
+                &accounts::alice::<Runtime>(),
+                &accounts::dave::<Runtime>(),
                 &DEX.into(),
                 &XOR,
                 &VAL,
@@ -1756,34 +1815,38 @@ fn should_exchange_and_transfer_to_another_account() {
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance - balance!(1999.999965)
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance + balance!(177.95391)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        dave_base_balance = free_balance(&order_book_id.base, &dave());
-        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // sell with desired output
         assert_eq!(
             OrderBookPallet::exchange(
-                &alice(),
-                &dave(),
+                &accounts::alice::<Runtime>(),
+                &accounts::dave::<Runtime>(),
                 &DEX.into(),
                 &VAL,
                 &XOR,
@@ -1795,34 +1858,38 @@ fn should_exchange_and_transfer_to_another_account() {
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(200.64285)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance + balance!(1999.99993)
         );
 
-        alice_base_balance = free_balance(&order_book_id.base, &alice());
-        alice_quote_balance = free_balance(&order_book_id.quote, &alice());
+        alice_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>());
+        alice_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>());
 
-        dave_base_balance = free_balance(&order_book_id.base, &dave());
-        dave_quote_balance = free_balance(&order_book_id.quote, &dave());
+        dave_base_balance =
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>());
+        dave_quote_balance =
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>());
 
         // sell with desired input
         assert_eq!(
             OrderBookPallet::exchange(
-                &alice(),
-                &dave(),
+                &accounts::alice::<Runtime>(),
+                &accounts::dave::<Runtime>(),
                 &DEX.into(),
                 &VAL,
                 &XOR,
@@ -1834,20 +1901,20 @@ fn should_exchange_and_transfer_to_another_account() {
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &alice()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::alice::<Runtime>()),
             alice_base_balance - balance!(200)
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &alice()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::alice::<Runtime>()),
             alice_quote_balance
         );
 
         assert_eq!(
-            free_balance(&order_book_id.base, &dave()),
+            free_balance::<Runtime>(&order_book_id.base, &accounts::dave::<Runtime>()),
             dave_base_balance
         );
         assert_eq!(
-            free_balance(&order_book_id.quote, &dave()),
+            free_balance::<Runtime>(&order_book_id.quote, &accounts::dave::<Runtime>()),
             dave_quote_balance + balance!(1932.327145)
         );
     });
@@ -1858,8 +1925,8 @@ fn should_not_exchange_with_non_existed_order_book() {
     ext().execute_with(|| {
         assert_err!(
             OrderBookPallet::exchange(
-                &alice(),
-                &alice(),
+                &accounts::alice::<Runtime>(),
+                &accounts::alice::<Runtime>(),
                 &DEX.into(),
                 &XOR,
                 &VAL,
@@ -1870,8 +1937,8 @@ fn should_not_exchange_with_non_existed_order_book() {
 
         assert_err!(
             OrderBookPallet::exchange(
-                &alice(),
-                &alice(),
+                &accounts::alice::<Runtime>(),
+                &accounts::alice::<Runtime>(),
                 &DEX.into(),
                 &VAL,
                 &XOR,
@@ -1891,13 +1958,13 @@ fn should_not_exchange_with_invalid_slippage() {
             quote: XOR.into(),
         };
 
-        let _ = create_and_fill_order_book(order_book_id);
-        fill_balance(alice(), order_book_id);
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
         assert_err!(
             OrderBookPallet::exchange(
-                &alice(),
-                &alice(),
+                &accounts::alice::<Runtime>(),
+                &accounts::alice::<Runtime>(),
                 &DEX.into(),
                 &XOR,
                 &VAL,
@@ -1908,8 +1975,8 @@ fn should_not_exchange_with_invalid_slippage() {
 
         assert_err!(
             OrderBookPallet::exchange(
-                &alice(),
-                &alice(),
+                &accounts::alice::<Runtime>(),
+                &accounts::alice::<Runtime>(),
                 &DEX.into(),
                 &XOR,
                 &VAL,
@@ -1920,8 +1987,8 @@ fn should_not_exchange_with_invalid_slippage() {
 
         assert_err!(
             OrderBookPallet::exchange(
-                &alice(),
-                &alice(),
+                &accounts::alice::<Runtime>(),
+                &accounts::alice::<Runtime>(),
                 &DEX.into(),
                 &VAL,
                 &XOR,
@@ -1932,8 +1999,8 @@ fn should_not_exchange_with_invalid_slippage() {
 
         assert_err!(
             OrderBookPallet::exchange(
-                &alice(),
-                &alice(),
+                &accounts::alice::<Runtime>(),
+                &accounts::alice::<Runtime>(),
                 &DEX.into(),
                 &VAL,
                 &XOR,

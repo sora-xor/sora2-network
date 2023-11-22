@@ -35,7 +35,7 @@ pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch =
 permissions = { path = "../../permissions", default-features = false }
 pswap-distribution = { path = "../../pswap-distribution", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker" }
@@ -76,7 +76,4 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
 ]
 
-wip = [
-    "common/wip",
-    "dex-api/wip",
-]
+ready-to-test = ["common/ready-to-test", "dex-api/ready-to-test"]

@@ -25,7 +25,7 @@ common = { path = "../../common", default-features = false }
 technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 serde = { version = "1.0", features = [
     "derive",
 ], optional = true, default-features = false }
@@ -34,7 +34,9 @@ serde = { version = "1.0", features = [
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
-framenode-runtime = { path = "../../runtime", default-features = false, features = ["std"] }
+framenode-runtime = { path = "../../runtime", default-features = false, features = [
+    "std",
+] }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 pallet-collective = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -64,8 +66,4 @@ runtime-benchmarks = [
 
 try-runtime = ["frame-support/try-runtime"]
 
-wip = [
-    "framenode-chain-spec/wip",
-    "framenode-runtime/wip",
-    "common/wip",
-]
+ready-to-test = ["framenode-chain-spec/ready-to-test", "framenode-runtime/ready-to-test", "common/ready-to-test"]

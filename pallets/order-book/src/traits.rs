@@ -104,6 +104,14 @@ where
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>>;
 
+    /// Returns whether there is no place for orders inside the bid price. None if no entry for
+    /// the price exists
+    fn is_bid_price_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool>;
+
     /// Returns order ids of orders inside the ask price
     fn get_asks(
         &mut self,
@@ -111,17 +119,51 @@ where
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>>;
 
+    /// Returns whether there is no place for orders inside the ask price. None if no entry for
+    /// the price exists
+    fn is_ask_price_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool>;
+
     /// Returns all bid prices with their volumes
     fn get_aggregated_bids(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount>;
 
+    /// Length of aggregated asks list for the order book.
+    /// `None` if the value is not present in the storage. Ignores default value, so `unwrap_or(0)`
+    /// usually makes sense.
+    fn get_aggregated_bids_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<usize>;
+
+    fn best_bid(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)>;
+
     /// Returns all ask prices with their volumes
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> MarketSide<T::MaxSidePriceCount>;
+
+    /// Length of aggregated asks list for the order book.
+    /// `None` if the value is not present in the storage. Ignores default value, so `unwrap_or(0)`
+    /// usually makes sense.
+    fn get_aggregated_asks_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<usize>;
+
+    fn best_ask(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)>;
 
     /// Returns order ids of user from the order book with `order_book_id`
     fn get_user_limit_orders(
@@ -138,6 +180,14 @@ where
         OrderBookId<AssetIdOf<T>, T::DEXId>,
         UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
     >;
+
+    /// Returns whether there is no place for the user's orders in the order book.
+    /// `None` if there is no entry tracking orders of the user in the order book.
+    fn is_user_limit_orders_full(
+        &mut self,
+        account: &T::AccountId,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<bool>;
 }
 
 pub trait CurrencyLocker<AccountId, AssetId, DEXId, Error> {
@@ -174,26 +224,30 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, DEXId, OrderId, Error> {
     ///
     /// If the weight limit is reached, it should continue where it's left at the
     /// next block.
-    fn service(current_block: BlockNumber, weight: &mut WeightMeter);
+    fn service_expiration(current_block: BlockNumber, weight: &mut WeightMeter);
 
     /// Schedule the order for expiration at block `when`.
-    fn schedule(
+    fn schedule_expiration(
         when: BlockNumber,
         order_book_id: OrderBookId,
         order_id: OrderId,
     ) -> Result<(), Error>;
 
     /// Remove the order from expiration schedule for block `when`.
-    fn unschedule(
+    fn unschedule_expiration(
         when: BlockNumber,
         order_book_id: OrderBookId,
         order_id: OrderId,
     ) -> Result<(), Error>;
 }
 
-pub trait Delegate<AccountId, AssetId, OrderId, DEXId> {
+pub trait AlignmentScheduler {
+    fn service_alignment(weight: &mut WeightMeter);
+}
+
+pub trait Delegate<AccountId, AssetId, OrderId, DEXId, Moment> {
     fn emit_event(
         order_book_id: OrderBookId<AssetId, DEXId>,
-        event: OrderBookEvent<AccountId, OrderId>,
+        event: OrderBookEvent<AccountId, OrderId, Moment>,
     );
 }

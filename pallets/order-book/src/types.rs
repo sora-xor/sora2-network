@@ -68,6 +68,31 @@ pub enum OrderBookStatus {
 }
 
 #[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
+pub enum OrderBookTechStatus {
+    /// Order Book is enabled
+    Ready,
+
+    /// Order Book is locked during the updating
+    Updating,
+}
+
+#[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
+pub enum CancelReason {
+    /// User cancels the limit order by themself
+    Manual,
+
+    /// A lifetime of the order has expired and it is cancelled by the system
+    Expired,
+
+    /// The limit order is cancelled during alignment, because it has too small amount
+    Aligned,
+}
+
+#[derive(
     Encode, Decode, Eq, PartialEq, Clone, Copy, Debug, scale_info::TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -366,7 +391,7 @@ pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
     pub to_full_execute: BTreeMap<OrderId, LimitOrder>,
 
     /// Limit orders that should be cancelled
-    pub to_cancel: BTreeMap<OrderId, LimitOrder>,
+    pub to_cancel: BTreeMap<OrderId, (LimitOrder, CancelReason)>,
 
     /// Limit orders that should be forcibly updated
     pub to_force_update: BTreeMap<OrderId, LimitOrder>,
@@ -454,19 +479,30 @@ where
             Some(*output.value())
         }
     }
+
+    pub fn count_of_executed_orders(&self) -> usize {
+        self.to_full_execute
+            .len()
+            .saturating_add(self.to_part_execute.len())
+    }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub enum OrderBookEvent<AccountId, OrderId> {
+pub enum OrderBookEvent<AccountId, OrderId, Moment> {
     LimitOrderPlaced {
         order_id: OrderId,
         owner_id: AccountId,
+        side: PriceVariant,
+        price: OrderPrice,
+        amount: OrderVolume,
+        lifetime: Moment,
     },
 
     LimitOrderConvertedToMarketOrder {
         owner_id: AccountId,
         direction: PriceVariant,
         amount: OrderAmount,
+        average_price: OrderPrice,
     },
 
     LimitOrderIsSplitIntoMarketOrderAndLimitOrder {
@@ -480,18 +516,26 @@ pub enum OrderBookEvent<AccountId, OrderId> {
     LimitOrderCanceled {
         order_id: OrderId,
         owner_id: AccountId,
+        reason: CancelReason,
     },
 
     LimitOrderExecuted {
         order_id: OrderId,
         owner_id: AccountId,
         side: PriceVariant,
+        price: OrderPrice,
         amount: OrderAmount,
+    },
+
+    LimitOrderFilled {
+        order_id: OrderId,
+        owner_id: AccountId,
     },
 
     LimitOrderUpdated {
         order_id: OrderId,
         owner_id: AccountId,
+        new_amount: OrderVolume,
     },
 
     MarketOrderExecuted {

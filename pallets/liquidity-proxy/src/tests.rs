@@ -33,6 +33,7 @@ use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
 use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount};
+use common::test_utils::assert_event;
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
     Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
@@ -2524,11 +2525,11 @@ fn selecting_xyk_only_filter_is_forbidden() {
         #[allow(unused_assignments)] // order-book
         let mut sources_except_xyk = Vec::new();
         
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool, OrderBook];
         }
-        #[cfg(not(feature = "wip"))]
+        #[cfg(not(feature = "ready-to-test"))] // order-book
         {
             sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool];
         }
@@ -3676,13 +3677,18 @@ fn test_batch_swap_asset_reuse_works() {
             Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
+        assert_approx_eq!(
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            balance!(356400),
+            balance!(0.00001)
+        );
 
         let swap_batches = Vec::from([
             SwapBatchInfo {
                 outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
-                outcome_asset_reuse: balance!(10),
+                outcome_asset_reuse: balance!(20),
             },
             SwapBatchInfo {
                 outcome_asset_id: KSM,
@@ -3712,6 +3718,17 @@ fn test_batch_swap_asset_reuse_works() {
 
         test_utils::check_adar_commission(&swap_batches, sources);
         test_utils::check_swap_batch_executed_amount(swap_batches);
+        assert_event::<Runtime>(
+            crate::Event::<Runtime>::ADARFeeWithdrawn(KSM, balance!(0.025)).into(),
+        );
+        assert_event::<Runtime>(
+            crate::Event::<Runtime>::ADARFeeWithdrawn(USDT, balance!(0.025)).into(),
+        );
+        assert_approx_eq!(
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            balance!(356394.934457262),
+            balance!(0.00001)
+        );
         assert_approx_eq!(
             Assets::free_balance(&KSM, &alice()).unwrap(),
             balance!(1990),
@@ -3719,7 +3736,7 @@ fn test_batch_swap_asset_reuse_works() {
         );
         assert_approx_eq!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
-            balance!(11990),
+            balance!(11989.975),
             balance!(0.00001)
         );
     });
@@ -3760,6 +3777,164 @@ fn test_batch_swap_asset_reuse_fails() {
                 filter_mode,
             ),
             Error::<Runtime>::InsufficientBalance
+        );
+    });
+}
+
+#[test]
+fn test_xorless_transfer_works() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(12000)
+        );
+        assert_eq!(
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            balance!(356400)
+        );
+
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+
+        assert_ok!(LiquidityProxy::xorless_transfer(
+            RuntimeOrigin::signed(alice()),
+            0,
+            USDT,
+            bob(),
+            balance!(1),
+            balance!(1),
+            balance!(10),
+            sources,
+            filter_mode,
+            Default::default(),
+        ));
+
+        assert_approx_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            // 12000 USDT - 1 USDT for swap - 1 USDT for transfer
+            balance!(11998),
+            balance!(0.01)
+        );
+        assert_approx_eq!(
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            balance!(356401),
+            balance!(0.01)
+        );
+        assert_approx_eq!(
+            Assets::free_balance(&USDT, &bob()).unwrap(),
+            balance!(1),
+            balance!(0.01)
+        );
+    });
+}
+
+#[test]
+fn test_xorless_transfer_without_swap_works() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(12000)
+        );
+        assert_eq!(
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            balance!(356400)
+        );
+
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+
+        assert_ok!(LiquidityProxy::xorless_transfer(
+            RuntimeOrigin::signed(alice()),
+            0,
+            USDT,
+            bob(),
+            balance!(1),
+            balance!(0),
+            balance!(0),
+            sources,
+            filter_mode,
+            Default::default(),
+        ));
+
+        assert_approx_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            // 12000 USDT - 1 USDT for swap - 1 USDT for transfer
+            balance!(11999),
+            balance!(0.01)
+        );
+        assert_approx_eq!(
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            balance!(356400),
+            balance!(0.01)
+        );
+        assert_approx_eq!(
+            Assets::free_balance(&USDT, &bob()).unwrap(),
+            balance!(1),
+            balance!(0.01)
+        );
+    });
+}
+
+#[test]
+fn test_xorless_transfer_fails_on_swap() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(12000)
+        );
+
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+
+        assert_noop!(
+            LiquidityProxy::xorless_transfer(
+                RuntimeOrigin::signed(alice()),
+                0,
+                USDT,
+                bob(),
+                balance!(1),
+                balance!(1),
+                balance!(0.5),
+                sources,
+                filter_mode,
+                Default::default(),
+            ),
+            Error::<Runtime>::SlippageNotTolerated
+        );
+    });
+}
+
+#[test]
+fn test_xorless_transfer_fails_on_transfer() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(12000)
+        );
+
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+
+        assert_noop!(
+            LiquidityProxy::xorless_transfer(
+                RuntimeOrigin::signed(alice()),
+                0,
+                USDT,
+                bob(),
+                balance!(12000),
+                balance!(1),
+                balance!(2),
+                sources,
+                filter_mode,
+                Default::default(),
+            ),
+            tokens::Error::<Runtime>::BalanceTooLow
         );
     });
 }

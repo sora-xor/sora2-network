@@ -1,6 +1,6 @@
 [package]
 name = "framenode-chain-spec"
-version = "2.1.0"
+version = "3.1.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
@@ -10,7 +10,7 @@ codec = { package = "parity-scale-codec", version = "3", features = [
     "chain-error",
 ] }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 sc-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sc-network = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sc-network-common = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
@@ -45,5 +45,5 @@ main-net-coded = []
 test = ["common/test"]
 
 private-net = ["faucet", "framenode-runtime/private-net"]
-wip = ["framenode-runtime/wip", "common/wip", "order-book"]
-ready-to-test = ["framenode-runtime/ready-to-test"]
+wip = ["framenode-runtime/wip"]
+ready-to-test = ["framenode-runtime/ready-to-test", "common/ready-to-test", "order-book"]

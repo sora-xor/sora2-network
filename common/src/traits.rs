@@ -666,7 +666,7 @@ impl<AssetId> GetPoolReserves<AssetId> for () {
 
 /// General trait for passing pswap amount burned information to required pallets.
 pub trait OnPswapBurned {
-    /// Report amount and fractions of burned pswap at the moment of invokation.
+    /// Report amount and fractions of burned pswap at the moment of invocation.
     fn on_pswap_burned(distribution: PswapRemintInfo);
 }
 
