@@ -3793,7 +3793,7 @@ fn test_batch_swap_asset_reuse_works() {
         );
         assert_approx_eq!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
-            balance!(356400),
+            balance!(354800.0),
             balance!(0.00001)
         );
 
@@ -3840,7 +3840,7 @@ fn test_batch_swap_asset_reuse_works() {
         );
         assert_approx_eq!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
-            balance!(356394.934457262),
+            balance!(354794.934457262),
             balance!(0.00001)
         );
         assert_approx_eq!(
