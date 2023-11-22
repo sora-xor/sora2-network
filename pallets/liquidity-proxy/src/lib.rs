@@ -260,7 +260,7 @@ impl<T: Config> Pallet<T> {
             _ => false,
         };
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             is_order_book = selected_source_types.contains(&LiquiditySourceType::OrderBook);
         }
@@ -1090,7 +1090,7 @@ impl<T: Config> Pallet<T> {
 
         // The temp solution is to exclude OrderBook source if there are multiple sources.
         // Will be redesigned in #447
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         if sources.len() > 1 {
             sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
         }
@@ -1407,7 +1407,13 @@ impl<T: Config> Pallet<T> {
                 weight = weight
                     .saturating_add(<T as Config>::WeightInfo::check_indivisible_assets())
                     .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
+                    .saturating_add(<T as assets::Config>::WeightInfo::transfer()) // ADAR fee
                     .saturating_add(inner_exchange_weight);
+            }
+
+            // ADAR fee withdraw
+            if swap_batch_info.outcome_asset_reuse > 0 {
+                weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
             }
 
             weight = weight.saturating_add(
@@ -2023,13 +2029,41 @@ impl<T: Config> Pallet<T> {
         Ok(<T as assets::Config>::WeightInfo::transfer().saturating_mul(len as u64))
     }
 
-    fn calculate_adar_commission(amount: Balance) -> Result<Balance, DispatchError> {
-        let adar_commission_ratio = FixedWrapper::from(Self::adar_commission_ratio());
+    fn withdraw_adar_commission(
+        who: &AccountIdOf<T>,
+        asset_id: &AssetIdOf<T>,
+        fee_ratio: Balance,
+        amount: Balance,
+        max_fee_amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        if amount.is_zero() {
+            return Ok(Zero::zero());
+        }
+
+        let adar_commission_ratio = FixedWrapper::from(fee_ratio);
 
         let adar_commission = (FixedWrapper::from(amount) * adar_commission_ratio)
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
 
+        ensure!(
+            adar_commission <= max_fee_amount,
+            Error::<T>::SlippageNotTolerated
+        );
+
+        if adar_commission > 0 {
+            assets::Pallet::<T>::transfer_from(
+                &asset_id,
+                &who,
+                &T::GetADARAccountId::get(),
+                adar_commission,
+            )
+            .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
+            Self::deposit_event(Event::<T>::ADARFeeWithdrawn(
+                asset_id.clone(),
+                adar_commission,
+            ));
+        }
         Ok(adar_commission)
     }
 
@@ -2046,6 +2080,8 @@ impl<T: Config> Pallet<T> {
         let mut executed_batch_input_amount = balance!(0);
 
         let mut total_weight = Weight::zero();
+
+        let adar_fee_ratio = Self::adar_commission_ratio();
 
         fallible_iterator::convert(swap_batches.into_iter().map(|val| Ok(val))).for_each(
             |swap_batch_info| {
@@ -2075,7 +2111,6 @@ impl<T: Config> Pallet<T> {
                     .iter()
                     .map(|recv| recv.target_amount)
                     .try_fold(Balance::zero(), |acc, val| acc.checked_add(val))
-                    .and_then(|val| val.checked_sub(outcome_asset_reuse))
                     .ok_or(Error::<T>::CalculationError)?;
 
                 let (executed_input_amount, remainder_per_receiver, weight): (
@@ -2083,7 +2118,19 @@ impl<T: Config> Pallet<T> {
                     Balance,
                     Weight,
                 ) = if &asset_id != input_asset_id {
-                    if !out_amount.is_zero() {
+                    let withdrawn_fee = Self::withdraw_adar_commission(
+                        &sender,
+                        &asset_id,
+                        adar_fee_ratio,
+                        outcome_asset_reuse.min(out_amount),
+                        outcome_asset_reuse,
+                    )?;
+
+                    let outcome_asset_reuse = outcome_asset_reuse.saturating_sub(withdrawn_fee);
+
+                    let desired_exchange_amount = out_amount.saturating_sub(outcome_asset_reuse);
+
+                    if !desired_exchange_amount.is_zero() {
                         Self::exchange_batch_tokens(
                             &sender,
                             receivers.len() as u128,
@@ -2093,7 +2140,7 @@ impl<T: Config> Pallet<T> {
                             &selected_source_types,
                             dex_id,
                             &filter_mode,
-                            out_amount,
+                            desired_exchange_amount,
                         )?
                     } else {
                         (0, 0, Weight::zero())
@@ -2121,10 +2168,13 @@ impl<T: Config> Pallet<T> {
                 Result::<_, DispatchError>::Ok(())
             },
         )?;
-        let adar_commission = Self::calculate_adar_commission(executed_batch_input_amount)?;
-        max_input_amount
-            .checked_sub(adar_commission)
-            .ok_or(Error::<T>::SlippageNotTolerated)?;
+        let adar_commission = Self::withdraw_adar_commission(
+            &sender,
+            &input_asset_id,
+            adar_fee_ratio,
+            executed_batch_input_amount,
+            max_input_amount,
+        )?;
         Ok((adar_commission, executed_batch_input_amount, total_weight))
     }
 }
@@ -2448,16 +2498,6 @@ pub mod pallet {
                     &filter_mode,
                 )?;
 
-            if adar_commission > balance!(0) {
-                assets::Pallet::<T>::transfer_from(
-                    &input_asset_id,
-                    &who,
-                    &T::GetADARAccountId::get(),
-                    adar_commission,
-                )
-                .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
-            }
-
             Self::deposit_event(Event::<T>::BatchSwapExecuted(
                 adar_commission,
                 executed_input_amount,
@@ -2628,7 +2668,7 @@ pub mod pallet {
         /// Liquidity source was disabled
         LiquiditySourceDisabled(LiquiditySourceType),
         /// Batch of swap transfers has been performed
-        /// [ADAR Fee, Input amount]
+        /// [Input asset ADAR Fee, Input amount]
         BatchSwapExecuted(Balance, Balance),
         /// XORless transfer has been performed
         /// [Asset Id, Caller Account, Receiver Account, Amount, Additional Data]
@@ -2639,6 +2679,9 @@ pub mod pallet {
             Balance,
             Option<BoundedVec<u8, T::MaxAdditionalDataLength>>,
         ),
+        /// ADAR fee which is withdrawn from reused outcome asset amount
+        /// [Asset Id, ADAR Fee]
+        ADARFeeWithdrawn(AssetIdOf<T>, Balance),
     }
 
     #[pallet::error]
