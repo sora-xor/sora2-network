@@ -106,7 +106,7 @@ pub mod pallet {
         /// order book creation.
         CannotFillUnknownOrderBook,
         /// Price step, best price, and worst price must be a multiple of
-        /// order book's tick size
+        /// order book's tick size. Price step must also be non-zero.
         IncorrectPrice,
     }
 

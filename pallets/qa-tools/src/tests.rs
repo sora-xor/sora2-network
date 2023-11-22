@@ -84,20 +84,20 @@ fn test_creates_orderbook(
         vec![(
             order_book_id,
             settings::OrderBookFill {
-                bids: settings::SideFill {
+                bids: Some(settings::SideFill {
                     best_price: best_bid_price,
                     worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
                     price_step: *price_step.balance(),
                     orders_per_price,
                     amount_range_inclusive: Some(amount_range)
-                },
-                asks: settings::SideFill {
+                }),
+                asks: Some(settings::SideFill {
                     best_price: best_ask_price,
                     worst_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
                     price_step: *price_step.balance(),
                     orders_per_price,
                     amount_range_inclusive: Some(amount_range)
-                },
+                }),
                 lifespan: None,
                 random_seed: None,
             }
@@ -215,20 +215,20 @@ fn should_respect_orderbook_seed() {
         let steps = 4;
         let amount_range = (balance!(1), balance!(10));
         let settings = settings::OrderBookFill {
-            bids: settings::SideFill {
+            bids: Some(settings::SideFill {
                 best_price: best_bid_price,
                 worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
                 price_step: *price_step.balance(),
                 orders_per_price,
                 amount_range_inclusive: Some(amount_range),
-            },
-            asks: settings::SideFill {
+            }),
+            asks: Some(settings::SideFill {
                 best_price: best_ask_price,
                 worst_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
                 price_step: *price_step.balance(),
                 orders_per_price,
                 amount_range_inclusive: Some(amount_range),
-            },
+            }),
             lifespan: None,
             random_seed: None,
         };

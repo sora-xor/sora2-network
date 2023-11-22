@@ -1,3 +1,4 @@
+use crate::settings::SideFill;
 use crate::Config;
 use common::{AssetInfoProvider, Balance, PriceVariant};
 use frame_support::pallet_prelude::*;
@@ -52,9 +53,9 @@ pub mod settings {
     #[cfg_attr(feature = "std", derive(Debug))]
     pub struct OrderBookFill<Moment, BlockNumber> {
         /// Best price = highest, worst = lowest.
-        pub bids: SideFill,
+        pub bids: Option<SideFill>,
         /// Best price = lowest, worst = highest.
-        pub asks: SideFill,
+        pub asks: Option<SideFill>,
         /// Lifespan of inserted orders, max by default.
         pub lifespan: Option<Moment>,
         /// Seed for producing random values during the fill process. If `None`,
@@ -134,6 +135,21 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     Ok(())
 }
 
+fn verify_fill_side_params<T: Config>(
+    params: &SideFill,
+    tick_size: OrderPrice,
+) -> Result<(), DispatchError> {
+    let tick = tick_size.balance();
+    ensure!(
+        params.price_step % tick == 0
+            && params.price_step != 0
+            && params.best_price % tick == 0
+            && params.worst_price % tick == 0,
+        crate::Error::<T>::IncorrectPrice
+    );
+    Ok(())
+}
+
 fn default_amount_range<T: Config>(order_book: &OrderBook<T>) -> (Balance, Balance) {
     (
         *order_book.min_lot_size.balance(),
@@ -157,98 +173,97 @@ fn fill_order_book<T: Config>(
     let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
         .ok_or(crate::Error::<T>::CannotFillUnknownOrderBook)?;
 
-    let tick = order_book.tick_size.balance();
-    ensure!(
-        settings.bids.price_step % tick == 0
-            && settings.asks.price_step % tick == 0
-            && settings.bids.best_price % tick == 0
-            && settings.asks.best_price % tick == 0
-            && settings.bids.worst_price % tick == 0
-            && settings.asks.worst_price % tick == 0,
-        crate::Error::<T>::IncorrectPrice
-    );
-
-    let buy_prices = (0..)
-        .map(|step| settings.bids.best_price - step * settings.bids.price_step)
-        .take_while(|price| *price >= settings.bids.worst_price);
-    let sell_prices = (0..)
-        .map(|step| settings.asks.best_price + step * settings.asks.price_step)
-        .take_while(|price| *price <= settings.asks.worst_price);
-
     let seed = settings.random_seed.unwrap_or(current_block);
     let seed = <BlockNumberFor<T> as TryInto<u64>>::try_into(seed).unwrap_or(0);
     let mut rand_generator = ChaCha8Rng::seed_from_u64(seed);
-    let buy_amount_range = settings
-        .bids
-        .amount_range_inclusive
-        .clone()
-        .unwrap_or_else(|| default_amount_range(&order_book));
-    let buy_orders: Vec<_> = buy_prices
-        .flat_map(|price| {
-            repeat(OrderPrice::divisible(price)).take(settings.bids.orders_per_price as usize)
-        })
-        .map(|price| {
-            (
-                price,
-                order_book.align_amount(order_book.step_lot_size.copy_divisibility(
-                    rand_generator.gen_range(buy_amount_range.0..=buy_amount_range.1),
-                )),
-            )
-        })
-        .collect();
-    let sell_amount_range = settings
-        .asks
-        .amount_range_inclusive
-        .clone()
-        .unwrap_or_else(|| default_amount_range(&order_book));
-    let sell_orders: Vec<_> = sell_prices
-        .flat_map(|price| {
-            repeat(OrderPrice::divisible(price)).take(settings.asks.orders_per_price as usize)
-        })
-        .map(|price| {
-            (
-                price,
-                order_book.align_amount(order_book.step_lot_size.copy_divisibility(
-                    rand_generator.gen_range(sell_amount_range.0..=sell_amount_range.1),
-                )),
-            )
-        })
-        .collect();
 
-    // Total amount of assets to be locked
-    let buy_quote_locked: Balance = buy_orders
-        .iter()
-        .map(|(quote, base)| *(*quote * (*base)).balance())
-        .sum();
-    let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| *base.balance()).sum();
+    if let Some(bids_settings) = settings.bids {
+        verify_fill_side_params::<T>(&bids_settings, order_book.tick_size)?;
+        // price_step is checked to be non-zero in `verify_fill_side_params`
+        let buy_prices = (0..)
+            .map(|step| bids_settings.best_price - step * bids_settings.price_step)
+            .take_while(|price| *price >= bids_settings.worst_price);
+        let buy_amount_range = bids_settings
+            .amount_range_inclusive
+            .clone()
+            .unwrap_or_else(|| default_amount_range(&order_book));
+        let buy_orders: Vec<_> = buy_prices
+            .flat_map(|price| {
+                repeat(OrderPrice::divisible(price)).take(bids_settings.orders_per_price as usize)
+            })
+            .map(|price| {
+                (
+                    price,
+                    order_book.align_amount(order_book.step_lot_size.copy_divisibility(
+                        rand_generator.gen_range(buy_amount_range.0..=buy_amount_range.1),
+                    )),
+                )
+            })
+            .collect();
 
-    // mint required amount to make this extrinsic self-sufficient
-    assets::Pallet::<T>::mint_unchecked(&book_id.quote, &bids_owner, buy_quote_locked)?;
-    assets::Pallet::<T>::mint_unchecked(&book_id.base, &asks_owner, sell_base_locked)?;
+        // Total amount of assets to be locked
+        let buy_quote_locked: Balance = buy_orders
+            .iter()
+            .map(|(quote, base)| *(*quote * (*base)).balance())
+            .sum();
+        // mint required amount to make this extrinsic self-sufficient
+        assets::Pallet::<T>::mint_unchecked(&book_id.quote, &bids_owner, buy_quote_locked)?;
 
-    // place buy orders
-    place_multiple_orders(
-        data,
-        &mut order_book,
-        bids_owner.clone(),
-        PriceVariant::Buy,
-        buy_orders.into_iter(),
-        now,
-        lifespan,
-        current_block,
-    )?;
+        // place buy orders
+        place_multiple_orders(
+            data,
+            &mut order_book,
+            bids_owner.clone(),
+            PriceVariant::Buy,
+            buy_orders.into_iter(),
+            now,
+            lifespan,
+            current_block,
+        )?;
+    }
 
-    // place sell orders
-    place_multiple_orders(
-        data,
-        &mut order_book,
-        asks_owner.clone(),
-        PriceVariant::Sell,
-        sell_orders.into_iter(),
-        now,
-        lifespan,
-        current_block,
-    )?;
+    if let Some(asks_settings) = settings.asks {
+        verify_fill_side_params::<T>(&asks_settings, order_book.tick_size)?;
+        // price_step is checked to be non-zero in `verify_fill_side_params`
+        let sell_prices = (0..)
+            .map(|step| asks_settings.best_price + step * asks_settings.price_step)
+            .take_while(|price| *price <= asks_settings.worst_price);
+
+        let sell_amount_range = asks_settings
+            .amount_range_inclusive
+            .clone()
+            .unwrap_or_else(|| default_amount_range(&order_book));
+        let sell_orders: Vec<_> = sell_prices
+            .flat_map(|price| {
+                repeat(OrderPrice::divisible(price)).take(asks_settings.orders_per_price as usize)
+            })
+            .map(|price| {
+                (
+                    price,
+                    order_book.align_amount(order_book.step_lot_size.copy_divisibility(
+                        rand_generator.gen_range(sell_amount_range.0..=sell_amount_range.1),
+                    )),
+                )
+            })
+            .collect();
+
+        // Total amount of assets to be locked
+        let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| *base.balance()).sum();
+        // mint required amount to make this extrinsic self-sufficient
+        assets::Pallet::<T>::mint_unchecked(&book_id.base, &asks_owner, sell_base_locked)?;
+
+        // place sell orders
+        place_multiple_orders(
+            data,
+            &mut order_book,
+            asks_owner.clone(),
+            PriceVariant::Sell,
+            sell_orders.into_iter(),
+            now,
+            lifespan,
+            current_block,
+        )?;
+    }
 
     <order_book::OrderBooks<T>>::insert(book_id, order_book);
     Ok(())
