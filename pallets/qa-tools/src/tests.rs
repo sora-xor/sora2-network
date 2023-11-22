@@ -81,6 +81,7 @@ fn test_creates_orderbook(
         order_book::OrderBook::<Runtime>::default(order_book_id).tick_size
     };
     let orders_per_price = 3;
+    let amount_range = settings::RandomAmount::new(amount_range.0, amount_range.1);
     assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
         RuntimeOrigin::signed(alice()),
         alice(),
@@ -93,14 +94,14 @@ fn test_creates_orderbook(
                     worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
                     price_step: *price_step.balance(),
                     orders_per_price,
-                    amount_range_inclusive: Some(amount_range)
+                    amount_range_inclusive: Some(amount_range.clone())
                 }),
                 asks: Some(settings::SideFill {
                     best_price: best_ask_price,
                     worst_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
                     price_step: *price_step.balance(),
                     orders_per_price,
-                    amount_range_inclusive: Some(amount_range)
+                    amount_range_inclusive: Some(amount_range.clone())
                 }),
                 lifespan: None,
                 random_seed: None,
@@ -134,7 +135,9 @@ fn test_creates_orderbook(
     let limit_orders = data.get_all_limit_orders(&order_book_id);
 
     assert_eq!(limit_orders.len(), steps * 2 * orders_per_price as usize);
-    let amount_range = amount_range.0..=amount_range.1;
+    let amount_range = amount_range
+        .as_non_empty_inclusive_range()
+        .expect("empty range provided");
     assert!(limit_orders
         .iter()
         .all(|order| amount_range.contains(order.amount.balance())));
@@ -217,14 +220,14 @@ fn should_respect_orderbook_seed() {
         let best_bid_price = balance!(10);
         let best_ask_price = balance!(11);
         let steps = 4;
-        let amount_range = (balance!(1), balance!(10));
+        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
         let settings = settings::OrderBookFill {
             bids: Some(settings::SideFill {
                 best_price: best_bid_price,
                 worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
                 price_step: *price_step.balance(),
                 orders_per_price,
-                amount_range_inclusive: Some(amount_range),
+                amount_range_inclusive: Some(amount_range.clone()),
             }),
             asks: Some(settings::SideFill {
                 best_price: best_ask_price,
@@ -280,14 +283,14 @@ fn should_keep_orderbook_randomness_independent() {
         let best_bid_price = balance!(10);
         let best_ask_price = balance!(11);
         let steps = 4;
-        let amount_range = (balance!(1), balance!(10));
+        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
         let settings_1 = settings::OrderBookFill {
             bids: Some(settings::SideFill {
                 best_price: best_bid_price,
                 worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
                 price_step: *price_step.balance(),
                 orders_per_price,
-                amount_range_inclusive: Some(amount_range),
+                amount_range_inclusive: Some(amount_range.clone()),
             }),
             asks: Some(settings::SideFill {
                 best_price: best_ask_price,
@@ -371,7 +374,7 @@ fn should_reject_incorrect_orderbook_fill_settings() {
         let orders_per_price = 3;
         let best_bid_price = balance!(10);
         let steps = 4;
-        let amount_range = (balance!(1), balance!(10));
+        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
         let correct_bids_settings = settings::SideFill {
             best_price: best_bid_price,
             worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),

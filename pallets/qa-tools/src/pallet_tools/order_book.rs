@@ -1,4 +1,4 @@
-use crate::settings::SideFill;
+use crate::settings::{RandomAmount, SideFill};
 use crate::Config;
 use common::{AssetInfoProvider, Balance, PriceVariant};
 use frame_support::pallet_prelude::*;
@@ -16,7 +16,7 @@ use sp_std::prelude::*;
 pub mod settings {
     use codec::{Decode, Encode};
     use common::Balance;
-    use order_book::OrderVolume;
+    use std::ops::{Range, RangeInclusive};
 
     /// Parameters for filling one order book side
     #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
@@ -28,21 +28,33 @@ pub mod settings {
         pub price_step: Balance,
         pub orders_per_price: u32,
         /// Default: `min_lot_size..=max_lot_size`
-        pub amount_range_inclusive: Option<(Balance, Balance)>,
+        pub amount_range_inclusive: Option<RandomAmount>,
     }
 
     /// Parameters for orders amount generation
     #[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
     #[cfg_attr(feature = "std", derive(Debug))]
     pub struct RandomAmount {
-        min: OrderVolume,
-        max: OrderVolume,
+        min: Balance,
+        max: Balance,
     }
 
     impl RandomAmount {
-        pub fn new(min: OrderVolume, max: OrderVolume) -> Option<Self> {
-            if max >= min {
-                Some(Self { max, min })
+        pub fn new(min: Balance, max: Balance) -> Self {
+            Self { max, min }
+        }
+
+        pub fn as_non_empty_range(&self) -> Option<Range<Balance>> {
+            if self.min < self.max {
+                Some(self.min..self.max)
+            } else {
+                None
+            }
+        }
+
+        pub fn as_non_empty_inclusive_range(&self) -> Option<RangeInclusive<Balance>> {
+            if self.min <= self.max {
+                Some(self.min..=self.max)
             } else {
                 None
             }
@@ -135,7 +147,7 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     Ok(())
 }
 
-fn verify_fill_side_params<T: Config>(
+fn verify_fill_side_price_params<T: Config>(
     params: &SideFill,
     tick_size: OrderPrice,
 ) -> Result<(), DispatchError> {
@@ -150,8 +162,8 @@ fn verify_fill_side_params<T: Config>(
     Ok(())
 }
 
-fn default_amount_range<T: Config>(order_book: &OrderBook<T>) -> (Balance, Balance) {
-    (
+fn default_amount_range<T: Config>(order_book: &OrderBook<T>) -> RandomAmount {
+    RandomAmount::new(
         *order_book.min_lot_size.balance(),
         *order_book.max_lot_size.balance(),
     )
@@ -179,30 +191,30 @@ fn fill_order_book<T: Config>(
     // we create separate RNGs seeded for each value in order to have random as independent from
     // other values as possible.
     // E.g. choosing to generate bids should not affect amounts of asks.
-    let mut bids_amount_generator = ChaCha8Rng::seed_from_u64(seed_generator.next_u64());
-    let mut asks_amount_generator = ChaCha8Rng::seed_from_u64(seed_generator.next_u64());
+    let mut buy_amount_generator = ChaCha8Rng::seed_from_u64(seed_generator.next_u64());
+    let mut sell_amount_generator = ChaCha8Rng::seed_from_u64(seed_generator.next_u64());
 
     if let Some(bids_settings) = settings.bids {
-        verify_fill_side_params::<T>(&bids_settings, order_book.tick_size)?;
+        verify_fill_side_price_params::<T>(&bids_settings, order_book.tick_size)?;
         // price_step is checked to be non-zero in `verify_fill_side_params`
         let buy_prices = (0..)
             .map(|step| bids_settings.best_price - step * bids_settings.price_step)
             .take_while(|price| *price >= bids_settings.worst_price);
-        let buy_amount_range = bids_settings
+        let buy_amount_non_empty_range = bids_settings
             .amount_range_inclusive
             .clone()
-            .unwrap_or_else(|| default_amount_range(&order_book));
+            .unwrap_or_else(|| default_amount_range(&order_book))
+            .as_non_empty_inclusive_range()
+            .ok_or(crate::Error::<T>::EmptyRandomRange)?;
         let buy_orders: Vec<_> = buy_prices
             .flat_map(|price| {
                 repeat(OrderPrice::divisible(price)).take(bids_settings.orders_per_price as usize)
             })
             .map(|price| {
-                (
-                    price,
-                    order_book.align_amount(order_book.step_lot_size.copy_divisibility(
-                        bids_amount_generator.gen_range(buy_amount_range.0..=buy_amount_range.1),
-                    )),
-                )
+                let random_amount = order_book.step_lot_size.copy_divisibility(
+                    buy_amount_generator.gen_range(buy_amount_non_empty_range.clone()),
+                );
+                (price, order_book.align_amount(random_amount))
             })
             .collect();
 
@@ -228,27 +240,27 @@ fn fill_order_book<T: Config>(
     }
 
     if let Some(asks_settings) = settings.asks {
-        verify_fill_side_params::<T>(&asks_settings, order_book.tick_size)?;
+        verify_fill_side_price_params::<T>(&asks_settings, order_book.tick_size)?;
         // price_step is checked to be non-zero in `verify_fill_side_params`
         let sell_prices = (0..)
             .map(|step| asks_settings.best_price + step * asks_settings.price_step)
             .take_while(|price| *price <= asks_settings.worst_price);
 
-        let sell_amount_range = asks_settings
+        let sell_amount_non_empty_range = asks_settings
             .amount_range_inclusive
             .clone()
-            .unwrap_or_else(|| default_amount_range(&order_book));
+            .unwrap_or_else(|| default_amount_range(&order_book))
+            .as_non_empty_inclusive_range()
+            .ok_or(crate::Error::<T>::EmptyRandomRange)?;
         let sell_orders: Vec<_> = sell_prices
             .flat_map(|price| {
                 repeat(OrderPrice::divisible(price)).take(asks_settings.orders_per_price as usize)
             })
             .map(|price| {
-                (
-                    price,
-                    order_book.align_amount(order_book.step_lot_size.copy_divisibility(
-                        asks_amount_generator.gen_range(sell_amount_range.0..=sell_amount_range.1),
-                    )),
-                )
+                let random_amount = order_book.step_lot_size.copy_divisibility(
+                    sell_amount_generator.gen_range(sell_amount_non_empty_range.clone()),
+                );
+                (price, order_book.align_amount(random_amount))
             })
             .collect();
 
