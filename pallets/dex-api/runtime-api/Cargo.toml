@@ -31,6 +31,6 @@ std = [
 	"common/std",
 ]
 
-wip = [
-    "common/wip",
+ready-to-test = [
+    "common/ready-to-test",
 ]

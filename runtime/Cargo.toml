@@ -305,14 +305,7 @@ private-net = [
 ]
 
 wip = [
-    "order-book/wip",
-    "order-book-benchmarking/wip",
     "framenode-chain-spec/wip",
-    "common/wip",
-    "dex-api/wip",
-    'liquidity-proxy/wip',
-    "liquidity-proxy-runtime-api/wip",
-    "liquidity-proxy-benchmarking/wip",
     "pallet-mmr",
     "beefy-light-client",
     "beefy-light-client-runtime-api",
@@ -326,7 +319,16 @@ wip = [
     "pallet-beefy-mmr",
 ]
 
-ready-to-test = ["framenode-chain-spec/ready-to-test"]
+ready-to-test = [
+    "framenode-chain-spec/ready-to-test",
+    "order-book/ready-to-test",
+    "order-book-benchmarking/ready-to-test",
+    "common/ready-to-test",
+    "dex-api/ready-to-test",
+    'liquidity-proxy/ready-to-test',
+    "liquidity-proxy-runtime-api/ready-to-test",
+    "liquidity-proxy-benchmarking/ready-to-test",
+]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
@@ -337,6 +339,7 @@ runtime-benchmarks = [
     "ceres-liquidity-locker-benchmarking/runtime-benchmarks",
     "demeter-farming-platform-benchmarking",
     "demeter-farming-platform-benchmarking/runtime-benchmarks",
+    "dex-api/runtime-benchmarks",
     "ceres-staking/runtime-benchmarks",
     "ceres-token-locker/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
