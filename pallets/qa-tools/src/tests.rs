@@ -40,9 +40,10 @@ use frame_support::pallet_prelude::DispatchResult;
 use frame_support::{assert_err, assert_ok};
 use frame_system::pallet_prelude::BlockNumberFor;
 use framenode_chain_spec::ext;
-use framenode_runtime::qa_tools::{self, settings, WhitelistedCallers};
+use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
+use qa_tools::{settings, Error, WhitelistedCallers};
 use sp_runtime::traits::BadOrigin;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
@@ -353,6 +354,64 @@ fn should_keep_orderbook_randomness_independent() {
 
         assert_eq!(asks_1, asks_2);
     })
+}
+
+#[test]
+fn should_reject_incorrect_orderbook_fill_settings() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
+        let price_step = order_book::OrderBook::<Runtime>::default(order_book_id).tick_size;
+        let orders_per_price = 3;
+        let best_bid_price = balance!(10);
+        let steps = 4;
+        let amount_range = (balance!(1), balance!(10));
+        let correct_bids_settings = settings::SideFill {
+            best_price: best_bid_price,
+            worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
+            price_step: *price_step.balance(),
+            orders_per_price,
+            amount_range_inclusive: Some(amount_range),
+        };
+        let mut bids_settings = correct_bids_settings.clone();
+        bids_settings.price_step = 1;
+        let settings = settings::OrderBookFill {
+            bids: Some(bids_settings),
+            asks: None,
+            lifespan: None,
+            random_seed: None,
+        };
+        assert_err!(
+            QAToolsPallet::order_book_create_and_fill_batch(
+                RuntimeOrigin::signed(alice()),
+                alice(),
+                alice(),
+                vec![(order_book_id, settings)]
+            ),
+            Error::<Runtime>::IncorrectPrice
+        );
+        let mut bids_settings = correct_bids_settings;
+        bids_settings.price_step = 0;
+        let settings = settings::OrderBookFill {
+            bids: Some(bids_settings),
+            asks: None,
+            lifespan: None,
+            random_seed: None,
+        };
+        assert_err!(
+            QAToolsPallet::order_book_create_and_fill_batch(
+                RuntimeOrigin::signed(alice()),
+                alice(),
+                alice(),
+                vec![(order_book_id, settings)]
+            ),
+            Error::<Runtime>::IncorrectPrice
+        );
+    });
 }
 
 fn test_whitelist<F: Fn(AccountIdOf<Runtime>) -> DispatchResult>(call: F) {
