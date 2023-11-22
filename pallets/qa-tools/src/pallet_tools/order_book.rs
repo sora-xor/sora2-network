@@ -8,7 +8,7 @@ use frame_system::pallet_prelude::*;
 use order_book::DataLayer;
 use order_book::{MomentOf, OrderBook, OrderBookId};
 use order_book::{OrderPrice, OrderVolume};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use sp_std::iter::repeat;
 use sp_std::prelude::*;
@@ -175,7 +175,12 @@ fn fill_order_book<T: Config>(
 
     let seed = settings.random_seed.unwrap_or(current_block);
     let seed = <BlockNumberFor<T> as TryInto<u64>>::try_into(seed).unwrap_or(0);
-    let mut rand_generator = ChaCha8Rng::seed_from_u64(seed);
+    let mut seed_generator = ChaCha8Rng::seed_from_u64(seed);
+    // we create separate RNGs seeded for each value in order to have random as independent from
+    // other values as possible.
+    // E.g. choosing to generate bids should not affect amounts of asks.
+    let mut bids_amount_generator = ChaCha8Rng::seed_from_u64(seed_generator.next_u64());
+    let mut asks_amount_generator = ChaCha8Rng::seed_from_u64(seed_generator.next_u64());
 
     if let Some(bids_settings) = settings.bids {
         verify_fill_side_params::<T>(&bids_settings, order_book.tick_size)?;
@@ -195,7 +200,7 @@ fn fill_order_book<T: Config>(
                 (
                     price,
                     order_book.align_amount(order_book.step_lot_size.copy_divisibility(
-                        rand_generator.gen_range(buy_amount_range.0..=buy_amount_range.1),
+                        bids_amount_generator.gen_range(buy_amount_range.0..=buy_amount_range.1),
                     )),
                 )
             })
@@ -241,7 +246,7 @@ fn fill_order_book<T: Config>(
                 (
                     price,
                     order_book.align_amount(order_book.step_lot_size.copy_divisibility(
-                        rand_generator.gen_range(sell_amount_range.0..=sell_amount_range.1),
+                        asks_amount_generator.gen_range(sell_amount_range.0..=sell_amount_range.1),
                     )),
                 )
             })
