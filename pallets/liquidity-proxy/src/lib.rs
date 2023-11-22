@@ -415,7 +415,12 @@ impl<T: Config> Pallet<T> {
                 )
                 .map(|(info, weight)| (info.path, weight))?;
                 Self::exchange_sequence_with_input_amount(
-                    dex_info, sender, receiver, &best_path, amount, filter,
+                    dex_info,
+                    sender,
+                    receiver,
+                    &best_path,
+                    desired_amount_in,
+                    filter,
                 )
                 .and_then(|(swap, sources, weight)| {
                     ensure!(
@@ -452,7 +457,6 @@ impl<T: Config> Pallet<T> {
                     sender,
                     receiver,
                     &exchange_path,
-                    amount,
                     filter,
                 )
                 .and_then(|(mut swap, sources, weight)| {
@@ -471,7 +475,7 @@ impl<T: Config> Pallet<T> {
         sender: &T::AccountId,
         receiver: &T::AccountId,
         assets: &[T::AssetId],
-        input_amount: SwapAmount<Balance>,
+        input_amount: Balance,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         use itertools::EitherOrBoth::*;
@@ -483,16 +487,7 @@ impl<T: Config> Pallet<T> {
         let receiver_iter = sp_std::iter::repeat(&transit_account)
             .take(exchange_count - 1)
             .chain(sp_std::iter::once(receiver));
-        let mut current_amount = match input_amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in,
-                min_amount_out: _,
-            } => desired_amount_in,
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out,
-                max_amount_in: _,
-            } => desired_amount_out,
-        };
+        let mut current_amount = input_amount;
         fallible_iterator::convert(
             assets
                 .iter()
@@ -512,30 +507,13 @@ impl<T: Config> Pallet<T> {
                 // Exchange
                 .map(
                     |(from, to, cur_sender, cur_receiver)| -> Result<_, DispatchError> {
-                        let swap_amount = match input_amount {
-                            SwapAmount::WithDesiredInput {
-                                desired_amount_in: _amount_base,
-                                min_amount_out,
-                            } => SwapAmount::WithDesiredInput {
-                                desired_amount_in: current_amount,
-                                min_amount_out,
-                            },
-                            SwapAmount::WithDesiredOutput {
-                                desired_amount_out: _,
-                                max_amount_in,
-                            } => SwapAmount::WithDesiredOutput {
-                                desired_amount_out: current_amount,
-                                max_amount_in,
-                            },
-                        };
-
                         let (swap_outcome, sources, weight) = Self::exchange_single(
                             cur_sender,
                             cur_receiver,
                             &dex_info.base_asset_id,
                             from,
                             to,
-                            swap_amount,
+                            SwapAmount::with_desired_input(current_amount, 0),
                             filter.clone(),
                         )?;
                         current_amount = swap_outcome.amount;
@@ -572,14 +550,15 @@ impl<T: Config> Pallet<T> {
         sender: &T::AccountId,
         receiver: &T::AccountId,
         assets: &[(T::AssetId, T::AssetId, Balance, Balance)],
-        input_amount: SwapAmount<Balance>,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
+        use itertools::EitherOrBoth::*;
+
         let transit_account = T::GetTechnicalAccountId::get();
         let exchange_count = assets.len();
-        let mut sender_iter = sp_std::iter::once(sender)
+        let sender_iter = sp_std::iter::once(sender)
             .chain(sp_std::iter::repeat(&transit_account).take(exchange_count - 1));
-        let mut receiver_iter = sp_std::iter::repeat(&transit_account)
+        let receiver_iter = sp_std::iter::repeat(&transit_account)
             .take(exchange_count - 1)
             .chain(sp_std::iter::once(receiver));
 
@@ -587,33 +566,27 @@ impl<T: Config> Pallet<T> {
             assets
                 .iter()
                 .rev()
+                .zip_longest(sender_iter)
+                .zip_longest(receiver_iter)
+                .map(|zip| match zip {
+                    Both(Both((from, to, input, output), cur_sender), cur_receiver) => {
+                        (from, to, input, output, cur_sender, cur_receiver)
+                    }
+                    // Sanity check. Should never happen
+                    _ => panic!(
+                        "Exchanging failed, iterator invariants are broken - \
+                                 this is a programmer error"
+                    ),
+                })
                 // Exchange
-                .map(|(from, to, input, output)| -> Result<_, DispatchError> {
-                    let swap_amount = match input_amount {
-                        SwapAmount::WithDesiredInput {
-                            desired_amount_in: _amount_base,
-                            min_amount_out,
-                        } => SwapAmount::WithDesiredInput {
-                            desired_amount_in: *input,
-                            min_amount_out,
-                        },
-                        SwapAmount::WithDesiredOutput {
-                            desired_amount_out: _,
-                            max_amount_in,
-                        } => SwapAmount::WithDesiredOutput {
-                            desired_amount_out: *output,
-                            max_amount_in,
-                        },
-                    };
-                    let cur_sender = sender_iter.next().unwrap();
-                    let cur_receiver = receiver_iter.next().unwrap();
+                .map(|(from, to, input, output, cur_sender, cur_receiver)| -> Result<_, DispatchError> {
                     let (swap_outcome, sources, weight) = Self::exchange_single(
                         cur_sender,
                         cur_receiver,
                         &dex_info.base_asset_id,
                         &from,
                         &to,
-                        swap_amount,
+                        SwapAmount::with_desired_output(*output, *input),
                         filter.clone(),
                     )?;
                     Ok((swap_outcome, sources, weight))
