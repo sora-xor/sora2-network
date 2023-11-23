@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::{balance, Balance};
-use frame_support::debug;
 use libm::pow;
 use sp_arithmetic::FixedU128;
 

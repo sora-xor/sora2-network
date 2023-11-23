@@ -276,8 +276,8 @@ pub mod pallet {
             + From<AssetIdOf<Self>>;
 
         /// Like AccountId but controlled by consensus, not signing by user.
-        /// This extra traits exist here bacause no way to do it by constraints, problem exist with
-        /// constraints and substrate macroses, and place this traits here is solution.
+        /// This extra traits exist here because no way to do it by constraints, problem exist with
+        /// constraints and substrate macros, and place this traits here is solution.
         type TechAccountId: Ord
             + Member
             + Parameter

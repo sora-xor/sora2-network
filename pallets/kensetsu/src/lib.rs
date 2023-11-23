@@ -99,6 +99,8 @@ pub mod pallet {
         assets::Config + frame_system::Config + technical::Config + timestamp::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        type TreasuryTechAccountId: Get<Self::TechAccountId>;
+
         // TODO
         // type ReferencePriceProvider: ReferencePriceProvider<AccountIdOf<Self>, AssetIdOf<Self>>;
         // type Currency: MultiCurrency<AccountIdOf<Self>, Balance = Balance>;
@@ -194,6 +196,7 @@ pub mod pallet {
         CDPsPerUserLimitReached,
         HardCapSupply,
         BalanceNotEnough,
+        WrongCollateralAssetId,
     }
 
     #[pallet::call]
@@ -238,11 +241,12 @@ pub mod pallet {
             Self::accrue_internal(cdp_id)?;
             let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(cdp.debt == 0, Error::<T>::OutstandingDebt);
-
-            // TODO
-            // return collateral
-            // return KUSD positive amount
-
+            technical::Pallet::<T>::transfer_out(
+                &cdp.collateral_asset_id,
+                &T::TreasuryTechAccountId::get(),
+                &who,
+                cdp.collateral_amount,
+            )?;
             <Treasury<T>>::remove(cdp_id);
 
             Ok(())
@@ -253,14 +257,22 @@ pub mod pallet {
         pub fn deposit_collateral(
             origin: OriginFor<T>,
             cdp_id: U256,
+            collateral_asset_id: AssetIdOf<T>,
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            // TODO
-            // ensure cdp asset is collateral asset id
-            // transfer collateral to tech account
-
+            let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            ensure!(
+                collateral_asset_id == cdp.collateral_asset_id,
+                Error::<T>::WrongCollateralAssetId
+            );
+            technical::Pallet::<T>::transfer_in(
+                &collateral_asset_id,
+                &who,
+                &T::TreasuryTechAccountId::get(),
+                collateral_amount,
+            )?;
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
@@ -296,10 +308,12 @@ pub mod pallet {
                     .ok_or(Error::<T>::ArithmeticError)?,
                 cdp.collateral_asset_id,
             )?;
-
-            // TODO
-            // transfer from tech account to who
-
+            technical::Pallet::<T>::transfer_out(
+                &cdp.collateral_asset_id,
+                &T::TreasuryTechAccountId::get(),
+                &who,
+                collateral_amount,
+            )?;
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
@@ -508,7 +522,13 @@ pub mod pallet {
             })?;
 
             // TODO
-            // transfer amount to account
+            // technical::Pallet::<T>::transfer_out(
+            //     &T::KUSDAssetId::get(),
+            //     &T::TreasuryTechAccountId::get(),
+            //     &who,
+            //     kusd_amount,
+            // )?;
+
             Ok(())
         }
 
@@ -542,7 +562,13 @@ pub mod pallet {
             })?;
 
             // TODO
-            // transfer amount from account to technical account
+            // technical::Pallet::<T>::transfer_in(
+            //     &T::KUSDAssetId::get(),),
+            //     &who,
+            //     &T::TreasuryTechAccountId::get(
+            //     kusd_amount,
+            // )?;
+
             Ok(())
         }
     }

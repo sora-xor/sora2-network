@@ -1913,6 +1913,8 @@ parameter_types! {
 
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    // TODO create Kensetsu treasury tech account
+    type TreasuryTechAccountId = GetTreasuryTechAccountId;
     type MaxCDPsPerUser = ConstU32<1024>;
 }
 
