@@ -42,6 +42,7 @@ use rand::{Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use sp_std::iter::repeat;
 use sp_std::prelude::*;
+use std::ops::RangeInclusive;
 
 pub mod settings {
     use codec::{Decode, Encode};
@@ -191,6 +192,18 @@ fn verify_fill_side_price_params<T: Config>(
     Ok(())
 }
 
+fn verify_amount_range_within_bounds<T: Config>(
+    amount_range: &RangeInclusive<Balance>,
+    accepted_range: &RangeInclusive<Balance>,
+) -> Result<(), DispatchError> {
+    ensure!(
+        accepted_range.contains(amount_range.start())
+            && accepted_range.contains(amount_range.end()),
+        crate::Error::<T>::OutOfBoundsRandomRange
+    );
+    Ok(())
+}
+
 fn default_amount_range<T: Config>(order_book: &OrderBook<T>) -> RandomAmount {
     RandomAmount::new(
         *order_book.min_lot_size.balance(),
@@ -213,6 +226,8 @@ fn fill_order_book<T: Config>(
         .unwrap_or(<T as order_book::Config>::MAX_ORDER_LIFESPAN);
     let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
         .ok_or(crate::Error::<T>::CannotFillUnknownOrderBook)?;
+    let order_book_lot_size_range =
+        *order_book.min_lot_size.balance()..=*order_book.max_lot_size.balance();
 
     let seed = settings.random_seed.unwrap_or(current_block);
     let seed = <BlockNumberFor<T> as TryInto<u64>>::try_into(seed).unwrap_or(0);
@@ -235,6 +250,10 @@ fn fill_order_book<T: Config>(
             .unwrap_or_else(|| default_amount_range(&order_book))
             .as_non_empty_inclusive_range()
             .ok_or(crate::Error::<T>::EmptyRandomRange)?;
+        verify_amount_range_within_bounds::<T>(
+            &buy_amount_non_empty_range,
+            &order_book_lot_size_range,
+        )?;
         let buy_orders: Vec<_> = buy_prices
             .flat_map(|price| {
                 repeat(OrderPrice::divisible(price)).take(bids_settings.orders_per_price as usize)
@@ -281,6 +300,10 @@ fn fill_order_book<T: Config>(
             .unwrap_or_else(|| default_amount_range(&order_book))
             .as_non_empty_inclusive_range()
             .ok_or(crate::Error::<T>::EmptyRandomRange)?;
+        verify_amount_range_within_bounds::<T>(
+            &sell_amount_non_empty_range,
+            &order_book_lot_size_range,
+        )?;
         let sell_orders: Vec<_> = sell_prices
             .flat_map(|price| {
                 repeat(OrderPrice::divisible(price)).take(asks_settings.orders_per_price as usize)

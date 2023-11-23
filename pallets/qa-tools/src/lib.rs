@@ -110,6 +110,8 @@ pub mod pallet {
         IncorrectPrice,
         /// Provided range is incorrect, check that lower bound is less or equal than the upper one.
         EmptyRandomRange,
+        /// The range for generating order amounts must be within order book's accepted values.
+        OutOfBoundsRandomRange,
     }
 
     #[pallet::call]
