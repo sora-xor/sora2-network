@@ -35,6 +35,7 @@ use frame_support::pallet_prelude::*;
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
+use itertools::Itertools as _;
 use order_book::DataLayer;
 use order_book::{MomentOf, OrderBook, OrderBookId};
 use order_book::{OrderPrice, OrderVolume};
@@ -243,7 +244,10 @@ fn fill_order_book<T: Config>(
         // price_step is checked to be non-zero in `verify_fill_side_params`
         let buy_prices = (0..)
             .map(|step| bids_settings.best_price - step * bids_settings.price_step)
-            .take_while(|price| *price >= bids_settings.worst_price);
+            .take_while(|price| *price >= bids_settings.worst_price)
+            .collect_vec()
+            .into_iter()
+            .rev();
         let buy_amount_non_empty_range = bids_settings
             .amount_range_inclusive
             .clone()
