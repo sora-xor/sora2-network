@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::{balance, AccountIdOf, Balance};
+use common::{balance, Balance};
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedU128;
@@ -51,7 +51,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::{BlockNumberFor, *};
     use pallet_timestamp as timestamp;
-    use sp_arithmetic::traits::{CheckedMul, EnsureAdd};
+    use sp_arithmetic::traits::CheckedMul;
     use sp_core::{H256, U256};
     use sp_runtime::BoundedVec;
     use traits::MultiCurrency;
@@ -159,6 +159,7 @@ pub mod pallet {
         OutstandingDebt,
         CDPsPerUserLimitReached,
         HardCapSupply,
+        BalanceNotEnough,
     }
 
     #[pallet::call]
@@ -335,6 +336,7 @@ pub mod pallet {
 
             // TODO
             // burn to_cover_debt KUSD
+            // TODO return leftover to who
 
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
@@ -351,8 +353,6 @@ pub mod pallet {
                         .ok_or(Error::<T>::ArithmeticError)
                 }
             })?;
-
-            // TODO return leftover to who
 
             Ok(())
         }
@@ -392,51 +392,71 @@ pub mod pallet {
 
         #[pallet::call_index(8)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn add_collateral_type(
+        pub fn update_collateral_risk_parameters(
             origin: OriginFor<T>,
             collateral_asset_id: AssetIdOf<T>,
             info: CollateralRiskParameters,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
-            // TODO
-            // add collateral info if not exist
+
+            for (cdp_id, cdp) in <Treasury<T>>::iter() {
+                if cdp.collateral_asset_id == collateral_asset_id {
+                    Self::accrue_internal(cdp_id)?;
+                }
+            }
+            <CollateralTypes<T>>::insert(collateral_asset_id, info);
+
             Ok(())
         }
 
         #[pallet::call_index(9)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn change_collateral_risk_parameters(
-            origin: OriginFor<T>,
-            collateral_asset_id: AssetIdOf<T>,
-            info: CollateralRiskParameters,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_risk_manager(&who)?;
-            // TODO
-            // accrue fee on all collateral asset id
-            // change risk parameters if exist
-            Ok(())
-        }
-
-        #[pallet::call_index(10)]
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_protocol_owner(&who)?;
+            let profit = <Profit<T>>::get();
+            ensure!(kusd_amount <= profit, Error::<T>::BalanceNotEnough);
+
+            <Profit<T>>::try_mutate(|profit| {
+                profit
+                    .checked_sub(kusd_amount)
+                    .ok_or(Error::<T>::ArithmeticError)
+            })?;
+
             // TODO
-            // decrement protocol profit
             // transfer amount to account
             Ok(())
         }
 
-        #[pallet::call_index(11)]
+        /// Donate KUSD to the protocol
+        #[pallet::call_index(10)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn cover_bad_debt(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_protocol_owner(&who)?;
+
+            let bad_debt = <BadDebt<T>>::get();
+            let to_cover_debt = if kusd_amount < bad_debt {
+                kusd_amount
+            } else {
+                bad_debt
+            };
+            let leftover = kusd_amount
+                .checked_sub(bad_debt)
+                .ok_or(Error::<T>::ArithmeticError)?;
+
+            <BadDebt<T>>::try_mutate(|bad_debt| {
+                bad_debt
+                    .checked_sub(to_cover_debt)
+                    .ok_or(Error::<T>::ArithmeticError)
+            })?;
+            <Profit<T>>::try_mutate(|profit| {
+                profit
+                    .checked_add(leftover)
+                    .ok_or(Error::<T>::ArithmeticError)
+            })?;
+
             // TODO
-            // decrement protocol bad debt
             // transfer amount from account to technical account
             Ok(())
         }
