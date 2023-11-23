@@ -56,6 +56,7 @@ impl SubstrateCli for Cli {
         let chain_spec = match id {
             "" | "local" => Some(framenode_chain_spec::local_testnet_config(3, 3)),
             "docker-local" => Some(framenode_chain_spec::local_testnet_config(1, 1)),
+            "liberland-local" => Some(framenode_chain_spec::local_testnet_config(1, 1)),
             // dev doesn't use json chain spec to make development easier
             // "dev" => framenode_chain_spec::dev_net(),
             // "dev-coded" => Ok(framenode_chain_spec::dev_net_coded()),
