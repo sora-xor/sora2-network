@@ -35,7 +35,6 @@ use frame_support::pallet_prelude::*;
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
-use itertools::Itertools as _;
 use order_book::DataLayer;
 use order_book::{MomentOf, OrderBook, OrderBookId};
 use order_book::{OrderPrice, OrderVolume};
@@ -53,10 +52,10 @@ pub mod settings {
     /// Parameters for filling one order book side
     #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
     pub struct SideFill {
-        /// highest price for bids; lowest for asks
-        pub best_price: Balance,
-        /// lowest price for bids; highest for asks
-        pub worst_price: Balance,
+        /// the best price for bids; the worst for asks
+        pub highest_price: Balance,
+        /// the worst price for bids; the best for asks
+        pub lowest_price: Balance,
         pub price_step: Balance,
         pub orders_per_price: u32,
         /// Default: `min_lot_size..=max_lot_size`
@@ -186,8 +185,8 @@ fn verify_fill_side_price_params<T: Config>(
     ensure!(
         params.price_step % tick == 0
             && params.price_step != 0
-            && params.best_price % tick == 0
-            && params.worst_price % tick == 0,
+            && params.highest_price % tick == 0
+            && params.lowest_price % tick == 0,
         crate::Error::<T>::IncorrectPrice
     );
     Ok(())
@@ -242,12 +241,11 @@ fn fill_order_book<T: Config>(
     if let Some(bids_settings) = settings.bids {
         verify_fill_side_price_params::<T>(&bids_settings, order_book.tick_size)?;
         // price_step is checked to be non-zero in `verify_fill_side_params`
-        let buy_prices = (0..)
-            .map(|step| bids_settings.best_price - step * bids_settings.price_step)
-            .take_while(|price| *price >= bids_settings.worst_price)
-            .collect_vec()
-            .into_iter()
-            .rev();
+        let buy_prices: Vec<_> = (0..)
+            .map(|step| bids_settings.highest_price - step * bids_settings.price_step)
+            .take_while(|price| *price >= bids_settings.lowest_price)
+            .collect();
+        let buy_prices = buy_prices.into_iter().rev();
         let buy_amount_non_empty_range = bids_settings
             .amount_range_inclusive
             .clone()
@@ -295,8 +293,8 @@ fn fill_order_book<T: Config>(
         verify_fill_side_price_params::<T>(&asks_settings, order_book.tick_size)?;
         // price_step is checked to be non-zero in `verify_fill_side_params`
         let sell_prices = (0..)
-            .map(|step| asks_settings.best_price + step * asks_settings.price_step)
-            .take_while(|price| *price <= asks_settings.worst_price);
+            .map(|step| asks_settings.lowest_price + step * asks_settings.price_step)
+            .take_while(|price| *price <= asks_settings.highest_price);
 
         let sell_amount_non_empty_range = asks_settings
             .amount_range_inclusive

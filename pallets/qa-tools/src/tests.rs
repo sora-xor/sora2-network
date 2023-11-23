@@ -90,15 +90,15 @@ fn test_creates_orderbook(
             order_book_id,
             settings::OrderBookFill {
                 bids: Some(settings::SideFill {
-                    best_price: best_bid_price,
-                    worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
+                    highest_price: best_bid_price,
+                    lowest_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
                     price_step: *price_step.balance(),
                     orders_per_price,
                     amount_range_inclusive: Some(amount_range.clone())
                 }),
                 asks: Some(settings::SideFill {
-                    best_price: best_ask_price,
-                    worst_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                    highest_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                    lowest_price: best_ask_price,
                     price_step: *price_step.balance(),
                     orders_per_price,
                     amount_range_inclusive: Some(amount_range.clone())
@@ -223,15 +223,15 @@ fn should_respect_orderbook_seed() {
         let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
         let settings = settings::OrderBookFill {
             bids: Some(settings::SideFill {
-                best_price: best_bid_price,
-                worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
+                highest_price: best_bid_price,
+                lowest_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
                 price_step: *price_step.balance(),
                 orders_per_price,
                 amount_range_inclusive: Some(amount_range.clone()),
             }),
             asks: Some(settings::SideFill {
-                best_price: best_ask_price,
-                worst_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                highest_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                lowest_price: best_ask_price,
                 price_step: *price_step.balance(),
                 orders_per_price,
                 amount_range_inclusive: Some(amount_range),
@@ -286,15 +286,15 @@ fn should_keep_orderbook_randomness_independent() {
         let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
         let settings_1 = settings::OrderBookFill {
             bids: Some(settings::SideFill {
-                best_price: best_bid_price,
-                worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
+                highest_price: best_bid_price,
+                lowest_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
                 price_step: *price_step.balance(),
                 orders_per_price,
                 amount_range_inclusive: Some(amount_range.clone()),
             }),
             asks: Some(settings::SideFill {
-                best_price: best_ask_price,
-                worst_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                highest_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                lowest_price: best_ask_price,
                 price_step: *price_step.balance(),
                 orders_per_price,
                 amount_range_inclusive: Some(amount_range),
@@ -376,8 +376,8 @@ fn should_reject_incorrect_orderbook_fill_settings() {
         let steps = 4;
         let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
         let correct_bids_settings = settings::SideFill {
-            best_price: best_bid_price,
-            worst_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
+            highest_price: best_bid_price,
+            lowest_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
             price_step: *price_step.balance(),
             orders_per_price,
             amount_range_inclusive: Some(amount_range),
