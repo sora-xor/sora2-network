@@ -4588,6 +4588,7 @@ dependencies = [
  "hex-literal 0.4.1",
  "iroha-migration",
  "iroha-migration-runtime-api",
+ "kensetsu",
  "leaf-provider",
  "leaf-provider-runtime-api",
  "liquidity-proxy",
@@ -5913,6 +5914,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "libm",
  "orml-tokens",
  "orml-traits",
  "pallet-timestamp",
@@ -5922,6 +5924,7 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "sp-std",
+ "technical",
 ]
 
 [[package]]

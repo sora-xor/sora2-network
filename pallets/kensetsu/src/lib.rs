@@ -30,6 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, Balance};
 use compounding::get_accrued_interest;
@@ -85,28 +86,29 @@ pub mod pallet {
     use frame_system::pallet_prelude::{BlockNumberFor, *};
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::CheckedMul;
-    use sp_core::{H256, U256};
+    use sp_core::U256;
     use sp_runtime::traits::CheckedConversion;
-    use sp_runtime::BoundedVec;
     use traits::MultiCurrency;
-
-    pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<AccountIdOf<T>>>::CurrencyId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + timestamp::Config {
+    pub trait Config:
+        assets::Config + frame_system::Config + technical::Config + timestamp::Config
+    {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type ReferencePriceProvider: ReferencePriceProvider<AccountIdOf<Self>, AssetIdOf<Self>>;
-        type Currency: MultiCurrency<AccountIdOf<Self>, Balance = Balance>;
-        type ReservesAccount: Get<AccountIdOf<Self>>;
+        // TODO
+        // type ReferencePriceProvider: ReferencePriceProvider<AccountIdOf<Self>, AssetIdOf<Self>>;
+        // type Currency: MultiCurrency<AccountIdOf<Self>, Balance = Balance>;
+
         // TODO add KUSD AssetId
+        // type ReservesAccount: Get<AccountIdOf<Self>>;
         // type KUSDAssetId: Get<AssetIdOf<T>>;
 
         // TODO fee scheduler
-        type FeeScheduleMaxPerBlock: Get<u32>;
+        // type FeeScheduleMaxPerBlock: Get<u32>;
 
         /// Max number of CDPs per single user, 1024
         type MaxCDPsPerUser: Get<u32>;
@@ -138,7 +140,6 @@ pub mod pallet {
 
     // Risk parameter
     // Hard cap of KUSD may be minted by the system
-    // TODO add setter for risk managers
     #[pallet::storage]
     #[pallet::getter(fn max_supply)]
     pub type MaxSupply<T> = StorageValue<_, Balance, ValueQuery>;
@@ -165,20 +166,19 @@ pub mod pallet {
     >;
 
     // TODO fees offchain worker scheduler
-    #[pallet::storage]
-    #[pallet::getter(fn fee_schedule)]
-    pub type StabilityFeeSchedule<T: Config> = StorageMap<
-        _,
-        Identity,
-        BlockNumberFor<T>,
-        BoundedVec<H256, T::FeeScheduleMaxPerBlock>,
-        ValueQuery,
-    >;
+    // #[pallet::storage]
+    // #[pallet::getter(fn fee_schedule)]
+    // pub type StabilityFeeSchedule<T: Config> = StorageMap<
+    //     _,
+    //     Identity,
+    //     BlockNumberFor<T>,
+    //     BoundedVec<H256, T::FeeScheduleMaxPerBlock>,
+    //     ValueQuery,
+    // >;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        Deposit {},
         // TODO add all events
     }
 
@@ -206,8 +206,12 @@ pub mod pallet {
             collateral_asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(
+                <CollateralTypes<T>>::contains_key(collateral_asset_id),
+                Error::<T>::CollateralInfoNotFound
+            );
             NextCDPId::<T>::try_mutate(|cdp_id| {
-                cdp_id
+                *cdp_id = cdp_id
                     .checked_add(U256::from(1))
                     .ok_or(Error::<T>::ArithmeticError)?;
                 <Treasury<T>>::insert(
@@ -259,11 +263,12 @@ pub mod pallet {
 
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
-                    cdp.as_mut()
-                        .ok_or(Error::<T>::CDPNotFound)?
+                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                    cdp.collateral_amount = cdp
                         .collateral_amount
                         .checked_add(collateral_amount)
-                        .ok_or(Error::<T>::ArithmeticError)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    DispatchResult::Ok(())
                 }
             })?;
 
@@ -297,11 +302,12 @@ pub mod pallet {
 
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
-                    cdp.as_mut()
-                        .ok_or(Error::<T>::CDPNotFound)?
+                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                    cdp.collateral_amount = cdp
                         .collateral_amount
                         .checked_sub(collateral_amount)
-                        .ok_or(Error::<T>::ArithmeticError)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    DispatchResult::Ok(())
                 }
             })?;
 
@@ -335,16 +341,19 @@ pub mod pallet {
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.debt
+                    cdp.debt = cdp
+                        .debt
                         .checked_add(will_to_borrow_amount)
-                        .ok_or(Error::<T>::ArithmeticError)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    DispatchResult::Ok(())
                 }
             })?;
             <Supply<T>>::try_mutate({
                 |supply| {
-                    supply
+                    *supply = supply
                         .checked_add(will_to_borrow_amount)
-                        .ok_or(Error::<T>::ArithmeticError)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    DispatchResult::Ok(())
                 }
             })?;
 
@@ -375,16 +384,19 @@ pub mod pallet {
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.debt
+                    cdp.debt = cdp
+                        .debt
                         .checked_sub(to_cover_debt)
-                        .ok_or(Error::<T>::ArithmeticError)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    DispatchResult::Ok(())
                 }
             })?;
             <Supply<T>>::try_mutate({
                 |supply| {
-                    supply
+                    *supply = supply
                         .checked_sub(to_cover_debt)
-                        .ok_or(Error::<T>::ArithmeticError)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    DispatchResult::Ok(())
                 }
             })?;
 
@@ -444,7 +456,43 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Sets max hard cap supply of KUSD
         #[pallet::call_index(9)]
+        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        pub fn update_hard_cap_total_supply(
+            origin: OriginFor<T>,
+            new_hard_cap: Balance,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            Self::ensure_risk_manager(&who)?;
+            <MaxSupply<T>>::mutate({
+                |hard_cap| {
+                    *hard_cap = new_hard_cap;
+                }
+            });
+
+            Ok(())
+        }
+
+        /// Sets liquidation penalty
+        #[pallet::call_index(10)]
+        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        pub fn update_liquidation_penalty(
+            origin: OriginFor<T>,
+            new_liquidation_penalty: FixedU128,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            Self::ensure_risk_manager(&who)?;
+            <LiquidationPenalty<T>>::mutate({
+                |liquidation_penalty| {
+                    *liquidation_penalty = new_liquidation_penalty;
+                }
+            });
+
+            Ok(())
+        }
+
+        #[pallet::call_index(11)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -453,9 +501,10 @@ pub mod pallet {
             ensure!(kusd_amount <= profit, Error::<T>::BalanceNotEnough);
 
             <Profit<T>>::try_mutate(|profit| {
-                profit
+                *profit = profit
                     .checked_sub(kusd_amount)
-                    .ok_or(Error::<T>::ArithmeticError)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
             })?;
 
             // TODO
@@ -464,7 +513,7 @@ pub mod pallet {
         }
 
         /// Donate KUSD to the protocol
-        #[pallet::call_index(10)]
+        #[pallet::call_index(12)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn cover_bad_debt(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -480,14 +529,16 @@ pub mod pallet {
                 .ok_or(Error::<T>::ArithmeticError)?;
 
             <BadDebt<T>>::try_mutate(|bad_debt| {
-                bad_debt
+                *bad_debt = bad_debt
                     .checked_sub(to_cover_debt)
-                    .ok_or(Error::<T>::ArithmeticError)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
             })?;
             <Profit<T>>::try_mutate(|profit| {
-                profit
+                *profit = profit
                     .checked_add(leftover)
-                    .ok_or(Error::<T>::ArithmeticError)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
             })?;
 
             // TODO
@@ -545,7 +596,7 @@ pub mod pallet {
                 .liquidation_ratio
                 .checked_mul(&FixedU128::from_inner(collateral_value))
                 .ok_or(Error::<T>::ArithmeticError)?;
-            ensure!(debt < max_safe_debt, Error::<T>::CDPUnsafe);
+            ensure!(debt <= max_safe_debt, Error::<T>::CDPUnsafe);
             Ok(())
         }
 
@@ -606,7 +657,8 @@ pub mod pallet {
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.debt
+                    cdp.debt = cdp
+                        .debt
                         .checked_add(stability_fee)
                         .ok_or(Error::<T>::ArithmeticError)?;
                     cdp.last_fee_update_time = now;
@@ -618,15 +670,17 @@ pub mod pallet {
             // mint stability_fee KUSD on tech account
 
             <Profit<T>>::try_mutate(|profit| {
-                profit
+                *profit = profit
                     .checked_add(stability_fee)
-                    .ok_or(Error::<T>::ArithmeticError)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
             })?;
             <Supply<T>>::try_mutate({
                 |supply| {
-                    supply
+                    *supply = supply
                         .checked_add(stability_fee)
-                        .ok_or(Error::<T>::ArithmeticError)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    DispatchResult::Ok(())
                 }
             })?;
 

@@ -154,6 +154,7 @@ use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, R
 use impls::{
     CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
 };
+pub use kensetsu;
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
 #[cfg(all(feature = "runtime-benchmarks", feature = "ready-to-test"))] // order-book
@@ -1910,6 +1911,11 @@ parameter_types! {
     pub AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(35) * BlockWeights::get().max_block;
 }
 
+impl kensetsu::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type MaxCDPsPerUser = ConstU32<1024>;
+}
+
 #[cfg(feature = "ready-to-test")] // order-book
 impl order_book::Config for Runtime {
     const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days
@@ -2342,6 +2348,8 @@ construct_runtime! {
 
         #[cfg(feature = "ready-to-test")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
+
+        Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,

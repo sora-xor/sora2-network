@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::{balance, Balance};
+use frame_support::debug;
+use libm::pow;
 use sp_arithmetic::FixedU128;
 
 #[derive(Debug)]
@@ -48,17 +50,21 @@ pub fn continuous_compound(
     rate: FixedU128,
     time: u64,
 ) -> Result<Balance, Error> {
-    let euler_number = std::f64::consts::E;
+    let euler_number = 2.71828182845904523536028747135266250_f64;
     // Seconds in Gregorian calendar year
     let seconds_in_year = 31556952f64;
     let time_in_years = time as f64 / seconds_in_year;
-    let res =
-        (initial_balance as f64 * euler_number.powf(rate.to_float() * time_in_years)) as Balance;
-    if res == Balance::MAX {
-        Err(Error::Overflow)
-    } else {
-        Ok(res)
-    }
+
+    // TODO implement without std
+    // let res =
+    //     (initial_balance as f64 * pow(euler_number, rate.to_float() * time_in_years)) as Balance;
+    // if res == Balance::MAX {
+    //     Err(Error::Overflow)
+    // } else {
+    //     Ok(res)
+    // }
+
+    Ok(balance!(0))
 }
 
 /// Returns accrued interest using continuous compouding formula
