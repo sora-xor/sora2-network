@@ -41,8 +41,8 @@ use order_book::{OrderPrice, OrderVolume};
 use rand::{Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use sp_std::iter::repeat;
+use sp_std::ops::RangeInclusive;
 use sp_std::prelude::*;
-use std::ops::RangeInclusive;
 
 pub mod settings {
     use codec::{Decode, Encode};
@@ -204,7 +204,7 @@ fn verify_amount_range_within_bounds<T: Config>(
     Ok(())
 }
 
-fn default_amount_range<T: Config>(order_book: &OrderBook<T>) -> RandomAmount {
+fn max_amount_range<T: Config>(order_book: &OrderBook<T>) -> RandomAmount {
     RandomAmount::new(
         *order_book.min_lot_size.balance(),
         *order_book.max_lot_size.balance(),
@@ -247,7 +247,7 @@ fn fill_order_book<T: Config>(
         let buy_amount_non_empty_range = bids_settings
             .amount_range_inclusive
             .clone()
-            .unwrap_or_else(|| default_amount_range(&order_book))
+            .unwrap_or_else(|| max_amount_range(&order_book))
             .as_non_empty_inclusive_range()
             .ok_or(crate::Error::<T>::EmptyRandomRange)?;
         verify_amount_range_within_bounds::<T>(
@@ -297,7 +297,7 @@ fn fill_order_book<T: Config>(
         let sell_amount_non_empty_range = asks_settings
             .amount_range_inclusive
             .clone()
-            .unwrap_or_else(|| default_amount_range(&order_book))
+            .unwrap_or_else(|| max_amount_range(&order_book))
             .as_non_empty_inclusive_range()
             .ok_or(crate::Error::<T>::EmptyRandomRange)?;
         verify_amount_range_within_bounds::<T>(
