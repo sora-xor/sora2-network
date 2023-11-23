@@ -1,9 +1,41 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, Balance};
+use compounding::get_accrued_interest;
 pub use pallet::*;
 use scale_info::TypeInfo;
+use sp_arithmetic::traits::{EnsureDiv, EnsureMul, Saturating};
 use sp_arithmetic::FixedU128;
 
 #[cfg(test)]
@@ -14,6 +46,7 @@ mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+mod compounding;
 
 // Risk management parameters for the specific collateral type.
 #[derive(Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord)]
@@ -53,6 +86,7 @@ pub mod pallet {
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::CheckedMul;
     use sp_core::{H256, U256};
+    use sp_runtime::traits::CheckedConversion;
     use sp_runtime::BoundedVec;
     use traits::MultiCurrency;
 
@@ -177,7 +211,7 @@ pub mod pallet {
                     .checked_add(U256::from(1))
                     .ok_or(Error::<T>::ArithmeticError)?;
                 <Treasury<T>>::insert(
-                    cdp_id.clone(),
+                    cdp_id,
                     CollateralizedDebtPosition {
                         owner: who.clone(),
                         collateral_asset_id,
@@ -466,7 +500,7 @@ pub mod pallet {
         // Ensure that `who` is a cdp owner
         // CDP owner can change balances on own CDP only.
         fn ensure_cdp_owner(who: &AccountIdOf<T>, cdp_id: U256) -> DispatchResult {
-            let cdp = Self::cdp(&cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(*who == cdp.owner, Error::<T>::OperationPermitted);
             Ok(())
         }
@@ -498,7 +532,7 @@ pub mod pallet {
             collateral: Balance,
             collateral_asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
-            let collateral_risk_parameters = Self::collateral_risk_parameters(&collateral_asset_id)
+            let collateral_risk_parameters = Self::collateral_risk_parameters(collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?;
             // TODO get price
             // let collateral_reference_price = T::ReferencePriceProvider::get_reference_price(&collateral_asset_id)?;
@@ -520,7 +554,7 @@ pub mod pallet {
             collateral_asset_id: AssetIdOf<T>,
             new_emission: Balance,
         ) -> DispatchResult {
-            let collateral_risk_parameters = Self::collateral_risk_parameters(&collateral_asset_id)
+            let collateral_risk_parameters = Self::collateral_risk_parameters(collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?;
 
             let current_supply_for_collateral = balance!(0);
@@ -558,16 +592,44 @@ pub mod pallet {
         // Calculates fees accrued since last update using continuous compounding formula.
         // The fees is a protocol gain.
         fn accrue_internal(cdp_id: U256) -> DispatchResult {
-            let cdp = Self::cdp(&cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let collateral_info = Self::collateral_risk_parameters(cdp.collateral_asset_id)
+                .ok_or(Error::<T>::CollateralInfoNotFound)?;
+            let now = Timestamp::<T>::get();
+            let stability_fee = get_accrued_interest(
+                cdp.debt,
+                collateral_info.stability_fee_rate,
+                now.checked_into::<u64>()
+                    .ok_or(Error::<T>::ArithmeticError)?,
+            )
+            .map_err(|_| Error::<T>::ArithmeticError)?;
+            <Treasury<T>>::try_mutate(cdp_id, {
+                |cdp| {
+                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                    cdp.debt
+                        .checked_add(stability_fee)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    cdp.last_fee_update_time = now;
+                    DispatchResult::Ok(())
+                }
+            })?;
 
-            // TODO use continuous compounding formula
-            // calculate stability fee since last update in KUSD
-            // calculate fee = f(debt * fee * time)
-            // increase CDP debt
-            // mint KUSD on tech account
-            // increment profit
-            // increase KUSD total supply
-            // change last update time
+            // TODO
+            // mint stability_fee KUSD on tech account
+
+            <Profit<T>>::try_mutate(|profit| {
+                profit
+                    .checked_add(stability_fee)
+                    .ok_or(Error::<T>::ArithmeticError)
+            })?;
+            <Supply<T>>::try_mutate({
+                |supply| {
+                    supply
+                        .checked_add(stability_fee)
+                        .ok_or(Error::<T>::ArithmeticError)
+                }
+            })?;
+
             Ok(())
         }
     }
