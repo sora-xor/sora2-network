@@ -40,21 +40,8 @@ pub struct CollateralizedDebtPosition<AccountId, AssetId, Moment> {
     /// normalized outstanding debt in KUSD
     pub debt: Balance,
 
-    /// positive balance that the protocol owe to the CDP owner
-    pub balance: Balance,
-
     /// the last timestamp when stability fee was accrued
     pub last_fee_update_time: Moment,
-}
-
-impl<AccountId, AssetId, Moment> CollateralizedDebtPosition<AccountId, AssetId, Moment> {
-    pub fn outstanding_debt(&self) -> Balance {
-        if self.debt > self.balance {
-            self.debt - self.balance
-        } else {
-            0
-        }
-    }
 }
 
 #[frame_support::pallet]
@@ -143,18 +130,6 @@ pub mod pallet {
         CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>, T::Moment>,
     >;
 
-    // Index for [AccountId, AssetId -> Vec(CDP IDs)]
-    #[pallet::storage]
-    #[pallet::getter(fn user_cdps)]
-    pub type UserCDPs<T: Config> = StorageDoubleMap<
-        _,
-        Identity,
-        AccountIdOf<T>,
-        Identity,
-        AssetIdOf<T>,
-        BoundedVec<U256, T::MaxCDPsPerUser>,
-    >;
-
     // TODO fees offchain worker scheduler
     #[pallet::storage]
     #[pallet::getter(fn fee_schedule)]
@@ -196,7 +171,6 @@ pub mod pallet {
             collateral_asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-
             NextCDPId::<T>::try_mutate(|cdp_id| {
                 cdp_id
                     .checked_add(U256::from(1))
@@ -208,12 +182,10 @@ pub mod pallet {
                         collateral_asset_id,
                         collateral_amount: balance!(0),
                         debt: balance!(0),
-                        balance: balance!(0),
                         last_fee_update_time: Timestamp::<T>::get(),
                     },
                 );
-                <UserCDPs<T>>::try_append(who, collateral_asset_id, cdp_id)
-                    .map_err(|_| Error::<T>::CDPsPerUserLimitReached)
+                DispatchResult::Ok(())
             })?;
 
             Ok(())
@@ -233,14 +205,7 @@ pub mod pallet {
             // return KUSD positive amount
 
             <Treasury<T>>::remove(cdp_id);
-            <UserCDPs<T>>::mutate(who, cdp.collateral_asset_id, |cdp_ids| {
-                if let Some(cdps) = cdp_ids {
-                    cdps.retain(|x| *x != cdp_id);
-                    if cdps.is_empty() {
-                        *cdp_ids = None;
-                    }
-                };
-            });
+
             Ok(())
         }
 
@@ -285,7 +250,7 @@ pub mod pallet {
                 Error::<T>::NotEnoughCollateral
             );
             Self::ensure_cdp_safe(
-                cdp.outstanding_debt(),
+                cdp.debt,
                 cdp.collateral_amount
                     .checked_sub(collateral_amount)
                     .ok_or(Error::<T>::ArithmeticError)?,
@@ -320,29 +285,13 @@ pub mod pallet {
             Self::ensure_cdp_owner(&who, cdp_id)?;
             Self::accrue_internal(cdp_id)?;
             let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            Self::ensure_cdp_safe(
-                cdp.outstanding_debt()
-                    .checked_add(will_to_borrow_amount)
-                    .ok_or(Error::<T>::ArithmeticError)?,
-                cdp.collateral_amount,
-                cdp.collateral_asset_id,
-            )?;
-            let to_mint = if will_to_borrow_amount > cdp.balance {
-                will_to_borrow_amount
-                    .checked_sub(cdp.balance)
-                    .ok_or(Error::<T>::ArithmeticError)?
-            } else {
-                0
-            };
-            let to_transfer = if cdp.balance > will_to_borrow_amount {
-                cdp.balance
-                    .checked_sub(will_to_borrow_amount)
-                    .ok_or(Error::<T>::ArithmeticError)?
-            } else {
-                cdp.balance
-            };
-            Self::ensure_collateral_cap(cdp.collateral_asset_id, to_mint)?;
-            Self::ensure_protocol_cap(to_mint)?;
+            let new_debt = cdp
+                .debt
+                .checked_add(will_to_borrow_amount)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            Self::ensure_cdp_safe(new_debt, cdp.collateral_amount, cdp.collateral_asset_id)?;
+            Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
+            Self::ensure_protocol_cap(will_to_borrow_amount)?;
 
             // TODO
             // mint to_mint KUSD amount to who
@@ -352,17 +301,14 @@ pub mod pallet {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                     cdp.debt
-                        .checked_add(to_mint)
-                        .ok_or(Error::<T>::ArithmeticError)?;
-                    cdp.balance
-                        .checked_sub(to_transfer)
+                        .checked_add(will_to_borrow_amount)
                         .ok_or(Error::<T>::ArithmeticError)
                 }
             })?;
             <Supply<T>>::try_mutate({
                 |supply| {
                     supply
-                        .checked_add(to_mint)
+                        .checked_add(will_to_borrow_amount)
                         .ok_or(Error::<T>::ArithmeticError)
                 }
             })?;
@@ -377,7 +323,7 @@ pub mod pallet {
             Self::accrue_internal(cdp_id)?;
             let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
 
-            // if repaying amount exceeds debt, leftover goes to the CDP owner
+            // if repaying amount exceeds debt, leftover goes to the caller
             let to_cover_debt = amount.min(cdp.debt);
             let leftover = if amount > cdp.debt {
                 amount
@@ -395,9 +341,6 @@ pub mod pallet {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                     cdp.debt
                         .checked_sub(to_cover_debt)
-                        .ok_or(Error::<T>::ArithmeticError)?;
-                    cdp.balance
-                        .checked_add(leftover)
                         .ok_or(Error::<T>::ArithmeticError)
                 }
             })?;
@@ -408,6 +351,8 @@ pub mod pallet {
                         .ok_or(Error::<T>::ArithmeticError)
                 }
             })?;
+
+            // TODO return leftover to who
 
             Ok(())
         }
