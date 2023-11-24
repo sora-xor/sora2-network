@@ -40,8 +40,8 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, PSWAP, TBCD, USDT, VAL, XOR,
-    XST, XSTUSD,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KUSD, PSWAP, TBCD, USDT,
+    VAL, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -1014,6 +1014,9 @@ fn testnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
+    let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
+    let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -1068,6 +1071,10 @@ fn testnet_genesis(
         (
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
+        ),
+        (
+            kensetsu_treasury_account_id.clone(),
+            kensetsu_treasury_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -1391,6 +1398,17 @@ fn testnet_genesis(
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"TBCD".to_vec()),
                     AssetName(b"SORA TBC Dollar".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    KUSD.into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"KUSD".to_vec()),
+                    AssetName(b"Kensetsu Stable Dollar".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
@@ -1870,6 +1888,9 @@ fn mainnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
+    let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
+    let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -1924,6 +1945,10 @@ fn mainnet_genesis(
         (
             market_maker_rewards_account_id.clone(),
             market_maker_rewards_tech_account_id.clone(),
+        ),
+        (
+            kensetsu_treasury_account_id.clone(),
+            kensetsu_treasury_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -2027,6 +2052,17 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"TBCD".to_vec()),
             AssetName(b"SORA TBC Dollar".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            KUSD.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"KUSD".to_vec()),
+            AssetName(b"Kensetsu Stable Dollar".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,

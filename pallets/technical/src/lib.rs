@@ -241,7 +241,7 @@ impl<T: Config> Pallet<T> {
         assets::Pallet::<T>::mint_to(asset, &account_id, &account_id, amount)
     }
 
-    /// Burn specific asset from the given `TechAccountId`.
+    /// Returns total balance for asset from the given `TechAccountId`.
     pub fn total_balance(
         asset_id: &T::AssetId,
         tech_id: &T::TechAccountId,

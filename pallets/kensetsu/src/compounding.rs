@@ -34,6 +34,7 @@ use sp_arithmetic::FixedU128;
 
 #[derive(Debug)]
 pub enum Error {
+    ArithmeticError,
     Overflow,
 }
 
@@ -63,7 +64,7 @@ pub fn continuous_compound(
     //     Ok(res)
     // }
 
-    Ok(balance!(0))
+    Ok(initial_balance)
 }
 
 /// Returns accrued interest using continuous compouding formula
@@ -77,7 +78,9 @@ pub fn get_accrued_interest(
     time: u64,
 ) -> Result<Balance, Error> {
     let new_loan_balance = continuous_compound(loan_balance, rate, time)?;
-    Ok(new_loan_balance - loan_balance)
+    new_loan_balance
+        .checked_sub(loan_balance)
+        .ok_or(Error::ArithmeticError)
 }
 
 #[test]

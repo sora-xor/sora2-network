@@ -902,6 +902,7 @@ parameter_types! {
     pub const GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
     pub const GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
     pub const GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    pub const GetKusdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
@@ -1906,17 +1907,33 @@ impl hermes_governance_platform::Config for Runtime {
 }
 
 parameter_types! {
-    // small value for test environment in order to check postponing expirations
-    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block;
-    pub AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(35) * BlockWeights::get().max_block;
+    pub KensetsuTreasuryTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
+            kensetsu::TECH_ACCOUNT_TREASURY_MAIN.to_vec(),
+        )
+    };
+    pub KensetsuTreasuryAccountId: AccountId = {
+        let tech_account_id = KensetsuTreasuryTechAccountId::get();
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.")
+    };
+
+    pub const KusdAssetId: AssetId = common::KUSD;
 }
 
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     // TODO create Kensetsu treasury tech account
-    type TreasuryTechAccountId = GetTreasuryTechAccountId;
+    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KusdAssetId = KusdAssetId;
     type MaxCDPsPerUser = ConstU32<1024>;
 }
+
+parameter_types! {
+// small value for test environment in order to check postponing expirations
+pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block;
+pub AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(35) * BlockWeights::get().max_block;}
 
 #[cfg(feature = "ready-to-test")] // order-book
 impl order_book::Config for Runtime {

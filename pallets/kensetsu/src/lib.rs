@@ -49,6 +49,9 @@ mod tests;
 mod benchmarking;
 mod compounding;
 
+pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
+pub const TECH_ACCOUNT_TREASURY_MAIN: &[u8] = b"treasury";
+
 // Risk management parameters for the specific collateral type.
 #[derive(Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CollateralRiskParameters {
@@ -81,9 +84,9 @@ pub struct CollateralizedDebtPosition<AccountId, AssetId, Moment> {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, ReferencePriceProvider};
+    use common::{AccountIdOf, FromGenericPair, ReferencePriceProvider};
     use frame_support::pallet_prelude::*;
-    use frame_system::pallet_prelude::{BlockNumberFor, *};
+    use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::CheckedMul;
     use sp_core::U256;
@@ -99,15 +102,12 @@ pub mod pallet {
         assets::Config + frame_system::Config + technical::Config + timestamp::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type TreasuryTechAccountId: Get<Self::TechAccountId>;
+        type TreasuryTechAccount: Get<Self::TechAccountId>;
+        type KusdAssetId: Get<Self::AssetId>;
 
         // TODO
         // type ReferencePriceProvider: ReferencePriceProvider<AccountIdOf<Self>, AssetIdOf<Self>>;
         // type Currency: MultiCurrency<AccountIdOf<Self>, Balance = Balance>;
-
-        // TODO add KUSD AssetId
-        // type ReservesAccount: Get<AccountIdOf<Self>>;
-        // type KUSDAssetId: Get<AssetIdOf<T>>;
 
         // TODO fee scheduler
         // type FeeScheduleMaxPerBlock: Get<u32>;
@@ -184,6 +184,34 @@ pub mod pallet {
         // TODO add all events
     }
 
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub protocol_owner: Option<T::AccountId>,
+        pub risk_manager: Option<T::AccountId>,
+        // TODO
+        // Set risk manager account
+        // Set protocol owner account
+        // Set liquidator account
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                protocol_owner: Default::default(),
+                risk_manager: Default::default(),
+                // TODO  default tech accounts
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            // TODO register tech accounts
+        }
+    }
+
     #[pallet::error]
     pub enum Error<T> {
         ArithmeticError,
@@ -243,7 +271,7 @@ pub mod pallet {
             ensure!(cdp.debt == 0, Error::<T>::OutstandingDebt);
             technical::Pallet::<T>::transfer_out(
                 &cdp.collateral_asset_id,
-                &T::TreasuryTechAccountId::get(),
+                &T::TreasuryTechAccount::get(),
                 &who,
                 cdp.collateral_amount,
             )?;
@@ -257,20 +285,15 @@ pub mod pallet {
         pub fn deposit_collateral(
             origin: OriginFor<T>,
             cdp_id: U256,
-            collateral_asset_id: AssetIdOf<T>,
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            ensure!(
-                collateral_asset_id == cdp.collateral_asset_id,
-                Error::<T>::WrongCollateralAssetId
-            );
             technical::Pallet::<T>::transfer_in(
-                &collateral_asset_id,
+                &cdp.collateral_asset_id,
                 &who,
-                &T::TreasuryTechAccountId::get(),
+                &T::TreasuryTechAccount::get(),
                 collateral_amount,
             )?;
             <Treasury<T>>::try_mutate(cdp_id, {
@@ -301,6 +324,7 @@ pub mod pallet {
                 cdp.collateral_amount >= collateral_amount,
                 Error::<T>::NotEnoughCollateral
             );
+            Self::accrue_internal(cdp_id)?;
             Self::ensure_cdp_safe(
                 cdp.debt,
                 cdp.collateral_amount
@@ -310,7 +334,7 @@ pub mod pallet {
             )?;
             technical::Pallet::<T>::transfer_out(
                 &cdp.collateral_asset_id,
-                &T::TreasuryTechAccountId::get(),
+                &T::TreasuryTechAccount::get(),
                 &who,
                 collateral_amount,
             )?;
@@ -328,7 +352,6 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO give better name that describe that user can borrow or get positive balance
         #[pallet::call_index(4)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn borrow(
@@ -347,11 +370,16 @@ pub mod pallet {
             Self::ensure_cdp_safe(new_debt, cdp.collateral_amount, cdp.collateral_asset_id)?;
             Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
             Self::ensure_protocol_cap(will_to_borrow_amount)?;
-
-            // TODO
-            // mint to_mint KUSD amount to who
-            // transfer to_transfer KUSD amount to who
-
+            let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::TreasuryTechAccount::get(),
+            )?;
+            // TODO technical_account_id has not permission to mint
+            assets::Pallet::<T>::mint_to(
+                &T::KusdAssetId::get(),
+                &technical_account_id,
+                &who,
+                will_to_borrow_amount,
+            )?;
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
@@ -383,18 +411,7 @@ pub mod pallet {
 
             // if repaying amount exceeds debt, leftover goes to the caller
             let to_cover_debt = amount.min(cdp.debt);
-            let leftover = if amount > cdp.debt {
-                amount
-                    .checked_sub(cdp.debt)
-                    .ok_or(Error::<T>::ArithmeticError)?
-            } else {
-                0
-            };
-
-            // TODO
-            // burn to_cover_debt KUSD
-            // TODO return leftover to who
-
+            assets::Pallet::<T>::burn_from(&T::KusdAssetId::get(), &who, &who, to_cover_debt)?;
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
@@ -417,11 +434,13 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Liquidates part of unsafe CDP
         #[pallet::call_index(6)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn liquidate(
             origin: OriginFor<T>,
             cdp_id: U256,
+            collateral_amount: Balance,
             kusd_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -430,8 +449,9 @@ pub mod pallet {
 
             // TODO
             // ensure CDP is unsafe, LTV threshold
+            // transfer collateral to liquidator
             // repay_debt(kusd_amount)
-            // if outstanding debt?
+            // if no collateral and outstanding debt?
             //   compensate with protocol profit balance, burn leftover KUSD
             //   if not enough, increase bad debt
             // calculate liquidation_penalty
@@ -459,6 +479,8 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
+
+            // TODO ensure asset_id exists
 
             for (cdp_id, cdp) in <Treasury<T>>::iter() {
                 if cdp.collateral_asset_id == collateral_asset_id {
@@ -520,15 +542,12 @@ pub mod pallet {
                     .ok_or(Error::<T>::ArithmeticError)?;
                 DispatchResult::Ok(())
             })?;
-
-            // TODO
-            // technical::Pallet::<T>::transfer_out(
-            //     &T::KUSDAssetId::get(),
-            //     &T::TreasuryTechAccountId::get(),
-            //     &who,
-            //     kusd_amount,
-            // )?;
-
+            technical::Pallet::<T>::transfer_out(
+                &T::KusdAssetId::get(),
+                &T::TreasuryTechAccount::get(),
+                &who,
+                kusd_amount,
+            )?;
             Ok(())
         }
 
@@ -560,14 +579,12 @@ pub mod pallet {
                     .ok_or(Error::<T>::ArithmeticError)?;
                 DispatchResult::Ok(())
             })?;
-
-            // TODO
-            // technical::Pallet::<T>::transfer_in(
-            //     &T::KUSDAssetId::get(),),
-            //     &who,
-            //     &T::TreasuryTechAccountId::get(
-            //     kusd_amount,
-            // )?;
+            technical::Pallet::<T>::transfer_in(
+                &T::KusdAssetId::get(),
+                &who,
+                &T::TreasuryTechAccount::get(),
+                kusd_amount,
+            )?;
 
             Ok(())
         }
@@ -613,14 +630,15 @@ pub mod pallet {
                 .ok_or(Error::<T>::CollateralInfoNotFound)?;
             // TODO get price
             // let collateral_reference_price = T::ReferencePriceProvider::get_reference_price(&collateral_asset_id)?;
-            let collateral_reference_price = balance!(1000);
+            let collateral_reference_price = balance!(1);
+            let collateral_reference_price = FixedU128::from_inner(collateral_reference_price);
             let collateral_value = collateral_reference_price
-                .checked_mul(collateral)
+                .checked_mul(&FixedU128::from_inner(collateral))
                 .ok_or(Error::<T>::ArithmeticError)?;
             let debt = FixedU128::from_inner(debt);
             let max_safe_debt = collateral_risk_parameters
                 .liquidation_ratio
-                .checked_mul(&FixedU128::from_inner(collateral_value))
+                .checked_mul(&collateral_value)
                 .ok_or(Error::<T>::ArithmeticError)?;
             ensure!(debt <= max_safe_debt, Error::<T>::CDPUnsafe);
             Ok(())
@@ -691,10 +709,11 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
-
-            // TODO
-            // mint stability_fee KUSD on tech account
-
+            technical::Pallet::<T>::mint(
+                &T::KusdAssetId::get(),
+                &T::TreasuryTechAccount::get(),
+                stability_fee,
+            )?;
             <Profit<T>>::try_mutate(|profit| {
                 *profit = profit
                     .checked_add(stability_fee)
