@@ -433,17 +433,6 @@ fn test_whitelist<F: Fn(AccountIdOf<Runtime>) -> DispatchResult>(call: F) {
 }
 
 #[test]
-fn create_empty_batch_whitelist_only() {
-    ext().execute_with(|| {
-        test_whitelist(|caller| {
-            QAToolsPallet::order_book_create_empty_batch(RuntimeOrigin::signed(caller), vec![])
-                .map_err(|e| e.error)?;
-            Ok(())
-        });
-    })
-}
-
-#[test]
 fn create_and_fill_batch_whitelist_only() {
     ext().execute_with(|| {
         test_whitelist(|caller| {

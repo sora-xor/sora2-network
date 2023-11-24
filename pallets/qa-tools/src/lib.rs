@@ -164,44 +164,13 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Create multiple order books with default parameters (if do not exist yet).
-        ///
-        /// Parameters:
-        /// - `origin`: caller, should be account because error messages for unsigned txs are unclear,
-        /// - `order_book_ids`: ids of the created order books; trading pairs are created
-        /// if necessary,
-        #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
-        pub fn order_book_create_empty_batch(
-            origin: OriginFor<T>,
-            order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
-        ) -> DispatchResultWithPostInfo {
-            let who = Self::ensure_in_whitelist(origin)?;
-
-            // Replace with more convenient `with_pays_fee` when/if available
-            // https://github.com/paritytech/substrate/pull/14470
-            pallet_tools::order_book::create_multiple_empty_unchecked::<T>(&who, order_book_ids)
-                .map_err(|e| DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: None,
-                        pays_fee: Pays::No,
-                    },
-                    error: e,
-                })?;
-
-            // Extrinsic is only for testing, so we return all fees
-            // for simplicity.
-            Ok(PostDispatchInfo {
-                actual_weight: None,
-                pays_fee: Pays::No,
-            })
-        }
-
-        /// Initialize order book liquidity source. Create multiple order books with default
-        /// parameters (if don't exist yet) and fill them according to given parameters.
+        /// Create multiple order books with default parameters (if don't exist yet) and fill them
+        /// according to the given parameters.
         ///
         /// Balance for placing the orders is minted automatically, trading pairs are
         /// created if needed.
+        ///
+        /// In order to create empty order books, one can leave settings empty.
         ///
         /// Parameters:
         /// - `origin`: account to mint non-divisible assets (for creating an order book)
@@ -222,6 +191,8 @@ pub mod pallet {
             // Error messages for unsigned calls are non-informative
             let who = Self::ensure_in_whitelist(origin)?;
 
+            // Replace with more convenient `with_pays_fee` when/if available
+            // https://github.com/paritytech/substrate/pull/14470
             pallet_tools::liquidity_proxy::source_initializers::order_book::<T>(
                 who,
                 bids_owner,
