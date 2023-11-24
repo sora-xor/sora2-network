@@ -373,7 +373,6 @@ pub mod pallet {
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            // TODO technical_account_id has not permission to mint
             assets::Pallet::<T>::mint_to(
                 &T::KusdAssetId::get(),
                 &technical_account_id,
