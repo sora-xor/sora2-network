@@ -38,6 +38,7 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{EnsureDiv, EnsureMul, Saturating};
 use sp_arithmetic::FixedU128;
+use sp_arithmetic::Perbill;
 
 #[cfg(test)]
 mod mock;
@@ -52,22 +53,24 @@ mod compounding;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
 pub const TECH_ACCOUNT_TREASURY_MAIN: &[u8] = b"treasury";
 
-// Risk management parameters for the specific collateral type.
+/// Risk management parameters for the specific collateral type.
 #[derive(Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CollateralRiskParameters {
-    // Hard cap of total KUSD issued for the collateral.
+    /// Hard cap of total KUSD issued for the collateral.
     pub max_supply: Balance,
 
-    // Loan-to-value liquidation threshold
+    // TODO consider Percent
+    /// Loan-to-value liquidation threshold
     pub liquidation_ratio: FixedU128,
 
+    /// Protocol Interest rate per second
     pub stability_fee_rate: FixedU128,
 }
 
-// CDP - Collateralized Debt Position. It is a single collateral/debt record.
+/// CDP - Collateralized Debt Position. It is a single collateral/debt record.
 #[derive(Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CollateralizedDebtPosition<AccountId, AssetId, Moment> {
-    // CDP owner
+    /// CDP owner
     pub owner: AccountId,
 
     /// Collateral
@@ -120,44 +123,44 @@ pub mod pallet {
 
     // TODO system live parameter
 
-    // Current KUSD total supply
+    /// Current KUSD total supply
     #[pallet::storage]
     #[pallet::getter(fn kusd_supply)]
     pub type Supply<T> = StorageValue<_, Balance, ValueQuery>;
 
-    // System profit in KUSD.
+    /// System profit in KUSD.
     #[pallet::storage]
     #[pallet::getter(fn profit)]
     pub type Profit<T> = StorageValue<_, Balance, ValueQuery>;
 
-    // System bad debt, the amount of KUSD not secured with collateral.
+    /// System bad debt, the amount of KUSD not secured with collateral.
     #[pallet::storage]
     #[pallet::getter(fn bad_debt)]
     pub type BadDebt<T> = StorageValue<_, Balance, ValueQuery>;
 
-    // Risk parameters for collaterals
+    /// Risk parameters for collaterals
     #[pallet::storage]
     #[pallet::getter(fn collateral_risk_parameters)]
     pub type CollateralTypes<T> = StorageMap<_, Identity, AssetIdOf<T>, CollateralRiskParameters>;
 
-    // Risk parameter
-    // Hard cap of KUSD may be minted by the system
+    /// Risk parameter
+    /// Hard cap of KUSD may be minted by the system
     #[pallet::storage]
     #[pallet::getter(fn max_supply)]
     pub type MaxSupply<T> = StorageValue<_, Balance, ValueQuery>;
 
-    // Risk parameter
-    // Liquidation penalty
+    /// Risk parameter
+    /// Liquidation penalty
     // TODO add setter for risk managers
     #[pallet::storage]
     #[pallet::getter(fn liquidation_penalty)]
     pub type LiquidationPenalty<T> = StorageValue<_, FixedU128, ValueQuery>;
 
-    // The next CDP id
+    /// The next CDP id
     #[pallet::storage]
     pub type NextCDPId<T> = StorageValue<_, U256, ValueQuery>;
 
-    // Storage of all CDPs, where key is an unique CDP identifier
+    /// Storage of all CDPs, where key is an unique CDP identifier
     #[pallet::storage]
     #[pallet::getter(fn cdp)]
     pub type Treasury<T: Config> = StorageMap<
@@ -590,36 +593,36 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        // Ensure that `who` is a cdp owner
-        // CDP owner can change balances on own CDP only.
+        /// Ensures that `who` is a cdp owner
+        /// CDP owner can change balances on own CDP only.
         fn ensure_cdp_owner(who: &AccountIdOf<T>, cdp_id: U256) -> DispatchResult {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(*who == cdp.owner, Error::<T>::OperationPermitted);
             Ok(())
         }
 
-        // Ensure that `who` is a liquidator
-        // Liquidator is responsible to close unsafe CDP effectively.
+        /// Ensures that `who` is a liquidator
+        /// Liquidator is responsible to close unsafe CDP effectively.
         fn ensure_liquidator(who: &AccountIdOf<T>) -> DispatchResult {
             // TODO
             Ok(())
         }
 
-        // Ensure that `who` is a risk manager
-        // Risk manager can set protocol risk parameters.
+        /// Ensures that `who` is a risk manager
+        /// Risk manager can set protocol risk parameters.
         fn ensure_risk_manager(who: &AccountIdOf<T>) -> DispatchResult {
             // TODO
             Ok(())
         }
 
-        // Ensure that `who` is a protocol owner
-        // Protocol owner can withdraw profit from the protocol.
+        /// Ensures that `who` is a protocol owner
+        /// Protocol owner can withdraw profit from the protocol.
         fn ensure_protocol_owner(who: &AccountIdOf<T>) -> DispatchResult {
             // TODO
             Ok(())
         }
 
-        /// Ensure loan-to-value ratio is `safe` and is not going to be liquidated
+        /// Ensures loan-to-value ratio is `safe` and is not going to be liquidated
         fn ensure_cdp_safe(
             debt: Balance,
             collateral: Balance,
@@ -682,9 +685,9 @@ pub mod pallet {
             Ok(())
         }
 
-        // Accrue stability fee from CDP
-        // Calculates fees accrued since last update using continuous compounding formula.
-        // The fees is a protocol gain.
+        /// Accrue stability fee from CDP
+        /// Calculates fees accrued since last update using continuous compounding formula.
+        /// The fees is a protocol gain.
         fn accrue_internal(cdp_id: U256) -> DispatchResult {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             let collateral_info = Self::collateral_risk_parameters(cdp.collateral_asset_id)
