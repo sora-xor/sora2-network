@@ -73,6 +73,7 @@ pub enum ComicAssetId {
     BluePromise,
     Mango,
     MichaelJacksonCD,
+    CrackedBrassBell,
 }
 
 impl crate::traits::IsRepresentation for ComicAssetId {
@@ -103,6 +104,7 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::XSTUSD => Mango,
             PredefinedAssetId::XST => BatteryForMusicPlayer,
             PredefinedAssetId::TBCD => MichaelJacksonCD,
+            PredefinedAssetId::KUSD => CrackedBrassBell,
         }
     }
 }

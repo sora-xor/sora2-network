@@ -88,6 +88,19 @@ fn test_contionuous_compound_zero_rate() {
 }
 
 #[test]
+fn test_contionuous_compound_zero_principal() {
+    let initial_balance = balance!(0);
+    let rate = FixedU128::from(11);
+    // 1 year in seconds
+    let time = 31556952;
+    // shall not change
+    assert_eq!(
+        continuous_compound(initial_balance, rate, time).unwrap(),
+        initial_balance
+    );
+}
+
+#[test]
 fn test_contionuous_compound_1_period() {
     // per second rate
     let rate = FixedU128::from_float(0.15);
