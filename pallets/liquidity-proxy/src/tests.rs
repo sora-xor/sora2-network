@@ -800,7 +800,7 @@ fn test_sell_however_big_amount_base_should_pass() {
 fn test_swap_weight_calculates_correctly() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let swap_1_weight = LiquidityProxy::swap_weight(
+        let _swap_1_weight = LiquidityProxy::swap_weight(
             &DEX_D_ID,
             &PSWAP,
             &XOR,

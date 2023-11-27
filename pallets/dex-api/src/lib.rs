@@ -248,19 +248,16 @@ impl<T: Config>
     }
 
     fn exchange_weight() -> Weight {
-        #[allow(unused_mut)] // order-book
-        #[allow(unused_assignments)] // order-book
-        let mut weight = Weight::zero();
-
-        #[cfg(feature = "wip")] // order-book
-        {
-            weight = T::OrderBook::exchange_weight();
-        }
-
-        weight
-            .max(T::XSTPool::exchange_weight())
-            .max(T::XYKPool::exchange_weight())
-            .max(T::MulticollateralBondingCurvePool::exchange_weight())
+        Self::exchange_weight_filtered(
+            [
+                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::MulticollateralBondingCurvePool,
+                LiquiditySourceType::XSTPool,
+                #[cfg(feature = "wip")] // order-book
+                LiquiditySourceType::OrderBook,
+            ]
+            .iter(),
+        )
     }
 
     fn check_rewards_weight() -> Weight {
@@ -326,12 +323,11 @@ impl<T: Config>
             .collect())
     }
 
-    fn exchange_weight_filtered(
-        enabled_sources: Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>,
+    fn exchange_weight_filtered<'a>(
+        enabled_sources: impl Iterator<Item = &'a LiquiditySourceType>,
     ) -> Weight {
         enabled_sources
-            .iter()
-            .map(|source| match source.liquidity_source_index {
+            .map(|source| match source {
                 LiquiditySourceType::XYKPool => T::XYKPool::exchange_weight(),
                 LiquiditySourceType::MulticollateralBondingCurvePool => {
                     T::MulticollateralBondingCurvePool::exchange_weight()
