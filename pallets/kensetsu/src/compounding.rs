@@ -30,6 +30,7 @@
 
 use common::{balance, Balance};
 use sp_arithmetic::traits::{EnsureAdd, EnsureMul, EnsureSub, Saturating};
+use sp_arithmetic::ArithmeticError::Overflow;
 use sp_arithmetic::{ArithmeticError, FixedU128};
 
 /// Per second compounding formula
@@ -41,7 +42,7 @@ use sp_arithmetic::{ArithmeticError, FixedU128};
 /// - rate_per_second - rate per second, rate_secondly = (1 + rate_annual)^(1/seconds_per_year) - 1
 /// - period - time passed in seconds
 /// Returns the new balance with interest over time
-pub fn continuous_compound(
+pub fn compound(
     principal: Balance,
     rate_per_second: FixedU128,
     period: u64,
@@ -70,58 +71,58 @@ pub fn get_accrued_interest(
     rate_per_second: FixedU128,
     period: u64,
 ) -> Result<Balance, ArithmeticError> {
-    let new_loan_balance = continuous_compound(principal, rate_per_second, period)?;
+    let new_loan_balance = compound(principal, rate_per_second, period)?;
     new_loan_balance.ensure_sub(principal)
 }
 
 #[test]
-fn test_contionuous_compound_zero_rate() {
+fn tests_compound_zero_rate() {
     let initial_balance = balance!(10000);
     let rate = FixedU128::from(0);
     // 1 year in seconds
     let time = 31556952;
-    // shall not change
+    // balance shall not change
     assert_eq!(
-        continuous_compound(initial_balance, rate, time).unwrap(),
+        compound(initial_balance, rate, time).unwrap(),
         initial_balance
     );
 }
 
 #[test]
-fn test_contionuous_compound_zero_principal() {
+fn test_compound_zero_principal() {
     let initial_balance = balance!(0);
     let rate = FixedU128::from(11);
     // 1 year in seconds
     let time = 31556952;
     // shall not change
     assert_eq!(
-        continuous_compound(initial_balance, rate, time).unwrap(),
+        compound(initial_balance, rate, time).unwrap(),
         initial_balance
     );
 }
 
 #[test]
-fn test_contionuous_compound_1_period() {
+fn test_compound_1_period() {
     // per second rate
     let rate = FixedU128::from_float(0.15);
     let initial_balance = balance!(100);
     // 1 second
     let time = 1;
     assert_eq!(
-        continuous_compound(initial_balance, rate, time).unwrap(),
+        compound(initial_balance, rate, time).unwrap(),
         balance!(115)
     );
 }
 
 #[test]
-fn test_contionuous_compound_2_periods() {
+fn test_compound_2_periods() {
     // per second rate
     let rate = FixedU128::from_float(0.1);
     let initial_balance = balance!(100);
     // 1 second
     let time = 2;
     assert_eq!(
-        continuous_compound(initial_balance, rate, time).unwrap(),
+        compound(initial_balance, rate, time).unwrap(),
         balance!(121)
     );
 }
@@ -135,4 +136,14 @@ fn test_accrued_interest() {
         get_accrued_interest(initial_balance, rate, time).unwrap(),
         balance!(21)
     );
+}
+
+#[test]
+fn test_compound_overflow() {
+    // per second rate
+    let rate = FixedU128::from_float(0.15);
+    let initial_balance = Balance::MAX;
+    // 1 second
+    let time = 1;
+    assert_eq!(compound(initial_balance, rate, time), Err(Overflow));
 }
