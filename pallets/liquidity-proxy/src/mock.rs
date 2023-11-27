@@ -781,7 +781,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn exchange_weight() -> Weight {
-        Weight::zero()
+        Weight::from(1)
     }
 
     fn check_rewards_weight() -> Weight {
@@ -1131,7 +1131,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn exchange_weight() -> Weight {
-        Weight::zero()
+        Weight::from(1)
     }
 
     fn check_rewards_weight() -> Weight {
