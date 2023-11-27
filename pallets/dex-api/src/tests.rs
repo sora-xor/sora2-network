@@ -155,7 +155,7 @@ fn test_exchange_weight_filtered_calculates() {
         let multicollateral_weight =
             <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::MulticollateralBondingCurvePool>::exchange_weight();
         let xst_weight =
-            <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::XYKPool>::exchange_weight();
+            <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::XSTPool>::exchange_weight();
         let order_book_weight =
             <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::OrderBook>::exchange_weight();
 
