@@ -4441,6 +4441,7 @@ dependencies = [
  "iroha-migration",
  "iroha-migration-rpc",
  "jsonrpsee",
+ "kensetsu-rpc",
  "leaf-provider-rpc",
  "libsecp256k1",
  "liquidity-proxy-rpc",
@@ -4589,6 +4590,7 @@ dependencies = [
  "iroha-migration",
  "iroha-migration-runtime-api",
  "kensetsu",
+ "kensetsu-runtime-api",
  "leaf-provider",
  "leaf-provider-runtime-api",
  "liquidity-proxy",
@@ -5925,6 +5927,26 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+]
+
+[[package]]
+name = "kensetsu-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpsee",
+ "kensetsu-runtime-api",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "kensetsu-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "sp-api",
+ "sp-runtime",
 ]
 
 [[package]]

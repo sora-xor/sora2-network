@@ -48,6 +48,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 mod compounding;
+mod rpc;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
 pub const TECH_ACCOUNT_TREASURY_MAIN: &[u8] = b"treasury";
@@ -329,7 +330,7 @@ pub mod pallet {
             );
             Self::accrue_internal(cdp_id)?;
             ensure!(
-                Self::is_cdp_safe(
+                Self::check_cdp_is_safe(
                     cdp.debt,
                     cdp.collateral_amount
                         .checked_sub(collateral_amount)
@@ -374,7 +375,7 @@ pub mod pallet {
                 .checked_add(will_to_borrow_amount)
                 .ok_or(Error::<T>::ArithmeticError)?;
             ensure!(
-                Self::is_cdp_safe(new_debt, cdp.collateral_amount, cdp.collateral_asset_id)?,
+                Self::check_cdp_is_safe(new_debt, cdp.collateral_amount, cdp.collateral_asset_id)?,
                 Error::<T>::CDPUnsafe
             );
             Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
@@ -434,7 +435,7 @@ pub mod pallet {
             let cdp_debt = cdp.debt;
             let cdp_collateral_amount = cdp.collateral_amount;
             ensure!(
-                !Self::is_cdp_safe(cdp_debt, cdp_collateral_amount, cdp.collateral_asset_id)?,
+                !Self::check_cdp_is_safe(cdp_debt, cdp_collateral_amount, cdp.collateral_asset_id)?,
                 Error::<T>::CDPSafe
             );
             technical::Pallet::<T>::transfer_out(
@@ -639,8 +640,8 @@ pub mod pallet {
         }
 
         /// Checks loan-to-value ratio is `safe` and is not going to be liquidated
-        /// Returns true if CDP is safe.
-        fn is_cdp_safe(
+        /// Returns true if CDP is safe, LTV <= liquidation threshold
+        pub(crate) fn check_cdp_is_safe(
             debt: Balance,
             collateral: Balance,
             collateral_asset_id: AssetIdOf<T>,
