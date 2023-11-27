@@ -911,6 +911,179 @@ fn test_swap_weight_considers_available_sources() {
 }
 
 #[test]
+fn test_swap_weight_filters_sources() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let swap_base_weight = <Runtime as crate::Config>::WeightInfo::check_indivisible_assets()
+            .saturating_add(<Runtime as crate::Config>::WeightInfo::is_forbidden_filter());
+
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::quote_weight().saturating_mul(4),
+            )
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight()
+                    .saturating_mul(2),
+            );
+        let exchange_base_weight = <Runtime as crate::Config>::WeightInfo::new_trivial()
+            .saturating_add(quote_single_weight); // once within a path
+        let multicollateral_weight =
+            <Runtime as dex_api::Config>::MulticollateralBondingCurvePool::exchange_weight();
+        let xst_weight = <Runtime as dex_api::Config>::XSTPool::exchange_weight();
+
+        // ETH -1-> XOR -2-> XST (DEX 0)
+        // 1) Multicollateral
+        // 2) MockPool
+        let swap_weight_without_path = swap_base_weight
+            .saturating_add(exchange_base_weight)
+            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
+            .saturating_add(quote_single_weight); // WithDesiredOutput
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_D_ID,
+                &ETH,
+                &XST,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([
+                    LiquiditySourceType::MockPool,
+                    LiquiditySourceType::MulticollateralBondingCurvePool
+                ]),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path
+                .saturating_add(multicollateral_weight)
+                .saturating_add(Weight::zero()) // `MockSource`s are not counted
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_D_ID,
+                &ETH,
+                &XST,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([LiquiditySourceType::MockPool]),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path
+                // Multicollateral is filtered out
+                .saturating_add(Weight::zero()) // `MockSource`s are not counted
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_D_ID,
+                &ETH,
+                &XST,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([LiquiditySourceType::MulticollateralBondingCurvePool]),
+                &FilterMode::ForbidSelected,
+            ),
+            swap_weight_without_path
+                // Multicollateral is filtered out
+                .saturating_add(Weight::zero()) // `MockSource`s are not counted
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_D_ID,
+                &ETH,
+                &XST,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path
+        );
+
+        // DOT -1-> XOR (DEX ID 1)
+        // 1) Multicollateral + MockPool(1-3)
+        let swap_weight_without_path = swap_base_weight
+            .saturating_add(exchange_base_weight)
+            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
+            .saturating_add(quote_single_weight); // WithDesiredOutput
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &DOT,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::ForbidSelected,
+            ),
+            // Multicollateral is the heaviest
+            swap_weight_without_path.saturating_add(multicollateral_weight)
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &DOT,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([LiquiditySourceType::MulticollateralBondingCurvePool]),
+                &FilterMode::ForbidSelected,
+            ),
+            swap_weight_without_path.saturating_add(Weight::zero()) // `MockSource`s are not counted
+        );
+
+        // Two paths (DEX ID 1):
+        //
+        // XSTUSD -1-> XST -2-> XOR
+        // 1) XSTPool
+        // 2) Multicollateral
+        //
+        // XSTUSD -1-> XOR
+        // 1) Multicollateral
+        let swap_weight_without_path = swap_base_weight
+            .saturating_add(exchange_base_weight)
+            .saturating_add(quote_single_weight.saturating_mul(2)) // for each available path
+            .saturating_add(quote_single_weight); // WithDesiredOutput
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &XSTUSD,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::ForbidSelected,
+            ),
+            swap_weight_without_path
+                .saturating_add(xst_weight)
+                .saturating_add(multicollateral_weight)
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &XSTUSD,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([LiquiditySourceType::XSTPool]),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path.saturating_add(xst_weight)
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &XSTUSD,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([LiquiditySourceType::MulticollateralBondingCurvePool]),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path.saturating_add(multicollateral_weight)
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &XSTUSD,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path
+        );
+    });
+}
+
+#[test]
 fn test_swap_should_fail_with_bad_origin() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
