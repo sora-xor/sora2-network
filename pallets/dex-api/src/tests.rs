@@ -141,6 +141,25 @@ fn test_different_reserves_should_pass() {
     })
 }
 
+#[test]
+fn test_exchange_weight_correct() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        #[allow(unused_assignments)]
+        let mut expected_weight = Weight::zero();
+        #[cfg(feature = "wip")] // order-book
+        {
+            expected_weight = <framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::OrderBook::exchange_weight();
+        }
+        expected_weight = expected_weight
+            .max(<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::XSTPool::exchange_weight())
+            .max(<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::XYKPool::exchange_weight())
+            .max(<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::MulticollateralBondingCurvePool::exchange_weight());
+        let got_weight = framenode_runtime::dex_api::Pallet::<framenode_runtime::Runtime>::exchange_weight();
+        assert_eq!(expected_weight, got_weight);
+    })
+}
+
 fn exchange_weight_filtered(enabled_sources: Vec<&LiquiditySourceType>) -> Weight {
     framenode_runtime::dex_api::Pallet::<framenode_runtime::Runtime>::exchange_weight_filtered(
         enabled_sources.into_iter(),
