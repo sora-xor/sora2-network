@@ -97,6 +97,7 @@ pub mod pallet {
     use sp_arithmetic::Percent;
     use sp_core::U256;
     use sp_runtime::traits::CheckedConversion;
+    use sp_std::vec::Vec;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -384,10 +385,7 @@ pub mod pallet {
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.debt = cdp
-                        .debt
-                        .checked_add(will_to_borrow_amount)
-                        .ok_or(Error::<T>::ArithmeticError)?;
+                    cdp.debt = new_debt;
                     DispatchResult::Ok(())
                 }
             })?;
@@ -838,6 +836,16 @@ pub mod pallet {
             Self::burn_treasury(to_burn)?;
 
             Ok(())
+        }
+
+        /// Returns CDP ids where the account id is owner
+        pub fn get_account_cdp_ids(
+            account_id: &AccountIdOf<T>,
+        ) -> Result<Vec<U256>, DispatchError> {
+            Ok(<Treasury<T>>::iter()
+                .filter(|(_, cdp)| cdp.owner == *account_id)
+                .map(|(cdp_id, _)| cdp_id)
+                .collect())
         }
     }
 }

@@ -2467,12 +2467,14 @@ fn create_trading_pair(
     )
 }
 
+/// Creates TestExternalities
 #[cfg(all(feature = "test", not(feature = "private-net")))]
 pub fn ext() -> sp_io::TestExternalities {
     let storage = main_net_coded().build_storage().unwrap();
     sp_io::TestExternalities::new(storage)
 }
 
+/// Creates TestExternalities for `private-net`
 #[cfg(all(feature = "test", feature = "private-net"))]
 pub fn ext() -> sp_io::TestExternalities {
     let storage = dev_net_coded().build_storage().unwrap();
