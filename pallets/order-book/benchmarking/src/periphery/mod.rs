@@ -52,13 +52,14 @@ use order_book_benchmarking_imported::Config;
 use order_book_imported::Pallet as OrderBookPallet;
 use order_book_imported::{
     test_utils::{accounts, fill_tools::FillSettings},
-    CancelReason, Event, LimitOrder, MarketRole, MomentOf, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus, OrderPrice, OrderVolume,
+    CancelReason, Event, LimitOrder, LimitOrders, MarketRole, MomentOf, OrderAmount, OrderBook,
+    OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume,
 };
 
 use crate::{assert_last_event, assert_orders_numbers, DEX};
 use preparation::{
-    cancel_limit_order, market_order_execution, place_limit_order_without_cross_spread, quote,
+    align_single_order, cancel_limit_order, market_order_execution,
+    place_limit_order_without_cross_spread, quote,
 };
 
 mod preparation;
@@ -598,5 +599,65 @@ pub(crate) mod exchange_scattered {
 
     pub fn verify<T: Config + core::fmt::Debug>(context: exchange::Context<T>) {
         exchange::verify(context)
+    }
+}
+
+pub(crate) mod align_single_order {
+    use super::*;
+    use common::balance;
+
+    pub struct Context<T: Config> {
+        pub order_book: OrderBook<T>,
+        pub order_to_align: LimitOrder<T>,
+    }
+
+    pub fn init<T: Config>(settings: FillSettings<T>) -> Context<T> {
+        // https://github.com/paritytech/polkadot-sdk/issues/383
+        frame_system::Pallet::<T>::set_block_number(1u32.into());
+        let (mut order_book, mut order_to_align) =
+            align_single_order::<T>(settings, PriceVariant::Buy);
+
+        let old_step_lot_size = *order_book.step_lot_size.balance();
+
+        // update step lot size
+        order_book.step_lot_size.set(balance!(1));
+        <OrderBooks<T>>::insert(order_book.order_book_id, order_book.clone());
+
+        // update order amount to be aligned
+        order_to_align
+            .amount
+            .set(*order_to_align.amount.balance() + old_step_lot_size);
+        <LimitOrders<T>>::set(
+            order_book.order_book_id,
+            order_to_align.id,
+            Some(order_to_align.clone()),
+        );
+
+        Context {
+            order_book,
+            order_to_align,
+        }
+    }
+
+    pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
+        let aligned_order =
+            <LimitOrders<T>>::get(context.order_book.order_book_id, context.order_to_align.id)
+                .unwrap();
+
+        assert_last_event::<T>(
+            Event::<T>::LimitOrderUpdated {
+                order_book_id: context.order_book.order_book_id,
+                order_id: aligned_order.id,
+                owner_id: aligned_order.owner,
+                new_amount: aligned_order.amount,
+            }
+            .into(),
+        );
+
+        assert!(
+            *context.order_to_align.amount.balance() % *context.order_book.step_lot_size.balance()
+                != 0
+        );
+        assert!(*aligned_order.amount.balance() % *context.order_book.step_lot_size.balance() == 0);
     }
 }

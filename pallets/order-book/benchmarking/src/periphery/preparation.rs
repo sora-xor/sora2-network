@@ -770,6 +770,82 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
     (order_book_id, amount, side)
 }
 
+pub fn align_single_order<T: Config>(
+    fill_settings: FillSettings<T>,
+    side: PriceVariant,
+) -> (OrderBook<T>, LimitOrder<T>) {
+    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        dex_id: DEX.into(),
+        base: VAL.into(),
+        quote: XOR.into(),
+    };
+
+    let (place_buy, place_sell) = match side {
+        PriceVariant::Buy => (true, false),
+        PriceVariant::Sell => (false, true),
+    };
+
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Signed(accounts::bob::<T>()).into(),
+        order_book_id,
+    )
+    .expect("failed to create an order book");
+
+    let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
+    let mut data_layer = CacheDataLayer::<T>::new();
+
+    debug!("Filling aggregated side");
+    let mut prices_settings = fill_settings.clone();
+    prices_settings.max_orders_per_price = 1;
+    let (mut users, mut lifespans) = fill_order_book_worst_case::<T>(
+        prices_settings,
+        &mut order_book,
+        &mut data_layer,
+        place_buy,
+        place_sell,
+    );
+
+    let prices_count = match side {
+        PriceVariant::Buy => data_layer.get_aggregated_bids_len(&order_book_id).unwrap(),
+        PriceVariant::Sell => data_layer.get_aggregated_asks_len(&order_book_id).unwrap(),
+    };
+
+    let aggregated_side = match side {
+        PriceVariant::Buy => data_layer.get_aggregated_bids(&order_book_id),
+        PriceVariant::Sell => data_layer.get_aggregated_asks(&order_book_id),
+    };
+
+    let (price, _) = aggregated_side.iter().nth(prices_count / 2).unwrap();
+
+    debug!("Filling the price of the aligned order");
+    let mut price_settings = fill_settings.clone();
+    price_settings.max_orders_per_price -= 2;
+    let amount = order_book.min_lot_size;
+    fill_price(
+        &mut data_layer,
+        price_settings,
+        &mut order_book,
+        side,
+        amount,
+        *price,
+        &mut users,
+        &mut lifespans,
+    );
+
+    let orders = data_layer.get_bids(&order_book_id, &price).unwrap();
+    let order_id_to_align = orders[orders.len() / 2];
+    let order_to_align = data_layer
+        .get_limit_order(&order_book_id, order_id_to_align)
+        .unwrap();
+
+    debug!("Committing data...");
+    <OrderBooks<T>>::insert(order_book_id, order_book);
+    data_layer.commit();
+    debug!("Data committed!");
+
+    (<OrderBooks<T>>::get(order_book_id).unwrap(), order_to_align)
+}
+
 pub mod presets {
     // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
     #[cfg(test)]

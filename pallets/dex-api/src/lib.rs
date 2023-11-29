@@ -41,11 +41,16 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
 use sp_std::vec::Vec;
 
+mod benchmarking;
+pub mod weights;
+
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+
+pub use weights::WeightInfo;
 
 impl<T: Config>
     LiquiditySource<
@@ -76,7 +81,7 @@ impl<T: Config>
             MulticollateralBondingCurvePool => can_exchange!(MulticollateralBondingCurvePool),
             XSTPool => can_exchange!(XSTPool),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             OrderBook => can_exchange!(OrderBook),
 
             MockPool => can_exchange!(MockLiquiditySource),
@@ -111,7 +116,7 @@ impl<T: Config>
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
             XSTPool => quote!(XSTPool),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             OrderBook => quote!(OrderBook),
 
             MockPool => quote!(MockLiquiditySource),
@@ -148,7 +153,7 @@ impl<T: Config>
             MulticollateralBondingCurvePool => exchange!(MulticollateralBondingCurvePool),
             XSTPool => exchange!(XSTPool),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             OrderBook => exchange!(OrderBook),
 
             MockPool => exchange!(MockLiquiditySource),
@@ -183,7 +188,7 @@ impl<T: Config>
             MulticollateralBondingCurvePool => check_rewards!(MulticollateralBondingCurvePool),
             XSTPool => check_rewards!(XSTPool),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             OrderBook => check_rewards!(OrderBook),
 
             MockPool => check_rewards!(MockLiquiditySource),
@@ -220,7 +225,7 @@ impl<T: Config>
             }
             XSTPool => quote_without_impact!(XSTPool),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             OrderBook => quote_without_impact!(OrderBook),
 
             MockPool => quote_without_impact!(MockLiquiditySource),
@@ -236,7 +241,7 @@ impl<T: Config>
         #[allow(unused_assignments)] // order-book
         let mut weight = Weight::zero();
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             weight = T::OrderBook::quote_weight();
         }
@@ -253,7 +258,7 @@ impl<T: Config>
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
                 LiquiditySourceType::XSTPool,
-                #[cfg(feature = "wip")] // order-book
+                #[cfg(feature = "ready-to-test")] // order-book
                 LiquiditySourceType::OrderBook,
             ]
             .iter(),
@@ -265,7 +270,7 @@ impl<T: Config>
         #[allow(unused_assignments)] // order-book
         let mut weight = Weight::zero();
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             weight = T::OrderBook::check_rewards_weight();
         }
@@ -349,6 +354,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use crate::WeightInfo;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -357,6 +363,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + common::Config + trading_pair::Config + assets::Config
     {
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type MockLiquiditySource: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
@@ -407,7 +414,7 @@ pub mod pallet {
             DispatchError,
         >;
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         type OrderBook: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
@@ -415,6 +422,8 @@ pub mod pallet {
             Balance,
             DispatchError,
         >;
+
+        type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.
@@ -429,8 +438,65 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Liquidity source is already enabled
+        LiquiditySourceAlreadyEnabled,
+        /// Liquidity source is already disabled
+        LiquiditySourceAlreadyDisabled,
+    }
+
+    #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// Liquidity source is enabled
+        LiquiditySourceEnabled(LiquiditySourceType),
+        /// Liquidity source is disabled
+        LiquiditySourceDisabled(LiquiditySourceType),
+    }
+
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::enable_liquidity_source())]
+        pub fn enable_liquidity_source(
+            origin: OriginFor<T>,
+            source: LiquiditySourceType,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+
+            let mut sources = EnabledSourceTypes::<T>::get();
+            ensure!(
+                !sources.contains(&source),
+                Error::<T>::LiquiditySourceAlreadyEnabled
+            );
+            sources.push(source);
+            EnabledSourceTypes::<T>::put(sources);
+            Self::deposit_event(Event::<T>::LiquiditySourceEnabled(source));
+
+            Ok(().into())
+        }
+
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::disable_liquidity_source())]
+        pub fn disable_liquidity_source(
+            origin: OriginFor<T>,
+            source: LiquiditySourceType,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+
+            let mut sources = EnabledSourceTypes::<T>::get();
+            ensure!(
+                sources.contains(&source),
+                Error::<T>::LiquiditySourceAlreadyDisabled
+            );
+            sources.retain(|&x| x != source);
+            EnabledSourceTypes::<T>::put(sources);
+            Self::deposit_event(Event::<T>::LiquiditySourceDisabled(source));
+
+            Ok(().into())
+        }
+    }
 
     #[pallet::storage]
     pub type EnabledSourceTypes<T: Config> = StorageValue<_, Vec<LiquiditySourceType>, ValueQuery>;

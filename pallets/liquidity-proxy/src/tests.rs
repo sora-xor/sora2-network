@@ -2812,11 +2812,11 @@ fn selecting_xyk_only_filter_is_forbidden() {
         #[allow(unused_assignments)] // order-book
         let mut sources_except_xyk = Vec::new();
         
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool, OrderBook];
         }
-        #[cfg(not(feature = "wip"))]
+        #[cfg(not(feature = "ready-to-test"))] // order-book
         {
             sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool];
         }

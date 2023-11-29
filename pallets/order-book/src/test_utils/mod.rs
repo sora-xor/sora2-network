@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "wip")] // order-book
+#![cfg(feature = "ready-to-test")] // order-book
 #![cfg(any(test, feature = "runtime-benchmarks"))]
 
 // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
@@ -38,7 +38,8 @@ use crate as order_book_imported;
 use framenode_runtime::order_book as order_book_imported;
 
 use order_book_imported::{
-    Config, OrderBook, OrderBookId, OrderBookStatus, OrderPrice, OrderVolume, Pallet, PriceOrders,
+    Config, OrderBook, OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume,
+    Pallet, PriceOrders,
 };
 
 use assets::AssetIdOf;
@@ -148,6 +149,12 @@ pub fn update_order_book_with_set_status<T: Config>(
     order_book.min_lot_size = min_lot_size;
     order_book.max_lot_size = max_lot_size;
     Ok(())
+}
+
+pub fn lock_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>) {
+    let mut order_book = Pallet::order_books(order_book_id).unwrap();
+    order_book.tech_status = OrderBookTechStatus::Updating;
+    order_book_imported::OrderBooks::<T>::set(order_book_id, Some(order_book));
 }
 
 pub fn create_empty_order_book<T: Config>(

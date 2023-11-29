@@ -66,4 +66,4 @@ runtime-benchmarks = [
 
 try-runtime = ["frame-support/try-runtime"]
 
-wip = ["framenode-chain-spec/wip", "framenode-runtime/wip", "common/wip"]
+ready-to-test = ["framenode-chain-spec/ready-to-test", "framenode-runtime/ready-to-test", "common/ready-to-test"]

@@ -41,7 +41,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "runtime-benchmarks")]
 // order-book
-#![cfg(feature = "wip")]
+#![cfg(feature = "ready-to-test")]
 // too many benchmarks, doesn't compile otherwise
 #![recursion_limit = "512"]
 #![feature(int_roundings)]
@@ -143,6 +143,7 @@ mod benchmarks_inner {
     use frame_support::weights::WeightMeter;
     use frame_system::RawOrigin;
     use sp_runtime::traits::UniqueSaturatedInto;
+    use sp_std::vec::Vec;
 
     use super::*;
     use order_book_imported::cache_data_layer::CacheDataLayer;
@@ -390,22 +391,37 @@ mod benchmarks_inner {
             periphery::exchange_scattered::verify(context);
         }
 
-        service_base {
+        align_single_order {
+            let settings = FillSettings::<T>::max();
+            let context = periphery::align_single_order::init(settings);
+
+            let mut data = order_book_imported::storage_data_layer::StorageDataLayer::<T>::new();
+        }: {
+            context
+            .order_book
+            .align_limit_orders(Vec::from([context.order_to_align.clone()]), &mut data)
+            .unwrap();
+        }
+        verify {
+            periphery::align_single_order::verify(context);
+        }
+
+        service_expiration_base {
             let mut weight = WeightMeter::max_limit();
             let block_number = 0u32.unique_saturated_into();
         }: {
-            OrderBookPallet::<T>::service(block_number, &mut weight);
+            OrderBookPallet::<T>::service_expiration(block_number, &mut weight);
         }
         verify {}
 
-        service_block_base {
+        service_expiration_block_base {
             let mut weight = WeightMeter::max_limit();
             let block_number = 0u32.unique_saturated_into();
             // should be the slower layer because cache is not
             // warmed up
             let mut data_layer = CacheDataLayer::<T>::new();
         }: {
-            OrderBookPallet::<T>::service_block(&mut data_layer, block_number, &mut weight);
+            OrderBookPallet::<T>::service_expiration_block(&mut data_layer, block_number, &mut weight);
         }
         verify {}
 

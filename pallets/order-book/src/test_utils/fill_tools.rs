@@ -30,6 +30,8 @@
 
 //! Stuff that helps to fill up order book
 
+#![cfg(feature = "ready-to-test")] // order-book
+
 use super::{accounts, order_book_imported};
 use order_book_imported::{
     traits::DataLayer, Config, ExpirationsAgenda, LimitOrder, MarketRole, OrderBook, OrderBookId,
