@@ -49,7 +49,5 @@ ready-to-test = [
     "order-book/ready-to-test"
 ]
 private-net = [
-    "framenode-chain-spec/private-net",
-    "framenode-runtime/private-net",
     "order-book/private-net"
 ]
