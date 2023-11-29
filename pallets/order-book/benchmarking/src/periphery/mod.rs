@@ -379,6 +379,8 @@ pub(crate) mod execute_market_order_scattered {
     //! the order book.
     //!
     //! This might be slower because of working with storages aggregated by price.
+    //!
+    //! Update: it is indeed worse than just `mod execute_market_order` benchmark
 
     use super::*;
 
@@ -563,6 +565,8 @@ pub(crate) mod exchange_scattered {
     //! the order book.
     //!
     //! This might be slower because of working with storages aggregated by price.
+    //!
+    //! Update: it is indeed worse than just `mod exchange` benchmark
 
     use super::*;
 

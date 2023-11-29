@@ -338,21 +338,6 @@ mod benchmarks_inner {
 
         execute_market_order {
             let settings = FillSettings::<T>::max();
-            let context = periphery::execute_market_order::init(settings.clone());
-        }: {
-            OrderBookPallet::<T>::execute_market_order(
-                RawOrigin::Signed(context.caller.clone()).into(),
-                context.order_book_id,
-                context.side,
-                *context.amount.balance()
-            ).unwrap();
-        }
-        verify {
-            periphery::execute_market_order::verify(context);
-        }
-
-        execute_market_order_scattered {
-            let settings = FillSettings::<T>::max();
             let context = periphery::execute_market_order_scattered::init(settings.clone());
         }: {
             OrderBookPallet::<T>::execute_market_order(
@@ -384,28 +369,6 @@ mod benchmarks_inner {
         }
 
         exchange {
-            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
-            let mut settings = FillSettings::<T>::max();
-            settings.executed_orders_limit = e;
-            let context = periphery::exchange::init(settings.clone());
-        }: {
-            OrderBookPallet::<T>::exchange(
-                &context.caller,
-                &context.caller,
-                &context.order_book_id.dex_id,
-                &context.order_book_id.base,
-                &context.order_book_id.quote,
-                SwapAmount::with_desired_output(
-                    context.expected_out, context.expected_in + balance!(1.5)
-                ),
-            )
-            .unwrap();
-        }
-        verify {
-            periphery::exchange::verify(context);
-        }
-
-        exchange_scattered {
             let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
             let mut settings = FillSettings::<T>::max();
             settings.executed_orders_limit = e;
