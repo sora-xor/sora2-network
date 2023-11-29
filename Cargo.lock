@@ -5922,6 +5922,7 @@ dependencies = [
  "libm",
  "orml-tokens",
  "orml-traits",
+ "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",

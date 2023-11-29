@@ -149,7 +149,7 @@ pub mod pallet {
     /// Hard cap of KUSD may be minted by the system
     #[pallet::storage]
     #[pallet::getter(fn max_supply)]
-    pub type MaxSupply<T> = StorageValue<_, Balance, ValueQuery>;
+    pub type KusdHardCap<T> = StorageValue<_, Balance, ValueQuery>;
 
     /// Risk parameter
     /// Liquidation penalty
@@ -195,7 +195,7 @@ pub mod pallet {
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
         },
-        CollateralDeposited {
+        CollateralDeposit {
             cdp_id: U256,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
@@ -362,7 +362,6 @@ pub mod pallet {
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-
             let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             technical::Pallet::<T>::transfer_in(
                 &cdp.collateral_asset_id,
@@ -380,7 +379,12 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
-            // TODO emit event
+            Self::deposit_event(Event::CollateralDeposit {
+                cdp_id,
+                owner: who.clone(),
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: collateral_amount,
+            });
 
             Ok(())
         }
@@ -633,7 +637,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
-            <MaxSupply<T>>::mutate({
+            <KusdHardCap<T>>::mutate({
                 |hard_cap| {
                     *hard_cap = new_hard_cap;
                 }

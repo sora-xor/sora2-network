@@ -37,6 +37,7 @@ framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
 framenode-runtime = { path = "../../runtime", default-features = false, features = [
 	"std",
 ] }
+pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 hex-literal = "0.4"
 
 [features]
