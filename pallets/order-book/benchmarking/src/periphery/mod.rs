@@ -570,6 +570,7 @@ pub(crate) mod exchange_scattered {
     //! Update: it is indeed worse than just `mod exchange` benchmark
 
     use super::*;
+    pub use exchange::Context;
 
     pub fn init<T: Config + trading_pair::Config>(
         settings: FillSettings<T>,
@@ -597,101 +598,5 @@ pub(crate) mod exchange_scattered {
 
     pub fn verify<T: Config + core::fmt::Debug>(context: exchange::Context<T>) {
         exchange::verify(context)
-    }
-}
-
-pub(crate) mod exchange_single_order {
-    use super::*;
-    use common::{balance, Balance, VAL, XOR};
-    use order_book_imported::test_utils::create_and_fill_order_book;
-
-    pub struct Context<T: Config> {
-        pub caller: T::AccountId,
-        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        pub expected_in: Balance,
-        pub expected_out: Balance,
-        pub caller_base_balance: Balance,
-        pub caller_quote_balance: Balance,
-    }
-
-    pub fn init<T: Config + trading_pair::Config>(_settings: FillSettings<T>) -> Context<T> {
-        let caller = accounts::alice::<T>();
-        frame_system::Pallet::<T>::set_block_number(1u32.into());
-
-        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
-            dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
-        };
-
-        create_and_fill_order_book::<T>(order_book_id);
-
-        assets::Pallet::<T>::update_balance(
-            RawOrigin::Root.into(),
-            caller.clone(),
-            order_book_id.base,
-            balance!(1000000).try_into().unwrap(),
-        )
-        .unwrap();
-
-        let caller_base_balance =
-            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
-                &order_book_id.base,
-                &caller,
-            )
-            .unwrap();
-        let caller_quote_balance =
-            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
-                &order_book_id.quote,
-                &caller,
-            )
-            .unwrap();
-        Context {
-            caller,
-            order_book_id,
-            expected_in: balance!(168.5),
-            expected_out: balance!(1685), // this amount executes only one limit order
-            caller_base_balance,
-            caller_quote_balance,
-        }
-    }
-
-    pub fn verify<T: Config + core::fmt::Debug>(_settings: FillSettings<T>, context: Context<T>) {
-        let Context {
-            caller,
-            order_book_id,
-            expected_in,
-            expected_out,
-            caller_base_balance,
-            caller_quote_balance,
-        } = context;
-
-        assert_last_event::<T>(
-            Event::<T>::MarketOrderExecuted {
-                order_book_id,
-                owner_id: caller.clone(),
-                direction: PriceVariant::Sell,
-                amount: OrderAmount::Base(expected_in.into()),
-                average_price: balance!(10).into(),
-                to: None,
-            }
-            .into(),
-        );
-        assert_eq!(
-            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
-                &order_book_id.base,
-                &caller
-            )
-            .unwrap(),
-            caller_base_balance - expected_in
-        );
-        assert_eq!(
-            <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
-                &order_book_id.quote,
-                &caller
-            )
-            .unwrap(),
-            caller_quote_balance + expected_out
-        );
     }
 }

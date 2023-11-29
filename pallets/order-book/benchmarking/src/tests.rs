@@ -234,28 +234,3 @@ fn test_benchmark_exchange_scattered_max_orders() {
 fn test_benchmark_exchange_scattered_one_order() {
     test_benchmark_exchange_scattered(1);
 }
-
-#[test]
-fn test_benchmark_exchange_single_order() {
-    ext().execute_with(|| {
-        use common::LiquiditySource;
-
-        let settings = FillSettings::<Runtime>::max();
-        let context = periphery::exchange_single_order::init(settings.clone());
-
-        let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
-            &context.caller,
-            &context.caller,
-            &context.order_book_id.dex_id,
-            &context.order_book_id.base,
-            &context.order_book_id.quote,
-            SwapAmount::with_desired_output(
-                context.expected_out,
-                context.expected_in + balance!(5),
-            ),
-        )
-        .unwrap();
-
-        periphery::exchange_single_order::verify(settings, context);
-    })
-}
