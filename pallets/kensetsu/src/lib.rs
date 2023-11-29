@@ -185,7 +185,68 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        // TODO add all events
+        CDPCreated {
+            cdp_id: U256,
+            owner: AccountIdOf<T>,
+            collateral_asset_id: AssetIdOf<T>,
+        },
+        CDPClosed {
+            cdp_id: U256,
+            owner: AccountIdOf<T>,
+            collateral_asset_id: AssetIdOf<T>,
+        },
+        CollateralDeposited {
+            cdp_id: U256,
+            owner: AccountIdOf<T>,
+            collateral_asset_id: AssetIdOf<T>,
+            amount: Balance,
+        },
+        CollateralWithdrawn {
+            cdp_id: U256,
+            owner: AccountIdOf<T>,
+            collateral_asset_id: AssetIdOf<T>,
+            amount: Balance,
+        },
+        DebtIncreased {
+            cdp_id: U256,
+            owner: AccountIdOf<T>,
+            collateral_asset_id: AssetIdOf<T>,
+            // KUSD amount borrowed
+            amount: Balance,
+            // New Loan-To-Value ratio
+            ltv: FixedU128,
+        },
+        DebtPayment {
+            cdp_id: U256,
+            owner: AccountIdOf<T>,
+            collateral_asset_id: AssetIdOf<T>,
+            // KUSD amount payed off
+            amount: Balance,
+        },
+        Liquidated {
+            cdp_id: U256,
+            // what was liquidated
+            collateral_asset_id: AssetIdOf<T>,
+            collateral_amount: Balance,
+            // revenue from liquidation
+            kusd_amount: Balance,
+        },
+        CollateralRiskParametersUpdated {
+            collateral_asset_id: AssetIdOf<T>,
+            risk_parameters: CollateralRiskParameters,
+        },
+        KusdHardCapUpdated {
+            hard_cap: Balance,
+        },
+        LiquidationPenaltyUpdated {
+            liquidation_penalty: Percent,
+        },
+        ProfitWithdrawn {
+            amount: Balance,
+        },
+        Donation {
+            amount: Balance,
+        },
     }
 
     #[pallet::genesis_config]
@@ -250,10 +311,15 @@ pub mod pallet {
                 *cdp_id = cdp_id
                     .checked_add(U256::from(1))
                     .ok_or(Error::<T>::ArithmeticError)?;
+                Self::deposit_event(Event::CDPCreated {
+                    cdp_id: *cdp_id,
+                    owner: who.clone(),
+                    collateral_asset_id: collateral_asset_id,
+                });
                 <Treasury<T>>::insert(
                     cdp_id,
                     CollateralizedDebtPosition {
-                        owner: who.clone(),
+                        owner: who,
                         collateral_asset_id,
                         collateral_amount: balance!(0),
                         debt: balance!(0),
@@ -262,7 +328,6 @@ pub mod pallet {
                 );
                 DispatchResult::Ok(())
             })?;
-
             Ok(())
         }
 
@@ -281,7 +346,11 @@ pub mod pallet {
                 cdp.collateral_amount,
             )?;
             <Treasury<T>>::remove(cdp_id);
-
+            Self::deposit_event(Event::CDPClosed {
+                cdp_id,
+                owner: who.clone(),
+                collateral_asset_id: cdp.collateral_asset_id,
+            });
             Ok(())
         }
 
@@ -311,6 +380,7 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
+            // TODO emit event
 
             Ok(())
         }
@@ -356,6 +426,7 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
+            // TODO emit event
 
             Ok(())
         }
@@ -389,6 +460,7 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
+            // TODO emit event
 
             Ok(())
         }
@@ -413,6 +485,7 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
+            // TODO emit event
 
             Ok(())
         }
@@ -462,6 +535,7 @@ pub mod pallet {
                     Self::cover_with_protocol(shortage)?;
                     // close empty CDP, debt == 0, collateral == 0
                     <Treasury<T>>::remove(cdp_id);
+                    // TODO emit CDPClosed
                 } else {
                     // partly covered
                     <Treasury<T>>::try_mutate(cdp_id, {
@@ -511,6 +585,8 @@ pub mod pallet {
             };
             Self::burn_from(&who, to_burn)?;
 
+            // TODO emit event
+
             Ok(())
         }
 
@@ -518,7 +594,7 @@ pub mod pallet {
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn accrue(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             // TODO can unsigned do it?
-            let who = ensure_signed(origin)?;
+            ensure_signed(origin)?;
             Self::accrue_internal(cdp_id)?;
             Ok(())
         }
@@ -543,6 +619,8 @@ pub mod pallet {
             }
             <CollateralTypes<T>>::insert(collateral_asset_id, info);
 
+            // TODO emit event
+
             Ok(())
         }
 
@@ -560,6 +638,7 @@ pub mod pallet {
                     *hard_cap = new_hard_cap;
                 }
             });
+            // TODO emit event
 
             Ok(())
         }
@@ -578,6 +657,7 @@ pub mod pallet {
                     *liquidation_penalty = new_liquidation_penalty;
                 }
             });
+            // TODO emit event
 
             Ok(())
         }
@@ -593,6 +673,8 @@ pub mod pallet {
                 &who,
                 kusd_amount,
             )?;
+            // TODO emit event
+
             Ok(())
         }
 
@@ -602,6 +684,7 @@ pub mod pallet {
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::cover_bad_debt(&who, kusd_amount)?;
+            // TODO emit event
 
             Ok(())
         }
@@ -618,21 +701,21 @@ pub mod pallet {
 
         /// Ensures that `who` is a liquidator
         /// Liquidator is responsible to close unsafe CDP effectively.
-        fn ensure_liquidator(who: &AccountIdOf<T>) -> DispatchResult {
+        fn ensure_liquidator(_who: &AccountIdOf<T>) -> DispatchResult {
             // TODO
             Ok(())
         }
 
         /// Ensures that `who` is a risk manager
         /// Risk manager can set protocol risk parameters.
-        fn ensure_risk_manager(who: &AccountIdOf<T>) -> DispatchResult {
+        fn ensure_risk_manager(_who: &AccountIdOf<T>) -> DispatchResult {
             // TODO
             Ok(())
         }
 
         /// Ensures that `who` is a protocol owner
         /// Protocol owner can withdraw profit from the protocol.
-        fn ensure_protocol_owner(who: &AccountIdOf<T>) -> DispatchResult {
+        fn ensure_protocol_owner(_who: &AccountIdOf<T>) -> DispatchResult {
             // TODO
             Ok(())
         }

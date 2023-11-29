@@ -43,8 +43,10 @@ use sp_runtime::AccountId32;
 use sp_runtime::DispatchError::BadOrigin;
 
 type AccountId = AccountId32;
-type KensetsuPallet = framenode_runtime::kensetsu::Pallet<Runtime>;
+type Event = framenode_runtime::kensetsu::Event<Runtime>;
 type KensetsuError = framenode_runtime::kensetsu::Error<Runtime>;
+type KensetsuPallet = framenode_runtime::kensetsu::Pallet<Runtime>;
+type System = frame_system::Pallet<Runtime>;
 
 /// Predefined AccountId `Alice`
 pub fn alice_account_id() -> AccountId {
@@ -76,7 +78,7 @@ fn bob() -> OriginFor<Runtime> {
 
 /// Sets XOR asset id as collateral with default parameters
 /// As if Risk Manager called `update_collateral_risk_parameters(XOR, some_info)`
-fn with_xor_as_collateral_type() {
+fn set_xor_as_collateral_type() {
     CollateralTypes::<Runtime>::set(
         <Runtime as assets::Config>::AssetId::from(XOR),
         Some(CollateralRiskParameters {
@@ -88,13 +90,21 @@ fn with_xor_as_collateral_type() {
     MaxSupply::<Runtime>::set(balance!(1000));
 }
 
-/// Creates CDP with collateral asset id is XOR
-fn with_xor_cdp_created(owner: OriginFor<Runtime>) {
-    assert_ok!(KensetsuPallet::create_cdp(owner, XOR.into()),);
+/// Creates CDP with XOR as collateral asset id
+fn create_cdp_for_xor(owner: OriginFor<Runtime>, collateral: Balance, debt: Balance) -> U256 {
+    assert_ok!(KensetsuPallet::create_cdp(owner.clone(), XOR.into()));
+    let cdp_id = NextCDPId::<Runtime>::get();
+    if collateral > 0 {
+        deposit_xor_to_cdp(owner.clone(), cdp_id, collateral);
+    }
+    if debt > 0 {
+        assert_ok!(KensetsuPallet::borrow(owner, cdp_id, debt));
+    }
+    cdp_id
 }
 
 /// Deposits to CDP
-fn with_xor_cdp_deposited(owner: OriginFor<Runtime>, cdp_id: U256, collateral_amount: Balance) {
+fn deposit_xor_to_cdp(owner: OriginFor<Runtime>, cdp_id: U256, collateral_amount: Balance) {
     assert_ok!(assets::Pallet::<Runtime>::update_balance(
         RuntimeOrigin::root(),
         alice_account_id(),
@@ -106,11 +116,6 @@ fn with_xor_cdp_deposited(owner: OriginFor<Runtime>, cdp_id: U256, collateral_am
         cdp_id,
         collateral_amount
     ));
-}
-
-/// Get CDP debt
-fn with_cdp_debt(owner: OriginFor<Runtime>, cdp_id: U256, debt_amount: Balance) {
-    assert_ok!(KensetsuPallet::borrow(owner, cdp_id, debt_amount));
 }
 
 /// Collateral Risk Parameters were not set for the AssetId by Risk Management Team,
@@ -140,11 +145,11 @@ fn test_create_cdp_only_signed_origin() {
     });
 }
 
-/// If the number of cdp ids reached U256::MAX, next CDP will result in arithmetic error.
+/// If the number of cdp ids reached U256::MAX, next CDP will result in ArithmeticError.
 #[test]
 fn test_create_cdp_overflow_error() {
     ext().execute_with(|| {
-        with_xor_as_collateral_type();
+        set_xor_as_collateral_type();
         NextCDPId::<Runtime>::set(U256::MAX);
 
         assert_err!(
@@ -158,11 +163,20 @@ fn test_create_cdp_overflow_error() {
 #[test]
 fn test_create_cdp_sunny_day() {
     ext().execute_with(|| {
-        with_xor_as_collateral_type();
+        System::set_block_number(1);
+        set_xor_as_collateral_type();
 
         assert_ok!(KensetsuPallet::create_cdp(alice(), XOR.into()),);
         let cdp_id = U256::from(1);
 
+        System::assert_last_event(
+            Event::CDPCreated {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR.into(),
+            }
+            .into(),
+        );
         assert_eq!(
             KensetsuPallet::get_account_cdp_ids(&alice_account_id()),
             Ok(vec!(cdp_id))
@@ -196,10 +210,9 @@ fn test_close_cdp_only_signed_origin() {
 #[test]
 fn test_close_cdp_only_owner() {
     ext().execute_with(|| {
-        with_xor_as_collateral_type();
+        set_xor_as_collateral_type();
         // Alice is CDP owner
-        with_xor_cdp_created(alice());
-        let cdp_id = U256::from(1);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
         assert_err!(
             KensetsuPallet::close_cdp(bob(), cdp_id),
@@ -210,9 +223,9 @@ fn test_close_cdp_only_owner() {
 
 /// If cdp doesn't exist, return error
 #[test]
-fn test_close_cdp_not_exists() {
+fn test_close_cdp_does_not_exist() {
     ext().execute_with(|| {
-        with_xor_as_collateral_type();
+        set_xor_as_collateral_type();
         let cdp_id = U256::from(1);
 
         assert_err!(
@@ -226,13 +239,8 @@ fn test_close_cdp_not_exists() {
 #[test]
 fn test_close_cdp_outstanding_debt() {
     ext().execute_with(|| {
-        with_xor_as_collateral_type();
-        with_xor_cdp_created(alice());
-        let cdp_id = U256::from(1);
-        let deposit_amount = balance!(10);
-        with_xor_cdp_deposited(alice(), cdp_id, deposit_amount);
-        let debt_amount = balance!(1);
-        with_cdp_debt(alice(), cdp_id, debt_amount);
+        set_xor_as_collateral_type();
+        let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(1));
 
         assert_err!(
             KensetsuPallet::close_cdp(alice(), cdp_id),
@@ -245,11 +253,9 @@ fn test_close_cdp_outstanding_debt() {
 #[test]
 fn test_close_cdp_sunny_day() {
     ext().execute_with(|| {
-        with_xor_as_collateral_type();
-        with_xor_cdp_created(alice());
-        let cdp_id = U256::from(1);
-        let deposit_amount = balance!(10);
-        with_xor_cdp_deposited(alice(), cdp_id, deposit_amount);
+        System::set_block_number(1);
+        set_xor_as_collateral_type();
+        let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(0));
         assert_eq!(
             assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice_account_id()).unwrap(),
             balance!(0)
@@ -257,6 +263,14 @@ fn test_close_cdp_sunny_day() {
 
         assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
 
+        System::assert_last_event(
+            Event::CDPClosed {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR.into(),
+            }
+            .into(),
+        );
         assert_eq!(
             assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice_account_id()).unwrap(),
             balance!(10)

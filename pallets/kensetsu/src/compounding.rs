@@ -28,10 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::{balance, Balance};
+use common::Balance;
 use sp_arithmetic::traits::{EnsureAdd, EnsureMul, EnsureSub, Saturating};
-use sp_arithmetic::ArithmeticError::Overflow;
 use sp_arithmetic::{ArithmeticError, FixedU128};
+
+#[cfg(test)]
+use common::balance;
 
 /// Per second compounding formula
 ///
@@ -145,5 +147,8 @@ fn test_compound_overflow() {
     let initial_balance = Balance::MAX;
     // 1 second
     let time = 1;
-    assert_eq!(compound(initial_balance, rate, time), Err(Overflow));
+    assert_eq!(
+        compound(initial_balance, rate, time),
+        Err(ArithmeticError::Overflow)
+    );
 }
