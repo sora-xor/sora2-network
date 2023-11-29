@@ -84,7 +84,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 const REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
 /// Possible exchange paths for two assets.
-pub struct ExchangePath<T: Config>(pub Vec<T::AssetId>);
+pub struct ExchangePath<T: Config>(Vec<T::AssetId>);
 
 #[derive(Debug, Eq, PartialEq)]
 enum AssetType {
