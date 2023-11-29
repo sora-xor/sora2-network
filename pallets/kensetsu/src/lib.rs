@@ -314,7 +314,7 @@ pub mod pallet {
                 Self::deposit_event(Event::CDPCreated {
                     cdp_id: *cdp_id,
                     owner: who.clone(),
-                    collateral_asset_id: collateral_asset_id,
+                    collateral_asset_id,
                 });
                 <Treasury<T>>::insert(
                     cdp_id,
@@ -348,7 +348,7 @@ pub mod pallet {
             <Treasury<T>>::remove(cdp_id);
             Self::deposit_event(Event::CDPClosed {
                 cdp_id,
-                owner: who.clone(),
+                owner: who,
                 collateral_asset_id: cdp.collateral_asset_id,
             });
             Ok(())
@@ -381,7 +381,7 @@ pub mod pallet {
             })?;
             Self::deposit_event(Event::CollateralDeposit {
                 cdp_id,
-                owner: who.clone(),
+                owner: who,
                 collateral_asset_id: cdp.collateral_asset_id,
                 amount: collateral_amount,
             });
@@ -430,7 +430,12 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
-            // TODO emit event
+            Self::deposit_event(Event::CollateralWithdrawn {
+                cdp_id,
+                owner: who,
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: collateral_amount,
+            });
 
             Ok(())
         }
@@ -795,7 +800,7 @@ pub mod pallet {
             } else {
                 technical::Pallet::<T>::transfer_in(
                     &T::KusdAssetId::get(),
-                    &from,
+                    from,
                     &T::TreasuryTechAccount::get(),
                     kusd_amount
                         .checked_sub(bad_debt)
@@ -803,7 +808,7 @@ pub mod pallet {
                 )?;
                 bad_debt
             };
-            Self::burn_from(&from, to_cover_debt)?;
+            Self::burn_from(from, to_cover_debt)?;
             <BadDebt<T>>::try_mutate(|bad_debt| {
                 *bad_debt = bad_debt
                     .checked_sub(to_cover_debt)
@@ -863,7 +868,7 @@ pub mod pallet {
             assets::Pallet::<T>::mint_to(
                 &T::KusdAssetId::get(),
                 &technical_account_id,
-                &account,
+                account,
                 amount,
             )?;
             Ok(())
@@ -891,7 +896,7 @@ pub mod pallet {
             assets::Pallet::<T>::burn_from(
                 &T::KusdAssetId::get(),
                 &technical_account_id,
-                &account,
+                account,
                 amount,
             )?;
             Ok(())

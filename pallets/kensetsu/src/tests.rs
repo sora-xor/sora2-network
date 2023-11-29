@@ -378,13 +378,106 @@ fn test_deposit_collateral_sunny_day() {
     });
 }
 
-// TODO test withdraw_collateral
-//  - signed account
-//  - sdp owner
-//  - cdp not found
-//  - collateral < withdraw
-//  - cdp unsafe
-//  - sunny day
+/// only by Signed Origin account can withdraw_collateral
+#[test]
+fn test_withdraw_collateral_only_signed_origin() {
+    ext().execute_with(|| {
+        let cdp_id = U256::from(1);
+
+        assert_err!(
+            KensetsuPallet::withdraw_collateral(RuntimeOrigin::none(), cdp_id, balance!(0)),
+            BadOrigin
+        );
+        assert_err!(
+            KensetsuPallet::withdraw_collateral(RuntimeOrigin::root(), cdp_id, balance!(0)),
+            BadOrigin
+        );
+    });
+}
+
+/// Only owner can withdraw collateral
+#[test]
+fn test_withdraw_collateral_only_owner() {
+    ext().execute_with(|| {
+        set_xor_as_collateral_type();
+        // Alice is CDP owner
+        let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
+
+        assert_err!(
+            KensetsuPallet::withdraw_collateral(bob(), cdp_id, balance!(0)),
+            KensetsuError::OperationPermitted
+        );
+    });
+}
+
+/// If cdp doesn't exist, return error
+#[test]
+fn test_withdraw_collateral_cdp_does_not_exist() {
+    ext().execute_with(|| {
+        set_xor_as_collateral_type();
+        let cdp_id = U256::from(1);
+
+        assert_err!(
+            KensetsuPallet::withdraw_collateral(alice(), cdp_id, balance!(0)),
+            KensetsuError::CDPNotFound
+        );
+    });
+}
+
+/// CDP owner withdraws more than CDP has
+#[test]
+fn test_withdraw_collateral_gt_amount() {
+    ext().execute_with(|| {
+        set_xor_as_collateral_type();
+        let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(0));
+
+        assert_err!(
+            KensetsuPallet::withdraw_collateral(alice(), cdp_id, balance!(20)),
+            KensetsuError::NotEnoughCollateral
+        );
+    });
+}
+
+/// CDP will be unsafe
+#[test]
+fn test_withdraw_collateral_unsafe() {
+    ext().execute_with(|| {
+        set_xor_as_collateral_type();
+        let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(5));
+
+        assert_err!(
+            KensetsuPallet::withdraw_collateral(alice(), cdp_id, balance!(1)),
+            KensetsuError::CDPUnsafe
+        );
+    });
+}
+
+/// Alice withdraw `amount` collateral, balance changed, event is emitted
+#[test]
+fn test_withdraw_collateral_sunny_day() {
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        set_xor_as_collateral_type();
+        let amount = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), amount, balance!(0));
+        assert_balance(&alice_account_id(), balance!(0));
+
+        assert_ok!(KensetsuPallet::withdraw_collateral(alice(), cdp_id, amount));
+
+        System::assert_last_event(
+            Event::CollateralDeposit {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR.into(),
+                amount,
+            }
+            .into(),
+        );
+        assert_balance(&alice_account_id(), amount);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.collateral_amount, balance!(0));
+    });
+}
 
 // TODO test borrow
 //  - signed account
@@ -395,35 +488,42 @@ fn test_deposit_collateral_sunny_day() {
 //  - collateral cap
 //  - protocol cap
 //  - sunny day
-//  - overflow
 
 // TODO test repay_debt
 //  - signed account
 //  - cdp not found
 //  - overflow
+//  - sunny day
 
 // TODO test liquidate
 //  - signed account
 //  - cdp not found
 //  - overflow
+//  - sunny day
 
 // TODO test accrue
 //  - cdp not found
 //  - overflow
+//  - sunny day
 
 // TODO test update_collateral_risk_parameters
 //  - signed account
+//  - sunny day
 
 // TODO test update_hard_cap_total_supply
 //  - signed account
+//  - sunny day
 
 // TODO test update_liquidation_penalty
 //  - signed account
+//  - sunny day
 
 // TODO test withdraw_profit
 //  - signed account
 //  - overflow
+//  - sunny day
 
 // TODO test donate
 //  - signed account
 //  - overflow
+//  - sunny day
