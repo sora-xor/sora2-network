@@ -496,7 +496,7 @@ impl<T: Config<I>, I: 'static>
     }
 
     fn exchange_weight() -> Weight {
-        Weight::from(1)
+        Weight::from_all(1)
     }
 
     fn check_rewards_weight() -> Weight {
