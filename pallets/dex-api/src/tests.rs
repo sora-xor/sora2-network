@@ -151,7 +151,7 @@ fn test_exchange_weight_correct() {
     ext.execute_with(|| {
         #[allow(unused_assignments)]
         let mut expected_weight = Weight::zero();
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             expected_weight = <<Runtime as crate::Config>::OrderBook as LiquiditySource<
                 DexIdOf<Runtime>,
@@ -242,7 +242,7 @@ fn test_exchange_weight_filtered_calculates() {
             DexApi::exchange_weight_filtered(vec![&LiquiditySourceType::XSTPool].into_iter()),
             xst_weight
         );
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         assert_eq!(
             DexApi::exchange_weight_filtered(vec![&LiquiditySourceType::OrderBook].into_iter()),
             order_book_weight
@@ -264,7 +264,7 @@ fn test_exchange_weight_filtered_calculates() {
             ),
             xyk_weight.max(xst_weight).max(multicollateral_weight)
         );
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         assert_eq!(
             DexApi::exchange_weight_filtered(
                 vec![
@@ -296,7 +296,7 @@ fn test_exchange_weight_filtered_matches_exchange_weight() {
             &LiquiditySourceType::MockPool3,
             &LiquiditySourceType::MockPool4,
             &LiquiditySourceType::XSTPool,
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             &LiquiditySourceType::OrderBook,
         ];
         // add new source to `all_sources` if new enum variant is created.
@@ -310,7 +310,7 @@ fn test_exchange_weight_filtered_matches_exchange_weight() {
             | LiquiditySourceType::MockPool3
             | LiquiditySourceType::MockPool4
             | LiquiditySourceType::XSTPool => (),
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             LiquiditySourceType::OrderBook => (),
         }
         assert_eq!(

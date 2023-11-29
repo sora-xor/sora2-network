@@ -74,7 +74,7 @@ async fn main() -> AnyResult<()> {
         dbg!(path_2_weight);
         dbg!(path_3_weight);
         dbg!(path_4_weight);
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         {
             use framenode_runtime::order_book::WeightInfo;
 

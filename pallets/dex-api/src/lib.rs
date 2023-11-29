@@ -338,7 +338,7 @@ impl<T: Config>
                     T::MulticollateralBondingCurvePool::exchange_weight()
                 }
                 LiquiditySourceType::XSTPool => T::XSTPool::exchange_weight(),
-                #[cfg(feature = "wip")] // order-book
+                #[cfg(feature = "ready-to-test")] // order-book
                 LiquiditySourceType::OrderBook => T::OrderBook::exchange_weight(),
                 LiquiditySourceType::BondingCurvePool
                 | LiquiditySourceType::MockPool
