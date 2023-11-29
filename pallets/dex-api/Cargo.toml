@@ -41,14 +41,11 @@ hex-literal = "0.4.1"
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
-framenode-runtime = { path = "../../runtime", default-features = false, features = [
-    "std",
-] }
 
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
+liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 permissions = { path = "../permissions" }
 pool-xyk = { path = "../pool-xyk" }

@@ -513,6 +513,7 @@ pub(crate) mod exchange {
         }
     }
 
+    #[allow(unused)]
     pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());

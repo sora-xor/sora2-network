@@ -30,12 +30,14 @@
 
 use crate::mock::*;
 use crate::Pallet;
+use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
 use common::{
-    balance, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, DOT, XOR,
+    balance, AccountIdOf, Balance, DexIdOf, LiquidityRegistry, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, DOT, XOR,
 };
 use frame_support::weights::Weight;
+use sp_runtime::DispatchError;
 
 type DexApi = Pallet<Runtime>;
 
@@ -149,82 +151,127 @@ fn test_exchange_weight_correct() {
         let mut expected_weight = Weight::zero();
         #[cfg(feature = "wip")] // order-book
         {
-            expected_weight = <framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::OrderBook::exchange_weight();
+            expected_weight = <<Runtime as crate::Config>::OrderBook as LiquiditySource<
+                DexIdOf<Runtime>,
+                AccountIdOf<Runtime>,
+                AssetIdOf<Runtime>,
+                Balance,
+                DispatchError,
+            >>::exchange_weight();
         }
         expected_weight = expected_weight
-            .max(<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::XSTPool::exchange_weight())
-            .max(<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::XYKPool::exchange_weight())
-            .max(<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::MulticollateralBondingCurvePool::exchange_weight());
-        let got_weight = framenode_runtime::dex_api::Pallet::<framenode_runtime::Runtime>::exchange_weight();
+            .max(<<Runtime as crate::Config>::XSTPool as LiquiditySource<
+                DexIdOf<Runtime>,
+                AccountIdOf<Runtime>,
+                AssetIdOf<Runtime>,
+                Balance,
+                DispatchError,
+            >>::exchange_weight())
+            .max(<<Runtime as crate::Config>::XYKPool as LiquiditySource<
+                DexIdOf<Runtime>,
+                AccountIdOf<Runtime>,
+                AssetIdOf<Runtime>,
+                Balance,
+                DispatchError,
+            >>::exchange_weight())
+            .max(
+                <<Runtime as crate::Config>::MulticollateralBondingCurvePool as LiquiditySource<
+                    DexIdOf<Runtime>,
+                    AccountIdOf<Runtime>,
+                    AssetIdOf<Runtime>,
+                    Balance,
+                    DispatchError,
+                >>::exchange_weight(),
+            );
+        let got_weight = DexApi::exchange_weight();
         assert_eq!(expected_weight, got_weight);
     })
 }
 
-fn exchange_weight_filtered(enabled_sources: Vec<&LiquiditySourceType>) -> Weight {
-    framenode_runtime::dex_api::Pallet::<framenode_runtime::Runtime>::exchange_weight_filtered(
-        enabled_sources.into_iter(),
-    )
-}
-
 #[test]
 fn test_exchange_weight_filtered_calculates() {
-    framenode_chain_spec::ext().execute_with(|| {
-        let xyk_weight =
-            <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::XYKPool>::exchange_weight();
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let xyk_weight = <<Runtime as crate::Config>::XYKPool as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight();
         let multicollateral_weight =
-            <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::MulticollateralBondingCurvePool>::exchange_weight();
-        let xst_weight =
-            <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::XSTPool>::exchange_weight();
-        let order_book_weight =
-            <<framenode_runtime::Runtime as framenode_runtime::dex_api::Config>::OrderBook>::exchange_weight();
+            <<Runtime as crate::Config>::MulticollateralBondingCurvePool as LiquiditySource<
+                DexIdOf<Runtime>,
+                AccountIdOf<Runtime>,
+                AssetIdOf<Runtime>,
+                Balance,
+                DispatchError,
+            >>::exchange_weight();
+        let xst_weight = <<Runtime as crate::Config>::XSTPool as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight();
+        let order_book_weight = <<Runtime as crate::Config>::OrderBook as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight();
 
         assert_eq!(
-            exchange_weight_filtered(vec![]),
+            DexApi::exchange_weight_filtered(vec![].into_iter()),
             Weight::zero()
         );
         assert_eq!(
-            exchange_weight_filtered(vec![&LiquiditySourceType::XYKPool]),
+            DexApi::exchange_weight_filtered(vec![&LiquiditySourceType::XYKPool].into_iter()),
             xyk_weight
         );
         assert_eq!(
-            exchange_weight_filtered(vec![&LiquiditySourceType::MulticollateralBondingCurvePool]),
+            DexApi::exchange_weight_filtered(
+                vec![&LiquiditySourceType::MulticollateralBondingCurvePool].into_iter()
+            ),
             multicollateral_weight
         );
         assert_eq!(
-            exchange_weight_filtered(vec![&LiquiditySourceType::XSTPool]),
+            DexApi::exchange_weight_filtered(vec![&LiquiditySourceType::XSTPool].into_iter()),
             xst_weight
         );
         #[cfg(feature = "wip")] // order-book
         assert_eq!(
-            exchange_weight_filtered(vec![&LiquiditySourceType::OrderBook]),
+            DexApi::exchange_weight_filtered(vec![&LiquiditySourceType::OrderBook].into_iter()),
             order_book_weight
         );
         assert_eq!(
-            exchange_weight_filtered(vec![&LiquiditySourceType::XYKPool, &LiquiditySourceType::XSTPool]),
-            xyk_weight
-                .max(xst_weight)
+            DexApi::exchange_weight_filtered(
+                vec![&LiquiditySourceType::XYKPool, &LiquiditySourceType::XSTPool].into_iter()
+            ),
+            xyk_weight.max(xst_weight)
         );
         assert_eq!(
-            exchange_weight_filtered(
+            DexApi::exchange_weight_filtered(
                 vec![
                     &LiquiditySourceType::XYKPool,
                     &LiquiditySourceType::XSTPool,
                     &LiquiditySourceType::MulticollateralBondingCurvePool
                 ]
+                .into_iter()
             ),
-            xyk_weight
-                .max(xst_weight)
-                .max(multicollateral_weight)
+            xyk_weight.max(xst_weight).max(multicollateral_weight)
         );
         #[cfg(feature = "wip")] // order-book
         assert_eq!(
-            exchange_weight_filtered(
+            DexApi::exchange_weight_filtered(
                 vec![
                     &LiquiditySourceType::XYKPool,
                     &LiquiditySourceType::XSTPool,
                     &LiquiditySourceType::MulticollateralBondingCurvePool,
                     &LiquiditySourceType::OrderBook
                 ]
+                .into_iter()
             ),
             xyk_weight
                 .max(xst_weight)
@@ -236,7 +283,8 @@ fn test_exchange_weight_filtered_calculates() {
 
 #[test]
 fn test_exchange_weight_filtered_matches_exchange_weight() {
-    framenode_chain_spec::ext().execute_with(|| {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
         let all_sources = vec![
             &LiquiditySourceType::XYKPool,
             &LiquiditySourceType::BondingCurvePool,
@@ -264,8 +312,8 @@ fn test_exchange_weight_filtered_matches_exchange_weight() {
             LiquiditySourceType::OrderBook => (),
         }
         assert_eq!(
-            exchange_weight_filtered(all_sources),
-            framenode_runtime::dex_api::Pallet::<framenode_runtime::Runtime>::exchange_weight(),
+            DexApi::exchange_weight_filtered(all_sources.into_iter()),
+            DexApi::exchange_weight(),
         )
     })
 }
