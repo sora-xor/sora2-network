@@ -1456,10 +1456,9 @@ parameter_types! {
 
 #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 impl qa_tools::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
     type AssetInfoProvider = Assets;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
-    type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -2395,7 +2394,7 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
         #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
-        QATools: qa_tools::{Pallet, Call, Event<T>} = 112,
+        QATools: qa_tools::{Pallet, Call} = 112,
     }
 }
 
