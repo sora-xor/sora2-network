@@ -161,7 +161,7 @@ fn test_benchmark_quote() {
     })
 }
 
-fn test_benchmark_exchange(executed_orders_limit: u32) {
+fn test_benchmark_exchange_dense(executed_orders_limit: u32) {
     ext().execute_with(|| {
         use common::LiquiditySource;
 
@@ -187,8 +187,8 @@ fn test_benchmark_exchange(executed_orders_limit: u32) {
 }
 
 #[test]
-fn test_benchmark_exchange_max_orders() {
-    test_benchmark_exchange(
+fn test_benchmark_exchange_dense_max_orders() {
+    test_benchmark_exchange_dense(
         <Runtime as order_book_imported::Config>::HARD_MIN_MAX_RATIO
             .try_into()
             .unwrap(),
@@ -196,11 +196,11 @@ fn test_benchmark_exchange_max_orders() {
 }
 
 #[test]
-fn test_benchmark_exchange_one_order() {
-    test_benchmark_exchange(1);
+fn test_benchmark_exchange_dense_one_order() {
+    test_benchmark_exchange_dense(1);
 }
 
-fn test_benchmark_exchange_scattered(executed_orders_limit: u32) {
+fn test_benchmark_exchange(executed_orders_limit: u32) {
     ext().execute_with(|| {
         use common::LiquiditySource;
 
@@ -226,8 +226,8 @@ fn test_benchmark_exchange_scattered(executed_orders_limit: u32) {
 }
 
 #[test]
-fn test_benchmark_exchange_scattered_max_orders() {
-    test_benchmark_exchange_scattered(
+fn test_benchmark_exchange_max_orders() {
+    test_benchmark_exchange(
         <Runtime as order_book_imported::Config>::HARD_MIN_MAX_RATIO
             .try_into()
             .unwrap(),
@@ -235,7 +235,7 @@ fn test_benchmark_exchange_scattered_max_orders() {
 }
 #[test]
 fn test_benchmark_exchange_scattered_one_order() {
-    test_benchmark_exchange_scattered(1);
+    test_benchmark_exchange(1);
 }
 
 #[test]
