@@ -119,16 +119,10 @@ pub mod pallet {
         >;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
         type KusdAssetId: Get<Self::AssetId>;
-
-        // TODO price oracle
-        // type ReferencePriceProvider: ReferencePriceProvider<AccountIdOf<Self>, AssetIdOf<Self>>;
-        // type Currency: MultiCurrency<AccountIdOf<Self>, Balance = Balance>;
+        type ReferencePriceProvider: ReferencePriceProvider<AssetIdOf<Self>, Balance>;
 
         // TODO fee scheduler
         // type FeeScheduleMaxPerBlock: Get<u32>;
-
-        /// Max number of CDPs per single user, 1024
-        type MaxCDPsPerUser: Get<u32>;
     }
 
     pub type Timestamp<T> = timestamp::Pallet<T>;
@@ -762,9 +756,8 @@ pub mod pallet {
         ) -> Result<bool, DispatchError> {
             let collateral_risk_parameters = Self::collateral_risk_parameters(collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?;
-            // TODO get price
-            // let collateral_reference_price = T::ReferencePriceProvider::get_reference_price(&collateral_asset_id)?;
-            let collateral_reference_price = balance!(1);
+            let collateral_reference_price =
+                T::ReferencePriceProvider::get_reference_price(&collateral_asset_id)?;
             let collateral_reference_price = FixedU128::from_inner(collateral_reference_price);
             let collateral_value = collateral_reference_price
                 .checked_mul(&FixedU128::from_inner(collateral))
