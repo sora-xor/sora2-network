@@ -46,7 +46,6 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
-liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 permissions = { path = "../permissions" }
 pool-xyk = { path = "../pool-xyk" }
