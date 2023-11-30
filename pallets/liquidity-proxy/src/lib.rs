@@ -1251,8 +1251,7 @@ impl<T: Config> Pallet<T> {
                                 output_asset_id,
                                 &filter,
                             )
-                            .unwrap_or(Vec::new());
-                            // if no sources - extrinsic should fail; thus weight is not spent
+                            .unwrap_or(Vec::new()); // no sources -> no exchanges -> no weight
                             let single_exchange_weight =
                                 T::LiquidityRegistry::exchange_weight_filtered(
                                     exchange_sources.iter().map(|s| {
