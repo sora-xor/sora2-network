@@ -216,6 +216,7 @@ fn test_exchange_weight_filtered_calculates() {
             Balance,
             DispatchError,
         >>::exchange_weight();
+        #[cfg(feature = "ready-to-test")] // order-book
         let order_book_weight = <<Runtime as crate::Config>::OrderBook as LiquiditySource<
             DexIdOf<Runtime>,
             AccountIdOf<Runtime>,
