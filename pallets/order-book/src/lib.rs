@@ -854,9 +854,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(7)]
-        #[pallet::weight(
-            <T as Config>::WeightInfo::execute_market_order()
-        )]
+        #[pallet::weight(<T as Config>::WeightInfo::execute_market_order())]
         pub fn execute_market_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -1406,7 +1404,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn exchange_weight() -> Weight {
-        <T as Config>::WeightInfo::exchange(T::HARD_MIN_MAX_RATIO.try_into().unwrap())
+        // SOFT_MIN_MAX_RATIO is approximately the max number of limit orders
+        // that could be executed by one market order
+        <T as Config>::WeightInfo::exchange(T::SOFT_MIN_MAX_RATIO.try_into().unwrap())
     }
 
     fn check_rewards_weight() -> Weight {
