@@ -94,10 +94,10 @@ pub mod settings {
     #[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
     #[cfg_attr(feature = "std", derive(Debug))]
     pub struct OrderBookFill<Moment, BlockNumber> {
-        /// Best price = highest, worst = lowest.
-        pub bids: Option<SideFill>,
         /// Best price = lowest, worst = highest.
         pub asks: Option<SideFill>,
+        /// Best price = highest, worst = lowest.
+        pub bids: Option<SideFill>,
         /// Lifespan of inserted orders, max by default.
         pub lifespan: Option<Moment>,
         /// Seed for producing random values during the fill process. If `None`,
