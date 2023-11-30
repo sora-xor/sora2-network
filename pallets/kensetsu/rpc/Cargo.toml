@@ -6,8 +6,6 @@ license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 kensetsu-runtime-api = { path = "../runtime-api" }
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }

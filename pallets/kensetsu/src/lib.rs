@@ -546,7 +546,7 @@ pub mod pallet {
                     // close empty CDP, debt == 0, collateral == 0
                     <Treasury<T>>::remove(cdp_id);
                     Self::deposit_event(Event::CDPClosed {
-                        cdp_id: cdp_id,
+                        cdp_id,
                         owner: cdp.owner,
                         collateral_asset_id: cdp.collateral_asset_id,
                     });

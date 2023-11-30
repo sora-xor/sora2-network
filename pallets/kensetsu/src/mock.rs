@@ -51,12 +51,12 @@ use sp_runtime::{
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 type AssetId = AssetId32<PredefinedAssetId>;
 type Balance = u128;
-type Block = frame_system::mocking::MockBlock<Test>;
+type Block = frame_system::mocking::MockBlock<TestRuntime>;
 type Moment = u64;
 type Signature = MultiSignature;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 
 pub struct ReferencePriceProviderMock;
 
@@ -70,7 +70,7 @@ impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider
 }
 
 frame_support::construct_runtime!(
-    pub enum Test where
+    pub enum TestRuntime where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
@@ -79,9 +79,9 @@ frame_support::construct_runtime!(
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>},
     }
 );
@@ -91,7 +91,7 @@ parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetBuyBackAssetId: AssetId = XST;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
-    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackPercentage: u8 = 0;
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
             "0000000000000000000000000000000000000000000000000000000000000023"
     ));
@@ -114,13 +114,13 @@ parameter_types! {
     };
     pub KensetsuTreasuryAccountId: AccountId = {
         let tech_account_id = KensetsuTreasuryTechAccountId::get();
-        technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
+        technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.")
     };
     pub const KusdAssetId: AssetId = KUSD;
 }
 
-impl assets::Config for Test {
+impl assets::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
@@ -133,12 +133,12 @@ impl assets::Config for Test {
     type GetBuyBackAccountId = GetBuyBackAccountId;
     type GetBuyBackDexId = GetBuyBackDexId;
     type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Test>;
+    type Currency = currencies::Pallet<TestRuntime>;
     type WeightInfo = ();
     type GetTotalBalance = ();
 }
 
-impl pallet_balances::Config for Test {
+impl pallet_balances::Config for TestRuntime {
     /// The ubiquitous event type.
     type RuntimeEvent = RuntimeEvent;
     type MaxLocks = MaxLocks;
@@ -152,19 +152,19 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
 }
 
-impl common::Config for Test {
-    type DEXId = common::DEXId;
+impl common::Config for TestRuntime {
+    type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
 }
 
-impl currencies::Config for Test {
+impl currencies::Config for TestRuntime {
     type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, u64>;
-    type GetNativeCurrencyId = <Test as assets::Config>::GetBaseAssetId;
+    type NativeCurrency = BasicCurrencyAdapter<TestRuntime, Balances, Amount, u64>;
+    type GetNativeCurrencyId = <TestRuntime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
 
-impl frame_system::Config for Test {
+impl frame_system::Config for TestRuntime {
     type BaseCallFilter = frame_support::traits::Everything;
     type BlockWeights = ();
     type BlockLength = ();
@@ -191,11 +191,11 @@ impl frame_system::Config for Test {
     type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-impl permissions::Config for Test {
+impl permissions::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
 }
 
-impl technical::Config for Test {
+impl technical::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
@@ -204,11 +204,11 @@ impl technical::Config for Test {
     type SwapAction = ();
 }
 
-impl tokens::Config for Test {
+impl tokens::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Test as assets::Config>::AssetId;
+    type CurrencyId = <TestRuntime as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type CurrencyHooks = ();
@@ -218,14 +218,14 @@ impl tokens::Config for Test {
     type DustRemovalWhitelist = Everything;
 }
 
-impl pallet_timestamp::Config for Test {
+impl pallet_timestamp::Config for TestRuntime {
     type Moment = Moment;
     type OnTimestampSet = ();
     type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
 }
 
-impl kensetsu::Config for Test {
+impl kensetsu::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
@@ -238,15 +238,15 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     let assets_and_permissions_tech_account_id =
         TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
     let assets_and_permissions_account_id =
-        technical::Pallet::<Test>::tech_account_id_to_account_id(
+        technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(
             &assets_and_permissions_tech_account_id,
         )
         .unwrap();
 
     let mut storage = frame_system::GenesisConfig::default()
-        .build_storage::<Test>()
+        .build_storage::<TestRuntime>()
         .unwrap();
-    technical::GenesisConfig::<Test> {
+    technical::GenesisConfig::<TestRuntime> {
         register_tech_accounts: vec![
             (
                 KensetsuTreasuryAccountId::get(),
@@ -264,11 +264,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     PermissionsConfig {
         initial_permission_owners: vec![
             (
-                permissions::MANAGE_DEX,
-                Scope::Unlimited,
-                vec![assets_and_permissions_account_id.clone()],
-            ),
-            (
                 permissions::MINT,
                 Scope::Unlimited,
                 vec![assets_and_permissions_account_id.clone()],
@@ -283,13 +278,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
             (
                 assets_and_permissions_account_id.clone(),
                 Scope::Unlimited,
-                vec![
-                    permissions::MINT,
-                    permissions::BURN,
-                    permissions::LOCK_TO_FARM,
-                    permissions::UNLOCK_FROM_FARM,
-                    permissions::CLAIM_FROM_FARM,
-                ],
+                vec![permissions::MINT, permissions::BURN],
             ),
             (
                 KensetsuTreasuryAccountId::get(),
@@ -307,7 +296,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
                 None,
@@ -318,7 +307,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"DAI".to_vec()),
                 AssetName(b"DAI".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
                 None,
@@ -330,7 +319,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 AssetSymbol(b"KUSD".to_vec()),
                 AssetName(b"Kensetsu Stable Dollar".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
-                balance!(0),
+                0,
                 true,
                 None,
                 None,
