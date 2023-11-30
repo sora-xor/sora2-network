@@ -608,6 +608,7 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Updates cdp debt with interest
         #[pallet::call_index(7)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn accrue(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
@@ -617,6 +618,8 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Updates collateral risk parameters
+        /// Is set by risk management
         #[pallet::call_index(8)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn update_collateral_risk_parameters(
@@ -645,6 +648,7 @@ pub mod pallet {
         }
 
         /// Sets max hard cap supply of KUSD
+        /// Is set by risk management
         #[pallet::call_index(9)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn update_hard_cap_total_supply(
@@ -665,6 +669,7 @@ pub mod pallet {
         }
 
         /// Sets liquidation penalty
+        /// Is set by risk management
         #[pallet::call_index(10)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn update_liquidation_penalty(
@@ -685,6 +690,8 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Withdraws profit from protocol treasury
+        /// Is called by protocol owner
         #[pallet::call_index(11)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
