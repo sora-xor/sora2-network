@@ -47,7 +47,7 @@ use framenode_runtime::order_book_benchmarking as order_book_benchmarking_import
 
 use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, Scalar};
-use common::{Balance, PriceVariant, ETH, VAL, XOR};
+use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::debug;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
@@ -218,8 +218,15 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
         base: VAL.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id)
-        .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Root.into(),
+        order_book_id,
+        balance!(0.00001),
+        balance!(0.00001),
+        balance!(1),
+        balance!(1000),
+    )
+    .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
@@ -280,8 +287,19 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
         base: ETH.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id_2)
-        .expect("failed to create an order book");
+
+    assets::Pallet::<T>::mint_unchecked(&ETH.into(), &accounts::bob::<T>(), balance!(1000))
+        .unwrap();
+
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Root.into(),
+        order_book_id_2,
+        balance!(0.00001),
+        balance!(0.00001),
+        balance!(1),
+        balance!(1000),
+    )
+    .expect("failed to create an order book");
     let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
     let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
     let mut fill_expiration_settings = fill_settings.clone();
@@ -357,8 +375,15 @@ pub fn cancel_limit_order<T: Config>(
         base: VAL.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id)
-        .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Root.into(),
+        order_book_id,
+        balance!(0.00001),
+        balance!(0.00001),
+        balance!(1),
+        balance!(1000),
+    )
+    .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
@@ -447,8 +472,19 @@ pub fn cancel_limit_order<T: Config>(
         base: ETH.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id_2)
-        .expect("failed to create an order book");
+
+    assets::Pallet::<T>::mint_unchecked(&ETH.into(), &accounts::bob::<T>(), balance!(1000))
+        .unwrap();
+
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Root.into(),
+        order_book_id_2,
+        balance!(0.00001),
+        balance!(0.00001),
+        balance!(1),
+        balance!(1000),
+    )
+    .expect("failed to create an order book");
     let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
     let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
     let mut fill_expiration_settings = fill_settings.clone();
@@ -494,8 +530,15 @@ pub fn quote<T: Config>(
         base: VAL.into(),
         quote: XOR.into(),
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id)
-        .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Root.into(),
+        order_book_id,
+        balance!(0.00001),
+        balance!(0.00001),
+        balance!(1),
+        balance!(1000),
+    )
+    .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
 
@@ -553,11 +596,23 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
     PriceVariant,
 ) {
     let order_book_id = if is_divisible {
-        OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
             dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
-        }
+        };
+
+        OrderBookPallet::<T>::create_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id,
+            balance!(0.00001),
+            balance!(0.00001),
+            balance!(1),
+            balance!(1000),
+        )
+        .expect("failed to create an order book");
+
+        order_book_id
     } else {
         let creator = accounts::bob::<T>();
         frame_system::Pallet::<T>::inc_providers(&creator);
@@ -567,7 +622,7 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
             common::AssetSymbol(b"NFT".to_vec()),
             common::AssetName(b"Nft".to_vec()),
             0,
-            1,
+            1000,
             false,
             None,
             None,
@@ -586,34 +641,24 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
             id.base,
         )
         .unwrap();
+        OrderBookPallet::<T>::create_orderbook(
+            RawOrigin::Root.into(),
+            id,
+            balance!(0.00001),
+            1,
+            1,
+            1000,
+        )
+        .expect("failed to create an order book");
         id
     };
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id)
-        .expect("failed to create an order book");
+
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();
     let max_side_orders = sp_std::cmp::min(
         fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
         T::HARD_MIN_MAX_RATIO as u128,
     );
-
-    if !is_divisible {
-        // to allow order book update
-        let needed_supply = *sp_std::cmp::max(
-            order_book
-                .min_lot_size
-                .checked_mul_by_scalar(Scalar(max_side_orders + 1))
-                .unwrap(),
-            order_book.max_lot_size,
-        )
-        .balance();
-        assets::Pallet::<T>::mint_unchecked(
-            &order_book_id.base,
-            &accounts::bob::<T>(),
-            needed_supply,
-        )
-        .unwrap();
-    }
 
     let (_, _, amount, side) = prepare_order_execute_worst_case::<T>(
         &mut data_layer,
@@ -655,8 +700,15 @@ pub fn align_single_order<T: Config>(
         PriceVariant::Sell => (false, true),
     };
 
-    OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id)
-        .expect("failed to create an order book");
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Root.into(),
+        order_book_id,
+        balance!(0.00001),
+        balance!(0.00001),
+        balance!(1),
+        balance!(1000),
+    )
+    .expect("failed to create an order book");
 
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
     let mut data_layer = CacheDataLayer::<T>::new();

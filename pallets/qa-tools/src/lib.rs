@@ -51,7 +51,7 @@ pub mod pallet {
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
-    pub use pallets::order_book_tools::OrderBookFillSettings;
+    pub use pallets::order_book_tools::{OrderBookAttributes, OrderBookFillSettings};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -104,9 +104,14 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
+            let order_book_settings: Vec<_> = order_book_ids
+                .iter()
+                .map(|id| (*id, OrderBookAttributes::default()))
+                .collect();
+
             // replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            pallets::order_book_tools::create_multiple_empty_unchecked::<T>(order_book_ids)
+            pallets::order_book_tools::create_multiple_empty_unchecked::<T>(order_book_settings)
                 .map_err(|e| DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
@@ -134,7 +139,7 @@ pub mod pallet {
         /// - `dex_id`: DEXId for all created order books,
         /// - `bids_owner`: Creator of the buy orders placed on the order books,
         /// - `asks_owner`: Creator of the sell orders placed on the order books,
-        /// - `fill_settings`: Parameters for placing the orders in each order book.
+        /// - `settings`: Parameters for placing the orders in each order book.
         /// `best_bid_price` should be at least 3 price steps from the lowest accepted price,
         /// and `best_ask_price` - at least 3 steps below maximum price,
         #[pallet::call_index(1)]
@@ -143,14 +148,18 @@ pub mod pallet {
             origin: OriginFor<T>,
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
-            fill_settings: Vec<(
+            settings: Vec<(
                 OrderBookId<T::AssetId, T::DEXId>,
+                OrderBookAttributes,
                 OrderBookFillSettings<MomentOf<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
+            let order_book_ids: Vec<_> = settings
+                .iter()
+                .map(|(id, attributes, _)| (*id, *attributes))
+                .collect();
             pallets::order_book_tools::create_multiple_empty_unchecked::<T>(order_book_ids)
                 .map_err(|e| DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
@@ -160,9 +169,7 @@ pub mod pallet {
                     error: e,
                 })?;
             pallets::order_book_tools::fill_multiple_empty_unchecked::<T>(
-                bids_owner,
-                asks_owner,
-                fill_settings,
+                bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
                 post_info: PostDispatchInfo {

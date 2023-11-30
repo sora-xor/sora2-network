@@ -68,6 +68,7 @@ pub use preparation::presets;
 
 pub(crate) mod delete_orderbook {
     use super::*;
+    use common::balance;
 
     pub fn init<T: Config>(_settings: FillSettings<T>) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
@@ -78,7 +79,15 @@ pub(crate) mod delete_orderbook {
             quote: XOR.into(),
         };
 
-        OrderBookPallet::<T>::create_orderbook(RawOrigin::Root.into(), order_book_id).unwrap();
+        OrderBookPallet::<T>::create_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id,
+            balance!(0.00001),
+            balance!(0.00001),
+            balance!(1),
+            balance!(1000),
+        )
+        .unwrap();
         OrderBookPallet::<T>::change_orderbook_status(
             RawOrigin::Root.into(),
             order_book_id,
@@ -243,7 +252,7 @@ pub(crate) mod cancel_limit_order {
 pub(crate) mod execute_market_order {
     use super::*;
     use common::prelude::BalanceUnit;
-    use common::Balance;
+    use common::{balance, Balance};
     use sp_runtime::traits::Zero;
 
     pub struct Context<T: Config> {
@@ -284,12 +293,12 @@ pub(crate) mod execute_market_order {
             // for bids - min price
             PriceVariant::Sell => aggregated_side.next().unwrap(),
         };
-        let default_order_book = if is_divisible {
-            OrderBook::<T>::default(order_book_id)
+        let min_lot_size = if is_divisible {
+            OrderVolume::divisible(balance!(1))
         } else {
-            OrderBook::<T>::default_indivisible(order_book_id)
+            OrderVolume::indivisible(1)
         };
-        let worst_price_sum = worst_price_sum - default_order_book.min_lot_size;
+        let worst_price_sum = worst_price_sum - min_lot_size;
 
         weighted_average(aggregated_side.chain(sp_std::iter::once((worst_price, worst_price_sum))))
     }
