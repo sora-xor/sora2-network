@@ -213,8 +213,6 @@ pub mod pallet {
             collateral_asset_id: AssetIdOf<T>,
             // KUSD amount borrowed
             amount: Balance,
-            // New Loan-To-Value ratio
-            ltv: FixedU128,
         },
         DebtPayment {
             cdp_id: U256,
@@ -469,7 +467,12 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
-            // TODO emit event
+            Self::deposit_event(Event::DebtIncreased {
+                cdp_id,
+                owner: who,
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: will_to_borrow_amount,
+            });
 
             Ok(())
         }
@@ -480,7 +483,6 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::accrue_internal(cdp_id)?;
             let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-
             // if repaying amount exceeds debt, leftover goes to the caller
             let to_cover_debt = amount.min(cdp.debt);
             Self::burn_from(&who, to_cover_debt)?;
@@ -494,7 +496,12 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
-            // TODO emit event
+            Self::deposit_event(Event::DebtPayment {
+                cdp_id,
+                owner: who,
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: to_cover_debt,
+            });
 
             Ok(())
         }
@@ -544,7 +551,11 @@ pub mod pallet {
                     Self::cover_with_protocol(shortage)?;
                     // close empty CDP, debt == 0, collateral == 0
                     <Treasury<T>>::remove(cdp_id);
-                    // TODO emit CDPClosed
+                    Self::deposit_event(Event::CDPClosed {
+                        cdp_id: cdp_id,
+                        owner: cdp.owner,
+                        collateral_asset_id: cdp.collateral_asset_id,
+                    });
                 } else {
                     // partly covered
                     <Treasury<T>>::try_mutate(cdp_id, {
@@ -593,8 +604,12 @@ pub mod pallet {
                 cdp_debt
             };
             Self::burn_from(&who, to_burn)?;
-
-            // TODO emit event
+            Self::deposit_event(Event::Liquidated {
+                cdp_id,
+                collateral_asset_id: cdp.collateral_asset_id,
+                collateral_amount,
+                kusd_amount,
+            });
 
             Ok(())
         }
@@ -626,9 +641,11 @@ pub mod pallet {
                     Self::accrue_internal(cdp_id)?;
                 }
             }
-            <CollateralTypes<T>>::insert(collateral_asset_id, info);
-
-            // TODO emit event
+            <CollateralTypes<T>>::insert(collateral_asset_id, info.clone());
+            Self::deposit_event(Event::CollateralRiskParametersUpdated {
+                collateral_asset_id,
+                risk_parameters: info,
+            });
 
             Ok(())
         }
@@ -647,8 +664,9 @@ pub mod pallet {
                     *hard_cap = new_hard_cap;
                 }
             });
-            // TODO emit event
-
+            Self::deposit_event(Event::KusdHardCapUpdated {
+                hard_cap: new_hard_cap,
+            });
             Ok(())
         }
 
@@ -666,7 +684,9 @@ pub mod pallet {
                     *liquidation_penalty = new_liquidation_penalty;
                 }
             });
-            // TODO emit event
+            Self::deposit_event(Event::LiquidationPenaltyUpdated {
+                liquidation_penalty: new_liquidation_penalty,
+            });
 
             Ok(())
         }
@@ -682,7 +702,9 @@ pub mod pallet {
                 &who,
                 kusd_amount,
             )?;
-            // TODO emit event
+            Self::deposit_event(Event::ProfitWithdrawn {
+                amount: kusd_amount,
+            });
 
             Ok(())
         }
@@ -693,7 +715,9 @@ pub mod pallet {
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::cover_bad_debt(&who, kusd_amount)?;
-            // TODO emit event
+            Self::deposit_event(Event::Donation {
+                amount: kusd_amount,
+            });
 
             Ok(())
         }

@@ -487,28 +487,41 @@ fn test_withdraw_collateral_sunny_day() {
 //  - unsafe
 //  - collateral cap
 //  - protocol cap
-//  - sunny day
+//  - sunny day + event, check KUSD supply
 
 // TODO test repay_debt
 //  - signed account
 //  - cdp not found
-//  - overflow
-//  - sunny day
+//  - amount > debt, leftover not burned
+//  - sunny day + event, check KUSD supply
 
 // TODO test liquidate
 //  - signed account
 //  - cdp not found
-//  - overflow
-//  - sunny day
+//  - cdp safe
+//  - collateral_amount > cdp.collateral_amount
+// cdp_debt > kusd_amount
+//   - cdp_collateral_amount < collateral_amount
+//   - cdp_collateral_amount == collateral_amount
+//   - cdp_collateral_amount > collateral_amount
+// cdp_debt == kusd_amount
+//   - cdp_collateral_amount < collateral_amount
+//   - cdp_collateral_amount == collateral_amount
+//   - cdp_collateral_amount > collateral_amount
+// cdp_debt < kusd_amount
+//   -  liquidation_penalty > leftover
+//   -  liquidation_penalty == leftover
+//   -  liquidation_penalty < leftover
 
 // TODO test accrue
 //  - cdp not found
 //  - overflow
-//  - sunny day
+//  - sunny day, check treasury balance, KUSD supply
 
 // TODO test update_collateral_risk_parameters
 //  - signed account
-//  - sunny day
+//  - CollateralInfoNotFound
+//  - sunny day, check all cdps accrued, check inserted, event
 
 // TODO test update_hard_cap_total_supply
 //  - signed account
@@ -520,10 +533,14 @@ fn test_withdraw_collateral_sunny_day() {
 
 // TODO test withdraw_profit
 //  - signed account
-//  - overflow
-//  - sunny day
+//  - sunny day, event
 
 // TODO test donate
 //  - signed account
 //  - overflow
-//  - sunny day
+// with bad_debt == 0 and bad debt > 0
+//  kusd_amount < bad_debt
+// kusd_amount = bad_debt
+// kusd_amount > bad_debt
+
+// TODO add tests for accrue()
