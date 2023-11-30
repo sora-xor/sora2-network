@@ -28,12 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use assets::Call::update_balance;
+use crate::mock::new_test_ext;
 use common::PredefinedAssetId::XOR;
 use common::{balance, AssetInfoProvider, Balance};
 use frame_support::{assert_err, assert_ok};
 use frame_system::pallet_prelude::OriginFor;
-use framenode_chain_spec::ext;
 use framenode_runtime::kensetsu::CollateralRiskParameters;
 use framenode_runtime::kensetsu::*;
 use framenode_runtime::{Runtime, RuntimeOrigin};
@@ -136,7 +135,7 @@ fn assert_balance(account: &AccountId, expected: Balance) {
 /// is is restricted to create CDP for collateral not listed.
 #[test]
 fn test_create_cdp_for_asset_not_listed_must_result_in_error() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         assert_err!(
             KensetsuPallet::create_cdp(alice(), XOR.into()),
             KensetsuError::CollateralInfoNotFound
@@ -147,7 +146,7 @@ fn test_create_cdp_for_asset_not_listed_must_result_in_error() {
 /// CDP might be created only by Signed Origin account.
 #[test]
 fn test_create_cdp_only_signed_origin() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         assert_err!(
             KensetsuPallet::create_cdp(RuntimeOrigin::none(), XOR.into()),
             BadOrigin
@@ -162,7 +161,7 @@ fn test_create_cdp_only_signed_origin() {
 /// If the number of cdp ids reached U256::MAX, next CDP will result in ArithmeticError.
 #[test]
 fn test_create_cdp_overflow_error() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         NextCDPId::<Runtime>::set(U256::MAX);
 
@@ -176,7 +175,7 @@ fn test_create_cdp_overflow_error() {
 /// Successfully creates CDP
 #[test]
 fn test_create_cdp_sunny_day() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         System::set_block_number(1);
         set_xor_as_collateral_type();
 
@@ -206,7 +205,7 @@ fn test_create_cdp_sunny_day() {
 /// CDP might be closed only by Signed Origin account.
 #[test]
 fn test_close_cdp_only_signed_origin() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
         assert_err!(
@@ -223,7 +222,7 @@ fn test_close_cdp_only_signed_origin() {
 /// Only owner can close CDP
 #[test]
 fn test_close_cdp_only_owner() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         // Alice is CDP owner
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
@@ -238,7 +237,7 @@ fn test_close_cdp_only_owner() {
 /// If cdp doesn't exist, return error
 #[test]
 fn test_close_cdp_does_not_exist() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         let cdp_id = U256::from(1);
 
@@ -252,7 +251,7 @@ fn test_close_cdp_does_not_exist() {
 /// Doesn't allow to close CDP with outstanding debt
 #[test]
 fn test_close_cdp_outstanding_debt() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(1));
 
@@ -266,7 +265,7 @@ fn test_close_cdp_outstanding_debt() {
 /// Closes CDP and returns collateral to the owner
 #[test]
 fn test_close_cdp_sunny_day() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         System::set_block_number(1);
         set_xor_as_collateral_type();
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(0));
@@ -290,7 +289,7 @@ fn test_close_cdp_sunny_day() {
 /// only by Signed Origin account can deposit collateral
 #[test]
 fn test_deposit_only_signed_origin() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
         assert_err!(
@@ -307,7 +306,7 @@ fn test_deposit_only_signed_origin() {
 /// If cdp doesn't exist, return error
 #[test]
 fn test_deposit_collateral_cdp_does_not_exist() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         let cdp_id = U256::from(1);
 
@@ -321,7 +320,7 @@ fn test_deposit_collateral_cdp_does_not_exist() {
 /// Not enough balance to deposit
 #[test]
 fn test_deposit_collateral_not_enough_balance() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
@@ -335,7 +334,7 @@ fn test_deposit_collateral_not_enough_balance() {
 /// Balance::MAX deposited, increase collateral results in ArithmeticError
 #[test]
 fn test_deposit_collateral_overlow() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         // due to cast to i128 in update_balance() u128::MAX is done with 2 x i128::MAX
         let max_i128_amount = Balance::from(u128::MAX / 2);
@@ -354,7 +353,7 @@ fn test_deposit_collateral_overlow() {
 /// Alice deposits `amount` collateral, balance changed, event is emitted
 #[test]
 fn test_deposit_collateral_sunny_day() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         System::set_block_number(1);
         set_xor_as_collateral_type();
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
@@ -381,7 +380,7 @@ fn test_deposit_collateral_sunny_day() {
 /// only by Signed Origin account can withdraw_collateral
 #[test]
 fn test_withdraw_collateral_only_signed_origin() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
         assert_err!(
@@ -398,7 +397,7 @@ fn test_withdraw_collateral_only_signed_origin() {
 /// Only owner can withdraw collateral
 #[test]
 fn test_withdraw_collateral_only_owner() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         // Alice is CDP owner
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
@@ -413,7 +412,7 @@ fn test_withdraw_collateral_only_owner() {
 /// If cdp doesn't exist, return error
 #[test]
 fn test_withdraw_collateral_cdp_does_not_exist() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         let cdp_id = U256::from(1);
 
@@ -427,7 +426,7 @@ fn test_withdraw_collateral_cdp_does_not_exist() {
 /// CDP owner withdraws more than CDP has
 #[test]
 fn test_withdraw_collateral_gt_amount() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(0));
 
@@ -441,7 +440,7 @@ fn test_withdraw_collateral_gt_amount() {
 /// CDP will be unsafe
 #[test]
 fn test_withdraw_collateral_unsafe() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         set_xor_as_collateral_type();
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(5));
 
@@ -455,7 +454,7 @@ fn test_withdraw_collateral_unsafe() {
 /// Alice withdraw `amount` collateral, balance changed, event is emitted
 #[test]
 fn test_withdraw_collateral_sunny_day() {
-    ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         System::set_block_number(1);
         set_xor_as_collateral_type();
         let amount = balance!(10);
@@ -465,7 +464,7 @@ fn test_withdraw_collateral_sunny_day() {
         assert_ok!(KensetsuPallet::withdraw_collateral(alice(), cdp_id, amount));
 
         System::assert_last_event(
-            Event::CollateralDeposit {
+            Event::CollateralWithdrawn {
                 cdp_id,
                 owner: alice_account_id(),
                 collateral_asset_id: XOR.into(),
