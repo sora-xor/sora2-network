@@ -96,7 +96,7 @@ fn test_benchmark_execute_market_order(executed_orders_limit: u32) {
     ext().execute_with(|| {
         let mut settings = FillSettings::<Runtime>::max();
         settings.executed_orders_limit = executed_orders_limit;
-        let context = periphery::execute_market_order::init(settings.clone());
+        let context = periphery::execute_market_order::init(settings);
 
         OrderBookPallet::<Runtime>::execute_market_order(
             RawOrigin::Signed(context.caller.clone()).into(),
@@ -128,7 +128,7 @@ fn test_benchmark_execute_market_order_one_order() {
 fn test_benchmark_execute_market_order_scattered() {
     ext().execute_with(|| {
         let settings = FillSettings::<Runtime>::max();
-        let context = periphery::execute_market_order_scattered::init(settings.clone());
+        let context = periphery::execute_market_order_scattered::init(settings);
 
         OrderBookPallet::<Runtime>::execute_market_order(
             RawOrigin::Signed(context.caller.clone()).into(),
@@ -167,7 +167,7 @@ fn test_benchmark_exchange_dense(executed_orders_limit: u32) {
 
         let mut settings = FillSettings::<Runtime>::max();
         settings.executed_orders_limit = executed_orders_limit;
-        let context = periphery::exchange::init(settings.clone());
+        let context = periphery::exchange::init(settings);
 
         let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
             &context.caller,
@@ -206,7 +206,7 @@ fn test_benchmark_exchange(executed_orders_limit: u32) {
 
         let mut settings = FillSettings::<Runtime>::max();
         settings.executed_orders_limit = executed_orders_limit;
-        let context = periphery::exchange_scattered::init(settings.clone());
+        let context = periphery::exchange_scattered::init(settings);
 
         let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
             &context.caller,

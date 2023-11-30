@@ -92,7 +92,7 @@ code_template_exchange = """
             use periphery::exchange_scattered::{{init, Context}};
             let mut settings = preset_1::<T>();
             settings.executed_orders_limit = e;
-            let Context {{ caller, order_book_id: id, expected_in, expected_out, .. }} = init(settings.clone());
+            let Context {{ caller, order_book_id: id, expected_in, expected_out, .. }} = init(settings);
         }} : {{
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,

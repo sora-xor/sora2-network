@@ -339,7 +339,7 @@ mod benchmarks_inner {
 
         execute_market_order {
             let settings = FillSettings::<T>::max();
-            let context = periphery::execute_market_order_scattered::init(settings.clone());
+            let context = periphery::execute_market_order_scattered::init(settings);
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -373,7 +373,7 @@ mod benchmarks_inner {
             let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
             let mut settings = FillSettings::<T>::max();
             settings.executed_orders_limit = e;
-            let context = periphery::exchange_scattered::init(settings.clone());
+            let context = periphery::exchange_scattered::init(settings);
         }: {
             OrderBookPallet::<T>::exchange(
                 &context.caller,
@@ -604,7 +604,7 @@ mod benchmarks_inner {
             use periphery::exchange_scattered::{init, Context};
             let mut settings = preset_1::<T>();
             settings.executed_orders_limit = e;
-            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings.clone());
+            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
@@ -618,7 +618,7 @@ mod benchmarks_inner {
             use periphery::exchange_scattered::{init, Context};
             let mut settings = preset_1::<T>();
             settings.executed_orders_limit = e;
-            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings.clone());
+            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
