@@ -82,7 +82,7 @@ async fn main() -> AnyResult<()> {
                 <Runtime as framenode_runtime::order_book::Config>::WeightInfo::execute_market_order();
             dbg!(execute_order_weight);
 
-            println!("\\\\\\\\\\\nexchange weights\n");
+            println!("\nexchange weights:");
             let max_orders = <Runtime as framenode_runtime::order_book::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
             for n in [1, max_orders / 2, max_orders] {
                 let exchange = <Runtime as framenode_runtime::order_book::Config>::WeightInfo::exchange(n);
