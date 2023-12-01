@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["OrderBookFillSettings"]};
+window.SIDEBAR_ITEMS = {"struct":["OrderBookAttributes","OrderBookFillSettings"]};

@@ -203,77 +203,6 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -324,12 +253,10 @@
         AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
     };
     <span class="kw">use </span>frame_support::dispatch::DispatchErrorWithPostInfo;
-    <span class="kw">use </span>frame_support::sp_runtime::{traits::BadOrigin, BoundedBTreeSet};
     <span class="kw">use </span>frame_support::{dispatch::PostDispatchInfo, pallet_prelude::<span class="kw-2">*</span>};
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>frame_system::RawOrigin;
     <span class="kw">use </span>order_book::{MomentOf, OrderBookId};
-    <span class="kw">pub use </span>pallets::order_book_tools::OrderBookFillSettings;
+    <span class="kw">pub use </span>pallets::order_book_tools::{OrderBookAttributes, OrderBookFillSettings};
     <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
 
     <span class="attr">#[pallet::pallet]
@@ -350,14 +277,6 @@
         <span class="kw">type </span>QaToolsWhitelistCapacity: Get&lt;u32&gt;;
     }
 
-    <span class="doccomment">/// In order to prevent breaking testnets/staging with such zero-weight
-    /// extrinsics from this pallet, we restrict `origin`s to root and trusted
-    /// list of accounts (added by root).
-    </span><span class="attr">#[pallet::storage]
-    #[pallet::getter(<span class="kw">fn </span>whitelisted_callers)]
-    </span><span class="kw">pub type </span>WhitelistedCallers&lt;T: Config&gt; =
-        StorageValue&lt;<span class="kw">_</span>, BoundedBTreeSet&lt;T::AccountId, T::QaToolsWhitelistCapacity&gt;&gt;;
-
     <span class="attr">#[pallet::error]
     </span><span class="kw">pub enum </span>Error&lt;T&gt; {
         <span class="comment">// this pallet errors
@@ -376,76 +295,35 @@
 
     <span class="attr">#[pallet::call]
     </span><span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-        <span class="doccomment">/// Add the account to the list of allowed callers.
-        </span><span class="attr">#[pallet::call_index(<span class="number">0</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::order_book_create_empty_batch())]
-        </span><span class="kw">pub fn </span>add_to_whitelist(
-            origin: OriginFor&lt;T&gt;,
-            account: T::AccountId,
-        ) -&gt; DispatchResultWithPostInfo {
-            ensure_root(origin)<span class="question-mark">?</span>;
-            WhitelistedCallers::&lt;T&gt;::mutate(|option_whitelist| {
-                <span class="kw">let </span>whitelist = <span class="kw">match </span>option_whitelist {
-                    <span class="prelude-val">Some</span>(w) =&gt; w,
-                    <span class="prelude-val">None </span>=&gt; option_whitelist.insert(BoundedBTreeSet::new()),
-                };
-                whitelist
-                    .try_insert(account)
-                    .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::WhitelistFull)<span class="question-mark">?
-                    </span>.then_some(())
-                    .ok_or(Error::&lt;T&gt;::AlreadyInWhitelist)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>::&lt;(), Error&lt;T&gt;&gt;(())
-            })<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(().into())
-        }
-
-        <span class="doccomment">/// Remove the account from the list of allowed callers.
-        </span><span class="attr">#[pallet::call_index(<span class="number">1</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::order_book_create_empty_batch())]
-        </span><span class="kw">pub fn </span>remove_from_whitelist(
-            origin: OriginFor&lt;T&gt;,
-            account: T::AccountId,
-        ) -&gt; DispatchResultWithPostInfo {
-            ensure_root(origin)<span class="question-mark">?</span>;
-            WhitelistedCallers::&lt;T&gt;::mutate(|option_whitelist| {
-                <span class="kw">let </span>whitelist = <span class="kw">match </span>option_whitelist {
-                    <span class="prelude-val">Some</span>(w) =&gt; w,
-                    <span class="prelude-val">None </span>=&gt; option_whitelist.insert(BoundedBTreeSet::new()),
-                };
-                <span class="kw">let </span>was_not_whitelisted = !whitelist.remove(<span class="kw-2">&amp;</span>account);
-                <span class="kw">if </span>was_not_whitelisted {
-                    <span class="prelude-val">Err</span>(Error::&lt;T&gt;::NotInWhitelist)
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">Ok</span>::&lt;(), Error&lt;T&gt;&gt;(())
-                }
-            })<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(().into())
-        }
-
         <span class="doccomment">/// Create multiple order books with default parameters (if do not exist yet).
         ///
         /// Parameters:
         /// - `origin`: caller, should be account because error messages for unsigned txs are unclear,
         /// - `order_book_ids`: ids of the created order books; trading pairs are created
         /// if necessary,
-        </span><span class="attr">#[pallet::call_index(<span class="number">2</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">0</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::order_book_create_empty_batch())]
         </span><span class="kw">pub fn </span>order_book_create_empty_batch(
             origin: OriginFor&lt;T&gt;,
             order_book_ids: Vec&lt;OrderBookId&lt;T::AssetId, T::DEXId&gt;&gt;,
         ) -&gt; DispatchResultWithPostInfo {
-            <span class="kw">let </span>who = <span class="self">Self</span>::ensure_in_whitelist(origin)<span class="question-mark">?</span>;
+            ensure_root(origin)<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>order_book_settings: Vec&lt;<span class="kw">_</span>&gt; = order_book_ids
+                .iter()
+                .map(|id| (<span class="kw-2">*</span>id, OrderBookAttributes::default()))
+                .collect();
 
             <span class="comment">// replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            </span>pallets::order_book_tools::create_multiple_empty_unchecked::&lt;T&gt;(<span class="kw-2">&amp;</span>who, order_book_ids)
+            </span>pallets::order_book_tools::create_multiple_empty_unchecked::&lt;T&gt;(order_book_settings)
                 .map_err(|e| DispatchErrorWithPostInfo {
-                post_info: PostDispatchInfo {
-                    actual_weight: <span class="prelude-val">None</span>,
-                    pays_fee: Pays::No,
-                },
-                error: e,
-            })<span class="question-mark">?</span>;
+                    post_info: PostDispatchInfo {
+                        actual_weight: <span class="prelude-val">None</span>,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                })<span class="question-mark">?</span>;
 
             <span class="comment">// Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -466,35 +344,37 @@
         /// - `dex_id`: DEXId for all created order books,
         /// - `bids_owner`: Creator of the buy orders placed on the order books,
         /// - `asks_owner`: Creator of the sell orders placed on the order books,
-        /// - `fill_settings`: Parameters for placing the orders in each order book.
+        /// - `settings`: Parameters for placing the orders in each order book.
         /// `best_bid_price` should be at least 3 price steps from the lowest accepted price,
         /// and `best_ask_price` - at least 3 steps below maximum price,
-        </span><span class="attr">#[pallet::call_index(<span class="number">3</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">1</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::order_book_create_and_fill_batch())]
         </span><span class="kw">pub fn </span>order_book_create_and_fill_batch(
             origin: OriginFor&lt;T&gt;,
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
-            fill_settings: Vec&lt;(
+            settings: Vec&lt;(
                 OrderBookId&lt;T::AssetId, T::DEXId&gt;,
+                OrderBookAttributes,
                 OrderBookFillSettings&lt;MomentOf&lt;T&gt;&gt;,
             )&gt;,
         ) -&gt; DispatchResultWithPostInfo {
-            <span class="kw">let </span>who = <span class="self">Self</span>::ensure_in_whitelist(origin)<span class="question-mark">?</span>;
+            ensure_root(origin)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>order_book_ids: Vec&lt;<span class="kw">_</span>&gt; = fill_settings.iter().map(|(id, <span class="kw">_</span>)| id).cloned().collect();
-            pallets::order_book_tools::create_multiple_empty_unchecked::&lt;T&gt;(<span class="kw-2">&amp;</span>who, order_book_ids)
+            <span class="kw">let </span>order_book_ids: Vec&lt;<span class="kw">_</span>&gt; = settings
+                .iter()
+                .map(|(id, attributes, <span class="kw">_</span>)| (<span class="kw-2">*</span>id, <span class="kw-2">*</span>attributes))
+                .collect();
+            pallets::order_book_tools::create_multiple_empty_unchecked::&lt;T&gt;(order_book_ids)
                 .map_err(|e| DispatchErrorWithPostInfo {
-                post_info: PostDispatchInfo {
-                    actual_weight: <span class="prelude-val">None</span>,
-                    pays_fee: Pays::No,
-                },
-                error: e,
-            })<span class="question-mark">?</span>;
+                    post_info: PostDispatchInfo {
+                        actual_weight: <span class="prelude-val">None</span>,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                })<span class="question-mark">?</span>;
             pallets::order_book_tools::fill_multiple_empty_unchecked::&lt;T&gt;(
-                bids_owner,
-                asks_owner,
-                fill_settings,
+                bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
                 post_info: PostDispatchInfo {
@@ -510,28 +390,6 @@
                 actual_weight: <span class="prelude-val">None</span>,
                 pays_fee: Pays::No,
             })
-        }
-    }
-
-    <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-        <span class="kw">pub fn </span>ensure_in_whitelist&lt;OuterOrigin&gt;(
-            origin: OuterOrigin,
-        ) -&gt; <span class="prelude-ty">Result</span>&lt;T::AccountId, BadOrigin&gt;
-        <span class="kw">where
-            </span>OuterOrigin: Into&lt;<span class="prelude-ty">Result</span>&lt;RawOrigin&lt;T::AccountId&gt;, OuterOrigin&gt;&gt;,
-        {
-            <span class="kw">let </span>who = <span class="kw">match </span>origin.into() {
-                <span class="prelude-val">Ok</span>(RawOrigin::Signed(w)) =&gt; w,
-                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BadOrigin),
-            };
-            <span class="kw">let </span><span class="prelude-val">Some</span>(whitelist) = WhitelistedCallers::&lt;T&gt;::get() <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(BadOrigin)
-            };
-            <span class="kw">if </span>whitelist.contains(<span class="kw-2">&amp;</span>who) {
-                <span class="prelude-val">Ok</span>(who)
-            } <span class="kw">else </span>{
-                <span class="prelude-val">Err</span>(BadOrigin)
-            }
         }
     }
 }

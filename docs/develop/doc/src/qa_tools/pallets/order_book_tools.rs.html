@@ -259,6 +259,26 @@
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -290,15 +310,35 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::Config;
-<span class="kw">use </span>common::{balance, AssetInfoProvider, Balance, PriceVariant};
+<span class="kw">use </span>common::{balance, Balance, PriceVariant};
 <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
-<span class="kw">use </span>frame_support::sp_runtime::traits::Zero;
 <span class="kw">use </span>frame_support::traits::Time;
 <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>order_book::DataLayer;
 <span class="kw">use </span>order_book::{MomentOf, OrderBook, OrderBookId};
 <span class="kw">use </span>order_book::{OrderPrice, OrderVolume};
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
+
+<span class="attr">#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Debug))]
+</span><span class="kw">pub struct </span>OrderBookAttributes {
+    <span class="kw">pub </span>tick_size: Balance,
+    <span class="kw">pub </span>step_lot_size: Balance,
+    <span class="kw">pub </span>min_lot_size: Balance,
+    <span class="kw">pub </span>max_lot_size: Balance,
+}
+
+<span class="comment">// default attributes for regular assets (not NFT)
+</span><span class="kw">impl </span>Default <span class="kw">for </span>OrderBookAttributes {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            tick_size: <span class="macro">balance!</span>(<span class="number">0.00001</span>),
+            step_lot_size: <span class="macro">balance!</span>(<span class="number">0.00001</span>),
+            min_lot_size: <span class="macro">balance!</span>(<span class="number">1</span>),
+            max_lot_size: <span class="macro">balance!</span>(<span class="number">1000</span>),
+        }
+    }
+}
 
 <span class="attr">#[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Debug))]
@@ -313,14 +353,13 @@
 
 <span class="doccomment">/// Does not create an order book if it already exists
 </span><span class="kw">pub fn </span>create_multiple_empty_unchecked&lt;T: Config&gt;(
-    who: <span class="kw-2">&amp;</span>T::AccountId,
-    order_book_ids: Vec&lt;OrderBookId&lt;T::AssetId, T::DEXId&gt;&gt;,
+    order_book_settings: Vec&lt;(OrderBookId&lt;T::AssetId, T::DEXId&gt;, OrderBookAttributes)&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
-    <span class="kw">let </span>to_create_ids: Vec&lt;<span class="kw">_</span>&gt; = order_book_ids
+    <span class="kw">let </span>to_create_ids: Vec&lt;<span class="kw">_</span>&gt; = order_book_settings
         .into_iter()
-        .filter(|id| !&lt;order_book::OrderBooks&lt;T&gt;&gt;::contains_key(id))
+        .filter(|(id, <span class="kw">_</span>)| !&lt;order_book::OrderBooks&lt;T&gt;&gt;::contains_key(id))
         .collect();
-    <span class="kw">for </span>order_book_id <span class="kw">in </span><span class="kw-2">&amp;</span>to_create_ids {
+    <span class="kw">for </span>(order_book_id, <span class="kw">_</span>) <span class="kw">in </span><span class="kw-2">&amp;</span>to_create_ids {
         <span class="kw">if </span>!trading_pair::Pallet::&lt;T&gt;::is_trading_pair_enabled(
             <span class="kw-2">&amp;</span>order_book_id.dex_id,
             <span class="kw-2">&amp;</span>order_book_id.quote.into(),
@@ -332,17 +371,17 @@
                 order_book_id.base.into(),
             )<span class="question-mark">?</span>;
         }
-        <span class="kw">if </span>&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base)
-            &amp;&amp; &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::total_balance(<span class="kw-2">&amp;</span>order_book_id.base, <span class="kw-2">&amp;</span>who)<span class="question-mark">?
-                </span>== Balance::zero()
-        {
-            assets::Pallet::&lt;T&gt;::mint_unchecked(<span class="kw-2">&amp;</span>order_book_id.base, <span class="kw-2">&amp;</span>who, <span class="number">1</span>)<span class="question-mark">?</span>;
-        }
-        order_book::Pallet::&lt;T&gt;::verify_create_orderbook_params(who, <span class="kw-2">&amp;</span>order_book_id)<span class="question-mark">?</span>;
+        order_book::Pallet::&lt;T&gt;::verify_create_orderbook_params(<span class="kw-2">&amp;</span>order_book_id)<span class="question-mark">?</span>;
     }
 
-    <span class="kw">for </span>order_book_id <span class="kw">in </span>to_create_ids {
-        order_book::Pallet::&lt;T&gt;::create_orderbook_unchecked(<span class="kw-2">&amp;</span>order_book_id)<span class="question-mark">?</span>;
+    <span class="kw">for </span>(order_book_id, attributes) <span class="kw">in </span>to_create_ids {
+        order_book::Pallet::&lt;T&gt;::create_orderbook_unchecked(
+            <span class="kw-2">&amp;</span>order_book_id,
+            attributes.tick_size,
+            attributes.step_lot_size,
+            attributes.min_lot_size,
+            attributes.max_lot_size,
+        )<span class="question-mark">?</span>;
     }
     <span class="prelude-val">Ok</span>(())
 }
@@ -355,8 +394,9 @@
 </span><span class="kw">pub fn </span>fill_multiple_empty_unchecked&lt;T: Config&gt;(
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
-    fill_settings: Vec&lt;(
+    settings: Vec&lt;(
         OrderBookId&lt;T::AssetId, T::DEXId&gt;,
+        OrderBookAttributes,
         OrderBookFillSettings&lt;MomentOf&lt;T&gt;&gt;,
     )&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
@@ -387,7 +427,7 @@
 
     <span class="kw">let </span><span class="kw-2">mut </span>data = order_book::cache_data_layer::CacheDataLayer::&lt;T&gt;::new();
 
-    <span class="kw">for </span>(order_book_id, settings) <span class="kw">in </span>fill_settings {
+    <span class="kw">for </span>(order_book_id, <span class="kw">_</span>, fill_settings) <span class="kw">in </span>settings {
         fill_order_book(
             <span class="kw-2">&amp;mut </span>data,
             order_book_id,
@@ -395,7 +435,7 @@
             bids_owner.clone(),
             buy_orders_steps.into_iter(),
             sell_orders_steps.into_iter(),
-            settings,
+            fill_settings,
             now,
         )<span class="question-mark">?</span>;
     }
