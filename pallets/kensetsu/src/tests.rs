@@ -131,18 +131,6 @@ fn assert_balance(account: &AccountId, expected: Balance) {
     );
 }
 
-/// Collateral Risk Parameters were not set for the AssetId by Risk Management Team,
-/// is is restricted to create CDP for collateral not listed.
-#[test]
-fn test_create_cdp_for_asset_not_listed_must_result_in_error() {
-    new_test_ext().execute_with(|| {
-        assert_err!(
-            KensetsuPallet::create_cdp(alice(), XOR.into()),
-            KensetsuError::CollateralInfoNotFound
-        );
-    });
-}
-
 /// CDP might be created only by Signed Origin account.
 #[test]
 fn test_create_cdp_only_signed_origin() {
@@ -154,6 +142,18 @@ fn test_create_cdp_only_signed_origin() {
         assert_err!(
             KensetsuPallet::create_cdp(RuntimeOrigin::root(), XOR.into()),
             BadOrigin
+        );
+    });
+}
+
+/// Collateral Risk Parameters were not set for the AssetId by Risk Management Team,
+/// is is restricted to create CDP for collateral not listed.
+#[test]
+fn test_create_cdp_for_asset_not_listed_must_result_in_error() {
+    new_test_ext().execute_with(|| {
+        assert_err!(
+            KensetsuPallet::create_cdp(alice(), XOR.into()),
+            KensetsuError::CollateralInfoNotFound
         );
     });
 }

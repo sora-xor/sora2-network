@@ -1920,6 +1920,16 @@ parameter_types! {
     };
 
     pub const KusdAssetId: AssetId = common::KUSD;
+
+    // 1 day
+    pub const AccrueInterestPeriod: Moment = 86_400_000;
+
+    // Not as important as some essential transactions (e.g. im_online or similar ones)
+    pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
+        Perbill::from_percent(10) * TransactionPriority::max_value();
+    // 100 blocks, if tx spoils, worker will resend it
+    pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 100;
+
 }
 
 impl kensetsu::Config for Runtime {
@@ -1929,6 +1939,9 @@ impl kensetsu::Config for Runtime {
     type KusdAssetId = KusdAssetId;
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
+    type AccrueInterestPeriod = AccrueInterestPeriod;
+    type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
+    type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
 }
 
 parameter_types! {
@@ -2369,7 +2382,7 @@ construct_runtime! {
         #[cfg(feature = "ready-to-test")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
-        Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>} = 58,
+        Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,

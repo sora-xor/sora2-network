@@ -34,6 +34,7 @@ use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, Balance};
 use compounding::get_accrued_interest;
+use frame_support::log::{debug, warn};
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedU128;
@@ -93,15 +94,37 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
-    use sp_arithmetic::traits::CheckedMul;
+    use sp_arithmetic::traits::{CheckedMul, Saturating};
     use sp_arithmetic::Percent;
     use sp_core::U256;
-    use sp_runtime::traits::CheckedConversion;
+    use sp_runtime::traits::{CheckedConversion, CheckedSub};
     use sp_std::vec::Vec;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        /// Main off-chain worker procedure.
+        ///
+        /// Accrues fees and calls liquidations
+        fn offchain_worker(block_number: T::BlockNumber) {
+            debug!(
+                "Entering off-chain worker, block number is {:?}",
+                block_number
+            );
+            let now = Timestamp::<T>::get();
+            let outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
+            for (cdp_id, cdp) in <Treasury<T>>::iter() {
+                if cdp.last_fee_update_time <= outdated_timestamp {
+                    debug!("Accrue for CDP {:?}", cdp_id);
+                    // TODO send extrinsic unsigned
+                    // Self::accrue_internal(cdp_id)?;
+                }
+            }
+        }
+    }
 
     #[pallet::config]
     pub trait Config:
@@ -121,8 +144,17 @@ pub mod pallet {
         type KusdAssetId: Get<Self::AssetId>;
         type ReferencePriceProvider: ReferencePriceProvider<AssetIdOf<Self>, Balance>;
 
-        // TODO fee scheduler
-        // type FeeScheduleMaxPerBlock: Get<u32>;
+        /// Accrue() for a single CDP can be called once per this period
+        #[pallet::constant]
+        type AccrueInterestPeriod: Get<Self::Moment>;
+
+        /// A configuration for base priority of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedPriority: Get<TransactionPriority>;
+
+        /// A configuration for longevity of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedLongevity: Get<u64>;
     }
 
     pub type Timestamp<T> = timestamp::Pallet<T>;
@@ -164,17 +196,6 @@ pub mod pallet {
         U256,
         CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>, T::Moment>,
     >;
-
-    // TODO fees offchain worker scheduler
-    // #[pallet::storage]
-    // #[pallet::getter(fn fee_schedule)]
-    // pub type StabilityFeeSchedule<T: Config> = StorageMap<
-    //     _,
-    //     Identity,
-    //     BlockNumberFor<T>,
-    //     BoundedVec<H256, T::FeeScheduleMaxPerBlock>,
-    //     ValueQuery,
-    // >;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -283,6 +304,7 @@ pub mod pallet {
         HardCapSupply,
         BalanceNotEnough,
         WrongCollateralAssetId,
+        AccrueWrongTime,
     }
 
     #[pallet::call]
@@ -609,11 +631,14 @@ pub mod pallet {
         }
 
         /// Updates cdp debt with interest
+        /// Unsigned call possible
         #[pallet::call_index(7)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn accrue(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
-            // TODO can unsigned do it?
-            ensure_signed(origin)?;
+        pub fn accrue(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
+            ensure!(
+                Self::is_it_time_to_accrue(&cdp_id)?,
+                Error::<T>::AccrueWrongTime
+            );
             Self::accrue_internal(cdp_id)?;
             Ok(())
         }
@@ -721,6 +746,41 @@ pub mod pallet {
             });
 
             Ok(())
+        }
+    }
+
+    /// Validate unsigned call to this pallet.
+    #[pallet::validate_unsigned]
+    impl<T: Config> ValidateUnsigned for Pallet<T> {
+        type Call = Call<T>;
+
+        /// It is allowed to call only accrue() and liquidate() and only if
+        /// it fulfills conditions.
+        fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+            match call {
+                Call::accrue { cdp_id } => {
+                    if Self::is_it_time_to_accrue(cdp_id).map_err(|_| {
+                        // TODO custom error
+                        InvalidTransaction::Custom(1u8)
+                    })? {
+                        let valid_tx = ValidTransaction::with_tag_prefix("Kensetsu::accrue")
+                            .priority(T::UnsignedPriority::get())
+                            .longevity(T::UnsignedLongevity::get())
+                            .and_provides([&cdp_id])
+                            .propagate(true)
+                            .build();
+
+                        valid_tx
+                    } else {
+                        InvalidTransaction::Future.into()
+                    }
+                }
+                // TODO add liquidate
+                _ => {
+                    warn!("Unknown unsigned call {:?}", call);
+                    InvalidTransaction::Call.into()
+                }
+            }
         }
     }
 
@@ -843,18 +903,30 @@ pub mod pallet {
             Ok(())
         }
 
+        fn is_it_time_to_accrue(cdp_id: &U256) -> Result<bool, DispatchError> {
+            let now = Timestamp::<T>::get();
+            let outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
+            let cdp = Self::cdp(&cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            Ok(cdp.debt > 0 && cdp.last_fee_update_time <= outdated_timestamp)
+        }
+
         /// Accrue stability fee from CDP
         /// Calculates fees accrued since last update using continuous compounding formula.
         /// The fees is a protocol gain.
         fn accrue_internal(cdp_id: U256) -> DispatchResult {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let now = Timestamp::<T>::get();
+            ensure!(now >= cdp.last_fee_update_time, Error::<T>::AccrueWrongTime);
+            let time_passed = now
+                .checked_sub(&cdp.last_fee_update_time)
+                .ok_or(Error::<T>::ArithmeticError)?;
             let collateral_info = Self::collateral_risk_parameters(cdp.collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?;
-            let now = Timestamp::<T>::get();
             let stability_fee = get_accrued_interest(
                 cdp.debt,
                 collateral_info.stability_fee_rate,
-                now.checked_into::<u64>()
+                time_passed
+                    .checked_into::<u64>()
                     .ok_or(Error::<T>::ArithmeticError)?,
             )
             .map_err(|_| Error::<T>::ArithmeticError)?;

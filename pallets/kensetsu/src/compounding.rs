@@ -104,6 +104,19 @@ fn test_compound_zero_principal() {
 }
 
 #[test]
+fn test_compound_0_period() {
+    // per second rate
+    let rate = FixedU128::from_float(0.15);
+    let initial_balance = balance!(100);
+    // 1 second
+    let time = 0;
+    assert_eq!(
+        compound(initial_balance, rate, time).unwrap(),
+        balance!(100)
+    );
+}
+
+#[test]
 fn test_compound_1_period() {
     // per second rate
     let rate = FixedU128::from_float(0.15);

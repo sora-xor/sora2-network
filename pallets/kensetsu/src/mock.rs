@@ -82,7 +82,7 @@ frame_support::construct_runtime!(
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>},
+        Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
     }
 );
 
@@ -118,6 +118,10 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.")
     };
     pub const KusdAssetId: AssetId = KUSD;
+
+    // 1 day
+    pub const AccrueInterestPeriod: Moment = 86_400_000;
+
 }
 
 impl assets::Config for TestRuntime {
@@ -231,6 +235,9 @@ impl kensetsu::Config for TestRuntime {
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KusdAssetId = KusdAssetId;
     type ReferencePriceProvider = ReferencePriceProviderMock;
+    type AccrueInterestPeriod = AccrueInterestPeriod;
+    type UnsignedPriority = ConstU64<100>;
+    type UnsignedLongevity = ConstU64<100>;
 }
 
 // Builds testing externalities
