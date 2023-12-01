@@ -81,8 +81,8 @@ impl MetricsCollector {
 
             let address = parachain_runtime::storage().beefy_mmr().beefy_authorities();
             self.update_metric(&address, block_hash, |vset| {
-                metrics::absolute_counter!(PARA_BEEFY_CURRENT_ID, vset.id);
-                metrics::absolute_counter!(PARA_BEEFY_CURRENT_LEN, vset.len as u64);
+                metrics::gauge!(PARA_BEEFY_CURRENT_ID, vset.id as f64);
+                metrics::gauge!(PARA_BEEFY_CURRENT_LEN, vset.len as f64);
             })
             .await;
 
@@ -91,8 +91,8 @@ impl MetricsCollector {
                 .beefy_next_authorities();
 
             self.update_metric(&address, block_hash, |vset| {
-                metrics::absolute_counter!(PARA_BEEFY_NEXT_ID, vset.id);
-                metrics::absolute_counter!(PARA_BEEFY_NEXT_LEN, vset.len as u64);
+                metrics::gauge!(PARA_BEEFY_NEXT_ID, vset.id as f64);
+                metrics::gauge!(PARA_BEEFY_NEXT_LEN, vset.len as f64);
             })
             .await;
 
@@ -107,14 +107,10 @@ impl MetricsCollector {
                         .beefy_light_client()
                         .current_validator_set(network_id);
                     self.update_metric(&address, block_hash, |vset| {
-                        metrics::absolute_counter!(
-                            PARA_BEEFY_LIGHT_CLIENT_CURRENT_ID,
-                            vset.id,
-                            labels
-                        );
-                        metrics::absolute_counter!(
+                        metrics::gauge!(PARA_BEEFY_LIGHT_CLIENT_CURRENT_ID, vset.id as f64, labels);
+                        metrics::gauge!(
                             PARA_BEEFY_LIGHT_CLIENT_CURRENT_LEN,
-                            vset.len as u64,
+                            vset.len as f64,
                             labels
                         );
                     })
@@ -124,16 +120,8 @@ impl MetricsCollector {
                         .beefy_light_client()
                         .next_validator_set(network_id);
                     self.update_metric(&address, block_hash, |vset| {
-                        metrics::absolute_counter!(
-                            PARA_BEEFY_LIGHT_CLIENT_NEXT_ID,
-                            vset.id,
-                            labels
-                        );
-                        metrics::absolute_counter!(
-                            PARA_BEEFY_LIGHT_CLIENT_NEXT_LEN,
-                            vset.len as u64,
-                            labels
-                        );
+                        metrics::gauge!(PARA_BEEFY_LIGHT_CLIENT_NEXT_ID, vset.id as f64, labels);
+                        metrics::gauge!(PARA_BEEFY_LIGHT_CLIENT_NEXT_LEN, vset.len as f64, labels);
                     })
                     .await;
 
@@ -178,19 +166,19 @@ impl MetricsCollector {
 }
 
 pub fn describe_metrics() {
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         PARA_BEEFY_LIGHT_CLIENT_CURRENT_ID,
         "Current validator set id in parachain BEEFY light client"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         PARA_BEEFY_LIGHT_CLIENT_CURRENT_LEN,
         "Current validator set length in parachain BEEFY light client"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         PARA_BEEFY_LIGHT_CLIENT_NEXT_ID,
         "Next validator set id in parachain BEEFY light client"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         PARA_BEEFY_LIGHT_CLIENT_NEXT_LEN,
         "Next validator set length in parachain BEEFY light client"
     );
@@ -198,19 +186,19 @@ pub fn describe_metrics() {
         PARA_BEEFY_LIGHT_CLIENT_LATEST_BLOCK,
         "Latest sent block in parachain BEEFY light client"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         PARA_BEEFY_CURRENT_ID,
         "Current validator set id in parachain BEEFY"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         PARA_BEEFY_CURRENT_LEN,
         "Current validator set length in parachain BEEFY"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         PARA_BEEFY_NEXT_ID,
         "Next validator set id in parachain BEEFY"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         PARA_BEEFY_NEXT_LEN,
         "Next validator set length in parachain BEEFY"
     );

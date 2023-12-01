@@ -66,26 +66,17 @@ impl Command {
 
         info!("Send migrate extrinsic");
 
-        sub.api()
-            .tx()
-            .sign_and_submit_then_watch_default(
-                &runtime::tx()
-                    .sudo()
-                    .sudo(sub_types::framenode_runtime::RuntimeCall::EthBridge(
-                        sub_types::eth_bridge::pallet::Call::migrate {
-                            new_contract_address: self.contract,
-                            erc20_native_tokens: addresses,
-                            network_id: self.network,
-                            new_signature_version: BridgeSignatureVersion::V2,
-                        },
-                    )),
-                &sub,
-            )
-            .await?
-            .wait_for_in_block()
-            .await?
-            .wait_for_success()
-            .await?;
+        sub.submit_extrinsic(&runtime::tx().sudo().sudo(
+            sub_types::framenode_runtime::RuntimeCall::EthBridge(
+                sub_types::eth_bridge::pallet::Call::migrate {
+                    new_contract_address: self.contract,
+                    erc20_native_tokens: addresses,
+                    network_id: self.network,
+                    new_signature_version: BridgeSignatureVersion::V2,
+                },
+            ),
+        ))
+        .await?;
 
         Ok(())
     }

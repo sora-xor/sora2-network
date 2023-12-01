@@ -33,7 +33,7 @@ services:
     container_name: bridge-hardhat
     entrypoint: sh
     command: docker-deploy.sh
-    depends_on: 
+    depends_on:
       geth:
         condition: service_healthy
     volumes:
@@ -78,7 +78,7 @@ services:
         "--ethereum-url", "ws://bridge-geth:8545",
         "--substrate-url", "ws://bridge-sora-alice:9944",
         "--ethereum-key", "3b61c8157aea9aba36248468af274cac4163b0b58c63eb66a8d2bbf219906c62",
-        "bridge", "relay", "substrate",
+        "bridge", "relay", "evm", "sora"
       ]
     networks:
       - bridgenet
@@ -99,7 +99,7 @@ services:
         "--ethereum-url", "ws://bridge-geth:8545",
         "--substrate-url", "ws://bridge-sora-alice:9944",
         "--substrate-key", "//Relayer",
-        "bridge", "relay", "ethereum",
+        "bridge", "relay", "sora", "evm",
         "--base-path", "/data"
       ]
     volumes:

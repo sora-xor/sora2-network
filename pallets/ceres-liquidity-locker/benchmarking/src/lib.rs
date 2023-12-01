@@ -1,6 +1,8 @@
 //! Ceres liquidity locker module benchmarking.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use ceres_liquidity_locker::AccountIdOf;
 use codec::Decode;

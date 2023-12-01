@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script can generate diffrent hard deriviated (HD means mnemo + path) keys, an "username" will be used as path:
+# This script can generate different hard deriviated (HD means mnemo + path) keys, an "username" will be used as path:
 # Validator ID - use `gen.sh keygen get_id "mnemo phrase" "username"` - It will provide a validator id
 # HD sr25519 key - use `gen.sh keygen get_sr_key "mnemo phrase" "username"` - It will provide an HD sr25519 key
 # HD sr25519 keys list - use `gen.sh sr_keygen_set "mnemo phrase" 20` - the last argument is number of required keys. It will generate list of HD sr25519 keys.

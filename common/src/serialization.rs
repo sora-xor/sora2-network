@@ -1,3 +1,4 @@
+#[cfg(feature = "std")]
 use super::*;
 #[cfg(feature = "std")]
 use {

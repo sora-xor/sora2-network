@@ -10,6 +10,6 @@ contract TestInboundChannel is InboundChannel, Ownable {
     {}
 
     function reset() external onlyOwner {
-        nonce = 0;
+        batch_nonce = 0;
     }
 }

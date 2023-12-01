@@ -41,8 +41,7 @@ module.exports = async ({
       from: deployer,
       autoMine: true,
     },
-    "initialize",
-    ethApp.address
+    "initialize"
   );
 
   // Mark deployment to run only once

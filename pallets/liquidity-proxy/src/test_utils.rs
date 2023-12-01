@@ -103,28 +103,28 @@ pub fn calculate_swap_batch_input_amount(
             let SwapBatchInfo {
                 outcome_asset_id,
                 dex_id,
+                outcome_asset_reuse,
                 ..
             } = batch.clone();
-            batch
+            let target_amount = batch
                 .receivers
                 .into_iter()
-                .map(|receiver_info| {
-                    let BatchReceiverInfo { target_amount, .. } = receiver_info;
-                    let filter = LiquiditySourceFilter::new(dex_id, sources.clone(), false);
-                    let SwapOutcome { amount, .. } = LiquidityProxy::quote(
-                        dex_id,
-                        &XOR,
-                        &outcome_asset_id,
-                        QuoteAmount::WithDesiredOutput {
-                            desired_amount_out: target_amount,
-                        },
-                        filter,
-                        true,
-                    )
-                    .expect("Expected to quote the outcome of batch swap");
-                    amount
-                })
+                .map(|receiver_info| receiver_info.target_amount)
                 .sum::<Balance>()
+                .saturating_sub(outcome_asset_reuse);
+            let filter = LiquiditySourceFilter::new(dex_id, sources.clone(), false);
+            let SwapOutcome { amount, .. } = LiquidityProxy::quote(
+                dex_id,
+                &XOR,
+                &outcome_asset_id,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: target_amount,
+                },
+                filter,
+                true,
+            )
+            .expect("Expected to quote the outcome of batch swap");
+            amount
         })
         .sum();
     actual_input_amount

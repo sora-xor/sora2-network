@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "1.10.0"
+version = "2.1.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -14,10 +14,12 @@ targets = ["x86_64-unknown-linux-gnu"]
 substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+codec = { package = "parity-scale-codec", version = "=3.6.5", default-features = false, features = [
     "derive",
     "chain-error",
 ] }
+# Does not compile with newer version
+parity-scale-codec-derive = "=3.6.5"
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 hex-literal = "0.3.1"
 log = { version = "0.4.14" }
@@ -29,24 +31,24 @@ bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git"
 sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
-bridge-data-signer = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
-multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
-beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+bridge-data-signer = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 ethereum-light-client = { path = "../pallets/trustless-bridge/ethereum-light-client", default-features = false, optional = true }
-dispatch = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
+dispatch = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 bridge-inbound-channel = { path = "../pallets/trustless-bridge/bridge-inbound-channel", default-features = false, optional = true }
 bridge-outbound-channel = { path = "../pallets/trustless-bridge/bridge-outbound-channel", default-features = false, optional = true }
 eth-app = { path = "../pallets/trustless-bridge/eth-app", default-features = false, optional = true }
 migration-app = { path = "../pallets/trustless-bridge/migration-app", default-features = false, optional = true }
 erc20-app = { path = "../pallets/trustless-bridge/erc20-app", default-features = false, optional = true }
-leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
-leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
+leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 bridge-proxy = { path = "../pallets/trustless-bridge/bridge-proxy", default-features = false, optional = true }
 bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/bridge-proxy/runtime-api", default-features = false, optional = true }
-substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
-substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
@@ -87,6 +89,7 @@ price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
+qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true}
 referrals = { path = "../pallets/referrals", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
@@ -160,7 +163,7 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 static_assertions = "1.1.0"
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 [dev-dependencies]
 env_logger = "0.9.0"
@@ -262,6 +265,7 @@ std = [
     "price-tools/std",
     "pswap-distribution-runtime-api/std",
     "pswap-distribution/std",
+    "qa-tools/std",
     "referrals/std",
     "rewards-runtime-api/std",
     "rewards/std",
@@ -295,6 +299,7 @@ private-net = [
     "farming/private-net",
     "vested-rewards/private-net",
     "framenode-chain-spec/private-net",
+    "qa-tools",
 ]
 
 wip = [
@@ -302,6 +307,9 @@ wip = [
     "framenode-chain-spec/wip",
     "common/wip",
     "dex-api/wip",
+    'liquidity-proxy/wip',
+    "liquidity-proxy-runtime-api/wip",
+    "liquidity-proxy-benchmarking/wip",
     "pallet-mmr",
     "beefy-light-client",
     "beefy-light-client-runtime-api",
@@ -325,9 +333,7 @@ wip = [
     "multisig-verifier",
 ]
 
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-]
+ready-to-test = ["framenode-chain-spec/ready-to-test"]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
@@ -384,6 +390,10 @@ runtime-benchmarks = [
     "xor-fee/runtime-benchmarks",
     "xst-benchmarking",
     "xst-benchmarking/runtime-benchmarks",
+    "dispatch/runtime-benchmarks",
+    "beefy-light-client/runtime-benchmarks",
+    "multisig-verifier/runtime-benchmarks",
+    "bridge-data-signer/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []
@@ -470,5 +480,5 @@ try-runtime = [
     "pallet-mmr/try-runtime",
     "pallet-beefy-mmr/try-runtime",
     "bridge-data-signer/try-runtime",
-    "multisig-verifier/try-runtime"
+    "multisig-verifier/try-runtime",
 ]

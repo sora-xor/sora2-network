@@ -32,6 +32,8 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use assets::Event as AssetsEvent;
 use band::Pallet as Band;
@@ -135,7 +137,9 @@ mod utils {
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![alice::<T>()])?;
         Band::<T>::relay(
             RawOrigin::Signed(alice::<T>()).into(),
-            vec![(symbol::<<T as band::Config>::Symbol>(), 1000000000)],
+            vec![(symbol::<<T as band::Config>::Symbol>(), 1000000000)]
+                .try_into()
+                .unwrap(),
             0,
             0,
         )
@@ -195,6 +199,16 @@ benchmarks! {
     )
     verify {
         utils::assert_last_event::<T>(Event::SyntheticAssetDisabled(asset_id).into())
+    }
+
+    remove_synthetic_asset {
+        let asset_id = utils::enable_synthetic_asset::<T>()?;
+    }: _(
+        RawOrigin::Root,
+        asset_id
+    )
+    verify {
+        utils::assert_last_event::<T>(Event::SyntheticAssetRemoved(asset_id, utils::symbol::<<T as xst::Config>::Symbol>()).into())
     }
 
     register_synthetic_asset {

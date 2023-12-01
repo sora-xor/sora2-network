@@ -32,7 +32,7 @@ RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
 # Install rust
 ENV RUST_NIGHTLY_VERSION=nightly-2023-03-21
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain stable && \
-    rustup toolchain install ${RUST_NIGHTLY_VERSION} && \
+    rustup default ${RUST_NIGHTLY_VERSION} && \
     rustup target add wasm32-unknown-unknown && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_NIGHTLY_VERSION} && \
     rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"

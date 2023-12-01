@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
@@ -268,7 +270,7 @@ impl<T: Config<I>, I: 'static>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        if let Ok(dex_info) = dex_manager::Pallet::<T>::get_dex_info(dex_id) {
+        if let Ok(dex_info) = T::DexInfoProvider::get_dex_info(dex_id) {
             if input_asset_id == &dex_info.base_asset_id {
                 <Reserves<T, I>>::contains_key(dex_id, output_asset_id)
             } else if output_asset_id == &dex_info.base_asset_id {
@@ -289,7 +291,7 @@ impl<T: Config<I>, I: 'static>
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         let amount = amount
             .try_into()
             .map_err(|_| Error::<T, I>::CalculationError)?;
@@ -443,7 +445,7 @@ impl<T: Config<I>, I: 'static>
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
+        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         if input_asset_id == &dex_info.base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, output_asset_id);
             let base_price_wrt_target = FixedWrapper::from(target_reserve) / base_reserve;
@@ -521,19 +523,14 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{EnsureDEXManager, EnsureTradingPairExists, ManagementMode};
+    use common::{DEXInfo, EnsureDEXManager, EnsureTradingPairExists, ManagementMode};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     #[pallet::config]
     pub trait Config<I: 'static = ()>:
-        frame_system::Config
-        + common::Config
-        + assets::Config
-        + technical::Config
-        + dex_manager::Config
+        frame_system::Config + common::Config + assets::Config + technical::Config
     {
         type GetFee: Get<Fixed>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
@@ -542,6 +539,7 @@ pub mod pallet {
             Self::AssetId,
             DispatchError,
         >;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
     }
 
     /// The current storage version.

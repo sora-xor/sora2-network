@@ -49,7 +49,6 @@ pswap-distribution = { path = "../pswap-distribution" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
-liquidity-proxy = { path = "../liquidity-proxy" }
 
 [features]
 default = ['std']

@@ -8,9 +8,7 @@ use bridge_common::{
     beefy_types::{BeefyMMRLeaf, Commitment, ValidatorProof, ValidatorSet},
     simplified_proof::Proof,
 };
-use bridge_types::{
-    substrate::BridgeMessage, types::AuxiliaryDigest, GenericNetworkId, SubNetworkId, H256,
-};
+use bridge_types::{types::AuxiliaryDigest, GenericNetworkId, SubNetworkId, H256};
 use sp_core::ecdsa;
 use sp_runtime::{
     traits::{AtLeast32BitUnsigned, Member},
@@ -23,7 +21,7 @@ use subxt::{
     tx::{Signer, StaticTxPayload},
 };
 
-use super::BlockNumberOrHash;
+use super::{BlockNumberOrHash, UnboundedGenericCommitment};
 
 pub type KeyPair = sp_core::sr25519::Pair;
 
@@ -115,7 +113,7 @@ pub trait ReceiverConfig: ConfigExt {
 
     fn submit_messages_commitment(
         network_id: SubNetworkId,
-        message: Vec<BridgeMessage>,
+        message: UnboundedGenericCommitment,
         proof: Self::MultiProof,
     ) -> StaticTxPayload<Self::SubmitMessagesCommitment>;
 
@@ -344,7 +342,7 @@ impl ReceiverConfig for MainnetConfig {
 
     fn submit_messages_commitment(
         network_id: SubNetworkId,
-        message: Vec<BridgeMessage>,
+        message: UnboundedGenericCommitment,
         proof: Self::MultiProof,
     ) -> subxt::tx::StaticTxPayload<Self::SubmitMessagesCommitment> {
         mainnet_runtime::tx()
@@ -444,7 +442,7 @@ impl ReceiverConfig for ParachainConfig {
 
     fn submit_messages_commitment(
         network_id: SubNetworkId,
-        message: Vec<BridgeMessage>,
+        message: UnboundedGenericCommitment,
         proof: Self::MultiProof,
     ) -> subxt::tx::StaticTxPayload<Self::SubmitMessagesCommitment> {
         parachain_runtime::tx()

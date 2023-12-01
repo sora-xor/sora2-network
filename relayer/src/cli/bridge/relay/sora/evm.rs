@@ -54,6 +54,7 @@ impl Command {
         let eth = self.eth.get_unsigned_ethereum().await?;
         let sub = self.sub.get_signed_substrate().await?;
         let chain_id = eth.get_chainid().await?;
+        debug!("Eth chain id = {}", chain_id);
         let mut outbound_channel_address;
         loop {
             let has_light_client = sub
@@ -76,7 +77,11 @@ impl Command {
             if outbound_channel_address.is_some() && has_light_client {
                 break;
             }
-            debug!("Waiting for bridge to be available");
+            debug!(
+                "Waiting for bridge to be available. Channel status = {}, light client status = {}",
+                outbound_channel_address.is_some(),
+                has_light_client
+            );
             tokio::time::sleep(Duration::from_secs(10)).await;
         }
         let proof_loader = ProofLoader::new(eth.clone(), self.base_path.clone());

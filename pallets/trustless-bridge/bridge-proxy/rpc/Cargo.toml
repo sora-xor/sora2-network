@@ -23,4 +23,4 @@ sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot
 
 bridge-proxy-runtime-api = { path = "../runtime-api" }
 common = { path = "../../../../common" }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }

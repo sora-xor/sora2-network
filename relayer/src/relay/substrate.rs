@@ -263,7 +263,7 @@ impl Relay {
                     first_attempt_failed = false;
                 }
                 info!(
-                    "failed: {}, lost gas: {}, successfull: {}",
+                    "failed: {}, lost gas: {}, successful: {}",
                     self.failed_to_sent.load(Ordering::Relaxed),
                     self.lost_gas.load(Ordering::Relaxed),
                     self.successful_sent.load(Ordering::Relaxed)

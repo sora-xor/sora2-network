@@ -15,6 +15,8 @@
 //! - `burn`: Burn an ETH balance.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
 use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
@@ -60,7 +62,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::types::{AdditionalEVMOutboundData, AssetKind};
+    use bridge_types::evm::AdditionalEVMOutboundData;
+    use bridge_types::types::AssetKind;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::{OriginFor, *};
@@ -147,7 +150,7 @@ pub mod pallet {
             for (asset_id, address, precision) in erc20_assets {
                 erc20_tokens.push(address);
                 if let Some(registered_token) =
-                    erc20_app::Pallet::<T>::token_address(network_id, asset_id)
+                    erc20_app::Pallet::<T>::token_address(network_id, &asset_id)
                 {
                     if registered_token != address {
                         return Err(Error::<T>::TokenRegisteredWithAnotherAddress.into());
@@ -199,7 +202,7 @@ pub mod pallet {
             let mut sidechain_tokens = vec![];
             for (asset_id, address, precision) in sidechain_assets {
                 sidechain_tokens.push(address);
-                if let Some(_) = erc20_app::Pallet::<T>::token_address(network_id, asset_id) {
+                if let Some(_) = erc20_app::Pallet::<T>::token_address(network_id, &asset_id) {
                     return Err(Error::<T>::TokenRegisteredWithAnotherAddress.into());
                 } else {
                     erc20_app::Pallet::<T>::register_asset_inner(

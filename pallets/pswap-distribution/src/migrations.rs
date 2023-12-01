@@ -51,6 +51,7 @@ pub mod v2 {
                     "Expected storage version 1, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
+                return frame_support::weights::Weight::zero();
             }
 
             info!("Migrating PswapDistribution to v2");

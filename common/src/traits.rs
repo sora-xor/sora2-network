@@ -246,6 +246,10 @@ pub trait DataFeed<Symbol, Rate, ResolveTime> {
 
     /// Get all supported symbols and their last update time
     fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError>;
+
+    /// Get rate for the specified symbol without any checks
+    /// - `symbol`: which symbol to query
+    fn quote_unchecked(symbol: &Symbol) -> Option<Rate>;
 }
 
 impl<Symbol, Rate, ResolveTime> DataFeed<Symbol, Rate, ResolveTime> for () {
@@ -255,6 +259,20 @@ impl<Symbol, Rate, ResolveTime> DataFeed<Symbol, Rate, ResolveTime> for () {
 
     fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError> {
         Ok(Vec::new())
+    }
+
+    fn quote_unchecked(_symbol: &Symbol) -> Option<Rate> {
+        None
+    }
+}
+
+pub trait OnSymbolDisabled<Symbol> {
+    fn disable_symbol(symbol: &Symbol);
+}
+
+impl<Symbol> OnSymbolDisabled<Symbol> for () {
+    fn disable_symbol(_symbol: &Symbol) {
+        ()
     }
 }
 
@@ -990,6 +1008,22 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
     }
 }
 
+pub trait SyntheticInfoProvider<AssetId> {
+    fn is_synthetic(asset_id: &AssetId) -> bool;
+
+    fn get_synthetic_assets() -> Vec<AssetId>;
+}
+
+impl<AssetId> SyntheticInfoProvider<AssetId> for () {
+    fn is_synthetic(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
+    fn get_synthetic_assets() -> Vec<AssetId> {
+        unimplemented!()
+    }
+}
+
 pub trait IsValid {
     fn is_valid(&self) -> bool;
 }
@@ -1031,5 +1065,19 @@ impl<AssetId, AccountId> BuyBackHandler<AccountId, AssetId> for () {
         _amount: Balance,
     ) -> Result<Balance, DispatchError> {
         Ok(0)
+    }
+}
+
+pub trait ReferencePriceProvider<AssetId, Balance> {
+    fn get_reference_price(asset_id: &AssetId) -> Result<Balance, DispatchError>;
+}
+
+pub trait ReferrerAccountProvider<AccountId> {
+    fn get_referrer_account(who: &AccountId) -> Option<AccountId>;
+}
+
+impl<AccountId> ReferrerAccountProvider<AccountId> for () {
+    fn get_referrer_account(_who: &AccountId) -> Option<AccountId> {
+        None
     }
 }

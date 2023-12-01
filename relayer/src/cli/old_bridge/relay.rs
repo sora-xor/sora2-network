@@ -189,21 +189,12 @@ impl Command {
         let res = pending.confirmations(30).await?;
         info!("Result: {:?}", res);
         if let (Some(kind), Some(tx)) = (kind, res) {
-            sub.api()
-                .tx()
-                .sign_and_submit_then_watch_default(
-                    &runtime::tx().eth_bridge().request_from_sidechain(
-                        tx.transaction_hash,
-                        sub_types::eth_bridge::requests::IncomingRequestKind::Transaction(kind),
-                        self.network,
-                    ),
-                    sub,
-                )
-                .await?
-                .wait_for_in_block()
-                .await?
-                .wait_for_success()
-                .await?;
+            sub.submit_extrinsic(&runtime::tx().eth_bridge().request_from_sidechain(
+                tx.transaction_hash,
+                sub_types::eth_bridge::requests::IncomingRequestKind::Transaction(kind),
+                self.network,
+            ))
+            .await?;
         }
         Ok(())
     }

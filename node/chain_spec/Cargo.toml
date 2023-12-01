@@ -1,6 +1,6 @@
 [package]
 name = "framenode-chain-spec"
-version = "1.10.0"
+version = "2.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
@@ -30,7 +30,7 @@ common = { path = "../../common" }
 faucet = { path = "../../pallets/faucet", optional = true }
 framenode-runtime = { path = "../../runtime" }
 iroha-migration = { path = "../../pallets/iroha-migration" }
-order-book = { path = "../../pallets/order-book", optional = true}
+order-book = { path = "../../pallets/order-book", optional = true }
 permissions = { path = "../../pallets/permissions" }
 rewards = { path = "../../pallets/rewards" }
 technical = { path = "../../pallets/technical" }

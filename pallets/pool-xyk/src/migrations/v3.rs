@@ -32,7 +32,12 @@ use crate::pallet::{Config, Pallet};
 use common::{Balance, LiquiditySourceType, ToFeeAccount, TradingPair};
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::traits::OnRuntimeUpgrade;
-use frame_support::{log::info, weights::Weight};
+use frame_support::weights::WeightMeter;
+use frame_support::{
+    log::{error, info},
+    weights::Weight,
+};
+use sp_runtime::DispatchResult;
 use sp_std::prelude::Vec;
 
 use crate::{PoolProviders, Properties, Reserves, TotalIssuances, WeightInfo};
@@ -45,18 +50,25 @@ pub struct XYKPoolUpgrade<T, L>(core::marker::PhantomData<(T, L)>);
 impl<T, L> XYKPoolUpgrade<T, L>
 where
     T: crate::Config,
+    L: Get<Vec<(T::AssetId, T::AssetId, T::DEXId)>>,
 {
     /// Unlocks and withdraws a liquidity portion provided by `user_account`
     /// Returns resulting weight and error flag, indicating that there was some problem
     /// with liquidity withdrawal for the provided user account
     fn pull_out_user_from_pool(
+        weight_meter: &mut WeightMeter,
         user_account: T::AccountId,
         base_asset: T::AssetId,
         target_asset: T::AssetId,
-        pool_account: &T::AccountId,
         dex_id: T::DEXId,
         lp_tokens: u128,
-    ) -> (Weight, bool) {
+    ) -> DispatchResult {
+        weight_meter.check_accrue(
+            T::DbWeight::get()
+                .reads_writes(2, 2)
+                .saturating_add(<T as Config>::WeightInfo::withdraw_liquidity()),
+        );
+
         UserInfos::<T>::mutate(&user_account, |user_infos| {
             for user_info in user_infos.iter_mut() {
                 if user_info.is_farm == true
@@ -79,7 +91,7 @@ where
             }
         });
 
-        if let Err(_) = Pallet::<T>::withdraw_liquidity_unchecked(
+        Pallet::<T>::withdraw_liquidity_unchecked(
             user_account.clone(),
             dex_id,
             base_asset,
@@ -87,35 +99,24 @@ where
             lp_tokens,
             1,
             1,
-        ) {
-            info!("Error encountered during liquidity withdrawal for account {:?} in pool {:?}, skipping", user_account, pool_account);
-            (
-                T::DbWeight::get()
-                    .reads_writes(2, 2)
-                    .saturating_add(<T as Config>::WeightInfo::withdraw_liquidity()),
-                false,
-            )
-        } else {
-            (
-                T::DbWeight::get()
-                    .reads_writes(3, 3)
-                    .saturating_add(<T as Config>::WeightInfo::withdraw_liquidity()),
-                true,
-            )
-        }
+        )?;
+
+        Ok(())
     }
 
     /// Removes corresponding entries from Properties, Reserves and TotalIssuances
     /// Also deregisters pool account and fee account from technical pallet
     fn remove_pool(
+        weight_meter: &mut WeightMeter,
         dex_id: T::DEXId,
         base_asset: T::AssetId,
         target_asset: T::AssetId,
         pool_account: T::AccountId,
-    ) -> Weight {
+    ) -> DispatchResult {
+        weight_meter.check_accrue(T::DbWeight::get().reads_writes(4, 8));
+
         let (_, tech_acc_id) =
-            Pallet::<T>::tech_account_from_dex_and_asset_pair(dex_id, base_asset, target_asset)
-                .unwrap();
+            Pallet::<T>::tech_account_from_dex_and_asset_pair(dex_id, base_asset, target_asset)?;
 
         let pair = TradingPair::<T::AssetId> {
             base_asset_id: base_asset.clone(),
@@ -123,23 +124,94 @@ where
         };
 
         EnabledSources::<T>::mutate(&dex_id, &pair, |opt_set| {
-            opt_set
-                .as_mut()
-                .unwrap()
-                .remove(&LiquiditySourceType::XYKPool)
+            if let Some(sources) = opt_set.as_mut() {
+                sources.remove(&LiquiditySourceType::XYKPool);
+            }
         });
         Properties::<T>::remove(base_asset, target_asset);
 
-        let fee_acc_id = tech_acc_id.to_fee_account().unwrap();
+        let fee_acc_id = tech_acc_id
+            .to_fee_account()
+            .ok_or(crate::Error::<T>::FeeAccountIsInvalid)?;
 
-        technical::Pallet::<T>::deregister_tech_account_id(tech_acc_id).unwrap();
-        technical::Pallet::<T>::deregister_tech_account_id(fee_acc_id).unwrap();
+        technical::Pallet::<T>::deregister_tech_account_id(tech_acc_id)?;
+        technical::Pallet::<T>::deregister_tech_account_id(fee_acc_id)?;
 
         Reserves::<T>::remove(&base_asset, &target_asset);
 
         TotalIssuances::<T>::remove(&pool_account);
 
-        return T::DbWeight::get().reads_writes(4, 8);
+        Ok(())
+    }
+
+    pub fn migrate(weight_meter: &mut WeightMeter) -> DispatchResult {
+        weight_meter.check_accrue(T::DbWeight::get().reads(1));
+        if StorageVersion::get::<Pallet<T>>() >= StorageVersion::new(3) {
+            info!("Migration to version 3 has already been applied");
+            return Ok(());
+        }
+
+        info!("Migrating PoolXYK to v3");
+
+        let swap_pairs_to_be_deleted: Vec<(T::AssetId, T::AssetId, T::DEXId)> = L::get();
+
+        for (base_asset, target_asset, dex_id) in swap_pairs_to_be_deleted {
+            weight_meter.check_accrue(T::DbWeight::get().reads(1));
+
+            let pool_account =
+                if let Some(pool_property) = Properties::<T>::get(&base_asset, &target_asset) {
+                    pool_property.0
+                } else {
+                    info!(
+                        "Pool with base asset {:?} and target asset {:?} is not present, skipping",
+                        base_asset, target_asset
+                    );
+                    continue;
+                };
+
+            info!(
+                "Pool with assets {:?} and {:?} reserves before liquidity withdrawal: {:?}",
+                base_asset,
+                target_asset,
+                Reserves::<T>::get(&base_asset, &target_asset)
+            );
+
+            // `Self::pull_out_user_from_pool` triggers `withdraw_liquidity_unchecked` which modifies `PoolProviders`
+            // StorageDoubleMap, so we collect the users first to safely call `withdraw_liquidity_unchecked`
+            let liquidity_holders: Vec<(T::AccountId, Balance)> =
+                PoolProviders::<T>::iter_prefix(&pool_account)
+                    .inspect(|_| {
+                        weight_meter.check_accrue(T::DbWeight::get().reads(1));
+                    })
+                    .collect();
+
+            // For each liquidity holder we remove locks in ceres and demeter platforms and withdraw the corresponding amount of liquidity
+            // If there some error is encountered during withdrawal, we still process other liquidity holders
+            // but keeping the pool after this
+            for (user_account, lp_tokens) in liquidity_holders {
+                Self::pull_out_user_from_pool(
+                    weight_meter,
+                    user_account,
+                    base_asset,
+                    target_asset,
+                    dex_id,
+                    lp_tokens,
+                )?;
+            }
+
+            info!(
+                "Pool with assets {:?} and {:?} reserves after liquidity withdrawal: {:?}",
+                base_asset,
+                target_asset,
+                Reserves::<T>::get(&base_asset, &target_asset)
+            );
+
+            Self::remove_pool(weight_meter, dex_id, base_asset, target_asset, pool_account)?;
+        }
+
+        weight_meter.check_accrue(T::DbWeight::get().writes(1));
+        StorageVersion::new(3).put::<Pallet<T>>();
+        Ok(())
     }
 }
 
@@ -150,76 +222,16 @@ where
     L: Get<Vec<(T::AssetId, T::AssetId, T::DEXId)>>,
 {
     fn on_runtime_upgrade() -> Weight {
-        if StorageVersion::get::<Pallet<T>>() >= StorageVersion::new(3) {
-            info!("Migration to version 3 has already been applied");
-            return Weight::zero();
-        }
+        let mut weight_meter = WeightMeter::max_limit();
 
-        info!("Migrating PoolXYK to v3");
-
-        let swap_pairs_to_be_deleted: Vec<(T::AssetId, T::AssetId, T::DEXId)> = L::get();
-
-        let resulting_weight = swap_pairs_to_be_deleted.into_iter().fold(
-            Weight::zero(),
-            |weight_acc, (base_asset, target_asset, dex_id)| {
-                let pool_account =
-                    if let Some(pool_property) = Properties::<T>::get(&base_asset, &target_asset) {
-                        pool_property.0
-                    } else {
-                        info!(
-                        "Pool with base asset {:?} and target asset {:?} is not present, skipping",
-                        base_asset, target_asset
-                    );
-                        return weight_acc.saturating_add(T::DbWeight::get().reads(1));
-                    };
-
-                info!("Pool with assets {:?} and {:?} reserves before liquidity withdrawal: {:?}", base_asset, target_asset, Reserves::<T>::get(&base_asset, &target_asset));
-
-                // `Self::pull_out_user_from_pool` triggers `withdraw_liquidity_unchecked` which modifies `PoolProviders`
-                // StorageDoubleMap, so we collect the users first to safely call `withdraw_liquidity_unchecked`
-                let liquidity_holders: Vec<(T::AccountId, Balance)> = PoolProviders::<T>::iter_prefix(&pool_account)
-                    .collect();
-
-                // For each liquidity holder we remove locks in ceres and demeter platforms and withdraw the corresponding amount of liquidity
-                // If there some error is encountered during withdrawal, we still process other liquidity holders
-                // but keeping the pool after this
-                let (liquidity_withdrawal_weight, is_liquidity_withdrawal_ok): (Weight, bool) = liquidity_holders.into_iter()
-                    .fold((Weight::zero(), true),
-                        |(weight_acc, is_liquidity_withdrawal_ok_acc), (user_account, lp_tokens)| {
-                            let (weight, is_liquidity_withdrawal_ok) = Self::pull_out_user_from_pool(
-                                user_account,
-                                base_asset,
-                                target_asset,
-                                &pool_account,
-                                dex_id,
-                                lp_tokens,
-                            );
-                            (
-                                weight_acc.saturating_add(weight),
-                                is_liquidity_withdrawal_ok_acc && is_liquidity_withdrawal_ok
-                            )
-                        },
-                    );
-
-                info!("Pool with assets {:?} and {:?} reserves after liquidity withdrawal: {:?}", base_asset, target_asset, Reserves::<T>::get(&base_asset, &target_asset));
-
-                if !is_liquidity_withdrawal_ok {
-                    info!("Error encountered during liquidity withdrawal, the pool could not be deleted");
-                    return weight_acc
-                        .saturating_add(liquidity_withdrawal_weight)
-                }
-
-                let pool_removal_weight = Self::remove_pool(dex_id, base_asset, target_asset, pool_account);
-
-                weight_acc
-                    .saturating_add(liquidity_withdrawal_weight)
-                    .saturating_add(pool_removal_weight)
-                    .saturating_add(T::DbWeight::get().reads(1))
-            },
-        );
-
-        StorageVersion::new(3).put::<Pallet<T>>();
-        resulting_weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))
+        if let Err(err) =
+            frame_support::storage::with_storage_layer(|| Self::migrate(&mut weight_meter))
+        {
+            error!("Failed to migrate PoolXYK to v3: {:?}, rollback", err);
+        } else {
+            info!("Successfully migrated PoolXYK to v3");
+        };
+        weight_meter.consumed
     }
 
     #[cfg(feature = "try-runtime")]

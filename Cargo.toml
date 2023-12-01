@@ -209,20 +209,20 @@ try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = 
 pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
 [patch."https://github.com/sora-xor/sora2-common.git"]
-beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-dispatch = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
-multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.4" }
+beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+dispatch = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
+multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.13" }
 
 # [patch."https://github.com/sora-xor/sora2-common.git"]
 # beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }
@@ -235,7 +235,7 @@ multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag
 # dispatch = { path = "../sora2-common/pallets/dispatch" }
 # substrate-bridge-app = { path = "../sora2-common/pallets/substrate-app" }
 # substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }
-# substrate-bridge-channel-rpc = { path = "../sora2-common/pallets/substrate-channel/rpc" }
+# bridge-channel-rpc = { path = "../sora2-common/pallets/substrate-channel/rpc" }
 # bridge-types = { path = "../sora2-common/pallets/types" }
 # bridge-data-signer = { path = "../sora2-common/pallets/data-signer" }
 # multisig-verifier = { path = "../sora2-common/pallets/multisig-verifier" }
@@ -276,7 +276,6 @@ members = [
     "pallets/trustless-bridge/ethereum-light-client",
     "pallets/trustless-bridge/bridge-inbound-channel",
     "pallets/trustless-bridge/bridge-outbound-channel",
-    "pallets/trustless-bridge/bridge-channel-rpc",
     "pallets/trustless-bridge/eth-app",
     "pallets/trustless-bridge/erc20-app",
     "pallets/trustless-bridge/migration-app",
@@ -284,6 +283,7 @@ members = [
     "pallets/trustless-bridge/bridge-proxy/rpc",
     "pallets/trustless-bridge/bridge-proxy/runtime-api",
     "pallets/band",
+    "pallets/qa-tools",
     "relayer",
     "relayer/substrate-gen",
     "relayer/ethereum-gen",

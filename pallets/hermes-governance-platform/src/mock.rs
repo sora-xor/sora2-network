@@ -1,4 +1,6 @@
+use crate::migrations::VotingOption;
 use crate::{self as hermes_governance_platform};
+use codec::{Decode, Encode};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
@@ -6,7 +8,7 @@ use common::{
     Description, Fixed, HERMES_ASSET_ID, PSWAP, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -54,7 +56,18 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const CHARLES: AccountId = 3;
 pub const BUY_BACK_ACCOUNT: AccountId = 23;
+
+#[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub struct OldHermesVotingInfo {
+    /// Voting option
+    pub voting_option: VotingOption,
+    /// Number of hermes
+    pub number_of_hermes: Balance,
+    /// Hermes withdrawn
+    pub hermes_withdrawn: bool,
+}
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -99,11 +112,19 @@ impl frame_system::Config for Runtime {
 
 parameter_types! {
     pub const HermesAssetId: AssetId = HERMES_ASSET_ID;
+    pub const StringLimit: u32 = 64;
+    pub const OptionsLimit: u32 = 5;
+    pub const TitleLimit: u32 = 128;
+    pub const DescriptionLimit: u32 = 4096;
 }
 
 impl crate::Config for Runtime {
-    const MIN_DURATION_OF_POLL: Self::Moment = 172_800_000;
+    const MIN_DURATION_OF_POLL: Self::Moment = 14_400_000;
     const MAX_DURATION_OF_POLL: Self::Moment = 604_800_000;
+    type StringLimit = StringLimit;
+    type OptionsLimit = OptionsLimit;
+    type TitleLimit = TitleLimit;
+    type DescriptionLimit = DescriptionLimit;
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
     type WeightInfo = ();
@@ -150,6 +171,7 @@ impl dex_manager::Config for Runtime {}
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -215,6 +237,7 @@ impl pswap_distribution::Config for Runtime {
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl technical::Config for Runtime {
@@ -298,6 +321,7 @@ impl Default for ExtBuilder {
             endowed_accounts: vec![
                 (ALICE, HERMES_ASSET_ID, balance!(300000)),
                 (BOB, HERMES_ASSET_ID, balance!(500)),
+                (CHARLES, HERMES_ASSET_ID, balance!(300000)),
             ],
         }
     }
@@ -337,5 +361,13 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_initialize(System::block_number());
     }
 }

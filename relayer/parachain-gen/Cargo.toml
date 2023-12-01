@@ -12,7 +12,7 @@ subxt = { version = "0.25.0" }
 codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
 scale-info = { version = "2", features = ["derive"] }
 sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
+bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 jsonrpsee = { version = "0.16.2", features = [
     "macros",
     "ws-client",
@@ -22,6 +22,6 @@ sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkado
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 async-trait = "0.1.49"
 serde = { version = "1.0.137", features = ["derive"] }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false } 
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 

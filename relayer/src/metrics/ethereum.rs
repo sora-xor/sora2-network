@@ -47,8 +47,10 @@ impl MetricsCollectorBuilder {
             .client
             .expect("client is not specified. It's developer mistake");
         let beefy = self.beefy.map(|x| BeefyLightClient::new(x, client.inner()));
-        let inbound = self.beefy.map(|x| InboundChannel::new(x, client.inner()));
-        let outbound = self.beefy.map(|x| OutboundChannel::new(x, client.inner()));
+        let inbound = self.inbound.map(|x| InboundChannel::new(x, client.inner()));
+        let outbound = self
+            .outbound
+            .map(|x| OutboundChannel::new(x, client.inner()));
         let chain_id = client.get_chainid().await?;
 
         Ok(MetricsCollector {
@@ -89,7 +91,7 @@ impl MetricsCollector {
                 metrics::absolute_counter!(ETH_BEEFY_LATEST_BLOCK, latest_block, labels);
             }
             if let Some(contract) = &self.inbound {
-                let nonce: u64 = contract.nonce().call().await?;
+                let nonce: u64 = contract.batch_nonce().call().await?;
                 metrics::absolute_counter!(ETH_INBOUND_NONCE, nonce, labels);
             }
             if let Some(contract) = &self.outbound {
@@ -97,7 +99,7 @@ impl MetricsCollector {
                 metrics::absolute_counter!(ETH_OUTBOUND_NONCE, nonce, labels);
             }
             let block_number = self.client.get_block_number().await?.as_u64();
-            metrics::counter!(ETH_BLOCK_NUMBER, block_number, labels);
+            metrics::absolute_counter!(ETH_BLOCK_NUMBER, block_number, labels);
         }
     }
 

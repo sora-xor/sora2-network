@@ -28,42 +28,25 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use bridge_types::{CHANNEL_INDEXING_PREFIX, H256};
-use codec::{Decode, Encode};
+#![cfg_attr(rustfmt, rustfmt_skip)]
+#![allow(unused_parens)]
+#![allow(unused_imports)]
 
-use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc};
-use sp_api::offchain::OffchainStorage;
+use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use core::marker::PhantomData;
 
-pub use bridge_outbound_channel::Commitment;
-
-#[rpc(server, client)]
-pub trait BridgeChannelAPI {
-    #[method(name = "intentivizedChannel_commitment")]
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>>;
-}
-
-pub struct BridgeChannelClient<S> {
-    storage: S,
-}
-
-impl<S> BridgeChannelClient<S> {
-    /// Construct default `Template`.
-    pub fn new(storage: S) -> Self {
-        Self { storage }
+pub trait WeightInfo {
+	fn order_book_create_empty_batch() -> Weight {
+        Weight::zero()
+    }
+	fn order_book_create_and_fill_batch() -> Weight {
+        Weight::zero()
     }
 }
 
-impl<S> BridgeChannelAPIServer for BridgeChannelClient<S>
-where
-    S: OffchainStorage + 'static,
-{
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>> {
-        let key = (CHANNEL_INDEXING_PREFIX, commitment_hash).encode();
-        Ok(self
-            .storage
-            .get(sp_offchain::STORAGE_PREFIX, &key)
-            .map(|value| Decode::decode(&mut &*value))
-            .transpose()
-            .map_err(|err| anyhow::Error::from(err))?)
-    }
-}
+impl WeightInfo for () {}
+
+// This pallet is intended for use only in `private-net`
+// and for testing purposes, thus weights are not important.
+pub struct SubstrateWeight<T>(PhantomData<T>);
+impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {}

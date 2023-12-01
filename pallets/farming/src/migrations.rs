@@ -111,6 +111,7 @@ pub mod v3 {
                     "Expected storage version 2, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
+                return Weight::zero();
             }
 
             info!("Migrating Farming to v3");

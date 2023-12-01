@@ -85,8 +85,8 @@ impl MetricsCollector {
 
             let address = mainnet_runtime::storage().mmr_leaf().beefy_authorities();
             self.update_metric(&address, block_hash, |vset| {
-                metrics::absolute_counter!(SUB_BEEFY_CURRENT_ID, vset.id);
-                metrics::absolute_counter!(SUB_BEEFY_CURRENT_LEN, vset.len as u64);
+                metrics::gauge!(SUB_BEEFY_CURRENT_ID, vset.id as f64);
+                metrics::gauge!(SUB_BEEFY_CURRENT_LEN, vset.len as f64);
             })
             .await;
 
@@ -94,8 +94,8 @@ impl MetricsCollector {
                 .mmr_leaf()
                 .beefy_next_authorities();
             self.update_metric(&address, block_hash, |vset| {
-                metrics::absolute_counter!(SUB_BEEFY_NEXT_ID, vset.id);
-                metrics::absolute_counter!(SUB_BEEFY_NEXT_LEN, vset.len as u64);
+                metrics::gauge!(SUB_BEEFY_NEXT_ID, vset.id as f64);
+                metrics::gauge!(SUB_BEEFY_NEXT_LEN, vset.len as f64);
             })
             .await;
 
@@ -154,14 +154,10 @@ impl MetricsCollector {
                         .beefy_light_client()
                         .current_validator_set(network_id);
                     self.update_metric(&address, block_hash, |vset| {
-                        metrics::absolute_counter!(
-                            SUB_BEEFY_LIGHT_CLIENT_CURRENT_ID,
-                            vset.id,
-                            labels
-                        );
-                        metrics::absolute_counter!(
+                        metrics::gauge!(SUB_BEEFY_LIGHT_CLIENT_CURRENT_ID, vset.id as f64, labels);
+                        metrics::gauge!(
                             SUB_BEEFY_LIGHT_CLIENT_CURRENT_LEN,
-                            vset.len as u64,
+                            vset.len as f64,
                             labels
                         );
                     })
@@ -171,12 +167,8 @@ impl MetricsCollector {
                         .beefy_light_client()
                         .next_validator_set(network_id);
                     self.update_metric(&address, block_hash, |vset| {
-                        metrics::absolute_counter!(SUB_BEEFY_LIGHT_CLIENT_NEXT_ID, vset.id, labels);
-                        metrics::absolute_counter!(
-                            SUB_BEEFY_LIGHT_CLIENT_NEXT_LEN,
-                            vset.len as u64,
-                            labels
-                        );
+                        metrics::gauge!(SUB_BEEFY_LIGHT_CLIENT_NEXT_ID, vset.id as f64, labels);
+                        metrics::gauge!(SUB_BEEFY_LIGHT_CLIENT_NEXT_LEN, vset.len as f64, labels);
                     })
                     .await;
 
@@ -235,19 +227,19 @@ pub fn describe_metrics() {
         "EVM bridge inbound channel dispatched nonce"
     );
     metrics::describe_counter!(SUB_OUTBOUND_NONCE, "EVM bridge outbound channel nonce");
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         SUB_BEEFY_LIGHT_CLIENT_CURRENT_ID,
         "Current validator set id in SORA BEEFY light client"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         SUB_BEEFY_LIGHT_CLIENT_CURRENT_LEN,
         "Current validator set length in SORA BEEFY light client"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         SUB_BEEFY_LIGHT_CLIENT_NEXT_ID,
         "Next validator set id in SORA BEEFY light client"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         SUB_BEEFY_LIGHT_CLIENT_NEXT_LEN,
         "Next validator set length in SORA BEEFY light client"
     );
@@ -255,16 +247,16 @@ pub fn describe_metrics() {
         SUB_BEEFY_LIGHT_CLIENT_LATEST_BLOCK,
         "Latest sent block in SORA BEEFY light client"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         SUB_BEEFY_CURRENT_ID,
         "Current validator set id in SORA BEEFY"
     );
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         SUB_BEEFY_CURRENT_LEN,
         "Current validator set length in SORA BEEFY"
     );
-    metrics::describe_counter!(SUB_BEEFY_NEXT_ID, "Next validator set id in SORA BEEFY");
-    metrics::describe_counter!(
+    metrics::describe_gauge!(SUB_BEEFY_NEXT_ID, "Next validator set id in SORA BEEFY");
+    metrics::describe_gauge!(
         SUB_BEEFY_NEXT_LEN,
         "Next validator set length in SORA BEEFY"
     );
