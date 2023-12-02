@@ -39,12 +39,13 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::parameter_types;
 use frame_support::traits::{ConstU16, ConstU64};
 use frame_support::traits::{Everything, GenesisBuild};
+use frame_system::offchain::SendTransactionTypes;
 use hex_literal::hex;
 use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::MultiSignature;
 use sp_runtime::{
-    testing::Header,
+    testing::{Header, TestXt},
     traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
 };
 
@@ -85,6 +86,16 @@ frame_support::construct_runtime!(
         Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
     }
 );
+
+pub type MockExtrinsic = TestXt<RuntimeCall, ()>;
+
+impl<LocalCall> SendTransactionTypes<LocalCall> for TestRuntime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    type Extrinsic = MockExtrinsic;
+    type OverarchingCall = RuntimeCall;
+}
 
 parameter_types! {
     // Assets
@@ -168,6 +179,8 @@ impl currencies::Config for TestRuntime {
     type WeightInfo = ();
 }
 
+// TODO macro, see example
+// https://github.com/minterest-finance/minterest-chain-node/blob/development/test-helper/src/lib.rs#L64
 impl frame_system::Config for TestRuntime {
     type BaseCallFilter = frame_support::traits::Everything;
     type BlockWeights = ();

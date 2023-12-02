@@ -581,4 +581,4 @@ fn test_borrow_cdp_does_not_exist() {
 // kusd_amount = bad_debt
 // kusd_amount > bad_debt
 
-// TODO add tests for accrue()
+// TODO add tests for offchain worker accrue()

@@ -92,6 +92,7 @@ pub mod pallet {
         Description, ReferencePriceProvider,
     };
     use frame_support::pallet_prelude::*;
+    use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::{CheckedMul, Saturating};
@@ -119,8 +120,15 @@ pub mod pallet {
             for (cdp_id, cdp) in <Treasury<T>>::iter() {
                 if cdp.last_fee_update_time <= outdated_timestamp {
                     debug!("Accrue for CDP {:?}", cdp_id);
-                    // TODO send extrinsic unsigned
-                    // Self::accrue_internal(cdp_id)?;
+                    let call = Call::<T>::accrue { cdp_id };
+                    if let Err(err) =
+                        SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
+                    {
+                        warn!(
+                            "Failed in offchain_worker send accrue(cdp_id: {:?}): {:?}",
+                            cdp_id, err
+                        );
+                    }
                 }
             }
         }
@@ -128,7 +136,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        assets::Config + frame_system::Config + technical::Config + timestamp::Config
+        assets::Config
+        + frame_system::Config
+        + technical::Config
+        + timestamp::Config
+        + SendTransactionTypes<Call<Self>>
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type AssetInfoProvider: AssetInfoProvider<
@@ -763,14 +775,12 @@ pub mod pallet {
                         // TODO custom error
                         InvalidTransaction::Custom(1u8)
                     })? {
-                        let valid_tx = ValidTransaction::with_tag_prefix("Kensetsu::accrue")
+                        ValidTransaction::with_tag_prefix("Kensetsu::accrue")
                             .priority(T::UnsignedPriority::get())
                             .longevity(T::UnsignedLongevity::get())
                             .and_provides([&cdp_id])
                             .propagate(true)
-                            .build();
-
-                        valid_tx
+                            .build()
                     } else {
                         InvalidTransaction::Future.into()
                     }
@@ -906,7 +916,7 @@ pub mod pallet {
         fn is_it_time_to_accrue(cdp_id: &U256) -> Result<bool, DispatchError> {
             let now = Timestamp::<T>::get();
             let outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
-            let cdp = Self::cdp(&cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             Ok(cdp.debt > 0 && cdp.last_fee_update_time <= outdated_timestamp)
         }
 
