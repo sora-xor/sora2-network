@@ -166,7 +166,7 @@ pub mod pallet {
         /// - `bids_owner`: Creator of the buy orders placed on the order books,
         /// - `asks_owner`: Creator of the sell orders placed on the order books,
         /// - `fill_settings`: Parameters for placing the orders in each order book.
-        #[pallet::call_index(3)]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_batch())]
         pub fn order_book_create_and_fill_batch(
             origin: OriginFor<T>,

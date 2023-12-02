@@ -1456,9 +1456,9 @@ parameter_types! {
 
 #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 impl qa_tools::Config for Runtime {
-    type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
     type AssetInfoProvider = Assets;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
+    type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {

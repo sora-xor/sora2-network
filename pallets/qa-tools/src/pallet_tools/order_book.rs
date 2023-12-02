@@ -194,7 +194,7 @@ fn verify_fill_side_price_params<T: Config>(
             && params.orders_per_price
                 <= <T as order_book::Config>::MaxLimitOrdersForPrice::get().into()
             && (params.highest_price.saturating_sub(params.lowest_price) / params.price_step)
-                < <T as order_book::Config>::MaxSidePriceCount::get().into(),
+                <= <T as order_book::Config>::MaxSidePriceCount::get().into(),
         crate::Error::<T>::IncorrectPrice
     );
     Ok(())
