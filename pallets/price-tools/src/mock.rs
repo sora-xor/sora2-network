@@ -162,7 +162,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = MockDEXApi;
-    type TradingPairSourceManager = ();
+    type TradingPairSourceManager = TradingPair;
     type WeightInfo = ();
 }
 
@@ -271,6 +271,62 @@ impl demeter_farming_platform::Config for Runtime {
     type WeightInfo = ();
 }
 
+pub struct TradingPair;
+
+impl common::TradingPairSourceManager<DEXId, AssetId> for TradingPair {
+    fn list_enabled_sources_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<scale_info::prelude::collections::BTreeSet<LiquiditySourceType>, DispatchError>
+    {
+        Ok(Default::default())
+    }
+
+    fn is_source_enabled_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError> {
+        Ok(false)
+    }
+
+    fn enable_source_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        Ok(())
+    }
+
+    fn disable_source_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        Ok(())
+    }
+
+    fn is_trading_pair_enabled(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError> {
+        Ok(false)
+    }
+
+    fn register_pair(
+        dex_id: DEXId,
+        base_asset_id: AssetId,
+        target_asset_id: AssetId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -281,7 +337,7 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type TradingPairSourceManager = ();
+    type TradingPairSourceManager = TradingPair;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = ();
     type EnabledSourcesManager = ();
