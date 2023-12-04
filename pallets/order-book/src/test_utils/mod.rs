@@ -161,9 +161,15 @@ pub fn lock_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>, DexId
 pub fn create_empty_order_book<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>,
 ) -> OrderBook<T> {
+    fill_balance::<T>(accounts::alice::<T>(), order_book_id);
+
     assert_ok!(Pallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
-        order_book_id
+        RawOrigin::Root.into(),
+        order_book_id,
+        balance!(0.00001),
+        balance!(0.00001),
+        balance!(1),
+        balance!(1000)
     ));
 
     Pallet::<T>::order_books(order_book_id).unwrap()
@@ -183,13 +189,17 @@ pub fn create_empty_order_book<T: Config>(
 pub fn create_and_fill_order_book<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>,
 ) -> OrderBook<T> {
-    assert_ok!(Pallet::<T>::create_orderbook(
-        RawOrigin::Signed(accounts::bob::<T>()).into(),
-        order_book_id
-    ));
-
     fill_balance::<T>(accounts::bob::<T>(), order_book_id);
     fill_balance::<T>(accounts::charlie::<T>(), order_book_id);
+
+    assert_ok!(Pallet::<T>::create_orderbook(
+        RawOrigin::Root.into(),
+        order_book_id,
+        balance!(0.00001),
+        balance!(0.00001),
+        balance!(1),
+        balance!(1000)
+    ));
 
     let lifespan = Some(100000u32.into());
 

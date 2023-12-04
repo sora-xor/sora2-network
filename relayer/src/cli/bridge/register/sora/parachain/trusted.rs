@@ -60,7 +60,8 @@ impl Command {
             .constant_fetch_or_default(
                 &parachain_runtime::constants()
                     .substrate_bridge_inbound_channel()
-                    .this_network_id(),
+                    .this_network_id()
+                    .unvalidated(),
             )
             .context("Fetch this network id")?;
 

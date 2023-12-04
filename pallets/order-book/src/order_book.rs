@@ -36,7 +36,7 @@ use crate::{
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::QuoteAmount;
-use common::{balance, Balance, PriceVariant};
+use common::{Balance, PriceVariant};
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
@@ -80,26 +80,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             max_lot_size,
             tech_status: OrderBookTechStatus::Ready,
         }
-    }
-
-    pub fn default(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
-        Self::new(
-            order_book_id,
-            OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
-            OrderVolume::divisible(balance!(0.00001)),
-            OrderVolume::divisible(balance!(1)),
-            OrderVolume::divisible(balance!(1000)),
-        )
-    }
-
-    pub fn default_indivisible(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
-        Self::new(
-            order_book_id,
-            OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
-            OrderVolume::indivisible(1),
-            OrderVolume::indivisible(1),
-            OrderVolume::indivisible(1000),
-        )
     }
 
     pub fn next_order_id(&mut self) -> T::OrderId {

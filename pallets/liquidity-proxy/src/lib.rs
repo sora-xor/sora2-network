@@ -46,8 +46,8 @@ use common::{
     balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, RewardReason, TradingPair, TradingPairSourceManager, VestedRewardsPallet,
-    XSTUSD,
+    LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
+    TradingPairSourceManager, VestedRewardsPallet, XSTUSD,
 };
 use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
@@ -986,7 +986,7 @@ impl<T: Config> Pallet<T> {
         let mut sources =
             T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
         let mut total_weight = <T as Config>::WeightInfo::list_liquidity_sources();
-        let locked = trading_pair::LockedLiquiditySources::<T>::get();
+        let locked = T::LockedLiquiditySourcesManager::get();
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
 
@@ -1106,9 +1106,7 @@ impl<T: Config> Pallet<T> {
             .tuple_windows()
             .filter_map(|(from, to)| {
                 let pair = Self::weak_sort_pair(&dex_info, *from, *to);
-
-                // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-                trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
+                T::TradingPairSourceManager::list_enabled_sources_for_trading_pair(
                     dex_id,
                     &pair.base_asset_id,
                     &pair.target_asset_id,
@@ -1127,9 +1125,7 @@ impl<T: Config> Pallet<T> {
         let sources_set = fallible_iterator::convert(path.to_vec().iter().tuple_windows().map(
             |(from, to)| -> Result<_, DispatchError> {
                 let pair = Self::weak_sort_pair(&dex_info, *from, *to);
-
-                // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-                let sources = trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
+                let sources = T::TradingPairSourceManager::list_enabled_sources_for_trading_pair(
                     &dex_id,
                     &pair.base_asset_id,
                     &pair.target_asset_id,
@@ -2247,11 +2243,8 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + common::Config + assets::Config + trading_pair::Config
-    {
+    pub trait Config: frame_system::Config + common::Config + assets::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityRegistry: LiquidityRegistry<
             Self::DEXId,
@@ -2267,9 +2260,12 @@ pub mod pallet {
         type PrimaryMarketXST: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type LockedLiquiditySourcesManager: LockedLiquiditySourcesManager<LiquiditySourceType>;
         type GetADARAccountId: Get<Self::AccountId>;
         type ADARCommissionRatioUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
         type MaxAdditionalDataLength: Get<u32>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
@@ -2430,7 +2426,7 @@ pub mod pallet {
                 Error::<T>::UnableToEnableLiquiditySource
             );
 
-            let mut locked = trading_pair::LockedLiquiditySources::<T>::get();
+            let mut locked = T::LockedLiquiditySourcesManager::get();
 
             ensure!(
                 locked.contains(&liquidity_source),
@@ -2438,7 +2434,7 @@ pub mod pallet {
             );
 
             locked.retain(|x| *x != liquidity_source);
-            trading_pair::LockedLiquiditySources::<T>::set(locked);
+            T::LockedLiquiditySourcesManager::set(locked);
             Self::deposit_event(Event::<T>::LiquiditySourceEnabled(liquidity_source));
             Ok(().into())
         }
@@ -2460,10 +2456,10 @@ pub mod pallet {
                 Error::<T>::UnableToDisableLiquiditySource
             );
             ensure!(
-                !trading_pair::LockedLiquiditySources::<T>::get().contains(&liquidity_source),
+                !T::LockedLiquiditySourcesManager::get().contains(&liquidity_source),
                 Error::<T>::LiquiditySourceAlreadyDisabled
             );
-            trading_pair::LockedLiquiditySources::<T>::append(liquidity_source);
+            T::LockedLiquiditySourcesManager::append(liquidity_source);
             Self::deposit_event(Event::<T>::LiquiditySourceDisabled(liquidity_source));
             Ok(().into())
         }
