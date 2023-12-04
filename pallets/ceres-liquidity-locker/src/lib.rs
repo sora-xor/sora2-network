@@ -1,6 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 #[cfg(test)]
 mod mock;
@@ -229,10 +227,11 @@ pub mod pallet {
             let mut locked_pool_tokens = 0;
 
             for locks in lockups.iter() {
-                if locks.asset_a == asset_a && locks.asset_b == asset_b {
-                    if current_timestamp < locks.unlocking_timestamp {
-                        locked_pool_tokens = locked_pool_tokens + locks.pool_tokens;
-                    }
+                if locks.asset_a == asset_a
+                    && locks.asset_b == asset_b
+                    && current_timestamp < locks.unlocking_timestamp
+                {
+                    locked_pool_tokens += locks.pool_tokens;
                 }
             }
 
@@ -257,7 +256,7 @@ pub mod pallet {
             } else {
                 // Transfer CERES fee amount
                 Assets::<T>::transfer_from(
-                    &T::CeresAssetId::get().into(),
+                    &T::CeresAssetId::get(),
                     &user,
                     &FeesOptionTwoAccount::<T>::get(),
                     FeesOptionTwoCeresAmount::<T>::get(),
@@ -274,8 +273,8 @@ pub mod pallet {
                 )?;
             }
 
-            pool_tokens = T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
-                .unwrap_or(0);
+            pool_tokens =
+                T::XYKPool::balance_of_pool_provider(pool_account, user.clone()).unwrap_or(0);
             T::DemeterFarmingPlatform::update_pool_tokens(
                 user.clone(),
                 pool_tokens,
@@ -367,7 +366,7 @@ pub mod pallet {
             withdrawing_amount: Balance,
         ) -> bool {
             // Get lock info of extrinsic caller
-            let lockups = <LockerData<T>>::get(&user);
+            let lockups = <LockerData<T>>::get(user);
             let current_timestamp = Timestamp::<T>::get();
 
             // Get pool account
@@ -380,27 +379,23 @@ pub mod pallet {
 
             // Calculate number of pool tokens to be locked
             let pool_tokens =
-                T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
-                    .unwrap_or(0);
+                T::XYKPool::balance_of_pool_provider(pool_account, user.clone()).unwrap_or(0);
             if pool_tokens == 0 {
                 return false;
             }
 
             let mut locked_pool_tokens = 0;
             for locks in lockups.iter() {
-                if locks.asset_a == asset_a && locks.asset_b == asset_b {
-                    if current_timestamp < locks.unlocking_timestamp {
-                        locked_pool_tokens = locked_pool_tokens + locks.pool_tokens;
-                    }
+                if locks.asset_a == asset_a
+                    && locks.asset_b == asset_b
+                    && current_timestamp < locks.unlocking_timestamp
+                {
+                    locked_pool_tokens += locks.pool_tokens;
                 }
             }
-            let unlocked_pool_tokens = pool_tokens.checked_sub(locked_pool_tokens).unwrap_or(0);
+            let unlocked_pool_tokens = pool_tokens.saturating_sub(locked_pool_tokens);
 
-            if withdrawing_amount > pool_tokens || unlocked_pool_tokens >= withdrawing_amount {
-                true
-            } else {
-                false
-            }
+            withdrawing_amount > pool_tokens || unlocked_pool_tokens >= withdrawing_amount
         }
 
         /// Pay Locker fees in LP tokens
@@ -423,15 +418,14 @@ pub mod pallet {
                 FeesOptionTwoAccount::<T>::get()
             };
 
-            let result = T::XYKPool::transfer_lp_tokens(
+            T::XYKPool::transfer_lp_tokens(
                 pool_account,
                 asset_a,
                 asset_b,
                 user,
                 fee_account,
                 pool_tokens,
-            );
-            return result;
+            )
         }
     }
 }

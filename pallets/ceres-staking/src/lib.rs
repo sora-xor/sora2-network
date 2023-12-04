@@ -1,6 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 pub mod weights;
 
@@ -153,7 +151,7 @@ pub mod pallet {
             let mut staking_info = <Stakers<T>>::get(&source);
 
             // Set staking info
-            staking_info.deposited = staking_info.deposited + amount;
+            staking_info.deposited += amount;
 
             // Put updated staking info into storage
             <Stakers<T>>::insert(&source, staking_info);

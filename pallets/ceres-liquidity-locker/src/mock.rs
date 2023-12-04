@@ -7,7 +7,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
+
 use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
@@ -44,8 +44,8 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub GetBaseAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000").into());
-    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
+    pub GetBaseAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000"));
+    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
     pub const ExistentialDeposit: u128 = 0;
     pub GetPswapDistributionAccountId: AccountId = 3u128;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
@@ -289,14 +289,14 @@ impl Default for ExtBuilder {
             initial_dex_list: vec![(
                 DEX_A_ID,
                 DEXInfo {
-                    base_asset_id: XOR.into(),
-                    synthetic_base_asset_id: XST.into(),
+                    base_asset_id: XOR,
+                    synthetic_base_asset_id: XST,
                     is_public: true,
                 },
             )],
             endowed_accounts: vec![
-                (ALICE(), CERES_ASSET_ID.into(), balance!(2000)),
-                (BOB(), CERES_ASSET_ID.into(), balance!(1000)),
+                (ALICE(), CERES_ASSET_ID, balance!(2000)),
+                (BOB(), CERES_ASSET_ID, balance!(1000)),
             ],
             initial_permission_owners: vec![(
                 MANAGE_DEX,

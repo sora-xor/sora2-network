@@ -37,11 +37,11 @@ benchmarks! {
         let caller = alice::<T>();
         let amount = balance!(100);
         let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
         frame_system::Pallet::<T>::inc_providers(&caller);
 
         let _ = Assets::<T>::mint(
-            RawOrigin::Signed(asset_owner.clone()).into(),
+            RawOrigin::Signed(asset_owner).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(101)
@@ -55,11 +55,11 @@ benchmarks! {
         let caller = alice::<T>();
         let amount = balance!(100);
         let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
         frame_system::Pallet::<T>::inc_providers(&caller);
 
         Assets::<T>::mint(
-            RawOrigin::Signed(asset_owner.clone()).into(),
+            RawOrigin::Signed(asset_owner).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(101)

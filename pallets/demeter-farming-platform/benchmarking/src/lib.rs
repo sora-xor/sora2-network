@@ -1,8 +1,6 @@
 //! Demeter farming platform module benchmarking.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use codec::Decode;
 use common::{
@@ -85,7 +83,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     );
 
     let _ = Assets::<T>::register_asset_id(
-        owner.clone(),
+        owner,
         CERES_ASSET_ID.into(),
         AssetSymbol(b"CERES".to_vec()),
         AssetName(b"Ceres".to_vec()),
@@ -101,14 +99,12 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
 
 fn run_to_block<T: Config>(n: u32) {
     while frame_system::Pallet::<T>::block_number() < n.into() {
-        frame_system::Pallet::<T>::on_finalize(frame_system::Pallet::<T>::block_number().into());
+        frame_system::Pallet::<T>::on_finalize(frame_system::Pallet::<T>::block_number());
         frame_system::Pallet::<T>::set_block_number(
             frame_system::Pallet::<T>::block_number() + 1u32.into(),
         );
-        frame_system::Pallet::<T>::on_initialize(frame_system::Pallet::<T>::block_number().into());
-        DemeterFarmingPlatform::<T>::on_initialize(
-            frame_system::Pallet::<T>::block_number().into(),
-        );
+        frame_system::Pallet::<T>::on_initialize(frame_system::Pallet::<T>::block_number());
+        DemeterFarmingPlatform::<T>::on_initialize(frame_system::Pallet::<T>::block_number());
     }
 }
 
@@ -249,7 +245,7 @@ benchmarks! {
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
-            pallet_account.clone(),
+            pallet_account,
             balance!(20000)
         );
 
@@ -273,7 +269,7 @@ benchmarks! {
 
         // Add pool
         let _ = DemeterFarmingPlatform::<T>::add_pool(
-            RawOrigin::Signed(authority.clone()).into(),
+            RawOrigin::Signed(authority).into(),
             reward_asset.into(),
             reward_asset.into(),
             reward_asset.into(),
@@ -333,7 +329,7 @@ benchmarks! {
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
-            pallet_account.clone(),
+            pallet_account,
             balance!(20000)
         );
 
@@ -350,7 +346,7 @@ benchmarks! {
 
         // Add pool
         let _ = DemeterFarmingPlatform::<T>::add_pool(
-            RawOrigin::Signed(authority.clone()).into(),
+            RawOrigin::Signed(authority).into(),
             reward_asset.into(),
             reward_asset.into(),
             reward_asset.into(),
@@ -574,7 +570,7 @@ benchmarks! {
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
-            pallet_account.clone(),
+            pallet_account,
             balance!(20000)
         );
 
@@ -614,7 +610,7 @@ benchmarks! {
         );
     }: _(
         RawOrigin::Signed(authority.clone()),
-        caller.clone().into(),
+        caller.clone(),
         reward_asset.into(),
         reward_asset.into(),
         reward_asset.into(),

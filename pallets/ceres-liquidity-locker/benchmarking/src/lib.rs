@@ -1,8 +1,6 @@
 //! Ceres liquidity locker module benchmarking.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 use ceres_liquidity_locker::AccountIdOf;
 use codec::Decode;
@@ -85,21 +83,11 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         None,
     );
 
-    TradingPair::<T>::register(
-        owner_origin.clone(),
-        DEX.into(),
-        XOR.into(),
-        ceres_asset_id.into(),
-    )
-    .unwrap();
+    TradingPair::<T>::register(owner_origin, DEX.into(), XOR.into(), ceres_asset_id.into())
+        .unwrap();
 
-    Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
-    Assets::<T>::mint_to(
-        &ceres_asset_id.into(),
-        &owner.clone(),
-        &owner.clone(),
-        balance!(50000),
-    )?;
+    Assets::<T>::mint_to(&XOR.into(), &owner, &owner, balance!(50000))?;
+    Assets::<T>::mint_to(&ceres_asset_id.into(), &owner, &owner, balance!(50000))?;
 
     Ok(())
 }
@@ -107,8 +95,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
-        RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner).into();
     let ceres_asset_id = common::AssetId32::from_bytes(hex!(
         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
     ));
@@ -123,7 +110,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )?;
 
     XYKPool::<T>::deposit_liquidity(
-        owner_origin.clone(),
+        owner_origin,
         DEX.into(),
         XOR.into(),
         ceres_asset_id.into(),
