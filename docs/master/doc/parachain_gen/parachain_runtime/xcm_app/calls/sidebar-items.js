@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["RegisterAsset","SetAssetMinimumAmount","SudoSendXcm","TransactionApi","Transfer","TryClaimBridgeAsset"]};
+window.SIDEBAR_ITEMS = {"struct":["RegisterAsset","SendXorToMainnet","SetAssetMinimumAmount","SudoSendXcm","TransactionApi","Transfer","TryClaimBridgeAsset"]};

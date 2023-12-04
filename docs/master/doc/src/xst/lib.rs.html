@@ -1228,10 +1228,6 @@
 <a href="#1213" id="1213">1213</a>
 <a href="#1214" id="1214">1214</a>
 <a href="#1215" id="1215">1215</a>
-<a href="#1216" id="1216">1216</a>
-<a href="#1217" id="1217">1217</a>
-<a href="#1218" id="1218">1218</a>
-<a href="#1219" id="1219">1219</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1366,11 +1362,8 @@
     <span class="kw">use </span>frame_support::{pallet_prelude::<span class="kw-2">*</span>, Parameter};
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
-    <span class="comment">// TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-    </span><span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config:
-        frame_system::Config + technical::Config + common::Config + trading_pair::Config
-    {
+    <span class="attr">#[pallet::config]
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + technical::Config + common::Config {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="doccomment">/// AssetId which is convertible to/from XSTUSD
         </span><span class="kw">type </span>GetSyntheticBaseAssetId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
@@ -1750,7 +1743,7 @@
     }
 
     <span class="kw">fn </span>enable_synthetic_trading_pair(synthetic_asset_id: T::AssetId) -&gt; sp_runtime::DispatchResult {
-        <span class="kw">if </span>trading_pair::Pallet::&lt;T&gt;::is_trading_pair_enabled(
+        <span class="kw">if </span>T::TradingPairSourceManager::is_trading_pair_enabled(
             <span class="kw-2">&amp;</span>DEXId::Polkaswap.into(),
             <span class="kw-2">&amp;</span>T::GetSyntheticBaseAssetId::get(),
             <span class="kw-2">&amp;</span>synthetic_asset_id,
@@ -1758,7 +1751,7 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        trading_pair::Pallet::&lt;T&gt;::register_pair(
+        T::TradingPairSourceManager::register_pair(
             DEXId::Polkaswap.into(),
             T::GetSyntheticBaseAssetId::get(),
             synthetic_asset_id,
@@ -2114,17 +2107,16 @@
 
     <span class="doccomment">/// Used for converting XST fee to XOR
     </span><span class="kw">fn </span>convert_fee(fee_amount: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span>output_to_base: FixedWrapper =
-            &lt;T <span class="kw">as </span>pallet::Config&gt;::PriceToolsPallet::get_average_price(
-                <span class="kw-2">&amp;</span>T::GetSyntheticBaseAssetId::get(),
-                <span class="kw-2">&amp;</span>T::GetBaseAssetId::get(),
-                <span class="comment">// Since `Buy` is more expensive in case if we are buying XOR
-                // (x XST -&gt; y XOR; y XOR -&gt; x&#39; XST, x&#39; &lt; x),
-                // it seems logical to show this amount in order
-                // to not accidentally lie about the price.
-                </span>PriceVariant::Buy,
-            )<span class="question-mark">?
-            </span>.into();
+        <span class="kw">let </span>output_to_base: FixedWrapper = &lt;T <span class="kw">as </span>Config&gt;::PriceToolsPallet::get_average_price(
+            <span class="kw-2">&amp;</span>T::GetSyntheticBaseAssetId::get(),
+            <span class="kw-2">&amp;</span>T::GetBaseAssetId::get(),
+            <span class="comment">// Since `Buy` is more expensive in case if we are buying XOR
+            // (x XST -&gt; y XOR; y XOR -&gt; x&#39; XST, x&#39; &lt; x),
+            // it seems logical to show this amount in order
+            // to not accidentally lie about the price.
+            </span>PriceVariant::Buy,
+        )<span class="question-mark">?
+        </span>.into();
         <span class="prelude-val">Ok</span>((fee_amount * output_to_base)
             .try_into_balance()
             .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>)

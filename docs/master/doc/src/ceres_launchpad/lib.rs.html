@@ -1415,6 +1415,10 @@
 <a href="#1400" id="1400">1400</a>
 <a href="#1401" id="1401">1401</a>
 <a href="#1402" id="1402">1402</a>
+<a href="#1403" id="1403">1403</a>
+<a href="#1404" id="1404">1404</a>
+<a href="#1405" id="1405">1405</a>
+<a href="#1406" id="1406">1406</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::type_complexity)]
@@ -1430,6 +1434,7 @@
 <span class="kw">mod </span>benchmarking;
 
 <span class="kw">use </span>codec::{Decode, Encode};
+<span class="kw">use </span>common::TradingPairSourceManager;
 <span class="kw">pub use </span>weights::WeightInfo;
 
 <span class="attr">#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
@@ -1518,7 +1523,6 @@
     </span><span class="kw">pub trait </span>Config:
         frame_system::Config
         + assets::Config
-        + trading_pair::Config
         + pool_xyk::Config
         + ceres_liquidity_locker::Config
         + pswap_distribution::Config
@@ -1532,13 +1536,14 @@
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
 
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
     }
 
     <span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
     <span class="kw">pub type </span>Timestamp&lt;T&gt; = timestamp::Pallet&lt;T&gt;;
-    <span class="kw">type </span>TradingPair&lt;T&gt; = trading_pair::Pallet&lt;T&gt;;
     <span class="kw">type </span>PoolXYK&lt;T&gt; = pool_xyk::Pallet&lt;T&gt;;
     <span class="kw">type </span>CeresLiquidityLocker&lt;T&gt; = ceres_liquidity_locker::Pallet&lt;T&gt;;
     <span class="kw">type </span>TokenLocker&lt;T&gt; = ceres_token_locker::Pallet&lt;T&gt;;
@@ -1816,8 +1821,12 @@
             };
 
             <span class="macro">ensure!</span>(
-                !TradingPair::&lt;T&gt;::is_trading_pair_enabled(<span class="kw-2">&amp;</span>dex_id, <span class="kw-2">&amp;</span>base_asset, <span class="kw-2">&amp;</span>asset_id)
-                    .unwrap_or(<span class="bool-val">true</span>),
+                !&lt;T <span class="kw">as </span>Config&gt;::TradingPairSourceManager::is_trading_pair_enabled(
+                    <span class="kw-2">&amp;</span>dex_id,
+                    <span class="kw-2">&amp;</span>base_asset,
+                    <span class="kw-2">&amp;</span>asset_id
+                )
+                .unwrap_or(<span class="bool-val">true</span>),
                 Error::&lt;T&gt;::CantCreateILOForListedToken
             );
 
@@ -2150,8 +2159,7 @@
                 DEXId::PolkaswapXSTUSD.into()
             };
             <span class="comment">// Register trading pair
-            </span>TradingPair::&lt;T&gt;::register(
-                RawOrigin::Signed(pallet_account.clone()).into(),
+            </span>&lt;T <span class="kw">as </span>Config&gt;::TradingPairSourceManager::register_pair(
                 dex_id,
                 ilo_info.base_asset,
                 asset_id,

@@ -318,7 +318,7 @@
     }
 
     new_trivial {
-        <span class="kw">let </span>dex_info = &lt;T <span class="kw">as </span>trading_pair::Config&gt;::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>DEX.into())<span class="question-mark">?</span>;
+        <span class="kw">let </span>dex_info = &lt;T <span class="kw">as </span>pool_xyk::Config&gt;::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>DEX.into())<span class="question-mark">?</span>;
         <span class="kw">let </span>from_asset: T::AssetId = XSTUSD.into();
         <span class="kw">let </span>to_asset: T::AssetId = VAL.into();
     }: {
