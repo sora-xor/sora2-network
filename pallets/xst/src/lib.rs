@@ -132,11 +132,8 @@ pub mod pallet {
     use frame_support::{pallet_prelude::*, Parameter};
     use frame_system::pallet_prelude::*;
 
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + technical::Config + common::Config + trading_pair::Config
-    {
+    pub trait Config: frame_system::Config + technical::Config + common::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// AssetId which is convertible to/from XSTUSD
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
@@ -516,7 +513,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn enable_synthetic_trading_pair(synthetic_asset_id: T::AssetId) -> sp_runtime::DispatchResult {
-        if trading_pair::Pallet::<T>::is_trading_pair_enabled(
+        if T::TradingPairSourceManager::is_trading_pair_enabled(
             &DEXId::Polkaswap.into(),
             &T::GetSyntheticBaseAssetId::get(),
             &synthetic_asset_id,
@@ -524,7 +521,7 @@ impl<T: Config> Pallet<T> {
             return Ok(());
         }
 
-        trading_pair::Pallet::<T>::register_pair(
+        T::TradingPairSourceManager::register_pair(
             DEXId::Polkaswap.into(),
             T::GetSyntheticBaseAssetId::get(),
             synthetic_asset_id,
@@ -880,17 +877,16 @@ impl<T: Config> Pallet<T> {
 
     /// Used for converting XST fee to XOR
     fn convert_fee(fee_amount: Balance) -> Result<Balance, DispatchError> {
-        let output_to_base: FixedWrapper =
-            <T as pallet::Config>::PriceToolsPallet::get_average_price(
-                &T::GetSyntheticBaseAssetId::get(),
-                &T::GetBaseAssetId::get(),
-                // Since `Buy` is more expensive in case if we are buying XOR
-                // (x XST -> y XOR; y XOR -> x' XST, x' < x),
-                // it seems logical to show this amount in order
-                // to not accidentally lie about the price.
-                PriceVariant::Buy,
-            )?
-            .into();
+        let output_to_base: FixedWrapper = <T as Config>::PriceToolsPallet::get_average_price(
+            &T::GetSyntheticBaseAssetId::get(),
+            &T::GetBaseAssetId::get(),
+            // Since `Buy` is more expensive in case if we are buying XOR
+            // (x XST -> y XOR; y XOR -> x' XST, x' < x),
+            // it seems logical to show this amount in order
+            // to not accidentally lie about the price.
+            PriceVariant::Buy,
+        )?
+        .into();
         Ok((fee_amount * output_to_base)
             .try_into_balance()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?)

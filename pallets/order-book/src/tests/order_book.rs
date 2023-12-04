@@ -40,8 +40,8 @@ use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
     CancelReason, Config, DataLayer, DealInfo, LimitOrder, MarketChange, MarketOrder, MarketRole,
-    OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderVolume,
-    Payment,
+    OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice,
+    OrderVolume, Payment,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_core::Get;
@@ -81,53 +81,6 @@ fn should_create_new() {
 }
 
 #[test]
-fn should_create_default() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-        dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
-    };
-
-    let expected = OrderBook::<Runtime> {
-        order_book_id: order_book_id,
-        status: OrderBookStatus::Trade,
-        last_order_id: 0,
-        tick_size: balance!(0.00001).into(),
-        step_lot_size: balance!(0.00001).into(),
-        min_lot_size: balance!(1).into(),
-        max_lot_size: balance!(1000).into(),
-        tech_status: OrderBookTechStatus::Ready,
-    };
-
-    assert_eq!(OrderBook::<Runtime>::default(order_book_id), expected);
-}
-
-#[test]
-fn should_create_default_indivisible() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-        dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
-    };
-
-    let expected = OrderBook::<Runtime> {
-        order_book_id: order_book_id,
-        status: OrderBookStatus::Trade,
-        last_order_id: 0,
-        tick_size: balance!(0.00001).into(),
-        step_lot_size: OrderVolume::indivisible(1),
-        min_lot_size: OrderVolume::indivisible(1),
-        max_lot_size: OrderVolume::indivisible(1000),
-        tech_status: OrderBookTechStatus::Ready,
-    };
-
-    assert_eq!(
-        OrderBook::<Runtime>::default_indivisible(order_book_id),
-        expected
-    );
-}
-
-#[test]
 fn should_increment_order_id() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
@@ -135,7 +88,13 @@ fn should_increment_order_id() {
         quote: XOR.into(),
     };
 
-    let mut order_book = OrderBook::<Runtime>::default(order_book_id);
+    let mut order_book = OrderBook::<Runtime>::new(
+        order_book_id,
+        OrderPrice::divisible(balance!(0.00001)),
+        OrderVolume::divisible(balance!(0.00001)),
+        OrderVolume::divisible(balance!(1)),
+        OrderVolume::divisible(balance!(1000)),
+    );
     assert_eq!(order_book.last_order_id, 0);
 
     assert_eq!(order_book.next_order_id(), 1);
@@ -251,7 +210,14 @@ fn should_place_nft_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default_indivisible(order_book_id);
+        let order_book = OrderBook::<Runtime>::new(
+            order_book_id,
+            OrderPrice::divisible(balance!(0.00001)),
+            OrderVolume::indivisible(1),
+            OrderVolume::indivisible(1),
+            OrderVolume::indivisible(1000),
+        );
+
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         let order_id = 11;
@@ -680,7 +646,13 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
             quote: XOR.into(),
         };
 
-        let mut order_book = OrderBook::<Runtime>::default(order_book_id);
+        let mut order_book = OrderBook::<Runtime>::new(
+            order_book_id,
+            OrderPrice::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(1000)),
+        );
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
@@ -728,7 +700,13 @@ fn should_not_place_invalid_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default(order_book_id);
+        let order_book = OrderBook::<Runtime>::new(
+            order_book_id,
+            OrderPrice::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(1000)),
+        );
 
         let order = LimitOrder::<Runtime>::new(
             1,
@@ -796,7 +774,13 @@ fn should_not_place_invalid_nft_limit_order() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default_indivisible(order_book_id);
+        let order_book = OrderBook::<Runtime>::new(
+            order_book_id,
+            OrderPrice::divisible(balance!(0.00001)),
+            OrderVolume::indivisible(1),
+            OrderVolume::indivisible(1),
+            OrderVolume::indivisible(1000),
+        );
 
         let order = LimitOrder::<Runtime>::new(
             1,
@@ -843,7 +827,13 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default(order_book_id);
+        let order_book = OrderBook::<Runtime>::new(
+            order_book_id,
+            OrderPrice::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(1000)),
+        );
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
 
         fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
@@ -901,7 +891,14 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default(order_book_id);
+        let order_book = OrderBook::<Runtime>::new(
+            order_book_id,
+            OrderPrice::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(1000)),
+        );
+
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
         let max_orders_for_price: u32 = <Runtime as Config>::MaxLimitOrdersForPrice::get();
 
@@ -972,7 +969,13 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
             quote: XOR.into(),
         };
 
-        let order_book = OrderBook::<Runtime>::default(order_book_id);
+        let order_book = OrderBook::<Runtime>::new(
+            order_book_id,
+            OrderPrice::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(1000)),
+        );
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
         let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
 
