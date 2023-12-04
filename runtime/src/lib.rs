@@ -1002,6 +1002,10 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
@@ -1056,6 +1060,9 @@ impl liquidity_proxy::Config for Runtime {
     type SecondaryMarket = pool_xyk::Pallet<Runtime>;
     type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
     type VestedRewardsPallet = VestedRewards;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type LockedLiquiditySourcesManager = trading_pair::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type GetADARAccountId = GetADARAccountId;
     type ADARCommissionRatioUpdateOrigin = EitherOfDiverse<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
@@ -1105,6 +1112,7 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 
     #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = order_book::Pallet<Runtime>;
@@ -1578,6 +1586,7 @@ impl farming::Config for Runtime {
     type SchedulerOriginCaller = OriginCaller;
     type Scheduler = Scheduler;
     type RewardDoublingAssets = FarmingRewardDoublingAssets;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -1681,6 +1690,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureTradingPairExists = TradingPair;
     type PriceToolsPallet = PriceTools;
     type VestedRewardsPallet = VestedRewards;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
@@ -1741,6 +1751,7 @@ impl vested_rewards::Config for Runtime {
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
 }
 
@@ -1814,6 +1825,7 @@ parameter_types! {
 impl ceres_launchpad::Config for Runtime {
     const MILLISECONDS_PER_DAY: Moment = 86_400_000;
     type RuntimeEvent = RuntimeEvent;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ceres_launchpad::weights::SubstrateWeight<Runtime>;
 }
 

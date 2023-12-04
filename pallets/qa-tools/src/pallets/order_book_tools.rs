@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::Config;
-use common::{balance, Balance, PriceVariant};
+use common::{balance, Balance, PriceVariant, TradingPairSourceManager};
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
@@ -79,12 +79,12 @@ pub fn create_multiple_empty_unchecked<T: Config>(
         .filter(|(id, _)| !<order_book::OrderBooks<T>>::contains_key(id))
         .collect();
     for (order_book_id, _) in &to_create_ids {
-        if !trading_pair::Pallet::<T>::is_trading_pair_enabled(
+        if !T::TradingPairSourceManager::is_trading_pair_enabled(
             &order_book_id.dex_id,
             &order_book_id.quote.into(),
             &order_book_id.base.into(),
         )? {
-            trading_pair::Pallet::<T>::register_pair(
+            T::TradingPairSourceManager::register_pair(
                 order_book_id.dex_id,
                 order_book_id.quote.into(),
                 order_book_id.base.into(),
