@@ -5,7 +5,7 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, Fixed, HERMES_ASSET_ID, PSWAP, VAL, XST,
+    Description, Fixed, HERMES_ASSET_ID, PSWAP, TBCD, VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -131,7 +131,7 @@ impl crate::Config for Runtime {
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = HERMES_ASSET_ID;
-    pub const GetBuyBackAssetId: AssetId = XST;
+    pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
@@ -176,8 +176,11 @@ impl demeter_farming_platform::Config for Runtime {
 
 impl ceres_governance_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type CeresAssetId = ();
     type WeightInfo = ();
+    type StringLimit = StringLimit;
+    type OptionsLimit = OptionsLimit;
+    type TitleLimit = TitleLimit;
+    type DescriptionLimit = DescriptionLimit;
 }
 
 impl pool_xyk::Config for Runtime {
@@ -221,7 +224,7 @@ impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetXSTAssetId = GetBuyBackAssetId;
+    type GetTBCDAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

@@ -21,7 +21,7 @@ common = { path = "../../../common" }
 dex-runtime-api = { path = "../runtime-api" }
 
 [features]
-wip = [
-    "common/wip",
-    "dex-runtime-api/wip",
+ready-to-test = [
+    "common/ready-to-test",
+    "dex-runtime-api/ready-to-test",
 ]

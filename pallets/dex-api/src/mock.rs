@@ -33,7 +33,7 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed,
-    LiquiditySourceType, DOT, KSM, PSWAP, VAL, XOR, XST,
+    LiquiditySourceType, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -99,7 +99,7 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage},
+        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -147,6 +147,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type MockLiquiditySource =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
@@ -160,8 +161,10 @@ impl Config for Runtime {
     type XSTPool = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 
-    #[cfg(feature = "wip")] // order-book
+    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
+
+    type WeightInfo = ();
 }
 
 impl tokens::Config for Runtime {
@@ -190,7 +193,7 @@ impl currencies::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = XST;
+    pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
@@ -305,7 +308,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetXSTAssetId = GetBuyBackAssetId;
+    type GetTBCDAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

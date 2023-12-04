@@ -118,7 +118,7 @@ impl CustomFees {
                 Some(BIG_FEE)
             }
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             RuntimeCall::OrderBook(order_book::Call::update_orderbook { .. }) => Some(BIG_FEE),
             RuntimeCall::Assets(..)
             | RuntimeCall::EthBridge(..)
@@ -131,7 +131,7 @@ impl CustomFees {
             | RuntimeCall::Band(..)
             | RuntimeCall::Referrals(..) => Some(SMALL_FEE),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             RuntimeCall::OrderBook(..) => Some(SMALL_FEE),
             _ => None,
         }
@@ -143,7 +143,7 @@ pub enum CustomFeeDetails {
     /// Regular call with custom fee without any additional logic
     Regular(Balance),
 
-    #[cfg(feature = "wip")] // order-book
+    #[cfg(feature = "ready-to-test")] // order-book
     /// OrderBook::place_limit_order custom fee depends on limit order lifetime
     LimitOrderLifetime(Option<Moment>),
 }
@@ -158,7 +158,7 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
         let fee = Self::base_fee(call)?;
 
         let details = match call {
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             RuntimeCall::OrderBook(order_book::Call::place_limit_order { lifespan, .. }) => {
                 CustomFeeDetails::LimitOrderLifetime(*lifespan)
             }
@@ -312,7 +312,7 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
         match fee_details {
             CustomFeeDetails::Regular(fee) => Some(fee),
 
-            #[cfg(feature = "wip")] // order-book
+            #[cfg(feature = "ready-to-test")] // order-book
             CustomFeeDetails::LimitOrderLifetime(lifetime) => {
                 order_book::fee_calculator::FeeCalculator::<Runtime>::place_limit_order_fee(
                     lifetime,

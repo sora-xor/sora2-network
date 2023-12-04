@@ -82,6 +82,7 @@ multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bondin
 oracle-proxy = { path = "../pallets/oracle-proxy", default-features = false }
 oracle-proxy-runtime-api = { path = "../pallets/oracle-proxy/runtime-api", default-features = false }
 order-book = { path = "../pallets/order-book", default-features = false, optional = true }
+order-book-benchmarking = { path = "../pallets/order-book/benchmarking", default-features = false, optional = true }
 permissions = { path = "../pallets/permissions", default-features = false }
 pool-xyk = { path = "../pallets/pool-xyk", default-features = false }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
@@ -237,6 +238,7 @@ std = [
     "oracle-proxy/std",
     "oracle-proxy-runtime-api/std",
     "order-book/std",
+    "order-book-benchmarking/std",
     "pallet-aura/std",
     "pallet-authorship/std",
     "pallet-babe/std",
@@ -303,13 +305,7 @@ private-net = [
 ]
 
 wip = [
-    "order-book/wip",
     "framenode-chain-spec/wip",
-    "common/wip",
-    "dex-api/wip",
-    'liquidity-proxy/wip',
-    "liquidity-proxy-runtime-api/wip",
-    "liquidity-proxy-benchmarking/wip",
     "pallet-mmr",
     "beefy-light-client",
     "beefy-light-client-runtime-api",
@@ -323,7 +319,16 @@ wip = [
     "pallet-beefy-mmr",
 ]
 
-ready-to-test = ["framenode-chain-spec/ready-to-test"]
+ready-to-test = [
+    "framenode-chain-spec/ready-to-test",
+    "order-book/ready-to-test",
+    "order-book-benchmarking/ready-to-test",
+    "common/ready-to-test",
+    "dex-api/ready-to-test",
+    'liquidity-proxy/ready-to-test',
+    "liquidity-proxy-runtime-api/ready-to-test",
+    "liquidity-proxy-benchmarking/ready-to-test",
+]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
@@ -334,6 +339,7 @@ runtime-benchmarks = [
     "ceres-liquidity-locker-benchmarking/runtime-benchmarks",
     "demeter-farming-platform-benchmarking",
     "demeter-farming-platform-benchmarking/runtime-benchmarks",
+    "dex-api/runtime-benchmarks",
     "ceres-staking/runtime-benchmarks",
     "ceres-token-locker/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
@@ -361,7 +367,8 @@ runtime-benchmarks = [
     "multicollateral-bonding-curve-pool/runtime-benchmarks",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",
     "oracle-proxy/runtime-benchmarks",
-    "order-book/runtime-benchmarks",
+    "order-book-benchmarking",
+    "order-book-benchmarking/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
     "pool-xyk-benchmarking/runtime-benchmarks",

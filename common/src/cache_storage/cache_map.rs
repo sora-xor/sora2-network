@@ -147,4 +147,25 @@ where
     pub fn reset(&mut self) {
         self.cache.clear();
     }
+
+    /// Returns mutable reference to the cached value if it is,
+    /// otherwise tries to get the value from `Storage`.
+    /// If `Storage` has the value, CacheStorageDoubleMap caches it and returns
+    /// mutable ref to it.
+    /// If `Storage` has no the value, then `None` is kept and returned.
+    ///
+    /// When client calls `get` with the same `key` again,
+    /// ref to the cached value or None is returned without
+    /// trying to get it from `Storage`.
+    pub fn get_mut(&mut self, key: &Key) -> Option<&mut Value> {
+        if let Some(item) = self.cache.entry(key.clone()).or_insert_with(|| {
+            Storage::try_get(key)
+                .ok()
+                .map(|value| Item::Original(value))
+        }) {
+            item.value_mut()
+        } else {
+            None
+        }
+    }
 }

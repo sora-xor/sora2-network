@@ -233,13 +233,12 @@ where
             );
             if let Some(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
                 let referrer_portion = referrer_xor.peek();
-                if T::XorCurrency::resolve_into_existing(&referrer, referrer_xor).is_ok() {
-                    Self::deposit_event(Event::ReferrerRewarded(
-                        who.clone(),
-                        referrer,
-                        referrer_portion.into(),
-                    ));
-                }
+                T::XorCurrency::resolve_creating(&referrer, referrer_xor);
+                Self::deposit_event(Event::ReferrerRewarded(
+                    who.clone(),
+                    referrer,
+                    referrer_portion.into(),
+                ));
             }
 
             // TODO: decide what should be done with XOR if there is no referrer.
@@ -586,7 +585,7 @@ impl<T: Config> Pallet<T> {
         let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
         let xor = T::XorId::get();
         let val = T::ValId::get();
-        let xst = T::XstId::get();
+        let tbcd = T::TbcdId::get();
 
         // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
@@ -612,12 +611,12 @@ impl<T: Config> Pallet<T> {
                 let mut val_to_burn = swap_outcome.amount;
                 T::OnValBurned::on_val_burned(val_to_burn);
 
-                let val_to_buy_back = T::BuyBackXSTPercent::get() * val_to_burn;
+                let val_to_buy_back = T::BuyBackTBCDPercent::get() * val_to_burn;
                 let result = common::with_transaction(|| {
                     T::BuyBackHandler::buy_back_and_burn(
                         &tech_account_id,
                         &val,
-                        &xst,
+                        &tbcd,
                         val_to_buy_back,
                     )
                 });
@@ -626,7 +625,7 @@ impl<T: Config> Pallet<T> {
                         val_to_burn -= val_to_buy_back;
                     }
                     Err(err) => {
-                        error!("failed to exchange val to xst, burning VAL instead of buy back: {err:?}");
+                        error!("failed to exchange VAL to TBCD, burning VAL instead of buy back: {err:?}");
                     }
                 }
                 assets::Pallet::<T>::burn_from(
@@ -670,11 +669,11 @@ pub mod pallet {
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
         type XorId: Get<Self::AssetId>;
         type ValId: Get<Self::AssetId>;
-        type XstId: Get<Self::AssetId>;
+        type TbcdId: Get<Self::AssetId>;
         type ReferrerWeight: Get<u32>;
         type XorBurnedWeight: Get<u32>;
         type XorIntoValBurnedWeight: Get<u32>;
-        type BuyBackXSTPercent: Get<Percent>;
+        type BuyBackTBCDPercent: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type OnValBurned: OnValBurned;

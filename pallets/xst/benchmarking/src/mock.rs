@@ -132,7 +132,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         XSTPool: xst::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
-        DEXApi: dex_api::{Pallet, Storage},
+        DEXApi: dex_api::{Pallet, Call, Storage, Config, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
@@ -271,6 +271,7 @@ impl assets::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type MockLiquiditySource = ();
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
@@ -280,8 +281,10 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = ();
     type DexInfoProvider = ();
 
-    #[cfg(feature = "wip")] // order-book
+    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
+
+    type WeightInfo = ();
 }
 
 impl permissions::Config for Runtime {
@@ -323,7 +326,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
-    type GetXSTAssetId = GetSyntheticBaseAssetId;
+    type GetTBCDAssetId = GetSyntheticBaseAssetId;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }

@@ -877,17 +877,16 @@ impl<T: Config> Pallet<T> {
 
     /// Used for converting XST fee to XOR
     fn convert_fee(fee_amount: Balance) -> Result<Balance, DispatchError> {
-        let output_to_base: FixedWrapper =
-            <T as Config>::PriceToolsPallet::get_average_price(
-                &T::GetSyntheticBaseAssetId::get(),
-                &T::GetBaseAssetId::get(),
-                // Since `Buy` is more expensive in case if we are buying XOR
-                // (x XST -> y XOR; y XOR -> x' XST, x' < x),
-                // it seems logical to show this amount in order
-                // to not accidentally lie about the price.
-                PriceVariant::Buy,
-            )?
-            .into();
+        let output_to_base: FixedWrapper = <T as Config>::PriceToolsPallet::get_average_price(
+            &T::GetSyntheticBaseAssetId::get(),
+            &T::GetBaseAssetId::get(),
+            // Since `Buy` is more expensive in case if we are buying XOR
+            // (x XST -> y XOR; y XOR -> x' XST, x' < x),
+            // it seems logical to show this amount in order
+            // to not accidentally lie about the price.
+            PriceVariant::Buy,
+        )?
+        .into();
         Ok((fee_amount * output_to_base)
             .try_into_balance()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?)

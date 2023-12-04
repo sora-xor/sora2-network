@@ -20,6 +20,7 @@ scale-info = { version = "2", default-features = false, features = ["derive"] }
 common = { path = "../../common", default-features = false }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
+frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 mock-liquidity-source = { path = "../mock-liquidity-source", default-features = false }
@@ -64,6 +65,12 @@ std = [
     "traits/std",
 ]
 
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]
+
 try-runtime = ["frame-support/try-runtime"]
 
-wip = ["common/wip"]
+ready-to-test = ["common/ready-to-test"]

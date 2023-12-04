@@ -30,7 +30,7 @@
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 use {
     crate::order_book::OrderBookId,
     common::{DEXId, PriceVariant},
@@ -647,7 +647,7 @@ fn reminting_for_sora_parliament_works() {
         let y = INITIAL_RESERVES;
         let val_burned = (x.clone() * y / (x + y)).into_balance();
 
-        let buy_back_percent = crate::BuyBackXSTPercent::get();
+        let buy_back_percent = crate::BuyBackTBCDPercent::get();
         let expected_balance = FixedWrapper::from(buy_back_percent * val_burned);
 
         <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
@@ -925,7 +925,7 @@ fn it_works_eth_bridge_pays_no() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 #[test]
 fn fee_not_postponed_place_limit_order() {
     ext().execute_with(|| {
@@ -959,7 +959,7 @@ fn fee_not_postponed_place_limit_order() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_default_lifetime() {
     ext().execute_with(|| {
@@ -1005,7 +1005,7 @@ fn withdraw_fee_place_limit_order_with_default_lifetime() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_some_lifetime() {
     ext().execute_with(|| {
@@ -1051,7 +1051,7 @@ fn withdraw_fee_place_limit_order_with_some_lifetime() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_error() {
     ext().execute_with(|| {
@@ -1097,7 +1097,7 @@ fn withdraw_fee_place_limit_order_with_error() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_crossing_spread() {
     ext().execute_with(|| {

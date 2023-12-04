@@ -33,7 +33,7 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT,
-    PSWAP, VAL, XOR, XST, XSTUSD,
+    PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize, PrivilegeCmp};
@@ -233,14 +233,14 @@ impl currencies::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = XST;
+    pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
             "0000000000000000000000000000000000000000000000000000000000000023"
     ));
     pub const GetBuyBackDexId: DEXId = 0;
-    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
+    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
 impl assets::Config for Runtime {
@@ -302,7 +302,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetXSTAssetId = GetBuyBackAssetId;
+    type GetTBCDAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -326,7 +326,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type VestedRewardsPallet = VestedRewards;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = ();
-    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
+    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type WeightInfo = ();
 }
 

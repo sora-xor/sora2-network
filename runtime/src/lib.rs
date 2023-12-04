@@ -64,11 +64,11 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::{evm::AdditionalEVMInboundData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{Description, PredefinedAssetId};
+use common::{AssetId32, Description, PredefinedAssetId};
 use common::{XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 use frame_support::traits::EitherOf;
 use frame_support::weights::ConstantMultiplier;
 
@@ -82,6 +82,8 @@ use frame_election_provider_support::{generate_solution_type, onchain, Sequentia
 use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
+#[cfg(feature = "ready-to-test")] // order-book
+use frame_system::EnsureSigned;
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -156,7 +158,9 @@ use impls::{
 };
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
-#[cfg(all(feature = "private-net", feature = "wip"))] // order-book
+#[cfg(all(feature = "runtime-benchmarks", feature = "ready-to-test"))] // order-book
+pub use order_book_benchmarking;
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 pub use qa_tools;
 pub use {
     assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
@@ -254,10 +258,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 64,
+    spec_version: 69,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 64,
+    transaction_version: 69,
     state_version: 0,
 };
 
@@ -334,7 +338,7 @@ parameter_types! {
     pub const TechnicalCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
-    pub SchedulerMaxWeight: Weight = Perbill::from_percent(80) * BlockWeights::get().max_block;
+    pub SchedulerMaxWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
     pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -889,16 +893,16 @@ impl tokens::Config for Runtime {
 
 parameter_types! {
     // This is common::PredefinedAssetId with 0 index, 2 is size, 0 and 0 is code.
-    pub const GetXorAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::XOR);
-    pub const GetDotAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::DOT);
-    pub const GetKsmAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::KSM);
-    pub const GetUsdAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::USDT);
-    pub const GetValAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::VAL);
-    pub const GetPswapAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
-    pub const GetDaiAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::DAI);
-    pub const GetEthAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::ETH);
-    pub const GetXstAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::XST);
-    pub const GetTbcdAssetId: AssetId = common::AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    pub const GetXorAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XOR);
+    pub const GetDotAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DOT);
+    pub const GetKsmAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KSM);
+    pub const GetUsdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::USDT);
+    pub const GetValAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::VAL);
+    pub const GetPswapAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
+    pub const GetDaiAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DAI);
+    pub const GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
+    pub const GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
+    pub const GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
@@ -962,8 +966,8 @@ impl trading_pair::Config for Runtime {
 impl dex_manager::Config for Runtime {}
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
+pub type TechAssetId = common::TechAssetId<PredefinedAssetId>;
+pub type AssetId = AssetId32<PredefinedAssetId>;
 
 impl technical::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -1096,6 +1100,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
 }
 
 impl dex_api::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type MockLiquiditySource =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
@@ -1108,8 +1113,11 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    #[cfg(feature = "wip")] // order-book
+
+    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = order_book::Pallet<Runtime>;
+
+    type WeightInfo = dex_api::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_multisig::Config for Runtime {
@@ -1248,24 +1256,24 @@ impl xor_fee::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
+    type XorId = GetXorAssetId;
+    type ValId = GetValAssetId;
+    type TbcdId = GetTbcdAssetId;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type BuyBackXSTPercent = BuyBackXSTPercent;
-    type XorId = GetXorAssetId;
-    type ValId = GetValAssetId;
-    type XstId = GetXstAssetId;
+    type BuyBackTBCDPercent = BuyBackTBCDPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
-    type SessionManager = Staking;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+    type SessionManager = Staking;
+    type ReferrerAccountProvider = Referrals;
+    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
     type WithdrawFee = xor_fee_impls::WithdrawFee;
-    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type ReferrerAccountProvider = Referrals;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -1456,7 +1464,7 @@ parameter_types! {
     pub QaToolsWhitelistCapacity: u32 = 512;
 }
 
-#[cfg(all(feature = "private-net", feature = "wip"))] // order-book
+#[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 impl qa_tools::Config for Runtime {
     type AssetInfoProvider = Assets;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
@@ -1586,7 +1594,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetPswapAssetId;
-    type GetXSTAssetId = GetXstAssetId;
+    type GetTBCDAssetId = GetTbcdAssetId;
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -1672,7 +1680,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
+    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -1685,12 +1693,12 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
+    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
 }
 
 parameter_types! {
     pub const GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
-    pub const GetSyntheticBaseBuySellLimit: Balance = Balance::MAX;
+    pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000);
 }
 
 impl xst::Config for Runtime {
@@ -1809,7 +1817,7 @@ impl pallet_beefy_mmr::Config for Runtime {
 
 parameter_types! {
     pub const CeresPerDay: Balance = balance!(6.66666666667);
-    pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
+    pub const CeresAssetId: AssetId = AssetId32::from_bytes
         (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
     pub const MaximumCeresInStakingPool: Balance = balance!(14400);
 }
@@ -1846,8 +1854,11 @@ impl ceres_token_locker::Config for Runtime {
 }
 
 impl ceres_governance_platform::Config for Runtime {
+    type StringLimit = StringLimit;
+    type OptionsLimit = OptionsLimit;
+    type TitleLimit = TitleLimit;
+    type DescriptionLimit = DescriptionLimit;
     type RuntimeEvent = RuntimeEvent;
-    type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 
@@ -1909,15 +1920,16 @@ impl hermes_governance_platform::Config for Runtime {
 
 parameter_types! {
     // small value for test environment in order to check postponing expirations
-    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block; // TODO: order-book clarify
+    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block;
+    pub AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(35) * BlockWeights::get().max_block;
 }
 
-#[cfg(feature = "wip")] // order-book
+#[cfg(feature = "ready-to-test")] // order-book
 impl order_book::Config for Runtime {
-    const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
-    const MIN_ORDER_LIFESPAN: Moment = MILLISECS_PER_BLOCK; // TODO: order-book clarify
+    const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days
+    const MIN_ORDER_LIFESPAN: Moment = (MINUTES as Moment) * MILLISECS_PER_BLOCK; // 1 minute
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
-    const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50); // TODO: order-book clarify
+    const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50);
     const SOFT_MIN_MAX_RATIO: usize = 1000;
     const HARD_MIN_MAX_RATIO: usize = 4000;
     type RuntimeEvent = RuntimeEvent;
@@ -1926,18 +1938,35 @@ impl order_book::Config for Runtime {
     type Unlocker = OrderBook;
     type Scheduler = OrderBook;
     type Delegate = OrderBook;
-    type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
-    type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
-    type MaxSidePriceCount = ConstU32<10000>; // TODO: order-book clarify
-    type MaxExpiringOrdersPerBlock = ConstU32<1000>; // TODO: order-book clarify
+
+    // preferably set this and other vec boundaries to an exponent
+    // of 2 because amortized (exponential capacity) growth seems
+    // to allocate (next_power_of_two) bytes anyway.
+    //
+    // or initialize it via `with_capacity` instead.
+    //
+    // this limit is mostly because of requirement to use bounded vectors.
+    // a user can create multiple accounts at any time.
+    type MaxOpenedLimitOrdersPerUser = ConstU32<1024>;
+    type MaxLimitOrdersForPrice = ConstU32<1024>;
+    type MaxSidePriceCount = ConstU32<1024>;
+    type MaxExpiringOrdersPerBlock = ConstU32<512>;
     type MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
+    type MaxAlignmentWeightPerBlock = AlignmentSchedulerMaxWeight;
     type EnsureTradingPairExists = TradingPair;
     type TradingPairSourceManager = TradingPair;
     type AssetInfoProvider = Assets;
     type SyntheticInfoProvider = XSTPool;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
-    type PermittedOrigin = EitherOf<
+    type PermittedCreateOrigin = EitherOfDiverse<
+        EnsureSigned<AccountId>,
+        EitherOf<
+            pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+            EnsureRoot<AccountId>,
+        >,
+    >;
+    type PermittedEditOrigin = EitherOf<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
@@ -1952,7 +1981,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const BuyBackXSTPercent: Percent = Percent::from_percent(10);
+    pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
 }
 
 // Ethereum bridge pallets
@@ -2305,7 +2334,7 @@ construct_runtime! {
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
         TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
         Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 29,
-        DEXAPI: dex_api::{Pallet, Call, Storage, Config} = 30,
+        DEXAPI: dex_api::{Pallet, Call, Storage, Config, Event<T>} = 30,
         EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 31,
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Config<T>, Event<T>} = 32,
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
@@ -2332,7 +2361,7 @@ construct_runtime! {
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
 
-        #[cfg(feature = "wip")] // order-book
+        #[cfg(feature = "ready-to-test")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
         // Leaf provider should be placed before any pallet which is uses it
@@ -2385,7 +2414,7 @@ construct_runtime! {
         // Available only for test net
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
-        #[cfg(all(feature = "private-net", feature = "wip"))] // order-book
+        #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
         QATools: qa_tools::{Pallet, Call} = 112,
     }
 }
@@ -3095,6 +3124,8 @@ impl_runtime_apis! {
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
+            #[cfg(feature = "ready-to-test")] // order-book
+            use order_book_benchmarking::Pallet as OrderBookBench;
 
             let mut list = Vec::<BenchmarkList>::new();
 
@@ -3103,6 +3134,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, faucet, Faucet);
             list_benchmark!(list, extra, farming, Farming);
             list_benchmark!(list, extra, iroha_migration, IrohaMigration);
+            list_benchmark!(list, extra, dex_api, DEXAPI);
             list_benchmark!(list, extra, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             list_benchmark!(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             list_benchmark!(list, extra, pswap_distribution, PswapDistributionBench::<Runtime>);
@@ -3125,8 +3157,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
-            #[cfg(feature = "wip")] // order-book
-            list_benchmark!(list, extra, order_book, OrderBook);
+            #[cfg(feature = "ready-to-test")] // order-book
+            list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
             #[cfg(feature = "wip")] // EVM bridge
@@ -3169,12 +3201,16 @@ impl_runtime_apis! {
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
+            #[cfg(feature = "ready-to-test")] // order-book
+            use order_book_benchmarking::Pallet as OrderBookBench;
 
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
             impl xst_benchmarking::Config for Runtime {}
+            #[cfg(feature = "ready-to-test")] // order-book
+            impl order_book_benchmarking::Config for Runtime {}
 
             let whitelist: Vec<TrackedStorageKey> = vec![
                 // Block Number
@@ -3199,6 +3235,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
+            add_benchmark!(params, batches, dex_api, DEXAPI);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             add_benchmark!(params, batches, pswap_distribution, PswapDistributionBench::<Runtime>);
@@ -3221,8 +3258,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
-            #[cfg(feature = "wip")] // order-book
-            add_benchmark!(params, batches, order_book, OrderBook);
+            #[cfg(feature = "ready-to-test")] // order-book
+            add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
             #[cfg(feature = "wip")] // EVM bridge

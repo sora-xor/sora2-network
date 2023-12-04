@@ -7,8 +7,8 @@ use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, PSWAP, VAL, XOR,
-    XST,
+    balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, PSWAP, TBCD,
+    VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -122,12 +122,12 @@ parameter_types! {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = XST;
+    pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
+    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
 impl assets::Config for Runtime {
@@ -216,7 +216,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type VestedRewardsPallet = VestedRewards;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = ();
-    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
+    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type WeightInfo = ();
 }
 
@@ -233,7 +233,7 @@ impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetXSTAssetId = GetBuyBackAssetId;
+    type GetTBCDAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
