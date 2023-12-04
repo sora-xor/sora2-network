@@ -32,14 +32,13 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{ensure, fail};
 use orml_traits::GetByKey;
 
+use crate::aliases::{AssetIdOf, TechAccountIdOf, TechAssetIdOf};
+use crate::bounds::*;
+use crate::{Config, Error, Pallet, PoolProviders, TotalIssuances};
 use common::prelude::{Balance, SwapAmount};
 use common::{
     AccountIdOf, DexInfoProvider, ToFeeAccount, ToXykTechUnitFromDEXAndTradingPair, TradingPair,
 };
-
-use crate::aliases::{AssetIdOf, TechAccountIdOf, TechAssetIdOf};
-use crate::bounds::*;
-use crate::{Config, Error, Pallet, PoolProviders, TotalIssuances};
 
 impl<T: Config> Pallet<T> {
     pub fn decide_is_fee_from_destination(

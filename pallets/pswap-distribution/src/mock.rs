@@ -144,7 +144,6 @@ construct_runtime! {
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
-        TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
@@ -279,13 +278,6 @@ impl technical::Config for Runtime {
 
 impl dex_manager::Config for Runtime {}
 
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-}
-
 impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type DemeterAssetId = ();
@@ -303,6 +295,10 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
+    type EnabledSourcesManager = ();
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();

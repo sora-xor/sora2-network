@@ -34,8 +34,8 @@
 
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, RewardReason,
+    DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType, RewardReason,
 };
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
@@ -342,9 +342,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + common::Config + trading_pair::Config + assets::Config
-    {
+    pub trait Config: frame_system::Config + common::Config + assets::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type MockLiquiditySource: LiquiditySource<
             Self::DEXId,
@@ -395,6 +393,7 @@ pub mod pallet {
             Balance,
             DispatchError,
         >;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
 
         #[cfg(feature = "ready-to-test")] // order-book
         type OrderBook: LiquiditySource<

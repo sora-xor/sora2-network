@@ -280,6 +280,7 @@ impl dex_api::Config for Runtime {
     type XYKPool = MockLiquiditySource;
     type XSTPool = XSTPool;
     type MulticollateralBondingCurvePool = ();
+    type DexInfoProvider = ();
 
     #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
@@ -334,6 +335,7 @@ impl pswap_distribution::Config for Runtime {
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
 }
 
@@ -354,6 +356,10 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
