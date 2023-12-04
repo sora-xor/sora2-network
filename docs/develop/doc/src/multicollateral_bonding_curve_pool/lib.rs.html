@@ -1825,8 +1825,6 @@
 <a href="#1810" id="1810">1810</a>
 <a href="#1811" id="1811">1811</a>
 <a href="#1812" id="1812">1812</a>
-<a href="#1813" id="1813">1813</a>
-<a href="#1814" id="1814">1814</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2016,14 +2014,12 @@
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
     <span class="comment">// TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     </span><span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
         frame_system::Config
         + common::Config
         + assets::Config
         + technical::Config
-        + trading_pair::Config
         + pool_xyk::Config
     {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
@@ -2036,6 +2032,7 @@
         &gt;;
         <span class="kw">type </span>PriceToolsPallet: PriceToolsPallet&lt;<span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>VestedRewardsPallet: VestedRewardsPallet&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>BuyBackTBCDPercent: Get&lt;Fixed&gt;;
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
@@ -2612,7 +2609,7 @@
     ) -&gt; DispatchResult {
         common::with_transaction(|| {
             <span class="kw">let </span>base_asset_id = T::GetBaseAssetId::get();
-            <span class="kw">let </span>swapped_xor_amount = &lt;T <span class="kw">as </span>pallet::Config&gt;::LiquidityProxy::exchange(
+            <span class="kw">let </span>swapped_xor_amount = T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
                 holder,
                 holder,
@@ -2702,14 +2699,13 @@
                 Error::&lt;T&gt;::PoolAlreadyInitializedForPair
             );
             T::PriceToolsPallet::register_asset(<span class="kw-2">&amp;</span>collateral_asset_id)<span class="question-mark">?</span>;
-            T::EnsureTradingPairExists::ensure_trading_pair_exists(
+            &lt;T <span class="kw">as </span>Config&gt;::EnsureTradingPairExists::ensure_trading_pair_exists(
                 <span class="kw-2">&amp;</span>DEXId::Polkaswap.into(),
                 <span class="kw-2">&amp;</span>T::GetBaseAssetId::get(),
                 <span class="kw-2">&amp;</span>collateral_asset_id,
             )<span class="question-mark">?</span>;
 
-            <span class="comment">// TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-            </span>trading_pair::Pallet::&lt;T&gt;::enable_source_for_trading_pair(
+            &lt;T <span class="kw">as </span>Config&gt;::TradingPairSourceManager::enable_source_for_trading_pair(
                 <span class="kw-2">&amp;</span>DEXId::Polkaswap.into(),
                 <span class="kw-2">&amp;</span>T::GetBaseAssetId::get(),
                 <span class="kw-2">&amp;</span>collateral_asset_id,
@@ -3255,7 +3251,7 @@
         </span><span class="kw">let </span>price = <span class="kw">if </span>asset_id == <span class="kw-2">&amp;</span>reference_asset_id || asset_id == <span class="kw-2">&amp;</span>common::TBCD.into() {
             <span class="macro">balance!</span>(<span class="number">1</span>)
         } <span class="kw">else </span>{
-            &lt;T <span class="kw">as </span>pallet::Config&gt;::PriceToolsPallet::get_average_price(
+            &lt;T <span class="kw">as </span>Config&gt;::PriceToolsPallet::get_average_price(
                 asset_id,
                 <span class="kw-2">&amp;</span>reference_asset_id,
                 price_variant,

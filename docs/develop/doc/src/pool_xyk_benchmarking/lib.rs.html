@@ -287,9 +287,6 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -331,7 +328,7 @@
 <span class="kw">use </span>common::prelude::{Balance, SwapAmount};
 <span class="kw">use </span>common::{
     balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource,
-    DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 <span class="kw">use </span>frame_benchmarking::benchmarks;
 <span class="kw">use </span>frame_system::RawOrigin;
@@ -342,7 +339,6 @@
 <span class="kw">use </span>assets::Pallet <span class="kw">as </span>Assets;
 <span class="kw">use </span>permissions::Pallet <span class="kw">as </span>Permissions;
 <span class="kw">use </span>pool_xyk::Pallet <span class="kw">as </span>XYKPool;
-<span class="kw">use </span>trading_pair::Pallet <span class="kw">as </span>TradingPair;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>mock;
@@ -360,8 +356,6 @@
 <span class="kw">fn </span>setup_benchmark_assets_only&lt;T: Config&gt;() -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
     <span class="kw">let </span>owner = alice::&lt;T&gt;();
     frame_system::Pallet::&lt;T&gt;::inc_providers(<span class="kw-2">&amp;</span>owner);
-    <span class="kw">let </span>owner_origin: &lt;T <span class="kw">as </span>frame_system::Config&gt;::RuntimeOrigin =
-        RawOrigin::Signed(owner.clone()).into();
 
     <span class="comment">// Grant permissions to self in case they haven&#39;t been explicitly given in genesis config
     </span><span class="kw">let _ </span>= Permissions::&lt;T&gt;::assign_permission(
@@ -401,7 +395,7 @@
     )
     .unwrap();
 
-    TradingPair::&lt;T&gt;::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
+    T::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), DOT.into()).unwrap();
 
     Assets::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>owner.clone(), <span class="kw-2">&amp;</span>owner.clone(), <span class="macro">balance!</span>(<span class="number">50000</span>))<span class="question-mark">?</span>;
     Assets::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>owner.clone(), <span class="kw-2">&amp;</span>owner.clone(), <span class="macro">balance!</span>(<span class="number">50000</span>))<span class="question-mark">?</span>;

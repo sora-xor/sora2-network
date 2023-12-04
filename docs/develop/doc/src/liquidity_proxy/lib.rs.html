@@ -2650,10 +2650,6 @@
 <a href="#2635" id="2635">2635</a>
 <a href="#2636" id="2636">2636</a>
 <a href="#2637" id="2637">2637</a>
-<a href="#2638" id="2638">2638</a>
-<a href="#2639" id="2639">2639</a>
-<a href="#2640" id="2640">2640</a>
-<a href="#2641" id="2641">2641</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2702,8 +2698,8 @@
     balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, RewardReason, TradingPair, TradingPairSourceManager, VestedRewardsPallet,
-    XSTUSD,
+    LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
+    TradingPairSourceManager, VestedRewardsPallet, XSTUSD,
 };
 <span class="kw">use </span>fallible_iterator::FallibleIterator <span class="kw">as _</span>;
 <span class="kw">use </span>frame_support::dispatch::PostDispatchInfo;
@@ -3642,7 +3638,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>sources =
             T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>total_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::list_liquidity_sources();
-        <span class="kw">let </span>locked = trading_pair::LockedLiquiditySources::&lt;T&gt;::get();
+        <span class="kw">let </span>locked = T::LockedLiquiditySourcesManager::get();
         sources.retain(|x| !locked.contains(<span class="kw-2">&amp;</span>x.liquidity_source_index));
         <span class="macro">ensure!</span>(!sources.is_empty(), Error::&lt;T&gt;::UnavailableExchangePath);
 
@@ -3762,9 +3758,7 @@
             .tuple_windows()
             .filter_map(|(from, to)| {
                 <span class="kw">let </span>pair = <span class="self">Self</span>::weak_sort_pair(<span class="kw-2">&amp;</span>dex_info, <span class="kw-2">*</span>from, <span class="kw-2">*</span>to);
-
-                <span class="comment">// TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-                </span>trading_pair::Pallet::&lt;T&gt;::list_enabled_sources_for_trading_pair(
+                T::TradingPairSourceManager::list_enabled_sources_for_trading_pair(
                     dex_id,
                     <span class="kw-2">&amp;</span>pair.base_asset_id,
                     <span class="kw-2">&amp;</span>pair.target_asset_id,
@@ -3783,9 +3777,7 @@
         <span class="kw">let </span>sources_set = fallible_iterator::convert(path.to_vec().iter().tuple_windows().map(
             |(from, to)| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, DispatchError&gt; {
                 <span class="kw">let </span>pair = <span class="self">Self</span>::weak_sort_pair(<span class="kw-2">&amp;</span>dex_info, <span class="kw-2">*</span>from, <span class="kw-2">*</span>to);
-
-                <span class="comment">// TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-                </span><span class="kw">let </span>sources = trading_pair::Pallet::&lt;T&gt;::list_enabled_sources_for_trading_pair(
+                <span class="kw">let </span>sources = T::TradingPairSourceManager::list_enabled_sources_for_trading_pair(
                     <span class="kw-2">&amp;</span>dex_id,
                     <span class="kw-2">&amp;</span>pair.base_asset_id,
                     <span class="kw-2">&amp;</span>pair.target_asset_id,
@@ -4903,11 +4895,8 @@
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
     <span class="comment">// TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     </span><span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config:
-        frame_system::Config + common::Config + assets::Config + trading_pair::Config
-    {
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + common::Config + assets::Config {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="kw">type </span>LiquidityRegistry: LiquidityRegistry&lt;
             <span class="self">Self</span>::DEXId,
@@ -4923,9 +4912,12 @@
         <span class="kw">type </span>PrimaryMarketXST: GetMarketInfo&lt;<span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>SecondaryMarket: GetPoolReserves&lt;<span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>VestedRewardsPallet: VestedRewardsPallet&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>LockedLiquiditySourcesManager: LockedLiquiditySourcesManager&lt;LiquiditySourceType&gt;;
         <span class="kw">type </span>GetADARAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;
         <span class="kw">type </span>ADARCommissionRatioUpdateOrigin: EnsureOrigin&lt;<span class="self">Self</span>::RuntimeOrigin&gt;;
         <span class="kw">type </span>MaxAdditionalDataLength: Get&lt;u32&gt;;
+        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
         <span class="doccomment">/// Weight information for the extrinsics in this Pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
     }
@@ -5086,7 +5078,7 @@
                 Error::&lt;T&gt;::UnableToEnableLiquiditySource
             );
 
-            <span class="kw">let </span><span class="kw-2">mut </span>locked = trading_pair::LockedLiquiditySources::&lt;T&gt;::get();
+            <span class="kw">let </span><span class="kw-2">mut </span>locked = T::LockedLiquiditySourcesManager::get();
 
             <span class="macro">ensure!</span>(
                 locked.contains(<span class="kw-2">&amp;</span>liquidity_source),
@@ -5094,7 +5086,7 @@
             );
 
             locked.retain(|x| <span class="kw-2">*</span>x != liquidity_source);
-            trading_pair::LockedLiquiditySources::&lt;T&gt;::set(locked);
+            T::LockedLiquiditySourcesManager::set(locked);
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::LiquiditySourceEnabled(liquidity_source));
             <span class="prelude-val">Ok</span>(().into())
         }
@@ -5116,10 +5108,10 @@
                 Error::&lt;T&gt;::UnableToDisableLiquiditySource
             );
             <span class="macro">ensure!</span>(
-                !trading_pair::LockedLiquiditySources::&lt;T&gt;::get().contains(<span class="kw-2">&amp;</span>liquidity_source),
+                !T::LockedLiquiditySourcesManager::get().contains(<span class="kw-2">&amp;</span>liquidity_source),
                 Error::&lt;T&gt;::LiquiditySourceAlreadyDisabled
             );
-            trading_pair::LockedLiquiditySources::&lt;T&gt;::append(liquidity_source);
+            T::LockedLiquiditySourcesManager::append(liquidity_source);
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::LiquiditySourceDisabled(liquidity_source));
             <span class="prelude-val">Ok</span>(().into())
         }

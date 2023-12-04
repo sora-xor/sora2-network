@@ -1051,6 +1051,12 @@
 <a href="#1036" id="1036">1036</a>
 <a href="#1037" id="1037">1037</a>
 <a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1097,9 +1103,10 @@
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 <span class="kw">use </span>common::{
-    fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
-    LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
-    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
+    fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
+    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
+    PoolXykPallet, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    TradingPairSourceManager,
 };
 
 <span class="kw">mod </span>aliases;
@@ -1233,8 +1240,7 @@
             (asset_a_pair.<span class="number">0</span>, asset_b_pair.<span class="number">0</span>)
         };
 
-        <span class="comment">// TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-        </span>trading_pair::Pallet::&lt;T&gt;::enable_source_for_trading_pair(
+        T::TradingPairSourceManager::enable_source_for_trading_pair(
             dex_id,
             sorted_asset_a,
             sorted_asset_b,
@@ -1295,7 +1301,7 @@
         // can be done, check every condition for `PoolIsAlreadyInitialized`.
         </span><span class="kw">if </span>technical::Pallet::&lt;T&gt;::ensure_tech_account_registered(<span class="kw-2">&amp;</span>tech_acc_id).is_ok() {
             <span class="kw">if </span>technical::Pallet::&lt;T&gt;::ensure_tech_account_registered(<span class="kw-2">&amp;</span>fee_acc_id).is_ok()
-                &amp;&amp; trading_pair::Pallet::&lt;T&gt;::ensure_trading_pair_exists(
+                &amp;&amp; T::EnsureTradingPairExists::ensure_trading_pair_exists(
                     <span class="kw-2">&amp;</span>dex_id,
                     <span class="kw-2">&amp;</span>trading_pair.base_asset_id.into(),
                     <span class="kw-2">&amp;</span>trading_pair.target_asset_id.into(),
@@ -1695,19 +1701,17 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>common::{AccountIdOf, Fixed, GetMarketInfo, OnPoolCreated};
+    <span class="kw">use </span>common::{AccountIdOf, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::traits::StorageVersion;
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>orml_traits::GetByKey;
 
     <span class="comment">// TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     </span><span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
         frame_system::Config
         + technical::Config
-        + trading_pair::Config
         + ceres_liquidity_locker::Config
         + demeter_farming_platform::Config
     {
@@ -1729,6 +1733,14 @@
             + Into&lt;&lt;<span class="self">Self </span><span class="kw">as </span>technical::Config&gt;::SwapAction&gt;
             + From&lt;PolySwapActionStructOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>EnsureDEXManager: EnsureDEXManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, DispatchError&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
+        <span class="kw">type </span>EnabledSourcesManager: EnabledSourcesManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>EnsureTradingPairExists: EnsureTradingPairExists&lt;
+            <span class="self">Self</span>::DEXId,
+            <span class="self">Self</span>::AssetId,
+            DispatchError,
+        &gt;;
         <span class="kw">type </span>XSTMarketInfo: GetMarketInfo&lt;<span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>GetFee: Get&lt;Fixed&gt;;
         <span class="kw">type </span>OnPoolCreated: OnPoolCreated&lt;AccountId = AccountIdOf&lt;<span class="self">Self</span>&gt;, DEXId = DEXIdOf&lt;<span class="self">Self</span>&gt;&gt;;

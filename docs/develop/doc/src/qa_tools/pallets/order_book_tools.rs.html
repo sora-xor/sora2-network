@@ -310,7 +310,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::Config;
-<span class="kw">use </span>common::{balance, Balance, PriceVariant};
+<span class="kw">use </span>common::{balance, Balance, PriceVariant, TradingPairSourceManager};
 <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>frame_support::traits::Time;
 <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
@@ -360,12 +360,12 @@
         .filter(|(id, <span class="kw">_</span>)| !&lt;order_book::OrderBooks&lt;T&gt;&gt;::contains_key(id))
         .collect();
     <span class="kw">for </span>(order_book_id, <span class="kw">_</span>) <span class="kw">in </span><span class="kw-2">&amp;</span>to_create_ids {
-        <span class="kw">if </span>!trading_pair::Pallet::&lt;T&gt;::is_trading_pair_enabled(
+        <span class="kw">if </span>!T::TradingPairSourceManager::is_trading_pair_enabled(
             <span class="kw-2">&amp;</span>order_book_id.dex_id,
             <span class="kw-2">&amp;</span>order_book_id.quote.into(),
             <span class="kw-2">&amp;</span>order_book_id.base.into(),
         )<span class="question-mark">? </span>{
-            trading_pair::Pallet::&lt;T&gt;::register_pair(
+            T::TradingPairSourceManager::register_pair(
                 order_book_id.dex_id,
                 order_book_id.quote.into(),
                 order_book_id.base.into(),
