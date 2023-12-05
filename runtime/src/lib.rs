@@ -154,7 +154,6 @@ use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, R
 use impls::{
     CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
 };
-pub use kensetsu;
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
 #[cfg(all(feature = "runtime-benchmarks", feature = "ready-to-test"))] // order-book
@@ -165,6 +164,9 @@ pub use {
     assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
     xst,
 };
+
+#[cfg(feature = "wip")] // Kensetsu
+pub use kensetsu;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -1932,6 +1934,7 @@ parameter_types! {
 
 }
 
+#[cfg(feature = "wip")] // Kensetsu
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
@@ -2382,6 +2385,7 @@ construct_runtime! {
         #[cfg(feature = "ready-to-test")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
+        #[cfg(feature = "wip")] // Kensetsu
         Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
@@ -2820,6 +2824,7 @@ impl_runtime_apis! {
         }
     }
 
+    #[cfg(feature = "wip")] // Kensetsu
     impl kensetsu_runtime_api::KensetsuApi<Block> for Runtime {
         fn is_cdp_safe(cdp_id: u64) -> Result<bool, DispatchError> {
             Kensetsu::is_cdp_safe(cdp_id)
@@ -3262,6 +3267,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, dex_api, DEXAPI);
+            #[cfg(feature = "wip")] // Kensetsu
             add_benchmark!(params, batches, kensetsu, Kensetsu::<Runtime>);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);

@@ -82,9 +82,13 @@ where
     C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
     C: Send + Sync + 'static,
     C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
+    C::Api: kensetsu_rpc::KensetsuRuntimeApi<Block>,
 {
     use beefy_light_client_rpc::{BeefyLightClientAPIServer, BeefyLightClientClient};
-    rpc.merge(BeefyLightClientClient::new(client).into_rpc())?;
+    use kensetsu_rpc::{KensetsuApiServer, KensetsuClient};
+
+    rpc.merge(BeefyLightClientClient::new(client.clone()).into_rpc())?;
+    rpc.merge(KensetsuClient::new(client).into_rpc())?;
     Ok(rpc)
 }
 
@@ -175,7 +179,6 @@ where
     C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     C::Api: BlockBuilder<Block>,
     C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
-    C::Api: kensetsu_rpc::KensetsuRuntimeApi<Block>,
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
     C::Api: bridge_proxy_rpc::BridgeProxyRuntimeAPI<Block, AssetId>,
     P: TransactionPool + Send + Sync + 'static,
@@ -188,7 +191,6 @@ where
     use eth_bridge_rpc::{EthBridgeApiServer, EthBridgeRpc};
     use farming_rpc::{FarmingApiServer, FarmingClient};
     use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
-    use kensetsu_rpc::{KensetsuApiServer, KensetsuClient};
     use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
     use mmr_rpc::{Mmr, MmrApiServer};
@@ -224,7 +226,6 @@ where
     io.merge(DEXManager::new(client.clone()).into_rpc())?;
     io.merge(TradingPairClient::new(client.clone()).into_rpc())?;
     io.merge(AssetsClient::new(client.clone()).into_rpc())?;
-    io.merge(KensetsuClient::new(client.clone()).into_rpc())?;
     io.merge(LiquidityProxyClient::new(client.clone()).into_rpc())?;
     io.merge(OracleProxyClient::new(client.clone()).into_rpc())?;
     io.merge(EthBridgeRpc::new(client.clone()).into_rpc())?;
