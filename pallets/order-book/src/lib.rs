@@ -683,7 +683,7 @@ pub mod pallet {
                 // schedule alignment
                 <AlignmentCursor<T>>::set(order_book_id, Some(T::OrderId::zero()));
             }
-            <OrderBooks<T>>::insert(order_book_id, order_book);
+            <OrderBooks<T>>::set(order_book_id, Some(order_book));
             Self::deposit_event(Event::<T>::OrderBookUpdated { order_book_id });
             Ok(().into())
         }

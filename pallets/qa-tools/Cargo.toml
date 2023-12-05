@@ -23,7 +23,7 @@ sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 assets = { path = "../assets", default-features = false }
-order-book = { path = "../../pallets/order-book", default-features = false, features = ["private-net"] }
+order-book = { path = "../../pallets/order-book", default-features = false }
 
 [dev-dependencies]
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
@@ -35,11 +35,14 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 [features]
 default = ["std"]
 std = [
+    "assets/std",
     "codec/std",
+    "common/std",
     "frame-support/std",
     "frame-system/std",
     "order-book/std",
     "scale-info/std",
+    "sp-std/std",
 ]
 ready-to-test = [
     "framenode-chain-spec/ready-to-test",

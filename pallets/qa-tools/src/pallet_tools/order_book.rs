@@ -163,6 +163,8 @@ pub fn create_multiple_empty_unchecked<T: Config>(
             attributes.min_lot_size,
             attributes.max_lot_size,
         )?;
+
+        #[cfg(feature = "private-net")]
         order_book::Pallet::<T>::deposit_event_exposed(order_book::Event::<T>::OrderBookCreated {
             order_book_id,
             creator: None,
