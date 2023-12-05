@@ -31,105 +31,21 @@
 use super::*;
 
 use crate::mock::{new_test_ext, RuntimeOrigin, TestRuntime};
+use crate::test_utils::{
+    alice, alice_account_id, assert_balance, bob, create_cdp_for_xor, deposit_xor_to_cdp,
+    set_balance, set_xor_as_collateral_type,
+};
 
 use common::PredefinedAssetId::XOR;
-use common::{balance, AssetInfoProvider, Balance};
+use common::{balance, Balance};
 use frame_support::{assert_err, assert_ok};
-use frame_system::pallet_prelude::OriginFor;
-use hex_literal::hex;
-use sp_arithmetic::{ArithmeticError, Perbill};
+use sp_arithmetic::ArithmeticError;
 use sp_core::U256;
-use sp_runtime::AccountId32;
 use sp_runtime::DispatchError::BadOrigin;
 
-type AccountId = AccountId32;
 type KensetsuError = Error<TestRuntime>;
 type KensetsuPallet = Pallet<TestRuntime>;
 type System = frame_system::Pallet<TestRuntime>;
-
-/// Predefined AccountId `Alice`
-pub fn alice_account_id() -> AccountId {
-    AccountId32::from(hex!(
-        "d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
-    ))
-}
-
-/// Predefined AccountId `Bob`
-pub fn bob_account_id() -> AccountId {
-    AccountId32::from(hex!(
-        "8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48"
-    ))
-}
-
-/// Returns Risk Manager account
-fn risk_manager() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(alice_account_id())
-}
-
-/// Regular client account Alice
-fn alice() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(alice_account_id())
-}
-
-/// Regular client account Alice
-fn bob() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(bob_account_id())
-}
-
-/// Sets XOR asset id as collateral with default parameters
-/// As if Risk Manager called `update_collateral_risk_parameters(XOR, some_info)`
-fn set_xor_as_collateral_type() {
-    CollateralTypes::<TestRuntime>::set(
-        <TestRuntime as assets::Config>::AssetId::from(XOR),
-        Some(CollateralRiskParameters {
-            max_supply: balance!(1000),
-            liquidation_ratio: Perbill::from_float(0.5),
-            stability_fee_rate: Default::default(),
-        }),
-    );
-    KusdHardCap::<TestRuntime>::set(balance!(1000));
-}
-
-/// Creates CDP with XOR as collateral asset id
-fn create_cdp_for_xor(owner: OriginFor<TestRuntime>, collateral: Balance, debt: Balance) -> U256 {
-    assert_ok!(KensetsuPallet::create_cdp(owner.clone(), XOR.into()));
-    let cdp_id = NextCDPId::<TestRuntime>::get();
-    if collateral > 0 {
-        deposit_xor_to_cdp(owner.clone(), cdp_id, collateral);
-    }
-    if debt > 0 {
-        assert_ok!(KensetsuPallet::borrow(owner, cdp_id, debt));
-    }
-    cdp_id
-}
-
-/// Deposits to CDP
-fn deposit_xor_to_cdp(owner: OriginFor<TestRuntime>, cdp_id: U256, collateral_amount: Balance) {
-    set_balance(alice_account_id(), collateral_amount);
-    assert_ok!(KensetsuPallet::deposit_collateral(
-        owner,
-        cdp_id,
-        collateral_amount
-    ));
-}
-
-/// Updates account balance
-fn set_balance(account: AccountId, balance: Balance) {
-    assert_ok!(assets::Pallet::<TestRuntime>::update_balance(
-        RuntimeOrigin::root(),
-        account,
-        XOR.into(),
-        balance.try_into().unwrap()
-    ));
-}
-
-/// Asserts account balance is expected.
-fn assert_balance(account: &AccountId, expected: Balance) {
-    assert_eq!(
-        assets::Pallet::<TestRuntime>::free_balance(&XOR.into(), account).unwrap(),
-        expected
-    );
-}
 
 /// CDP might be created only by Signed Origin account.
 #[test]

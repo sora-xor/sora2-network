@@ -266,7 +266,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     let mut storage = frame_system::GenesisConfig::default()
         .build_storage::<TestRuntime>()
         .unwrap();
-    technical::GenesisConfig::<TestRuntime> {
+    TechnicalConfig {
         register_tech_accounts: vec![
             (
                 KensetsuTreasuryAccountId::get(),

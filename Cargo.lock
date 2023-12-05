@@ -5916,7 +5916,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "framenode-chain-spec",
  "hex-literal 0.4.1",
  "libm",
  "orml-currencies",

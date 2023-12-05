@@ -46,7 +46,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
+#[cfg(test)]
+mod test_utils;
+
 mod benchmarking;
 mod compounding;
 mod rpc;
@@ -914,9 +916,10 @@ pub mod pallet {
         }
 
         fn is_it_time_to_accrue(cdp_id: &U256) -> Result<bool, DispatchError> {
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            ensure!(cdp.debt > 0, Error::<T>::CDPSafe);
             let now = Timestamp::<T>::get();
             let outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
-            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             Ok(cdp.debt > 0 && cdp.last_fee_update_time <= outdated_timestamp)
         }
 

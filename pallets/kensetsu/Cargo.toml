@@ -31,10 +31,12 @@ libm = "0.2"
 technical = { path = "../technical", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+hex-literal = { version = "0.4", optional = true }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", optional = true }
 
 [dev-dependencies]
+common = { path = "../../common", features = ["test"] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
-framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 permissions = { path = "../permissions" }
 hex-literal = "0.4"
@@ -43,8 +45,9 @@ sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-
 [features]
 default = ["std"]
 std = [
+	"assets/std",
 	"codec/std",
-	"frame-benchmarking?/std",
+	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
 	"sp-std/std",
@@ -52,8 +55,13 @@ std = [
 	"sp-runtime/std",
 	"sp-arithmetic/std",
 	"scale-info/std",
+	"technical/std",
 	"tokens/std",
 	"traits/std",
 ]
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+runtime-benchmarks = [
+	"dep:hex-literal",
+	"dep:sp-io",
+	"frame-benchmarking/runtime-benchmarks",
+]
 try-runtime = ["frame-support/try-runtime"]

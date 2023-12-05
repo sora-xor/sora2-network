@@ -28,23 +28,43 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![cfg(feature = "runtime-benchmarks")]
+
 use super::*;
 
-// TODO implement benchmarking for Kensetsu
-
-#[allow(unused)]
-use crate::Pallet as Template;
-use frame_benchmarking::v1::{benchmarks, whitelisted_caller};
+use common::XOR;
+use common::{AssetId32, PredefinedAssetId};
+use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 
-// benchmarks! {
-// 	do_something {
-// 		let s in 0 .. 100;
-// 		let caller: T::AccountId = whitelisted_caller();
-// 	}: _(RawOrigin::Signed(caller), s)
-// 	verify {
-// 		assert_eq!(Something::<T>::get(), Some(s));
-// 	}
+fn alice<T: Config>() -> T::AccountId {
+    let bytes =
+        hex_literal::hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+    T::AccountId::decode(&mut &bytes[..]).unwrap()
+}
 
-// 	impl_benchmark_test_suite!(Template, crate::mock::new_test_ext(), crate::mock::Test);
-// }
+fn set_xor_as_collateral_type<T: Config>() {
+    CollateralTypes::<T>::set::<AssetIdOf<T>>(
+        XOR.into(),
+        Some(CollateralRiskParameters {
+            max_supply: balance!(1000),
+            liquidation_ratio: Perbill::from_float(0.5),
+            stability_fee_rate: Default::default(),
+        }),
+    );
+    KusdHardCap::<T>::set(balance!(1000));
+}
+
+benchmarks! {
+    where_clause {
+        where T::AssetId: From<AssetId32<PredefinedAssetId>>
+    }
+
+    create_cdp {
+        set_xor_as_collateral_type::<T>();
+        let caller: T::AccountId = alice::<T>();
+    }: create_cdp(RawOrigin::Signed(caller.clone()), XOR.into())
+    verify {
+        // TODO verify
+    }
+}
