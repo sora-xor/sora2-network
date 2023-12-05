@@ -1076,7 +1076,13 @@ fn cannot_exchange_with_not_trade_status() {
             quote: XOR.into(),
         };
 
-        let mut order_book = OrderBook::<Runtime>::default(order_book_id);
+        let mut order_book = OrderBook::<Runtime>::new(
+            order_book_id,
+            OrderPrice::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(0.00001)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(1000)),
+        );
 
         order_book.status = OrderBookStatus::PlaceAndCancel;
         order_book::OrderBooks::<Runtime>::insert(order_book_id, order_book.clone());

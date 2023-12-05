@@ -33,18 +33,17 @@
 
 use assets::AssetIdOf;
 use common::{
-    balance, AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
-    DexIdOf, PredefinedAssetId, PriceVariant, PSWAP, VAL, XOR,
+    balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, PredefinedAssetId,
+    PriceVariant, PSWAP, VAL, XOR,
 };
 use frame_support::dispatch::{Pays, PostDispatchInfo};
-use frame_support::pallet_prelude::DispatchResult;
 use frame_support::{assert_err, assert_ok};
 use frame_system::pallet_prelude::BlockNumberFor;
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
-use qa_tools::{settings, Error, WhitelistedCallers};
+use qa_tools::{settings, Error};
 use sp_runtime::traits::BadOrigin;
 use sp_runtime::DispatchErrorWithPostInfo;
 
@@ -59,47 +58,57 @@ pub fn bob() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
 }
 
+fn default_price_step() -> Balance {
+    settings::OrderBookAttributes::default().tick_size
+}
+
 fn test_creates_orderbook(
     base: AssetId32<PredefinedAssetId>,
     quote: AssetId32<PredefinedAssetId>,
+    attributes: settings::OrderBookAttributes,
     best_bid_price: Balance,
     best_ask_price: Balance,
     steps: usize,
     amount_range: (Balance, Balance),
 ) -> OrderBookId<AssetIdOf<Runtime>, DexIdOf<Runtime>> {
-    let mut start_balance_base = assets::Pallet::<Runtime>::total_balance(&base, &alice()).unwrap();
-    let start_balance_quote = assets::Pallet::<Runtime>::total_balance(&quote, &alice()).unwrap();
     let order_book_id = OrderBookId {
         dex_id: DEXId::Polkaswap.into(),
         base,
         quote,
     };
-    let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
-    let price_step = if assets::Pallet::<Runtime>::is_non_divisible(&base) {
-        order_book::OrderBook::<Runtime>::default_indivisible(order_book_id).tick_size
-    } else {
-        order_book::OrderBook::<Runtime>::default(order_book_id).tick_size
-    };
+
+    assert_err!(
+        QAToolsPallet::order_book_create_and_fill_batch(
+            RuntimeOrigin::signed(alice()),
+            alice(),
+            alice(),
+            vec![]
+        ),
+        BadOrigin
+    );
+
+    let price_step = default_price_step();
     let orders_per_price = 3;
     let amount_range = settings::RandomAmount::new(amount_range.0, amount_range.1);
     assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
-        RuntimeOrigin::signed(alice()),
+        RuntimeOrigin::root(),
         alice(),
         alice(),
         vec![(
             order_book_id,
+            attributes,
             settings::OrderBookFill {
                 bids: Some(settings::SideFill {
                     highest_price: best_bid_price,
-                    lowest_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
-                    price_step: *price_step.balance(),
+                    lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
+                    price_step,
                     orders_per_price,
                     amount_range_inclusive: Some(amount_range.clone())
                 }),
                 asks: Some(settings::SideFill {
-                    highest_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                    highest_price: best_ask_price + (steps - 1) as u128 * price_step,
                     lowest_price: best_ask_price,
-                    price_step: *price_step.balance(),
+                    price_step,
                     orders_per_price,
                     amount_range_inclusive: Some(amount_range.clone())
                 }),
@@ -108,18 +117,8 @@ fn test_creates_orderbook(
             }
         )]
     ));
-    assert_eq!(
-        assets::Pallet::<Runtime>::total_balance(&quote, &alice()).unwrap(),
-        start_balance_quote
-    );
-    // 1 nft is minted in case none were owned
-    if start_balance_base == 0 && assets::Pallet::<Runtime>::is_non_divisible(&base) {
-        start_balance_base += 1;
-    }
-    assert_eq!(
-        assets::Pallet::<Runtime>::total_balance(&base, &alice()).unwrap(),
-        start_balance_base
-    );
+
+    assert!(order_book::Pallet::<Runtime>::order_books(order_book_id).is_some());
 
     assert_eq!(
         order_book::Pallet::<Runtime>::aggregated_bids(order_book_id).len(),
@@ -151,6 +150,7 @@ fn should_create_and_fill_orderbook_fixed_amount() {
         test_creates_orderbook(
             VAL,
             XOR,
+            settings::OrderBookAttributes::default(),
             balance!(10),
             balance!(11),
             4,
@@ -163,13 +163,26 @@ fn should_create_and_fill_orderbook_fixed_amount() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            1,
+            1000,
             false,
             None,
             None,
         )
         .unwrap();
-        test_creates_orderbook(nft, XOR, balance!(10), balance!(11), 4, (1, 1));
+        test_creates_orderbook(
+            nft,
+            XOR,
+            settings::OrderBookAttributes {
+                tick_size: balance!(0.00001),
+                step_lot_size: 1,
+                min_lot_size: 1,
+                max_lot_size: 1000,
+            },
+            balance!(10),
+            balance!(11),
+            4,
+            (1, 1),
+        );
     });
 }
 
@@ -179,6 +192,7 @@ fn should_create_and_fill_orderbook_random_amount() {
         test_creates_orderbook(
             VAL,
             XOR,
+            settings::OrderBookAttributes::default(),
             balance!(10),
             balance!(11),
             4,
@@ -191,13 +205,26 @@ fn should_create_and_fill_orderbook_random_amount() {
             AssetSymbol(b"NFT".to_vec()),
             AssetName(b"Nft".to_vec()),
             0,
-            1,
+            1000,
             false,
             None,
             None,
         )
         .unwrap();
-        test_creates_orderbook(nft, XOR, balance!(10), balance!(11), 4, (1, 10));
+        test_creates_orderbook(
+            nft,
+            XOR,
+            settings::OrderBookAttributes {
+                tick_size: balance!(0.00001),
+                step_lot_size: 1,
+                min_lot_size: 1,
+                max_lot_size: 1000,
+            },
+            balance!(10),
+            balance!(11),
+            4,
+            (1, 10),
+        );
     });
 }
 
@@ -214,25 +241,24 @@ fn should_respect_orderbook_seed() {
             base: PSWAP,
             quote: XOR,
         };
-        let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
-        let price_step = order_book::OrderBook::<Runtime>::default(order_book_id_1).tick_size;
+        let price_step = default_price_step();
         let orders_per_price = 3;
         let best_bid_price = balance!(10);
         let best_ask_price = balance!(11);
         let steps = 4;
         let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
-        let settings = settings::OrderBookFill {
+        let fill_settings = settings::OrderBookFill {
             bids: Some(settings::SideFill {
                 highest_price: best_bid_price,
-                lowest_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
-                price_step: *price_step.balance(),
+                lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
+                price_step,
                 orders_per_price,
                 amount_range_inclusive: Some(amount_range.clone()),
             }),
             asks: Some(settings::SideFill {
-                highest_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                highest_price: best_ask_price + (steps - 1) as u128 * price_step,
                 lowest_price: best_ask_price,
-                price_step: *price_step.balance(),
+                price_step,
                 orders_per_price,
                 amount_range_inclusive: Some(amount_range),
             }),
@@ -240,12 +266,20 @@ fn should_respect_orderbook_seed() {
             random_seed: None,
         };
         assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
-            RuntimeOrigin::signed(alice()),
+            RuntimeOrigin::root(),
             alice(),
             alice(),
             vec![
-                (order_book_id_1, settings.clone()),
-                (order_book_id_2, settings)
+                (
+                    order_book_id_1,
+                    settings::OrderBookAttributes::default(),
+                    fill_settings.clone()
+                ),
+                (
+                    order_book_id_2,
+                    settings::OrderBookAttributes::default(),
+                    fill_settings
+                )
             ]
         ));
 
@@ -277,40 +311,50 @@ fn should_keep_orderbook_randomness_independent() {
             base: PSWAP,
             quote: XOR,
         };
-        let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
-        let price_step = order_book::OrderBook::<Runtime>::default(order_book_id_1).tick_size;
+        let price_step = default_price_step();
         let orders_per_price = 3;
         let best_bid_price = balance!(10);
         let best_ask_price = balance!(11);
         let steps = 4;
         let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
-        let settings_1 = settings::OrderBookFill {
+        let fill_settings_1 = settings::OrderBookFill {
             bids: Some(settings::SideFill {
                 highest_price: best_bid_price,
-                lowest_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
-                price_step: *price_step.balance(),
+                lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
+                price_step,
                 orders_per_price,
                 amount_range_inclusive: Some(amount_range.clone()),
             }),
             asks: Some(settings::SideFill {
-                highest_price: best_ask_price + (steps - 1) as u128 * *price_step.balance(),
+                highest_price: best_ask_price + (steps - 1) as u128 * price_step,
                 lowest_price: best_ask_price,
-                price_step: *price_step.balance(),
+                price_step,
                 orders_per_price,
                 amount_range_inclusive: Some(amount_range),
             }),
             lifespan: None,
             random_seed: None,
         };
-        let settings_2 = settings::OrderBookFill {
+        let fill_settings_2 = settings::OrderBookFill {
             bids: None,
-            ..settings_1.clone()
+            ..fill_settings_1.clone()
         };
         assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
-            RuntimeOrigin::signed(alice()),
+            RuntimeOrigin::root(),
             alice(),
             alice(),
-            vec![(order_book_id_1, settings_1), (order_book_id_2, settings_2)]
+            vec![
+                (
+                    order_book_id_1,
+                    settings::OrderBookAttributes::default(),
+                    fill_settings_1
+                ),
+                (
+                    order_book_id_2,
+                    settings::OrderBookAttributes::default(),
+                    fill_settings_2
+                )
+            ]
         ));
 
         let mut data = order_book::storage_data_layer::StorageDataLayer::<Runtime>::new();
@@ -369,22 +413,21 @@ fn should_reject_incorrect_orderbook_fill_settings() {
             base: VAL,
             quote: XOR,
         };
-        let _ = QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice());
-        let price_step = order_book::OrderBook::<Runtime>::default(order_book_id).tick_size;
+        let price_step = default_price_step();
         let orders_per_price = 3;
         let best_bid_price = balance!(10);
         let steps = 4;
         let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
         let correct_bids_settings = settings::SideFill {
             highest_price: best_bid_price,
-            lowest_price: best_bid_price - (steps - 1) as u128 * *price_step.balance(),
-            price_step: *price_step.balance(),
+            lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
+            price_step,
             orders_per_price,
             amount_range_inclusive: Some(amount_range),
         };
         let mut bids_settings = correct_bids_settings.clone();
         bids_settings.price_step = 1;
-        let settings = settings::OrderBookFill {
+        let fill_settings = settings::OrderBookFill {
             bids: Some(bids_settings),
             asks: None,
             lifespan: None,
@@ -395,16 +438,20 @@ fn should_reject_incorrect_orderbook_fill_settings() {
         err.post_info.pays_fee = Pays::No;
         assert_err!(
             QAToolsPallet::order_book_create_and_fill_batch(
-                RuntimeOrigin::signed(alice()),
+                RuntimeOrigin::root(),
                 alice(),
                 alice(),
-                vec![(order_book_id, settings)]
+                vec![(
+                    order_book_id,
+                    settings::OrderBookAttributes::default(),
+                    fill_settings
+                )]
             ),
             err
         );
         let mut bids_settings = correct_bids_settings;
         bids_settings.price_step = 0;
-        let settings = settings::OrderBookFill {
+        let fill_settings = settings::OrderBookFill {
             bids: Some(bids_settings),
             asks: None,
             lifespan: None,
@@ -412,60 +459,16 @@ fn should_reject_incorrect_orderbook_fill_settings() {
         };
         assert_err!(
             QAToolsPallet::order_book_create_and_fill_batch(
-                RuntimeOrigin::signed(alice()),
+                RuntimeOrigin::root(),
                 alice(),
                 alice(),
-                vec![(order_book_id, settings)]
+                vec![(
+                    order_book_id,
+                    settings::OrderBookAttributes::default(),
+                    fill_settings
+                )]
             ),
             err
         );
     });
-}
-
-fn test_whitelist<F: Fn(AccountIdOf<Runtime>) -> DispatchResult>(call: F) {
-    let whitelist_before = WhitelistedCallers::<Runtime>::get().clone();
-    let _ = QAToolsPallet::remove_from_whitelist(RuntimeOrigin::root(), alice());
-    assert_err!(call(alice()), BadOrigin);
-    QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice())
-        .expect("just removed from whitelist");
-    assert_ne!(call(alice()), Err(BadOrigin.into()));
-    WhitelistedCallers::<Runtime>::set(whitelist_before);
-}
-
-#[test]
-fn create_and_fill_batch_whitelist_only() {
-    ext().execute_with(|| {
-        test_whitelist(|caller| {
-            QAToolsPallet::order_book_create_and_fill_batch(
-                RuntimeOrigin::signed(caller),
-                alice(),
-                alice(),
-                vec![],
-            )
-            .map_err(|e| e.error)?;
-            Ok(())
-        });
-    })
-}
-
-#[test]
-fn whitelist_modification_is_root_only() {
-    ext().execute_with(|| {
-        assert_err!(
-            QAToolsPallet::add_to_whitelist(RuntimeOrigin::none(), alice()),
-            BadOrigin
-        );
-        assert_err!(
-            QAToolsPallet::add_to_whitelist(RuntimeOrigin::signed(alice()), alice()),
-            BadOrigin
-        );
-        assert_err!(
-            QAToolsPallet::add_to_whitelist(RuntimeOrigin::signed(bob()), alice()),
-            BadOrigin
-        );
-        assert_ok!(QAToolsPallet::add_to_whitelist(
-            RuntimeOrigin::root(),
-            alice()
-        ));
-    })
 }

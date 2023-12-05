@@ -48,10 +48,8 @@ pub mod pallet {
         AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
     };
     use frame_support::dispatch::DispatchErrorWithPostInfo;
-    use frame_support::sp_runtime::{traits::BadOrigin, BoundedBTreeSet};
     use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
-    use frame_system::RawOrigin;
     use order_book::{MomentOf, OrderBookId};
     pub use pallet_tools::order_book::settings;
     use sp_std::prelude::*;
@@ -60,7 +58,7 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + order_book::Config + trading_pair::Config {
+    pub trait Config: frame_system::Config + order_book::Config {
         type WeightInfo: WeightInfo;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
@@ -73,14 +71,6 @@ pub mod pallet {
         >;
         type QaToolsWhitelistCapacity: Get<u32>;
     }
-
-    /// In order to prevent breaking testnets/staging with such zero-weight
-    /// extrinsics from this pallet, we restrict `origin`s to root and trusted
-    /// list of accounts (added by root).
-    #[pallet::storage]
-    #[pallet::getter(fn whitelisted_callers)]
-    pub type WhitelistedCallers<T: Config> =
-        StorageValue<_, BoundedBTreeSet<T::AccountId, T::QaToolsWhitelistCapacity>>;
 
     #[pallet::error]
     pub enum Error<T> {
@@ -107,54 +97,8 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Add the account to the list of allowed callers.
-        #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
-        pub fn add_to_whitelist(
-            origin: OriginFor<T>,
-            account: T::AccountId,
-        ) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            WhitelistedCallers::<T>::mutate(|option_whitelist| {
-                let whitelist = match option_whitelist {
-                    Some(w) => w,
-                    None => option_whitelist.insert(BoundedBTreeSet::new()),
-                };
-                whitelist
-                    .try_insert(account.clone())
-                    .map_err(|_| Error::<T>::WhitelistFull)?
-                    .then_some(())
-                    .ok_or(Error::<T>::AlreadyInWhitelist)?;
-                Ok::<(), Error<T>>(())
-            })?;
-            Ok(().into())
-        }
-
-        /// Remove the account from the list of allowed callers.
-        #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::order_book_create_empty_batch())]
-        pub fn remove_from_whitelist(
-            origin: OriginFor<T>,
-            account: T::AccountId,
-        ) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            WhitelistedCallers::<T>::mutate(|option_whitelist| {
-                let whitelist = match option_whitelist {
-                    Some(w) => w,
-                    None => option_whitelist.insert(BoundedBTreeSet::new()),
-                };
-                let was_not_whitelisted = !whitelist.remove(&account);
-                if was_not_whitelisted {
-                    Err(Error::<T>::NotInWhitelist)
-                } else {
-                    Ok::<(), Error<T>>(())
-                }
-            })?;
-            Ok(().into())
-        }
-
-        /// Create multiple order books with default parameters (if don't exist yet) and fill them
-        /// according to the given parameters.
+        /// Create multiple many order books with default parameters if do not exist and
+        /// fill them according to given parameters.
         ///
         /// Balance for placing the orders is minted automatically, trading pairs are
         /// created if needed.
@@ -165,28 +109,27 @@ pub mod pallet {
         /// - `origin`: account to mint non-divisible assets (for creating an order book)
         /// - `bids_owner`: Creator of the buy orders placed on the order books,
         /// - `asks_owner`: Creator of the sell orders placed on the order books,
-        /// - `fill_settings`: Parameters for placing the orders in each order book.
-        #[pallet::call_index(2)]
+        /// - `settings`: Parameters for placing the orders in each order book.
+        /// `best_bid_price` should be at least 3 price steps from the lowest accepted price,
+        /// and `best_ask_price` - at least 3 steps below maximum price,
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_batch())]
         pub fn order_book_create_and_fill_batch(
             origin: OriginFor<T>,
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
-            fill_settings: Vec<(
+            settings: Vec<(
                 OrderBookId<T::AssetId, T::DEXId>,
+                settings::OrderBookAttributes,
                 settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {
-            // Error messages for unsigned calls are non-informative
-            let who = Self::ensure_in_whitelist(origin)?;
+            ensure_root(origin)?;
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
             pallet_tools::liquidity_proxy::source_initializers::order_book::<T>(
-                who,
-                bids_owner,
-                asks_owner,
-                fill_settings,
+                bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
                 post_info: PostDispatchInfo {
@@ -202,28 +145,6 @@ pub mod pallet {
                 actual_weight: None,
                 pays_fee: Pays::No,
             })
-        }
-    }
-
-    impl<T: Config> Pallet<T> {
-        pub fn ensure_in_whitelist<OuterOrigin>(
-            origin: OuterOrigin,
-        ) -> Result<T::AccountId, BadOrigin>
-        where
-            OuterOrigin: Into<Result<RawOrigin<T::AccountId>, OuterOrigin>>,
-        {
-            let who = match origin.into() {
-                Ok(RawOrigin::Signed(w)) => w,
-                _ => return Err(BadOrigin),
-            };
-            let Some(whitelist) = WhitelistedCallers::<T>::get() else {
-                return Err(BadOrigin)
-            };
-            if whitelist.contains(&who) {
-                Ok(who)
-            } else {
-                Err(BadOrigin)
-            }
         }
     }
 }

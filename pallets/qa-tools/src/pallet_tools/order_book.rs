@@ -30,9 +30,8 @@
 
 use crate::settings::{RandomAmount, SideFill};
 use crate::Config;
-use common::{AssetInfoProvider, Balance, PriceVariant};
+use common::{Balance, PriceVariant, TradingPairSourceManager};
 use frame_support::pallet_prelude::*;
-use frame_support::sp_runtime::traits::Zero;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use order_book::DataLayer;
@@ -46,7 +45,7 @@ use sp_std::prelude::*;
 
 pub mod settings {
     use codec::{Decode, Encode};
-    use common::Balance;
+    use common::{balance, Balance};
     use sp_std::ops::{Range, RangeInclusive};
 
     /// Parameters for filling one order book side
@@ -60,6 +59,27 @@ pub mod settings {
         pub orders_per_price: u32,
         /// Default: `min_lot_size..=max_lot_size`
         pub amount_range_inclusive: Option<RandomAmount>,
+    }
+
+    #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, scale_info::TypeInfo)]
+    #[cfg_attr(feature = "std", derive(Debug))]
+    pub struct OrderBookAttributes {
+        pub tick_size: Balance,
+        pub step_lot_size: Balance,
+        pub min_lot_size: Balance,
+        pub max_lot_size: Balance,
+    }
+
+    // default attributes for regular assets (not NFT)
+    impl Default for OrderBookAttributes {
+        fn default() -> Self {
+            Self {
+                tick_size: balance!(0.00001),
+                step_lot_size: balance!(0.00001),
+                min_lot_size: balance!(1),
+                max_lot_size: balance!(1000),
+            }
+        }
     }
 
     /// Parameters for orders amount generation
@@ -111,39 +131,41 @@ pub mod settings {
 /// `who` is just some account. Used to mint non-divisible assets for creating corresponding
 /// order book(-s).
 pub fn create_multiple_empty_unchecked<T: Config>(
-    who: &T::AccountId,
-    order_book_ids: Vec<OrderBookId<T::AssetId, T::DEXId>>,
+    order_book_settings: Vec<(
+        OrderBookId<T::AssetId, T::DEXId>,
+        settings::OrderBookAttributes,
+    )>,
 ) -> Result<(), DispatchError> {
-    let to_create_ids: Vec<_> = order_book_ids
+    let to_create_ids: Vec<_> = order_book_settings
         .into_iter()
-        .filter(|id| !<order_book::OrderBooks<T>>::contains_key(id))
+        .filter(|(id, _)| !<order_book::OrderBooks<T>>::contains_key(id))
         .collect();
-    for order_book_id in &to_create_ids {
-        if !trading_pair::Pallet::<T>::is_trading_pair_enabled(
+    for (order_book_id, _) in &to_create_ids {
+        if !T::TradingPairSourceManager::is_trading_pair_enabled(
             &order_book_id.dex_id,
             &order_book_id.quote.into(),
             &order_book_id.base.into(),
         )? {
-            trading_pair::Pallet::<T>::register_pair(
+            T::TradingPairSourceManager::register_pair(
                 order_book_id.dex_id,
                 order_book_id.quote.into(),
                 order_book_id.base.into(),
             )?;
         }
-        if <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base)
-            && <T as Config>::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
-                == Balance::zero()
-        {
-            assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &who, 1)?;
-        }
-        order_book::Pallet::<T>::verify_create_orderbook_params(who, &order_book_id)?;
+        order_book::Pallet::<T>::verify_create_orderbook_params(&order_book_id)?;
     }
 
-    for order_book_id in to_create_ids {
-        order_book::Pallet::<T>::create_orderbook_unchecked(&order_book_id)?;
+    for (order_book_id, attributes) in to_create_ids {
+        order_book::Pallet::<T>::create_orderbook_unchecked(
+            &order_book_id,
+            attributes.tick_size,
+            attributes.step_lot_size,
+            attributes.min_lot_size,
+            attributes.max_lot_size,
+        )?;
         order_book::Pallet::<T>::deposit_event_exposed(order_book::Event::<T>::OrderBookCreated {
             order_book_id,
-            creator: who.clone(),
+            creator: None,
         });
     }
     Ok(())
@@ -153,8 +175,9 @@ pub fn create_multiple_empty_unchecked<T: Config>(
 pub fn fill_multiple_empty_unchecked<T: Config>(
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
-    fill_settings: Vec<(
+    settings: Vec<(
         OrderBookId<T::AssetId, T::DEXId>,
+        settings::OrderBookAttributes,
         settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
     )>,
 ) -> Result<(), DispatchError> {
@@ -162,13 +185,13 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     let current_block = frame_system::Pallet::<T>::block_number();
     let mut data = order_book::cache_data_layer::CacheDataLayer::<T>::new();
 
-    for (order_book_id, settings) in fill_settings {
+    for (order_book_id, _, fill_settings) in settings {
         fill_order_book(
             &mut data,
             order_book_id,
             asks_owner.clone(),
             bids_owner.clone(),
-            settings,
+            fill_settings,
             now,
             current_block,
         )?;

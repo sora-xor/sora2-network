@@ -47,23 +47,21 @@ pub mod source_initializers {
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
     /// - `fill_settings`: Parameters for placing the orders in each order book.
     pub fn order_book<T: Config>(
-        caller: T::AccountId,
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
-        fill_settings: Vec<(
+        settings: Vec<(
             OrderBookId<T::AssetId, T::DEXId>,
+            settings::OrderBookAttributes,
             settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
         )>,
     ) -> DispatchResult {
-        let order_book_ids: Vec<_> = fill_settings.iter().map(|(id, _)| id).cloned().collect();
-        crate::pallet_tools::order_book::create_multiple_empty_unchecked::<T>(
-            &caller,
-            order_book_ids,
-        )?;
+        let order_book_ids: Vec<_> = settings
+            .iter()
+            .map(|(id, attributes, _)| (*id, *attributes))
+            .collect();
+        crate::pallet_tools::order_book::create_multiple_empty_unchecked::<T>(order_book_ids)?;
         crate::pallet_tools::order_book::fill_multiple_empty_unchecked::<T>(
-            bids_owner,
-            asks_owner,
-            fill_settings,
+            bids_owner, asks_owner, settings,
         )?;
         Ok(())
     }

@@ -13,6 +13,7 @@ mod tests;
 mod benchmarking;
 
 use codec::{Decode, Encode};
+use common::TradingPairSourceManager;
 pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
@@ -101,7 +102,6 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config
         + assets::Config
-        + trading_pair::Config
         + pool_xyk::Config
         + ceres_liquidity_locker::Config
         + pswap_distribution::Config
@@ -115,13 +115,14 @@ pub mod pallet {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
 
     type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
-    type TradingPair<T> = trading_pair::Pallet<T>;
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
     type TokenLocker<T> = ceres_token_locker::Pallet<T>;
@@ -399,8 +400,12 @@ pub mod pallet {
             };
 
             ensure!(
-                !TradingPair::<T>::is_trading_pair_enabled(&dex_id, &base_asset, &asset_id)
-                    .unwrap_or(true),
+                !<T as Config>::TradingPairSourceManager::is_trading_pair_enabled(
+                    &dex_id,
+                    &base_asset,
+                    &asset_id
+                )
+                .unwrap_or(true),
                 Error::<T>::CantCreateILOForListedToken
             );
 
@@ -733,8 +738,7 @@ pub mod pallet {
                 DEXId::PolkaswapXSTUSD.into()
             };
             // Register trading pair
-            TradingPair::<T>::register(
-                RawOrigin::Signed(pallet_account.clone()).into(),
+            <T as Config>::TradingPairSourceManager::register_pair(
                 dex_id,
                 ilo_info.base_asset,
                 asset_id,

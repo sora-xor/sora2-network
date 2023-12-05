@@ -120,6 +120,18 @@ pub trait TradingPairSourceManager<DEXId, AssetId> {
         target_asset_id: &AssetId,
         source_type: LiquiditySourceType,
     ) -> DispatchResult;
+
+    fn is_trading_pair_enabled(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError>;
+
+    fn register_pair(
+        dex_id: DEXId,
+        base_asset_id: AssetId,
+        target_asset_id: AssetId,
+    ) -> Result<(), DispatchError>;
 }
 
 impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
@@ -155,6 +167,22 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
         _target_asset_id: &AssetId,
         _source_type: LiquiditySourceType,
     ) -> DispatchResult {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn is_trading_pair_enabled(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn register_pair(
+        _dex_id: DEXId,
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Result<(), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 }
@@ -214,6 +242,24 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
 
     /// Get weight of exchange
     fn check_rewards_weight() -> Weight;
+}
+
+/// Implements trading pairs LockedLiquiditySources storage
+pub trait LockedLiquiditySourcesManager<LiquiditySourceType> {
+    fn get() -> Vec<LiquiditySourceType>;
+    fn set(liquidity_source_types: Vec<LiquiditySourceType>) -> ();
+    fn append(liquidity_source_type: LiquiditySourceType) -> ();
+}
+
+/// Implements trading pair EnabledSources storage
+pub trait EnabledSourcesManager<DEXId, AssetId> {
+    fn mutate_remove(dex_id: &DEXId, base_asset_id: &AssetId, target_asset_id: &AssetId) -> ();
+}
+
+impl<DEXId, AssetId> EnabledSourcesManager<DEXId, AssetId> for () {
+    fn mutate_remove(_dex_id: &DEXId, _baset_asset_id: &AssetId, _target_asset_id: &AssetId) -> () {
+        todo!()
+    }
 }
 
 /// *Hook*-like trait for oracles to capture newly relayed symbols.

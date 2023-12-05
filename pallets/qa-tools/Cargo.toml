@@ -24,7 +24,6 @@ frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "p
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 assets = { path = "../assets", default-features = false }
 order-book = { path = "../../pallets/order-book", default-features = false, features = ["private-net"] }
-trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
@@ -49,5 +48,7 @@ ready-to-test = [
     "order-book/ready-to-test"
 ]
 private-net = [
-    "order-book/private-net"
+    "framenode-chain-spec/private-net",
+    "framenode-runtime/private-net",
+    "order-book/private-net",
 ]

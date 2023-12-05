@@ -31,7 +31,6 @@ serde = { version = "1.0.101", optional = true, features = [
 sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
-trading-pair = { path = "../trading-pair", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
@@ -51,7 +50,6 @@ permissions = { path = "../permissions" }
 pool-xyk = { path = "../pool-xyk" }
 pswap-distribution = { path = "../pswap-distribution" }
 technical = { path = "../technical" }
-trading-pair = { path = "../trading-pair" }
 
 [features]
 default = ['std']
