@@ -51,7 +51,6 @@ mod test_utils;
 
 mod benchmarking;
 mod compounding;
-mod rpc;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
 pub const TECH_ACCOUNT_TREASURY_MAIN: &[u8] = b"treasury";

@@ -2824,13 +2824,6 @@ impl_runtime_apis! {
         }
     }
 
-    #[cfg(feature = "wip")] // Kensetsu
-    impl kensetsu_runtime_api::KensetsuApi<Block> for Runtime {
-        fn is_cdp_safe(cdp_id: u64) -> Result<bool, DispatchError> {
-            Kensetsu::is_cdp_safe(cdp_id)
-        }
-    }
-
     #[cfg(feature = "wip")] // Trustless substrate bridge
     impl beefy_light_client_runtime_api::BeefyLightClientAPI<Block, beefy_light_client::BitField> for Runtime {
         fn get_random_bitfield(network_id: SubNetworkId, prior: beefy_light_client::BitField, num_of_validators: u32) -> beefy_light_client::BitField {

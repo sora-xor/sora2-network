@@ -82,13 +82,10 @@ where
     C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
     C: Send + Sync + 'static,
     C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
-    C::Api: kensetsu_rpc::KensetsuRuntimeApi<Block>,
 {
     use beefy_light_client_rpc::{BeefyLightClientAPIServer, BeefyLightClientClient};
-    use kensetsu_rpc::{KensetsuApiServer, KensetsuClient};
 
     rpc.merge(BeefyLightClientClient::new(client.clone()).into_rpc())?;
-    rpc.merge(KensetsuClient::new(client).into_rpc())?;
     Ok(rpc)
 }
 

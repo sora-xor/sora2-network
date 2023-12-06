@@ -43,7 +43,6 @@ iroha-migration = { path = "../pallets/iroha-migration" }
 iroha-migration-rpc = { path = "../pallets/iroha-migration/rpc" }
 trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
 assets-rpc = { path = "../pallets/assets/rpc" }
-kensetsu-rpc = { path = "../pallets/kensetsu/rpc" }
 liquidity-proxy-rpc = { path = "../pallets/liquidity-proxy/rpc" }
 eth-bridge-rpc = { path = "../pallets/eth-bridge/rpc" }
 farming-rpc = { path = "../pallets/farming/rpc" }
