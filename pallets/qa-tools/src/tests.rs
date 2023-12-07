@@ -37,6 +37,7 @@ use common::{
     PriceVariant, PSWAP, VAL, XOR,
 };
 use frame_support::dispatch::{Pays, PostDispatchInfo};
+use frame_support::traits::Hooks;
 use frame_support::{assert_err, assert_ok};
 use frame_system::pallet_prelude::BlockNumberFor;
 use framenode_chain_spec::ext;
@@ -58,8 +59,27 @@ pub fn bob() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
 }
 
+pub fn charlie() -> <Runtime as frame_system::Config>::AccountId {
+    <Runtime as frame_system::Config>::AccountId::new([3u8; 32])
+}
+
+pub fn dave() -> <Runtime as frame_system::Config>::AccountId {
+    <Runtime as frame_system::Config>::AccountId::new([4u8; 32])
+}
+
 fn default_price_step() -> Balance {
     settings::OrderBookAttributes::default().tick_size
+}
+
+pub fn run_to_block(n: u32) {
+    while FrameSystem::block_number() < n {
+        order_book::Pallet::<Runtime>::on_finalize(FrameSystem::block_number());
+        qa_tools::Pallet::<Runtime>::on_finalize(FrameSystem::block_number());
+        FrameSystem::set_block_number(FrameSystem::block_number() + 1);
+        FrameSystem::on_initialize(FrameSystem::block_number());
+        order_book::Pallet::<Runtime>::on_initialize(FrameSystem::block_number());
+        qa_tools::Pallet::<Runtime>::on_initialize(FrameSystem::block_number());
+    }
 }
 
 fn test_creates_orderbook(
@@ -666,7 +686,6 @@ fn should_not_create_existing_order_book() {
             lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
-        // 100 prices by 10 orders = 1000 orders
         let asks_settings = settings::SideFill {
             highest_price: balance!(11) + 9 * price_step,
             lowest_price: balance!(11),
@@ -709,6 +728,195 @@ fn should_not_create_existing_order_book() {
                 )]
             ),
             err
+        );
+    });
+}
+
+#[test]
+fn should_not_fill_non_existing_order_book() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let price_step = default_price_step();
+        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+
+        let bids_settings = settings::SideFill {
+            highest_price: balance!(10),
+            lowest_price: balance!(10) - 9 * price_step,
+            price_step,
+            orders_per_price: 10,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        let asks_settings = settings::SideFill {
+            highest_price: balance!(11) + 9 * price_step,
+            lowest_price: balance!(11),
+            price_step,
+            orders_per_price: 10,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        let fill_settings = settings::OrderBookFill {
+            bids: Some(bids_settings),
+            asks: Some(asks_settings),
+            random_seed: None,
+        };
+
+        let mut err: DispatchErrorWithPostInfo<PostDispatchInfo> =
+            Error::<Runtime>::CannotFillUnknownOrderBook.into();
+        err.post_info.pays_fee = Pays::No;
+        assert_err!(
+            QAToolsPallet::order_book_fill_batch(
+                RuntimeOrigin::root(),
+                alice(),
+                bob(),
+                vec![(order_book_id, fill_settings)]
+            ),
+            err
+        );
+    });
+}
+
+#[test]
+fn should_fill_order_book() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let price_step = default_price_step();
+        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+
+        let bids_settings = settings::SideFill {
+            highest_price: balance!(10),
+            lowest_price: balance!(10) - 9 * price_step,
+            price_step,
+            orders_per_price: 10,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        let asks_settings = settings::SideFill {
+            highest_price: balance!(11) + 9 * price_step,
+            lowest_price: balance!(11),
+            price_step,
+            orders_per_price: 10,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        let fill_settings = settings::OrderBookFill {
+            bids: Some(bids_settings),
+            asks: Some(asks_settings),
+            random_seed: None,
+        };
+
+        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+            RuntimeOrigin::root(),
+            alice(),
+            bob(),
+            vec![(
+                order_book_id,
+                settings::OrderBookAttributes::default(),
+                fill_settings.clone()
+            )]
+        ));
+
+        assert!(order_book::Pallet::<Runtime>::order_books(order_book_id).is_some());
+
+        assert_ok!(QAToolsPallet::order_book_fill_batch(
+            RuntimeOrigin::root(),
+            alice(),
+            bob(),
+            vec![(order_book_id, fill_settings)]
+        ));
+    });
+}
+
+#[test]
+fn should_fill_orderbook_max_orders_count() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let price_step = default_price_step();
+        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+
+        // 10 prices by 100 orders = 1000 orders
+        let bids_settings = settings::SideFill {
+            highest_price: balance!(10),
+            lowest_price: balance!(10) - 9 * price_step,
+            price_step,
+            orders_per_price: 100,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        // 100 prices by 10 orders = 1000 orders
+        let asks_settings = settings::SideFill {
+            highest_price: balance!(11) + 99 * price_step,
+            lowest_price: balance!(11),
+            price_step,
+            orders_per_price: 10,
+            lifespan: Some(2_590_000_000),
+            amount_range_inclusive: Some(amount_range),
+        };
+        let fill_settings = settings::OrderBookFill {
+            bids: Some(bids_settings),
+            asks: Some(asks_settings),
+            random_seed: None,
+        };
+
+        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+            RuntimeOrigin::root(),
+            alice(),
+            bob(),
+            vec![(
+                order_book_id,
+                settings::OrderBookAttributes::default(),
+                fill_settings.clone()
+            )]
+        ));
+
+        assert!(order_book::Pallet::<Runtime>::order_books(order_book_id).is_some());
+
+        assert_eq!(
+            order_book::Pallet::<Runtime>::aggregated_bids(order_book_id).len(),
+            10
+        );
+        assert_eq!(
+            order_book::Pallet::<Runtime>::aggregated_asks(order_book_id).len(),
+            100
+        );
+        assert_eq!(
+            order_book::LimitOrders::<Runtime>::iter_prefix(order_book_id).count(),
+            2000
+        );
+
+        let current_block = FrameSystem::block_number();
+        run_to_block(current_block + 1);
+
+        assert_ok!(QAToolsPallet::order_book_fill_batch(
+            RuntimeOrigin::root(),
+            charlie(),
+            dave(),
+            vec![(order_book_id, fill_settings)]
+        ));
+
+        assert_eq!(
+            order_book::Pallet::<Runtime>::aggregated_bids(order_book_id).len(),
+            10
+        );
+        assert_eq!(
+            order_book::Pallet::<Runtime>::aggregated_asks(order_book_id).len(),
+            100
+        );
+        assert_eq!(
+            order_book::LimitOrders::<Runtime>::iter_prefix(order_book_id).count(),
+            4000
         );
     });
 }

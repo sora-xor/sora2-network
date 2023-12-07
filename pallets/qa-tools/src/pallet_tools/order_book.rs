@@ -179,7 +179,6 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     asks_owner: T::AccountId,
     settings: Vec<(
         OrderBookId<T::AssetId, T::DEXId>,
-        settings::OrderBookAttributes,
         settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
     )>,
 ) -> Result<(), DispatchError> {
@@ -187,7 +186,7 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
     let current_block = frame_system::Pallet::<T>::block_number();
     let mut data = order_book::cache_data_layer::CacheDataLayer::<T>::new();
 
-    for (order_book_id, _, fill_settings) in settings {
+    for (order_book_id, fill_settings) in settings {
         fill_order_book(
             &mut data,
             order_book_id,

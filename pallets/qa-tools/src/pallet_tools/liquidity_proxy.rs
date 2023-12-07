@@ -36,17 +36,15 @@ pub mod source_initializers {
     use order_book::{MomentOf, OrderBookId};
     use sp_std::vec::Vec;
 
-    /// Create multiple order books with default parameters if do not exist and
-    /// fill them according to given parameters.
+    /// Create multiple many order books with parameters and fill them according to given parameters.
     ///
     /// Balance for placing the orders is minted automatically, trading pairs are
     /// created if needed.
     ///
     /// Parameters:
-    /// - `caller`: account to mint non-divisible assets (for creating an order book)
     /// - `bids_owner`: Creator of the buy orders placed on the order books,
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
-    /// - `fill_settings`: Parameters for placing the orders in each order book.
+    /// - `settings`: Parameters for creation of the order book and placing the orders in each order book.
     pub fn order_book<T: Config>(
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
@@ -67,6 +65,50 @@ pub mod source_initializers {
             );
         }
         crate::pallet_tools::order_book::create_multiple_empty_unchecked::<T>(creation_settings)?;
+
+        let orders_settings: Vec<_> = settings
+            .into_iter()
+            .map(|(id, _, fill_settings)| (id, fill_settings))
+            .collect();
+        crate::pallet_tools::order_book::fill_multiple_empty_unchecked::<T>(
+            bids_owner,
+            asks_owner,
+            orders_settings,
+        )?;
+        Ok(())
+    }
+}
+
+pub mod source_filling {
+    use crate::{settings, Config};
+    use frame_support::dispatch::DispatchResult;
+    use frame_support::ensure;
+    use frame_system::pallet_prelude::BlockNumberFor;
+    use order_book::{MomentOf, OrderBookId};
+    use sp_std::vec::Vec;
+
+    /// Fill the order books according to given parameters.
+    ///
+    /// Balance for placing the orders is minted automatically.
+    ///
+    /// Parameters:
+    /// - `bids_owner`: Creator of the buy orders placed on the order books,
+    /// - `asks_owner`: Creator of the sell orders placed on the order books,
+    /// - `settings`: Parameters for placing the orders in each order book.
+    pub fn order_book<T: Config>(
+        bids_owner: T::AccountId,
+        asks_owner: T::AccountId,
+        settings: Vec<(
+            OrderBookId<T::AssetId, T::DEXId>,
+            settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
+        )>,
+    ) -> DispatchResult {
+        for (order_book_id, _) in settings.iter() {
+            ensure!(
+                order_book::OrderBooks::<T>::contains_key(order_book_id),
+                crate::Error::<T>::CannotFillUnknownOrderBook
+            );
+        }
         crate::pallet_tools::order_book::fill_multiple_empty_unchecked::<T>(
             bids_owner, asks_owner, settings,
         )?;

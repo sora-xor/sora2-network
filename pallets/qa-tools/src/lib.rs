@@ -47,8 +47,8 @@ pub mod pallet {
     use common::{
         AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
     };
-    use frame_support::dispatch::DispatchErrorWithPostInfo;
-    use frame_support::{dispatch::PostDispatchInfo, pallet_prelude::*};
+    use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
+    use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
     pub use pallet_tools::order_book::settings;
@@ -103,8 +103,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Create multiple many order books with default parameters if do not exist and
-        /// fill them according to given parameters.
+        /// Create multiple many order books with parameters and fill them according to given parameters.
         ///
         /// Balance for placing the orders is minted automatically, trading pairs are
         /// created if needed.
@@ -112,12 +111,10 @@ pub mod pallet {
         /// In order to create empty order books, one can leave settings empty.
         ///
         /// Parameters:
-        /// - `origin`: account to mint non-divisible assets (for creating an order book)
+        /// - `origin`: root
         /// - `bids_owner`: Creator of the buy orders placed on the order books,
         /// - `asks_owner`: Creator of the sell orders placed on the order books,
-        /// - `settings`: Parameters for placing the orders in each order book.
-        /// `best_bid_price` should be at least 3 price steps from the lowest accepted price,
-        /// and `best_ask_price` - at least 3 steps below maximum price,
+        /// - `settings`: Parameters for creation of the order book and placing the orders in each order book.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::order_book_create_and_fill_batch())]
         pub fn order_book_create_and_fill_batch(
@@ -135,6 +132,49 @@ pub mod pallet {
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
             pallet_tools::liquidity_proxy::source_initializers::order_book::<T>(
+                bids_owner, asks_owner, settings,
+            )
+            .map_err(|e| DispatchErrorWithPostInfo {
+                post_info: PostDispatchInfo {
+                    actual_weight: None,
+                    pays_fee: Pays::No,
+                },
+                error: e,
+            })?;
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        /// Fill the order books according to given parameters.
+        ///
+        /// Balance for placing the orders is minted automatically.
+        ///
+        /// Parameters:
+        /// - `origin`: root
+        /// - `bids_owner`: Creator of the buy orders placed on the order books,
+        /// - `asks_owner`: Creator of the sell orders placed on the order books,
+        /// - `settings`: Parameters for placing the orders in each order book.
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::order_book_fill_batch())]
+        pub fn order_book_fill_batch(
+            origin: OriginFor<T>,
+            bids_owner: T::AccountId,
+            asks_owner: T::AccountId,
+            settings: Vec<(
+                OrderBookId<T::AssetId, T::DEXId>,
+                settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
+            )>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            // Replace with more convenient `with_pays_fee` when/if available
+            // https://github.com/paritytech/substrate/pull/14470
+            pallet_tools::liquidity_proxy::source_filling::order_book::<T>(
                 bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
