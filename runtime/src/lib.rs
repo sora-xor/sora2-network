@@ -1926,8 +1926,8 @@ parameter_types! {
 
 #[cfg(feature = "ready-to-test")] // order-book
 impl order_book::Config for Runtime {
-    const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days
-    const MIN_ORDER_LIFESPAN: Moment = (MINUTES as Moment) * MILLISECS_PER_BLOCK; // 1 minute
+    const MAX_ORDER_LIFESPAN: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days = 2_592_000_000
+    const MIN_ORDER_LIFESPAN: Moment = (MINUTES as Moment) * MILLISECS_PER_BLOCK; // 1 minute = 60_000
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     const MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(50);
     const SOFT_MIN_MAX_RATIO: usize = 1000;
@@ -1950,7 +1950,7 @@ impl order_book::Config for Runtime {
     type MaxOpenedLimitOrdersPerUser = ConstU32<1024>;
     type MaxLimitOrdersForPrice = ConstU32<1024>;
     type MaxSidePriceCount = ConstU32<1024>;
-    type MaxExpiringOrdersPerBlock = ConstU32<512>;
+    type MaxExpiringOrdersPerBlock = ConstU32<1024>;
     type MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
     type MaxAlignmentWeightPerBlock = AlignmentSchedulerMaxWeight;
     type EnsureTradingPairExists = TradingPair;

@@ -1232,6 +1232,14 @@ impl<T: Config> Pallet<T> {
     }
 }
 
+#[cfg(feature = "private-net")]
+impl<T: Config> Pallet<T> {
+    /// Specifically created for `qa-tools` pallet
+    pub fn deposit_event_exposed(event: Event<T>) {
+        Self::deposit_event(event)
+    }
+}
+
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
     for Pallet<T>
 {
