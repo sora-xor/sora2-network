@@ -934,7 +934,7 @@ pub mod pallet {
                 .ok_or(Error::<T>::ArithmeticError)?;
             let collateral_info = Self::collateral_risk_parameters(cdp.collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?;
-            let stability_fee = get_accrued_interest(
+            let mut stability_fee = get_accrued_interest(
                 cdp.debt,
                 collateral_info.stability_fee_rate,
                 time_passed
@@ -953,6 +953,24 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
+            let bad_debt = <BadDebt<T>>::get();
+            if bad_debt > 0 {
+                let new_debt = if stability_fee <= bad_debt {
+                    stability_fee = 0;
+                    bad_debt
+                        .checked_sub(stability_fee)
+                        .ok_or(Error::<T>::ArithmeticError)?
+                } else {
+                    stability_fee = stability_fee
+                        .checked_sub(bad_debt)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    balance!(0)
+                };
+                <BadDebt<T>>::try_mutate(|bad_debt| {
+                    *bad_debt = new_debt;
+                    DispatchResult::Ok(())
+                })?;
+            }
             Self::mint_treasury(stability_fee)?;
 
             Ok(())
