@@ -32,7 +32,7 @@ use super::*;
 use crate::mock::{RuntimeOrigin, TestRuntime};
 
 use common::PredefinedAssetId::XOR;
-use common::{balance, AssetInfoProvider, Balance};
+use common::{AssetInfoProvider, Balance};
 use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
@@ -74,16 +74,16 @@ pub fn bob() -> OriginFor<TestRuntime> {
 
 /// Sets XOR asset id as collateral with default parameters
 /// As if Risk Manager called `update_collateral_risk_parameters(XOR, some_info)`
-pub fn set_xor_as_collateral_type() {
+pub fn set_xor_as_collateral_type(liquidation_ratio: Perbill) {
     CollateralTypes::<TestRuntime>::set(
         <TestRuntime as assets::Config>::AssetId::from(XOR),
         Some(CollateralRiskParameters {
-            max_supply: balance!(1000),
-            liquidation_ratio: Perbill::from_float(0.5),
+            max_supply: Balance::MAX,
+            liquidation_ratio: liquidation_ratio,
             stability_fee_rate: Default::default(),
         }),
     );
-    KusdHardCap::<TestRuntime>::set(balance!(1000));
+    KusdHardCap::<TestRuntime>::set(Balance::MAX);
 }
 
 /// Creates CDP with XOR as collateral asset id
