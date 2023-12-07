@@ -1491,6 +1491,14 @@
 <a href="#1476" id="1476">1476</a>
 <a href="#1477" id="1477">1477</a>
 <a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2722,6 +2730,14 @@
         };
         &lt;OrderBooks&lt;T&gt;&gt;::insert(order_book_id, order_book);
         <span class="self">Self</span>::register_tech_account(<span class="kw-2">*</span>order_book_id)
+    }
+}
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
+</span><span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
+    <span class="doccomment">/// Specifically created for `qa-tools` pallet
+    </span><span class="kw">pub fn </span>deposit_event_exposed(event: Event&lt;T&gt;) {
+        <span class="self">Self</span>::deposit_event(event)
     }
 }
 
