@@ -16,6 +16,8 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 common = { path = "../../common", default-features = false }
+rand = { version = "0.8.5", default-features = false }
+rand_chacha = { version = "0.3.1", default-features = false }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -33,11 +35,14 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 [features]
 default = ["std"]
 std = [
+    "assets/std",
     "codec/std",
+    "common/std",
     "frame-support/std",
     "frame-system/std",
     "order-book/std",
     "scale-info/std",
+    "sp-std/std",
 ]
 ready-to-test = [
     "framenode-chain-spec/ready-to-test",
@@ -48,4 +53,5 @@ ready-to-test = [
 private-net = [
     "framenode-chain-spec/private-net",
     "framenode-runtime/private-net",
+    "order-book/private-net",
 ]
