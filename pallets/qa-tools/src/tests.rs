@@ -646,3 +646,69 @@ fn should_create_and_fill_orderbook_max_orders_count() {
         );
     });
 }
+
+#[test]
+fn should_not_create_existing_order_book() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let price_step = default_price_step();
+        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+
+        let bids_settings = settings::SideFill {
+            highest_price: balance!(10),
+            lowest_price: balance!(10) - 9 * price_step,
+            price_step,
+            orders_per_price: 10,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        // 100 prices by 10 orders = 1000 orders
+        let asks_settings = settings::SideFill {
+            highest_price: balance!(11) + 9 * price_step,
+            lowest_price: balance!(11),
+            price_step,
+            orders_per_price: 10,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        let fill_settings = settings::OrderBookFill {
+            bids: Some(bids_settings),
+            asks: Some(asks_settings),
+            random_seed: None,
+        };
+
+        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+            RuntimeOrigin::root(),
+            alice(),
+            bob(),
+            vec![(
+                order_book_id,
+                settings::OrderBookAttributes::default(),
+                fill_settings.clone()
+            )]
+        ));
+
+        assert!(order_book::Pallet::<Runtime>::order_books(order_book_id).is_some());
+
+        let mut err: DispatchErrorWithPostInfo<PostDispatchInfo> =
+            Error::<Runtime>::OrderBookAlreadyExists.into();
+        err.post_info.pays_fee = Pays::No;
+        assert_err!(
+            QAToolsPallet::order_book_create_and_fill_batch(
+                RuntimeOrigin::root(),
+                alice(),
+                bob(),
+                vec![(
+                    order_book_id,
+                    settings::OrderBookAttributes::default(),
+                    fill_settings
+                )]
+            ),
+            err
+        );
+    });
+}

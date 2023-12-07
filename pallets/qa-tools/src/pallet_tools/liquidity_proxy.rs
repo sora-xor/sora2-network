@@ -31,6 +31,7 @@
 pub mod source_initializers {
     use crate::{settings, Config};
     use frame_support::dispatch::DispatchResult;
+    use frame_support::ensure;
     use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};
     use sp_std::vec::Vec;
@@ -55,11 +56,17 @@ pub mod source_initializers {
             settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
         )>,
     ) -> DispatchResult {
-        let order_book_ids: Vec<_> = settings
+        let creation_settings: Vec<_> = settings
             .iter()
             .map(|(id, attributes, _)| (*id, *attributes))
             .collect();
-        crate::pallet_tools::order_book::create_multiple_empty_unchecked::<T>(order_book_ids)?;
+        for (order_book_id, _) in creation_settings.iter() {
+            ensure!(
+                !order_book::OrderBooks::<T>::contains_key(order_book_id),
+                crate::Error::<T>::OrderBookAlreadyExists
+            );
+        }
+        crate::pallet_tools::order_book::create_multiple_empty_unchecked::<T>(creation_settings)?;
         crate::pallet_tools::order_book::fill_multiple_empty_unchecked::<T>(
             bids_owner, asks_owner, settings,
         )?;
