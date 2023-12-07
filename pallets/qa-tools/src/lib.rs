@@ -93,6 +93,10 @@ pub mod pallet {
         EmptyRandomRange,
         /// The range for generating order amounts must be within order book's accepted values.
         OutOfBoundsRandomRange,
+        /// The count of created orders is too large.
+        TooManyOrders,
+        /// The count of prices to fill is too large.
+        TooManyPrices,
     }
 
     #[pallet::call]

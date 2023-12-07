@@ -103,6 +103,7 @@ fn test_creates_orderbook(
                     lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
                     price_step,
                     orders_per_price,
+                    lifespan: None,
                     amount_range_inclusive: Some(amount_range.clone())
                 }),
                 asks: Some(settings::SideFill {
@@ -110,9 +111,9 @@ fn test_creates_orderbook(
                     lowest_price: best_ask_price,
                     price_step,
                     orders_per_price,
+                    lifespan: None,
                     amount_range_inclusive: Some(amount_range.clone())
                 }),
-                lifespan: None,
                 random_seed: None,
             }
         )]
@@ -253,6 +254,7 @@ fn should_respect_orderbook_seed() {
                 lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
                 price_step,
                 orders_per_price,
+                lifespan: None,
                 amount_range_inclusive: Some(amount_range.clone()),
             }),
             asks: Some(settings::SideFill {
@@ -260,9 +262,9 @@ fn should_respect_orderbook_seed() {
                 lowest_price: best_ask_price,
                 price_step,
                 orders_per_price,
+                lifespan: None,
                 amount_range_inclusive: Some(amount_range),
             }),
-            lifespan: None,
             random_seed: None,
         };
         assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
@@ -323,6 +325,7 @@ fn should_keep_orderbook_randomness_independent() {
                 lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
                 price_step,
                 orders_per_price,
+                lifespan: None,
                 amount_range_inclusive: Some(amount_range.clone()),
             }),
             asks: Some(settings::SideFill {
@@ -330,9 +333,9 @@ fn should_keep_orderbook_randomness_independent() {
                 lowest_price: best_ask_price,
                 price_step,
                 orders_per_price,
+                lifespan: None,
                 amount_range_inclusive: Some(amount_range),
             }),
-            lifespan: None,
             random_seed: None,
         };
         let fill_settings_2 = settings::OrderBookFill {
@@ -423,6 +426,7 @@ fn should_reject_incorrect_orderbook_fill_settings() {
             lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
             price_step,
             orders_per_price,
+            lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
         let mut bids_settings = correct_bids_settings.clone();
@@ -430,7 +434,6 @@ fn should_reject_incorrect_orderbook_fill_settings() {
         let fill_settings = settings::OrderBookFill {
             bids: Some(bids_settings),
             asks: None,
-            lifespan: None,
             random_seed: None,
         };
         let mut err: DispatchErrorWithPostInfo<PostDispatchInfo> =
@@ -454,7 +457,6 @@ fn should_reject_incorrect_orderbook_fill_settings() {
         let fill_settings = settings::OrderBookFill {
             bids: Some(bids_settings),
             asks: None,
-            lifespan: None,
             random_seed: None,
         };
         assert_err!(
@@ -469,6 +471,178 @@ fn should_reject_incorrect_orderbook_fill_settings() {
                 )]
             ),
             err
+        );
+    });
+}
+
+#[test]
+fn should_reject_too_many_orders() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let price_step = default_price_step();
+        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+
+        // 100 001 prices by 10 orders = 1 000 010 orders
+        let wrong_settings1 = settings::SideFill {
+            highest_price: balance!(10),
+            lowest_price: balance!(9),
+            price_step,
+            orders_per_price: 10,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        let fill_settings = settings::OrderBookFill {
+            bids: Some(wrong_settings1),
+            asks: None,
+            random_seed: None,
+        };
+
+        let mut err: DispatchErrorWithPostInfo<PostDispatchInfo> =
+            Error::<Runtime>::TooManyPrices.into();
+        err.post_info.pays_fee = Pays::No;
+        assert_err!(
+            QAToolsPallet::order_book_create_and_fill_batch(
+                RuntimeOrigin::root(),
+                alice(),
+                alice(),
+                vec![(
+                    order_book_id,
+                    settings::OrderBookAttributes::default(),
+                    fill_settings
+                )]
+            ),
+            err
+        );
+
+        // 1 price by 10 000 orders = 10 000 orders
+        let wrong_settings2 = settings::SideFill {
+            highest_price: balance!(10),
+            lowest_price: balance!(10),
+            price_step,
+            orders_per_price: 10_000,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        let fill_settings = settings::OrderBookFill {
+            bids: Some(wrong_settings2),
+            asks: None,
+            random_seed: None,
+        };
+
+        let mut err: DispatchErrorWithPostInfo<PostDispatchInfo> =
+            Error::<Runtime>::TooManyOrders.into();
+        err.post_info.pays_fee = Pays::No;
+        assert_err!(
+            QAToolsPallet::order_book_create_and_fill_batch(
+                RuntimeOrigin::root(),
+                alice(),
+                alice(),
+                vec![(
+                    order_book_id,
+                    settings::OrderBookAttributes::default(),
+                    fill_settings
+                )]
+            ),
+            err
+        );
+
+        // 11 prices by 100 orders = 1100 orders
+        let wrong_settings3 = settings::SideFill {
+            highest_price: balance!(10),
+            lowest_price: balance!(10) - 10 * price_step,
+            price_step,
+            orders_per_price: 100,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        let fill_settings = settings::OrderBookFill {
+            bids: Some(wrong_settings3),
+            asks: None,
+            random_seed: None,
+        };
+
+        let mut err: DispatchErrorWithPostInfo<PostDispatchInfo> =
+            Error::<Runtime>::TooManyOrders.into();
+        err.post_info.pays_fee = Pays::No;
+        assert_err!(
+            QAToolsPallet::order_book_create_and_fill_batch(
+                RuntimeOrigin::root(),
+                alice(),
+                alice(),
+                vec![(
+                    order_book_id,
+                    settings::OrderBookAttributes::default(),
+                    fill_settings
+                )]
+            ),
+            err
+        );
+    });
+}
+
+#[test]
+fn should_create_and_fill_orderbook_max_orders_count() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let price_step = default_price_step();
+        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+
+        // 10 prices by 100 orders = 1000 orders
+        let bids_settings = settings::SideFill {
+            highest_price: balance!(10),
+            lowest_price: balance!(10) - 9 * price_step,
+            price_step,
+            orders_per_price: 100,
+            lifespan: None,
+            amount_range_inclusive: Some(amount_range),
+        };
+        // 100 prices by 10 orders = 1000 orders
+        let asks_settings = settings::SideFill {
+            highest_price: balance!(11) + 99 * price_step,
+            lowest_price: balance!(11),
+            price_step,
+            orders_per_price: 10,
+            lifespan: Some(2_590_000_000),
+            amount_range_inclusive: Some(amount_range),
+        };
+        let fill_settings = settings::OrderBookFill {
+            bids: Some(bids_settings),
+            asks: Some(asks_settings),
+            random_seed: None,
+        };
+
+        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+            RuntimeOrigin::root(),
+            alice(),
+            bob(),
+            vec![(
+                order_book_id,
+                settings::OrderBookAttributes::default(),
+                fill_settings
+            )]
+        ));
+
+        assert!(order_book::Pallet::<Runtime>::order_books(order_book_id).is_some());
+
+        assert_eq!(
+            order_book::Pallet::<Runtime>::aggregated_bids(order_book_id).len(),
+            10
+        );
+        assert_eq!(
+            order_book::Pallet::<Runtime>::aggregated_asks(order_book_id).len(),
+            100
+        );
+        assert_eq!(
+            order_book::LimitOrders::<Runtime>::iter_prefix(order_book_id).count(),
+            2000
         );
     });
 }

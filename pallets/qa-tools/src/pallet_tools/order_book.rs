@@ -50,13 +50,15 @@ pub mod settings {
 
     /// Parameters for filling one order book side
     #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
-    pub struct SideFill {
+    pub struct SideFill<Moment> {
         /// the best price for bids; the worst for asks
         pub highest_price: Balance,
         /// the worst price for bids; the best for asks
         pub lowest_price: Balance,
         pub price_step: Balance,
         pub orders_per_price: u32,
+        /// Lifespan of inserted orders, max by default.
+        pub lifespan: Option<Moment>,
         /// Default: `min_lot_size..=max_lot_size`
         pub amount_range_inclusive: Option<RandomAmount>,
     }
@@ -83,7 +85,7 @@ pub mod settings {
     }
 
     /// Parameters for orders amount generation
-    #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
+    #[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Eq, scale_info::TypeInfo)]
     pub struct RandomAmount {
         min: Balance,
         max: Balance,
@@ -115,11 +117,9 @@ pub mod settings {
     #[cfg_attr(feature = "std", derive(Debug))]
     pub struct OrderBookFill<Moment, BlockNumber> {
         /// Best price = lowest, worst = highest.
-        pub asks: Option<SideFill>,
+        pub asks: Option<SideFill<Moment>>,
         /// Best price = highest, worst = lowest.
-        pub bids: Option<SideFill>,
-        /// Lifespan of inserted orders, max by default.
-        pub lifespan: Option<Moment>,
+        pub bids: Option<SideFill<Moment>>,
         /// Seed for producing random values during the fill process. If `None`,
         /// current block is chosen
         pub random_seed: Option<BlockNumber>,
@@ -203,10 +203,17 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
 }
 
 fn verify_fill_side_price_params<T: Config>(
-    params: &SideFill,
+    params: &SideFill<MomentOf<T>>,
     tick_size: OrderPrice,
 ) -> Result<(), DispatchError> {
     let tick = tick_size.balance();
+    let prices_count = params
+        .highest_price
+        .saturating_sub(params.lowest_price)
+        .checked_div(params.price_step)
+        .ok_or(crate::Error::<T>::IncorrectPrice)?
+        + 1;
+
     ensure!(
         params.price_step % tick == 0
             && params.price_step != 0
@@ -216,11 +223,20 @@ fn verify_fill_side_price_params<T: Config>(
             && params.lowest_price != 0
             && params.highest_price >= params.lowest_price
             && params.orders_per_price != 0
-            && params.orders_per_price
-                <= <T as order_book::Config>::MaxLimitOrdersForPrice::get().into()
-            && (params.highest_price.saturating_sub(params.lowest_price) / params.price_step)
-                <= <T as order_book::Config>::MaxSidePriceCount::get().into(),
+            && prices_count != 0,
         crate::Error::<T>::IncorrectPrice
+    );
+
+    ensure!(
+        prices_count <= <T as order_book::Config>::MaxSidePriceCount::get().into(),
+        crate::Error::<T>::TooManyPrices
+    );
+
+    ensure!(
+        params.orders_per_price <= <T as order_book::Config>::MaxLimitOrdersForPrice::get().into()
+            && prices_count.saturating_mul(params.orders_per_price as u128)
+                <= <T as order_book::Config>::SOFT_MIN_MAX_RATIO as u128,
+        crate::Error::<T>::TooManyOrders
     );
     Ok(())
 }
@@ -254,9 +270,6 @@ fn fill_order_book<T: Config>(
     now: MomentOf<T>,
     current_block: BlockNumberFor<T>,
 ) -> Result<(), DispatchError> {
-    let lifespan = settings
-        .lifespan
-        .unwrap_or(<T as order_book::Config>::MAX_ORDER_LIFESPAN);
     let mut order_book = <order_book::OrderBooks<T>>::get(book_id)
         .ok_or(crate::Error::<T>::CannotFillUnknownOrderBook)?;
     let order_book_lot_size_range =
@@ -272,6 +285,9 @@ fn fill_order_book<T: Config>(
     let mut sell_amount_generator = ChaCha8Rng::seed_from_u64(seed_generator.next_u64());
 
     if let Some(bids_settings) = settings.bids {
+        let bids_lifespan = bids_settings
+            .lifespan
+            .unwrap_or(<T as order_book::Config>::MAX_ORDER_LIFESPAN);
         verify_fill_side_price_params::<T>(&bids_settings, order_book.tick_size)?;
         // price_step is checked to be non-zero in `verify_fill_side_params`
         let buy_prices: Vec<_> = (0..)
@@ -317,12 +333,15 @@ fn fill_order_book<T: Config>(
             PriceVariant::Buy,
             buy_orders.into_iter(),
             now,
-            lifespan,
+            bids_lifespan,
             current_block,
         )?;
     }
 
     if let Some(asks_settings) = settings.asks {
+        let asks_lifespan = asks_settings
+            .lifespan
+            .unwrap_or(<T as order_book::Config>::MAX_ORDER_LIFESPAN);
         verify_fill_side_price_params::<T>(&asks_settings, order_book.tick_size)?;
         // price_step is checked to be non-zero in `verify_fill_side_params`
         let sell_prices = (0..)
@@ -364,7 +383,7 @@ fn fill_order_book<T: Config>(
             PriceVariant::Sell,
             sell_orders.into_iter(),
             now,
-            lifespan,
+            asks_lifespan,
             current_block,
         )?;
     }
