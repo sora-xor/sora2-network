@@ -433,7 +433,6 @@ mod benchmarks_inner {
         }
         verify {}
 
-        // TODO: benchmark worst case
         service_single_expiration {
             // very similar to cancel_limit_order
             let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {

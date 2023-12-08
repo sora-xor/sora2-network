@@ -29,9 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(dead_code)] // todo (m.tagirov) remove
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
 
 use assets::AssetIdOf;
@@ -582,7 +581,7 @@ pub mod pallet {
                 order_book_id,
                 creator: maybe_who,
             });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(1)]
@@ -620,7 +619,7 @@ pub mod pallet {
             <OrderBooks<T>>::remove(order_book_id);
 
             Self::deposit_event(Event::<T>::OrderBookDeleted { order_book_id });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(2)]
@@ -685,7 +684,7 @@ pub mod pallet {
             }
             <OrderBooks<T>>::set(order_book_id, Some(order_book));
             Self::deposit_event(Event::<T>::OrderBookUpdated { order_book_id });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(3)]
@@ -703,7 +702,7 @@ pub mod pallet {
                     && status != OrderBookStatus::OnlyCancel
                     && status != OrderBookStatus::Stop
                 {
-                    return Err(Error::<T>::OrderBookIsLocked.into());
+                    return Err(Error::<T>::OrderBookIsLocked);
                 }
 
                 order_book.status = status;
@@ -713,7 +712,7 @@ pub mod pallet {
                 order_book_id,
                 new_status: status,
             });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(4)]
@@ -741,7 +740,7 @@ pub mod pallet {
             };
             let order = LimitOrder::<T>::new(
                 order_id,
-                who.clone(),
+                who,
                 side,
                 OrderPrice::divisible(price),
                 amount,
@@ -864,7 +863,7 @@ pub mod pallet {
             order_book.execute_market_order(market_order, &mut data)?;
 
             data.commit();
-            Ok(().into())
+            Ok(())
         }
     }
 }
@@ -877,12 +876,7 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
-        technical::Pallet::<T>::transfer_in(
-            asset_id,
-            account,
-            &tech_account,
-            (*amount.balance()).into(),
-        )
+        technical::Pallet::<T>::transfer_in(asset_id, account, &tech_account, *amount.balance())
     }
 }
 
@@ -894,12 +888,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
-        technical::Pallet::<T>::transfer_out(
-            asset_id,
-            &tech_account,
-            account,
-            (*amount.balance()).into(),
-        )
+        technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, *amount.balance())
     }
 
     fn unlock_liquidity_batch(
@@ -1123,8 +1112,8 @@ impl<T: Config> Pallet<T> {
         T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             &order_book_id.dex_id,
-            &order_book_id.quote.into(),
-            &order_book_id.base.into(),
+            &order_book_id.quote,
+            &order_book_id.base,
         )?;
 
         ensure!(
@@ -1342,7 +1331,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let amount = deal_info.base_amount();
 
         let market_order =
-            MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to.clone());
+            MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to);
 
         let (input_amount, output_amount, executed_orders_count) =
             order_book.execute_market_order(market_order, &mut data)?;

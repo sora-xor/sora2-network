@@ -66,7 +66,7 @@ impl<T: Config> Pallet<T> {
                 );
                 // in `release` will emit event
                 Self::deposit_event(Event::<T>::ExpirationFailure {
-                    order_book_id: order_book_id.clone(),
+                    order_book_id: *order_book_id,
                     order_id,
                     error,
                 });
@@ -77,7 +77,7 @@ impl<T: Config> Pallet<T> {
             debug_assert!(false, "apparently removal of order book did not cleanup expiration schedule; \
                 order {:?} is set to expire but corresponding order book {:?} is not found", order_id, order_book_id);
             Self::deposit_event(Event::<T>::ExpirationFailure {
-                order_book_id: order_book_id.clone(),
+                order_book_id: *order_book_id,
                 order_id,
                 error: Error::<T>::UnknownOrderBook.into(),
             });
@@ -96,7 +96,7 @@ impl<T: Config> Pallet<T> {
                     order_id, error
                 );
                 Self::deposit_event(Event::<T>::ExpirationFailure {
-                    order_book_id: order_book_id.clone(),
+                    order_book_id: *order_book_id,
                     order_id,
                     error,
                 });
@@ -250,7 +250,7 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
             let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
                 debug_assert!(false, "order-book {order_book_id:?} was not found during alignment");
                 Self::deposit_event(Event::<T>::AlignmentFailure {
-                    order_book_id: order_book_id.clone(),
+                    order_book_id,
                     error: Error::<T>::UnknownOrderBook.into(),
                 });
                 return;
@@ -286,7 +286,7 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
                         "Error {error:?} occurs during the alignment of order-book {order_book_id:?}"
                     );
                     Self::deposit_event(Event::<T>::AlignmentFailure {
-                        order_book_id: order_book_id,
+                        order_book_id,
                         error,
                     });
                     return;

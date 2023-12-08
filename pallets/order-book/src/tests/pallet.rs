@@ -51,6 +51,7 @@ use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::collections::btree_map::BTreeMap;
 
+#[test]
 fn should_register_technical_account() {
     ext().execute_with(|| {
         framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&accounts::alice::<
@@ -68,7 +69,7 @@ fn should_register_technical_account() {
         )
         .unwrap();
 
-        let accounts = [
+        let order_books = [
             OrderBookId::<AssetIdOf<Runtime>, DEXId> {
                 dex_id: DEX.into(),
                 base: VAL.into(),
@@ -82,19 +83,13 @@ fn should_register_technical_account() {
         ];
 
         // register (on order book creation)
-        for order_book_id in accounts {
-            OrderBookPallet::register_tech_account(order_book_id).expect(&format!(
-                "Could not register account for order_book_id: {:?}",
-                order_book_id,
-            ));
+        for order_book_id in order_books {
+            assert_ok!(OrderBookPallet::register_tech_account(order_book_id));
         }
 
         // deregister (on order book removal)
-        for order_book_id in accounts {
-            OrderBookPallet::deregister_tech_account(order_book_id).expect(&format!(
-                "Could not deregister account for order_book_id: {:?}",
-                order_book_id,
-            ));
+        for order_book_id in order_books {
+            assert_ok!(OrderBookPallet::deregister_tech_account(order_book_id));
         }
     });
 }
@@ -940,6 +935,7 @@ fn should_emit_event_on_expiration_failure() {
     })
 }
 
+#[test]
 fn should_assemble_order_book_id() {
     ext().execute_with(|| {
         let polkaswap_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {

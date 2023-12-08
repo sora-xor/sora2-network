@@ -33,7 +33,7 @@
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::{balance, PriceVariant, DAI, VAL, XOR};
-use frame_support::{assert_err, assert_ok};
+use frame_support::assert_ok;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
     CancelReason, Config, DealInfo, LimitOrder, MarketChange, OrderAmount, OrderBookId,
@@ -96,8 +96,8 @@ fn check_order_amount() {
         (quote + quote2).unwrap(),
         OrderAmount::Quote(quote_balance + quote_balance2)
     );
-    assert_err!(base + quote, ());
-    assert_err!(quote + base, ());
+    assert_eq!(base + quote, None);
+    assert_eq!(quote + base, None);
 
     assert_eq!(
         (base - base2).unwrap(),
@@ -107,8 +107,8 @@ fn check_order_amount() {
         (quote - quote2).unwrap(),
         OrderAmount::Quote(quote_balance - quote_balance2)
     );
-    assert_err!(base - quote, ());
-    assert_err!(quote - base, ());
+    assert_eq!(base - quote, None);
+    assert_eq!(quote - base, None);
 }
 
 #[test]
@@ -330,7 +330,7 @@ fn should_fail_payment_merge() {
         quote: XOR.into(),
     };
 
-    assert_err!(
+    assert_eq!(
         Payment {
             order_book_id,
             to_lock: BTreeMap::from([(
@@ -353,7 +353,7 @@ fn should_fail_payment_merge() {
                 BTreeMap::from([(accounts::bob::<Runtime>(), balance!(50).into())])
             )])
         }),
-        ()
+        None
     );
 }
 
@@ -438,7 +438,7 @@ fn check_payment_merge() {
     };
 
     let mut payment = origin.clone();
-    assert_ok!(payment.merge(&different));
+    assert_eq!(payment.merge(&different), Some(()));
     assert_eq!(
         payment,
         Payment {
@@ -523,7 +523,7 @@ fn check_payment_merge() {
     };
 
     payment = origin.clone();
-    assert_ok!(payment.merge(&partial_match));
+    assert_eq!(payment.merge(&partial_match), Some(()));
     assert_eq!(
         payment,
         Payment {
@@ -604,7 +604,7 @@ fn check_payment_merge() {
     };
 
     payment = origin.clone();
-    assert_ok!(payment.merge(&full_match));
+    assert_eq!(payment.merge(&full_match), Some(()));
     assert_eq!(
         payment,
         Payment {
@@ -651,7 +651,7 @@ fn check_payment_merge() {
     };
 
     payment = origin.clone();
-    assert_ok!(payment.merge(&empty));
+    assert_eq!(payment.merge(&empty), Some(()));
     assert_eq!(payment, origin);
 }
 
@@ -883,19 +883,19 @@ fn should_fail_market_change_merge() {
 
     let mut diff_deal_input = origin.clone();
     diff_deal_input.deal_input = Some(OrderAmount::Quote(balance!(50).into()));
-    assert_err!(market_change.merge(diff_deal_input), ());
+    assert_eq!(market_change.merge(diff_deal_input), None);
 
     let mut diff_deal_output = origin.clone();
     diff_deal_output.deal_output = Some(OrderAmount::Base(balance!(50).into()));
-    assert_err!(market_change.merge(diff_deal_output), ());
+    assert_eq!(market_change.merge(diff_deal_output), None);
 
     let mut diff_market_input = origin.clone();
     diff_market_input.market_input = Some(OrderAmount::Quote(balance!(50).into()));
-    assert_err!(market_change.merge(diff_market_input), ());
+    assert_eq!(market_change.merge(diff_market_input), None);
 
     let mut diff_market_output = origin.clone();
     diff_market_output.market_output = Some(OrderAmount::Base(balance!(50).into()));
-    assert_err!(market_change.merge(diff_market_output), ());
+    assert_eq!(market_change.merge(diff_market_output), None);
 }
 
 #[test]
@@ -1136,7 +1136,7 @@ fn check_market_change_merge() {
     };
 
     let mut market_change = origin.clone();
-    assert_ok!(market_change.merge(different));
+    assert_eq!(market_change.merge(different), Some(()));
     assert_eq!(
         market_change,
         MarketChange {
@@ -1267,7 +1267,7 @@ fn check_market_change_merge() {
     };
 
     market_change = origin.clone();
-    assert_ok!(market_change.merge(partial_match));
+    assert_eq!(market_change.merge(partial_match), Some(()));
     assert_eq!(
         market_change,
         MarketChange {
@@ -1387,7 +1387,7 @@ fn check_market_change_merge() {
     };
 
     market_change = origin.clone();
-    assert_ok!(market_change.merge(full_match));
+    assert_eq!(market_change.merge(full_match), Some(()));
     assert_eq!(
         market_change,
         MarketChange {
@@ -1458,7 +1458,7 @@ fn check_market_change_merge() {
     };
 
     market_change = origin.clone();
-    assert_ok!(market_change.merge(empty));
+    assert_eq!(market_change.merge(empty), Some(()));
     assert_eq!(market_change, origin);
 }
 
