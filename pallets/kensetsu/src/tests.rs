@@ -33,11 +33,10 @@ use super::*;
 use crate::mock::{new_test_ext, RuntimeOrigin, TestRuntime};
 use crate::test_utils::{
     alice, alice_account_id, assert_balance, bob, create_cdp_for_xor, deposit_xor_to_cdp,
-    set_balance, set_xor_as_collateral_type,
+    get_total_supply, risk_manager, set_balance, set_xor_as_collateral_type, tech_account_id,
 };
 
-use common::PredefinedAssetId::XOR;
-use common::{balance, Balance};
+use common::{balance, AssetInfoProvider, Balance, KUSD, XOR};
 use frame_support::{assert_err, assert_ok};
 use sp_arithmetic::ArithmeticError;
 use sp_core::U256;
@@ -78,7 +77,11 @@ fn test_create_cdp_for_asset_not_listed_must_result_in_error() {
 #[test]
 fn test_create_cdp_overflow_error() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         NextCDPId::<TestRuntime>::set(U256::MAX);
 
         assert_err!(
@@ -92,7 +95,11 @@ fn test_create_cdp_overflow_error() {
 #[test]
 fn test_create_cdp_sunny_day() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
 
         assert_ok!(KensetsuPallet::create_cdp(alice(), XOR.into()),);
         let cdp_id = U256::from(1);
@@ -138,7 +145,11 @@ fn test_close_cdp_only_signed_origin() {
 #[test]
 fn test_close_cdp_only_owner() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         // Alice is CDP owner
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
@@ -153,7 +164,11 @@ fn test_close_cdp_only_owner() {
 #[test]
 fn test_close_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = U256::from(1);
 
         assert_err!(
@@ -167,7 +182,11 @@ fn test_close_cdp_does_not_exist() {
 #[test]
 fn test_close_cdp_outstanding_debt() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(1));
 
         assert_err!(
@@ -181,9 +200,13 @@ fn test_close_cdp_outstanding_debt() {
 #[test]
 fn test_close_cdp_sunny_day() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(0));
-        assert_balance(&alice_account_id(), balance!(0));
+        assert_balance(&alice_account_id(), &XOR.into(), balance!(0));
 
         assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
 
@@ -195,7 +218,7 @@ fn test_close_cdp_sunny_day() {
             }
             .into(),
         );
-        assert_balance(&alice_account_id(), balance!(10));
+        assert_balance(&alice_account_id(), &XOR.into(), balance!(10));
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
     });
 }
@@ -221,7 +244,11 @@ fn test_deposit_only_signed_origin() {
 #[test]
 fn test_deposit_collateral_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = U256::from(1);
 
         assert_err!(
@@ -235,7 +262,11 @@ fn test_deposit_collateral_cdp_does_not_exist() {
 #[test]
 fn test_deposit_collateral_not_enough_balance() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
         assert_err!(
@@ -249,7 +280,11 @@ fn test_deposit_collateral_not_enough_balance() {
 #[test]
 fn test_deposit_collateral_overlow() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         // due to cast to i128 in update_balance() u128::MAX is done with 2 x i128::MAX
         let max_i128_amount = Balance::from(u128::MAX / 2);
         let cdp_id = create_cdp_for_xor(alice(), max_i128_amount, balance!(0));
@@ -268,7 +303,11 @@ fn test_deposit_collateral_overlow() {
 #[test]
 fn test_deposit_collateral_zero() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
         let amount = balance!(0);
 
@@ -292,7 +331,11 @@ fn test_deposit_collateral_zero() {
 #[test]
 fn test_deposit_collateral_sunny_day() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
         let amount = balance!(10);
         set_balance(alice_account_id(), amount);
@@ -308,7 +351,7 @@ fn test_deposit_collateral_sunny_day() {
             }
             .into(),
         );
-        assert_balance(&alice_account_id(), balance!(0));
+        assert_balance(&alice_account_id(), &XOR.into(), balance!(0));
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.collateral_amount, amount);
     });
@@ -335,7 +378,11 @@ fn test_withdraw_collateral_only_signed_origin() {
 #[test]
 fn test_withdraw_collateral_only_owner() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         // Alice is CDP owner
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
@@ -350,7 +397,11 @@ fn test_withdraw_collateral_only_owner() {
 #[test]
 fn test_withdraw_collateral_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = U256::from(1);
 
         assert_err!(
@@ -364,7 +415,11 @@ fn test_withdraw_collateral_cdp_does_not_exist() {
 #[test]
 fn test_withdraw_collateral_gt_amount() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(0));
 
         assert_err!(
@@ -378,7 +433,11 @@ fn test_withdraw_collateral_gt_amount() {
 #[test]
 fn test_withdraw_collateral_unsafe() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(5));
 
         assert_err!(
@@ -392,7 +451,11 @@ fn test_withdraw_collateral_unsafe() {
 #[test]
 fn test_withdraw_collateral_zero() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let amount = balance!(0);
         let cdp_id = create_cdp_for_xor(alice(), amount, balance!(0));
 
@@ -407,7 +470,7 @@ fn test_withdraw_collateral_zero() {
             }
             .into(),
         );
-        assert_balance(&alice_account_id(), amount);
+        assert_balance(&alice_account_id(), &XOR.into(), amount);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.collateral_amount, balance!(0));
     });
@@ -417,10 +480,14 @@ fn test_withdraw_collateral_zero() {
 #[test]
 fn test_withdraw_collateral_sunny_day() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let amount = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), amount, balance!(0));
-        assert_balance(&alice_account_id(), balance!(0));
+        assert_balance(&alice_account_id(), &XOR.into(), balance!(0));
 
         assert_ok!(KensetsuPallet::withdraw_collateral(alice(), cdp_id, amount));
 
@@ -433,7 +500,7 @@ fn test_withdraw_collateral_sunny_day() {
             }
             .into(),
         );
-        assert_balance(&alice_account_id(), amount);
+        assert_balance(&alice_account_id(), &XOR.into(), amount);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.collateral_amount, balance!(0));
     });
@@ -460,7 +527,11 @@ fn test_borrow_only_signed_origin() {
 #[test]
 fn test_borrow_only_owner() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         // Alice is CDP owner
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
@@ -475,7 +546,11 @@ fn test_borrow_only_owner() {
 #[test]
 fn test_borrow_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let cdp_id = U256::from(1);
 
         assert_err!(
@@ -489,7 +564,11 @@ fn test_borrow_cdp_does_not_exist() {
 #[test]
 fn test_borrow_cdp_overflow() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(100));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(100),
+            FixedU128::from_float(0.0),
+        );
         // due to cast to i128 in update_balance() u128::MAX is done with 2 x i128::MAX
         let max_i128_amount = Balance::from(u128::MAX / 2);
         let cdp_id = create_cdp_for_xor(alice(), max_i128_amount, max_i128_amount);
@@ -505,7 +584,11 @@ fn test_borrow_cdp_overflow() {
 #[test]
 fn test_borrow_cdp_unsafe() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(Perbill::from_percent(50));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
         let amount = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), amount, balance!(0));
 
@@ -516,12 +599,141 @@ fn test_borrow_cdp_unsafe() {
     });
 }
 
-// TODO test borrow
-//  - collateral cap
-//  - protocol cap
-//  - borrow 0 kusd
-//  - sunny day + event, check KUSD supply
-//  - accrue is called
+/// CDP with collateral exists, hard cap is set in CDP risk parameters.
+/// Borrow results with an error `HardCapSupply`
+#[test]
+fn test_borrow_cdp_cdp_type_hard_cap() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            balance!(10),
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
+
+        assert_err!(
+            KensetsuPallet::borrow(alice(), cdp_id, balance!(20)),
+            KensetsuError::HardCapSupply
+        );
+    });
+}
+
+/// CDP with collateral exists, hard cap is set in protocol risk parameters.
+/// Borrow results with an error `HardCapSupply`
+#[test]
+fn test_borrow_cdp_protocol_hard_cap() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        assert_ok!(KensetsuPallet::update_hard_cap_total_supply(
+            risk_manager(),
+            balance!(10)
+        ));
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
+
+        assert_err!(
+            KensetsuPallet::borrow(alice(), cdp_id, balance!(20)),
+            KensetsuError::HardCapSupply
+        );
+    });
+}
+
+/// CDP with collateral exists, call borrow with 0 KUSD amount.
+/// Tx must succeed, but state is unchanged.
+#[test]
+fn test_borrow_cdp_zero_amount() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+
+        assert_ok!(KensetsuPallet::borrow(alice(), cdp_id, balance!(0)));
+
+        System::assert_has_event(
+            Event::DebtIncreased {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR.into(),
+                amount: debt,
+            }
+            .into(),
+        );
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt);
+        assert_balance(&alice_account_id(), &KUSD.into(), debt);
+    });
+}
+
+/// CDP with collateral exists, call borrow with some KUSD amount.
+/// Tx must succeed, debt to CDP added, KUSD minted to the caller.
+#[test]
+fn test_borrow_cdp_sunny_day() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
+        let to_borrow = balance!(10);
+        let initial_total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(initial_total_kusd_supply, balance!(0));
+
+        assert_ok!(KensetsuPallet::borrow(alice(), cdp_id, to_borrow));
+
+        System::assert_has_event(
+            Event::DebtIncreased {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR.into(),
+                amount: to_borrow,
+            }
+            .into(),
+        );
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, to_borrow);
+        assert_balance(&alice_account_id(), &KUSD.into(), to_borrow);
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, initial_total_kusd_supply + to_borrow);
+    });
+}
+
+/// CDP with collateral and debt exists, call borrow with 0 KUSD amount to trigger accrue().
+/// Tx must succeed, debt will increase on accrued interest, KUSD minted to tech account.
+#[test]
+fn test_borrow_cdp_accrue() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.1),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        let initial_total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(initial_total_kusd_supply, balance!(10));
+
+        assert_ok!(KensetsuPallet::borrow(alice(), cdp_id, balance!(0)));
+
+        // interest is 10*10%*1 = 1,
+        // where 10 - initial balance, 10% - persecond rate, 1 - seconds passed
+        let interest = balance!(1);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt + interest);
+        assert_balance(&alice_account_id(), &KUSD.into(), balance!(10));
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, initial_total_kusd_supply + interest);
+        assert_balance(&tech_account_id(), &KUSD.into(), balance!(1));
+    });
+}
 
 // TODO test repay_debt
 //  - signed account

@@ -31,8 +31,7 @@
 use super::*;
 use crate::mock::{RuntimeOrigin, TestRuntime};
 
-use common::PredefinedAssetId::XOR;
-use common::{AssetInfoProvider, Balance};
+use common::{AssetInfoProvider, Balance, XOR};
 use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
@@ -42,6 +41,7 @@ use sp_runtime::AccountId32;
 
 type AccountId = AccountId32;
 type KensetsuPallet = Pallet<TestRuntime>;
+type AssetId = <TestRuntime as assets::Config>::AssetId;
 
 /// Predefined AccountId `Alice`
 pub fn alice_account_id() -> AccountId {
@@ -72,18 +72,29 @@ pub fn bob() -> OriginFor<TestRuntime> {
     RuntimeOrigin::signed(bob_account_id())
 }
 
+/// Returns Kensetsu technical treasury account id.
+pub fn tech_account_id() -> AccountId {
+    let tech_account = <TestRuntime as pallet::Config>::TreasuryTechAccount::get();
+    technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account)
+        .expect("Must succeed")
+}
+
 /// Sets XOR asset id as collateral with default parameters
 /// As if Risk Manager called `update_collateral_risk_parameters(XOR, some_info)`
-pub fn set_xor_as_collateral_type(liquidation_ratio: Perbill) {
+pub fn set_xor_as_collateral_type(
+    hard_cap: Balance,
+    liquidation_ratio: Perbill,
+    stability_fee_rate: FixedU128,
+) {
     CollateralTypes::<TestRuntime>::set(
         <TestRuntime as assets::Config>::AssetId::from(XOR),
         Some(CollateralRiskParameters {
-            max_supply: Balance::MAX,
-            liquidation_ratio: liquidation_ratio,
-            stability_fee_rate: Default::default(),
+            max_supply: hard_cap,
+            liquidation_ratio,
+            stability_fee_rate,
         }),
     );
-    KusdHardCap::<TestRuntime>::set(Balance::MAX);
+    KusdHardCap::<TestRuntime>::set(hard_cap);
 }
 
 /// Creates CDP with XOR as collateral asset id
@@ -123,10 +134,16 @@ pub fn set_balance(account: AccountId, balance: Balance) {
     ));
 }
 
+/// Returns total supply for asset.
+pub fn get_total_supply(asset_id: &AssetId) -> Balance {
+    <TestRuntime as pallet::Config>::AssetInfoProvider::total_issuance(asset_id)
+        .expect("Must succeed")
+}
+
 /// Asserts account balance is expected.
-pub fn assert_balance(account: &AccountId, expected: Balance) {
+pub fn assert_balance(account: &AccountId, asset_id: &AssetId, expected: Balance) {
     assert_eq!(
-        assets::Pallet::<TestRuntime>::free_balance(&XOR.into(), account).unwrap(),
+        assets::Pallet::<TestRuntime>::free_balance(asset_id, account).unwrap(),
         expected
     );
 }

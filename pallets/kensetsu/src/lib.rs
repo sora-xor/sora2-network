@@ -685,7 +685,7 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Sets max hard cap supply of KUSD
+        /// Sets hard cap for total KUSD supply
         /// Is set by risk management
         #[pallet::call_index(9)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
