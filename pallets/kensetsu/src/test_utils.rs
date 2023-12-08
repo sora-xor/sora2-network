@@ -79,6 +79,16 @@ pub fn tech_account_id() -> AccountId {
         .expect("Must succeed")
 }
 
+/// Sets protocol bad debt in KUSD.
+pub fn set_bad_debt(bad_debt: Balance) {
+    BadDebt::<TestRuntime>::set(bad_debt);
+}
+
+/// Asserts that protocol bad debt is expected amount.
+pub fn assert_bad_debt(expected_amount: Balance) {
+    assert_eq!(BadDebt::<TestRuntime>::get(), expected_amount);
+}
+
 /// Sets XOR asset id as collateral with default parameters
 /// As if Risk Manager called `update_collateral_risk_parameters(XOR, some_info)`
 pub fn set_xor_as_collateral_type(

@@ -32,8 +32,9 @@ use super::*;
 
 use crate::mock::{new_test_ext, RuntimeOrigin, TestRuntime};
 use crate::test_utils::{
-    alice, alice_account_id, assert_balance, bob, create_cdp_for_xor, deposit_xor_to_cdp,
-    get_total_supply, risk_manager, set_balance, set_xor_as_collateral_type, tech_account_id,
+    alice, alice_account_id, assert_bad_debt, assert_balance, bob, create_cdp_for_xor,
+    deposit_xor_to_cdp, get_total_supply, risk_manager, set_bad_debt, set_balance,
+    set_xor_as_collateral_type, tech_account_id,
 };
 
 use common::{balance, Balance, KUSD, XOR};
@@ -759,7 +760,7 @@ fn test_repay_debt_cdp_does_not_exist() {
         set_xor_as_collateral_type(
             Balance::MAX,
             Perbill::from_percent(50),
-            FixedU128::from_float(10.0),
+            FixedU128::from_float(0.0),
         );
         let cdp_id = U256::from(1);
 
@@ -960,10 +961,253 @@ fn test_repay_debt_accrue() {
 //   -  liquidation_penalty == leftover
 //   -  liquidation_penalty < leftover
 
-// TODO test accrue
-//  - cdp not found
-//  - overflow
-//  - sunny day, check treasury balance, KUSD supply
+/// If cdp doesn't exist, return error
+#[test]
+fn test_accrue_cdp_does_not_exist() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        let cdp_id = U256::from(1);
+
+        assert_err!(
+            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuError::CDPNotFound
+        );
+    });
+}
+
+/// If cdp doesn't have debt, return NoDebt error
+#[test]
+fn test_accrue_no_debt() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
+
+        assert_err!(
+            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuError::NoDebt
+        );
+    });
+}
+
+/// If cdp was updated, and then called with wrong time, return AccrueWrongTime
+#[test]
+fn test_accrue_wrong_time() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+
+        assert_err!(
+            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuError::AccrueWrongTime
+        );
+    });
+}
+
+/// If cdp accrue results with overflow, return ArithmeticError
+#[test]
+fn test_accrue_overflow() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            // This big number will result with overflow
+            FixedU128::from_float(9999999.0),
+        );
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(50));
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(9999);
+
+        assert_err!(
+            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuError::ArithmeticError
+        );
+    });
+}
+
+/// Given: CDP with debt, protocol has no bad debt
+/// When: accrue is called
+/// Then: interest is counted as CDP debt and goes to protocol profit
+#[test]
+fn test_accrue_profit() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            // 10% per second
+            FixedU128::from_float(0.1),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        // 1 sec passed
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        let initial_kusd_supply = get_total_supply(&KUSD.into());
+
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+
+        // interest is 10*10%*1 = 1,
+        // where 10 - initial balance, 10% - persecond rate, 1 - seconds passed
+        let interest = balance!(1);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt + interest);
+        assert_eq!(cdp.last_fee_update_time, 1);
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, initial_kusd_supply + interest);
+        assert_balance(&tech_account_id(), &KUSD, interest);
+    });
+}
+
+/// Given: CDP with debt, was updated this time, protocol has no bad debt
+/// When: accrue is called again with the same time
+/// Then: success, no state changes
+#[test]
+fn test_accrue_profit_same_time() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            // 10% per second
+            FixedU128::from_float(0.1),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        let initial_kusd_supply = get_total_supply(&KUSD.into());
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+
+        // double call should not fail
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+
+        // interest is 10*10%*1 = 1,
+        // where 10 - initial balance, 10% - persecond rate, 1 - seconds passed
+        let interest = balance!(1);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt + interest);
+        assert_eq!(cdp.last_fee_update_time, 1);
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, initial_kusd_supply + interest);
+        assert_balance(&tech_account_id(), &KUSD, interest);
+    });
+}
+
+/// Given: CDP with debt, protocol has bad debt and interest accrued < bad debt
+/// When: accrue is called
+/// Then: interest covers the part of bad debt
+#[test]
+fn test_accrue_interest_less_bad_debt() {
+    new_test_ext().execute_with(|| {
+        set_bad_debt(balance!(2));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            // 20% per second
+            FixedU128::from_float(0.1),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        // 1 sec passed
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        let initial_kusd_supply = get_total_supply(&KUSD.into());
+
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+
+        // interest is 10*20%*1 = 1 KUSD,
+        // where 10 - initial balance, 20% - persecond rate, 1 - seconds passed
+        // and 1 KUSD covers the part of bad debt
+        let interest = balance!(1);
+        let new_bad_debt = balance!(1);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt + interest);
+        assert_eq!(cdp.last_fee_update_time, 1);
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, initial_kusd_supply);
+        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_bad_debt(new_bad_debt);
+    });
+}
+
+/// Given: CDP with debt, protocol has bad debt and interest accrued == bad debt
+/// When: accrue is called
+/// Then: interest covers the part of bad debt
+#[test]
+fn test_accrue_interest_eq_bad_debt() {
+    new_test_ext().execute_with(|| {
+        set_bad_debt(balance!(1));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            // 20% per second
+            FixedU128::from_float(0.1),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        let initial_kusd_supply = get_total_supply(&KUSD.into());
+        // 1 sec passed
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+
+        // interest is 10*20%*1 = 1 KUSD,
+        // where 10 - initial balance, 10% - persecond rate, 1 - seconds passed
+        // and 1 KUSD covers bad debt
+        let interest = balance!(1);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt + interest);
+        assert_eq!(cdp.last_fee_update_time, 1);
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, initial_kusd_supply);
+        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_bad_debt(balance!(0));
+    });
+}
+
+/// Given: CDP with debt, protocol has bad debt and interest accrued > bad debt
+/// When: accrue is called
+/// Then: interest covers the bad debt and leftover goes to protocol profit
+#[test]
+fn test_accrue_interest_gt_bad_debt() {
+    new_test_ext().execute_with(|| {
+        set_bad_debt(balance!(1));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            // 20% per second
+            FixedU128::from_float(0.2),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        // 1 sec passed
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        let initial_kusd_supply = get_total_supply(&KUSD.into());
+
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+
+        // interest is 10*20%*1 = 2 KUSD,
+        // where 10 - initial balance, 20% - persecond rate, 1 - seconds passed
+        // and 1 KUSD covers bad debt, 1 KUSD is a protocol profit
+        let interest = balance!(2);
+        let profit = balance!(1);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt + interest);
+        assert_eq!(cdp.last_fee_update_time, 1);
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, initial_kusd_supply + profit);
+        assert_balance(&tech_account_id(), &KUSD, profit);
+        assert_bad_debt(balance!(0));
+    });
+}
 
 // TODO test update_collateral_risk_parameters
 //  - signed account

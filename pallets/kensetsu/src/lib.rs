@@ -313,6 +313,7 @@ pub mod pallet {
         NotEnoughCollateral,
         OperationPermitted,
         OutstandingDebt,
+        NoDebt,
         CDPsPerUserLimitReached,
         HardCapSupply,
         BalanceNotEnough,
@@ -916,10 +917,9 @@ pub mod pallet {
 
         fn is_it_time_to_accrue(cdp_id: &U256) -> Result<bool, DispatchError> {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            ensure!(cdp.debt > 0, Error::<T>::CDPSafe);
+            ensure!(cdp.debt > 0, Error::<T>::NoDebt);
             let now = Timestamp::<T>::get();
-            let outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
-            Ok(cdp.debt > 0 && cdp.last_fee_update_time <= outdated_timestamp)
+            Ok(cdp.debt > 0 && cdp.last_fee_update_time <= now)
         }
 
         /// Accrue stability fee from CDP
@@ -942,32 +942,33 @@ pub mod pallet {
                     .ok_or(Error::<T>::ArithmeticError)?,
             )
             .map_err(|_| Error::<T>::ArithmeticError)?;
+            let new_debt = cdp
+                .debt
+                .checked_add(stability_fee)
+                .ok_or(Error::<T>::ArithmeticError)?;
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.debt = cdp
-                        .debt
-                        .checked_add(stability_fee)
-                        .ok_or(Error::<T>::ArithmeticError)?;
+                    cdp.debt = new_debt;
                     cdp.last_fee_update_time = now;
                     DispatchResult::Ok(())
                 }
             })?;
-            let bad_debt = <BadDebt<T>>::get();
-            if bad_debt > 0 {
-                let new_debt = if stability_fee <= bad_debt {
-                    stability_fee = 0;
-                    bad_debt
+            let mut new_bad_debt = <BadDebt<T>>::get();
+            if new_bad_debt > 0 {
+                if stability_fee <= new_bad_debt {
+                    new_bad_debt = new_bad_debt
                         .checked_sub(stability_fee)
-                        .ok_or(Error::<T>::ArithmeticError)?
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    stability_fee = 0;
                 } else {
                     stability_fee = stability_fee
-                        .checked_sub(bad_debt)
+                        .checked_sub(new_bad_debt)
                         .ok_or(Error::<T>::ArithmeticError)?;
-                    balance!(0)
+                    new_bad_debt = balance!(0);
                 };
                 <BadDebt<T>>::try_mutate(|bad_debt| {
-                    *bad_debt = new_debt;
+                    *bad_debt = new_bad_debt;
                     DispatchResult::Ok(())
                 })?;
             }
