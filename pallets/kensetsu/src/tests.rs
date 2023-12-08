@@ -36,7 +36,7 @@ use crate::test_utils::{
     get_total_supply, risk_manager, set_balance, set_xor_as_collateral_type, tech_account_id,
 };
 
-use common::{balance, AssetInfoProvider, Balance, KUSD, XOR};
+use common::{balance, Balance, KUSD, XOR};
 use frame_support::{assert_err, assert_ok};
 use sp_arithmetic::ArithmeticError;
 use sp_core::U256;
@@ -735,11 +735,212 @@ fn test_borrow_cdp_accrue() {
     });
 }
 
-// TODO test repay_debt
-//  - signed account
-//  - cdp not found
-//  - amount > debt, leftover not burned
-//  - sunny day + event, check KUSD supply
+/// only by Signed Origin account can repay_debt
+#[test]
+fn test_repay_debt_only_signed_origin() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = U256::from(1);
+
+        assert_err!(
+            KensetsuPallet::repay_debt(RuntimeOrigin::none(), cdp_id, balance!(0)),
+            BadOrigin
+        );
+        assert_err!(
+            KensetsuPallet::repay_debt(RuntimeOrigin::root(), cdp_id, balance!(0)),
+            BadOrigin
+        );
+    });
+}
+
+/// If cdp doesn't exist, return error
+#[test]
+fn test_repay_debt_cdp_does_not_exist() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(10.0),
+        );
+        let cdp_id = U256::from(1);
+
+        assert_err!(
+            KensetsuPallet::repay_debt(alice(), cdp_id, balance!(1)),
+            KensetsuError::CDPNotFound
+        );
+    });
+}
+
+/// Repay when amount is less than debt.
+/// Debt is partially closed, tokens are burned. Event is emitted.
+#[test]
+fn test_repay_debt_amount_less_debt() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        let to_repay = balance!(1);
+        let initial_total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(initial_total_kusd_supply, debt);
+
+        assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, to_repay));
+
+        System::assert_has_event(
+            Event::DebtPayment {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR.into(),
+                amount: to_repay,
+            }
+            .into(),
+        );
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt - to_repay);
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, initial_total_kusd_supply - to_repay);
+    });
+}
+
+/// Repay when amount is equal to debt.
+/// Debt is closed, tokens are burned. Event is emitted.
+#[test]
+fn test_repay_debt_amount_eq_debt() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        let initial_total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(initial_total_kusd_supply, debt);
+
+        assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, debt));
+
+        System::assert_has_event(
+            Event::DebtPayment {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR.into(),
+                amount: debt,
+            }
+            .into(),
+        );
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, balance!(0));
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, balance!(0));
+    });
+}
+
+/// Repay when amount is greater than debt.
+/// Debt is closed, tokens are burned. Event is emitted and KUSD leftover on caller account.
+#[test]
+fn test_repay_debt_amount_gt_debt() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        // create 2nd CDP and borrow for KUSD surplus on Alice account
+        let kusd_surplus = balance!(5);
+        create_cdp_for_xor(alice(), balance!(100), kusd_surplus);
+        let total_kusd_balance = debt + kusd_surplus;
+        let initial_total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(initial_total_kusd_supply, total_kusd_balance);
+
+        assert_ok!(KensetsuPallet::repay_debt(
+            alice(),
+            cdp_id,
+            total_kusd_balance
+        ));
+
+        System::assert_has_event(
+            Event::DebtPayment {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR.into(),
+                amount: debt,
+            }
+            .into(),
+        );
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, balance!(0));
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, kusd_surplus);
+        assert_balance(&alice_account_id(), &KUSD.into(), kusd_surplus);
+    });
+}
+
+/// Repay whith zero amount.
+/// Success, but state is not changed.
+#[test]
+fn test_repay_debt_zero_amount() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        let initial_total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(initial_total_kusd_supply, debt);
+
+        assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, balance!(0)));
+
+        System::assert_has_event(
+            Event::DebtPayment {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR.into(),
+                amount: balance!(0),
+            }
+            .into(),
+        );
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt);
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, initial_total_kusd_supply);
+    });
+}
+
+/// Repay whith zero amount to trigger accrue.
+/// Success, debt increased and KUSD is minted to tech treasury account.
+#[test]
+fn test_repay_debt_accrue() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.1),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        let initial_total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(initial_total_kusd_supply, debt);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+
+        assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, balance!(0)));
+
+        // interest is 10*10%*1 = 1,
+        // where 10 - initial balance, 10% - persecond rate, 1 - seconds passed
+        let interest = balance!(1);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt + interest);
+        assert_balance(&alice_account_id(), &KUSD.into(), balance!(10));
+        let total_kusd_supply = get_total_supply(&KUSD.into());
+        assert_eq!(total_kusd_supply, initial_total_kusd_supply + interest);
+        assert_balance(&tech_account_id(), &KUSD.into(), balance!(1));
+    });
+}
 
 // TODO test liquidate
 //  - signed account
@@ -777,16 +978,17 @@ fn test_borrow_cdp_accrue() {
 //  - signed account
 //  - sunny day
 
-// TODO test withdraw_profit
-//  - signed account
-//  - sunny day, event
-
 // TODO test donate
 //  - signed account
 //  - overflow
 // with bad_debt == 0 and bad debt > 0
 //  kusd_amount < bad_debt
-// kusd_amount = bad_debt
-// kusd_amount > bad_debt
+//  kusd_amount = bad_debt
+//  kusd_amount > bad_debt
+
+// TODO test withdraw_profit
+// - signed account
+// - sunny day, event
+// - not enough profit
 
 // TODO add tests for offchain worker accrue()
