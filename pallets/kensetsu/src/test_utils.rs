@@ -50,21 +50,16 @@ pub fn alice_account_id() -> AccountId {
     ))
 }
 
+/// Regular client account Alice
+pub fn alice() -> OriginFor<TestRuntime> {
+    RuntimeOrigin::signed(alice_account_id())
+}
+
 /// Predefined AccountId `Bob`
 pub fn bob_account_id() -> AccountId {
     AccountId32::from(hex!(
         "8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48"
     ))
-}
-
-/// Returns Risk Manager account
-pub fn risk_manager() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(alice_account_id())
-}
-
-/// Regular client account Alice
-pub fn alice() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(alice_account_id())
 }
 
 /// Regular client account Alice
@@ -77,6 +72,21 @@ pub fn tech_account_id() -> AccountId {
     let tech_account = <TestRuntime as pallet::Config>::TreasuryTechAccount::get();
     technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account)
         .expect("Must succeed")
+}
+
+/// Returns Risk Manager account
+pub fn risk_manager() -> OriginFor<TestRuntime> {
+    RuntimeOrigin::signed(alice_account_id())
+}
+
+/// Returns Protocol Owner account id
+pub fn protocol_owner_account_id() -> AccountId {
+    alice_account_id()
+}
+
+/// Returns Protocol Owner account
+pub fn protocol_owner() -> OriginFor<TestRuntime> {
+    RuntimeOrigin::signed(alice_account_id())
 }
 
 /// Sets protocol bad debt in KUSD.

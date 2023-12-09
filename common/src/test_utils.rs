@@ -59,7 +59,6 @@ pub fn init_logger() {
 
 /// TODO replace with:
 /// frame_system::Pallet::<Runtime>::assert_last_event()
-#[deprecated]
 pub fn assert_last_event<T: frame_system::Config>(
     generic_event: <T as frame_system::Config>::RuntimeEvent,
 ) {
@@ -68,7 +67,6 @@ pub fn assert_last_event<T: frame_system::Config>(
 
 /// TODO replace with:
 /// frame_system::Pallet::<Runtime>::assert_has_event()
-#[deprecated]
 pub fn assert_event<T: frame_system::Config>(
     generic_event: <T as frame_system::Config>::RuntimeEvent,
 ) {

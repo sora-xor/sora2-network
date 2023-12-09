@@ -33,8 +33,8 @@ use super::*;
 use crate::mock::{new_test_ext, RuntimeOrigin, TestRuntime};
 use crate::test_utils::{
     alice, alice_account_id, assert_bad_debt, assert_balance, bob, create_cdp_for_xor,
-    deposit_xor_to_cdp, get_total_supply, risk_manager, set_bad_debt, set_balance,
-    set_xor_as_collateral_type, tech_account_id,
+    deposit_xor_to_cdp, get_total_supply, protocol_owner, protocol_owner_account_id, risk_manager,
+    set_bad_debt, set_balance, set_xor_as_collateral_type, tech_account_id,
 };
 
 use common::{balance, AssetId32, Balance, KUSD, XOR};
@@ -1507,9 +1507,71 @@ fn test_donate_donation_gt_bad_debt() {
     });
 }
 
-// TODO test withdraw_profit
-// - signed account
-// - sunny day, event
-// - not enough profit, check event
+/// Only Signed Origin account can withdraw protocol profit
+#[test]
+fn test_withdraw_profit_only_signed_origin() {
+    new_test_ext().execute_with(|| {
+        let profit = balance!(10);
+
+        assert_err!(
+            KensetsuPallet::withdraw_profit(RuntimeOrigin::none(), profit),
+            BadOrigin
+        );
+        assert_err!(
+            KensetsuPallet::withdraw_profit(RuntimeOrigin::root(), profit),
+            BadOrigin
+        );
+    });
+}
+
+/// Error must be returned when balance too low to withdraw.
+#[test]
+fn test_withdraw_profit_not_enough() {
+    new_test_ext().execute_with(|| {
+        let profit = balance!(10);
+
+        assert_err!(
+            KensetsuPallet::withdraw_profit(protocol_owner(), profit),
+            tokens::Error::<TestRuntime>::BalanceTooLow
+        );
+    });
+}
+
+/// Profit withdrawn, balances updated.
+#[test]
+fn test_withdraw_profit_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let initial_protocol_profit = balance!(20);
+        // Alice donates 20 KUSD to protocol, so it has profit.
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        create_cdp_for_xor(alice(), balance!(100), initial_protocol_profit);
+        assert_ok!(KensetsuPallet::donate(alice(), initial_protocol_profit));
+        assert_balance(&tech_account_id(), &KUSD, initial_protocol_profit);
+        assert_balance(&protocol_owner_account_id(), &KUSD, balance!(0));
+        let to_withdraw = balance!(10);
+
+        assert_ok!(KensetsuPallet::withdraw_profit(
+            protocol_owner(),
+            to_withdraw
+        ));
+
+        System::assert_has_event(
+            Event::ProfitWithdrawn {
+                amount: to_withdraw,
+            }
+            .into(),
+        );
+        assert_balance(
+            &tech_account_id(),
+            &KUSD,
+            initial_protocol_profit - to_withdraw,
+        );
+        assert_balance(&protocol_owner_account_id(), &KUSD, to_withdraw);
+    });
+}
 
 // TODO add tests for offchain worker accrue()
