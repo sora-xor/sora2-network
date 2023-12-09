@@ -1338,6 +1338,7 @@ fn test_update_hard_cap_sunny_day() {
             hard_cap
         ));
 
+        System::assert_has_event(Event::KusdHardCapUpdated { hard_cap }.into());
         assert_eq!(hard_cap, KusdHardCap::<TestRuntime>::get());
     });
 }
@@ -1347,6 +1348,7 @@ fn test_update_hard_cap_sunny_day() {
 fn test_update_liquidation_penalty_only_signed_origin() {
     new_test_ext().execute_with(|| {
         let liquidation_penalty = Percent::from_percent(10);
+
         assert_err!(
             KensetsuPallet::update_liquidation_penalty(RuntimeOrigin::none(), liquidation_penalty),
             BadOrigin
@@ -1369,6 +1371,12 @@ fn test_update_liquidation_penalty_sunny_day() {
             liquidation_penalty
         ));
 
+        System::assert_has_event(
+            Event::LiquidationPenaltyUpdated {
+                liquidation_penalty,
+            }
+            .into(),
+        );
         assert_eq!(
             liquidation_penalty,
             LiquidationPenalty::<TestRuntime>::get()
@@ -1376,17 +1384,132 @@ fn test_update_liquidation_penalty_sunny_day() {
     });
 }
 
-// TODO test donate
-//  - signed account
-//  - overflow
-// with bad_debt == 0 and bad debt > 0
-//  kusd_amount < bad_debt
-//  kusd_amount = bad_debt
-//  kusd_amount > bad_debt
+/// Only Signed Origin account can donate to protocol
+#[test]
+fn test_donate_only_signed_origin() {
+    new_test_ext().execute_with(|| {
+        let donation = balance!(10);
+
+        assert_err!(
+            KensetsuPallet::donate(RuntimeOrigin::none(), donation),
+            BadOrigin
+        );
+        assert_err!(
+            KensetsuPallet::donate(RuntimeOrigin::root(), donation),
+            BadOrigin
+        );
+    });
+}
+
+/// Donation to protocol without bad debt goes to protocol profit.
+#[test]
+fn test_donate_no_bad_debt() {
+    new_test_ext().execute_with(|| {
+        let donation = balance!(10);
+        // Alice has 10 KUSD
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        create_cdp_for_xor(alice(), balance!(100), donation);
+        assert_balance(&alice_account_id(), &KUSD, donation);
+        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_bad_debt(balance!(0));
+
+        assert_ok!(KensetsuPallet::donate(alice(), donation));
+
+        System::assert_has_event(Event::Donation { amount: donation }.into());
+        assert_balance(&alice_account_id(), &KUSD, balance!(0));
+        assert_balance(&tech_account_id(), &KUSD, donation);
+        assert_bad_debt(balance!(0));
+    });
+}
+
+/// Donation to protocol with bad debt and donation < bad debt.
+/// Donation partly covers bad debt.
+#[test]
+fn test_donate_donation_less_bad_debt() {
+    new_test_ext().execute_with(|| {
+        let initial_bad_debt = balance!(20);
+        set_bad_debt(initial_bad_debt);
+        let donation = balance!(10);
+        // Alice has 10 KUSD
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        create_cdp_for_xor(alice(), balance!(100), donation);
+        assert_balance(&alice_account_id(), &KUSD, donation);
+        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+
+        assert_ok!(KensetsuPallet::donate(alice(), donation));
+
+        System::assert_has_event(Event::Donation { amount: donation }.into());
+        assert_balance(&alice_account_id(), &KUSD, balance!(0));
+        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_bad_debt(initial_bad_debt - donation);
+    });
+}
+
+/// Donation to protocol with bad debt and donation == bad debt.
+/// Donation covers bad debt.
+#[test]
+fn test_donate_donation_eq_bad_debt() {
+    new_test_ext().execute_with(|| {
+        let initial_bad_debt = balance!(10);
+        set_bad_debt(initial_bad_debt);
+        let donation = balance!(10);
+        // Alice has 10 KUSD
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        create_cdp_for_xor(alice(), balance!(100), donation);
+        assert_balance(&alice_account_id(), &KUSD, donation);
+        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+
+        assert_ok!(KensetsuPallet::donate(alice(), donation));
+
+        System::assert_has_event(Event::Donation { amount: donation }.into());
+        assert_balance(&alice_account_id(), &KUSD, balance!(0));
+        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_bad_debt(balance!(0));
+    });
+}
+
+/// Donation to protocol with bad debt and donation > bad debt.
+/// Donation covers bad debt.
+#[test]
+fn test_donate_donation_gt_bad_debt() {
+    new_test_ext().execute_with(|| {
+        let initial_bad_debt = balance!(5);
+        set_bad_debt(initial_bad_debt);
+        let donation = balance!(10);
+        // Alice has 10 KUSD
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        create_cdp_for_xor(alice(), balance!(100), donation);
+        assert_balance(&alice_account_id(), &KUSD, donation);
+        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+
+        assert_ok!(KensetsuPallet::donate(alice(), donation));
+
+        System::assert_has_event(Event::Donation { amount: donation }.into());
+        assert_balance(&alice_account_id(), &KUSD, balance!(0));
+        assert_balance(&tech_account_id(), &KUSD, donation - initial_bad_debt);
+        assert_bad_debt(balance!(0));
+    });
+}
 
 // TODO test withdraw_profit
 // - signed account
 // - sunny day, event
-// - not enough profit
+// - not enough profit, check event
 
 // TODO add tests for offchain worker accrue()
