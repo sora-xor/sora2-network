@@ -143,16 +143,16 @@ pub fn create_multiple_empty_unchecked<T: Config>(
     for (order_book_id, _) in &to_create_ids {
         if !T::TradingPairSourceManager::is_trading_pair_enabled(
             &order_book_id.dex_id,
-            &order_book_id.quote.into(),
-            &order_book_id.base.into(),
+            &order_book_id.quote,
+            &order_book_id.base,
         )? {
             T::TradingPairSourceManager::register_pair(
                 order_book_id.dex_id,
-                order_book_id.quote.into(),
-                order_book_id.base.into(),
+                order_book_id.quote,
+                order_book_id.base,
             )?;
         }
-        order_book::Pallet::<T>::verify_create_orderbook_params(&order_book_id)?;
+        order_book::Pallet::<T>::verify_create_orderbook_params(order_book_id)?;
     }
 
     for (order_book_id, attributes) in to_create_ids {
@@ -232,7 +232,7 @@ fn verify_fill_side_price_params<T: Config>(
     );
 
     ensure!(
-        params.orders_per_price <= <T as order_book::Config>::MaxLimitOrdersForPrice::get().into()
+        params.orders_per_price <= <T as order_book::Config>::MaxLimitOrdersForPrice::get()
             && prices_count.saturating_mul(params.orders_per_price as u128)
                 <= <T as order_book::Config>::SOFT_MIN_MAX_RATIO as u128,
         crate::Error::<T>::TooManyOrders
@@ -296,7 +296,6 @@ fn fill_order_book<T: Config>(
         let buy_prices = buy_prices.into_iter().rev();
         let buy_amount_non_empty_range = bids_settings
             .amount_range_inclusive
-            .clone()
             .unwrap_or_else(|| max_amount_range(&order_book))
             .as_non_empty_inclusive_range()
             .ok_or(crate::Error::<T>::EmptyRandomRange)?;
@@ -328,7 +327,7 @@ fn fill_order_book<T: Config>(
         place_multiple_orders(
             data,
             &mut order_book,
-            bids_owner.clone(),
+            bids_owner,
             PriceVariant::Buy,
             buy_orders.into_iter(),
             now,
@@ -349,7 +348,6 @@ fn fill_order_book<T: Config>(
 
         let sell_amount_non_empty_range = asks_settings
             .amount_range_inclusive
-            .clone()
             .unwrap_or_else(|| max_amount_range(&order_book))
             .as_non_empty_inclusive_range()
             .ok_or(crate::Error::<T>::EmptyRandomRange)?;
@@ -378,7 +376,7 @@ fn fill_order_book<T: Config>(
         place_multiple_orders(
             data,
             &mut order_book,
-            asks_owner.clone(),
+            asks_owner,
             PriceVariant::Sell,
             sell_orders.into_iter(),
             now,
