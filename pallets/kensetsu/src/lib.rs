@@ -306,6 +306,7 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         ArithmeticError,
+        WrongAssetId,
         CDPNotFound,
         CollateralInfoNotFound,
         CDPSafe,
@@ -669,8 +670,8 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
             ensure!(
-                T::AssetInfoProvider::asset_exists(&T::KusdAssetId::get()),
-                Error::<T>::CollateralInfoNotFound
+                T::AssetInfoProvider::asset_exists(&collateral_asset_id),
+                Error::<T>::WrongAssetId
             );
             for (cdp_id, cdp) in <Treasury<T>>::iter() {
                 if cdp.collateral_asset_id == collateral_asset_id {

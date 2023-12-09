@@ -37,8 +37,9 @@ use crate::test_utils::{
     set_xor_as_collateral_type, tech_account_id,
 };
 
-use common::{balance, Balance, KUSD, XOR};
+use common::{balance, AssetId32, Balance, KUSD, XOR};
 use frame_support::{assert_err, assert_ok};
+use hex_literal::hex;
 use sp_arithmetic::ArithmeticError;
 use sp_core::U256;
 use sp_runtime::DispatchError::BadOrigin;
@@ -1209,10 +1210,107 @@ fn test_accrue_interest_gt_bad_debt() {
     });
 }
 
-// TODO test update_collateral_risk_parameters
-//  - signed account
-//  - CollateralInfoNotFound
-//  - sunny day, check all cdps accrued, check inserted, event
+/// Only Signed Origin account can update risk parameters
+#[test]
+fn test_update_collateral_risk_parameters_only_signed_origin() {
+    new_test_ext().execute_with(|| {
+        let parameters = CollateralRiskParameters {
+            max_supply: balance!(100),
+            liquidation_ratio: Perbill::from_percent(50),
+            stability_fee_rate: FixedU128::from_float(0.1),
+        };
+
+        assert_err!(
+            KensetsuPallet::update_collateral_risk_parameters(
+                RuntimeOrigin::none(),
+                XOR,
+                parameters.clone()
+            ),
+            BadOrigin
+        );
+        assert_err!(
+            KensetsuPallet::update_collateral_risk_parameters(
+                RuntimeOrigin::root(),
+                XOR,
+                parameters
+            ),
+            BadOrigin
+        );
+    });
+}
+
+/// Only existing assets ids are allowed
+#[test]
+fn test_update_collateral_risk_wrong_asset_id() {
+    new_test_ext().execute_with(|| {
+        let parameters = CollateralRiskParameters {
+            max_supply: balance!(100),
+            liquidation_ratio: Perbill::from_percent(50),
+            stability_fee_rate: FixedU128::from_float(0.1),
+        };
+        let wrong_asset_id = AssetId32::from_bytes(hex!(
+            "0000000000000000000000000000000000000000000000000000000007654321"
+        ));
+
+        assert_err!(
+            KensetsuPallet::update_collateral_risk_parameters(
+                risk_manager(),
+                wrong_asset_id,
+                parameters.clone()
+            ),
+            KensetsuError::WrongAssetId
+        );
+    });
+}
+
+/// Given: several CDP with debt and time since last interest accrue has passed
+/// When: update risk parameters with new rate
+/// Then: interest is updated
+#[test]
+fn test_update_collateral_risk_parameters_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let asset_id = XOR;
+        // old stability fee is 10%
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.1),
+        );
+        let cdp_id_1 = create_cdp_for_xor(alice(), balance!(100), balance!(10));
+        let cdp_id_2 = create_cdp_for_xor(alice(), balance!(100), balance!(20));
+        // new parameters with stability fee 20%
+        let parameters = CollateralRiskParameters {
+            max_supply: balance!(100),
+            liquidation_ratio: Perbill::from_percent(50),
+            stability_fee_rate: FixedU128::from_float(0.2),
+        };
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+
+        assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+            risk_manager(),
+            asset_id,
+            parameters.clone()
+        ));
+
+        System::assert_has_event(
+            Event::CollateralRiskParametersUpdated {
+                collateral_asset_id: XOR,
+                risk_parameters: parameters.clone(),
+            }
+            .into(),
+        );
+        let actual_parameters =
+            CollateralTypes::<TestRuntime>::get(asset_id).expect("Must succeed");
+        assert_eq!(actual_parameters, parameters);
+        // check that accrue was called
+        let cdp_1 = KensetsuPallet::cdp(cdp_id_1).expect("Must exist");
+        // debt principal is 10 + 1 fee
+        assert_eq!(cdp_1.debt, balance!(11));
+        let cdp_2 = KensetsuPallet::cdp(cdp_id_2).expect("Must exist");
+        // debt principal is 20 + 2 fee
+        assert_eq!(cdp_2.debt, balance!(22));
+    });
+}
 
 // TODO test update_hard_cap_total_supply
 //  - signed account
