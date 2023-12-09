@@ -69,7 +69,7 @@ pub fn bob() -> OriginFor<TestRuntime> {
 
 /// Returns Kensetsu technical treasury account id.
 pub fn tech_account_id() -> AccountId {
-    let tech_account = <TestRuntime as pallet::Config>::TreasuryTechAccount::get();
+    let tech_account = <TestRuntime as Config>::TreasuryTechAccount::get();
     technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account)
         .expect("Must succeed")
 }
@@ -107,7 +107,7 @@ pub fn set_xor_as_collateral_type(
     stability_fee_rate: FixedU128,
 ) {
     CollateralTypes::<TestRuntime>::set(
-        <TestRuntime as assets::Config>::AssetId::from(XOR),
+        XOR,
         Some(CollateralRiskParameters {
             max_supply: hard_cap,
             liquidation_ratio,
@@ -123,7 +123,7 @@ pub fn create_cdp_for_xor(
     collateral: Balance,
     debt: Balance,
 ) -> U256 {
-    assert_ok!(KensetsuPallet::create_cdp(owner.clone(), XOR.into()));
+    assert_ok!(KensetsuPallet::create_cdp(owner.clone(), XOR));
     let cdp_id = NextCDPId::<TestRuntime>::get();
     if collateral > 0 {
         deposit_xor_to_cdp(owner.clone(), cdp_id, collateral);
@@ -149,7 +149,7 @@ pub fn set_balance(account: AccountId, balance: Balance) {
     assert_ok!(assets::Pallet::<TestRuntime>::update_balance(
         RuntimeOrigin::root(),
         account,
-        XOR.into(),
+        XOR,
         balance.try_into().unwrap()
     ));
 }

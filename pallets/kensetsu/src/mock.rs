@@ -274,7 +274,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
             ),
             (
                 assets_and_permissions_account_id.clone(),
-                assets_and_permissions_tech_account_id.clone(),
+                assets_and_permissions_tech_account_id,
             ),
         ],
     }
@@ -312,7 +312,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     AssetsConfig {
         endowed_assets: vec![
             (
-                XOR.into(),
+                XOR,
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
@@ -323,7 +323,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 None,
             ),
             (
-                DAI.into(),
+                DAI,
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"DAI".to_vec()),
                 AssetName(b"DAI".to_vec()),
@@ -334,8 +334,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 None,
             ),
             (
-                KUSD.into(),
-                assets_and_permissions_account_id.clone(),
+                KUSD,
+                assets_and_permissions_account_id,
                 AssetSymbol(b"KUSD".to_vec()),
                 AssetName(b"Kensetsu Stable Dollar".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
