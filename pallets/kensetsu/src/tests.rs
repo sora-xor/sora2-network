@@ -40,7 +40,7 @@ use crate::test_utils::{
 use common::{balance, AssetId32, Balance, KUSD, XOR};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
-use sp_arithmetic::ArithmeticError;
+use sp_arithmetic::{ArithmeticError, Percent};
 use sp_core::U256;
 use sp_runtime::DispatchError::BadOrigin;
 
@@ -1312,13 +1312,69 @@ fn test_update_collateral_risk_parameters_sunny_day() {
     });
 }
 
-// TODO test update_hard_cap_total_supply
-//  - signed account
-//  - sunny day
+/// Only Signed Origin account can update hard cap
+#[test]
+fn test_update_hard_cap_only_signed_origin() {
+    new_test_ext().execute_with(|| {
+        assert_err!(
+            KensetsuPallet::update_hard_cap_total_supply(RuntimeOrigin::none(), balance!(0)),
+            BadOrigin
+        );
+        assert_err!(
+            KensetsuPallet::update_hard_cap_total_supply(RuntimeOrigin::root(), balance!(0)),
+            BadOrigin
+        );
+    });
+}
 
-// TODO test update_liquidation_penalty
-//  - signed account
-//  - sunny day
+/// Risk manager can update hard cap
+#[test]
+fn test_update_hard_cap_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let hard_cap = balance!(100);
+
+        assert_ok!(KensetsuPallet::update_hard_cap_total_supply(
+            risk_manager(),
+            hard_cap
+        ));
+
+        assert_eq!(hard_cap, KusdHardCap::<TestRuntime>::get());
+    });
+}
+
+/// Only Signed Origin account can update hard cap
+#[test]
+fn test_update_liquidation_penalty_only_signed_origin() {
+    new_test_ext().execute_with(|| {
+        let liquidation_penalty = Percent::from_percent(10);
+        assert_err!(
+            KensetsuPallet::update_liquidation_penalty(RuntimeOrigin::none(), liquidation_penalty),
+            BadOrigin
+        );
+        assert_err!(
+            KensetsuPallet::update_liquidation_penalty(RuntimeOrigin::root(), liquidation_penalty),
+            BadOrigin
+        );
+    });
+}
+
+/// Risk manager can update hard cap
+#[test]
+fn test_update_liquidation_penalty_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let liquidation_penalty = Percent::from_percent(10);
+
+        assert_ok!(KensetsuPallet::update_liquidation_penalty(
+            risk_manager(),
+            liquidation_penalty
+        ));
+
+        assert_eq!(
+            liquidation_penalty,
+            LiquidationPenalty::<TestRuntime>::get()
+        );
+    });
+}
 
 // TODO test donate
 //  - signed account
