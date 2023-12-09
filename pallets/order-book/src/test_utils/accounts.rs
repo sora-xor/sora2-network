@@ -57,7 +57,7 @@ pub fn generate_account<T: frame_system::Config>(
     let mut id = 0;
     while value != 0 {
         adr[31 - id] = (value % 256) as u8;
-        value = value / 256;
+        value /= 256;
         id += 1;
     }
 
