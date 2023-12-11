@@ -165,7 +165,6 @@ pub use {
     xst,
 };
 
-#[cfg(feature = "wip")] // Kensetsu
 pub use kensetsu;
 
 /// An index to a block.
@@ -1923,8 +1922,9 @@ parameter_types! {
 
     pub const KusdAssetId: AssetId = common::KUSD;
 
-    // 1 day
-    pub const AccrueInterestPeriod: Moment = 86_400_000;
+    // 1 day = 86_400_000
+    // TODO set 86_400_000
+    pub const AccrueInterestPeriod: Moment = 30_000;
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
@@ -1934,7 +1934,6 @@ parameter_types! {
 
 }
 
-#[cfg(feature = "wip")] // Kensetsu
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
@@ -1942,6 +1941,7 @@ impl kensetsu::Config for Runtime {
     type KusdAssetId = KusdAssetId;
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
+    type LiquidityProxy = LiquidityProxy;
     type AccrueInterestPeriod = AccrueInterestPeriod;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
@@ -2385,7 +2385,6 @@ construct_runtime! {
         #[cfg(feature = "ready-to-test")] // order-book
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
-        #[cfg(feature = "wip")] // Kensetsu
         Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
@@ -3260,7 +3259,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, dex_api, DEXAPI);
-            #[cfg(feature = "wip")] // Kensetsu
             add_benchmark!(params, batches, kensetsu, Kensetsu);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
