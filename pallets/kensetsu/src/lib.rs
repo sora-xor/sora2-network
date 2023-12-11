@@ -545,7 +545,7 @@ pub mod pallet {
         /// Liquidates part of unsafe CDP
         #[pallet::call_index(6)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn liquidate(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
+        pub fn liquidate(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             Self::accrue_internal(cdp_id)?;
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             let cdp_debt = cdp.debt;
@@ -829,13 +829,6 @@ pub mod pallet {
         fn ensure_cdp_owner(who: &AccountIdOf<T>, cdp_id: U256) -> DispatchResult {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(*who == cdp.owner, Error::<T>::OperationNotPermitted);
-            Ok(())
-        }
-
-        /// Ensures that `who` is a liquidator
-        /// Liquidator is responsible to close unsafe CDP effectively.
-        fn ensure_liquidator(_who: &AccountIdOf<T>) -> DispatchResult {
-            // TODO
             Ok(())
         }
 
