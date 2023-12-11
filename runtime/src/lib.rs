@@ -1930,8 +1930,9 @@ parameter_types! {
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
         Perbill::from_percent(10) * TransactionPriority::max_value();
     // 100 blocks, if tx spoils, worker will resend it
-    pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 100;
-
+    // pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 100;
+    // TODO set 100
+    pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 5;
 }
 
 impl kensetsu::Config for Runtime {
