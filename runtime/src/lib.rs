@@ -3259,7 +3259,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, dex_api, DEXAPI);
-            add_benchmark!(params, batches, kensetsu, Kensetsu);
+            // TODO benchmarking
+            // add_benchmark!(params, batches, kensetsu, Kensetsu);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             add_benchmark!(params, batches, pswap_distribution, PswapDistributionBench::<Runtime>);
