@@ -483,9 +483,7 @@ pub mod pallet {
         InvalidMaxLotSize,
         /// Tick size & step lot size are too big and their multiplication overflows Balance
         TickSizeAndStepLotSizeAreTooBig,
-        /// Product of tick and step lot sizes goes out of precision. It must be accurately
-        /// represented by fixed-precision float to prevent rounding errors. I.e. the product
-        /// should not have more than 18 digits after the comma.
+        /// Product of tick and step lot sizes goes out of precision. It must be accurately represented by fixed-precision float to prevent rounding errors. I.e. the product should not have more than 18 digits after the comma.
         TickSizeAndStepLotSizeLosePrecision,
         /// Max lot size cannot be more that total supply of base asset
         MaxLotSizeIsMoreThanTotalSupply,
