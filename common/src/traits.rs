@@ -317,9 +317,7 @@ pub trait OnSymbolDisabled<Symbol> {
 }
 
 impl<Symbol> OnSymbolDisabled<Symbol> for () {
-    fn disable_symbol(_symbol: &Symbol) {
-        unimplemented!()
-    }
+    fn disable_symbol(_symbol: &Symbol) {}
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
