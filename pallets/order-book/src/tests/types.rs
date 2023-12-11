@@ -1438,7 +1438,7 @@ fn check_market_change_merge() {
                 (order_id2, order2_other),
                 (order_id3, order3_other),
             ]),
-            payment: payment,
+            payment,
             ignore_unschedule_error: false
         }
     );

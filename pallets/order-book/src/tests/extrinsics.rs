@@ -1901,7 +1901,7 @@ fn should_place_limit_order() {
         Timestamp::set_timestamp(now);
 
         // fix state before
-        let bids_before = OrderBookPallet::bids(order_book_id, &price).unwrap_or_default();
+        let bids_before = OrderBookPallet::bids(order_book_id, price).unwrap_or_default();
         let agg_bids_before = OrderBookPallet::aggregated_bids(order_book_id);
         let price_volume_before = agg_bids_before.get(&price).cloned().unwrap_or_default();
         let user_orders_before =
@@ -1944,7 +1944,7 @@ fn should_place_limit_order() {
         let mut expected_bids = bids_before;
         assert_ok!(expected_bids.try_push(order_id));
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             expected_bids
         );
 
@@ -2053,7 +2053,7 @@ fn should_place_limit_order_with_nft() {
         );
 
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &price).unwrap(),
+            OrderBookPallet::asks(order_book_id, price).unwrap(),
             vec![order_id]
         );
         assert_eq!(
@@ -2100,28 +2100,28 @@ fn should_place_limit_order_out_of_spread() {
         // check state before
 
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -2155,28 +2155,28 @@ fn should_place_limit_order_out_of_spread() {
         // check state
 
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -2212,29 +2212,29 @@ fn should_place_limit_order_out_of_spread() {
         let buy_order_id2 = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &new_bid_price).unwrap(),
+            OrderBookPallet::bids(order_book_id, new_bid_price).unwrap(),
             vec![buy_order_id2]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -2275,25 +2275,25 @@ fn should_place_limit_order_out_of_spread() {
         // check state
 
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -2327,27 +2327,27 @@ fn should_place_limit_order_out_of_spread() {
 
         let sell_order_id2 = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
-        assert_eq!(OrderBookPallet::bids(order_book_id, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, bid_price1), None);
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &new_ask_price).unwrap(),
+            OrderBookPallet::asks(order_book_id, new_ask_price).unwrap(),
             vec![sell_order_id2]
         );
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -2397,28 +2397,28 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         // check state before
 
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -2453,25 +2453,25 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         // check state
 
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -2504,21 +2504,21 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
 
         // check state
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price1), None);
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price2), None);
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price3), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price2), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price3), None);
 
         assert_eq!(
             OrderBookPallet::aggregated_bids(order_book_id),
@@ -2545,19 +2545,19 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         ));
 
         // check state
-        assert_eq!(OrderBookPallet::bids(order_book_id, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, bid_price1), None);
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price1), None);
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price2), None);
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price3), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price2), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price3), None);
 
         assert_eq!(
             OrderBookPallet::aggregated_bids(order_book_id),
@@ -2583,13 +2583,13 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         ));
 
         // check state
-        assert_eq!(OrderBookPallet::bids(order_book_id, &bid_price1), None);
-        assert_eq!(OrderBookPallet::bids(order_book_id, &bid_price2), None);
-        assert_eq!(OrderBookPallet::bids(order_book_id, &bid_price3), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, bid_price2), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, bid_price3), None);
 
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price1), None);
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price2), None);
-        assert_eq!(OrderBookPallet::asks(order_book_id, &ask_price3), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price2), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price3), None);
 
         assert_eq!(
             OrderBookPallet::aggregated_bids(order_book_id),
@@ -2727,7 +2727,7 @@ fn should_cancel_limit_order() {
         let order = OrderBookPallet::limit_orders(order_book_id, order_id).unwrap();
 
         // fix state before
-        let bids_before = OrderBookPallet::bids(order_book_id, &order.price).unwrap_or_default();
+        let bids_before = OrderBookPallet::bids(order_book_id, order.price).unwrap_or_default();
         let agg_bids_before = OrderBookPallet::aggregated_bids(order_book_id);
         let price_volume_before = agg_bids_before
             .get(&order.price)
@@ -2750,7 +2750,7 @@ fn should_cancel_limit_order() {
         let mut expected_bids = bids_before;
         expected_bids.retain(|&id| id != order.id);
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &order.price).unwrap(),
+            OrderBookPallet::bids(order_book_id, order.price).unwrap(),
             expected_bids
         );
 
@@ -2938,55 +2938,55 @@ fn should_cancel_all_user_limit_orders_batch() {
 
         // order book 1
         assert_eq!(
-            OrderBookPallet::bids(order_book_id1, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id1, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id1, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         // order book 2
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(order_book_id2, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id2, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id2, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -3005,44 +3005,44 @@ fn should_cancel_all_user_limit_orders_batch() {
         // check state after
 
         // order book 1
-        assert_eq!(OrderBookPallet::bids(order_book_id1, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id1, bid_price1), None);
         assert_eq!(
-            OrderBookPallet::bids(order_book_id1, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price2).unwrap(),
             vec![2]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id1, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price3).unwrap(),
             vec![4, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(order_book_id1, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id1, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price2).unwrap(),
             vec![8]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price3).unwrap(),
             vec![10, 12]
         );
 
         // order book 2
-        assert_eq!(OrderBookPallet::bids(order_book_id2, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id2, bid_price1), None);
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price2).unwrap(),
             vec![2]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price3).unwrap(),
             vec![4, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(order_book_id2, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id2, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(order_book_id2, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price2).unwrap(),
             vec![8]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id2, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price3).unwrap(),
             vec![10, 12]
         );
     });
@@ -3079,55 +3079,55 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
 
         // order book 1
         assert_eq!(
-            OrderBookPallet::bids(order_book_id1, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id1, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id1, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         // order book 2
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(order_book_id2, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id2, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id2, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -3146,50 +3146,50 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
         // check state after
 
         // order book 1
-        assert_eq!(OrderBookPallet::bids(order_book_id1, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id1, bid_price1), None);
         assert_eq!(
-            OrderBookPallet::bids(order_book_id1, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id1, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price3).unwrap(),
             vec![4, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price2).unwrap(),
             vec![8]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id1, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         // order book 2
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price2).unwrap(),
             vec![2]
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id2, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(order_book_id2, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id2, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(order_book_id2, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(order_book_id2, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price3).unwrap(),
             vec![10, 12]
         );
     });

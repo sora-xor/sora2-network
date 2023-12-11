@@ -690,7 +690,7 @@ fn should_cleanup_on_expiring() {
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
 
         // fix state before
-        let bids_before = OrderBookPallet::bids(order_book_id, &price).unwrap_or_default();
+        let bids_before = OrderBookPallet::bids(order_book_id, price).unwrap_or_default();
         let agg_bids_before = OrderBookPallet::aggregated_bids(order_book_id);
         let price_volume_before = agg_bids_before.get(&price).cloned().unwrap_or_default();
         let user_orders_before =
@@ -735,7 +735,7 @@ fn should_cleanup_on_expiring() {
         let mut bids_with_order = bids_before.clone();
         assert_ok!(bids_with_order.try_push(order_id));
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             bids_with_order
         );
 
@@ -769,7 +769,7 @@ fn should_cleanup_on_expiring() {
             expected_order
         );
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             bids_with_order
         );
         assert_eq!(
@@ -792,7 +792,7 @@ fn should_cleanup_on_expiring() {
         // The order is removed, state returned to original
         assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_none());
         assert_eq!(
-            OrderBookPallet::bids(order_book_id, &price).unwrap_or_default(),
+            OrderBookPallet::bids(order_book_id, price).unwrap_or_default(),
             bids_before
         );
         assert_eq!(
