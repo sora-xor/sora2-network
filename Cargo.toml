@@ -242,6 +242,7 @@ multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag
 members = [
     "runtime",
     "common",
+    "pallets/apollo-platform",
     "pallets/assets",
     "pallets/ceres-governance-platform",
     "pallets/ceres-liquidity-locker",

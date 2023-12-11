@@ -1905,6 +1905,21 @@ impl hermes_governance_platform::Config for Runtime {
 }
 
 parameter_types! {
+    pub const ApolloLendingRewardsPerBlock: Balance = balance!(0.038);
+    pub const FixedLendingRewards: Balance = balance!(200000);
+    pub const ApolloBorrowingRewardsPerBlock: Balance = balance!(0.019);
+    pub const FixedBorrowingRewards: Balance = balance!(100000);
+}
+
+impl apollo_platform::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type ApolloLendingRewardsPerBlock = ApolloLendingRewardsPerBlock;
+    type FixedLendingRewards = FixedLendingRewards;
+    type ApolloBorrowingRewardsPerBlock = ApolloBorrowingRewardsPerBlock;
+    type FixedBorrowingRewards = FixedBorrowingRewards;
+}
+
+parameter_types! {
     // small value for test environment in order to check postponing expirations
     pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block;
     pub AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(35) * BlockWeights::get().max_block;
@@ -2395,6 +2410,7 @@ construct_runtime! {
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
         #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
         QATools: qa_tools::{Pallet, Call} = 112,
+        ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>} = 113,
     }
 }
 
