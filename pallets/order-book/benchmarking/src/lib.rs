@@ -42,6 +42,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 // order-book
 #![cfg(feature = "ready-to-test")]
+#![allow(clippy::type_complexity)]
 // too many benchmarks, doesn't compile otherwise
 #![recursion_limit = "512"]
 #![feature(int_roundings)]
@@ -433,7 +434,6 @@ mod benchmarks_inner {
         }
         verify {}
 
-        // TODO: benchmark worst case
         service_single_expiration {
             // very similar to cancel_limit_order
             let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {

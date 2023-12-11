@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 
 pub use pallet::*;
 
@@ -83,13 +83,11 @@ pub mod pallet {
         NotInWhitelist,
 
         // order_book pallet errors
-        /// Did not find an order book with given id to fill. Likely an error with
-        /// order book creation.
+        /// Did not find an order book with given id to fill. Likely an error with order book creation.
         CannotFillUnknownOrderBook,
         /// Order Book already exists
         OrderBookAlreadyExists,
-        /// Price step, best price, and worst price must be a multiple of
-        /// order book's tick size. Price step must also be non-zero.
+        /// Price step, best price, and worst price must be a multiple of order book's tick size. Price step must also be non-zero.
         IncorrectPrice,
         /// Provided range is incorrect, check that lower bound is less or equal than the upper one.
         EmptyRandomRange,

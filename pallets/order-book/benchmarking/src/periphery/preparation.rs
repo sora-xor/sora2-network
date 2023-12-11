@@ -30,9 +30,6 @@
 
 //! General preparation logic for the benchmarking.
 
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
-
 // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(test)]
 use framenode_runtime::order_book as order_book_imported;
@@ -168,7 +165,7 @@ fn prepare_order_execute_worst_case<T: Config>(
     debug!("Filling a side of the order book for worst-case execution");
     fill_order_book_side(
         data,
-        fill_settings.clone(),
+        fill_settings,
         order_book,
         orders_side,
         orders_amount,
@@ -307,17 +304,13 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
     fill_expiration_settings.max_expiring_orders_per_block -= 1;
     // mint other base asset as well
     let mut users = users.inspect(move |user| {
-        assets::Pallet::<T>::mint_unchecked(
-            &order_book_id_2.base,
-            &user,
-            *order_amount_2.balance(),
-        )
-        .unwrap();
+        assets::Pallet::<T>::mint_unchecked(&order_book_id_2.base, user, *order_amount_2.balance())
+            .unwrap();
     });
 
     fill_expiration_schedule(
         &mut data_layer,
-        fill_expiration_settings.clone(),
+        fill_expiration_settings,
         &mut order_book_2,
         PriceVariant::Sell,
         order_amount_2,
@@ -344,7 +337,7 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
         order_book_id,
         Some(expected_user_orders),
         Some((fill_settings.max_orders_per_price - 1) as usize),
-        Some((author.clone(), expected_user_orders)),
+        Some((author, expected_user_orders)),
         Some((
             lifespan,
             (fill_settings.max_expiring_orders_per_block - 1) as usize,
@@ -487,21 +480,17 @@ pub fn cancel_limit_order<T: Config>(
     .expect("failed to create an order book");
     let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
     let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
-    let mut fill_expiration_settings = fill_settings.clone();
+    let mut fill_expiration_settings = fill_settings;
     // we add one more separately
     fill_expiration_settings.max_expiring_orders_per_block -= 1;
     // mint other base asset as well
     let mut users = users.inspect(move |user| {
-        assets::Pallet::<T>::mint_unchecked(
-            &order_book_id_2.base,
-            &user,
-            *order_amount_2.balance(),
-        )
-        .unwrap();
+        assets::Pallet::<T>::mint_unchecked(&order_book_id_2.base, user, *order_amount_2.balance())
+            .unwrap();
     });
     fill_expiration_schedule(
         &mut data_layer,
-        fill_expiration_settings.clone(),
+        fill_expiration_settings,
         &mut order_book_2,
         PriceVariant::Sell,
         order_amount_2,
@@ -543,7 +532,7 @@ pub fn quote<T: Config>(
     let mut data_layer = CacheDataLayer::<T>::new();
 
     // fill aggregated bids
-    let mut buy_settings = fill_settings.clone();
+    let mut buy_settings = fill_settings;
     buy_settings.max_orders_per_price = 1;
     let _ = fill_order_book_worst_case::<T>(
         buy_settings,
@@ -631,11 +620,11 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
 
         let id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
             dex_id: DEX.into(),
-            base: nft.clone(),
+            base: nft,
             quote: XOR.into(),
         };
         trading_pair::Pallet::<T>::register(
-            RawOrigin::Signed(creator.clone()).into(),
+            RawOrigin::Signed(creator).into(),
             DEX.into(),
             id.quote,
             id.base,
@@ -663,7 +652,7 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
     let (_, _, amount, side) = prepare_order_execute_worst_case::<T>(
         &mut data_layer,
         &mut order_book,
-        fill_settings.clone(),
+        fill_settings,
         true,
     );
 
@@ -737,7 +726,7 @@ pub fn align_single_order<T: Config>(
     let (price, _) = aggregated_side.iter().nth(prices_count / 2).unwrap();
 
     debug!("Filling the price of the aligned order");
-    let mut price_settings = fill_settings.clone();
+    let mut price_settings = fill_settings;
     price_settings.max_orders_per_price -= 2;
     let amount = order_book.min_lot_size;
     fill_price(
@@ -751,7 +740,7 @@ pub fn align_single_order<T: Config>(
         &mut lifespans,
     );
 
-    let orders = data_layer.get_bids(&order_book_id, &price).unwrap();
+    let orders = data_layer.get_bids(&order_book_id, price).unwrap();
     let order_id_to_align = orders[orders.len() / 2];
     let order_to_align = data_layer
         .get_limit_order(&order_book_id, order_id_to_align)
