@@ -75,8 +75,8 @@ fn check_order_amount() {
 
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
+        base: VAL,
+        quote: XOR,
     };
 
     assert_eq!(*base.associated_asset(&order_book_id), VAL);
@@ -320,14 +320,14 @@ fn check_deal_info_amounts() {
 fn should_fail_payment_merge() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
+        base: VAL,
+        quote: XOR,
     };
 
     let other_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
-        base: DAI.into(),
-        quote: XOR.into(),
+        base: DAI,
+        quote: XOR,
     };
 
     assert_eq!(
@@ -361,8 +361,8 @@ fn should_fail_payment_merge() {
 fn check_payment_merge() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
+        base: VAL,
+        quote: XOR,
     };
 
     let origin = Payment {
@@ -660,8 +660,8 @@ fn check_payment_execute_all() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         OrderBookPallet::register_tech_account(order_book_id).unwrap();
@@ -755,8 +755,8 @@ fn check_payment_execute_all() {
 fn should_fail_market_change_merge() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
+        base: VAL,
+        quote: XOR,
     };
 
     let payment = Payment {
@@ -893,7 +893,7 @@ fn should_fail_market_change_merge() {
     diff_market_input.market_input = Some(OrderAmount::Quote(balance!(50).into()));
     assert_eq!(market_change.merge(diff_market_input), None);
 
-    let mut diff_market_output = origin.clone();
+    let mut diff_market_output = origin;
     diff_market_output.market_output = Some(OrderAmount::Base(balance!(50).into()));
     assert_eq!(market_change.merge(diff_market_output), None);
 }
@@ -902,8 +902,8 @@ fn should_fail_market_change_merge() {
 fn check_market_change_merge() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
+        base: VAL,
+        quote: XOR,
     };
 
     let payment = Payment {
@@ -1206,7 +1206,7 @@ fn check_market_change_merge() {
                 (order_id1, order1_origin.clone()),
                 (order_id2, order2_origin.clone()),
                 (order_id3, order3_origin.clone()),
-                (order_id4, order4_origin.clone()),
+                (order_id4, order4_origin),
                 (order_id5, order5_origin.clone()),
             ]),
             payment: payment.clone(),
@@ -1318,16 +1318,16 @@ fn check_market_change_merge() {
                 (order_id5, order5_origin.clone()),
             ]),
             to_cancel: BTreeMap::from([
-                (order_id1, (order1_origin.clone(), CancelReason::Manual)),
+                (order_id1, (order1_origin, CancelReason::Manual)),
                 (order_id2, (order2_origin.clone(), CancelReason::Manual)),
                 (order_id3, (order3_origin.clone(), CancelReason::Manual)),
                 (order_id5, (order5_origin.clone(), CancelReason::Manual)),
             ]),
             to_force_update: BTreeMap::from([
                 (order_id1, order1_other.clone()),
-                (order_id2, order2_origin.clone()),
-                (order_id3, order3_origin.clone()),
-                (order_id5, order5_origin.clone()),
+                (order_id2, order2_origin),
+                (order_id3, order3_origin),
+                (order_id5, order5_origin),
             ]),
             payment: payment.clone(),
             ignore_unschedule_error: false
@@ -1434,11 +1434,11 @@ fn check_market_change_merge() {
                 (order_id3, (order3_other.clone(), CancelReason::Manual)),
             ]),
             to_force_update: BTreeMap::from([
-                (order_id1, order1_other.clone()),
-                (order_id2, order2_other.clone()),
-                (order_id3, order3_other.clone()),
+                (order_id1, order1_other),
+                (order_id2, order2_other),
+                (order_id3, order3_other),
             ]),
-            payment: payment.clone(),
+            payment: payment,
             ignore_unschedule_error: false
         }
     );
@@ -1453,7 +1453,7 @@ fn check_market_change_merge() {
         to_full_execute: BTreeMap::new(),
         to_cancel: BTreeMap::new(),
         to_force_update: BTreeMap::new(),
-        payment: empty_payment.clone(),
+        payment: empty_payment,
         ignore_unschedule_error: false,
     };
 
@@ -1466,8 +1466,8 @@ fn check_market_change_merge() {
 fn check_market_change_count_of_executed_orders() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
+        base: VAL,
+        quote: XOR,
     };
 
     let empty_payment =
@@ -1714,7 +1714,7 @@ fn check_market_change_count_of_executed_orders() {
                 (LimitOrder::<Runtime>, CancelReason),
             >::new(),
             to_force_update: BTreeMap::<<Runtime as Config>::OrderId, LimitOrder::<Runtime>>::new(),
-            payment: empty_payment.clone(),
+            payment: empty_payment,
             ignore_unschedule_error: false,
         }
         .count_of_executed_orders(),
