@@ -110,6 +110,7 @@ pub fn set_xor_as_collateral_type(
         XOR,
         Some(CollateralRiskParameters {
             max_supply: hard_cap,
+            max_liquidation_lot: balance!(100),
             liquidation_ratio,
             stability_fee_rate,
         }),

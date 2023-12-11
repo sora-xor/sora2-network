@@ -49,6 +49,7 @@ fn set_xor_as_collateral_type<T: Config>() {
         Some(CollateralRiskParameters {
             max_supply: balance!(1000),
             liquidation_ratio: Perbill::from_float(0.5),
+            max_liquidation_lot: balance!(100),
             stability_fee_rate: Default::default(),
         }),
     );

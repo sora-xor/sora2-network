@@ -31,23 +31,25 @@
 use crate as kensetsu;
 
 use common::mock::ExistentialDeposits;
+use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, FromGenericPair, PredefinedAssetId,
-    DAI, DEFAULT_BALANCE_PRECISION, KUSD, XOR, XST,
+    balance, Amount, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, DAI,
+    DEFAULT_BALANCE_PRECISION, KUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::parameter_types;
-use frame_support::traits::{ConstU16, ConstU64};
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild};
 use frame_system::offchain::SendTransactionTypes;
 use hex_literal::hex;
 use permissions::Scope;
+use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::MultiSignature;
 use sp_runtime::{
     testing::{Header, TestXt},
     traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
 };
+use sp_runtime::{DispatchError, MultiSignature};
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 type AssetId = AssetId32<PredefinedAssetId>;
@@ -67,6 +69,90 @@ impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider
         _asset_id: &AssetId,
     ) -> Result<Balance, frame_support::dispatch::DispatchError> {
         Ok(balance!(1))
+    }
+}
+
+pub struct MockLiquidityProxy;
+
+impl MockLiquidityProxy {
+    const EXCHANGE_TECH_ACCOUNT: AccountId = AccountId32::new([33u8; 32]);
+
+    /// Sets output amount in KUSD, mints this amount to LiquidityProxy account
+    /// This amount will be used in the next exchange
+    pub fn set_output_amount_for_the_next_exchange(output_amount_kusd: Balance) {
+        assets::Pallet::<TestRuntime>::update_balance(
+            RuntimeOrigin::root(),
+            Self::EXCHANGE_TECH_ACCOUNT,
+            KUSD,
+            output_amount_kusd.try_into().unwrap(),
+        )
+        .expect("must succeed");
+    }
+}
+
+impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+    /// Mocks liquidity provider quote
+    /// output_asset_id must be KUSD
+    fn quote(
+        _dex_id: DEXId,
+        _input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        _amount: QuoteAmount<common::Balance>,
+        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _deduce_fee: bool,
+    ) -> Result<SwapOutcome<common::Balance>, DispatchError> {
+        if *output_asset_id != KUSD {
+            Err(DispatchError::Other(
+                "Wrong asset id for MockLiquidityProxy, KUSD only supported",
+            ))
+        } else {
+            let amount =
+                assets::Pallet::<TestRuntime>::free_balance(&KUSD, &Self::EXCHANGE_TECH_ACCOUNT)
+                    .expect("must succeed");
+            Ok(SwapOutcome {
+                amount,
+                fee: balance!(0),
+            })
+        }
+    }
+
+    /// Mocks liquidity provider exchange
+    /// output_asset_id - must be KUSD
+    /// output_amount - is equal to KUSD LiquidityProxy tech account balance. This amount might be
+    /// set with associated function:
+    /// MockLiquidityProxy::set_output_amount_for_the_next_exchange(balance)
+    fn exchange(
+        _dex_id: DEXId,
+        sender: &AccountId,
+        receiver: &AccountId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: SwapAmount<common::Balance>,
+        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<common::Balance>, DispatchError> {
+        if *output_asset_id != KUSD {
+            Err(DispatchError::Other(
+                "Wrong asset id for MockLiquidityProxy, KUSD only supported",
+            ))
+        } else {
+            let amount = amount.amount();
+            assets::Pallet::<TestRuntime>::transfer_from(
+                input_asset_id,
+                sender,
+                &Self::EXCHANGE_TECH_ACCOUNT,
+                amount,
+            )?;
+            let out_amount =
+                assets::Pallet::<TestRuntime>::free_balance(&KUSD, &Self::EXCHANGE_TECH_ACCOUNT)
+                    .expect("must succeed");
+            assets::Pallet::<TestRuntime>::transfer_from(
+                output_asset_id,
+                &Self::EXCHANGE_TECH_ACCOUNT,
+                receiver,
+                out_amount,
+            )?;
+            Ok(SwapOutcome::new(out_amount, 0))
+        }
     }
 }
 
@@ -248,6 +334,7 @@ impl kensetsu::Config for TestRuntime {
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KusdAssetId = KusdAssetId;
     type ReferencePriceProvider = ReferencePriceProviderMock;
+    type LiquidityProxy = MockLiquidityProxy;
     type AccrueInterestPeriod = AccrueInterestPeriod;
     type UnsignedPriority = ConstU64<100>;
     type UnsignedLongevity = ConstU64<100>;

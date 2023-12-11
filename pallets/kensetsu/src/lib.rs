@@ -64,6 +64,9 @@ pub struct CollateralRiskParameters {
     /// Loan-to-value liquidation threshold
     pub liquidation_ratio: Perbill,
 
+    /// The max amount of collateral can be liquidated in one round
+    pub max_liquidation_lot: Balance,
+
     /// Protocol Interest rate per second
     pub stability_fee_rate: FixedU128,
 }
@@ -88,9 +91,10 @@ pub struct CollateralizedDebtPosition<AccountId, AssetId, Moment> {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        Description, ReferencePriceProvider,
+        DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter, ReferencePriceProvider,
     };
     use frame_support::pallet_prelude::*;
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
@@ -156,6 +160,7 @@ pub mod pallet {
         type TreasuryTechAccount: Get<Self::TechAccountId>;
         type KusdAssetId: Get<Self::AssetId>;
         type ReferencePriceProvider: ReferencePriceProvider<AssetIdOf<Self>, Balance>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
 
         /// Accrue() for a single CDP can be called once per this period
         #[pallet::constant]
@@ -312,7 +317,7 @@ pub mod pallet {
         CDPSafe,
         CDPUnsafe,
         NotEnoughCollateral,
-        OperationPermitted,
+        OperationNotPermitted,
         OutstandingDebt,
         NoDebt,
         CDPsPerUserLimitReached,
@@ -540,14 +545,7 @@ pub mod pallet {
         /// Liquidates part of unsafe CDP
         #[pallet::call_index(6)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn liquidate(
-            origin: OriginFor<T>,
-            cdp_id: U256,
-            collateral_amount: Balance,
-            kusd_amount: Balance,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_liquidator(&who)?;
+        pub fn liquidate(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             Self::accrue_internal(cdp_id)?;
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             let cdp_debt = cdp.debt;
@@ -556,18 +554,45 @@ pub mod pallet {
                 !Self::check_cdp_is_safe(cdp_debt, cdp_collateral_amount, cdp.collateral_asset_id)?,
                 Error::<T>::CDPSafe
             );
-            technical::Pallet::<T>::transfer_out(
+            let risk_parameters = Self::collateral_risk_parameters(cdp.collateral_asset_id)
+                .ok_or(Error::<T>::CollateralInfoNotFound)?;
+            let desired_kusd_amount = cdp_debt
+                .checked_add(Self::liquidation_penalty() * cdp_debt)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            let SwapOutcome { amount, .. } = T::LiquidityProxy::quote(
+                DEXId::Polkaswap.into(),
                 &cdp.collateral_asset_id,
-                &T::TreasuryTechAccount::get(),
-                &who,
-                collateral_amount,
+                &T::KusdAssetId::get(),
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: desired_kusd_amount,
+                },
+                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                true,
             )?;
+            let collateral_to_liquidate = amount
+                .min(cdp.collateral_amount)
+                .min(risk_parameters.max_liquidation_lot);
+            let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::TreasuryTechAccount::get(),
+            )?;
+            let swap_outcome = T::LiquidityProxy::exchange(
+                DEXId::Polkaswap.into(),
+                &technical_account_id,
+                &technical_account_id,
+                &cdp.collateral_asset_id,
+                &T::KusdAssetId::get(),
+                // desired output
+                SwapAmount::with_desired_input(collateral_to_liquidate, balance!(0)),
+                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+            )?;
+            // TODO what is amount of collateral being liquidated?
+            let kusd_amount = swap_outcome.amount;
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                     cdp.collateral_amount = cdp
                         .collateral_amount
-                        .checked_sub(collateral_amount)
+                        .checked_sub(collateral_to_liquidate)
                         .ok_or(Error::<T>::ArithmeticError)?;
                     DispatchResult::Ok(())
                 }
@@ -576,7 +601,7 @@ pub mod pallet {
                 let shortage = cdp_debt
                     .checked_sub(kusd_amount)
                     .ok_or(Error::<T>::CDPNotFound)?;
-                if cdp_collateral_amount <= collateral_amount {
+                if cdp_collateral_amount <= collateral_to_liquidate {
                     // no collateral, total default
                     // CDP debt is not covered with liquidation, now it is a protocol bad debt
                     Self::cover_with_protocol(shortage)?;
@@ -622,7 +647,7 @@ pub mod pallet {
                     // There is more KUSD than to cover debt and penalty, leftover goes to cdp.owner
                     assets::Pallet::<T>::transfer_from(
                         &T::KusdAssetId::get(),
-                        &who,
+                        &technical_account_id,
                         &cdp.owner,
                         leftover
                             .checked_sub(liquidation_penalty)
@@ -630,15 +655,16 @@ pub mod pallet {
                     )?;
                     liquidation_penalty
                 };
-                Self::cover_bad_debt(&who, penalty)?;
+                // todo no need in transfer, it is already on tech account
+                Self::cover_bad_debt(&technical_account_id, penalty)?;
 
                 cdp_debt
             };
-            Self::burn_from(&who, to_burn)?;
+            Self::burn_treasury(to_burn)?;
             Self::deposit_event(Event::Liquidated {
                 cdp_id,
                 collateral_asset_id: cdp.collateral_asset_id,
-                collateral_amount,
+                collateral_amount: collateral_to_liquidate,
                 kusd_amount,
             });
 
@@ -802,7 +828,7 @@ pub mod pallet {
         /// CDP owner can change balances on own CDP only.
         fn ensure_cdp_owner(who: &AccountIdOf<T>, cdp_id: U256) -> DispatchResult {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            ensure!(*who == cdp.owner, Error::<T>::OperationPermitted);
+            ensure!(*who == cdp.owner, Error::<T>::OperationNotPermitted);
             Ok(())
         }
 
