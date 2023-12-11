@@ -1040,7 +1040,7 @@ mod tests {
         );
 
         // should not panic
-        serde_json::to_value(&asset_id).unwrap();
+        serde_json::to_value(asset_id).unwrap();
     }
 
     #[test]
@@ -1057,7 +1057,7 @@ mod tests {
         assert_eq!(unwrapped, balance);
 
         // should not panic
-        serde_json::to_value(&BalanceWrapper(balance)).unwrap();
+        serde_json::to_value(BalanceWrapper(balance)).unwrap();
     }
 }
 
