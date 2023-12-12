@@ -430,8 +430,6 @@
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -577,16 +575,16 @@
     <span class="kw">for </span>(order_book_id, <span class="kw">_</span>) <span class="kw">in </span><span class="kw-2">&amp;</span>to_create_ids {
         <span class="kw">if </span>!T::TradingPairSourceManager::is_trading_pair_enabled(
             <span class="kw-2">&amp;</span>order_book_id.dex_id,
-            <span class="kw-2">&amp;</span>order_book_id.quote.into(),
-            <span class="kw-2">&amp;</span>order_book_id.base.into(),
+            <span class="kw-2">&amp;</span>order_book_id.quote,
+            <span class="kw-2">&amp;</span>order_book_id.base,
         )<span class="question-mark">? </span>{
             T::TradingPairSourceManager::register_pair(
                 order_book_id.dex_id,
-                order_book_id.quote.into(),
-                order_book_id.base.into(),
+                order_book_id.quote,
+                order_book_id.base,
             )<span class="question-mark">?</span>;
         }
-        order_book::Pallet::&lt;T&gt;::verify_create_orderbook_params(<span class="kw-2">&amp;</span>order_book_id)<span class="question-mark">?</span>;
+        order_book::Pallet::&lt;T&gt;::verify_create_orderbook_params(order_book_id)<span class="question-mark">?</span>;
     }
 
     <span class="kw">for </span>(order_book_id, attributes) <span class="kw">in </span>to_create_ids {
@@ -666,7 +664,7 @@
     );
 
     <span class="macro">ensure!</span>(
-        params.orders_per_price &lt;= &lt;T <span class="kw">as </span>order_book::Config&gt;::MaxLimitOrdersForPrice::get().into()
+        params.orders_per_price &lt;= &lt;T <span class="kw">as </span>order_book::Config&gt;::MaxLimitOrdersForPrice::get()
             &amp;&amp; prices_count.saturating_mul(params.orders_per_price <span class="kw">as </span>u128)
                 &lt;= &lt;T <span class="kw">as </span>order_book::Config&gt;::SOFT_MIN_MAX_RATIO <span class="kw">as </span>u128,
         <span class="kw">crate</span>::Error::&lt;T&gt;::TooManyOrders
@@ -730,7 +728,6 @@
         <span class="kw">let </span>buy_prices = buy_prices.into_iter().rev();
         <span class="kw">let </span>buy_amount_non_empty_range = bids_settings
             .amount_range_inclusive
-            .clone()
             .unwrap_or_else(|| max_amount_range(<span class="kw-2">&amp;</span>order_book))
             .as_non_empty_inclusive_range()
             .ok_or(<span class="kw">crate</span>::Error::&lt;T&gt;::EmptyRandomRange)<span class="question-mark">?</span>;
@@ -762,7 +759,7 @@
         </span>place_multiple_orders(
             data,
             <span class="kw-2">&amp;mut </span>order_book,
-            bids_owner.clone(),
+            bids_owner,
             PriceVariant::Buy,
             buy_orders.into_iter(),
             now,
@@ -783,7 +780,6 @@
 
         <span class="kw">let </span>sell_amount_non_empty_range = asks_settings
             .amount_range_inclusive
-            .clone()
             .unwrap_or_else(|| max_amount_range(<span class="kw-2">&amp;</span>order_book))
             .as_non_empty_inclusive_range()
             .ok_or(<span class="kw">crate</span>::Error::&lt;T&gt;::EmptyRandomRange)<span class="question-mark">?</span>;
@@ -812,7 +808,7 @@
         </span>place_multiple_orders(
             data,
             <span class="kw-2">&amp;mut </span>order_book,
-            asks_owner.clone(),
+            asks_owner,
             PriceVariant::Sell,
             sell_orders.into_iter(),
             now,

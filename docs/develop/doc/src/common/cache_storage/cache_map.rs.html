@@ -184,6 +184,12 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -232,7 +238,18 @@
     _phantom: PhantomData&lt;Storage&gt;,
 }
 
-<span class="kw">impl</span>&lt;Key: Ord, Value, Storage&gt; CacheStorageMap&lt;Key, Value, Storage&gt;
+<span class="kw">impl</span>&lt;Key, Value, Storage&gt; Default <span class="kw">for </span>CacheStorageMap&lt;Key, Value, Storage&gt;
+<span class="kw">where
+    </span>Key: Ord + FullEncode + Clone,
+    Value: FullCodec + Clone + PartialEq,
+    Storage: StorageMap&lt;Key, Value&gt;,
+{
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
+}
+
+<span class="kw">impl</span>&lt;Key, Value, Storage&gt; CacheStorageMap&lt;Key, Value, Storage&gt;
 <span class="kw">where
     </span>Key: Ord + FullEncode + Clone,
     Value: FullCodec + Clone + PartialEq,
@@ -320,13 +337,8 @@
                 }
             }
         }
-        <span class="self">self</span>.cache.retain(|<span class="kw">_</span>, v| {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(Item::Original(<span class="kw">_</span>)) = v {
-                <span class="bool-val">true
-            </span>} <span class="kw">else </span>{
-                <span class="bool-val">false
-            </span>}
-        });
+        <span class="self">self</span>.cache
+            .retain(|<span class="kw">_</span>, v| <span class="macro">matches!</span>(v, <span class="prelude-val">Some</span>(Item::Original(<span class="kw">_</span>))));
     }
 
     <span class="doccomment">/// Resets the cache

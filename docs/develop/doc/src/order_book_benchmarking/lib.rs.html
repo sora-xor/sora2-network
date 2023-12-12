@@ -688,6 +688,7 @@
 #![cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
 </span><span class="comment">// order-book
 </span><span class="attr">#![cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
+#![allow(clippy::type_complexity)]
 </span><span class="comment">// too many benchmarks, doesn&#39;t compile otherwise
 </span><span class="attr">#![recursion_limit = <span class="string">&quot;512&quot;</span>]
 #![feature(int_roundings)]
@@ -1079,8 +1080,7 @@
         }
         verify {}
 
-        <span class="comment">// TODO: benchmark worst case
-        </span>service_single_expiration {
+        service_single_expiration {
             <span class="comment">// very similar to cancel_limit_order
             </span><span class="kw">let </span>order_book_id = OrderBookId::&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt; {
                 dex_id: DEX.into(),

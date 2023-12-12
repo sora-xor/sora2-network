@@ -1486,19 +1486,6 @@
 <a href="#1471" id="1471">1471</a>
 <a href="#1472" id="1472">1472</a>
 <a href="#1473" id="1473">1473</a>
-<a href="#1474" id="1474">1474</a>
-<a href="#1475" id="1475">1475</a>
-<a href="#1476" id="1476">1476</a>
-<a href="#1477" id="1477">1477</a>
-<a href="#1478" id="1478">1478</a>
-<a href="#1479" id="1479">1479</a>
-<a href="#1480" id="1480">1480</a>
-<a href="#1481" id="1481">1481</a>
-<a href="#1482" id="1482">1482</a>
-<a href="#1483" id="1483">1483</a>
-<a href="#1484" id="1484">1484</a>
-<a href="#1485" id="1485">1485</a>
-<a href="#1486" id="1486">1486</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1530,9 +1517,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
-#![allow(dead_code)] </span><span class="comment">// todo (m.tagirov) remove
-// TODO #167: fix clippy warnings
-</span><span class="attr">#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
 
 </span><span class="kw">use </span>assets::AssetIdOf;
@@ -1985,9 +1971,7 @@
         </span>InvalidMaxLotSize,
         <span class="doccomment">/// Tick size &amp; step lot size are too big and their multiplication overflows Balance
         </span>TickSizeAndStepLotSizeAreTooBig,
-        <span class="doccomment">/// Product of tick and step lot sizes goes out of precision. It must be accurately
-        /// represented by fixed-precision float to prevent rounding errors. I.e. the product
-        /// should not have more than 18 digits after the comma.
+        <span class="doccomment">/// Product of tick and step lot sizes goes out of precision. It must be accurately represented by fixed-precision float to prevent rounding errors. I.e. the product should not have more than 18 digits after the comma.
         </span>TickSizeAndStepLotSizeLosePrecision,
         <span class="doccomment">/// Max lot size cannot be more that total supply of base asset
         </span>MaxLotSizeIsMoreThanTotalSupply,
@@ -2083,7 +2067,7 @@
                 order_book_id,
                 creator: maybe_who,
             });
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">1</span>)]
@@ -2121,7 +2105,7 @@
             &lt;OrderBooks&lt;T&gt;&gt;::remove(order_book_id);
 
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::OrderBookDeleted { order_book_id });
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">2</span>)]
@@ -2186,7 +2170,7 @@
             }
             &lt;OrderBooks&lt;T&gt;&gt;::set(order_book_id, <span class="prelude-val">Some</span>(order_book));
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::OrderBookUpdated { order_book_id });
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">3</span>)]
@@ -2204,7 +2188,7 @@
                     &amp;&amp; status != OrderBookStatus::OnlyCancel
                     &amp;&amp; status != OrderBookStatus::Stop
                 {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::OrderBookIsLocked.into());
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::OrderBookIsLocked);
                 }
 
                 order_book.status = status;
@@ -2214,7 +2198,7 @@
                 order_book_id,
                 new_status: status,
             });
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">4</span>)]
@@ -2242,7 +2226,7 @@
             };
             <span class="kw">let </span>order = LimitOrder::&lt;T&gt;::new(
                 order_id,
-                who.clone(),
+                who,
                 side,
                 OrderPrice::divisible(price),
                 amount,
@@ -2365,7 +2349,7 @@
             order_book.execute_market_order(market_order, <span class="kw-2">&amp;mut </span>data)<span class="question-mark">?</span>;
 
             data.commit();
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
     }
 }
@@ -2378,12 +2362,7 @@
         amount: OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account = <span class="self">Self</span>::tech_account_for_order_book(order_book_id);
-        technical::Pallet::&lt;T&gt;::transfer_in(
-            asset_id,
-            account,
-            <span class="kw-2">&amp;</span>tech_account,
-            (<span class="kw-2">*</span>amount.balance()).into(),
-        )
+        technical::Pallet::&lt;T&gt;::transfer_in(asset_id, account, <span class="kw-2">&amp;</span>tech_account, <span class="kw-2">*</span>amount.balance())
     }
 }
 
@@ -2395,12 +2374,7 @@
         amount: OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account = <span class="self">Self</span>::tech_account_for_order_book(order_book_id);
-        technical::Pallet::&lt;T&gt;::transfer_out(
-            asset_id,
-            <span class="kw-2">&amp;</span>tech_account,
-            account,
-            (<span class="kw-2">*</span>amount.balance()).into(),
-        )
+        technical::Pallet::&lt;T&gt;::transfer_out(asset_id, <span class="kw-2">&amp;</span>tech_account, account, <span class="kw-2">*</span>amount.balance())
     }
 
     <span class="kw">fn </span>unlock_liquidity_batch(
@@ -2624,8 +2598,8 @@
         T::AssetInfoProvider::ensure_asset_exists(<span class="kw-2">&amp;</span>order_book_id.base)<span class="question-mark">?</span>;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             <span class="kw-2">&amp;</span>order_book_id.dex_id,
-            <span class="kw-2">&amp;</span>order_book_id.quote.into(),
-            <span class="kw-2">&amp;</span>order_book_id.base.into(),
+            <span class="kw-2">&amp;</span>order_book_id.quote,
+            <span class="kw-2">&amp;</span>order_book_id.base,
         )<span class="question-mark">?</span>;
 
         <span class="macro">ensure!</span>(
@@ -2843,7 +2817,7 @@
         <span class="kw">let </span>amount = deal_info.base_amount();
 
         <span class="kw">let </span>market_order =
-            MarketOrder::&lt;T&gt;::new(sender.clone(), direction, order_book_id, amount, to.clone());
+            MarketOrder::&lt;T&gt;::new(sender.clone(), direction, order_book_id, amount, to);
 
         <span class="kw">let </span>(input_amount, output_amount, executed_orders_count) =
             order_book.execute_market_order(market_order, <span class="kw-2">&amp;mut </span>data)<span class="question-mark">?</span>;

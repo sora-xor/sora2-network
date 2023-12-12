@@ -549,9 +549,6 @@
 <a href="#534" id="534">534</a>
 <a href="#535" id="535">535</a>
 <a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -601,10 +598,7 @@
 <span class="doccomment">/// Check if value belongs valid range of basis points.
 /// Returns true if range is valid, false otherwise.
 </span><span class="kw">pub fn </span>in_basis_points_range&lt;BP: Into&lt;u16&gt;&gt;(value: BP) -&gt; bool {
-    <span class="kw">match </span>value.into() {
-        <span class="number">0</span>..=BASIS_POINTS_RANGE =&gt; <span class="bool-val">true</span>,
-        <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-    }
+    <span class="macro">matches!</span>(value.into(), <span class="number">0</span>..=BASIS_POINTS_RANGE)
 }
 
 <span class="doccomment">/// Create fraction as Fixed from BasisPoints value.

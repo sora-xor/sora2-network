@@ -1911,7 +1911,7 @@
         };
 
         <span class="kw">let </span>average_price = OrderAmount::average_price(input_amount, output_amount)
-            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
+            .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(DealInfo::&lt;AssetIdOf&lt;T&gt;&gt; {
             input_asset_id: <span class="kw-2">*</span>input_asset_id,
@@ -2334,7 +2334,7 @@
         volume
     }
 
-    <span class="kw">pub fn </span>cross_spread&lt;<span class="lifetime">&#39;a</span>&gt;(
+    <span class="kw">pub fn </span>cross_spread(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         limit_order: LimitOrder&lt;T&gt;,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
@@ -2387,11 +2387,11 @@
         }
 
         <span class="kw">if </span>!limit_amount.is_zero() {
-            <span class="kw">let </span><span class="kw-2">mut </span>new_limit_order = limit_order.clone();
+            <span class="kw">let </span><span class="kw-2">mut </span>new_limit_order = limit_order;
             new_limit_order.amount = limit_amount;
             market_change
                 .merge(<span class="self">self</span>.calculate_limit_order_impact(new_limit_order)<span class="question-mark">?</span>)
-                .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
+                .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(market_change)
