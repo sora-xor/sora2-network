@@ -81,12 +81,12 @@ pub fn risk_manager() -> OriginFor<TestRuntime> {
 
 /// Returns Protocol Owner account id
 pub fn protocol_owner_account_id() -> AccountId {
-    alice_account_id()
+    bob_account_id()
 }
 
 /// Returns Protocol Owner account
 pub fn protocol_owner() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(alice_account_id())
+    RuntimeOrigin::signed(bob_account_id())
 }
 
 /// Sets protocol bad debt in KUSD.
@@ -110,7 +110,7 @@ pub fn set_xor_as_collateral_type(
         XOR,
         Some(CollateralRiskParameters {
             max_supply: hard_cap,
-            max_liquidation_lot: balance!(100),
+            max_liquidation_lot: balance!(1000),
             liquidation_ratio,
             stability_fee_rate,
         }),

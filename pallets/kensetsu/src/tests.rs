@@ -983,6 +983,7 @@ fn test_liquidate_accrue() {
 }
 
 /// CDP has debt
+/// Liquidation sells only part of collateral.
 /// Liquidation results with output KUSD amount > cdp.debt + liquidation penalty
 /// CDP debt is repaid, corresponding amount of collateral is sold
 /// Liquidation penalty is a protocol profit
@@ -1011,13 +1012,22 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_penalty() {
         // 100 XOR sold for 200 KUSD
         assert_ok!(KensetsuPallet::liquidate(alice(), cdp_id));
 
-        // TODO assert events
-        let interest = balance!(10);
         let penalty = balance!(11); // (debt + interest) * liquidation penalty
+        System::assert_has_event(
+            Event::Liquidated {
+                cdp_id,
+                collateral_asset_id: XOR,
+                collateral_amount: liquidation_income,
+                kusd_amount: liquidation_income - penalty,
+                penalty,
+            }
+            .into(),
+        );
+        let interest = balance!(10);
         assert_balance(&tech_account_id(), &KUSD, interest + penalty);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         // initial collateral 1000 XOR, 100 XOR sold during liquidation
-        assert_eq!(cdp.collateral_amount, balance!(900));
+        assert_eq!(cdp.collateral_amount, balance!(800));
         // alice balance is:
         // debt (from borrow) + liquidation leftover
         // where liquidation leftover is (liquidation_income - debt - interest - penalty)
@@ -1061,14 +1071,23 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
         // 100 XOR sold for 200 KUSD
         assert_ok!(KensetsuPallet::liquidate(alice(), cdp_id));
 
-        // TODO assert events
-        let interest = balance!(10);
         // (debt + interest) * liquidation penalty = 11 KUSD
         let penalty = balance!(11);
+        System::assert_has_event(
+            Event::Liquidated {
+                cdp_id,
+                collateral_asset_id: XOR,
+                collateral_amount: liquidation_income,
+                kusd_amount: liquidation_income - penalty,
+                penalty,
+            }
+            .into(),
+        );
+        let interest = balance!(10);
         assert_balance(&tech_account_id(), &KUSD, interest + penalty);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
-        // initial collateral 1000 XOR, 100 XOR sold during liquidation
-        assert_eq!(cdp.collateral_amount, balance!(900));
+        // initial collateral 1000 XOR, 121 XOR sold during liquidation
+        assert_eq!(cdp.collateral_amount, balance!(879));
         assert_balance(&alice_account_id(), &KUSD, debt);
         let kusd_supply = get_total_supply(&KUSD);
         // 100 KUSD which is debt amount is burned
@@ -1076,10 +1095,13 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
     });
 }
 
-/// CDP has debt
-/// Liquidation results with output KUSD amount > cdp.debt + liquidation penalty
+/// CDP has debt and unsafe
+/// Liquidation results with revenue KUSD amount where
+/// revenue KUSD amount > cdp.debt
+/// revenue KUSD amount < cdp.debt + liquidation penalty
 /// CDP debt is repaid, corresponding amount of collateral is sold
 /// Liquidation penalty is a protocol profit
+/// CDP has outstanding debt
 #[test]
 fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
     new_test_ext().execute_with(|| {
@@ -1092,38 +1114,49 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
         );
         let collateral = balance!(1000);
         let debt = balance!(100);
-        let liquidation_income = balance!(115);
+        let liquidation_income = balance!(120);
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
         assert_balance(&alice_account_id(), &KUSD, debt);
         MockLiquidityProxy::set_output_amount_for_the_next_exchange(liquidation_income);
         // CDP debt now is 110 KUSD, it is unsafe
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
-        // 100 KUSD debt + 200 KUSD liquidity provider
+        // 100 KUSD debt + 120 KUSD minted for liquidity provider
         let initial_kusd_supply = get_total_supply(&KUSD);
 
-        // 100 XOR sold for 200 KUSD
+        // 100 XOR sold for 120 KUSD
         assert_ok!(KensetsuPallet::liquidate(alice(), cdp_id));
 
-        // TODO assert events
+        // min(liquidation_income, cdp.debt) * liquidation penalty = 11 KUSD
+        let penalty = balance!(11);
+        System::assert_has_event(
+            Event::Liquidated {
+                cdp_id,
+                collateral_asset_id: XOR,
+                collateral_amount: liquidation_income,
+                kusd_amount: liquidation_income - penalty,
+                penalty,
+            }
+            .into(),
+        );
         let interest = balance!(10);
-        // TODO penalty must be liquidation_income * penalty = 11,5 KUSD, increase CDP debt
-        // (debt + interest) * liquidation penalty = 11 KUSD
-        // but liquidation_income - debt - interest = 115 - 100 - 10 = 5 KUSD
-        let penalty = balance!(5);
         assert_balance(&tech_account_id(), &KUSD, interest + penalty);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
-        // initial collateral 1000 XOR, 100 XOR sold during liquidation
-        assert_eq!(cdp.collateral_amount, balance!(900));
+        // initial collateral 1000 XOR, 120 XOR sold during liquidation
+        assert_eq!(cdp.collateral_amount, balance!(880));
+        // debt = (debt + interest) 110 KUSD + (penalty) 11 KUSD - (liquidation_income) 120 KUSD
+        // = 1 KUSD
+        assert_eq!(cdp.debt, balance!(1));
         assert_balance(&alice_account_id(), &KUSD, debt);
         let kusd_supply = get_total_supply(&KUSD);
-        // 100 KUSD which is debt amount is burned
-        assert_eq!(initial_kusd_supply - debt, kusd_supply);
+        // were minted as interest 10 KUSD
+        // were burned in liquidation (debt + interest) - cdp.debt = 108 KUSD
+        assert_eq!(initial_kusd_supply - debt + cdp.debt, kusd_supply);
     });
 }
 
 // Given: Unsafe CDP
-// Liquidated with amount not enough to cover CDP debt.
-// CDP still has debt.
+// Liquidation of all the collateral, debt is covered.
+// CDP is closed, no bad debt, liquidation penalty is a profit.
 #[test]
 fn test_liquidate_kusd_amount_not_covers_cdp_debt() {
     new_test_ext().execute_with(|| {
@@ -1131,55 +1164,124 @@ fn test_liquidate_kusd_amount_not_covers_cdp_debt() {
             .expect("Must set liquidation penalty");
         set_xor_as_collateral_type(
             Balance::MAX,
-            Perbill::from_percent(10),
+            Perbill::from_percent(100),
             FixedU128::from_float(0.1),
         );
-        let collateral = balance!(1000);
+        let collateral = balance!(100);
         let debt = balance!(100);
-        let liquidation_income = balance!(50);
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
         assert_balance(&alice_account_id(), &KUSD, debt);
+        // liquidation amount is the same, 100 XOR
+        let liquidation_income = balance!(100);
         MockLiquidityProxy::set_output_amount_for_the_next_exchange(liquidation_income);
         // CDP debt now is 110 KUSD, it is unsafe
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
-        // 100 KUSD debt + 200 KUSD liquidity provider
+        // 100 KUSD debt + 100 KUSD liquidity provider
         let initial_kusd_supply = get_total_supply(&KUSD);
 
-        // 100 XOR sold for 50 KUSD
+        // 100 XOR sold for 100 KUSD
         assert_ok!(KensetsuPallet::liquidate(alice(), cdp_id));
 
-        // TODO assert events
-        // let interest = balance!(10);
-        // liquidation_income * liquidation penalty = 5 KUSD
-        // let penalty = balance!(5);
-        // TODO fix
-        // assert_balance(&tech_account_id(), &KUSD, interest + penalty);
+        // debt * liquidation penalty = 10 KUSD
+        let penalty = balance!(10);
+        System::assert_has_event(
+            Event::Liquidated {
+                cdp_id,
+                collateral_asset_id: XOR,
+                collateral_amount: collateral,
+                kusd_amount: liquidation_income - penalty,
+                penalty,
+            }
+            .into(),
+        );
+        System::assert_has_event(
+            Event::CDPClosed {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR,
+            }
+            .into(),
+        );
+        // tech account was 10 interest + 10 penalty = 20
+        // debt is 100 + 10 interest
+        // liquidation revenue is 100 - 10 penalty = 90
+        // bad debt = debt - liquidation = 110 - 90 = 20 - covered with protocol profit
+        assert_balance(&tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
-        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
-        // initial collateral 1000 XOR, 100 XOR sold during liquidation
-        // TODO fix
-        // assert_eq!(cdp.collateral_amount, balance!(900));
+        assert_eq!(KensetsuPallet::cdp(cdp_id), Option::None);
         assert_balance(&alice_account_id(), &KUSD, debt);
         let kusd_supply = get_total_supply(&KUSD);
         // 100 KUSD which is debt amount is burned
-        // TODO fix
-        // assert_eq!(initial_kusd_supply - debt, kusd_supply);
+        assert_eq!(initial_kusd_supply - debt, kusd_supply);
     });
 }
 
-// TODO test liquidate
-//  - cdp.collateral_amount > liquidation chunk
-//  - cdp.collateral_amount > output amount
+/// CDP is unsafe
+/// Liquidation results with revenue < debt
+/// Protocol bad debt increased
+/// CDP closed
+#[test]
+fn test_liquidate_kusd_bad_debt() {
+    new_test_ext().execute_with(|| {
+        KensetsuPallet::update_liquidation_penalty(risk_manager(), Percent::from_percent(10))
+            .expect("Must set liquidation penalty");
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(100),
+            FixedU128::from_float(0.1),
+        );
+        let collateral = balance!(100);
+        let debt = balance!(100);
+        let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
+        assert_balance(&alice_account_id(), &KUSD, debt);
+        // liquidation amount < debt
+        let liquidation_income = balance!(100);
+        MockLiquidityProxy::set_output_amount_for_the_next_exchange(liquidation_income);
+        // CDP debt now is 110 KUSD, it is unsafe
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+        // withdraw 10 KUSD from interest, so the protocol can not cover bad debt
+        let interest = balance!(10);
+        assert_ok!(KensetsuPallet::withdraw_profit(protocol_owner(), interest));
+        // 110 KUSD debt + 10 KUSD liquidity provider
+        let initial_kusd_supply = get_total_supply(&KUSD);
 
-// cdp_debt > kusd_amount
-//   - cdp_collateral_amount < collateral_amount
-//   - cdp_collateral_amount == collateral_amount
-//   - cdp_collateral_amount > collateral_amount
-// cdp_debt == kusd_amount
-//   - cdp_collateral_amount < collateral_amount
-//   - cdp_collateral_amount == collateral_amount
-//   - cdp_collateral_amount > collateral_amount
+        // 100 XOR sold for 10 KUSD
+        assert_ok!(KensetsuPallet::liquidate(alice(), cdp_id));
 
+        // debt * liquidation penalty = 10 KUSD
+        let penalty = balance!(10);
+        System::assert_has_event(
+            Event::Liquidated {
+                cdp_id,
+                collateral_asset_id: XOR,
+                collateral_amount: collateral,
+                kusd_amount: liquidation_income - penalty,
+                penalty,
+            }
+            .into(),
+        );
+        System::assert_has_event(
+            Event::CDPClosed {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR,
+            }
+            .into(),
+        );
+        // tech account has 10 KUSD penalty
+        // debt is 100 + 10 interest
+        // liquidation revenue is 100 - 10 penalty = 90
+        // bad debt = debt - liquidation = 110 - 90 = 20 - covered with protocol profit
+        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_bad_debt(balance!(10));
+        assert_eq!(KensetsuPallet::cdp(cdp_id), Option::None);
+        assert_balance(&alice_account_id(), &KUSD, debt);
+        let kusd_supply = get_total_supply(&KUSD);
+        // 100 KUSD which is debt amount is burned
+        assert_eq!(initial_kusd_supply - debt, kusd_supply);
+    });
+}
 /// If cdp doesn't exist, return error
 #[test]
 fn test_accrue_cdp_does_not_exist() {
@@ -1791,4 +1893,5 @@ fn test_withdraw_profit_sunny_day() {
 }
 
 // TODO add tests for off-chain worker accrue()
+// TODO add tests for off-chain worker liquidate()
 // - validate unsigned

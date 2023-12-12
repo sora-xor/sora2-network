@@ -259,8 +259,10 @@ pub mod pallet {
             // what was liquidated
             collateral_asset_id: AssetIdOf<T>,
             collateral_amount: Balance,
-            // revenue from liquidation
+            // revenue from liquidation to cover debt
             kusd_amount: Balance,
+            // liquidation penalty
+            penalty: Balance,
         },
         CollateralRiskParametersUpdated {
             collateral_asset_id: AssetIdOf<T>,
@@ -287,7 +289,6 @@ pub mod pallet {
         // TODO
         // Set risk manager account
         // Set protocol owner account
-        // Set liquidator account
     }
 
     #[cfg(feature = "std")]
@@ -585,8 +586,6 @@ pub mod pallet {
                 SwapAmount::with_desired_input(collateral_to_liquidate, balance!(0)),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
-            // TODO what is amount of collateral being liquidated?
-            let kusd_amount = swap_outcome.amount;
             <Treasury<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
@@ -597,7 +596,11 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 }
             })?;
-            let to_burn = if cdp_debt >= kusd_amount {
+            // penalty is a protocol profit which stays on treasury tech account
+            let penalty = Self::liquidation_penalty() * swap_outcome.amount.min(cdp_debt);
+            let kusd_amount = swap_outcome.amount - penalty;
+            if cdp_debt >= kusd_amount {
+                Self::burn_treasury(kusd_amount)?;
                 let shortage = cdp_debt
                     .checked_sub(kusd_amount)
                     .ok_or(Error::<T>::CDPNotFound)?;
@@ -625,14 +628,10 @@ pub mod pallet {
                         }
                     })?;
                 }
-
-                kusd_amount
             } else {
+                Self::burn_treasury(cdp_debt)?;
+
                 // CDP debt is covered
-                let leftover = kusd_amount
-                    .checked_sub(cdp_debt)
-                    .ok_or(Error::<T>::CDPNotFound)?;
-                let liquidation_penalty = Self::liquidation_penalty() * cdp_debt;
                 <Treasury<T>>::try_mutate(cdp_id, {
                     |cdp| {
                         let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
@@ -640,32 +639,23 @@ pub mod pallet {
                         DispatchResult::Ok(())
                     }
                 })?;
-                let penalty = if liquidation_penalty >= leftover {
-                    // not enough KUSD for full penalty
-                    leftover
-                } else {
-                    // There is more KUSD than to cover debt and penalty, leftover goes to cdp.owner
-                    assets::Pallet::<T>::transfer_from(
-                        &T::KusdAssetId::get(),
-                        &technical_account_id,
-                        &cdp.owner,
-                        leftover
-                            .checked_sub(liquidation_penalty)
-                            .ok_or(Error::<T>::CDPNotFound)?,
-                    )?;
-                    liquidation_penalty
-                };
-                // todo no need in transfer, it is already on tech account
-                Self::cover_bad_debt(&technical_account_id, penalty)?;
-
-                cdp_debt
+                // There is more KUSD than to cover debt and penalty, leftover goes to cdp.owner
+                let leftover = kusd_amount
+                    .checked_sub(cdp_debt)
+                    .ok_or(Error::<T>::CDPNotFound)?;
+                assets::Pallet::<T>::transfer_from(
+                    &T::KusdAssetId::get(),
+                    &technical_account_id,
+                    &cdp.owner,
+                    leftover,
+                )?;
             };
-            Self::burn_treasury(to_burn)?;
             Self::deposit_event(Event::Liquidated {
                 cdp_id,
                 collateral_asset_id: cdp.collateral_asset_id,
                 collateral_amount: collateral_to_liquidate,
                 kusd_amount,
+                penalty,
             });
 
             Ok(())
@@ -1057,7 +1047,7 @@ pub mod pallet {
             )?;
             let protocol_positive_balance =
                 T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
-            let to_burn = if amount < protocol_positive_balance {
+            let to_burn = if amount <= protocol_positive_balance {
                 amount
             } else {
                 <BadDebt<T>>::try_mutate(|bad_debt| {
