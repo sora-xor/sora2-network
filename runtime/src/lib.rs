@@ -1904,19 +1904,8 @@ impl hermes_governance_platform::Config for Runtime {
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-    pub const ApolloLendingRewardsPerBlock: Balance = balance!(0.038);
-    pub const FixedLendingRewards: Balance = balance!(200000);
-    pub const ApolloBorrowingRewardsPerBlock: Balance = balance!(0.019);
-    pub const FixedBorrowingRewards: Balance = balance!(100000);
-}
-
 impl apollo_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type ApolloLendingRewardsPerBlock = ApolloLendingRewardsPerBlock;
-    type FixedLendingRewards = FixedLendingRewards;
-    type ApolloBorrowingRewardsPerBlock = ApolloBorrowingRewardsPerBlock;
-    type FixedBorrowingRewards = FixedBorrowingRewards;
 }
 
 parameter_types! {

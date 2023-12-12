@@ -20,6 +20,7 @@ pub struct UserBorrowingPosition<AssetId, BlockNumberFor> {
     pub borrowing_amount: Balance,
     pub borrowing_interest: Balance,
     pub last_borrowing_block: BlockNumberFor,
+    pub borrowing_rewards: Balance,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
@@ -63,14 +64,6 @@ pub mod pallet {
     pub trait Config: frame_system::Config + assets::Config + price_tools::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        /// Apollo lending rewards per block
-        type ApolloLendingRewardsPerBlock: Get<Balance>;
-        /// Fixed lending rewards
-        type FixedLendingRewards: Get<Balance>;
-        /// Apollo borrowing rewards per block
-        type ApolloBorrowingRewardsPerBlock: Get<Balance>;
-        /// Fixed borrowing rewards
-        type FixedBorrowingRewards: Get<Balance>;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -123,6 +116,28 @@ pub mod pallet {
     pub type AuthorityAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
 
+    #[pallet::type_value]
+    pub fn FixedLendingRewards<T: Config>() -> Balance {
+        balance!(200000)
+    }
+
+    /// Default lending rewards
+    #[pallet::storage]
+    #[pallet::getter(fn lending_rewards)]
+    pub type LendingRewards<T: Config> =
+        StorageValue<_, Balance, ValueQuery, FixedLendingRewards<T>>;
+
+    #[pallet::type_value]
+    pub fn FixedBorrowingRewards<T: Config>() -> Balance {
+        balance!(100000)
+    }
+
+    /// Default borrowing rewards
+    #[pallet::storage]
+    #[pallet::getter(fn borrowing_rewards)]
+    pub type BorrowingRewards<T: Config> =
+        StorageValue<_, Balance, ValueQuery, FixedBorrowingRewards<T>>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -132,10 +147,14 @@ pub mod pallet {
         Lended(AccountIdOf<T>, AssetIdOf<T>, Balance),
         /// Borrowed [who, borrow_asset, collateral_asset, borrow_amount, collateral_amount]
         Borrowed(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, Balance, Balance),
-        /// Claimed [who, asset_id, amount]
-        Claimed(AccountIdOf<T>, AssetIdOf<T>, Balance),
+        /// ClaimedLendingRewards [who, asset_id, amount]
+        ClaimedLendingRewards(AccountIdOf<T>, AssetIdOf<T>, Balance),
+        /// ClaimedBorrowingRewards [who, asset_id, amount]
+        ClaimedBorrowingRewards(AccountIdOf<T>, AssetIdOf<T>, Balance),
         /// Withdrawn [who, asset_id, amount]
         Withdrawn(AccountIdOf<T>, AssetIdOf<T>, Balance),
+        /// Repaid [who, asset_id, amount]
+        Repaid(AccountIdOf<T>, AssetIdOf<T>, Balance),
     }
 
     #[pallet::error]
@@ -180,6 +199,8 @@ pub mod pallet {
         NothingBorrowed,
         /// Nothing to repay
         NothingToRepay,
+        /// Can not transfer lending interest
+        CanNotTransferLendingInterest,
     }
 
     #[pallet::call]
@@ -212,8 +233,6 @@ pub mod pallet {
             if loan_to_value > balance!(1)
                 || liquidation_threshold > balance!(1)
                 || optimal_utilization_rate > balance!(1)
-                || base_rate > balance!(1)
-                || slope_rate_1 > balance!(1)
                 || reserve_factor > balance!(1)
             {
                 return Err(Error::<T>::InvalidPoolParameters.into());
@@ -379,6 +398,7 @@ pub mod pallet {
                     borrowing_amount,
                     borrowing_interest: 0,
                     last_borrowing_block: <frame_system::Pallet<T>>::block_number(),
+                    borrowing_rewards: 0,
                 };
                 user_lending_info.lending_amount -= collateral_amount;
                 user_lending_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
@@ -425,37 +445,69 @@ pub mod pallet {
         #[pallet::weight(10_000)]
         pub fn get_rewards(
             origin: OriginFor<T>,
-            lending_token: AssetIdOf<T>,
+            asset_id: AssetIdOf<T>,
+            is_lending: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            let mut user_info = <UserLendingInfo<T>>::get(user.clone(), lending_token)
+            let mut lend_user_info = <UserLendingInfo<T>>::get(user.clone(), asset_id)
                 .ok_or(Error::<T>::NothingLended)?;
 
-            ensure!(user_info.lending_interest > 0, Error::<T>::NoRewardsToClaim);
+            let mut borrow_user_info = <UserBorrowingInfo<T>>::get(user.clone(), asset_id)
+                .ok_or(Error::<T>::NothingBorrowed)?;
 
-            user_info.lending_interest = 0;
-            <UserLendingInfo<T>>::insert(user.clone(), lending_token, &user_info);
+            if is_lending == true {
+                ensure!(
+                    lend_user_info.lending_interest > 0,
+                    Error::<T>::NoRewardsToClaim
+                );
 
-            Assets::<T>::transfer_from(
-                &CERES_ASSET_ID.into(),
-                &Self::account_id(),
-                &user,
-                user_info.lending_interest.clone(),
-            )
-            .map_err(|_| Error::<T>::UnableToTransferRewards)?;
+                Assets::<T>::transfer_from(
+                    &CERES_ASSET_ID.into(),
+                    &Self::account_id(),
+                    &user,
+                    lend_user_info.lending_interest.clone(),
+                )
+                .map_err(|_| Error::<T>::UnableToTransferRewards)?;
 
-            //Emit event
-            Self::deposit_event(Event::Claimed(
-                user,
-                lending_token,
-                user_info.lending_interest,
-            ));
+                lend_user_info.lending_interest = 0;
+                <UserLendingInfo<T>>::insert(user.clone(), asset_id, &lend_user_info);
 
+                //Emit event
+                Self::deposit_event(Event::ClaimedLendingRewards(
+                    user,
+                    asset_id,
+                    lend_user_info.lending_interest,
+                ));
+            } else {
+                ensure!(
+                    borrow_user_info.borrowing_rewards > 0,
+                    Error::<T>::NoRewardsToClaim
+                );
+
+                Assets::<T>::transfer_from(
+                    &CERES_ASSET_ID.into(),
+                    &Self::account_id(),
+                    &user,
+                    borrow_user_info.borrowing_rewards,
+                )
+                .map_err(|_| Error::<T>::UnableToTransferRewards)?;
+
+                borrow_user_info.borrowing_rewards = 0;
+                <UserBorrowingInfo<T>>::insert(user.clone(), asset_id, &borrow_user_info);
+
+                //Emit event
+                Self::deposit_event(Event::ClaimedBorrowingRewards(
+                    user,
+                    asset_id,
+                    borrow_user_info.borrowing_rewards,
+                ));
+            }
             Ok(().into())
         }
 
         /// Withdraw
+        #[transactional]
         #[pallet::call_index(4)]
         #[pallet::weight(10_000)]
         pub fn withdraw(
@@ -473,32 +525,57 @@ pub mod pallet {
 
             ensure!(user_info.lending_amount > 0, Error::<T>::NoLendingAmount);
 
+            ensure!(
+                lending_amount < pool_info.total_liquidity,
+                Error::<T>::CanNotTransferLendingAmount
+            );
+
+            let calculated_interest = Self::calculate_lending_earnings(&user, lending_token);
+            user_info.lending_interest += calculated_interest;
+            <UserLendingInfo<T>>::insert(user.clone(), lending_token, &user_info);
+
             if lending_amount < user_info.lending_amount {
-                let calculated_interest = Self::calculate_lending_earnings(&user, lending_token);
-                user_info.lending_interest += calculated_interest;
                 user_info.lending_amount -= lending_amount;
                 user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
                 pool_info.total_liquidity -= lending_amount;
+
+                Assets::<T>::transfer_from(
+                    &lending_token,
+                    &Self::account_id(),
+                    &user,
+                    lending_amount,
+                )
+                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
+
                 <UserLendingInfo<T>>::insert(user.clone(), lending_token, user_info);
                 <PoolData<T>>::insert(lending_token, pool_info);
             } else if lending_amount == user_info.lending_amount {
-                let calculated_interest = Self::calculate_lending_earnings(&user, lending_token);
-                user_info.lending_interest += calculated_interest;
+                Assets::<T>::transfer_from(
+                    &lending_token,
+                    &Self::account_id(),
+                    &user,
+                    lending_amount,
+                )
+                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
+
+                Assets::<T>::transfer_from(
+                    &CERES_ASSET_ID.into(),
+                    &Self::account_id(),
+                    &user,
+                    user_info.lending_interest,
+                )
+                .map_err(|_| Error::<T>::CanNotTransferLendingInterest)?;
+
                 user_info.lending_amount = 0;
+                user_info.lending_interest = 0;
                 user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
                 pool_info.total_liquidity -= lending_amount;
 
-                if user_info.lending_interest == 0 {
-                    <UserLendingInfo<T>>::remove(user.clone(), lending_token);
-                }
-                <UserLendingInfo<T>>::insert(user.clone(), lending_token, user_info);
+                <UserLendingInfo<T>>::remove(user.clone(), lending_token);
                 <PoolData<T>>::insert(lending_token, pool_info);
             } else {
                 return Err(Error::<T>::LendingAmountExceeded.into());
             }
-
-            Assets::<T>::transfer_from(&lending_token, &Self::account_id(), &user, lending_amount)
-                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
 
             //Emit event
             Self::deposit_event(Event::Withdrawn(user, lending_token, lending_amount));
