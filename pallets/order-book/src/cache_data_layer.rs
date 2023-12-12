@@ -79,6 +79,12 @@ pub struct CacheDataLayer<T: Config> {
     >,
 }
 
+impl<T: Config> Default for CacheDataLayer<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Config> CacheDataLayer<T> {
     pub fn new() -> Self {
         Self {
@@ -180,7 +186,7 @@ impl<T: Config> CacheDataLayer<T> {
         if let Some(agg_bids) = self.aggregated_bids.get_mut(order_book_id) {
             let volume = agg_bids
                 .get(price)
-                .map(|x| *x)
+                .copied()
                 .unwrap_or_default()
                 .checked_add(value)
                 .ok_or(())?;
@@ -204,7 +210,7 @@ impl<T: Config> CacheDataLayer<T> {
         value: &OrderVolume,
     ) -> Result<(), ()> {
         if let Some(agg_bids) = self.aggregated_bids.get_mut(order_book_id) {
-            let volume = agg_bids.get(price).map(|x| *x).unwrap_or_default();
+            let volume = agg_bids.get(price).copied().unwrap_or_default();
             let volume = volume.checked_sub(value).ok_or(())?;
             if volume.is_zero() {
                 agg_bids.remove(price);
@@ -235,7 +241,7 @@ impl<T: Config> CacheDataLayer<T> {
         if let Some(agg_asks) = self.aggregated_asks.get_mut(order_book_id) {
             let volume = agg_asks
                 .get(price)
-                .map(|x| *x)
+                .copied()
                 .unwrap_or_default()
                 .checked_add(value)
                 .ok_or(())?;
@@ -259,7 +265,7 @@ impl<T: Config> CacheDataLayer<T> {
         value: &OrderVolume,
     ) -> Result<(), ()> {
         if let Some(agg_asks) = self.aggregated_asks.get_mut(order_book_id) {
-            let volume = agg_asks.get(price).map(|x| *x).unwrap_or_default();
+            let volume = agg_asks.get(price).copied().unwrap_or_default();
             let volume = volume.checked_sub(value).ok_or(())?;
             if volume.is_zero() {
                 agg_asks.remove(price);

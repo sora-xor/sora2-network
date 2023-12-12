@@ -80,13 +80,13 @@ pub fn users_iterator<T: Config>(
         .inspect(move |user| {
             assets::Pallet::<T>::mint_unchecked(
                 &order_book_id.base,
-                &user,
+                user,
                 *mint_per_user.balance(),
             )
             .unwrap();
             assets::Pallet::<T>::mint_unchecked(
                 &order_book_id.quote,
-                &user,
+                user,
                 *max_price.checked_mul(&mint_per_user).unwrap().balance(),
             )
             .unwrap();
@@ -386,7 +386,7 @@ fn fill_price_inner<T: Config>(
             side,
             price,
             orders_amount,
-            settings.now.clone(),
+            settings.now,
             lifespan.saturated_into(),
             current_block,
         );
@@ -415,7 +415,7 @@ fn fill_price_inner<T: Config>(
                 side,
                 price,
                 orders_amount,
-                settings.now.clone(),
+                settings.now,
                 lifespan,
                 current_block,
             )

@@ -29,9 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(dead_code)] // todo (m.tagirov) remove
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
 
 use assets::AssetIdOf;
@@ -104,6 +103,7 @@ pub mod pallet {
         Blake2_128Concat,
     };
     use frame_system::pallet_prelude::*;
+    use sp_runtime::Either;
 
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -183,7 +183,11 @@ pub mod pallet {
         type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type Time: Time;
-        type PermittedOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
+        type PermittedCreateOrigin: EnsureOrigin<
+            Self::RuntimeOrigin,
+            Success = Either<Self::AccountId, ()>,
+        >;
+        type PermittedEditOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = ()>;
         type WeightInfo: WeightInfo;
     }
 
@@ -298,7 +302,8 @@ pub mod pallet {
         /// New order book is created by user
         OrderBookCreated {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-            creator: T::AccountId,
+            /// `creator` contains an address if the order book is created for an indivisible asset by the asset holder, or `None` if it is created by root / tech committee
+            creator: Option<T::AccountId>,
         },
 
         /// Order book is deleted
@@ -481,9 +486,7 @@ pub mod pallet {
         InvalidMaxLotSize,
         /// Tick size & step lot size are too big and their multiplication overflows Balance
         TickSizeAndStepLotSizeAreTooBig,
-        /// Product of tick and step lot sizes goes out of precision. It must be accurately
-        /// represented by fixed-precision float to prevent rounding errors. I.e. the product
-        /// should not have more than 18 digits after the comma.
+        /// Product of tick and step lot sizes goes out of precision. It must be accurately represented by fixed-precision float to prevent rounding errors. I.e. the product should not have more than 18 digits after the comma.
         TickSizeAndStepLotSizeLosePrecision,
         /// Max lot size cannot be more that total supply of base asset
         MaxLotSizeIsMoreThanTotalSupply,
@@ -526,9 +529,38 @@ pub mod pallet {
         pub fn create_orderbook(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+            tick_size: Balance,
+            step_lot_size: Balance,
+            min_lot_size: Balance,
+            max_lot_size: Balance,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::verify_create_orderbook_params(&who, &order_book_id)?;
+            let origin_check_result = T::PermittedCreateOrigin::ensure_origin(origin)?;
+            let maybe_who = match origin_check_result {
+                Either::Left(who) => {
+                    if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+                        // nft
+                        // ensure the user has nft
+                        ensure!(
+                            T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
+                                > Balance::zero(),
+                            Error::<T>::UserHasNoNft
+                        );
+                        Some(who)
+                    } else {
+                        return Err(DispatchError::BadOrigin);
+                    }
+                }
+                Either::Right(()) => None,
+            };
+
+            Self::verify_create_orderbook_params(&order_book_id)?;
+            Self::verify_orderbook_attributes(
+                &order_book_id,
+                tick_size,
+                step_lot_size,
+                min_lot_size,
+                max_lot_size,
+            )?;
 
             #[cfg(feature = "ready-to-test")] // order-book
             {
@@ -539,12 +571,18 @@ pub mod pallet {
                     LiquiditySourceType::OrderBook,
                 )?;
             }
-            Self::create_orderbook_unchecked(&order_book_id)?;
+            Self::create_orderbook_unchecked(
+                &order_book_id,
+                tick_size,
+                step_lot_size,
+                min_lot_size,
+                max_lot_size,
+            )?;
             Self::deposit_event(Event::<T>::OrderBookCreated {
                 order_book_id,
-                creator: who,
+                creator: maybe_who,
             });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(1)]
@@ -553,7 +591,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         ) -> DispatchResult {
-            T::PermittedOrigin::ensure_origin(origin)?;
+            T::PermittedEditOrigin::ensure_origin(origin)?;
             let order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
 
@@ -582,7 +620,7 @@ pub mod pallet {
             <OrderBooks<T>>::remove(order_book_id);
 
             Self::deposit_event(Event::<T>::OrderBookDeleted { order_book_id });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(2)]
@@ -595,7 +633,7 @@ pub mod pallet {
             min_lot_size: Balance,
             max_lot_size: Balance,
         ) -> DispatchResult {
-            T::PermittedOrigin::ensure_origin(origin)?;
+            T::PermittedEditOrigin::ensure_origin(origin)?;
             let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
 
@@ -610,44 +648,13 @@ pub mod pallet {
                 Error::<T>::ForbiddenStatusToUpdateOrderBook
             );
 
-            // Check that values are non-zero
-            ensure!(tick_size > Balance::zero(), Error::<T>::InvalidTickSize);
-            ensure!(
-                step_lot_size > Balance::zero(),
-                Error::<T>::InvalidStepLotSize
-            );
-            ensure!(
-                min_lot_size > Balance::zero(),
-                Error::<T>::InvalidMinLotSize
-            );
-            ensure!(
-                max_lot_size > Balance::zero(),
-                Error::<T>::InvalidMaxLotSize
-            );
-
-            // min <= max
-            // It is possible to set min == max if it necessary, e.g. some NFTs
-            ensure!(min_lot_size <= max_lot_size, Error::<T>::InvalidMaxLotSize);
-
-            // min & max couldn't be less then `step_lot_size`
-            ensure!(min_lot_size >= step_lot_size, Error::<T>::InvalidMinLotSize);
-            ensure!(max_lot_size >= step_lot_size, Error::<T>::InvalidMaxLotSize);
-
-            // min & max must be a multiple of `step_lot_size`
-            ensure!(
-                min_lot_size % step_lot_size == 0,
-                Error::<T>::InvalidMinLotSize
-            );
-            ensure!(
-                max_lot_size % step_lot_size == 0,
-                Error::<T>::InvalidMaxLotSize
-            );
-
-            // check the ratio between min & max
-            ensure!(
-                max_lot_size <= min_lot_size.saturating_mul(T::SOFT_MIN_MAX_RATIO as Balance),
-                Error::<T>::InvalidMaxLotSize
-            );
+            Self::verify_orderbook_attributes(
+                &order_book_id,
+                tick_size,
+                step_lot_size,
+                min_lot_size,
+                max_lot_size,
+            )?;
 
             // check the ratio between old min & new max
             ensure!(
@@ -657,25 +664,6 @@ pub mod pallet {
                         .balance()
                         .saturating_mul(T::HARD_MIN_MAX_RATIO as Balance),
                 Error::<T>::InvalidMaxLotSize
-            );
-
-            if !T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-                // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
-                // The min possible deal amount = `tick_size` * `step_lot_size`.
-                // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
-                // and doesn't go out of precision.
-                let _min_possible_deal_amount = (FixedWrapper::from(tick_size)
-                    .lossless_mul(FixedWrapper::from(step_lot_size))
-                    .ok_or(Error::<T>::TickSizeAndStepLotSizeLosePrecision)?)
-                .try_into_balance() // Returns error if value overflows.
-                .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
-            }
-
-            // `max_lot_size` couldn't be more then total supply of `base` asset
-            let total_supply = T::AssetInfoProvider::total_issuance(&order_book_id.base)?;
-            ensure!(
-                max_lot_size <= total_supply,
-                Error::<T>::MaxLotSizeIsMoreThanTotalSupply
             );
 
             let prev_step_lot_size = order_book.step_lot_size;
@@ -697,7 +685,7 @@ pub mod pallet {
             }
             <OrderBooks<T>>::set(order_book_id, Some(order_book));
             Self::deposit_event(Event::<T>::OrderBookUpdated { order_book_id });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(3)]
@@ -707,7 +695,7 @@ pub mod pallet {
             order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
             status: OrderBookStatus,
         ) -> DispatchResult {
-            T::PermittedOrigin::ensure_origin(origin)?;
+            T::PermittedEditOrigin::ensure_origin(origin)?;
             <OrderBooks<T>>::mutate(order_book_id, |order_book| {
                 let order_book = order_book.as_mut().ok_or(Error::<T>::UnknownOrderBook)?;
 
@@ -715,7 +703,7 @@ pub mod pallet {
                     && status != OrderBookStatus::OnlyCancel
                     && status != OrderBookStatus::Stop
                 {
-                    return Err(Error::<T>::OrderBookIsLocked.into());
+                    return Err(Error::<T>::OrderBookIsLocked);
                 }
 
                 order_book.status = status;
@@ -725,7 +713,7 @@ pub mod pallet {
                 order_book_id,
                 new_status: status,
             });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(4)]
@@ -753,7 +741,7 @@ pub mod pallet {
             };
             let order = LimitOrder::<T>::new(
                 order_id,
-                who.clone(),
+                who,
                 side,
                 OrderPrice::divisible(price),
                 amount,
@@ -876,7 +864,7 @@ pub mod pallet {
             order_book.execute_market_order(market_order, &mut data)?;
 
             data.commit();
-            Ok(().into())
+            Ok(())
         }
     }
 }
@@ -889,12 +877,7 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
-        technical::Pallet::<T>::transfer_in(
-            asset_id,
-            account,
-            &tech_account,
-            (*amount.balance()).into(),
-        )
+        technical::Pallet::<T>::transfer_in(asset_id, account, &tech_account, *amount.balance())
     }
 }
 
@@ -906,12 +889,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
-        technical::Pallet::<T>::transfer_out(
-            asset_id,
-            &tech_account,
-            account,
-            (*amount.balance()).into(),
-        )
+        technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, *amount.balance())
     }
 
     fn unlock_liquidity_batch(
@@ -1114,7 +1092,6 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn verify_create_orderbook_params(
-        who: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         ensure!(
@@ -1136,37 +1113,120 @@ impl<T: Config> Pallet<T> {
         T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             &order_book_id.dex_id,
-            &order_book_id.quote.into(),
-            &order_book_id.base.into(),
+            &order_book_id.quote,
+            &order_book_id.base,
         )?;
 
         ensure!(
             !<OrderBooks<T>>::contains_key(order_book_id),
             Error::<T>::OrderBookAlreadyExists
         );
+        Ok(())
+    }
 
-        if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-            // nft
-            // ensure the user has nft
-            ensure!(
-                T::AssetInfoProvider::total_balance(&order_book_id.base, &who)? > Balance::zero(),
-                Error::<T>::UserHasNoNft
-            );
-        };
+    fn verify_orderbook_attributes(
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        tick_size: Balance,
+        step_lot_size: Balance,
+        min_lot_size: Balance,
+        max_lot_size: Balance,
+    ) -> Result<(), DispatchError> {
+        // Check that values are non-zero
+        ensure!(tick_size > Balance::zero(), Error::<T>::InvalidTickSize);
+        ensure!(
+            step_lot_size > Balance::zero(),
+            Error::<T>::InvalidStepLotSize
+        );
+        ensure!(
+            min_lot_size > Balance::zero(),
+            Error::<T>::InvalidMinLotSize
+        );
+        ensure!(
+            max_lot_size > Balance::zero(),
+            Error::<T>::InvalidMaxLotSize
+        );
+
+        // min <= max
+        // It is possible to set min == max if it necessary, e.g. some NFTs
+        ensure!(min_lot_size <= max_lot_size, Error::<T>::InvalidMaxLotSize);
+
+        // min & max couldn't be less then `step_lot_size`
+        ensure!(min_lot_size >= step_lot_size, Error::<T>::InvalidMinLotSize);
+        ensure!(max_lot_size >= step_lot_size, Error::<T>::InvalidMaxLotSize);
+
+        // min & max must be a multiple of `step_lot_size`
+        ensure!(
+            min_lot_size % step_lot_size == 0,
+            Error::<T>::InvalidMinLotSize
+        );
+        ensure!(
+            max_lot_size % step_lot_size == 0,
+            Error::<T>::InvalidMaxLotSize
+        );
+
+        // check the ratio between min & max
+        ensure!(
+            max_lot_size <= min_lot_size.saturating_mul(T::SOFT_MIN_MAX_RATIO as Balance),
+            Error::<T>::InvalidMaxLotSize
+        );
+
+        if !T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+            // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
+            // The min possible deal amount = `tick_size` * `step_lot_size`.
+            // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
+            // and doesn't go out of precision.
+            let _min_possible_deal_amount = (FixedWrapper::from(tick_size)
+                .lossless_mul(FixedWrapper::from(step_lot_size))
+                .ok_or(Error::<T>::TickSizeAndStepLotSizeLosePrecision)?)
+            .try_into_balance() // Returns error if value overflows.
+            .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
+        }
+
+        // `max_lot_size` couldn't be more then total supply of `base` asset
+        let total_supply = T::AssetInfoProvider::total_issuance(&order_book_id.base)?;
+        ensure!(
+            max_lot_size <= total_supply,
+            Error::<T>::MaxLotSizeIsMoreThanTotalSupply
+        );
+
         Ok(())
     }
 
     pub fn create_orderbook_unchecked(
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        tick_size: Balance,
+        step_lot_size: Balance,
+        min_lot_size: Balance,
+        max_lot_size: Balance,
     ) -> Result<(), DispatchError> {
         let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
-            OrderBook::<T>::default_indivisible(*order_book_id)
+            OrderBook::<T>::new(
+                *order_book_id,
+                OrderPrice::divisible(tick_size),
+                OrderVolume::indivisible(step_lot_size),
+                OrderVolume::indivisible(min_lot_size),
+                OrderVolume::indivisible(max_lot_size),
+            )
         } else {
             // regular asset
-            OrderBook::<T>::default(*order_book_id)
+            OrderBook::<T>::new(
+                *order_book_id,
+                OrderPrice::divisible(tick_size),
+                OrderVolume::divisible(step_lot_size),
+                OrderVolume::divisible(min_lot_size),
+                OrderVolume::divisible(max_lot_size),
+            )
         };
         <OrderBooks<T>>::insert(order_book_id, order_book);
         Self::register_tech_account(*order_book_id)
+    }
+}
+
+#[cfg(feature = "private-net")]
+impl<T: Config> Pallet<T> {
+    /// Specifically created for `qa-tools` pallet
+    pub fn deposit_event_exposed(event: Event<T>) {
+        Self::deposit_event(event)
     }
 }
 
@@ -1272,7 +1332,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let amount = deal_info.base_amount();
 
         let market_order =
-            MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to.clone());
+            MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to);
 
         let (input_amount, output_amount, executed_orders_count) =
             order_book.execute_market_order(market_order, &mut data)?;

@@ -115,7 +115,7 @@ benchmarks! {
     }
 
     new_trivial {
-        let dex_info = <T as trading_pair::Config>::DexInfoProvider::get_dex_info(&DEX.into())?;
+        let dex_info = <T as pool_xyk::Config>::DexInfoProvider::get_dex_info(&DEX.into())?;
         let from_asset: T::AssetId = XSTUSD.into();
         let to_asset: T::AssetId = VAL.into();
     }: {

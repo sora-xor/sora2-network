@@ -42,6 +42,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 // order-book
 #![cfg(feature = "ready-to-test")]
+#![allow(clippy::type_complexity)]
 // too many benchmarks, doesn't compile otherwise
 #![recursion_limit = "512"]
 #![feature(int_roundings)]
@@ -151,7 +152,7 @@ mod benchmarks_inner {
     use order_book_imported::test_utils::{accounts, create_and_fill_order_book};
     use order_book_imported::{
         CancelReason, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId,
-        OrderBookStatus,
+        OrderBookStatus, OrderPrice, OrderVolume,
     };
     use periphery::presets::*;
 
@@ -172,7 +173,7 @@ mod benchmarks_inner {
                 AssetSymbol(b"NFT".to_vec()),
                 AssetName(b"Nft".to_vec()),
                 0,
-                balance!(1),
+                1000,
                 false,
                 None,
                 None,
@@ -194,21 +195,31 @@ mod benchmarks_inner {
         }: {
             OrderBookPallet::<T>::create_orderbook(
                 RawOrigin::Signed(caller.clone()).into(),
-                order_book_id
+                order_book_id,
+                balance!(0.00001),
+                1,
+                1,
+                1000
             ).unwrap();
         }
         verify {
             assert_last_event::<T>(
                 Event::<T>::OrderBookCreated {
                     order_book_id,
-                    creator: caller,
+                    creator: Some(caller),
                 }
                 .into(),
             );
 
             assert_eq!(
                 OrderBookPallet::<T>::order_books(order_book_id).unwrap(),
-                OrderBook::<T>::default_indivisible(order_book_id)
+                OrderBook::<T>::new(
+                    order_book_id,
+                    OrderPrice::divisible(balance!(0.00001)),
+                    OrderVolume::indivisible(1),
+                    OrderVolume::indivisible(1),
+                    OrderVolume::indivisible(1000),
+                )
             );
         }
 
@@ -425,7 +436,6 @@ mod benchmarks_inner {
         }
         verify {}
 
-        // TODO: benchmark worst case
         service_single_expiration {
             // very similar to cancel_limit_order
             let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {

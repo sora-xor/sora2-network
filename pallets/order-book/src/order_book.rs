@@ -36,7 +36,7 @@ use crate::{
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::QuoteAmount;
-use common::{balance, Balance, PriceVariant};
+use common::{Balance, PriceVariant};
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
@@ -80,26 +80,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             max_lot_size,
             tech_status: OrderBookTechStatus::Ready,
         }
-    }
-
-    pub fn default(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
-        Self::new(
-            order_book_id,
-            OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
-            OrderVolume::divisible(balance!(0.00001)),
-            OrderVolume::divisible(balance!(1)),
-            OrderVolume::divisible(balance!(1000)),
-        )
-    }
-
-    pub fn default_indivisible(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
-        Self::new(
-            order_book_id,
-            OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
-            OrderVolume::indivisible(1),
-            OrderVolume::indivisible(1),
-            OrderVolume::indivisible(1000),
-        )
     }
 
     pub fn next_order_id(&mut self) -> T::OrderId {
@@ -706,7 +686,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         };
 
         let average_price = OrderAmount::average_price(input_amount, output_amount)
-            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+            .ok_or(Error::<T>::PriceCalculationFailed)?;
 
         Ok(DealInfo::<AssetIdOf<T>> {
             input_asset_id: *input_asset_id,
@@ -1129,7 +1109,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         volume
     }
 
-    pub fn cross_spread<'a>(
+    pub fn cross_spread(
         &self,
         limit_order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
@@ -1182,11 +1162,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
 
         if !limit_amount.is_zero() {
-            let mut new_limit_order = limit_order.clone();
+            let mut new_limit_order = limit_order;
             new_limit_order.amount = limit_amount;
             market_change
                 .merge(self.calculate_limit_order_impact(new_limit_order)?)
-                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+                .ok_or(Error::<T>::AmountCalculationFailed)?;
         }
 
         Ok(market_change)
