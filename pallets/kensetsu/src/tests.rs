@@ -1106,7 +1106,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
 
         // TODO assert events
         let interest = balance!(10);
-        // TODO penalty must be liquidation_income*penalty = 11,5 KUSD, increase CDP debt
+        // TODO penalty must be liquidation_income * penalty = 11,5 KUSD, increase CDP debt
         // (debt + interest) * liquidation penalty = 11 KUSD
         // but liquidation_income - debt - interest = 115 - 100 - 10 = 5 KUSD
         let penalty = balance!(5);
