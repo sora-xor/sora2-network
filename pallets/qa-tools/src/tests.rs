@@ -124,7 +124,7 @@ fn test_creates_orderbook(
                     price_step,
                     orders_per_price,
                     lifespan: None,
-                    amount_range_inclusive: Some(amount_range.clone())
+                    amount_range_inclusive: Some(amount_range)
                 }),
                 asks: Some(settings::SideFill {
                     highest_price: best_ask_price + (steps - 1) as u128 * price_step,
@@ -132,7 +132,7 @@ fn test_creates_orderbook(
                     price_step,
                     orders_per_price,
                     lifespan: None,
-                    amount_range_inclusive: Some(amount_range.clone())
+                    amount_range_inclusive: Some(amount_range)
                 }),
                 random_seed: None,
             }
@@ -275,7 +275,7 @@ fn should_respect_orderbook_seed() {
                 price_step,
                 orders_per_price,
                 lifespan: None,
-                amount_range_inclusive: Some(amount_range.clone()),
+                amount_range_inclusive: Some(amount_range),
             }),
             asks: Some(settings::SideFill {
                 highest_price: best_ask_price + (steps - 1) as u128 * price_step,
@@ -309,9 +309,7 @@ fn should_respect_orderbook_seed() {
         let mut limit_orders_1 = data.get_all_limit_orders(&order_book_id_1);
         let mut limit_orders_2 = data.get_all_limit_orders(&order_book_id_2);
         fn cmp_by_id(a: &LimitOrder<Runtime>, b: &LimitOrder<Runtime>) -> sp_std::cmp::Ordering {
-            let a = u128::try_from(a.id).unwrap();
-            let b = u128::try_from(b.id).unwrap();
-            a.cmp(&b)
+            a.id.cmp(&b.id)
         }
         limit_orders_1.sort_by(cmp_by_id);
         limit_orders_2.sort_by(cmp_by_id);
@@ -346,7 +344,7 @@ fn should_keep_orderbook_randomness_independent() {
                 price_step,
                 orders_per_price,
                 lifespan: None,
-                amount_range_inclusive: Some(amount_range.clone()),
+                amount_range_inclusive: Some(amount_range),
             }),
             asks: Some(settings::SideFill {
                 highest_price: best_ask_price + (steps - 1) as u128 * price_step,
@@ -392,9 +390,7 @@ fn should_keep_orderbook_randomness_independent() {
             .filter(|order| order.side == PriceVariant::Sell)
             .collect();
         fn cmp_by_id(a: &LimitOrder<Runtime>, b: &LimitOrder<Runtime>) -> sp_std::cmp::Ordering {
-            let a = u128::try_from(a.id).unwrap();
-            let b = u128::try_from(b.id).unwrap();
-            a.cmp(&b)
+            a.id.cmp(&b.id)
         }
         asks_1.sort_by(cmp_by_id);
         asks_2.sort_by(cmp_by_id);

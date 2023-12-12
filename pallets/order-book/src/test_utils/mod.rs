@@ -85,11 +85,7 @@ pub fn fill_balance<T: assets::Config + frame_system::Config>(
 pub fn get_last_order_id<T: Config>(
     order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>,
 ) -> Option<<T as Config>::OrderId> {
-    if let Some(order_book) = Pallet::<T>::order_books(order_book_id) {
-        Some(order_book.last_order_id)
-    } else {
-        None
-    }
+    Pallet::<T>::order_books(order_book_id).map(|order_book| order_book.last_order_id)
 }
 
 pub fn update_orderbook_unchecked<T: Config>(
@@ -328,7 +324,7 @@ pub fn create_and_fill_order_book<T: Config>(
     fn slice_to_price_orders<T: Config>(
         v: &[u32],
     ) -> PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice> {
-        v.into_iter()
+        v.iter()
             .map(|id| T::OrderId::from(*id))
             .collect::<Vec<_>>()
             .try_into()
@@ -363,7 +359,7 @@ pub fn create_and_fill_order_book<T: Config>(
     );
 
     assert_eq!(
-        Pallet::<T>::aggregated_bids(&order_book_id),
+        Pallet::<T>::aggregated_bids(order_book_id),
         BTreeMap::from([
             (bp1.into(), amount1.into()),
             (bp2.into(), (amount2 + amount3).into()),
@@ -371,7 +367,7 @@ pub fn create_and_fill_order_book<T: Config>(
         ])
     );
     assert_eq!(
-        Pallet::<T>::aggregated_asks(&order_book_id),
+        Pallet::<T>::aggregated_asks(order_book_id),
         BTreeMap::from([
             (sp1.into(), amount7.into()),
             (sp2.into(), (amount8 + amount9).into()),

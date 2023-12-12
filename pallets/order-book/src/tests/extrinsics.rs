@@ -63,8 +63,8 @@ fn should_not_create_order_book_with_disallowed_dex_id() {
     ext().execute_with(|| {
         let mut order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: common::DEXId::PolkaswapXSTUSD.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         assert_err!(
@@ -86,8 +86,8 @@ fn should_create_order_book_with_correct_dex_id() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
@@ -117,8 +117,8 @@ fn should_not_create_order_book_with_same_assets() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: XOR.into(),
-            quote: XOR.into(),
+            base: XOR,
+            quote: XOR,
         };
 
         assert_err!(
@@ -140,8 +140,8 @@ fn should_not_create_order_book_with_wrong_quote_asset() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: XOR.into(),
-            quote: VAL.into(),
+            base: XOR,
+            quote: VAL,
         };
 
         assert_err!(
@@ -156,8 +156,8 @@ fn should_create_order_book_with_synthetic_base_asset() {
     ext().execute_with(|| {
         let xstusd_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: XSTUSD.into(),
-            quote: XOR.into(),
+            base: XSTUSD,
+            quote: XOR,
         };
 
         if !TradingPair::is_trading_pair_enabled(
@@ -195,8 +195,8 @@ fn should_create_order_book_with_synthetic_base_asset() {
         // it should work with synthetic base asset - XST as well
         let xst_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: XST.into(),
-            quote: XOR.into(),
+            base: XST,
+            quote: XOR,
         };
 
         if !TradingPair::is_trading_pair_enabled(
@@ -242,8 +242,8 @@ fn should_not_create_order_book_with_non_existed_asset() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: wrong_asset.into(),
-            quote: XOR.into(),
+            base: wrong_asset,
+            quote: XOR,
         };
 
         assert_err!(
@@ -280,8 +280,8 @@ fn should_not_create_order_book_with_non_existed_trading_pair() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: new_asset.into(),
-            quote: XOR.into(),
+            base: new_asset,
+            quote: XOR,
         };
 
         assert_err!(
@@ -296,8 +296,8 @@ fn should_create_order_book_for_regular_assets() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
@@ -327,8 +327,8 @@ fn should_not_create_order_book_that_already_exists() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
@@ -376,11 +376,11 @@ fn should_not_create_order_book_for_user_without_nft() {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: nft,
-            quote: XOR.into(),
+            quote: XOR,
         };
 
         assert_ok!(TradingPair::register(
-            RawOrigin::Signed(creator.clone()).into(),
+            RawOrigin::Signed(creator).into(),
             DEX.into(),
             order_book_id.quote,
             order_book_id.base
@@ -422,7 +422,7 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: nft,
-            quote: XOR.into(),
+            quote: XOR,
         };
 
         assert_ok!(TradingPair::register(
@@ -474,7 +474,7 @@ fn should_create_order_book_for_nft() {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: nft,
-            quote: XOR.into(),
+            quote: XOR,
         };
 
         assert_ok!(TradingPair::register(
@@ -511,8 +511,8 @@ fn should_check_permissions_for_delete_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -582,8 +582,8 @@ fn should_not_delete_unknown_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         assert_err!(
@@ -598,8 +598,8 @@ fn should_not_delete_order_book_with_wrong_status() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -633,8 +633,8 @@ fn should_not_delete_order_book_with_orders() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -657,15 +657,15 @@ fn should_delete_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
         let owner = accounts::bob::<Runtime>();
 
         let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
-            &OrderBookPallet::tech_account_for_order_book(order_book_id.clone()),
+            &OrderBookPallet::tech_account_for_order_book(order_book_id),
         )
         .unwrap();
 
@@ -681,8 +681,8 @@ fn should_delete_order_book() {
             order_book_id
         ));
 
-        assert!(OrderBookPallet::aggregated_bids(&order_book_id).is_empty());
-        assert!(OrderBookPallet::aggregated_asks(&order_book_id).is_empty());
+        assert!(OrderBookPallet::aggregated_bids(order_book_id).is_empty());
+        assert!(OrderBookPallet::aggregated_asks(order_book_id).is_empty());
         assert_eq!(
             OrderBookPallet::user_limit_orders(&owner, &order_book_id),
             None
@@ -704,8 +704,8 @@ fn should_check_permissions_for_update_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -792,8 +792,8 @@ fn should_not_update_unknown_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         assert_err!(
@@ -815,8 +815,8 @@ fn should_not_update_order_book_with_wrong_tech_status() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -841,8 +841,8 @@ fn should_not_update_order_book_with_wrong_status() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -928,8 +928,8 @@ fn should_not_update_order_book_with_zero_attributes() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -999,8 +999,8 @@ fn should_not_update_order_book_with_simple_mistakes() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -1078,8 +1078,8 @@ fn should_not_update_order_book_with_wrong_min_deal_amount() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -1189,8 +1189,8 @@ fn should_not_update_order_book_when_attributes_exceed_total_supply() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -1227,8 +1227,8 @@ fn should_update_order_book_with_regular_asset() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1337,7 +1337,7 @@ fn should_update_order_book_with_nft() {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: nft,
-            quote: XOR.into(),
+            quote: XOR,
         };
 
         assert_ok!(TradingPair::register(
@@ -1390,8 +1390,8 @@ fn should_align_limit_orders_when_update_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1533,20 +1533,20 @@ fn should_align_a_lot_of_limit_orders() {
     ext().execute_with(|| {
         let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: PSWAP.into(),
-            quote: XOR.into(),
+            base: PSWAP,
+            quote: XOR,
         };
 
         let order_book_id3 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: ETH.into(),
-            quote: XOR.into(),
+            base: ETH,
+            quote: XOR,
         };
 
         let order_book1 = create_empty_order_book::<Runtime>(order_book_id1);
@@ -1671,8 +1671,8 @@ fn should_check_permissions_for_change_order_book_status() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -1735,8 +1735,8 @@ fn should_not_change_status_of_unknown_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         assert_err!(
@@ -1755,8 +1755,8 @@ fn should_not_change_status_with_updating_tech_status() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -1799,8 +1799,8 @@ fn should_change_order_book_status() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(order_book_id);
@@ -1861,8 +1861,8 @@ fn should_not_place_limit_order_in_unknown_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         assert_err!(
@@ -1885,8 +1885,8 @@ fn should_place_limit_order() {
         let caller = accounts::alice::<Runtime>();
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1901,8 +1901,8 @@ fn should_place_limit_order() {
         Timestamp::set_timestamp(now);
 
         // fix state before
-        let bids_before = OrderBookPallet::bids(&order_book_id, &price).unwrap_or_default();
-        let agg_bids_before = OrderBookPallet::aggregated_bids(&order_book_id);
+        let bids_before = OrderBookPallet::bids(order_book_id, price).unwrap_or_default();
+        let agg_bids_before = OrderBookPallet::aggregated_bids(order_book_id);
         let price_volume_before = agg_bids_before.get(&price).cloned().unwrap_or_default();
         let user_orders_before =
             OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap_or_default();
@@ -1941,22 +1941,22 @@ fn should_place_limit_order() {
             expected_order
         );
 
-        let mut expected_bids = bids_before.clone();
+        let mut expected_bids = bids_before;
         assert_ok!(expected_bids.try_push(order_id));
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             expected_bids
         );
 
         let expected_price_volume = price_volume_before + amount;
-        let mut expected_agg_bids = agg_bids_before.clone();
+        let mut expected_agg_bids = agg_bids_before;
         assert_ok!(expected_agg_bids.try_insert(price, expected_price_volume));
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             expected_agg_bids
         );
 
-        let mut expected_user_orders = user_orders_before.clone();
+        let mut expected_user_orders = user_orders_before;
         assert_ok!(expected_user_orders.try_push(order_id));
         assert_eq!(
             OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap(),
@@ -1997,7 +1997,7 @@ fn should_place_limit_order_with_nft() {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: nft,
-            quote: XOR.into(),
+            quote: XOR,
         };
 
         assert_ok!(TradingPair::register(
@@ -2053,11 +2053,11 @@ fn should_place_limit_order_with_nft() {
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &price).unwrap(),
+            OrderBookPallet::asks(order_book_id, price).unwrap(),
             vec![order_id]
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([(price, amount)])
         );
         assert_eq!(
@@ -2075,8 +2075,8 @@ fn should_place_limit_order_out_of_spread() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -2100,33 +2100,33 @@ fn should_place_limit_order_out_of_spread() {
         // check state before
 
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([
                 (bid_price1, balance!(168.5).into()),
                 (bid_price2, balance!(139.9).into()),
@@ -2134,7 +2134,7 @@ fn should_place_limit_order_out_of_spread() {
             ])
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([
                 (ask_price1, balance!(176.3).into()),
                 (ask_price2, balance!(178.6).into()),
@@ -2155,33 +2155,33 @@ fn should_place_limit_order_out_of_spread() {
         // check state
 
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([
                 (bid_price1, balance!(168.5).into()),
                 (bid_price2, balance!(139.9).into()),
@@ -2189,7 +2189,7 @@ fn should_place_limit_order_out_of_spread() {
             ])
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([
                 (ask_price1, balance!(150).into()),
                 (ask_price2, balance!(178.6).into()),
@@ -2212,34 +2212,34 @@ fn should_place_limit_order_out_of_spread() {
         let buy_order_id2 = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &new_bid_price).unwrap(),
+            OrderBookPallet::bids(order_book_id, new_bid_price).unwrap(),
             vec![buy_order_id2]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([
                 (new_bid_price, balance!(150).into()),
                 (bid_price1, balance!(168.5).into()),
@@ -2248,7 +2248,7 @@ fn should_place_limit_order_out_of_spread() {
             ])
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([
                 (ask_price2, balance!(178.6).into()),
                 (ask_price3, balance!(255.8).into())
@@ -2275,30 +2275,30 @@ fn should_place_limit_order_out_of_spread() {
         // check state
 
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([
                 (bid_price1, balance!(150).into()),
                 (bid_price2, balance!(139.9).into()),
@@ -2306,7 +2306,7 @@ fn should_place_limit_order_out_of_spread() {
             ])
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([
                 (ask_price2, balance!(178.6).into()),
                 (ask_price3, balance!(255.8).into())
@@ -2327,39 +2327,39 @@ fn should_place_limit_order_out_of_spread() {
 
         let sell_order_id2 = get_last_order_id::<Runtime>(order_book_id).unwrap();
 
-        assert_eq!(OrderBookPallet::bids(&order_book_id, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, bid_price1), None);
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &new_ask_price).unwrap(),
+            OrderBookPallet::asks(order_book_id, new_ask_price).unwrap(),
             vec![sell_order_id2]
         );
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([
                 (bid_price2, balance!(139.9).into()),
                 (bid_price3, balance!(261.3).into())
             ])
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([
                 (new_ask_price, balance!(150).into()),
                 (ask_price2, balance!(178.6).into()),
@@ -2374,8 +2374,8 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -2397,33 +2397,33 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         // check state before
 
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([
                 (bid_price1, balance!(168.5).into()),
                 (bid_price2, balance!(139.9).into()),
@@ -2431,7 +2431,7 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
             ])
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([
                 (ask_price1, balance!(176.3).into()),
                 (ask_price2, balance!(178.6).into()),
@@ -2453,30 +2453,30 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         // check state
 
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([
                 (bid_price1, balance!(168.5).into()),
                 (bid_price2, balance!(139.9).into()),
@@ -2484,7 +2484,7 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
             ])
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([
                 (ask_price2, balance!(177.9).into()),
                 (ask_price3, balance!(255.8).into())
@@ -2504,24 +2504,24 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
 
         // check state
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price2), None);
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price3), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price2), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price3), None);
 
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([
                 (bid_price1, balance!(168.5).into()),
                 (bid_price2, balance!(139.9).into()),
@@ -2529,7 +2529,7 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
             ])
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
 
@@ -2545,29 +2545,29 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         ));
 
         // check state
-        assert_eq!(OrderBookPallet::bids(&order_book_id, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, bid_price1), None);
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price2), None);
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price3), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price2), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price3), None);
 
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([
                 (bid_price2, balance!(139.4).into()),
                 (bid_price3, balance!(261.3).into())
             ])
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
 
@@ -2583,20 +2583,20 @@ fn should_place_limit_order_out_of_spread_with_small_remaining_amount() {
         ));
 
         // check state
-        assert_eq!(OrderBookPallet::bids(&order_book_id, &bid_price1), None);
-        assert_eq!(OrderBookPallet::bids(&order_book_id, &bid_price2), None);
-        assert_eq!(OrderBookPallet::bids(&order_book_id, &bid_price3), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, bid_price2), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, bid_price3), None);
 
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price1), None);
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price2), None);
-        assert_eq!(OrderBookPallet::asks(&order_book_id, &ask_price3), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price2), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, ask_price3), None);
 
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([])
         );
         assert_eq!(
-            OrderBookPallet::aggregated_asks(&order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
     });
@@ -2607,8 +2607,8 @@ fn should_place_a_lot_of_orders() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
@@ -2667,8 +2667,8 @@ fn should_not_cancel_unknown_limit_order() {
         let caller = accounts::alice::<Runtime>();
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -2692,8 +2692,8 @@ fn should_not_cancel_not_own_limit_order() {
         let caller = accounts::alice::<Runtime>(); // but owner is Bob
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -2716,8 +2716,8 @@ fn should_cancel_limit_order() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -2727,8 +2727,8 @@ fn should_cancel_limit_order() {
         let order = OrderBookPallet::limit_orders(order_book_id, order_id).unwrap();
 
         // fix state before
-        let bids_before = OrderBookPallet::bids(&order_book_id, &order.price).unwrap_or_default();
-        let agg_bids_before = OrderBookPallet::aggregated_bids(&order_book_id);
+        let bids_before = OrderBookPallet::bids(order_book_id, order.price).unwrap_or_default();
+        let agg_bids_before = OrderBookPallet::aggregated_bids(order_book_id);
         let price_volume_before = agg_bids_before
             .get(&order.price)
             .cloned()
@@ -2747,22 +2747,22 @@ fn should_cancel_limit_order() {
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // check
-        let mut expected_bids = bids_before.clone();
+        let mut expected_bids = bids_before;
         expected_bids.retain(|&id| id != order.id);
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id, &order.price).unwrap(),
+            OrderBookPallet::bids(order_book_id, order.price).unwrap(),
             expected_bids
         );
 
         let expected_price_volume = price_volume_before - order.amount;
-        let mut expected_agg_bids = agg_bids_before.clone();
+        let mut expected_agg_bids = agg_bids_before;
         assert_ok!(expected_agg_bids.try_insert(order.price, expected_price_volume));
         assert_eq!(
-            OrderBookPallet::aggregated_bids(&order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             expected_agg_bids
         );
 
-        let mut expected_user_orders = user_orders_before.clone();
+        let mut expected_user_orders = user_orders_before;
         expected_user_orders.retain(|&id| id != order.id);
         assert_eq!(
             OrderBookPallet::user_limit_orders(&order.owner, &order_book_id).unwrap(),
@@ -2780,16 +2780,16 @@ fn should_not_cancel_not_own_limit_orders_batch() {
     ext().execute_with(|| {
         let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: PSWAP.into(),
-            quote: XOR.into(),
+            base: PSWAP,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id2);
@@ -2815,16 +2815,16 @@ fn should_not_cancel_unknown_limit_orders_batch() {
     ext().execute_with(|| {
         let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: PSWAP.into(),
-            quote: XOR.into(),
+            base: PSWAP,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id2);
@@ -2850,24 +2850,24 @@ fn should_not_cancel_limit_orders_batch_in_stopped_order_book() {
     ext().execute_with(|| {
         let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: PSWAP.into(),
-            quote: XOR.into(),
+            base: PSWAP,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id2);
 
         let order_book_id3 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: ETH.into(),
-            quote: XOR.into(),
+            base: ETH,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id3);
@@ -2912,16 +2912,16 @@ fn should_cancel_all_user_limit_orders_batch() {
     ext().execute_with(|| {
         let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: PSWAP.into(),
-            quote: XOR.into(),
+            base: PSWAP,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id2);
@@ -2938,55 +2938,55 @@ fn should_cancel_all_user_limit_orders_batch() {
 
         // order book 1
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id1, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id1, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id1, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         // order book 2
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id2, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id2, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id2, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -3005,44 +3005,44 @@ fn should_cancel_all_user_limit_orders_batch() {
         // check state after
 
         // order book 1
-        assert_eq!(OrderBookPallet::bids(&order_book_id1, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id1, bid_price1), None);
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id1, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price2).unwrap(),
             vec![2]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id1, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price3).unwrap(),
             vec![4, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(&order_book_id1, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id1, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price2).unwrap(),
             vec![8]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price3).unwrap(),
             vec![10, 12]
         );
 
         // order book 2
-        assert_eq!(OrderBookPallet::bids(&order_book_id2, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id2, bid_price1), None);
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price2).unwrap(),
             vec![2]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price3).unwrap(),
             vec![4, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(&order_book_id2, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id2, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id2, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price2).unwrap(),
             vec![8]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id2, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price3).unwrap(),
             vec![10, 12]
         );
     });
@@ -3053,16 +3053,16 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
     ext().execute_with(|| {
         let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: PSWAP.into(),
-            quote: XOR.into(),
+            base: PSWAP,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id2);
@@ -3079,55 +3079,55 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
 
         // order book 1
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id1, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id1, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id1, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         // order book 2
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id2, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id2, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id2, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
@@ -3146,50 +3146,50 @@ fn should_cancel_part_of_all_user_limit_orders_batch() {
         // check state after
 
         // order book 1
-        assert_eq!(OrderBookPallet::bids(&order_book_id1, &bid_price1), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id1, bid_price1), None);
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id1, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price2).unwrap(),
             vec![2, 3]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id1, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id1, bid_price3).unwrap(),
             vec![4, 6]
         );
 
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price1).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price1).unwrap(),
             vec![7]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price2).unwrap(),
             vec![8]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id1, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id1, ask_price3).unwrap(),
             vec![10, 11, 12]
         );
 
         // order book 2
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price1).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price1).unwrap(),
             vec![1]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price2).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price2).unwrap(),
             vec![2]
         );
         assert_eq!(
-            OrderBookPallet::bids(&order_book_id2, &bid_price3).unwrap(),
+            OrderBookPallet::bids(order_book_id2, bid_price3).unwrap(),
             vec![4, 5, 6]
         );
 
-        assert_eq!(OrderBookPallet::asks(&order_book_id2, &ask_price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id2, ask_price1), None);
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id2, &ask_price2).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price2).unwrap(),
             vec![8, 9]
         );
         assert_eq!(
-            OrderBookPallet::asks(&order_book_id2, &ask_price3).unwrap(),
+            OrderBookPallet::asks(order_book_id2, ask_price3).unwrap(),
             vec![10, 12]
         );
     });
@@ -3200,8 +3200,8 @@ fn should_not_execute_market_order_with_divisible_asset() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -3249,7 +3249,7 @@ fn should_execute_market_order_with_indivisible_asset() {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: nft,
-            quote: XOR.into(),
+            quote: XOR,
         };
 
         fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
