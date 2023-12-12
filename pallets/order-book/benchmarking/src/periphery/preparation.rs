@@ -248,7 +248,7 @@ fn prepare_order_execute_worst_case<T: Config>(
         .take(settings_1st.max_side_price_count as usize);
     fill_order_book_side(
         data,
-        settings_1st.clone(),
+        settings_1st,
         order_book,
         orders_side,
         orders_amount,
@@ -262,7 +262,7 @@ fn prepare_order_execute_worst_case<T: Config>(
     );
     fill_order_book_side(
         data,
-        settings_2nd.clone(),
+        settings_2nd,
         order_book,
         orders_side,
         orders_amount,

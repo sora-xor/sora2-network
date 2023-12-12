@@ -964,8 +964,8 @@ impl<T: Config> Pallet<T> {
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<Vec<LiquiditySourceIdOf<T>>, DispatchError> {
         let mut sources =
-            T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, &filter)?;
-        let locked = trading_pair::LockedLiquiditySources::<T>::get();
+            T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
+        let locked = T::LockedLiquiditySourcesManager::get();
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         // The temp solution is to exclude OrderBook source if there are multiple sources.
         // Will be redesigned in #447
