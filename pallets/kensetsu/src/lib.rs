@@ -55,6 +55,11 @@ mod compounding;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
 pub const TECH_ACCOUNT_TREASURY_MAIN: &[u8] = b"treasury";
 
+/// Custom errors for unsigned tx validation, InvalidTransaction::Custom(u8)
+const VALIDATION_ERROR_ACCRUE: u8 = 1;
+const VALIDATION_ERROR_CHECK_SAFE: u8 = 2;
+const VALIDATION_ERROR_CDP_SAFE: u8 = 3;
+
 /// Risk management parameters for the specific collateral type.
 #[derive(Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CollateralRiskParameters {
@@ -790,10 +795,9 @@ pub mod pallet {
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
             match call {
                 Call::accrue { cdp_id } => {
-                    if Self::is_it_time_to_accrue(cdp_id).map_err(|_| {
-                        // TODO custom error
-                        InvalidTransaction::Custom(1u8)
-                    })? {
+                    if Self::is_it_time_to_accrue(cdp_id)
+                        .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_ACCRUE))?
+                    {
                         ValidTransaction::with_tag_prefix("Kensetsu::accrue")
                             .priority(T::UnsignedPriority::get())
                             .longevity(T::UnsignedLongevity::get())
@@ -804,7 +808,26 @@ pub mod pallet {
                         InvalidTransaction::Future.into()
                     }
                 }
-                // TODO add liquidate
+                Call::liquidate { cdp_id } => {
+                    let cdp = Self::cdp(cdp_id)
+                        .ok_or(InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?;
+                    if !Self::check_cdp_is_safe(
+                        cdp.debt,
+                        cdp.collateral_amount,
+                        cdp.collateral_asset_id,
+                    )
+                    .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?
+                    {
+                        ValidTransaction::with_tag_prefix("Kensetsu::liquidate")
+                            .priority(T::UnsignedPriority::get())
+                            .longevity(T::UnsignedLongevity::get())
+                            .and_provides([&cdp_id])
+                            .propagate(true)
+                            .build()
+                    } else {
+                        InvalidTransaction::Custom(VALIDATION_ERROR_CDP_SAFE).into()
+                    }
+                }
                 _ => {
                     warn!("Unknown unsigned call {:?}", call);
                     InvalidTransaction::Call.into()
