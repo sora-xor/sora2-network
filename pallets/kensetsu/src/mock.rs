@@ -240,15 +240,13 @@ impl assets::Config for TestRuntime {
 }
 
 impl pallet_balances::Config for TestRuntime {
-    /// The ubiquitous event type.
-    type RuntimeEvent = RuntimeEvent;
-    type MaxLocks = MaxLocks;
-    /// The type for recording an account's balance.
     type Balance = Balance;
     type DustRemoval = ();
+    type RuntimeEvent = RuntimeEvent;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
+    type MaxLocks = MaxLocks;
     type MaxReserves = MaxReserves;
     type ReserveIdentifier = ();
 }
@@ -338,6 +336,7 @@ impl kensetsu::Config for TestRuntime {
     type AccrueInterestPeriod = AccrueInterestPeriod;
     type UnsignedPriority = ConstU64<100>;
     type UnsignedLongevity = ConstU64<100>;
+    type WeightInfo = ();
 }
 
 // Builds testing externalities

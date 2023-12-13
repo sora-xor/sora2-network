@@ -60,8 +60,8 @@ std = [
 	"traits/std",
 ]
 runtime-benchmarks = [
-	"dep:hex-literal",
-	"dep:sp-io",
+	"frame-benchmarking",
 	"frame-benchmarking/runtime-benchmarks",
+	"hex-literal"
 ]
 try-runtime = ["frame-support/try-runtime"]

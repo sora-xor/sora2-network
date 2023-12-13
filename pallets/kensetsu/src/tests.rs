@@ -584,7 +584,7 @@ fn test_borrow_cdp_unsafe() {
 /// CDP with collateral exists, hard cap is set in CDP risk parameters.
 /// Borrow results with an error `HardCapSupply`
 #[test]
-fn test_borrow_cdp_cdp_type_hard_cap() {
+fn test_borrow_cdp_type_hard_cap() {
     new_test_ext().execute_with(|| {
         set_xor_as_collateral_type(
             balance!(10),
@@ -603,7 +603,7 @@ fn test_borrow_cdp_cdp_type_hard_cap() {
 /// CDP with collateral exists, hard cap is set in protocol risk parameters.
 /// Borrow results with an error `HardCapSupply`
 #[test]
-fn test_borrow_cdp_protocol_hard_cap() {
+fn test_borrow_protocol_hard_cap() {
     new_test_ext().execute_with(|| {
         set_xor_as_collateral_type(
             Balance::MAX,
@@ -626,7 +626,7 @@ fn test_borrow_cdp_protocol_hard_cap() {
 /// CDP with collateral exists, call borrow with 0 KUSD amount.
 /// Tx must succeed, but state is unchanged.
 #[test]
-fn test_borrow_cdp_zero_amount() {
+fn test_borrow_zero_amount() {
     new_test_ext().execute_with(|| {
         set_xor_as_collateral_type(
             Balance::MAX,
@@ -656,7 +656,7 @@ fn test_borrow_cdp_zero_amount() {
 /// CDP with collateral exists, call borrow with some KUSD amount.
 /// Tx must succeed, debt to CDP added, KUSD minted to the caller.
 #[test]
-fn test_borrow_cdp_sunny_day() {
+fn test_borrow_sunny_day() {
     new_test_ext().execute_with(|| {
         set_xor_as_collateral_type(
             Balance::MAX,

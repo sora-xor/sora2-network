@@ -364,8 +364,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "hermes-governance-platform/runtime-benchmarks",
     "iroha-migration/runtime-benchmarks",
-    # TODO benchmarking
-    # "kensetsu/runtime-benchmarks",
+    "kensetsu/runtime-benchmarks",
     "liquidity-proxy-benchmarking",
     "liquidity-proxy-benchmarking/runtime-benchmarks",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",

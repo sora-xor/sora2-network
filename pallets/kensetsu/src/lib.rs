@@ -51,6 +51,7 @@ mod test_utils;
 
 mod benchmarking;
 mod compounding;
+pub mod weights;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
 pub const TECH_ACCOUNT_TREASURY_MAIN: &[u8] = b"treasury";
@@ -96,6 +97,7 @@ pub struct CollateralizedDebtPosition<AccountId, AssetId, Moment> {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use crate::weights::WeightInfo;
     use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
@@ -178,6 +180,9 @@ pub mod pallet {
         /// A configuration for longevity of unsigned transactions.
         #[pallet::constant]
         type UnsignedLongevity: Get<u64>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     pub type Timestamp<T> = timestamp::Pallet<T>;
@@ -206,7 +211,7 @@ pub mod pallet {
     #[pallet::getter(fn liquidation_penalty)]
     pub type LiquidationPenalty<T> = StorageValue<_, Percent, ValueQuery>;
 
-    /// The next CDP id
+    /// CDP counter used for CDP id
     #[pallet::storage]
     pub type NextCDPId<T> = StorageValue<_, U256, ValueQuery>;
 
@@ -336,8 +341,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        // TODO why this weight?
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::create_cdp())]
         pub fn create_cdp(
             origin: OriginFor<T>,
             collateral_asset_id: AssetIdOf<T>,
@@ -372,7 +376,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_cdp_owner(&who, cdp_id)?;
@@ -395,7 +399,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(2)]
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::deposit_collateral())]
         pub fn deposit_collateral(
             origin: OriginFor<T>,
             cdp_id: U256,
@@ -430,6 +434,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
+        // #[pallet::weight(<T as Config>::WeightInfo::withdraw_collateral())]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn withdraw_collateral(
             origin: OriginFor<T>,
@@ -481,6 +486,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
+        // #[pallet::weight(<T as Config>::WeightInfo::borrow())]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn borrow(
             origin: OriginFor<T>,
@@ -520,6 +526,8 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
+        // TODO weights
+        // #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: U256, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -550,6 +558,7 @@ pub mod pallet {
 
         /// Liquidates part of unsafe CDP
         #[pallet::call_index(6)]
+        // TODO weights
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             Self::accrue_internal(cdp_id)?;
@@ -669,6 +678,7 @@ pub mod pallet {
         /// Updates cdp debt with interest
         /// Unsigned call possible
         #[pallet::call_index(7)]
+        // TODO weights
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn accrue(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             ensure!(
@@ -682,6 +692,7 @@ pub mod pallet {
         /// Updates collateral risk parameters
         /// Is set by risk management
         #[pallet::call_index(8)]
+        // TODO weights
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn update_collateral_risk_parameters(
             origin: OriginFor<T>,
@@ -711,6 +722,7 @@ pub mod pallet {
         /// Sets hard cap for total KUSD supply
         /// Is set by risk management
         #[pallet::call_index(9)]
+        // TODO weights
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn update_hard_cap_total_supply(
             origin: OriginFor<T>,
@@ -732,6 +744,7 @@ pub mod pallet {
         /// Sets liquidation penalty
         /// Is set by risk management
         #[pallet::call_index(10)]
+        // TODO weights
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn update_liquidation_penalty(
             origin: OriginFor<T>,
@@ -754,6 +767,7 @@ pub mod pallet {
         /// Withdraws profit from protocol treasury
         /// Is called by protocol owner
         #[pallet::call_index(11)]
+        // TODO weights
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -773,6 +787,7 @@ pub mod pallet {
 
         /// Donate KUSD to the protocol to cover bad debt or increase protocol profit
         #[pallet::call_index(12)]
+        // TODO weights
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
