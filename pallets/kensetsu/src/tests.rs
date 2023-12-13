@@ -1589,11 +1589,7 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
         let asset_id = XOR;
         let stability_fee_rate = FixedU128::from_float(0.1);
         // stability fee is 10%
-        set_xor_as_collateral_type(
-            Balance::MAX,
-            Perbill::from_percent(50),
-            stability_fee_rate,
-        );
+        set_xor_as_collateral_type(Balance::MAX, Perbill::from_percent(50), stability_fee_rate);
         let cdp_id_1 = create_cdp_for_xor(alice(), balance!(100), balance!(10));
         let cdp_id_2 = create_cdp_for_xor(alice(), balance!(100), balance!(20));
         // new parameters with stability fee 20%
@@ -1616,7 +1612,7 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
                 collateral_asset_id: XOR,
                 risk_parameters: parameters.clone(),
             }
-                .into(),
+            .into(),
         );
         let actual_parameters =
             CollateralTypes::<TestRuntime>::get(asset_id).expect("Must succeed");
