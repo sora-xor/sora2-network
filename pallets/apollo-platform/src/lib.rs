@@ -155,6 +155,8 @@ pub mod pallet {
         Withdrawn(AccountIdOf<T>, AssetIdOf<T>, Balance),
         /// Repaid [who, asset_id, amount]
         Repaid(AccountIdOf<T>, AssetIdOf<T>, Balance),
+        //// ChangedRewardsAmount [who, is_lending, amount]
+        ChangedRewardsAmount(AccountIdOf<T>, bool, Balance),
     }
 
     #[pallet::error]
@@ -576,9 +578,6 @@ pub mod pallet {
                 )
                 .map_err(|_| Error::<T>::CanNotTransferLendingInterest)?;
 
-                user_info.lending_amount = 0;
-                user_info.lending_interest = 0;
-                user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
                 pool_info.total_liquidity -= lending_amount;
 
                 <UserLendingInfo<T>>::remove(user.clone(), lending_token);
@@ -691,6 +690,31 @@ pub mod pallet {
 
             //Emit event
             Self::deposit_event(Event::Repaid(user, borrowing_token, amount_to_repay));
+
+            Ok(().into())
+        }
+
+        #[pallet::call_index(6)]
+        #[pallet::weight(10_000)]
+        pub fn change_rewards_amount(
+            origin: OriginFor<T>,
+            is_lending: bool,
+            amount: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            if is_lending == true {
+                <LendingRewards<T>>::put(amount);
+            } else {
+                <BorrowingRewards<T>>::put(amount);
+            }
+
+            //Emit event
+            Self::deposit_event(Event::ChangedRewardsAmount(user, is_lending, amount));
 
             Ok(().into())
         }
