@@ -644,7 +644,8 @@ pub mod pallet {
                     &Self::account_id(),
                     &user,
                     remaining_amount,
-                ).map_err(|_| Error::<T>::CanNotTransferAmountToRepay)?;
+                )
+                .map_err(|_| Error::<T>::CanNotTransferAmountToRepay)?;
 
                 <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, user_info);
                 <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
@@ -652,11 +653,11 @@ pub mod pallet {
                 let reserve_allocation = user_info.borrowing_interest;
 
                 // Reserve allocation
-                
+
                 borrow_pool_info.total_borrowed -= user_info.borrowing_amount;
                 borrow_pool_info.total_liquidity += user_info.borrowing_amount;
                 collateral_pool_info.total_collateral -= user_info.collateral_amount;
-                // user_info.borrowing_interest = 0;                
+                // user_info.borrowing_interest = 0;
                 // user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
                 <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
                 <PoolData<T>>::insert(user_info.collateral_token, collateral_pool_info);
@@ -674,14 +675,16 @@ pub mod pallet {
                     &Self::account_id(),
                     &user,
                     user_info.borrowing_amount,
-                ).map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
+                )
+                .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
 
                 Assets::<T>::transfer_from(
                     &CERES_ASSET_ID.into(),
                     &Self::account_id(),
                     &user,
                     user_info.borrowing_rewards,
-                ).map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
+                )
+                .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
 
                 <UserBorrowingInfo<T>>::remove(user.clone(), borrowing_token);
             } else {
