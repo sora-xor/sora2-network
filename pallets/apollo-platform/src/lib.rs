@@ -201,6 +201,16 @@ pub mod pallet {
         NothingToRepay,
         /// Can not transfer lending interest
         CanNotTransferLendingInterest,
+        /// Unable to transfer collateral
+        UnableToTransferCollateral,
+        /// Unable to transfer amount to repay
+        UnableToTransferAmountToRepay,
+        /// Can not withdraw lending amount
+        CanNotWithdrawLendingAmount,
+        /// Can not transfer borrowing rewards
+        CanNotTransferBorrowingRewards,
+        /// Can not transfer amount to repay
+        CanNotTransferAmountToRepay,
     }
 
     #[pallet::call]
@@ -579,6 +589,108 @@ pub mod pallet {
 
             //Emit event
             Self::deposit_event(Event::Withdrawn(user, lending_token, lending_amount));
+
+            Ok(().into())
+        }
+
+        #[transactional]
+        #[pallet::call_index(5)]
+        #[pallet::weight(10_000)]
+        pub fn repay(
+            origin: OriginFor<T>,
+            borrowing_token: AssetIdOf<T>,
+            amount_to_repay: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            let mut user_info = <UserBorrowingInfo<T>>::get(user.clone(), borrowing_token)
+                .ok_or(Error::<T>::NothingBorrowed)?;
+            let mut borrow_pool_info =
+                <PoolData<T>>::get(borrowing_token).ok_or(Error::<T>::AssetIsNotListed)?;
+            let mut collateral_pool_info = <PoolData<T>>::get(user_info.collateral_token)
+                .ok_or(Error::<T>::CollateralTokenDoesNotExists)?;
+
+            ensure!(user_info.borrowing_interest > 0, Error::<T>::NothingToRepay);
+
+            let calculated_interest = Self::calculate_borrowing_interest(&user, borrowing_token);
+            user_info.borrowing_interest += calculated_interest;
+            <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, &user_info);
+
+            if amount_to_repay <= user_info.borrowing_interest {
+                let reserve_allocation = amount_to_repay;
+
+                // Reserve allocation
+
+                user_info.borrowing_interest -= amount_to_repay;
+                user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
+                borrow_pool_info.total_liquidity += amount_to_repay;
+                <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, user_info);
+                <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
+            } else if amount_to_repay > user_info.borrowing_interest
+                && amount_to_repay < user_info.borrowing_interest + user_info.borrowing_amount
+            {
+                let reserve_allocation = user_info.borrowing_interest;
+
+                // Reserve allocation
+
+                let remaining_amount = amount_to_repay - user_info.borrowing_interest;
+                user_info.borrowing_amount -= remaining_amount;
+                user_info.borrowing_interest = 0;
+                user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
+                borrow_pool_info.total_borrowed -= remaining_amount;
+                borrow_pool_info.total_liquidity += remaining_amount;
+
+                Assets::<T>::transfer_from(
+                    &borrowing_token.into(),
+                    &Self::account_id(),
+                    &user,
+                    remaining_amount,
+                ).map_err(|_| Error::<T>::CanNotTransferAmountToRepay)?;
+
+                <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, user_info);
+                <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
+            } else if amount_to_repay == user_info.borrowing_interest + user_info.borrowing_amount {
+                let reserve_allocation = user_info.borrowing_interest;
+
+                // Reserve allocation
+                
+                borrow_pool_info.total_borrowed -= user_info.borrowing_amount;
+                borrow_pool_info.total_liquidity += user_info.borrowing_amount;
+                collateral_pool_info.total_collateral -= user_info.collateral_amount;
+                // user_info.borrowing_interest = 0;                
+                // user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
+                <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
+                <PoolData<T>>::insert(user_info.collateral_token, collateral_pool_info);
+
+                Assets::<T>::transfer_from(
+                    &user_info.collateral_token,
+                    &Self::account_id(),
+                    &user,
+                    user_info.collateral_amount.clone(),
+                )
+                .map_err(|_| Error::<T>::UnableToTransferCollateral)?;
+
+                Assets::<T>::transfer_from(
+                    &borrowing_token.into(),
+                    &Self::account_id(),
+                    &user,
+                    user_info.borrowing_amount,
+                ).map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
+
+                Assets::<T>::transfer_from(
+                    &CERES_ASSET_ID.into(),
+                    &Self::account_id(),
+                    &user,
+                    user_info.borrowing_rewards,
+                ).map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
+
+                <UserBorrowingInfo<T>>::remove(user.clone(), borrowing_token);
+            } else {
+                return Err(Error::<T>::BorrowingAmountExceeds.into());
+            }
+
+            //Emit event
+            Self::deposit_event(Event::Repaid(user, borrowing_token, amount_to_repay));
 
             Ok(().into())
         }
