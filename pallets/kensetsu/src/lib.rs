@@ -142,6 +142,33 @@ pub mod pallet {
                         );
                     }
                 }
+                match Self::check_cdp_is_safe(
+                    cdp.debt,
+                    cdp.collateral_amount,
+                    cdp.collateral_asset_id,
+                ) {
+                    Ok(cdp_is_safe) => {
+                        if !cdp_is_safe {
+                            let call = Call::<T>::liquidate { cdp_id };
+                            if let Err(err) =
+                                SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
+                                    call.into(),
+                                )
+                            {
+                                warn!(
+                                    "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
+                                    cdp_id, err
+                                );
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        warn!(
+                            "Failed in offchain_worker check cdp {:?} safety: {:?}",
+                            cdp_id, err
+                        );
+                    }
+                }
             }
         }
     }
