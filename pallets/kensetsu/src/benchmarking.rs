@@ -65,32 +65,32 @@ fn create_cdp_with_xor<T: Config>() -> U256 {
     NextCDPId::<T>::get()
 }
 
-/// Mints XOR and deposited as collateral to CDP
-fn deposit_xor_collateral<T: Config>(cdp_id: U256, amount: Balance) {
-    let caller: T::AccountId = alice::<T>();
-    assets::Pallet::<T>::update_balance(
-        RawOrigin::Root.into(),
-        caller.clone(),
-        XOR.into(),
-        amount.try_into().unwrap(),
-    )
-    .expect("Shall mint XOR");
-    Pallet::<T>::deposit_collateral(RawOrigin::Signed(caller).into(), cdp_id, amount)
-        .expect("Shall deposit");
-}
-
-/// Sets liquidation ratio too low, making CDPs unsafe
-fn make_cdps_unsafe<T: Config>() {
-    CollateralTypes::<T>::set::<AssetIdOf<T>>(
-        XOR.into(),
-        Some(CollateralRiskParameters {
-            max_supply: balance!(1000),
-            liquidation_ratio: Perbill::from_percent(10),
-            max_liquidation_lot: balance!(100),
-            stability_fee_rate: Default::default(),
-        }),
-    );
-}
+// /// Mints XOR and deposited as collateral to CDP
+// fn deposit_xor_collateral<T: Config>(cdp_id: U256, amount: Balance) {
+//     let caller: T::AccountId = alice::<T>();
+//     assets::Pallet::<T>::update_balance(
+//         RawOrigin::Root.into(),
+//         caller.clone(),
+//         XOR.into(),
+//         amount.try_into().unwrap(),
+//     )
+//     .expect("Shall mint XOR");
+//     Pallet::<T>::deposit_collateral(RawOrigin::Signed(caller).into(), cdp_id, amount)
+//         .expect("Shall deposit");
+// }
+//
+// /// Sets liquidation ratio too low, making CDPs unsafe
+// fn make_cdps_unsafe<T: Config>() {
+//     CollateralTypes::<T>::set::<AssetIdOf<T>>(
+//         XOR.into(),
+//         Some(CollateralRiskParameters {
+//             max_supply: balance!(1000),
+//             liquidation_ratio: Perbill::from_percent(10),
+//             max_liquidation_lot: balance!(100),
+//             stability_fee_rate: Default::default(),
+//         }),
+//     );
+// }
 
 benchmarks! {
     where_clause {
