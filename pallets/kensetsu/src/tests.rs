@@ -1557,7 +1557,7 @@ fn test_update_collateral_risk_parameters_only_signed_origin() {
 
 /// Only existing assets ids are allowed
 #[test]
-fn test_update_collateral_risk_wrong_asset_id() {
+fn test_update_collateral_risk_parameters_wrong_asset_id() {
     new_test_ext().execute_with(|| {
         let parameters = CollateralRiskParameters {
             max_supply: balance!(100),
@@ -1581,8 +1581,61 @@ fn test_update_collateral_risk_wrong_asset_id() {
 }
 
 /// Given: several CDP with debt and time since last interest accrue has passed
+/// When: update risk parameters that does not change rate
+/// Then: accrue is not called, risk parameters updated
+#[test]
+fn test_update_collateral_risk_parameters_no_rate_change() {
+    new_test_ext().execute_with(|| {
+        let asset_id = XOR;
+        let stability_fee_rate = FixedU128::from_float(0.1);
+        // stability fee is 10%
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            stability_fee_rate,
+        );
+        let cdp_id_1 = create_cdp_for_xor(alice(), balance!(100), balance!(10));
+        let cdp_id_2 = create_cdp_for_xor(alice(), balance!(100), balance!(20));
+        // new parameters with stability fee 20%
+        let parameters = CollateralRiskParameters {
+            max_supply: balance!(100),
+            liquidation_ratio: Perbill::from_percent(50),
+            max_liquidation_lot: balance!(100),
+            stability_fee_rate,
+        };
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+
+        assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+            risk_manager(),
+            asset_id,
+            parameters.clone()
+        ));
+
+        System::assert_has_event(
+            Event::CollateralRiskParametersUpdated {
+                collateral_asset_id: XOR,
+                risk_parameters: parameters.clone(),
+            }
+                .into(),
+        );
+        let actual_parameters =
+            CollateralTypes::<TestRuntime>::get(asset_id).expect("Must succeed");
+        assert_eq!(actual_parameters, parameters);
+        // check that accrue was called
+        let cdp_1 = KensetsuPallet::cdp(cdp_id_1).expect("Must exist");
+        // debt principal is 10 + 1 fee
+        assert_eq!(cdp_1.debt, balance!(10));
+        assert_eq!(cdp_1.last_fee_update_time, 0);
+        let cdp_2 = KensetsuPallet::cdp(cdp_id_2).expect("Must exist");
+        // debt principal is 20 + 2 fee
+        assert_eq!(cdp_2.debt, balance!(20));
+        assert_eq!(cdp_2.last_fee_update_time, 0);
+    });
+}
+
+/// Given: several CDP with debt and time since last interest accrue has passed
 /// When: update risk parameters with new rate
-/// Then: interest is updated
+/// Then: interest is updated, accrue is called
 #[test]
 fn test_update_collateral_risk_parameters_sunny_day() {
     new_test_ext().execute_with(|| {
@@ -1624,9 +1677,11 @@ fn test_update_collateral_risk_parameters_sunny_day() {
         let cdp_1 = KensetsuPallet::cdp(cdp_id_1).expect("Must exist");
         // debt principal is 10 + 1 fee
         assert_eq!(cdp_1.debt, balance!(11));
+        assert_eq!(cdp_1.last_fee_update_time, 1);
         let cdp_2 = KensetsuPallet::cdp(cdp_id_2).expect("Must exist");
         // debt principal is 20 + 2 fee
         assert_eq!(cdp_2.debt, balance!(22));
+        assert_eq!(cdp_2.last_fee_update_time, 1);
     });
 }
 

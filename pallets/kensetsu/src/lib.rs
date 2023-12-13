@@ -434,6 +434,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
+        // TODO
         // #[pallet::weight(<T as Config>::WeightInfo::withdraw_collateral())]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn withdraw_collateral(
@@ -486,6 +487,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
+        // TODO
         // #[pallet::weight(<T as Config>::WeightInfo::borrow())]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn borrow(
@@ -559,6 +561,7 @@ pub mod pallet {
         /// Liquidates part of unsafe CDP
         #[pallet::call_index(6)]
         // TODO weights
+        // #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             Self::accrue_internal(cdp_id)?;
@@ -679,6 +682,7 @@ pub mod pallet {
         /// Unsigned call possible
         #[pallet::call_index(7)]
         // TODO weights
+        // #[pallet::weight(<T as Config>::WeightInfo::accrue())]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
         pub fn accrue(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             ensure!(
@@ -692,8 +696,7 @@ pub mod pallet {
         /// Updates collateral risk parameters
         /// Is set by risk management
         #[pallet::call_index(8)]
-        // TODO weights
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::update_collateral_risk_parameters())]
         pub fn update_collateral_risk_parameters(
             origin: OriginFor<T>,
             collateral_asset_id: AssetIdOf<T>,
@@ -705,9 +708,14 @@ pub mod pallet {
                 T::AssetInfoProvider::asset_exists(&collateral_asset_id),
                 Error::<T>::WrongAssetId
             );
-            for (cdp_id, cdp) in <Treasury<T>>::iter() {
-                if cdp.collateral_asset_id == collateral_asset_id {
-                    Self::accrue_internal(cdp_id)?;
+            // call accrue only if rate is changed
+            if Self::collateral_risk_parameters(collateral_asset_id).map_or(false, |old_info| {
+                old_info.stability_fee_rate != info.stability_fee_rate
+            }) {
+                for (cdp_id, cdp) in <Treasury<T>>::iter() {
+                    if cdp.collateral_asset_id == collateral_asset_id {
+                        Self::accrue_internal(cdp_id)?;
+                    }
                 }
             }
             <CollateralTypes<T>>::insert(collateral_asset_id, info.clone());
@@ -722,8 +730,7 @@ pub mod pallet {
         /// Sets hard cap for total KUSD supply
         /// Is set by risk management
         #[pallet::call_index(9)]
-        // TODO weights
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::update_hard_cap_total_supply())]
         pub fn update_hard_cap_total_supply(
             origin: OriginFor<T>,
             new_hard_cap: Balance,
@@ -744,8 +751,7 @@ pub mod pallet {
         /// Sets liquidation penalty
         /// Is set by risk management
         #[pallet::call_index(10)]
-        // TODO weights
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::update_liquidation_penalty())]
         pub fn update_liquidation_penalty(
             origin: OriginFor<T>,
             new_liquidation_penalty: Percent,
@@ -768,7 +774,7 @@ pub mod pallet {
         /// Is called by protocol owner
         #[pallet::call_index(11)]
         // TODO weights
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::withdraw_profit())]
         pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_protocol_owner(&who)?;
@@ -787,8 +793,7 @@ pub mod pallet {
 
         /// Donate KUSD to the protocol to cover bad debt or increase protocol profit
         #[pallet::call_index(12)]
-        // TODO weights
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::donate())]
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::cover_bad_debt(&who, kusd_amount)?;

@@ -31,11 +31,11 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use common::{AssetId32, PredefinedAssetId, XOR};
+use common::{AssetId32, PredefinedAssetId, KUSD, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
-use sp_arithmetic::Perbill;
-use sp_core::U256;
+use sp_arithmetic::{Perbill, Percent};
+use sp_core::{Get, U256};
 
 /// Some account id
 fn alice<T: Config>() -> T::AccountId {
@@ -60,7 +60,7 @@ fn set_xor_as_collateral_type<T: Config>() {
 /// Creates CDP with XOR as collateral
 fn create_cdp_with_xor<T: Config>() -> U256 {
     let caller: T::AccountId = alice::<T>();
-    Pallet::<T>::create_cdp(RawOrigin::Signed(caller.clone()).into(), XOR.into())
+    Pallet::<T>::create_cdp(RawOrigin::Signed(caller).into(), XOR.into())
         .expect("Shall create CDP");
     NextCDPId::<T>::get()
 }
@@ -75,7 +75,7 @@ fn deposit_xor_collateral<T: Config>(cdp_id: U256, amount: Balance) {
         amount.try_into().unwrap(),
     )
     .expect("Shall mint XOR");
-    Pallet::<T>::deposit_collateral(RawOrigin::Signed(caller.clone()).into(), cdp_id, amount)
+    Pallet::<T>::deposit_collateral(RawOrigin::Signed(caller).into(), cdp_id, amount)
         .expect("Shall deposit");
 }
 
@@ -177,10 +177,56 @@ benchmarks! {
     //         .expect("Shall borrow");
     //     pallet_timestamp::Pallet::<T>::set_timestamp(1);
     // }: accrue(RawOrigin::Signed(caller.clone()), cdp_id)
-}
 
-// TODO update_collateral_risk_parameters - ?
-// TODO update_hard_cap_total_supply - ?
-// TODO update_liquidation_penalty - ?
-// TODO withdraw_profit - ?
-// TODO donate
+    // This benchmark doesn't count subsequent accrue() calls, assuming that risk manager will not
+    // abuse this call.
+    update_collateral_risk_parameters {
+        let caller: T::AccountId = alice::<T>();
+    }: update_collateral_risk_parameters(
+        RawOrigin::Signed(caller.clone()),
+        XOR.into(),
+        CollateralRiskParameters {
+            max_supply: balance!(1000),
+            liquidation_ratio: Perbill::from_percent(50),
+            max_liquidation_lot: balance!(100),
+            stability_fee_rate: Default::default(),
+        }
+    )
+
+    update_hard_cap_total_supply {
+        let caller: T::AccountId = alice::<T>();
+    }: update_hard_cap_total_supply(RawOrigin::Signed(caller.clone()), balance!(1000))
+
+    update_liquidation_penalty {
+        let caller: T::AccountId = alice::<T>();
+    }: _(RawOrigin::Signed(caller.clone()), Percent::from_percent(10))
+
+    withdraw_profit {
+        let caller: T::AccountId = alice::<T>();
+        let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+            &T::TreasuryTechAccount::get(),
+        )
+        .expect("Shall resolve tech account id");
+        let amount = balance!(10);
+        assets::Pallet::<T>::update_balance(
+            RawOrigin::Root.into(),
+            technical_account_id,
+            KUSD.into(),
+            amount.try_into().unwrap(),
+        )
+        .expect("Shall mint KUSD");
+    }: _(RawOrigin::Signed(caller.clone()), amount)
+
+    donate {
+        let caller: T::AccountId = alice::<T>();
+        let amount = balance!(10);
+        assets::Pallet::<T>::update_balance(
+            RawOrigin::Root.into(),
+            caller.clone(),
+            KUSD.into(),
+            amount.try_into().unwrap(),
+        )
+        .expect("Shall mint KUSD");
+        BadDebt::<T>::set(balance!(5));
+    }: donate(RawOrigin::Signed(caller.clone()), amount)
+}
