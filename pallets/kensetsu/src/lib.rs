@@ -49,7 +49,6 @@ mod tests;
 #[cfg(test)]
 mod test_utils;
 
-mod benchmarking;
 mod compounding;
 pub mod weights;
 
@@ -461,9 +460,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
-        // TODO
-        // #[pallet::weight(<T as Config>::WeightInfo::withdraw_collateral())]
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::withdraw_collateral())]
         pub fn withdraw_collateral(
             origin: OriginFor<T>,
             cdp_id: U256,
@@ -514,9 +511,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        // TODO
-        // #[pallet::weight(<T as Config>::WeightInfo::borrow())]
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::borrow())]
         pub fn borrow(
             origin: OriginFor<T>,
             cdp_id: U256,
@@ -555,9 +550,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
-        // TODO weights
-        // #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: U256, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::accrue_internal(cdp_id)?;
@@ -587,9 +580,7 @@ pub mod pallet {
 
         /// Liquidates part of unsafe CDP
         #[pallet::call_index(6)]
-        // TODO weights
-        // #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             Self::accrue_internal(cdp_id)?;
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
@@ -708,9 +699,7 @@ pub mod pallet {
         /// Updates cdp debt with interest
         /// Unsigned call possible
         #[pallet::call_index(7)]
-        // TODO weights
-        // #[pallet::weight(<T as Config>::WeightInfo::accrue())]
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::accrue())]
         pub fn accrue(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             ensure!(
                 Self::is_it_time_to_accrue(&cdp_id)?,
@@ -800,7 +789,6 @@ pub mod pallet {
         /// Withdraws profit from protocol treasury
         /// Is called by protocol owner
         #[pallet::call_index(11)]
-        // TODO weights
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_profit())]
         pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;

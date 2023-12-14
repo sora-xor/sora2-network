@@ -75,6 +75,7 @@ hermes-governance-platform = { path = "../pallets/hermes-governance-platform", d
 iroha-migration = { path = "../pallets/iroha-migration", default-features = false }
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
 kensetsu = { path = "../pallets/kensetsu", default-features = false}
+kensetsu-benchmarking = { path = "../pallets/kensetsu/benchmarking", default-features = false, optional = true }
 liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false }
 liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
 liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false }
@@ -364,7 +365,8 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "hermes-governance-platform/runtime-benchmarks",
     "iroha-migration/runtime-benchmarks",
-    "kensetsu/runtime-benchmarks",
+    "kensetsu-benchmarking",
+    "kensetsu-benchmarking/runtime-benchmarks",
     "liquidity-proxy-benchmarking",
     "liquidity-proxy-benchmarking/runtime-benchmarks",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",

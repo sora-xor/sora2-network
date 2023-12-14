@@ -4589,6 +4589,7 @@ dependencies = [
  "iroha-migration",
  "iroha-migration-runtime-api",
  "kensetsu",
+ "kensetsu-benchmarking",
  "leaf-provider",
  "leaf-provider-runtime-api",
  "liquidity-proxy",
@@ -5911,7 +5912,6 @@ version = "0.0.1"
 dependencies = [
  "assets",
  "common",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal 0.4.1",
@@ -5930,6 +5930,33 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+]
+
+[[package]]
+name = "kensetsu-benchmarking"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal 0.4.1",
+ "kensetsu",
+ "libm",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "pool-xyk",
+ "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
