@@ -1530,7 +1530,7 @@ fn test_accrue_interest_gt_bad_debt() {
 fn test_update_collateral_risk_parameters_only_signed_origin() {
     new_test_ext().execute_with(|| {
         let parameters = CollateralRiskParameters {
-            max_supply: balance!(100),
+            hard_cap: balance!(100),
             liquidation_ratio: Perbill::from_percent(50),
             max_liquidation_lot: balance!(100),
             stability_fee_rate: FixedU128::from_float(0.1),
@@ -1560,7 +1560,7 @@ fn test_update_collateral_risk_parameters_only_signed_origin() {
 fn test_update_collateral_risk_parameters_wrong_asset_id() {
     new_test_ext().execute_with(|| {
         let parameters = CollateralRiskParameters {
-            max_supply: balance!(100),
+            hard_cap: balance!(100),
             liquidation_ratio: Perbill::from_percent(50),
             max_liquidation_lot: balance!(100),
             stability_fee_rate: FixedU128::from_float(0.1),
@@ -1594,7 +1594,7 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
         let cdp_id_2 = create_cdp_for_xor(alice(), balance!(100), balance!(20));
         // new parameters with stability fee 20%
         let parameters = CollateralRiskParameters {
-            max_supply: balance!(100),
+            hard_cap: balance!(100),
             liquidation_ratio: Perbill::from_percent(50),
             max_liquidation_lot: balance!(100),
             stability_fee_rate,
@@ -1646,7 +1646,7 @@ fn test_update_collateral_risk_parameters_sunny_day() {
         let cdp_id_2 = create_cdp_for_xor(alice(), balance!(100), balance!(20));
         // new parameters with stability fee 20%
         let parameters = CollateralRiskParameters {
-            max_supply: balance!(100),
+            hard_cap: balance!(100),
             liquidation_ratio: Perbill::from_percent(50),
             max_liquidation_lot: balance!(100),
             stability_fee_rate: FixedU128::from_float(0.2),

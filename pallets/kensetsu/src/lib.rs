@@ -64,7 +64,7 @@ const VALIDATION_ERROR_CDP_SAFE: u8 = 3;
 #[derive(Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CollateralRiskParameters {
     /// Hard cap of total KUSD issued for the collateral.
-    pub max_supply: Balance,
+    pub hard_cap: Balance,
 
     /// Loan-to-value liquidation threshold
     pub liquidation_ratio: Perbill,
@@ -128,7 +128,7 @@ pub mod pallet {
             );
             let now = Timestamp::<T>::get();
             let outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
-            for (cdp_id, cdp) in <Treasury<T>>::iter() {
+            for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
                 if cdp.last_fee_update_time <= outdated_timestamp {
                     debug!("Accrue for CDP {:?}", cdp_id);
                     let call = Call::<T>::accrue { cdp_id };
@@ -244,7 +244,7 @@ pub mod pallet {
     /// Storage of all CDPs, where key is an unique CDP identifier
     #[pallet::storage]
     #[pallet::getter(fn cdp)]
-    pub type Treasury<T: Config> = StorageMap<
+    pub type CDPDepository<T: Config> = StorageMap<
         _,
         Identity,
         U256,
@@ -386,7 +386,7 @@ pub mod pallet {
                     owner: who.clone(),
                     collateral_asset_id,
                 });
-                <Treasury<T>>::insert(
+                <CDPDepository<T>>::insert(
                     cdp_id,
                     CollateralizedDebtPosition {
                         owner: who,
@@ -405,9 +405,9 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_cdp_owner(&who, cdp_id)?;
             Self::accrue_internal(cdp_id)?;
-            let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             ensure!(cdp.debt == 0, Error::<T>::OutstandingDebt);
             technical::Pallet::<T>::transfer_out(
                 &cdp.collateral_asset_id,
@@ -415,7 +415,7 @@ pub mod pallet {
                 &who,
                 cdp.collateral_amount,
             )?;
-            <Treasury<T>>::remove(cdp_id);
+            <CDPDepository<T>>::remove(cdp_id);
             Self::deposit_event(Event::CDPClosed {
                 cdp_id,
                 owner: who,
@@ -432,14 +432,14 @@ pub mod pallet {
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             technical::Pallet::<T>::transfer_in(
                 &cdp.collateral_asset_id,
                 &who,
                 &T::TreasuryTechAccount::get(),
                 collateral_amount,
             )?;
-            <Treasury<T>>::try_mutate(cdp_id, {
+            <CDPDepository<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                     cdp.collateral_amount = cdp
@@ -467,21 +467,19 @@ pub mod pallet {
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_cdp_owner(&who, cdp_id)?;
-            let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            Self::accrue_internal(cdp_id)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             ensure!(
                 cdp.collateral_amount >= collateral_amount,
                 Error::<T>::NotEnoughCollateral
             );
-            Self::accrue_internal(cdp_id)?;
+            let new_collateral_amount = cdp
+                .collateral_amount
+                .checked_sub(collateral_amount)
+                .ok_or(Error::<T>::ArithmeticError)?;
             ensure!(
-                Self::check_cdp_is_safe(
-                    cdp.debt,
-                    cdp.collateral_amount
-                        .checked_sub(collateral_amount)
-                        .ok_or(Error::<T>::ArithmeticError)?,
-                    cdp.collateral_asset_id,
-                )?,
+                Self::check_cdp_is_safe(cdp.debt, new_collateral_amount, cdp.collateral_asset_id,)?,
                 Error::<T>::CDPUnsafe
             );
             technical::Pallet::<T>::transfer_out(
@@ -490,13 +488,10 @@ pub mod pallet {
                 &who,
                 collateral_amount,
             )?;
-            <Treasury<T>>::try_mutate(cdp_id, {
+            <CDPDepository<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.collateral_amount = cdp
-                        .collateral_amount
-                        .checked_sub(collateral_amount)
-                        .ok_or(Error::<T>::ArithmeticError)?;
+                    cdp.collateral_amount = new_collateral_amount;
                     DispatchResult::Ok(())
                 }
             })?;
@@ -518,9 +513,9 @@ pub mod pallet {
             will_to_borrow_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_cdp_owner(&who, cdp_id)?;
             Self::accrue_internal(cdp_id)?;
-            let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             let new_debt = cdp
                 .debt
                 .checked_add(will_to_borrow_amount)
@@ -532,7 +527,7 @@ pub mod pallet {
             Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
             Self::ensure_protocol_cap(will_to_borrow_amount)?;
             Self::mint_to(&who, will_to_borrow_amount)?;
-            <Treasury<T>>::try_mutate(cdp_id, {
+            <CDPDepository<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                     cdp.debt = new_debt;
@@ -554,11 +549,11 @@ pub mod pallet {
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: U256, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::accrue_internal(cdp_id)?;
-            let cdp = <Treasury<T>>::get(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            // if repaying amount exceeds debt, leftover goes to the caller
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            // if repaying amount exceeds debt, leftover is not burned
             let to_cover_debt = amount.min(cdp.debt);
             Self::burn_from(&who, to_cover_debt)?;
-            <Treasury<T>>::try_mutate(cdp_id, {
+            <CDPDepository<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                     cdp.debt = cdp
@@ -621,7 +616,7 @@ pub mod pallet {
                 SwapAmount::with_desired_input(collateral_to_liquidate, balance!(0)),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
-            <Treasury<T>>::try_mutate(cdp_id, {
+            <CDPDepository<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                     cdp.collateral_amount = cdp
@@ -644,7 +639,7 @@ pub mod pallet {
                     // CDP debt is not covered with liquidation, now it is a protocol bad debt
                     Self::cover_with_protocol(shortage)?;
                     // close empty CDP, debt == 0, collateral == 0
-                    <Treasury<T>>::remove(cdp_id);
+                    <CDPDepository<T>>::remove(cdp_id);
                     Self::deposit_event(Event::CDPClosed {
                         cdp_id,
                         owner: cdp.owner,
@@ -652,7 +647,7 @@ pub mod pallet {
                     });
                 } else {
                     // partly covered
-                    <Treasury<T>>::try_mutate(cdp_id, {
+                    <CDPDepository<T>>::try_mutate(cdp_id, {
                         |cdp| {
                             let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                             cdp.debt = cdp
@@ -665,9 +660,8 @@ pub mod pallet {
                 }
             } else {
                 Self::burn_treasury(cdp_debt)?;
-
                 // CDP debt is covered
-                <Treasury<T>>::try_mutate(cdp_id, {
+                <CDPDepository<T>>::try_mutate(cdp_id, {
                     |cdp| {
                         let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                         cdp.debt = 0;
@@ -728,7 +722,7 @@ pub mod pallet {
             if Self::collateral_risk_parameters(collateral_asset_id).map_or(false, |old_info| {
                 old_info.stability_fee_rate != info.stability_fee_rate
             }) {
-                for (cdp_id, cdp) in <Treasury<T>>::iter() {
+                for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
                     if cdp.collateral_asset_id == collateral_asset_id {
                         Self::accrue_internal(cdp_id)?;
                     }
@@ -872,14 +866,6 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        /// Ensures that `who` is a cdp owner
-        /// CDP owner can change balances on own CDP only.
-        fn ensure_cdp_owner(who: &AccountIdOf<T>, cdp_id: U256) -> DispatchResult {
-            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            ensure!(*who == cdp.owner, Error::<T>::OperationNotPermitted);
-            Ok(())
-        }
-
         /// Ensures that `who` is a risk manager
         /// Risk manager can set protocol risk parameters.
         fn ensure_risk_manager(_who: &AccountIdOf<T>) -> DispatchResult {
@@ -903,17 +889,17 @@ pub mod pallet {
         ) -> Result<bool, DispatchError> {
             let collateral_risk_parameters = Self::collateral_risk_parameters(collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?;
-            let collateral_reference_price =
-                T::ReferencePriceProvider::get_reference_price(&collateral_asset_id)?;
-            let collateral_reference_price = FixedU128::from_inner(collateral_reference_price);
+            let collateral_reference_price = FixedU128::from_inner(
+                T::ReferencePriceProvider::get_reference_price(&collateral_asset_id)?,
+            );
             let collateral_value = collateral_reference_price
                 .checked_mul(&FixedU128::from_inner(collateral))
                 .ok_or(Error::<T>::ArithmeticError)?;
-            let debt = FixedU128::from_inner(debt);
             let max_safe_debt =
                 FixedU128::from_perbill(collateral_risk_parameters.liquidation_ratio)
                     .checked_mul(&collateral_value)
                     .ok_or(Error::<T>::ArithmeticError)?;
+            let debt = FixedU128::from_inner(debt);
             Ok(debt <= max_safe_debt)
         }
 
@@ -926,7 +912,7 @@ pub mod pallet {
                 .ok_or(Error::<T>::CollateralInfoNotFound)?;
 
             let current_supply_for_collateral = balance!(0);
-            for cdp in <Treasury<T>>::iter_values() {
+            for cdp in <CDPDepository<T>>::iter_values() {
                 if cdp.collateral_asset_id == collateral_asset_id {
                     current_supply_for_collateral
                         .checked_add(cdp.debt)
@@ -937,7 +923,7 @@ pub mod pallet {
                 current_supply_for_collateral
                     .checked_add(new_emission)
                     .ok_or(Error::<T>::ArithmeticError)?
-                    <= collateral_risk_parameters.max_supply,
+                    <= collateral_risk_parameters.hard_cap,
                 Error::<T>::HardCapSupply
             );
             Ok(())
@@ -1014,7 +1000,7 @@ pub mod pallet {
                 .debt
                 .checked_add(stability_fee)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            <Treasury<T>>::try_mutate(cdp_id, {
+            <CDPDepository<T>>::try_mutate(cdp_id, {
                 |cdp| {
                     let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                     cdp.debt = new_debt;
@@ -1129,7 +1115,7 @@ pub mod pallet {
         pub fn get_account_cdp_ids(
             account_id: &AccountIdOf<T>,
         ) -> Result<Vec<U256>, DispatchError> {
-            Ok(<Treasury<T>>::iter()
+            Ok(<CDPDepository<T>>::iter()
                 .filter(|(_, cdp)| cdp.owner == *account_id)
                 .map(|(cdp_id, _)| cdp_id)
                 .collect())
