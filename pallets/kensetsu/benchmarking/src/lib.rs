@@ -152,7 +152,7 @@ fn intialize_xyk_pool<T: Config>(asset_id: AssetIdOf<T>) {
 fn initialize_liquidity_sources<T: Config>() {
     intialize_xyk_pool::<T>(DAI.into());
     trading_pair::Pallet::<T>::register(
-        RawOrigin::Signed(caller::<T>().clone()).into(),
+        RawOrigin::Signed(caller::<T>()).into(),
         DEXId::Polkaswap.into(),
         XOR.into(),
         KUSD.into(),
