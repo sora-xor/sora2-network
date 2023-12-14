@@ -76,7 +76,12 @@ pub fn tech_account_id() -> AccountId {
 
 /// Returns Risk Manager account
 pub fn risk_manager() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(alice_account_id())
+    RuntimeOrigin::signed(bob_account_id())
+}
+
+/// Returns risk manager account id
+pub fn risk_manager_account_id() -> AccountId {
+    bob_account_id()
 }
 
 /// Returns Protocol Owner account id
@@ -97,6 +102,12 @@ pub fn set_bad_debt(bad_debt: Balance) {
 /// Asserts that protocol bad debt is expected amount.
 pub fn assert_bad_debt(expected_amount: Balance) {
     assert_eq!(BadDebt::<TestRuntime>::get(), expected_amount);
+}
+
+/// Sets risk manager for protocol
+pub fn set_up_risk_manager() {
+    KensetsuPallet::add_risk_manager(RuntimeOrigin::root(), risk_manager_account_id())
+        .expect("Must set risk manager");
 }
 
 /// Sets XOR asset id as collateral with default parameters

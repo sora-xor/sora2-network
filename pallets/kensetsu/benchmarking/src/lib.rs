@@ -215,6 +215,8 @@ benchmarks! {
     }
 
     borrow {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
+            .expect("Must set risk manager");
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
@@ -222,7 +224,7 @@ benchmarks! {
         deposit_xor_collateral::<T>(cdp_id, amount);
         let debt = balance!(1);
         kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Signed(caller::<T>()).into(),
+            RawOrigin::Signed(risk_manager::<T>()).into(),
             Balance::MAX,
         ).expect("Shall update hard cap");
     }: {
@@ -234,6 +236,8 @@ benchmarks! {
     }
 
     repay_debt {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
+            .expect("Must set risk manager");
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
@@ -241,7 +245,7 @@ benchmarks! {
         deposit_xor_collateral::<T>(cdp_id, amount);
         let debt = balance!(1);
         kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Signed(caller::<T>()).into(),
+            RawOrigin::Signed(risk_manager::<T>()).into(),
             Balance::MAX,
         ).expect("Shall update hard cap");
         kensetsu::Pallet::<T>::borrow(RawOrigin::Signed(caller::<T>()).into(), cdp_id, debt)
@@ -255,6 +259,8 @@ benchmarks! {
     }
 
     liquidate {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
+            .expect("Must set risk manager");
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
@@ -262,7 +268,7 @@ benchmarks! {
         deposit_xor_collateral::<T>(cdp_id, amount);
         let debt = balance!(10);
         kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Signed(caller::<T>()).into(),
+            RawOrigin::Signed(risk_manager::<T>()).into(),
             Balance::MAX,
         ).expect("Shall update hard cap");
         kensetsu::Pallet::<T>::borrow(RawOrigin::Signed(caller::<T>()).into(), cdp_id, debt)
@@ -273,6 +279,8 @@ benchmarks! {
     }
 
     accrue {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
+            .expect("Must set risk manager");
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
@@ -280,7 +288,7 @@ benchmarks! {
         deposit_xor_collateral::<T>(cdp_id, amount);
         let debt = balance!(1);
         kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Signed(caller::<T>()).into(),
+            RawOrigin::Signed(risk_manager::<T>()).into(),
             Balance::MAX,
         ).expect("Shall update hard cap");
         kensetsu::Pallet::<T>::borrow(
@@ -294,7 +302,10 @@ benchmarks! {
 
     // This benchmark doesn't count subsequent accrue() calls, assuming that risk manager will not
     // abuse this call.
-    update_collateral_risk_parameters {}: {
+    update_collateral_risk_parameters {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
+            .expect("Must set risk manager");
+    }: {
         kensetsu::Pallet::<T>::update_collateral_risk_parameters(
             RawOrigin::Signed(risk_manager::<T>()).into(),
             XOR.into(),
@@ -307,14 +318,20 @@ benchmarks! {
         ).unwrap();
     }
 
-    update_hard_cap_total_supply {}: {
+    update_hard_cap_total_supply {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
+            .expect("Must set risk manager");
+    }: {
         kensetsu::Pallet::<T>::update_hard_cap_total_supply(
             RawOrigin::Signed(risk_manager::<T>()).into(),
             balance!(1000)
         ).unwrap();
     }
 
-    update_liquidation_penalty {}:{
+    update_liquidation_penalty {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
+            .expect("Must set risk manager");
+    }:{
         kensetsu::Pallet::<T>::update_liquidation_penalty(
             RawOrigin::Signed(risk_manager::<T>()).into(),
             Percent::from_percent(10)
@@ -322,10 +339,11 @@ benchmarks! {
     }
 
     withdraw_profit {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
+            .expect("Must set risk manager");
         let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
             &T::TreasuryTechAccount::get(),
-        )
-        .expect("Shall resolve tech account id");
+        ).expect("Shall resolve tech account id");
         let amount = balance!(10);
         assets::Pallet::<T>::update_balance(
             RawOrigin::Root.into(),
@@ -353,5 +371,13 @@ benchmarks! {
         kensetsu::BadDebt::<T>::set(balance!(5));
     }: {
         kensetsu::Pallet::<T>::donate(RawOrigin::Signed(caller::<T>()).into(), amount).unwrap();
+    }
+
+    add_risk_manager {}: {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), caller::<T>()).unwrap();
+    }
+
+    remove_risk_manager {}: {
+        kensetsu::Pallet::<T>::remove_risk_manager(RawOrigin::Root.into(), caller::<T>()).unwrap();
     }
 }

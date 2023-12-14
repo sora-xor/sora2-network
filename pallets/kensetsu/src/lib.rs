@@ -110,10 +110,12 @@ pub mod pallet {
     use sp_arithmetic::Percent;
     use sp_core::U256;
     use sp_runtime::traits::{CheckedConversion, CheckedSub};
+    use sp_std::collections::btree_set::BTreeSet;
     use sp_std::vec::Vec;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -251,6 +253,10 @@ pub mod pallet {
         CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>, T::Moment>,
     >;
 
+    #[pallet::storage]
+    #[pallet::getter(fn risk_managers)]
+    pub type RiskManagers<T: Config> = StorageValue<_, BTreeSet<T::AccountId>>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -316,33 +322,6 @@ pub mod pallet {
         Donation {
             amount: Balance,
         },
-    }
-
-    #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config> {
-        pub protocol_owner: Option<T::AccountId>,
-        pub risk_manager: Option<T::AccountId>,
-        // TODO
-        // Set risk manager account
-        // Set protocol owner account
-    }
-
-    #[cfg(feature = "std")]
-    impl<T: Config> Default for GenesisConfig<T> {
-        fn default() -> Self {
-            Self {
-                protocol_owner: Default::default(),
-                risk_manager: Default::default(),
-                // TODO  default tech accounts
-            }
-        }
-    }
-
-    #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-        fn build(&self) {
-            // TODO register tech accounts
-        }
     }
 
     #[pallet::error]
@@ -812,6 +791,43 @@ pub mod pallet {
 
             Ok(())
         }
+
+        /// Adds risk manager account
+        #[pallet::call_index(13)]
+        #[pallet::weight(<T as Config>::WeightInfo::add_risk_manager())]
+        pub fn add_risk_manager(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
+            ensure_root(origin)?;
+            <RiskManagers<T>>::mutate(|option_risk_managers| match option_risk_managers {
+                Some(risk_managers) => {
+                    let _ = risk_managers.insert(account_id);
+                }
+                None => {
+                    let mut risk_managers = BTreeSet::new();
+                    let _ = risk_managers.insert(account_id);
+                    let _ = option_risk_managers.insert(risk_managers);
+                }
+            });
+
+            Ok(())
+        }
+
+        // Removes risk manager account
+        #[pallet::call_index(14)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_risk_manager())]
+        pub fn remove_risk_manager(
+            origin: OriginFor<T>,
+            account_id: T::AccountId,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            <RiskManagers<T>>::mutate(|option_risk_managers| match option_risk_managers {
+                Some(risk_managers) => {
+                    let _ = risk_managers.remove(&account_id);
+                }
+                None => {}
+            });
+
+            Ok(())
+        }
     }
 
     /// Validate unsigned call to this pallet.
@@ -868,15 +884,21 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Ensures that `who` is a risk manager
         /// Risk manager can set protocol risk parameters.
-        fn ensure_risk_manager(_who: &AccountIdOf<T>) -> DispatchResult {
-            // TODO
+        fn ensure_risk_manager(who: &AccountIdOf<T>) -> DispatchResult {
+            if !Self::risk_managers().map_or(false, |risk_managers| risk_managers.contains(who)) {
+                return Err(Error::<T>::OperationNotPermitted.into());
+            }
+
             Ok(())
         }
 
         /// Ensures that `who` is a protocol owner
         /// Protocol owner can withdraw profit from the protocol.
-        fn ensure_protocol_owner(_who: &AccountIdOf<T>) -> DispatchResult {
-            // TODO
+        fn ensure_protocol_owner(who: &AccountIdOf<T>) -> DispatchResult {
+            if !Self::risk_managers().map_or(false, |risk_managers| risk_managers.contains(who)) {
+                return Err(Error::<T>::OperationNotPermitted.into());
+            }
+
             Ok(())
         }
 

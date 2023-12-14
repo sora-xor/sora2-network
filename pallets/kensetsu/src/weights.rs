@@ -78,36 +78,38 @@ pub trait WeightInfo {
 	fn update_liquidation_penalty() -> Weight;
 	fn withdraw_profit() -> Weight;
 	fn donate() -> Weight;
+	fn add_risk_manager() -> Weight;
+	fn remove_risk_manager() -> Weight;
 }
 
 /// Weights for kensetsu using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu NextCDPId (r:1 w:1)
-	/// Proof: Kensetsu NextCDPId (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu NextCDPId (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: Kensetsu Treasury (r:0 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:0 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	fn create_cdp() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `278`
-		//  Estimated: `3589`
-		// Minimum execution time: 15_809_000 picoseconds.
-		Weight::from_parts(17_884_000, 3589)
+		//  Estimated: `4307`
+		// Minimum execution time: 15_901_000 picoseconds.
+		Weight::from_parts(16_607_000, 4307)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -117,14 +119,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn close_cdp() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2126`
-		//  Estimated: `22462`
-		// Minimum execution time: 50_833_000 picoseconds.
-		Weight::from_parts(54_083_000, 22462)
+		//  Estimated: `28604`
+		// Minimum execution time: 49_817_000 picoseconds.
+		Weight::from_parts(50_909_000, 28604)
 			.saturating_add(T::DbWeight::get().reads(8_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: System Account (r:2 w:2)
@@ -132,20 +134,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn deposit_collateral() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1400`
-		//  Estimated: `11692`
-		// Minimum execution time: 47_612_000 picoseconds.
-		Weight::from_parts(50_465_000, 11692)
+		//  Estimated: `12956`
+		// Minimum execution time: 47_648_000 picoseconds.
+		Weight::from_parts(49_197_000, 12956)
 			.saturating_add(T::DbWeight::get().reads(4_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -169,20 +171,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn withdraw_collateral() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `4319`
-		//  Estimated: `71946`
-		// Minimum execution time: 128_162_000 picoseconds.
-		Weight::from_parts(131_419_000, 71946)
+		//  Estimated: `84667`
+		// Minimum execution time: 128_321_000 picoseconds.
+		Weight::from_parts(131_869_000, 84667)
 			.saturating_add(T::DbWeight::get().reads(18_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:2 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:2 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -206,24 +208,24 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: Tokens TotalIssuance (r:1 w:1)
 	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
 	/// Storage: Kensetsu KusdHardCap (r:1 w:0)
-	/// Proof: Kensetsu KusdHardCap (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu KusdHardCap (max_values: Some(1), max_size: None, mode: Measured)
 	fn borrow() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `4342`
-		//  Estimated: `75188`
-		// Minimum execution time: 136_385_000 picoseconds.
-		Weight::from_parts(141_220_000, 75188)
+		//  Measured:  `4372`
+		//  Estimated: `92528`
+		// Minimum execution time: 139_574_000 picoseconds.
+		Weight::from_parts(141_733_000, 92528)
 			.saturating_add(T::DbWeight::get().reads(20_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -236,21 +238,21 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
 	fn repay_debt() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2996`
-		//  Estimated: `30214`
-		// Minimum execution time: 74_591_000 picoseconds.
-		Weight::from_parts(75_846_000, 30214)
+		//  Measured:  `3025`
+		//  Estimated: `39140`
+		// Minimum execution time: 73_775_000 picoseconds.
+		Weight::from_parts(75_062_000, 39140)
 			.saturating_add(T::DbWeight::get().reads(10_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:3 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -272,7 +274,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: Tokens Accounts (r:3 w:2)
 	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
 	/// Storage: Kensetsu LiquidationPenalty (r:1 w:0)
-	/// Proof: Kensetsu LiquidationPenalty (max_values: Some(1), max_size: Some(1), added: 496, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu LiquidationPenalty (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
 	/// Proof Skipped: MulticollateralBondingCurvePool EnabledTargets (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: PriceTools PriceInfos (r:1 w:0)
@@ -283,21 +285,21 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: PoolXYK Reserves (max_values: None, max_size: None, mode: Measured)
 	fn liquidate() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `5696`
-		//  Estimated: `121297`
-		// Minimum execution time: 300_898_000 picoseconds.
-		Weight::from_parts(307_022_000, 121297)
+		//  Measured:  `5725`
+		//  Estimated: `144279`
+		// Minimum execution time: 299_814_000 picoseconds.
+		Weight::from_parts(305_795_000, 144279)
 			.saturating_add(T::DbWeight::get().reads(28_u64))
 			.saturating_add(T::DbWeight::get().writes(8_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -306,48 +308,56 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
 	fn accrue() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2229`
-		//  Estimated: `22771`
-		// Minimum execution time: 44_483_000 picoseconds.
-		Weight::from_parts(45_793_000, 22771)
+		//  Measured:  `2258`
+		//  Estimated: `29396`
+		// Minimum execution time: 44_112_000 picoseconds.
+		Weight::from_parts(45_824_000, 29396)
 			.saturating_add(T::DbWeight::get().reads(8_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:0)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Assets AssetOwners (r:1 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:1)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	fn update_collateral_risk_parameters() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `696`
-		//  Estimated: `5730`
-		// Minimum execution time: 15_132_000 picoseconds.
-		Weight::from_parts(15_590_000, 5730)
+		//  Measured:  `787`
+		//  Estimated: `7806`
+		// Minimum execution time: 18_305_000 picoseconds.
+		Weight::from_parts(19_615_000, 7806)
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:0)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Kensetsu KusdHardCap (r:1 w:1)
+	/// Proof Skipped: Kensetsu KusdHardCap (max_values: Some(1), max_size: None, mode: Measured)
+	fn update_hard_cap_total_supply() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `238`
+		//  Estimated: `1466`
+		// Minimum execution time: 12_147_000 picoseconds.
+		Weight::from_parts(12_662_000, 1466)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	/// Storage: Kensetsu KusdHardCap (r:1 w:1)
-	/// Proof: Kensetsu KusdHardCap (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
-	fn update_hard_cap_total_supply() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `147`
-		//  Estimated: `511`
-		// Minimum execution time: 9_360_000 picoseconds.
-		Weight::from_parts(9_706_000, 511)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
-	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:0)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Kensetsu LiquidationPenalty (r:1 w:1)
-	/// Proof: Kensetsu LiquidationPenalty (max_values: Some(1), max_size: Some(1), added: 496, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu LiquidationPenalty (max_values: Some(1), max_size: None, mode: Measured)
 	fn update_liquidation_penalty() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `147`
-		//  Estimated: `496`
-		// Minimum execution time: 9_423_000 picoseconds.
-		Weight::from_parts(9_629_000, 496)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
+		//  Measured:  `238`
+		//  Estimated: `1466`
+		// Minimum execution time: 12_312_000 picoseconds.
+		Weight::from_parts(12_561_000, 1466)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:0)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Tokens Accounts (r:2 w:2)
@@ -356,15 +366,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn withdraw_profit() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1466`
-		//  Estimated: `14369`
-		// Minimum execution time: 44_980_000 picoseconds.
-		Weight::from_parts(46_149_000, 14369)
-			.saturating_add(T::DbWeight::get().reads(5_u64))
+		//  Measured:  `1704`
+		//  Estimated: `16806`
+		// Minimum execution time: 54_570_000 picoseconds.
+		Weight::from_parts(61_632_000, 16806)
+			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 	/// Storage: Kensetsu BadDebt (r:1 w:1)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Tokens Accounts (r:2 w:2)
@@ -378,41 +388,63 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn donate() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2249`
-		//  Estimated: `25393`
-		// Minimum execution time: 73_497_000 picoseconds.
-		Weight::from_parts(75_774_000, 25393)
+		//  Estimated: `27626`
+		// Minimum execution time: 73_667_000 picoseconds.
+		Weight::from_parts(74_711_000, 27626)
 			.saturating_add(T::DbWeight::get().reads(9_u64))
 			.saturating_add(T::DbWeight::get().writes(5_u64))
+	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:1)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
+	fn add_risk_manager() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `147`
+		//  Estimated: `642`
+		// Minimum execution time: 6_187_000 picoseconds.
+		Weight::from_parts(6_735_000, 642)
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:1)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
+	fn remove_risk_manager() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `147`
+		//  Estimated: `642`
+		// Minimum execution time: 5_200_000 picoseconds.
+		Weight::from_parts(9_086_000, 642)
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu NextCDPId (r:1 w:1)
-	/// Proof: Kensetsu NextCDPId (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu NextCDPId (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: Kensetsu Treasury (r:0 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:0 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	fn create_cdp() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `278`
-		//  Estimated: `3589`
-		// Minimum execution time: 15_809_000 picoseconds.
-		Weight::from_parts(17_884_000, 3589)
+		//  Estimated: `4307`
+		// Minimum execution time: 15_901_000 picoseconds.
+		Weight::from_parts(16_607_000, 4307)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -422,14 +454,14 @@ impl WeightInfo for () {
 	fn close_cdp() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2126`
-		//  Estimated: `22462`
-		// Minimum execution time: 50_833_000 picoseconds.
-		Weight::from_parts(54_083_000, 22462)
+		//  Estimated: `28604`
+		// Minimum execution time: 49_817_000 picoseconds.
+		Weight::from_parts(50_909_000, 28604)
 			.saturating_add(RocksDbWeight::get().reads(8_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: System Account (r:2 w:2)
@@ -437,20 +469,20 @@ impl WeightInfo for () {
 	fn deposit_collateral() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1400`
-		//  Estimated: `11692`
-		// Minimum execution time: 47_612_000 picoseconds.
-		Weight::from_parts(50_465_000, 11692)
+		//  Estimated: `12956`
+		// Minimum execution time: 47_648_000 picoseconds.
+		Weight::from_parts(49_197_000, 12956)
 			.saturating_add(RocksDbWeight::get().reads(4_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -474,20 +506,20 @@ impl WeightInfo for () {
 	fn withdraw_collateral() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `4319`
-		//  Estimated: `71946`
-		// Minimum execution time: 128_162_000 picoseconds.
-		Weight::from_parts(131_419_000, 71946)
+		//  Estimated: `84667`
+		// Minimum execution time: 128_321_000 picoseconds.
+		Weight::from_parts(131_869_000, 84667)
 			.saturating_add(RocksDbWeight::get().reads(18_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:2 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:2 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -511,24 +543,24 @@ impl WeightInfo for () {
 	/// Storage: Tokens TotalIssuance (r:1 w:1)
 	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
 	/// Storage: Kensetsu KusdHardCap (r:1 w:0)
-	/// Proof: Kensetsu KusdHardCap (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu KusdHardCap (max_values: Some(1), max_size: None, mode: Measured)
 	fn borrow() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `4342`
-		//  Estimated: `75188`
-		// Minimum execution time: 136_385_000 picoseconds.
-		Weight::from_parts(141_220_000, 75188)
+		//  Measured:  `4372`
+		//  Estimated: `92528`
+		// Minimum execution time: 139_574_000 picoseconds.
+		Weight::from_parts(141_733_000, 92528)
 			.saturating_add(RocksDbWeight::get().reads(20_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -541,21 +573,21 @@ impl WeightInfo for () {
 	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
 	fn repay_debt() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2996`
-		//  Estimated: `30214`
-		// Minimum execution time: 74_591_000 picoseconds.
-		Weight::from_parts(75_846_000, 30214)
+		//  Measured:  `3025`
+		//  Estimated: `39140`
+		// Minimum execution time: 73_775_000 picoseconds.
+		Weight::from_parts(75_062_000, 39140)
 			.saturating_add(RocksDbWeight::get().reads(10_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:3 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -577,7 +609,7 @@ impl WeightInfo for () {
 	/// Storage: Tokens Accounts (r:3 w:2)
 	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
 	/// Storage: Kensetsu LiquidationPenalty (r:1 w:0)
-	/// Proof: Kensetsu LiquidationPenalty (max_values: Some(1), max_size: Some(1), added: 496, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu LiquidationPenalty (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
 	/// Proof Skipped: MulticollateralBondingCurvePool EnabledTargets (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: PriceTools PriceInfos (r:1 w:0)
@@ -588,21 +620,21 @@ impl WeightInfo for () {
 	/// Proof Skipped: PoolXYK Reserves (max_values: None, max_size: None, mode: Measured)
 	fn liquidate() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `5696`
-		//  Estimated: `121297`
-		// Minimum execution time: 300_898_000 picoseconds.
-		Weight::from_parts(307_022_000, 121297)
+		//  Measured:  `5725`
+		//  Estimated: `144279`
+		// Minimum execution time: 299_814_000 picoseconds.
+		Weight::from_parts(305_795_000, 144279)
 			.saturating_add(RocksDbWeight::get().reads(28_u64))
 			.saturating_add(RocksDbWeight::get().writes(8_u64))
 	}
-	/// Storage: Kensetsu Treasury (r:1 w:1)
-	/// Proof: Kensetsu Treasury (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Kensetsu CDPDepository (r:1 w:1)
+	/// Proof Skipped: Kensetsu CDPDepository (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:0)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu BadDebt (r:1 w:0)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -611,48 +643,56 @@ impl WeightInfo for () {
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
 	fn accrue() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2229`
-		//  Estimated: `22771`
-		// Minimum execution time: 44_483_000 picoseconds.
-		Weight::from_parts(45_793_000, 22771)
+		//  Measured:  `2258`
+		//  Estimated: `29396`
+		// Minimum execution time: 44_112_000 picoseconds.
+		Weight::from_parts(45_824_000, 29396)
 			.saturating_add(RocksDbWeight::get().reads(8_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:0)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Assets AssetOwners (r:1 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Kensetsu CollateralTypes (r:1 w:1)
-	/// Proof: Kensetsu CollateralTypes (max_values: None, max_size: Some(84), added: 2559, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu CollateralTypes (max_values: None, max_size: None, mode: Measured)
 	fn update_collateral_risk_parameters() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `696`
-		//  Estimated: `5730`
-		// Minimum execution time: 15_132_000 picoseconds.
-		Weight::from_parts(15_590_000, 5730)
+		//  Measured:  `787`
+		//  Estimated: `7806`
+		// Minimum execution time: 18_305_000 picoseconds.
+		Weight::from_parts(19_615_000, 7806)
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:0)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Kensetsu KusdHardCap (r:1 w:1)
+	/// Proof Skipped: Kensetsu KusdHardCap (max_values: Some(1), max_size: None, mode: Measured)
+	fn update_hard_cap_total_supply() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `238`
+		//  Estimated: `1466`
+		// Minimum execution time: 12_147_000 picoseconds.
+		Weight::from_parts(12_662_000, 1466)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: Kensetsu KusdHardCap (r:1 w:1)
-	/// Proof: Kensetsu KusdHardCap (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
-	fn update_hard_cap_total_supply() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `147`
-		//  Estimated: `511`
-		// Minimum execution time: 9_360_000 picoseconds.
-		Weight::from_parts(9_706_000, 511)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
-	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:0)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Kensetsu LiquidationPenalty (r:1 w:1)
-	/// Proof: Kensetsu LiquidationPenalty (max_values: Some(1), max_size: Some(1), added: 496, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu LiquidationPenalty (max_values: Some(1), max_size: None, mode: Measured)
 	fn update_liquidation_penalty() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `147`
-		//  Estimated: `496`
-		// Minimum execution time: 9_423_000 picoseconds.
-		Weight::from_parts(9_629_000, 496)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
+		//  Measured:  `238`
+		//  Estimated: `1466`
+		// Minimum execution time: 12_312_000 picoseconds.
+		Weight::from_parts(12_561_000, 1466)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:0)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Tokens Accounts (r:2 w:2)
@@ -661,15 +701,15 @@ impl WeightInfo for () {
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn withdraw_profit() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1466`
-		//  Estimated: `14369`
-		// Minimum execution time: 44_980_000 picoseconds.
-		Weight::from_parts(46_149_000, 14369)
-			.saturating_add(RocksDbWeight::get().reads(5_u64))
+		//  Measured:  `1704`
+		//  Estimated: `16806`
+		// Minimum execution time: 54_570_000 picoseconds.
+		Weight::from_parts(61_632_000, 16806)
+			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 	/// Storage: Kensetsu BadDebt (r:1 w:1)
-	/// Proof: Kensetsu BadDebt (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
+	/// Proof Skipped: Kensetsu BadDebt (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Tokens Accounts (r:2 w:2)
@@ -683,10 +723,32 @@ impl WeightInfo for () {
 	fn donate() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2249`
-		//  Estimated: `25393`
-		// Minimum execution time: 73_497_000 picoseconds.
-		Weight::from_parts(75_774_000, 25393)
+		//  Estimated: `27626`
+		// Minimum execution time: 73_667_000 picoseconds.
+		Weight::from_parts(74_711_000, 27626)
 			.saturating_add(RocksDbWeight::get().reads(9_u64))
 			.saturating_add(RocksDbWeight::get().writes(5_u64))
+	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:1)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
+	fn add_risk_manager() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `147`
+		//  Estimated: `642`
+		// Minimum execution time: 6_187_000 picoseconds.
+		Weight::from_parts(6_735_000, 642)
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	/// Storage: Kensetsu RiskManagers (r:1 w:1)
+	/// Proof Skipped: Kensetsu RiskManagers (max_values: Some(1), max_size: None, mode: Measured)
+	fn remove_risk_manager() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `147`
+		//  Estimated: `642`
+		// Minimum execution time: 5_200_000 picoseconds.
+		Weight::from_parts(9_086_000, 642)
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }
