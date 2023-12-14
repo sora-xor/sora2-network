@@ -1942,7 +1942,3 @@ fn test_withdraw_profit_sunny_day() {
         assert_balance(&protocol_owner_account_id(), &KUSD, to_withdraw);
     });
 }
-
-// TODO add tests for off-chain worker accrue()
-// TODO add tests for off-chain worker liquidate()
-// - validate unsigned

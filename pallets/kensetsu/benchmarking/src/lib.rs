@@ -64,7 +64,7 @@ fn set_xor_as_collateral_type<T: Config>() {
     kensetsu::CollateralTypes::<T>::set::<AssetIdOf<T>>(
         XOR.into(),
         Some(kensetsu::CollateralRiskParameters {
-            max_supply: Balance::MAX,
+            hard_cap: Balance::MAX,
             liquidation_ratio: Perbill::from_percent(50),
             max_liquidation_lot: balance!(100),
             stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(10)),
@@ -101,7 +101,7 @@ fn make_cdps_unsafe<T: Config>() {
     kensetsu::CollateralTypes::<T>::set::<AssetIdOf<T>>(
         XOR.into(),
         Some(kensetsu::CollateralRiskParameters {
-            max_supply: Balance::MAX,
+            hard_cap: Balance::MAX,
             liquidation_ratio: Perbill::from_percent(10),
             max_liquidation_lot: balance!(100),
             stability_fee_rate: Default::default(),
@@ -299,7 +299,7 @@ benchmarks! {
             RawOrigin::Signed(risk_manager::<T>()).into(),
             XOR.into(),
             kensetsu::CollateralRiskParameters {
-                max_supply: balance!(1000),
+                hard_cap: balance!(1000),
                 liquidation_ratio: Perbill::from_percent(50),
                 max_liquidation_lot: balance!(100),
                 stability_fee_rate: Default::default(),

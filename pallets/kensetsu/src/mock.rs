@@ -225,7 +225,7 @@ impl assets::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+        common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
@@ -235,8 +235,8 @@ impl assets::Config for TestRuntime {
     type GetBuyBackDexId = GetBuyBackDexId;
     type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<TestRuntime>;
-    type WeightInfo = ();
     type GetTotalBalance = ();
+    type WeightInfo = ();
 }
 
 impl pallet_balances::Config for TestRuntime {
@@ -253,7 +253,7 @@ impl pallet_balances::Config for TestRuntime {
 
 impl common::Config for TestRuntime {
     type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
+    type LstId = LiquiditySourceType;
 }
 
 impl currencies::Config for TestRuntime {
@@ -263,8 +263,6 @@ impl currencies::Config for TestRuntime {
     type WeightInfo = ();
 }
 
-// TODO macro, see example
-// https://github.com/minterest-finance/minterest-chain-node/blob/development/test-helper/src/lib.rs#L64
 impl frame_system::Config for TestRuntime {
     type BaseCallFilter = frame_support::traits::Everything;
     type BlockWeights = ();

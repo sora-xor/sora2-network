@@ -109,7 +109,7 @@ pub fn set_xor_as_collateral_type(
     CollateralTypes::<TestRuntime>::set(
         XOR,
         Some(CollateralRiskParameters {
-            hard_cap: hard_cap,
+            hard_cap,
             max_liquidation_lot: balance!(1000),
             liquidation_ratio,
             stability_fee_rate,
