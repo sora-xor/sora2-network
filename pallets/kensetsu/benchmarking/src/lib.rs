@@ -39,6 +39,7 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_arithmetic::{Perbill, Percent};
 use sp_core::{Get, U256};
+use sp_runtime::traits::One;
 use sp_runtime::FixedU128;
 
 pub struct Pallet<T: Config>(kensetsu::Pallet<T>);
@@ -61,13 +62,17 @@ fn risk_manager<T: Config>() -> T::AccountId {
 
 /// Sets XOR as collateral type with default risk parameters
 fn set_xor_as_collateral_type<T: Config>() {
-    kensetsu::CollateralTypes::<T>::set::<AssetIdOf<T>>(
+    kensetsu::CollateralInfos::<T>::set::<AssetIdOf<T>>(
         XOR.into(),
-        Some(kensetsu::CollateralRiskParameters {
-            hard_cap: Balance::MAX,
-            liquidation_ratio: Perbill::from_percent(50),
-            max_liquidation_lot: balance!(100),
-            stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(10)),
+        Some(kensetsu::CollateralInfo {
+            risk_parameters: kensetsu::CollateralRiskParameters {
+                hard_cap: Balance::MAX,
+                liquidation_ratio: Perbill::from_percent(50),
+                max_liquidation_lot: balance!(100),
+                stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(10)),
+            },
+            last_fee_update_time: Default::default(),
+            interest_coefficient: FixedU128::one(),
         }),
     );
 }
@@ -98,13 +103,17 @@ fn deposit_xor_collateral<T: Config>(cdp_id: U256, amount: Balance) {
 
 /// Sets liquidation ratio too low, making CDPs unsafe
 fn make_cdps_unsafe<T: Config>() {
-    kensetsu::CollateralTypes::<T>::set::<AssetIdOf<T>>(
+    kensetsu::CollateralInfos::<T>::set::<AssetIdOf<T>>(
         XOR.into(),
-        Some(kensetsu::CollateralRiskParameters {
-            hard_cap: Balance::MAX,
-            liquidation_ratio: Perbill::from_percent(10),
-            max_liquidation_lot: balance!(100),
-            stability_fee_rate: Default::default(),
+        Some(kensetsu::CollateralInfo {
+            risk_parameters: kensetsu::CollateralRiskParameters {
+                hard_cap: Balance::MAX,
+                liquidation_ratio: Perbill::from_percent(10),
+                max_liquidation_lot: balance!(100),
+                stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(10)),
+            },
+            last_fee_update_time: Default::default(),
+            interest_coefficient: FixedU128::one(),
         }),
     );
 }

@@ -490,7 +490,7 @@ pub mod pallet {
         MarketOrdersAllowedOnlyForIndivisibleAssets,
         /// It is possible to delete an order-book only with the statuses: OnlyCancel or Stop
         ForbiddenStatusToDeleteOrderBook,
-        // It is possible to delete only empty order-book
+        /// It is possible to delete only empty order-book
         OrderBookIsNotEmpty,
         /// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
         ForbiddenStatusToUpdateOrderBook,
