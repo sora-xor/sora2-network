@@ -30,11 +30,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub use pallet::*;
+
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, Balance};
 use frame_support::log::{debug, warn};
-pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedU128;
 use sp_arithmetic::Perbill;
@@ -157,7 +158,6 @@ pub mod pallet {
                 }
             }
             for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
-                // tODO or debt
                 if collaterals_to_update.contains(&cdp.collateral_asset_id) {
                     debug!("Accrue for CDP {:?}", cdp_id);
                     let call = Call::<T>::accrue { cdp_id };
@@ -411,8 +411,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::accrue_internal(cdp_id)?;
-            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             ensure!(cdp.debt == 0, Error::<T>::OutstandingDebt);
             technical::Pallet::<T>::transfer_out(
@@ -473,8 +472,7 @@ pub mod pallet {
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::accrue_internal(cdp_id)?;
-            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             ensure!(
                 cdp.collateral_amount >= collateral_amount,
@@ -519,8 +517,7 @@ pub mod pallet {
             will_to_borrow_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::accrue_internal(cdp_id)?;
-            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             let new_debt = cdp
                 .debt
@@ -554,8 +551,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: U256, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::accrue_internal(cdp_id)?;
-            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::accrue_internal(cdp_id)?;
             // if repaying amount exceeds debt, leftover is not burned
             let to_cover_debt = amount.min(cdp.debt);
             Self::burn_from(&who, to_cover_debt)?;
@@ -583,8 +579,7 @@ pub mod pallet {
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
-            Self::accrue_internal(cdp_id)?;
-            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::accrue_internal(cdp_id)?;
             let cdp_debt = cdp.debt;
             let cdp_collateral_amount = cdp.collateral_amount;
             ensure!(
@@ -738,7 +733,7 @@ pub mod pallet {
                 <CollateralInfos<T>>::insert(
                     collateral_asset_id,
                     CollateralInfo {
-                        risk_parameters: new_risk_parameters.clone(),
+                        risk_parameters: new_risk_parameters,
                         last_fee_update_time: Timestamp::<T>::get(),
                         interest_coefficient: FixedU128::one(),
                     },
@@ -1075,7 +1070,6 @@ pub mod pallet {
             Ok(collateral_info)
         }
 
-        // TODO optimization - return cdp and collateral info
         /// Accrue stability fee from CDP
         /// Calculates fees accrued since last update using continuous compounding formula.
         /// The fees is a protocol gain.

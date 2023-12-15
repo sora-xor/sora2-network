@@ -1542,7 +1542,7 @@ fn test_update_collateral_risk_parameters_only_signed_origin() {
             KensetsuPallet::update_collateral_risk_parameters(
                 RuntimeOrigin::none(),
                 XOR,
-                parameters.clone()
+                parameters
             ),
             BadOrigin
         );
@@ -1626,13 +1626,13 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
             risk_manager(),
             asset_id,
-            parameters.clone()
+            parameters
         ));
 
         System::assert_has_event(
             Event::CollateralRiskParametersUpdated {
                 collateral_asset_id: XOR,
-                risk_parameters: parameters.clone(),
+                risk_parameters: parameters,
             }
             .into(),
         );
@@ -1677,13 +1677,13 @@ fn test_update_collateral_risk_parameters_sunny_day() {
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
             risk_manager(),
             XOR,
-            parameters.clone()
+            parameters
         ));
 
         System::assert_has_event(
             Event::CollateralRiskParametersUpdated {
                 collateral_asset_id: XOR,
-                risk_parameters: parameters.clone(),
+                risk_parameters: parameters,
             }
             .into(),
         );
