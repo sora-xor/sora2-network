@@ -37,6 +37,7 @@ use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
 use sp_arithmetic::Perbill;
 use sp_core::U256;
+use sp_runtime::traits::One;
 use sp_runtime::AccountId32;
 
 type AccountId = AccountId32;
@@ -117,13 +118,17 @@ pub fn set_xor_as_collateral_type(
     liquidation_ratio: Perbill,
     stability_fee_rate: FixedU128,
 ) {
-    CollateralTypes::<TestRuntime>::set(
+    CollateralInfos::<TestRuntime>::set(
         XOR,
-        Some(CollateralRiskParameters {
-            hard_cap,
-            max_liquidation_lot: balance!(1000),
-            liquidation_ratio,
-            stability_fee_rate,
+        Some(CollateralInfo {
+            risk_parameters: CollateralRiskParameters {
+                hard_cap,
+                max_liquidation_lot: balance!(1000),
+                liquidation_ratio,
+                stability_fee_rate,
+            },
+            last_fee_update_time: 0,
+            interest_coefficient: FixedU128::one(),
         }),
     );
     KusdHardCap::<TestRuntime>::set(hard_cap);

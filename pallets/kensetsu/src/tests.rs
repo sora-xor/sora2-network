@@ -399,7 +399,7 @@ fn test_withdraw_collateral_cdp_does_not_exist() {
     });
 }
 
-/// CDP owner withdraws more than CDP has
+/// CDP owner withdraws collateral more than CDP has
 #[test]
 fn test_withdraw_collateral_gt_amount() {
     new_test_ext().execute_with(|| {
@@ -1385,7 +1385,6 @@ fn test_accrue_profit() {
         let interest = balance!(1);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
-        assert_eq!(cdp.last_fee_update_time, 1);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply + interest);
         assert_balance(&tech_account_id(), &KUSD, interest);
@@ -1418,7 +1417,6 @@ fn test_accrue_profit_same_time() {
         let interest = balance!(1);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
-        assert_eq!(cdp.last_fee_update_time, 1);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply + interest);
         assert_balance(&tech_account_id(), &KUSD, interest);
@@ -1453,7 +1451,6 @@ fn test_accrue_interest_less_bad_debt() {
         let new_bad_debt = balance!(1);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
-        assert_eq!(cdp.last_fee_update_time, 1);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply);
         assert_balance(&tech_account_id(), &KUSD, balance!(0));
@@ -1488,7 +1485,6 @@ fn test_accrue_interest_eq_bad_debt() {
         let interest = balance!(1);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
-        assert_eq!(cdp.last_fee_update_time, 1);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply);
         assert_balance(&tech_account_id(), &KUSD, balance!(0));
@@ -1524,7 +1520,6 @@ fn test_accrue_interest_gt_bad_debt() {
         let profit = balance!(1);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
-        assert_eq!(cdp.last_fee_update_time, 1);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply + profit);
         assert_balance(&tech_account_id(), &KUSD, profit);
@@ -1641,18 +1636,17 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
             }
             .into(),
         );
-        let actual_parameters =
-            CollateralTypes::<TestRuntime>::get(asset_id).expect("Must succeed");
+        let actual_parameters = CollateralInfos::<TestRuntime>::get(asset_id)
+            .expect("Must succeed")
+            .risk_parameters;
         assert_eq!(actual_parameters, parameters);
         // check that accrue was called
         let cdp_1 = KensetsuPallet::cdp(cdp_id_1).expect("Must exist");
         // debt principal is 10 + 1 fee
         assert_eq!(cdp_1.debt, balance!(10));
-        assert_eq!(cdp_1.last_fee_update_time, 0);
         let cdp_2 = KensetsuPallet::cdp(cdp_id_2).expect("Must exist");
         // debt principal is 20 + 2 fee
         assert_eq!(cdp_2.debt, balance!(20));
-        assert_eq!(cdp_2.last_fee_update_time, 0);
     });
 }
 
@@ -1662,7 +1656,6 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
 #[test]
 fn test_update_collateral_risk_parameters_sunny_day() {
     new_test_ext().execute_with(|| {
-        let asset_id = XOR;
         set_up_risk_manager();
         // old stability fee is 10%
         set_xor_as_collateral_type(
@@ -1683,7 +1676,7 @@ fn test_update_collateral_risk_parameters_sunny_day() {
 
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
             risk_manager(),
-            asset_id,
+            XOR,
             parameters.clone()
         ));
 
@@ -1694,18 +1687,20 @@ fn test_update_collateral_risk_parameters_sunny_day() {
             }
             .into(),
         );
-        let actual_parameters =
-            CollateralTypes::<TestRuntime>::get(asset_id).expect("Must succeed");
+        let actual_parameters = CollateralInfos::<TestRuntime>::get(XOR)
+            .expect("Must succeed")
+            .risk_parameters;
         assert_eq!(actual_parameters, parameters);
-        // check that accrue was called
+        // interest is not updated itself, need trigger to update
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id_1));
+        // check that interest was updated with old value 10%
         let cdp_1 = KensetsuPallet::cdp(cdp_id_1).expect("Must exist");
         // debt principal is 10 + 1 fee
         assert_eq!(cdp_1.debt, balance!(11));
-        assert_eq!(cdp_1.last_fee_update_time, 1);
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id_2));
         let cdp_2 = KensetsuPallet::cdp(cdp_id_2).expect("Must exist");
         // debt principal is 20 + 2 fee
         assert_eq!(cdp_2.debt, balance!(22));
-        assert_eq!(cdp_2.last_fee_update_time, 1);
     });
 }
 

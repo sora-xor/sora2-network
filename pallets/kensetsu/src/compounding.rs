@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::Balance;
-use sp_arithmetic::traits::{EnsureAdd, EnsureMul, EnsureSub, Saturating};
+use sp_arithmetic::traits::{EnsureAdd, EnsureMul, Saturating};
 use sp_arithmetic::{ArithmeticError, FixedU128};
 
 #[cfg(test)]
@@ -61,20 +61,6 @@ pub fn compound(
     } else {
         Ok(res)
     }
-}
-
-/// Returns accrued interest using continuous compouding formula
-///
-/// - principal - initial balance
-/// - rate_per_second - rate per second, rate_secondly = (1 + rate_annual)^(1/seconds_per_year) - 1
-/// - period - time passed in seconds
-pub fn get_accrued_interest(
-    principal: Balance,
-    rate_per_second: FixedU128,
-    period: u64,
-) -> Result<Balance, ArithmeticError> {
-    let new_loan_balance = compound(principal, rate_per_second, period)?;
-    new_loan_balance.ensure_sub(principal)
 }
 
 #[test]
@@ -139,17 +125,6 @@ fn test_compound_2_periods() {
     assert_eq!(
         compound(initial_balance, rate, time).unwrap(),
         balance!(121)
-    );
-}
-
-#[test]
-fn test_accrued_interest() {
-    let initial_balance = balance!(100);
-    let rate = FixedU128::from_float(0.1);
-    let time = 2;
-    assert_eq!(
-        get_accrued_interest(initial_balance, rate, time).unwrap(),
-        balance!(21)
     );
 }
 
