@@ -147,7 +147,7 @@ impl frame_system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
-// We need non-zero weight
+// We need non-zero weight for testing weight calculation
 pub struct WeightedEmptyLiquiditySource;
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
