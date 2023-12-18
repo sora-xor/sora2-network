@@ -387,7 +387,7 @@ fn test_withdraw_collateral_only_owner() {
     });
 }
 
-/// If cdp doesn't exist, return error
+/// If CDP doesn't exist, return error
 #[test]
 fn test_withdraw_collateral_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
@@ -1022,7 +1022,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_penalty() {
                 cdp_id,
                 collateral_asset_id: XOR,
                 collateral_amount: liquidation_income,
-                kusd_amount: liquidation_income - penalty,
+                proceeds: liquidation_income - penalty,
                 penalty,
             }
             .into(),
@@ -1083,7 +1083,7 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
                 cdp_id,
                 collateral_asset_id: XOR,
                 collateral_amount: liquidation_income,
-                kusd_amount: liquidation_income - penalty,
+                proceeds: liquidation_income - penalty,
                 penalty,
             }
             .into(),
@@ -1139,7 +1139,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
                 cdp_id,
                 collateral_asset_id: XOR,
                 collateral_amount: liquidation_income,
-                kusd_amount: liquidation_income - penalty,
+                proceeds: liquidation_income - penalty,
                 penalty,
             }
             .into(),
@@ -1196,7 +1196,7 @@ fn test_liquidate_kusd_amount_not_covers_cdp_debt() {
                 cdp_id,
                 collateral_asset_id: XOR,
                 collateral_amount: collateral,
-                kusd_amount: liquidation_income - penalty,
+                proceeds: liquidation_income - penalty,
                 penalty,
             }
             .into(),
@@ -1264,7 +1264,7 @@ fn test_liquidate_kusd_bad_debt() {
                 cdp_id,
                 collateral_asset_id: XOR,
                 collateral_amount: collateral,
-                kusd_amount: liquidation_income - penalty,
+                proceeds: liquidation_income - penalty,
                 penalty,
             }
             .into(),

@@ -30,6 +30,14 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+/// Kensetsu is a over collateralized lending protocol, clone of MakerDAO.
+/// An individual can create a collateral debt positions (CDPs) for one of the listed token and
+/// deposit or lock amount of the token in CDP as collateral. Then the individual is allowed to
+/// borrow new minted Kensetsu USD (KUSD) in amount up to value of collateral corrected by
+/// `liquidation_ratio` coefficient. The debt in KUSD is a subject of `stability_fee` interest rate.
+/// Collateral may be unlocked only when the debt and the interest are payed back. If the value of
+/// collateral has changed in a way that it does not secure the debt, the collateral is liquidated
+/// to cover the debt and the interest.
 pub use pallet::*;
 
 use assets::AssetIdOf;
@@ -106,9 +114,9 @@ pub struct CollateralizedDebtPosition<AccountId, AssetId> {
     pub debt: Balance,
 
     /// Interest accrued for CDP.
-    /// Initializes on creation with collateral interest coefficient equal to 1. The coefficient is
-    /// growing over time with interest rate. Actual interest is:
-    /// (collateral.coefficient - cdp.coefficient) / cdp.coefficient
+    /// Initializes on creation with collateral interest coefficient equal to 1.
+    /// The coefficient is growing over time with interest rate.
+    /// Actual interest is: (collateral.coefficient - cdp.coefficient) / cdp.coefficient
     pub interest_coefficient: FixedU128,
 }
 
@@ -158,6 +166,7 @@ pub mod pallet {
                 }
             }
             for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
+                // Debt recalculation with interest
                 if collaterals_to_update.contains(&cdp.collateral_asset_id) {
                     debug!("Accrue for CDP {:?}", cdp_id);
                     let call = Call::<T>::accrue { cdp_id };
@@ -170,6 +179,8 @@ pub mod pallet {
                         );
                     }
                 }
+
+                // Liquidation
                 match Self::check_cdp_is_safe(
                     cdp.debt,
                     cdp.collateral_amount,
@@ -177,6 +188,7 @@ pub mod pallet {
                 ) {
                     Ok(cdp_is_safe) => {
                         if !cdp_is_safe {
+                            debug!("Liquidation of CDP {:?}", cdp_id);
                             let call = Call::<T>::liquidate { cdp_id };
                             if let Err(err) =
                                 SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
@@ -249,7 +261,7 @@ pub mod pallet {
     #[pallet::getter(fn bad_debt)]
     pub type BadDebt<T> = StorageValue<_, Balance, ValueQuery>;
 
-    /// Risk parameters for collaterals
+    /// Parametes for collaterals, include risk parameters and interest recalculation coefficients
     #[pallet::storage]
     #[pallet::getter(fn collateral_infos)]
     pub type CollateralInfos<T: Config> =
@@ -277,6 +289,7 @@ pub mod pallet {
     pub type CDPDepository<T: Config> =
         StorageMap<_, Identity, U256, CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>>;
 
+    /// Accoutns of risk management team
     #[pallet::storage]
     #[pallet::getter(fn risk_managers)]
     pub type RiskManagers<T: Config> = StorageValue<_, BTreeSet<T::AccountId>>;
@@ -325,8 +338,8 @@ pub mod pallet {
             // what was liquidated
             collateral_asset_id: AssetIdOf<T>,
             collateral_amount: Balance,
-            // revenue from liquidation to cover debt
-            kusd_amount: Balance,
+            // KUSD amount from liquidation to cover debt
+            proceeds: Balance,
             // liquidation penalty
             penalty: Balance,
         },
@@ -632,11 +645,11 @@ pub mod pallet {
             })?;
             // penalty is a protocol profit which stays on treasury tech account
             let penalty = Self::liquidation_penalty() * swap_outcome.amount.min(cdp_debt);
-            let kusd_amount = swap_outcome.amount - penalty;
-            if cdp_debt >= kusd_amount {
-                Self::burn_treasury(kusd_amount)?;
+            let proceeds = swap_outcome.amount - penalty;
+            if cdp_debt >= proceeds {
+                Self::burn_treasury(proceeds)?;
                 let shortage = cdp_debt
-                    .checked_sub(kusd_amount)
+                    .checked_sub(proceeds)
                     .ok_or(Error::<T>::CDPNotFound)?;
                 if cdp_collateral_amount <= collateral_to_liquidate {
                     // no collateral, total default
@@ -656,7 +669,7 @@ pub mod pallet {
                             let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                             cdp.debt = cdp
                                 .debt
-                                .checked_sub(kusd_amount)
+                                .checked_sub(proceeds)
                                 .ok_or(Error::<T>::CDPNotFound)?;
                             DispatchResult::Ok(())
                         }
@@ -673,7 +686,7 @@ pub mod pallet {
                     }
                 })?;
                 // There is more KUSD than to cover debt and penalty, leftover goes to cdp.owner
-                let leftover = kusd_amount
+                let leftover = proceeds
                     .checked_sub(cdp_debt)
                     .ok_or(Error::<T>::CDPNotFound)?;
                 assets::Pallet::<T>::transfer_from(
@@ -687,7 +700,7 @@ pub mod pallet {
                 cdp_id,
                 collateral_asset_id: cdp.collateral_asset_id,
                 collateral_amount: collateral_to_liquidate,
-                kusd_amount,
+                proceeds,
                 penalty,
             });
 

@@ -38,12 +38,12 @@ use common::balance;
 /// Per second compounding formula
 ///
 /// Interest is accrued over number of periods
-/// A = P * (1 + period_rate) ^ period
-///
-/// - principal - initial balance
-/// - rate_per_second - rate per second, rate_secondly = (1 + rate_annual)^(1/seconds_per_year) - 1
+/// `A = P * (1 + period_rate) ^ period`, where:
+/// - principal - (P) - initial balance
+/// - rate_per_second - (period_rate) - rate per second, where
+/// rate_secondly = (1 + rate_annual)^(1/seconds_per_year) - 1
 /// - period - time passed in seconds
-/// Returns the new balance with interest over time
+/// Returns (A) - the new balance with interest over time
 pub fn compound(
     principal: Balance,
     rate_per_second: FixedU128,
