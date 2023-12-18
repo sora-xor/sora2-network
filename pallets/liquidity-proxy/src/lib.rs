@@ -1254,8 +1254,10 @@ impl<T: Config> Pallet<T> {
                                 );
                             single_exchange_weight
                         });
-                let total_exchange_weight =
-                    path_weights.fold(Weight::zero(), |acc, next| acc.saturating_add(next));
+                let total_exchange_weight = path_weights
+                    .fold(Weight::zero(), |acc, next_exchange_weight| {
+                        acc.saturating_add(next_exchange_weight)
+                    });
                 weights.push(
                     weight
                         .saturating_add(quote_single_weight)
