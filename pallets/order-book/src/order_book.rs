@@ -1031,18 +1031,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         Error::<T>::OrderBookReachedMaxCountOfPricesForSide
                     );
                 }
-
-                if let Some((best_bid_price, _)) = self.best_bid(data) {
-                    if limit_order.price < best_bid_price {
-                        let diff = best_bid_price
-                            .balance()
-                            .abs_diff(*limit_order.price.balance());
-                        ensure!(
-                            diff <= T::MAX_PRICE_SHIFT * (*best_bid_price.balance()),
-                            Error::<T>::InvalidLimitOrderPrice
-                        );
-                    }
-                }
             }
             PriceVariant::Sell => {
                 if let Some(is_ask_price_full) =
@@ -1062,18 +1050,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                             < T::MaxSidePriceCount::get() as usize,
                         Error::<T>::OrderBookReachedMaxCountOfPricesForSide
                     );
-                }
-
-                if let Some((best_ask_price, _)) = self.best_ask(data) {
-                    if limit_order.price > best_ask_price {
-                        let diff = best_ask_price
-                            .balance()
-                            .abs_diff(*limit_order.price.balance());
-                        ensure!(
-                            diff <= T::MAX_PRICE_SHIFT * (*best_ask_price.balance()),
-                            Error::<T>::InvalidLimitOrderPrice
-                        );
-                    }
                 }
             }
         }

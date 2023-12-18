@@ -506,7 +506,6 @@ pub fn cancel_limit_order<T: Config>(
     let mut fill_price_settings = fill_settings.clone();
     // account for previous fill + room for order to cancel
     fill_price_settings.max_orders_per_price -= 2;
-    // we don't want to face `MAX_PRICE_SHIFT`
     let target_price = data_layer.best_bid(&order_book_id).unwrap().0;
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     fill_price(
