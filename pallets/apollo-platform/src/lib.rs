@@ -330,7 +330,8 @@ pub mod pallet {
             }
 
             // Transfer lending amount to pallet
-            Assets::<T>::transfer_from(&lending_token, &user, &Self::account_id(), lending_amount)?;
+            Assets::<T>::transfer_from(&lending_token, &user, &Self::account_id(), lending_amount)
+                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
 
             pool_info.total_liquidity += lending_amount;
             <PoolData<T>>::insert(lending_token, pool_info);
@@ -369,7 +370,7 @@ pub mod pallet {
             let asset_price = Self::get_price(collateral_token);
             let borrow_asset_price = Self::get_price(borrowing_token);
 
-            // Calculate collateral amount in dollars of chosen asset
+            // Calculate collateral amount in dollars of borrowing asset
             let coll_amount_in_dollars = ((FixedWrapper::from(borrowing_amount)
                 / FixedWrapper::from(borrow_pool_info.loan_to_value))
                 * FixedWrapper::from(borrow_asset_price))
@@ -484,6 +485,10 @@ pub mod pallet {
                     Error::<T>::NoRewardsToClaim
                 );
 
+                let calculated_interest = Self::calculate_lending_earnings(&user, asset_id);
+                lend_user_info.lending_interest += calculated_interest;
+                <UserLendingInfo<T>>::insert(user.clone(), asset_id, &lend_user_info);
+
                 Assets::<T>::transfer_from(
                     &CERES_ASSET_ID.into(),
                     &Self::account_id(),
@@ -570,25 +575,9 @@ pub mod pallet {
                 user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
                 pool_info.total_liquidity -= lending_amount;
 
-                Assets::<T>::transfer_from(
-                    &lending_token,
-                    &Self::account_id(),
-                    &user,
-                    lending_amount,
-                )
-                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
-
                 <UserLendingInfo<T>>::insert(user.clone(), lending_token, user_info);
                 <PoolData<T>>::insert(lending_token, pool_info);
             } else if lending_amount == user_info.lending_amount {
-                Assets::<T>::transfer_from(
-                    &lending_token,
-                    &Self::account_id(),
-                    &user,
-                    lending_amount,
-                )
-                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
-
                 Assets::<T>::transfer_from(
                     &CERES_ASSET_ID.into(),
                     &Self::account_id(),
@@ -604,6 +593,9 @@ pub mod pallet {
             } else {
                 return Err(Error::<T>::LendingAmountExceeded.into());
             }
+
+            Assets::<T>::transfer_from(&lending_token, &Self::account_id(), &user, lending_amount)
+                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
 
             //Emit event
             Self::deposit_event(Event::Withdrawn(user, lending_token, lending_amount));
@@ -672,6 +664,7 @@ pub mod pallet {
                     remaining_amount,
                 )
                 .map_err(|_| Error::<T>::CanNotTransferAmountToRepay)?;
+
                 borrow_user_info.insert(collateral_token, user_info.clone());
                 <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, &borrow_user_info);
                 <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
@@ -904,25 +897,25 @@ pub mod pallet {
             for (pool_asset_id, pool_info) in PoolData::<T>::iter() {
                 for (user, asset_id, user_infos) in UserBorrowingInfo::<T>::iter() {
                     for (collateral_token, user_info) in user_infos.iter() {
-                        let asset_price = Self::get_price(collateral_token.clone());
-                        let pool_asset_price = Self::get_price(pool_asset_id);
+                        let collateral_asset_price = Self::get_price(collateral_token.clone());
+                        let borrow_asset_price = Self::get_price(pool_asset_id);
 
                         let collateral_in_dollars =
                             (FixedWrapper::from(user_info.collateral_amount)
-                                * FixedWrapper::from(asset_price))
+                                * FixedWrapper::from(collateral_asset_price))
                             .try_into_balance()
                             .unwrap_or(0);
 
                         let liquidation_threshold = ((collateral_in_dollars
                             * FixedWrapper::from(pool_info.liquidation_threshold))
                             / (FixedWrapper::from(pool_info.total_collateral)
-                                * FixedWrapper::from(asset_price)))
+                                * FixedWrapper::from(collateral_asset_price)))
                         .try_into_balance()
                         .unwrap_or(0);
 
                         let total_borrows_in_dollars =
                             (FixedWrapper::from(pool_info.total_borrowed)
-                                * FixedWrapper::from(pool_asset_price))
+                                * FixedWrapper::from(borrow_asset_price))
                             .try_into_balance()
                             .unwrap_or(0);
 
