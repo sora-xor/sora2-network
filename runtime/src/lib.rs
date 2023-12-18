@@ -163,8 +163,8 @@ pub use order_book_benchmarking;
 #[cfg(all(feature = "private-net", feature = "ready-to-test"))] // order-book
 pub use qa_tools;
 pub use {
-    assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
-    xst,
+    assets, dex_api, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book,
+    trading_pair, xst,
 };
 
 /// An index to a block.

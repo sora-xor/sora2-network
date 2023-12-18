@@ -692,6 +692,7 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
     Ord,
     scale_info::TypeInfo,
     MaxEncodedLen,
+    strum::EnumIter,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
