@@ -119,12 +119,10 @@ pub mod pallet {
         const MILLISECS_PER_BLOCK: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
         /// The soft ratio between min & max order amounts.
-        /// In particular, it defines the optimal number of limit orders that could be executed by
-        /// one big market order in one block.
+        /// In particular, it defines the optimal number of limit orders that could be executed by one big market order in one block.
         const SOFT_MIN_MAX_RATIO: usize;
         /// The hard ratio between min & max order amounts.
-        /// In particular, it defines the max number of limit orders that could be executed by
-        /// one big market order in one block.
+        /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
         /// During update of parameters, the limits must satisfy this ratio.
         const HARD_MIN_MAX_RATIO: usize;
 
@@ -290,8 +288,8 @@ pub mod pallet {
     >;
 
     /// Earliest block with incomplete expirations;
-    /// Weight limit might not allow to finish all expirations for a block, so
-    /// they might be operated later.
+    /// Weight limit might not allow to finish all expirations for a block
+    /// so they might be operated later.
     #[pallet::storage]
     #[pallet::getter(fn incomplete_expirations_since)]
     pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, T::BlockNumber>;
@@ -496,7 +494,7 @@ pub mod pallet {
         MarketOrdersAllowedOnlyForIndivisibleAssets,
         /// It is possible to delete an order-book only with the statuses: OnlyCancel or Stop
         ForbiddenStatusToDeleteOrderBook,
-        // It is possible to delete only empty order-book
+        /// It is possible to delete only empty order-book
         OrderBookIsNotEmpty,
         /// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
         ForbiddenStatusToUpdateOrderBook,
