@@ -34,6 +34,7 @@ use super::*;
 
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
+use strum::IntoEnumIterator;
 
 use crate::Pallet as DexApi;
 
@@ -46,15 +47,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 }
 
 fn find_non_existing_source(sources: Vec<LiquiditySourceType>) -> Option<LiquiditySourceType> {
-    let mut all_sources = Vec::from([
-        LiquiditySourceType::XYKPool,
-        LiquiditySourceType::MulticollateralBondingCurvePool,
-        LiquiditySourceType::XSTPool,
-        LiquiditySourceType::MockPool,
-        LiquiditySourceType::MockPool2,
-        LiquiditySourceType::MockPool3,
-        LiquiditySourceType::MockPool4,
-    ]);
+    let mut all_sources: Vec<_> = LiquiditySourceType::iter().collect();
 
     all_sources.retain(|x| !sources.contains(x));
     all_sources.first().copied()

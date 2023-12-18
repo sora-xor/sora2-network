@@ -40,6 +40,7 @@ use frame_support::error::BadOrigin;
 use frame_support::weights::Weight;
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::DispatchError;
+use strum::IntoEnumIterator;
 
 type DexApi = Pallet<Runtime>;
 
@@ -288,32 +289,7 @@ fn test_exchange_weight_filtered_calculates() {
 fn test_exchange_weight_filtered_matches_exchange_weight() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let all_sources = vec![
-            &LiquiditySourceType::XYKPool,
-            &LiquiditySourceType::BondingCurvePool,
-            &LiquiditySourceType::MulticollateralBondingCurvePool,
-            &LiquiditySourceType::MockPool,
-            &LiquiditySourceType::MockPool2,
-            &LiquiditySourceType::MockPool3,
-            &LiquiditySourceType::MockPool4,
-            &LiquiditySourceType::XSTPool,
-            #[cfg(feature = "ready-to-test")] // order-book
-            &LiquiditySourceType::OrderBook,
-        ];
-        // add new source to `all_sources` if new enum variant is created.
-        // enum is solely for detecting new variants and making compile errors :)
-        match all_sources[0] {
-            LiquiditySourceType::XYKPool
-            | LiquiditySourceType::BondingCurvePool
-            | LiquiditySourceType::MulticollateralBondingCurvePool
-            | LiquiditySourceType::MockPool
-            | LiquiditySourceType::MockPool2
-            | LiquiditySourceType::MockPool3
-            | LiquiditySourceType::MockPool4
-            | LiquiditySourceType::XSTPool => (),
-            #[cfg(feature = "ready-to-test")] // order-book
-            LiquiditySourceType::OrderBook => (),
-        }
+        let all_sources: Vec<_> = LiquiditySourceType::iter().collect();
         assert_eq!(
             DexApi::exchange_weight_filtered(all_sources.into_iter()),
             DexApi::exchange_weight(),
