@@ -373,15 +373,15 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
     }
 
     fn quote_weight() -> Weight {
-        Weight::zero()
+        Weight::from_all(1)
     }
 
     fn exchange_weight() -> Weight {
-        Weight::zero()
+        Weight::from_all(2)
     }
 
     fn check_rewards_weight() -> Weight {
-        Weight::zero()
+        Weight::from_all(3)
     }
 }
 
@@ -438,15 +438,15 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
     }
 
     fn quote_weight() -> Weight {
-        Weight::zero()
+        Weight::from_all(1)
     }
 
     fn exchange_weight() -> Weight {
-        Weight::zero()
+        Weight::from_all(2)
     }
 
     fn check_rewards_weight() -> Weight {
-        Weight::zero()
+        Weight::from_all(3)
     }
 }
 
