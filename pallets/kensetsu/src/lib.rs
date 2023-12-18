@@ -592,6 +592,8 @@ pub mod pallet {
             let desired_kusd_amount = cdp_debt
                 .checked_add(Self::liquidation_penalty() * cdp_debt)
                 .ok_or(Error::<T>::ArithmeticError)?;
+            // TODO if desired amount < LP liquidity, returns error which fails extrinsic
+            // it must proceed with amount = cdp.collateral_amount
             let SwapOutcome { amount, .. } = T::LiquidityProxy::quote(
                 DEXId::Polkaswap.into(),
                 &cdp.collateral_asset_id,
@@ -717,28 +719,24 @@ pub mod pallet {
                 T::AssetInfoProvider::asset_exists(&collateral_asset_id),
                 Error::<T>::WrongAssetId
             );
-            if Self::collateral_infos(collateral_asset_id).map_or(false, |old_info| {
-                old_info.risk_parameters.stability_fee_rate
-                    != new_risk_parameters.stability_fee_rate
-            }) {
-                Self::update_collateral_interest_coefficient(collateral_asset_id)?;
-                <CollateralInfos<T>>::try_mutate(collateral_asset_id, |collateral_info| {
-                    let collateral_info = collateral_info
-                        .as_mut()
-                        .ok_or(Error::<T>::CollateralInfoNotFound)?;
-                    collateral_info.risk_parameters = new_risk_parameters;
-                    DispatchResult::Ok(())
-                })?;
-            } else {
-                <CollateralInfos<T>>::insert(
-                    collateral_asset_id,
-                    CollateralInfo {
-                        risk_parameters: new_risk_parameters,
-                        last_fee_update_time: Timestamp::<T>::get(),
-                        interest_coefficient: FixedU128::one(),
-                    },
-                );
-            }
+            <CollateralInfos<T>>::try_mutate(collateral_asset_id, |option_collateral_info| {
+                match option_collateral_info {
+                    Some(collateral_info) => {
+                        let mut new_info =
+                            Self::update_collateral_interest_coefficient(collateral_asset_id)?;
+                        new_info.risk_parameters = new_risk_parameters;
+                        *collateral_info = new_info;
+                    }
+                    None => {
+                        let _ = option_collateral_info.insert(CollateralInfo {
+                            risk_parameters: new_risk_parameters,
+                            last_fee_update_time: Timestamp::<T>::get(),
+                            interest_coefficient: FixedU128::one(),
+                        });
+                    }
+                }
+                DispatchResult::Ok(())
+            })?;
             Self::deposit_event(Event::CollateralRiskParametersUpdated {
                 collateral_asset_id,
                 risk_parameters: new_risk_parameters,
@@ -1036,8 +1034,8 @@ pub mod pallet {
         fn update_collateral_interest_coefficient(
             collateral_asset_id: AssetIdOf<T>,
         ) -> Result<CollateralInfo<T::Moment>, DispatchError> {
-            let collateral_info = <CollateralInfos<T>>::try_mutate(collateral_asset_id, {
-                |collateral_info| {
+            let collateral_info =
+                <CollateralInfos<T>>::try_mutate(collateral_asset_id, |collateral_info| {
                     let collateral_info = collateral_info
                         .as_mut()
                         .ok_or(Error::<T>::CollateralInfoNotFound)?;
@@ -1064,8 +1062,7 @@ pub mod pallet {
                             FixedU128::from_inner(new_coefficient);
                     }
                     Ok::<CollateralInfo<T::Moment>, DispatchError>(collateral_info.clone())
-                }
-            })?;
+                })?;
 
             Ok(collateral_info)
         }
@@ -1094,15 +1091,13 @@ pub mod pallet {
                 .debt
                 .checked_add(stability_fee)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            cdp = <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.debt = new_debt;
-                    cdp.interest_coefficient = new_coefficient;
-                    Ok::<CollateralizedDebtPosition<T::AccountId, T::AssetId>, DispatchError>(
-                        cdp.clone(),
-                    )
-                }
+            cdp = <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.debt = new_debt;
+                cdp.interest_coefficient = new_coefficient;
+                Ok::<CollateralizedDebtPosition<T::AccountId, T::AssetId>, DispatchError>(
+                    cdp.clone(),
+                )
             })?;
             let mut new_bad_debt = <BadDebt<T>>::get();
             if new_bad_debt > 0 {

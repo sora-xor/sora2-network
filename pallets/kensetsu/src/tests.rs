@@ -43,6 +43,7 @@ use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use sp_arithmetic::{ArithmeticError, Percent};
 use sp_core::U256;
+use sp_runtime::traits::One;
 use sp_runtime::DispatchError::BadOrigin;
 
 type KensetsuError = Error<TestRuntime>;
@@ -1413,7 +1414,7 @@ fn test_accrue_profit_same_time() {
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
 
         // interest is 10*10%*1 = 1,
-        // where 10 - initial balance, 10% - per second rate, 1 - seconds passed
+        // where 10 - initial balance, 10% - per second rate, 1 - second passed
         let interest = balance!(1);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
@@ -1601,106 +1602,63 @@ fn test_update_collateral_risk_parameters_wrong_asset_id() {
     });
 }
 
-/// Given: several CDP with debt and time since last interest accrue has passed
-/// When: update risk parameters that does not change rate
-/// Then: accrue is not called, risk parameters updated
+/// Given: risk parameters were set
+/// When: update risk parameters
+/// Then: risk parameters are changed, event is emitted, interest coefficient is changed
 #[test]
 fn test_update_collateral_risk_parameters_no_rate_change() {
     new_test_ext().execute_with(|| {
+        set_up_risk_manager();
         let asset_id = XOR;
         // stability fee is 10%
         let stability_fee_rate = FixedU128::from_float(0.1);
-        set_up_risk_manager();
-        set_xor_as_collateral_type(Balance::MAX, Perbill::from_percent(50), stability_fee_rate);
-        let cdp_id_1 = create_cdp_for_xor(alice(), balance!(100), balance!(10));
-        let cdp_id_2 = create_cdp_for_xor(alice(), balance!(100), balance!(20));
-        // new parameters with stability fee 20%
-        let parameters = CollateralRiskParameters {
+
+        // parameters with stability fee 10%
+        let old_parameters = CollateralRiskParameters {
             hard_cap: balance!(100),
-            liquidation_ratio: Perbill::from_percent(50),
+            liquidation_ratio: Perbill::from_percent(10),
             max_liquidation_lot: balance!(100),
             stability_fee_rate,
         };
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
-
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
             risk_manager(),
             asset_id,
-            parameters
+            old_parameters
         ));
+        let old_info = CollateralInfos::<TestRuntime>::get(asset_id).expect("Must succeed");
+        assert_eq!(old_info.risk_parameters, old_parameters);
+        assert_eq!(old_info.last_fee_update_time, 1);
+        assert_eq!(old_info.interest_coefficient, FixedU128::one());
 
-        System::assert_has_event(
-            Event::CollateralRiskParametersUpdated {
-                collateral_asset_id: XOR,
-                risk_parameters: parameters,
-            }
-            .into(),
-        );
-        let actual_parameters = CollateralInfos::<TestRuntime>::get(asset_id)
-            .expect("Must succeed")
-            .risk_parameters;
-        assert_eq!(actual_parameters, parameters);
-        // check that accrue was called
-        let cdp_1 = KensetsuPallet::cdp(cdp_id_1).expect("Must exist");
-        // debt principal is 10 + 1 fee
-        assert_eq!(cdp_1.debt, balance!(10));
-        let cdp_2 = KensetsuPallet::cdp(cdp_id_2).expect("Must exist");
-        // debt principal is 20 + 2 fee
-        assert_eq!(cdp_2.debt, balance!(20));
-    });
-}
-
-/// Given: several CDP with debt and time since last interest accrue has passed
-/// When: update risk parameters with new rate
-/// Then: interest is updated, accrue is called
-#[test]
-fn test_update_collateral_risk_parameters_sunny_day() {
-    new_test_ext().execute_with(|| {
-        set_up_risk_manager();
-        // old stability fee is 10%
-        set_xor_as_collateral_type(
-            Balance::MAX,
-            Perbill::from_percent(50),
-            FixedU128::from_float(0.1),
-        );
-        let cdp_id_1 = create_cdp_for_xor(alice(), balance!(100), balance!(10));
-        let cdp_id_2 = create_cdp_for_xor(alice(), balance!(100), balance!(20));
-        // new parameters with stability fee 20%
-        let parameters = CollateralRiskParameters {
-            hard_cap: balance!(100),
-            liquidation_ratio: Perbill::from_percent(50),
-            max_liquidation_lot: balance!(100),
+        let new_parameters = CollateralRiskParameters {
+            hard_cap: balance!(200),
+            liquidation_ratio: Perbill::from_percent(10),
+            max_liquidation_lot: balance!(200),
             stability_fee_rate: FixedU128::from_float(0.2),
         };
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
-
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(2);
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
             risk_manager(),
-            XOR,
-            parameters
+            asset_id,
+            new_parameters
         ));
 
         System::assert_has_event(
             Event::CollateralRiskParametersUpdated {
                 collateral_asset_id: XOR,
-                risk_parameters: parameters,
+                risk_parameters: new_parameters,
             }
             .into(),
         );
-        let actual_parameters = CollateralInfos::<TestRuntime>::get(XOR)
-            .expect("Must succeed")
-            .risk_parameters;
-        assert_eq!(actual_parameters, parameters);
-        // interest is not updated itself, need trigger to update
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id_1));
-        // check that interest was updated with old value 10%
-        let cdp_1 = KensetsuPallet::cdp(cdp_id_1).expect("Must exist");
-        // debt principal is 10 + 1 fee
-        assert_eq!(cdp_1.debt, balance!(11));
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id_2));
-        let cdp_2 = KensetsuPallet::cdp(cdp_id_2).expect("Must exist");
-        // debt principal is 20 + 2 fee
-        assert_eq!(cdp_2.debt, balance!(22));
+        let new_info = CollateralInfos::<TestRuntime>::get(asset_id).expect("Must succeed");
+        assert_eq!(new_info.risk_parameters, new_parameters);
+        // interest coefficient is not changed
+        assert_eq!(new_info.last_fee_update_time, 2);
+        assert_eq!(
+            new_info.interest_coefficient,
+            FixedU128::one() * (FixedU128::one() + stability_fee_rate)
+        );
     });
 }
 
