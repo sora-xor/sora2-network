@@ -266,7 +266,7 @@ pub(crate) mod execute_market_order {
     }
 
     /// returns `(expected_base, expected_quote)` if executing all orders in `side`
-    pub(crate) fn expected_base_quote<T: Config>(
+    pub(crate) fn expected_side_total<T: Config>(
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         side: PriceVariant,
         is_divisible: bool,
@@ -319,7 +319,7 @@ pub(crate) mod execute_market_order {
             )
             .unwrap();
         let (expected_base, expected_quote) =
-            expected_base_quote::<T>(order_book_id, side, is_divisible);
+            expected_side_total::<T>(order_book_id, side, is_divisible);
         assert_eq!(amount, expected_base);
         Context {
             caller,
@@ -484,7 +484,7 @@ pub(crate) mod exchange {
             )
             .unwrap();
         let (expected_base, expected_quote) =
-            execute_market_order::expected_base_quote::<T>(order_book_id, side, is_divisible);
+            execute_market_order::expected_side_total::<T>(order_book_id, side, is_divisible);
         assert_eq!(amount, expected_base);
         let expected_orders = sp_std::cmp::min(
             settings.executed_orders_limit,
