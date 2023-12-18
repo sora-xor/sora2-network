@@ -121,8 +121,9 @@ pub mod pallet {
         /// The soft ratio between min & max order amounts.
         /// In particular, it defines the optimal number of limit orders that could be executed by one big market order in one block.
         const SOFT_MIN_MAX_RATIO: usize;
-        /// The soft ratio between min & max order amounts.
+        /// The hard ratio between min & max order amounts.
         /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
+        /// During update of parameters, the limits must satisfy this ratio.
         const HARD_MIN_MAX_RATIO: usize;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -287,8 +288,8 @@ pub mod pallet {
     >;
 
     /// Earliest block with incomplete expirations;
-    /// Weight limit might not allow to finish all expirations for a block, so
-    /// they might be operated later.
+    /// Weight limit might not allow to finish all expirations for a block
+    /// so they might be operated later.
     #[pallet::storage]
     #[pallet::getter(fn incomplete_expirations_since)]
     pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, T::BlockNumber>;
@@ -493,7 +494,7 @@ pub mod pallet {
         MarketOrdersAllowedOnlyForIndivisibleAssets,
         /// It is possible to delete an order-book only with the statuses: OnlyCancel or Stop
         ForbiddenStatusToDeleteOrderBook,
-        // It is possible to delete only empty order-book
+        /// It is possible to delete only empty order-book
         OrderBookIsNotEmpty,
         /// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
         ForbiddenStatusToUpdateOrderBook,
@@ -1356,8 +1357,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         data.commit();
 
-        let weight = <T as Config>::WeightInfo::exchange_single_order()
-            .saturating_mul(executed_orders_count as u64);
+        let weight = <T as Config>::WeightInfo::exchange(executed_orders_count as u32);
 
         Ok((result, weight))
     }
@@ -1462,9 +1462,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn exchange_weight() -> Weight {
-        // SOFT_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
-        <T as Config>::WeightInfo::exchange_single_order()
-            .saturating_mul(<T as Config>::SOFT_MIN_MAX_RATIO as u64)
+        // SOFT_MIN_MAX_RATIO is approximately the max number of limit orders
+        // that can be executed by one market order
+        <T as Config>::WeightInfo::exchange(T::SOFT_MIN_MAX_RATIO.try_into().unwrap())
     }
 
     fn check_rewards_weight() -> Weight {

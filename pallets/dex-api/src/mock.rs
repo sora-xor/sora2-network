@@ -30,12 +30,13 @@
 
 use crate::{self as dex_api, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
-use common::prelude::Balance;
+use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed,
-    LiquiditySourceType, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+    LiquiditySource, LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
+use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
@@ -146,6 +147,103 @@ impl frame_system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
+// We need non-zero weight for testing weight calculation
+pub struct WeightedEmptyLiquiditySource;
+
+impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
+    for WeightedEmptyLiquiditySource
+{
+    fn can_exchange(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+    ) -> bool {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::can_exchange(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+        )
+    }
+
+    fn quote(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::quote(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+        )
+    }
+
+    fn exchange(
+        sender: &AccountId,
+        receiver: &AccountId,
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        swap_amount: SwapAmount<Balance>,
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+        <()>::exchange(
+            sender,
+            receiver,
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            swap_amount,
+        )
+    }
+
+    fn check_rewards(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        input_amount: Balance,
+        output_amount: Balance,
+    ) -> Result<(Vec<(Balance, AssetId, RewardReason)>, Weight), DispatchError> {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::check_rewards(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            input_amount,
+            output_amount,
+        )
+    }
+
+    fn quote_without_impact(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::quote_without_impact(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+        )
+    }
+
+    fn quote_weight() -> Weight {
+        Weight::from_all(1)
+    }
+
+    fn exchange_weight() -> Weight {
+        Weight::from_all(10)
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::from_all(100)
+    }
+}
+
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type MockLiquiditySource =
@@ -156,13 +254,13 @@ impl Config for Runtime {
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
-    type MulticollateralBondingCurvePool = ();
+    type MulticollateralBondingCurvePool = WeightedEmptyLiquiditySource;
+    type XSTPool = WeightedEmptyLiquiditySource;
     type XYKPool = pool_xyk::Pallet<Runtime>;
-    type XSTPool = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 
     #[cfg(feature = "ready-to-test")] // order-book
-    type OrderBook = ();
+    type OrderBook = WeightedEmptyLiquiditySource;
 
     type WeightInfo = ();
 }

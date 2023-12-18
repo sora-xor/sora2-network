@@ -253,19 +253,16 @@ impl<T: Config>
     }
 
     fn exchange_weight() -> Weight {
-        #[allow(unused_mut)] // order-book
-        #[allow(unused_assignments)] // order-book
-        let mut weight = Weight::zero();
-
-        #[cfg(feature = "ready-to-test")] // order-book
-        {
-            weight = T::OrderBook::exchange_weight();
-        }
-
-        weight
-            .max(T::XSTPool::exchange_weight())
-            .max(T::XYKPool::exchange_weight())
-            .max(T::MulticollateralBondingCurvePool::exchange_weight())
+        Self::exchange_weight_filtered(
+            [
+                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::MulticollateralBondingCurvePool,
+                LiquiditySourceType::XSTPool,
+                #[cfg(feature = "ready-to-test")] // order-book
+                LiquiditySourceType::OrderBook,
+            ]
+            .into_iter(),
+        )
     }
 
     fn check_rewards_weight() -> Weight {
@@ -306,7 +303,7 @@ impl<T: Config>
     fn list_liquidity_sources(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+        filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>, DispatchError> {
         let supported_types = Self::get_supported_types();
         T::DexInfoProvider::ensure_dex_exists(&filter.dex_id)?;
@@ -329,6 +326,27 @@ impl<T: Config>
                 }
             })
             .collect())
+    }
+
+    fn exchange_weight_filtered(
+        enabled_sources: impl Iterator<Item = LiquiditySourceType>,
+    ) -> Weight {
+        enabled_sources
+            .map(|source| match source {
+                LiquiditySourceType::XYKPool => T::XYKPool::exchange_weight(),
+                LiquiditySourceType::MulticollateralBondingCurvePool => {
+                    T::MulticollateralBondingCurvePool::exchange_weight()
+                }
+                LiquiditySourceType::XSTPool => T::XSTPool::exchange_weight(),
+                #[cfg(feature = "ready-to-test")] // order-book
+                LiquiditySourceType::OrderBook => T::OrderBook::exchange_weight(),
+                LiquiditySourceType::BondingCurvePool
+                | LiquiditySourceType::MockPool
+                | LiquiditySourceType::MockPool2
+                | LiquiditySourceType::MockPool3
+                | LiquiditySourceType::MockPool4 => Weight::zero(),
+            })
+            .fold(Weight::zero(), |acc, next| acc.max(next))
     }
 }
 pub use pallet::*;

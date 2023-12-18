@@ -44,6 +44,7 @@ use common::PriceVariant;
 use frame_support::log::{debug, trace};
 use frame_support::traits::{Get, Time};
 use sp_runtime::traits::{CheckedMul, SaturatedConversion};
+use sp_std::iter::Peekable;
 use sp_std::{collections::btree_map::BTreeMap, iter::repeat, vec::Vec};
 
 /// iterator over the smallest possible bid prices (ascending)
@@ -118,6 +119,9 @@ pub struct FillSettings<T: Config> {
     pub max_orders_per_price: u32,
     pub max_orders_per_user: u32,
     pub max_expiring_orders_per_block: u32,
+    /// Additional constraint from order book that limits number of executed orders at once.
+    /// Does not directly correlate to storage constraints, unlike other parameters.
+    pub executed_orders_limit: u32,
 }
 
 impl<T: Config> FillSettings<T> {
@@ -126,6 +130,7 @@ impl<T: Config> FillSettings<T> {
         max_orders_per_price: u32,
         max_orders_per_user: u32,
         max_expiring_orders_per_block: u32,
+        executed_orders_limit: u32,
     ) -> Self {
         Self {
             now: T::Time::now(),
@@ -133,6 +138,7 @@ impl<T: Config> FillSettings<T> {
             max_orders_per_price,
             max_orders_per_user,
             max_expiring_orders_per_block,
+            executed_orders_limit,
         }
     }
 
@@ -142,6 +148,7 @@ impl<T: Config> FillSettings<T> {
             <T as Config>::MaxLimitOrdersForPrice::get(),
             <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
             <T as Config>::MaxExpiringOrdersPerBlock::get(),
+            <T as Config>::HARD_MIN_MAX_RATIO.try_into().unwrap(),
         )
     }
 }
@@ -152,10 +159,12 @@ pub fn fill_expiration_schedule<T: Config>(
     order_book: &mut OrderBook<T>,
     side: PriceVariant,
     order_amount: OrderVolume,
-    users: &mut impl Iterator<Item = T::AccountId>,
+    users: &mut Peekable<impl Iterator<Item = T::AccountId>>,
     lifespan: u64,
 ) {
-    let mut lifespans = repeat(lifespan).take(settings.max_expiring_orders_per_block as usize);
+    let mut lifespans = repeat(lifespan)
+        .take(settings.max_expiring_orders_per_block as usize)
+        .peekable();
     match side {
         PriceVariant::Buy => fill_order_book_side(
             data,
@@ -187,7 +196,7 @@ pub fn fill_user_orders<T: Config>(
     side: PriceVariant,
     order_amount: OrderVolume,
     author: T::AccountId,
-    lifespans: &mut impl Iterator<Item = u64>,
+    lifespans: &mut Peekable<impl Iterator<Item = u64>>,
 ) {
     let FillSettings {
         now: _,
@@ -195,6 +204,7 @@ pub fn fill_user_orders<T: Config>(
         max_orders_per_price: _,
         max_orders_per_user,
         max_expiring_orders_per_block: _,
+        executed_orders_limit: _,
     } = settings;
     // Since we fill orders of the user, it is the only author
     match side {
@@ -225,7 +235,9 @@ pub fn fill_user_orders<T: Config>(
         )
         .unwrap(),
     }
-    let mut users = repeat(author).take(max_orders_per_user.try_into().unwrap());
+    let mut users = repeat(author)
+        .take(max_orders_per_user.try_into().unwrap())
+        .peekable();
     match side {
         PriceVariant::Buy => fill_order_book_side(
             data,
@@ -262,8 +274,8 @@ pub fn fill_order_book_side<T: Config>(
     side: PriceVariant,
     orders_amount: OrderVolume,
     prices: &mut impl Iterator<Item = OrderPrice>,
-    users: &mut impl Iterator<Item = T::AccountId>,
-    lifespans: &mut impl Iterator<Item = u64>,
+    users: &mut Peekable<impl Iterator<Item = T::AccountId>>,
+    lifespans: &mut Peekable<impl Iterator<Item = u64>>,
 ) {
     let current_block = frame_system::Pallet::<T>::block_number();
     let mut total_payment = Payment::new(order_book.order_book_id);
@@ -283,6 +295,14 @@ pub fn fill_order_book_side<T: Config>(
             &mut total_payment,
             &mut to_expire,
         );
+        if users.peek().is_none() {
+            debug!("`users` iterator exhausted, stopping placement");
+            break;
+        }
+        if lifespans.peek().is_none() {
+            debug!("`lifespans` iterator exhausted, stopping placement");
+            break;
+        }
     }
     total_payment.execute_all::<Pallet<T>, Pallet<T>>().unwrap();
     for (expires_at, orders) in to_expire.into_iter() {
@@ -304,8 +324,8 @@ pub fn fill_price<T: Config>(
     side: PriceVariant,
     orders_amount: OrderVolume,
     price: OrderPrice,
-    users: &mut impl Iterator<Item = T::AccountId>,
-    lifespans: &mut impl Iterator<Item = u64>,
+    users: &mut Peekable<impl Iterator<Item = T::AccountId>>,
+    lifespans: &mut Peekable<impl Iterator<Item = u64>>,
 ) {
     let current_block = frame_system::Pallet::<T>::block_number();
     let mut total_payment = Payment::new(order_book.order_book_id);
@@ -347,21 +367,19 @@ fn fill_price_inner<T: Config>(
     side: PriceVariant,
     orders_amount: OrderVolume,
     price: OrderPrice,
-    users: &mut impl Iterator<Item = T::AccountId>,
-    lifespans: &mut impl Iterator<Item = u64>,
+    users: &mut Peekable<impl Iterator<Item = T::AccountId>>,
+    lifespans: &mut Peekable<impl Iterator<Item = u64>>,
     current_block: T::BlockNumber,
     total_payment: &mut Payment<T::AssetId, T::AccountId, T::DEXId>,
     to_expire: &mut BTreeMap<T::BlockNumber, Vec<T::OrderId>>,
 ) {
     for _ in 0..settings.max_orders_per_price {
         let Some(user) = users.next() else {
-                debug!("`users` iterator exhausted, stopping placement");
-                break
-            };
+            break
+        };
         let Some(lifespan) = lifespans.next() else {
-                debug!("`users` iterator exhausted, stopping placement");
-                break
-            };
+            break
+        };
         let order = LimitOrder::<T>::new(
             order_book.next_order_id(),
             user.clone(),
@@ -419,8 +437,8 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
     place_buy: bool,
     place_sell: bool,
 ) -> (
-    impl Iterator<Item = T::AccountId>,
-    impl Iterator<Item = u64>,
+    Peekable<impl Iterator<Item = T::AccountId>>,
+    Peekable<impl Iterator<Item = u64>>,
 ) {
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let max_price = order_book.tick_size * Scalar(2 * settings.max_side_price_count);
@@ -431,9 +449,11 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
         order_amount,
         max_price,
         settings.max_orders_per_user,
-    );
+    )
+    .peekable();
     // Lifespans for each placed order
-    let mut lifespans = lifespans_iterator::<T>(settings.max_expiring_orders_per_block, 1);
+    let mut lifespans =
+        lifespans_iterator::<T>(settings.max_expiring_orders_per_block, 1).peekable();
 
     if place_buy {
         let mut bid_prices =
@@ -464,5 +484,5 @@ pub fn fill_order_book_worst_case<T: Config + assets::Config>(
             &mut lifespans,
         );
     }
-    (users, lifespans)
+    (users.peekable(), lifespans.peekable())
 }

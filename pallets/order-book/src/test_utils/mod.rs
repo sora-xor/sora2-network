@@ -45,6 +45,7 @@ use order_book_imported::{
 use assets::AssetIdOf;
 use common::{balance, AssetInfoProvider, Balance, DexIdOf, PriceVariant};
 use frame_support::assert_ok;
+use frame_support::dispatch::DispatchResult;
 use frame_system::RawOrigin;
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
@@ -114,14 +115,13 @@ pub fn update_order_book_with_set_status<T: Config>(
     step_lot_size: Option<OrderVolume>,
     min_lot_size: Option<OrderVolume>,
     max_lot_size: Option<OrderVolume>,
-) {
+) -> DispatchResult {
     let original_status = order_book.status;
     Pallet::<T>::change_orderbook_status(
         RawOrigin::Root.into(),
         order_book.order_book_id,
         OrderBookStatus::Stop,
-    )
-    .unwrap();
+    )?;
     let tick_size = tick_size.unwrap_or(order_book.tick_size);
     let step_lot_size = step_lot_size.unwrap_or(order_book.step_lot_size);
     let min_lot_size = min_lot_size.unwrap_or(order_book.min_lot_size);
@@ -133,19 +133,18 @@ pub fn update_order_book_with_set_status<T: Config>(
         *step_lot_size.balance(),
         *min_lot_size.balance(),
         *max_lot_size.balance(),
-    )
-    .unwrap();
+    )?;
     Pallet::<T>::change_orderbook_status(
         RawOrigin::Root.into(),
         order_book.order_book_id,
         original_status,
-    )
-    .unwrap();
+    )?;
 
     order_book.tick_size = tick_size;
     order_book.step_lot_size = step_lot_size;
     order_book.min_lot_size = min_lot_size;
     order_book.max_lot_size = max_lot_size;
+    Ok(())
 }
 
 pub fn lock_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>) {
