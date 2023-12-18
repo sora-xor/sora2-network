@@ -309,8 +309,6 @@ benchmarks! {
         kensetsu::Pallet::<T>::accrue(RawOrigin::Signed(caller::<T>()).into(), cdp_id).unwrap();
     }
 
-    // This benchmark doesn't count subsequent accrue() calls, assuming that risk manager will not
-    // abuse this call.
     update_collateral_risk_parameters {
         kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
             .expect("Must set risk manager");
