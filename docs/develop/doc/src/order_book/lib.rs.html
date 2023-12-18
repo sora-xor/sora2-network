@@ -1609,8 +1609,9 @@
         <span class="doccomment">/// The soft ratio between min &amp; max order amounts.
         /// In particular, it defines the optimal number of limit orders that could be executed by one big market order in one block.
         </span><span class="kw">const </span>SOFT_MIN_MAX_RATIO: usize;
-        <span class="doccomment">/// The soft ratio between min &amp; max order amounts.
+        <span class="doccomment">/// The hard ratio between min &amp; max order amounts.
         /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
+        /// During update of parameters, the limits must satisfy this ratio.
         </span><span class="kw">const </span>HARD_MIN_MAX_RATIO: usize;
 
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
@@ -1775,8 +1776,8 @@
     &gt;;
 
     <span class="doccomment">/// Earliest block with incomplete expirations;
-    /// Weight limit might not allow to finish all expirations for a block, so
-    /// they might be operated later.
+    /// Weight limit might not allow to finish all expirations for a block
+    /// so they might be operated later.
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>incomplete_expirations_since)]
     </span><span class="kw">pub type </span>IncompleteExpirationsSince&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, T::BlockNumber&gt;;
@@ -1981,7 +1982,7 @@
         </span>MarketOrdersAllowedOnlyForIndivisibleAssets,
         <span class="doccomment">/// It is possible to delete an order-book only with the statuses: OnlyCancel or Stop
         </span>ForbiddenStatusToDeleteOrderBook,
-        <span class="comment">// It is possible to delete only empty order-book
+        <span class="doccomment">/// It is possible to delete only empty order-book
         </span>OrderBookIsNotEmpty,
         <span class="doccomment">/// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
         </span>ForbiddenStatusToUpdateOrderBook,
@@ -2844,8 +2845,7 @@
 
         data.commit();
 
-        <span class="kw">let </span>weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange_single_order()
-            .saturating_mul(executed_orders_count <span class="kw">as </span>u64);
+        <span class="kw">let </span>weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange(executed_orders_count <span class="kw">as </span>u32);
 
         <span class="prelude-val">Ok</span>((result, weight))
     }
@@ -2950,9 +2950,9 @@
     }
 
     <span class="kw">fn </span>exchange_weight() -&gt; Weight {
-        <span class="comment">// SOFT_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
-        </span>&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange_single_order()
-            .saturating_mul(&lt;T <span class="kw">as </span>Config&gt;::SOFT_MIN_MAX_RATIO <span class="kw">as </span>u64)
+        <span class="comment">// SOFT_MIN_MAX_RATIO is approximately the max number of limit orders
+        // that can be executed by one market order
+        </span>&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange(T::SOFT_MIN_MAX_RATIO.try_into().unwrap())
     }
 
     <span class="kw">fn </span>check_rewards_weight() -&gt; Weight {

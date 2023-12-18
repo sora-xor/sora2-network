@@ -644,6 +644,14 @@
 <a href="#629" id="629">629</a>
 <a href="#630" id="630">630</a>
 <a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -996,7 +1004,7 @@
 
         execute_market_order {
             <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
-            <span class="kw">let </span>context = periphery::execute_market_order::init(settings.clone());
+            <span class="kw">let </span>context = periphery::execute_market_order_scattered::init(settings);
         }: {
             OrderBookPallet::&lt;T&gt;::execute_market_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -1006,7 +1014,7 @@
             ).unwrap();
         }
         verify {
-            periphery::execute_market_order::verify(settings, context);
+            periphery::execute_market_order_scattered::verify(context);
         }
 
         quote {
@@ -1026,9 +1034,11 @@
             <span class="comment">// nothing changed
         </span>}
 
-        exchange_single_order {
-            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
-            <span class="kw">let </span>context = periphery::exchange_single_order::init(settings.clone());
+        exchange {
+            <span class="kw">let </span>e <span class="kw">in </span><span class="number">1u32 </span>.. &lt;T <span class="kw">as </span>order_book_imported::Config&gt;::HARD_MIN_MAX_RATIO.try_into().unwrap();
+            <span class="kw">let </span><span class="kw-2">mut </span>settings = FillSettings::&lt;T&gt;::max();
+            settings.executed_orders_limit = e;
+            <span class="kw">let </span>context = periphery::exchange_scattered::init(settings);
         }: {
             OrderBookPallet::&lt;T&gt;::exchange(
                 <span class="kw-2">&amp;</span>context.caller,
@@ -1043,7 +1053,7 @@
             .unwrap();
         }
         verify {
-            periphery::exchange_single_order::verify(settings, context);
+            periphery::exchange_scattered::verify(context);
         }
 
         align_single_order {
@@ -1132,7 +1142,7 @@
         // python-codegen approach is chosen (:
 
         // the workflow is the following:
-        // 1. edit presets in ./preparation.rs (with names &quot;preset_*&quot; where * is 1,2,3,4,5,...)
+        // 1. edit presets in ./periphery/preparation.rs (with names &quot;preset_*&quot; where * is 1,2,3,4,5,...)
         // 2. in ./generate_benchmarks.py set `max_preset` to the highest preset number
         // 3. run ./generate_benchmarks.py
         // 4. paste output here (instead of existing benches)
@@ -1253,9 +1263,12 @@
 
 
         <span class="attr">#[extra]
-        </span>exchange_single_order_1 {
-            <span class="kw">use </span>periphery::exchange_single_order::{init, Context};
-            <span class="kw">let </span>Context { caller, order_book_id: id, expected_in, expected_out, .. } = init::&lt;T&gt;(preset_1());
+        </span>exchange_1 {
+            <span class="kw">let </span>e <span class="kw">in </span><span class="number">1u32 </span>.. &lt;T <span class="kw">as </span>order_book_imported::Config&gt;::HARD_MIN_MAX_RATIO.try_into().unwrap();
+            <span class="kw">use </span>periphery::exchange_scattered::{init, Context};
+            <span class="kw">let </span><span class="kw-2">mut </span>settings = preset_1::&lt;T&gt;();
+            settings.executed_orders_limit = e;
+            <span class="kw">let </span>Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings);
         } : {
             OrderBookPallet::&lt;T&gt;::exchange(
                 <span class="kw-2">&amp;</span>caller, <span class="kw-2">&amp;</span>caller, <span class="kw-2">&amp;</span>id.dex_id, <span class="kw-2">&amp;</span>id.base, <span class="kw-2">&amp;</span>id.quote,
@@ -1264,9 +1277,12 @@
         }
 
         <span class="attr">#[extra]
-        </span>exchange_single_order_2 {
-            <span class="kw">use </span>periphery::exchange_single_order::{init, Context};
-            <span class="kw">let </span>Context { caller, order_book_id: id, expected_in, expected_out, .. } = init::&lt;T&gt;(preset_2());
+        </span>exchange_2 {
+            <span class="kw">let </span>e <span class="kw">in </span><span class="number">1u32 </span>.. &lt;T <span class="kw">as </span>order_book_imported::Config&gt;::HARD_MIN_MAX_RATIO.try_into().unwrap();
+            <span class="kw">use </span>periphery::exchange_scattered::{init, Context};
+            <span class="kw">let </span><span class="kw-2">mut </span>settings = preset_1::&lt;T&gt;();
+            settings.executed_orders_limit = e;
+            <span class="kw">let </span>Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings);
         } : {
             OrderBookPallet::&lt;T&gt;::exchange(
                 <span class="kw-2">&amp;</span>caller, <span class="kw-2">&amp;</span>caller, <span class="kw-2">&amp;</span>id.dex_id, <span class="kw-2">&amp;</span>id.base, <span class="kw-2">&amp;</span>id.quote,

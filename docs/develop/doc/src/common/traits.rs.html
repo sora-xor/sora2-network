@@ -1124,6 +1124,10 @@
 <a href="#1109" id="1109">1109</a>
 <a href="#1110" id="1110">1110</a>
 <a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1587,8 +1591,12 @@
     </span><span class="kw">fn </span>list_liquidity_sources(
         input_asset_id: <span class="kw-2">&amp;</span>AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>AssetId,
-        filter: LiquiditySourceFilter&lt;DEXId, LiquiditySourceIndex&gt;,
+        filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;DEXId, LiquiditySourceIndex&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LiquiditySourceId&lt;DEXId, LiquiditySourceIndex&gt;&gt;, Error&gt;;
+
+    <span class="kw">fn </span>exchange_weight_filtered(
+        enabled_sources: <span class="kw">impl </span>Iterator&lt;Item = LiquiditySourceIndex&gt;,
+    ) -&gt; Weight;
 }
 
 <span class="kw">pub type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;

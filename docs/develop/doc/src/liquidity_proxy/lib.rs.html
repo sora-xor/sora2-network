@@ -2650,6 +2650,51 @@
 <a href="#2635" id="2635">2635</a>
 <a href="#2636" id="2636">2636</a>
 <a href="#2637" id="2637">2637</a>
+<a href="#2638" id="2638">2638</a>
+<a href="#2639" id="2639">2639</a>
+<a href="#2640" id="2640">2640</a>
+<a href="#2641" id="2641">2641</a>
+<a href="#2642" id="2642">2642</a>
+<a href="#2643" id="2643">2643</a>
+<a href="#2644" id="2644">2644</a>
+<a href="#2645" id="2645">2645</a>
+<a href="#2646" id="2646">2646</a>
+<a href="#2647" id="2647">2647</a>
+<a href="#2648" id="2648">2648</a>
+<a href="#2649" id="2649">2649</a>
+<a href="#2650" id="2650">2650</a>
+<a href="#2651" id="2651">2651</a>
+<a href="#2652" id="2652">2652</a>
+<a href="#2653" id="2653">2653</a>
+<a href="#2654" id="2654">2654</a>
+<a href="#2655" id="2655">2655</a>
+<a href="#2656" id="2656">2656</a>
+<a href="#2657" id="2657">2657</a>
+<a href="#2658" id="2658">2658</a>
+<a href="#2659" id="2659">2659</a>
+<a href="#2660" id="2660">2660</a>
+<a href="#2661" id="2661">2661</a>
+<a href="#2662" id="2662">2662</a>
+<a href="#2663" id="2663">2663</a>
+<a href="#2664" id="2664">2664</a>
+<a href="#2665" id="2665">2665</a>
+<a href="#2666" id="2666">2666</a>
+<a href="#2667" id="2667">2667</a>
+<a href="#2668" id="2668">2668</a>
+<a href="#2669" id="2669">2669</a>
+<a href="#2670" id="2670">2670</a>
+<a href="#2671" id="2671">2671</a>
+<a href="#2672" id="2672">2672</a>
+<a href="#2673" id="2673">2673</a>
+<a href="#2674" id="2674">2674</a>
+<a href="#2675" id="2675">2675</a>
+<a href="#2676" id="2676">2676</a>
+<a href="#2677" id="2677">2677</a>
+<a href="#2678" id="2678">2678</a>
+<a href="#2679" id="2679">2679</a>
+<a href="#2680" id="2680">2680</a>
+<a href="#2681" id="2681">2681</a>
+<a href="#2682" id="2682">2682</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3028,10 +3073,10 @@
 
         common::with_transaction(|| {
             <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>dex_id)<span class="question-mark">?</span>;
-            <span class="kw">let </span>maybe_path =
+            <span class="kw">let </span>maybe_paths =
                 ExchangePath::&lt;T&gt;::new_trivial(<span class="kw-2">&amp;</span>dex_info, <span class="kw-2">*</span>input_asset_id, <span class="kw-2">*</span>output_asset_id);
             <span class="kw">let </span>total_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::new_trivial();
-            maybe_path
+            maybe_paths
                 .map_or(<span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnavailableExchangePath.into()), |paths| {
                     <span class="self">Self</span>::exchange_sequence(<span class="kw-2">&amp;</span>dex_info, sender, receiver, paths, amount, <span class="kw-2">&amp;</span>filter)
                 })
@@ -3609,6 +3654,25 @@
         <span class="prelude-val">Ok</span>(accumulated_without_impact)
     }
 
+    <span class="doccomment">/// Obtains only sources available for `quote`
+    </span><span class="kw">fn </span>list_quote_liquidity_sources(
+        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;, DispatchError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>sources =
+            T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)<span class="question-mark">?</span>;
+        <span class="kw">let </span>locked = T::LockedLiquiditySourcesManager::get();
+        sources.retain(|x| !locked.contains(<span class="kw-2">&amp;</span>x.liquidity_source_index));
+        <span class="comment">// The temp solution is to exclude OrderBook source if there are multiple sources.
+        // Will be redesigned in #447
+        </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
+        </span><span class="kw">if </span>sources.len() &gt; <span class="number">1 </span>{
+            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
+        }
+        <span class="prelude-val">Ok</span>(sources)
+    }
+
     <span class="doccomment">/// Computes the optimal distribution across available liquidity sources to execute the requested trade
     /// given the input and output assets, the trade amount and a liquidity sources filter.
     ///
@@ -3635,19 +3699,9 @@
         ),
         DispatchError,
     &gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>sources =
-            T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)<span class="question-mark">?</span>;
+        <span class="kw">let </span>sources = <span class="self">Self</span>::list_quote_liquidity_sources(input_asset_id, output_asset_id, <span class="kw-2">&amp;</span>filter)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>total_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::list_liquidity_sources();
-        <span class="kw">let </span>locked = T::LockedLiquiditySourcesManager::get();
-        sources.retain(|x| !locked.contains(<span class="kw-2">&amp;</span>x.liquidity_source_index));
         <span class="macro">ensure!</span>(!sources.is_empty(), Error::&lt;T&gt;::UnavailableExchangePath);
-
-        <span class="comment">// The temp solution is to exclude OrderBook source if there are multiple sources.
-        // Will be redesigned in #447
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-        </span><span class="kw">if </span>sources.len() &gt; <span class="number">1 </span>{
-            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
-        }
 
         <span class="comment">// Check if we have exactly one source =&gt; no split required
         </span><span class="kw">if </span>sources.len() == <span class="number">1 </span>{
@@ -3845,6 +3899,7 @@
         input: <span class="kw-2">&amp;</span>T::AssetId,
         output: <span class="kw-2">&amp;</span>T::AssetId,
         swap_variant: SwapVariant,
+        filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; Weight {
         <span class="comment">// Get DEX info or return weight that will be rejected
         </span><span class="kw">let </span><span class="prelude-val">Ok</span>(dex_info) = T::DexInfoProvider::get_dex_info(dex_id) <span class="kw">else </span>{
@@ -3852,12 +3907,11 @@
         };
 
         <span class="comment">// Get trivial path or return weight that will be rejected
-        </span><span class="kw">let </span><span class="prelude-val">Some</span>(trivial_path) = ExchangePath::&lt;T&gt;::new_trivial(<span class="kw-2">&amp;</span>dex_info, <span class="kw-2">*</span>input, <span class="kw-2">*</span>output) <span class="kw">else </span>{
+        </span><span class="kw">let </span><span class="prelude-val">Some</span>(trivial_paths) = ExchangePath::&lt;T&gt;::new_trivial(<span class="kw-2">&amp;</span>dex_info, <span class="kw-2">*</span>input, <span class="kw-2">*</span>output) <span class="kw">else </span>{
             <span class="kw">return </span>REJECTION_WEIGHT;
         };
 
         <span class="kw">let </span>quote_weight = T::LiquidityRegistry::quote_weight();
-        <span class="kw">let </span>exchange_weight = T::LiquidityRegistry::exchange_weight();
         <span class="kw">let </span>check_rewards_weight = T::LiquidityRegistry::check_rewards_weight();
 
         <span class="kw">let </span>quote_single_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::list_liquidity_sources()
@@ -3868,7 +3922,7 @@
 
         <span class="comment">// in quote_pairs_with_flexible_amount()
         </span>weight =
-            weight.saturating_add(quote_single_weight.saturating_mul(trivial_path.len() <span class="kw">as </span>u64));
+            weight.saturating_add(quote_single_weight.saturating_mul(trivial_paths.len() <span class="kw">as </span>u64));
 
         <span class="comment">// in calculate_input_amount()
         </span>weight = weight.saturating_add(<span class="kw">match </span>swap_variant {
@@ -3878,9 +3932,29 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>weights = Vec::new();
 
-        <span class="kw">for </span>path <span class="kw">in </span>trivial_path {
+        <span class="kw">for </span>path <span class="kw">in </span>trivial_paths {
             <span class="kw">if </span>path.<span class="number">0</span>.len() &gt; <span class="number">0 </span>{
-                <span class="kw">let </span>total_exchange_weight = exchange_weight.saturating_mul(path.<span class="number">0</span>.len() <span class="kw">as </span>u64 - <span class="number">1</span>);
+                <span class="kw">let </span>path_weights =
+                    path.<span class="number">0
+                        </span>.iter()
+                        .tuple_windows()
+                        .map(|(input_asset_id, output_asset_id)| {
+                            <span class="kw">let </span>exchange_sources = <span class="self">Self</span>::list_quote_liquidity_sources(
+                                input_asset_id,
+                                output_asset_id,
+                                <span class="kw-2">&amp;</span>filter,
+                            )
+                            .unwrap_or(Vec::new()); <span class="comment">// no sources -&gt; no exchanges -&gt; no weight
+                            </span><span class="kw">let </span>single_exchange_weight =
+                                T::LiquidityRegistry::exchange_weight_filtered(
+                                    exchange_sources.iter().map(|s| s.liquidity_source_index),
+                                );
+                            single_exchange_weight
+                        });
+                <span class="kw">let </span>total_exchange_weight = path_weights
+                    .fold(Weight::zero(), |acc, next_exchange_weight| {
+                        acc.saturating_add(next_exchange_weight)
+                    });
                 weights.push(
                     weight
                         .saturating_add(quote_single_weight)
@@ -3910,9 +3984,16 @@
         input: <span class="kw-2">&amp;</span>T::AssetId,
         output: <span class="kw-2">&amp;</span>T::AssetId,
         swap_variant: SwapVariant,
+        selected_source_types: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceType&gt;,
+        filter_mode: <span class="kw-2">&amp;</span>FilterMode,
     ) -&gt; Weight {
+        <span class="kw">let </span>filter = LiquiditySourceFilter::with_mode(
+            <span class="kw-2">*</span>dex_id,
+            filter_mode.clone(),
+            selected_source_types.clone(),
+        );
         <span class="kw">let </span>inner_exchange_weight =
-            <span class="self">Self</span>::inner_exchange_weight(dex_id, input, output, swap_variant);
+            <span class="self">Self</span>::inner_exchange_weight(dex_id, input, output, swap_variant, filter);
 
         <span class="kw">let </span>weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::check_indivisible_assets()
             .saturating_add(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::is_forbidden_filter())
@@ -3942,16 +4023,25 @@
     </span><span class="kw">pub fn </span>swap_transfer_batch_weight(
         swap_batches: <span class="kw-2">&amp;</span>Vec&lt;SwapBatchInfo&lt;T::AssetId, T::DEXId, T::AccountId&gt;&gt;,
         input: <span class="kw-2">&amp;</span>T::AssetId,
+        selected_source_types: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceType&gt;,
+        filter_mode: <span class="kw-2">&amp;</span>FilterMode,
     ) -&gt; Weight {
         <span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::zero();
 
         <span class="kw">for </span>swap_batch_info <span class="kw">in </span>swap_batches {
             <span class="kw">if </span>input != <span class="kw-2">&amp;</span>swap_batch_info.outcome_asset_id {
+                <span class="kw">let </span>filter = LiquiditySourceFilter::with_mode(
+                    swap_batch_info.dex_id,
+                    filter_mode.clone(),
+                    selected_source_types.clone(),
+                );
+
                 <span class="kw">let </span>inner_exchange_weight = <span class="self">Self</span>::inner_exchange_weight(
                     <span class="kw-2">&amp;</span>swap_batch_info.dex_id,
                     input,
                     <span class="kw-2">&amp;</span>swap_batch_info.outcome_asset_id,
                     SwapVariant::WithDesiredOutput,
+                    filter,
                 );
 
                 weight = weight
@@ -4946,7 +5036,7 @@
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         </span><span class="attr">#[pallet::call_index(<span class="number">0</span>)]
-        #[pallet::weight(Pallet::&lt;T&gt;::swap_weight(dex_id, input_asset_id, output_asset_id, (<span class="kw-2">*</span>swap_amount).into()))]
+        #[pallet::weight(Pallet::&lt;T&gt;::swap_weight(dex_id, input_asset_id, output_asset_id, (<span class="kw-2">*</span>swap_amount).into(), selected_source_types, filter_mode))]
         </span><span class="kw">pub fn </span>swap(
             origin: OriginFor&lt;T&gt;,
             dex_id: T::DEXId,
@@ -4984,7 +5074,7 @@
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         </span><span class="attr">#[pallet::call_index(<span class="number">1</span>)]
-        #[pallet::weight(Pallet::&lt;T&gt;::swap_weight(dex_id, input_asset_id, output_asset_id, (<span class="kw-2">*</span>swap_amount).into()))]
+        #[pallet::weight(Pallet::&lt;T&gt;::swap_weight(dex_id, input_asset_id, output_asset_id, (<span class="kw-2">*</span>swap_amount).into(), selected_source_types, filter_mode))]
         </span><span class="kw">pub fn </span>swap_transfer(
             origin: OriginFor&lt;T&gt;,
             receiver: T::AccountId,
@@ -5027,7 +5117,7 @@
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         </span><span class="attr">#[transactional]
         #[pallet::call_index(<span class="number">2</span>)]
-        #[pallet::weight(Pallet::&lt;T&gt;::swap_transfer_batch_weight(swap_batches, input_asset_id))]
+        #[pallet::weight(Pallet::&lt;T&gt;::swap_transfer_batch_weight(swap_batches, input_asset_id, selected_source_types, filter_mode))]
         </span><span class="kw">pub fn </span>swap_transfer_batch(
             origin: OriginFor&lt;T&gt;,
             swap_batches: Vec&lt;SwapBatchInfo&lt;T::AssetId, T::DEXId, T::AccountId&gt;&gt;,
@@ -5144,7 +5234,7 @@
                 &amp;&amp; max_amount_in &gt; <span class="kw-2">&amp;</span>Balance::zero()
                 &amp;&amp; desired_xor_amount &gt; <span class="kw-2">&amp;</span>Balance::zero()
             {
-                weight = weight.saturating_add(Pallet::&lt;T&gt;::swap_weight(dex_id, asset_id, <span class="kw-2">&amp;</span>common::XOR.into(), SwapVariant::WithDesiredOutput));
+                weight = weight.saturating_add(Pallet::&lt;T&gt;::swap_weight(dex_id, asset_id, <span class="kw-2">&amp;</span>common::XOR.into(), SwapVariant::WithDesiredOutput, selected_source_types, filter_mode));
             }
             weight
         })]

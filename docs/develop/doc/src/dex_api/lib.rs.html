@@ -518,6 +518,24 @@
 <a href="#503" id="503">503</a>
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -773,19 +791,16 @@
     }
 
     <span class="kw">fn </span>exchange_weight() -&gt; Weight {
-        <span class="attr">#[allow(unused_mut)] </span><span class="comment">// order-book
-        </span><span class="attr">#[allow(unused_assignments)] </span><span class="comment">// order-book
-        </span><span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::zero();
-
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-        </span>{
-            weight = T::OrderBook::exchange_weight();
-        }
-
-        weight
-            .max(T::XSTPool::exchange_weight())
-            .max(T::XYKPool::exchange_weight())
-            .max(T::MulticollateralBondingCurvePool::exchange_weight())
+        <span class="self">Self</span>::exchange_weight_filtered(
+            [
+                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::MulticollateralBondingCurvePool,
+                LiquiditySourceType::XSTPool,
+                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
+                </span>LiquiditySourceType::OrderBook,
+            ]
+            .into_iter(),
+        )
     }
 
     <span class="kw">fn </span>check_rewards_weight() -&gt; Weight {
@@ -826,7 +841,7 @@
     <span class="kw">fn </span>list_liquidity_sources(
         input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
+        filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LiquiditySourceId&lt;T::DEXId, LiquiditySourceType&gt;&gt;, DispatchError&gt; {
         <span class="kw">let </span>supported_types = <span class="self">Self</span>::get_supported_types();
         T::DexInfoProvider::ensure_dex_exists(<span class="kw-2">&amp;</span>filter.dex_id)<span class="question-mark">?</span>;
@@ -849,6 +864,27 @@
                 </span>}
             })
             .collect())
+    }
+
+    <span class="kw">fn </span>exchange_weight_filtered(
+        enabled_sources: <span class="kw">impl </span>Iterator&lt;Item = LiquiditySourceType&gt;,
+    ) -&gt; Weight {
+        enabled_sources
+            .map(|source| <span class="kw">match </span>source {
+                LiquiditySourceType::XYKPool =&gt; T::XYKPool::exchange_weight(),
+                LiquiditySourceType::MulticollateralBondingCurvePool =&gt; {
+                    T::MulticollateralBondingCurvePool::exchange_weight()
+                }
+                LiquiditySourceType::XSTPool =&gt; T::XSTPool::exchange_weight(),
+                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
+                </span>LiquiditySourceType::OrderBook =&gt; T::OrderBook::exchange_weight(),
+                LiquiditySourceType::BondingCurvePool
+                | LiquiditySourceType::MockPool
+                | LiquiditySourceType::MockPool2
+                | LiquiditySourceType::MockPool3
+                | LiquiditySourceType::MockPool4 =&gt; Weight::zero(),
+            })
+            .fold(Weight::zero(), |acc, next| acc.max(next))
     }
 }
 <span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
