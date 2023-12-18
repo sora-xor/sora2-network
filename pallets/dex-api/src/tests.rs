@@ -227,40 +227,40 @@ fn test_exchange_weight_filtered_calculates() {
         >>::exchange_weight();
 
         assert_eq!(
-            DexApi::exchange_weight_filtered(vec![].into_iter()),
+            DexApi::exchange_weight_filtered([].into_iter()),
             Weight::zero()
         );
         assert_eq!(
-            DexApi::exchange_weight_filtered(vec![&LiquiditySourceType::XYKPool].into_iter()),
+            DexApi::exchange_weight_filtered([LiquiditySourceType::XYKPool].into_iter()),
             xyk_weight
         );
         assert_eq!(
             DexApi::exchange_weight_filtered(
-                vec![&LiquiditySourceType::MulticollateralBondingCurvePool].into_iter()
+                [LiquiditySourceType::MulticollateralBondingCurvePool].into_iter()
             ),
             multicollateral_weight
         );
         assert_eq!(
-            DexApi::exchange_weight_filtered(vec![&LiquiditySourceType::XSTPool].into_iter()),
+            DexApi::exchange_weight_filtered([LiquiditySourceType::XSTPool].into_iter()),
             xst_weight
         );
         #[cfg(feature = "ready-to-test")] // order-book
         assert_eq!(
-            DexApi::exchange_weight_filtered(vec![&LiquiditySourceType::OrderBook].into_iter()),
+            DexApi::exchange_weight_filtered([LiquiditySourceType::OrderBook].into_iter()),
             order_book_weight
         );
         assert_eq!(
             DexApi::exchange_weight_filtered(
-                vec![&LiquiditySourceType::XYKPool, &LiquiditySourceType::XSTPool].into_iter()
+                [LiquiditySourceType::XYKPool, LiquiditySourceType::XSTPool].into_iter()
             ),
             xyk_weight.max(xst_weight)
         );
         assert_eq!(
             DexApi::exchange_weight_filtered(
-                vec![
-                    &LiquiditySourceType::XYKPool,
-                    &LiquiditySourceType::XSTPool,
-                    &LiquiditySourceType::MulticollateralBondingCurvePool
+                [
+                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::MulticollateralBondingCurvePool
                 ]
                 .into_iter()
             ),
@@ -269,11 +269,11 @@ fn test_exchange_weight_filtered_calculates() {
         #[cfg(feature = "ready-to-test")] // order-book
         assert_eq!(
             DexApi::exchange_weight_filtered(
-                vec![
-                    &LiquiditySourceType::XYKPool,
-                    &LiquiditySourceType::XSTPool,
-                    &LiquiditySourceType::MulticollateralBondingCurvePool,
-                    &LiquiditySourceType::OrderBook
+                [
+                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::MulticollateralBondingCurvePool,
+                    LiquiditySourceType::OrderBook
                 ]
                 .into_iter()
             ),

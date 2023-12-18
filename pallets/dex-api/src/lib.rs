@@ -261,7 +261,7 @@ impl<T: Config>
                 #[cfg(feature = "ready-to-test")] // order-book
                 LiquiditySourceType::OrderBook,
             ]
-            .iter(),
+            .into_iter(),
         )
     }
 
@@ -328,8 +328,8 @@ impl<T: Config>
             .collect())
     }
 
-    fn exchange_weight_filtered<'a>(
-        enabled_sources: impl Iterator<Item = &'a LiquiditySourceType>,
+    fn exchange_weight_filtered(
+        enabled_sources: impl Iterator<Item = LiquiditySourceType>,
     ) -> Weight {
         enabled_sources
             .map(|source| match source {

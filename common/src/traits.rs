@@ -464,8 +464,8 @@ where
         filter: &LiquiditySourceFilter<DEXId, LiquiditySourceIndex>,
     ) -> Result<Vec<LiquiditySourceId<DEXId, LiquiditySourceIndex>>, Error>;
 
-    fn exchange_weight_filtered<'a>(
-        enabled_sources: impl Iterator<Item = &'a LiquiditySourceType>,
+    fn exchange_weight_filtered(
+        enabled_sources: impl Iterator<Item = LiquiditySourceIndex>,
     ) -> Weight;
 }
 

@@ -1250,7 +1250,7 @@ impl<T: Config> Pallet<T> {
                             .unwrap_or(Vec::new()); // no sources -> no exchanges -> no weight
                             let single_exchange_weight =
                                 T::LiquidityRegistry::exchange_weight_filtered(
-                                    exchange_sources.iter().map(|s| &s.liquidity_source_index),
+                                    exchange_sources.iter().map(|s| s.liquidity_source_index),
                                 );
                             single_exchange_weight
                         });
