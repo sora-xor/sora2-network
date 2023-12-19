@@ -961,7 +961,7 @@ fn should_initialize_xyk_pool() {
 }
 
 #[test]
-fn should_not_initialize_existing_pool() {
+fn should_not_initialize_existing_xyk_pool() {
     ext().execute_with(|| {
         assert_ok!(QAToolsPallet::initialize_xyk(
             RuntimeOrigin::root(),
