@@ -202,19 +202,18 @@ pub mod pallet {
             })
         }
 
-        /// Initialize order book liquidity source.
+        /// Initialize xyk pool liquidity source.
         ///
         /// Parameters:
-        /// - `origin`: root
-        /// - `bids_owner`: Creator of the buy orders placed on the order books,
-        /// - `asks_owner`: Creator of the sell orders placed on the order books,
-        /// - `settings`: Parameters for placing the orders in each order book.
+        /// - `origin`: Root
+        /// - `account`: Some account to use during the initialization
+        /// - `pairs`: Asset pairs to initialize.
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
         pub fn initialize_xyk(
             origin: OriginFor<T>,
             account: AccountIdOf<T>,
-            pairs: Vec<source_initializers::XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
+            pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
         ) -> DispatchResultWithPostInfo {
             // error messages for unsigned calls are non-informative
             let who = Self::ensure_in_whitelist(origin)?;
