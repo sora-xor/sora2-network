@@ -36,7 +36,7 @@ pub mod source_initializers {
     use common::{balance, AssetInfoProvider, DEXInfo, DexIdOf, DexInfoProvider, TradingPair, XOR};
     use frame_support::dispatch::{DispatchResult, RawOrigin};
     use order_book::{MomentOf, OrderBookId};
-    use sp_runtime::traits::CheckedMul;
+    use sp_arithmetic::traits::CheckedMul;
     use sp_std::fmt::Debug;
     use sp_std::vec::Vec;
 
