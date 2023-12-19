@@ -46,8 +46,8 @@ pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
     use common::{
-        AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo,
-        Description, DexIdOf, DexInfoProvider,
+        AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+        DEXInfo, Description, DexIdOf, DexInfoProvider,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
@@ -55,6 +55,7 @@ pub mod pallet {
     use order_book::{MomentOf, OrderBookId};
     use pallet_tools::liquidity_proxy::source_initializers;
     pub use pallet_tools::order_book::OrderBookFillSettings;
+    pub use source_initializers::XYKPair;
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -201,21 +202,31 @@ pub mod pallet {
             })
         }
 
+        /// Initialize order book liquidity source.
+        ///
+        /// Parameters:
+        /// - `origin`: root
+        /// - `bids_owner`: Creator of the buy orders placed on the order books,
+        /// - `asks_owner`: Creator of the sell orders placed on the order books,
+        /// - `settings`: Parameters for placing the orders in each order book.
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
         pub fn initialize_xyk(
             origin: OriginFor<T>,
+            account: AccountIdOf<T>,
             pairs: Vec<source_initializers::XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
         ) -> DispatchResultWithPostInfo {
             // error messages for unsigned calls are non-informative
             let who = Self::ensure_in_whitelist(origin)?;
 
-            source_initializers::xyk::<T>(who, pairs).map_err(|e| DispatchErrorWithPostInfo {
-                post_info: PostDispatchInfo {
-                    actual_weight: None,
-                    pays_fee: Pays::No,
-                },
-                error: e,
+            source_initializers::xyk::<T>(account, pairs).map_err(|e| {
+                DispatchErrorWithPostInfo {
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                }
             })?;
 
             // Extrinsic is only for testing, so we return all fees

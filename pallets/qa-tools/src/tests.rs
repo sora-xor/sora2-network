@@ -28,14 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Tests are not essential for this testing helper pallet,
+//! Tests are not essential for this qa helper pallet,
 //! but they make modify-run iterations during development much quicker
 
 use assets::AssetIdOf;
 use common::prelude::err_pays_no;
 use common::{
-    balance, AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId,
-    DexIdOf, PredefinedAssetId, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
+    balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, PredefinedAssetId,
+    PriceVariant, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Hooks;
@@ -45,7 +45,7 @@ use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
-use qa_tools::pallet_tools::liquidity_proxy::source_initializers::XYKPair;
+use qa_tools::pallet::XYKPair;
 use qa_tools::{settings, Error};
 use sp_runtime::traits::BadOrigin;
 
@@ -921,9 +921,9 @@ fn should_fill_orderbook_max_orders_count() {
 #[test]
 fn should_initialize_xyk_pool() {
     ext().execute_with(|| {
-        QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice()).unwrap();
         assert_ok!(QAToolsPallet::initialize_xyk(
-            RuntimeOrigin::signed(alice()),
+            RuntimeOrigin::root(),
+            alice(),
             vec![
                 XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5).into()),
                 XYKPair::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.5).into()),
@@ -963,9 +963,9 @@ fn should_initialize_xyk_pool() {
 #[test]
 fn should_not_initialize_existing_pool() {
     ext().execute_with(|| {
-        QAToolsPallet::add_to_whitelist(RuntimeOrigin::root(), alice()).unwrap();
         assert_ok!(QAToolsPallet::initialize_xyk(
-            RuntimeOrigin::signed(alice()),
+            RuntimeOrigin::root(),
+            alice(),
             vec![
                 XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5).into()),
                 XYKPair::new(
@@ -978,7 +978,8 @@ fn should_not_initialize_existing_pool() {
         ));
         assert_eq!(
             QAToolsPallet::initialize_xyk(
-                RuntimeOrigin::signed(alice()),
+                RuntimeOrigin::root(),
+                alice(),
                 vec![XYKPair::new(
                     DEXId::Polkaswap.into(),
                     XOR,
