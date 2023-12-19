@@ -332,10 +332,7 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = MockMCBCPool;
     type XSTPool = MockXSTPool;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-
-    #[cfg(feature = "ready-to-test")] // order-book
-    type OrderBook = (); // todo
-
+    type OrderBook = (); // todo (m.tagirov) ALT
     type WeightInfo = ();
 }
 

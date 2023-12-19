@@ -2809,17 +2809,7 @@ fn selecting_xyk_only_filter_is_forbidden() {
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![XYKPool], &AllowSelected), false);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![XYKPool], &AllowSelected), false);
 
-        #[allow(unused_assignments)] // order-book
-        let mut sources_except_xyk = Vec::new();
-        
-        #[cfg(feature = "ready-to-test")] // order-book
-        {
-            sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool, OrderBook];
-        }
-        #[cfg(not(feature = "ready-to-test"))] // order-book
-        {
-            sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool];
-        }
+        let mut sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool, OrderBook];
         
         // xyk only selection, base case
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &sources_except_xyk, &ForbidSelected), true);

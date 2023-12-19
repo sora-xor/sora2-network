@@ -150,42 +150,36 @@ fn test_different_reserves_should_pass() {
 fn test_exchange_weight_correct() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        #[allow(unused_assignments)]
-        let mut expected_weight = Weight::zero();
-        #[cfg(feature = "ready-to-test")] // order-book
-        {
-            expected_weight = <<Runtime as crate::Config>::OrderBook as LiquiditySource<
+        let expected_weight = <<Runtime as crate::Config>::XSTPool as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight()
+        .max(<<Runtime as crate::Config>::XYKPool as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight())
+        .max(
+            <<Runtime as crate::Config>::MulticollateralBondingCurvePool as LiquiditySource<
                 DexIdOf<Runtime>,
                 AccountIdOf<Runtime>,
                 AssetIdOf<Runtime>,
                 Balance,
                 DispatchError,
-            >>::exchange_weight();
-        }
-        expected_weight = expected_weight
-            .max(<<Runtime as crate::Config>::XSTPool as LiquiditySource<
-                DexIdOf<Runtime>,
-                AccountIdOf<Runtime>,
-                AssetIdOf<Runtime>,
-                Balance,
-                DispatchError,
-            >>::exchange_weight())
-            .max(<<Runtime as crate::Config>::XYKPool as LiquiditySource<
-                DexIdOf<Runtime>,
-                AccountIdOf<Runtime>,
-                AssetIdOf<Runtime>,
-                Balance,
-                DispatchError,
-            >>::exchange_weight())
-            .max(
-                <<Runtime as crate::Config>::MulticollateralBondingCurvePool as LiquiditySource<
-                    DexIdOf<Runtime>,
-                    AccountIdOf<Runtime>,
-                    AssetIdOf<Runtime>,
-                    Balance,
-                    DispatchError,
-                >>::exchange_weight(),
-            );
+            >>::exchange_weight(),
+        )
+        .max(<<Runtime as crate::Config>::OrderBook as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight());
         let got_weight = DexApi::exchange_weight();
         assert_eq!(expected_weight, got_weight);
     })
@@ -217,7 +211,6 @@ fn test_exchange_weight_filtered_calculates() {
             Balance,
             DispatchError,
         >>::exchange_weight();
-        #[cfg(feature = "ready-to-test")] // order-book
         let order_book_weight = <<Runtime as crate::Config>::OrderBook as LiquiditySource<
             DexIdOf<Runtime>,
             AccountIdOf<Runtime>,
@@ -244,7 +237,6 @@ fn test_exchange_weight_filtered_calculates() {
             DexApi::exchange_weight_filtered([LiquiditySourceType::XSTPool].into_iter()),
             xst_weight
         );
-        #[cfg(feature = "ready-to-test")] // order-book
         assert_eq!(
             DexApi::exchange_weight_filtered([LiquiditySourceType::OrderBook].into_iter()),
             order_book_weight
@@ -266,7 +258,6 @@ fn test_exchange_weight_filtered_calculates() {
             ),
             xyk_weight.max(xst_weight).max(multicollateral_weight)
         );
-        #[cfg(feature = "ready-to-test")] // order-book
         assert_eq!(
             DexApi::exchange_weight_filtered(
                 [

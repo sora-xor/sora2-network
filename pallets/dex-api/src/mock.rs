@@ -258,8 +258,6 @@ impl Config for Runtime {
     type XSTPool = WeightedEmptyLiquiditySource;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-
-    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = WeightedEmptyLiquiditySource;
 
     type WeightInfo = ();
