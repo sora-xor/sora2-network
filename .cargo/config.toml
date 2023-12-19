@@ -9,4 +9,4 @@ opt-level = 's'
 debug = false
 
 [env]
-PARACHAIN_METADATA_BRANCH = "1.0.15"
+PARACHAIN_METADATA_BRANCH = "kusama-2.2.0"

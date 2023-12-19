@@ -120,6 +120,18 @@ pub trait TradingPairSourceManager<DEXId, AssetId> {
         target_asset_id: &AssetId,
         source_type: LiquiditySourceType,
     ) -> DispatchResult;
+
+    fn is_trading_pair_enabled(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError>;
+
+    fn register_pair(
+        dex_id: DEXId,
+        base_asset_id: AssetId,
+        target_asset_id: AssetId,
+    ) -> Result<(), DispatchError>;
 }
 
 impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
@@ -155,6 +167,22 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
         _target_asset_id: &AssetId,
         _source_type: LiquiditySourceType,
     ) -> DispatchResult {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn is_trading_pair_enabled(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn register_pair(
+        _dex_id: DEXId,
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Result<(), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 }
@@ -216,6 +244,24 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
     fn check_rewards_weight() -> Weight;
 }
 
+/// Implements trading pairs LockedLiquiditySources storage
+pub trait LockedLiquiditySourcesManager<LiquiditySourceType> {
+    fn get() -> Vec<LiquiditySourceType>;
+    fn set(liquidity_source_types: Vec<LiquiditySourceType>);
+    fn append(liquidity_source_type: LiquiditySourceType);
+}
+
+/// Implements trading pair EnabledSources storage
+pub trait EnabledSourcesManager<DEXId, AssetId> {
+    fn mutate_remove(dex_id: &DEXId, base_asset_id: &AssetId, target_asset_id: &AssetId);
+}
+
+impl<DEXId, AssetId> EnabledSourcesManager<DEXId, AssetId> for () {
+    fn mutate_remove(_dex_id: &DEXId, _baset_asset_id: &AssetId, _target_asset_id: &AssetId) {
+        unimplemented!()
+    }
+}
+
 /// *Hook*-like trait for oracles to capture newly relayed symbols.
 ///
 /// A struct implementing this trait can be specified in oracle pallet *Config*
@@ -271,9 +317,7 @@ pub trait OnSymbolDisabled<Symbol> {
 }
 
 impl<Symbol> OnSymbolDisabled<Symbol> for () {
-    fn disable_symbol(_symbol: &Symbol) {
-        ()
-    }
+    fn disable_symbol(_symbol: &Symbol) {}
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
@@ -417,8 +461,12 @@ where
     fn list_liquidity_sources(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceIndex>,
+        filter: &LiquiditySourceFilter<DEXId, LiquiditySourceIndex>,
     ) -> Result<Vec<LiquiditySourceId<DEXId, LiquiditySourceIndex>>, Error>;
+
+    fn exchange_weight_filtered(
+        enabled_sources: impl Iterator<Item = LiquiditySourceIndex>,
+    ) -> Weight;
 }
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -573,22 +621,6 @@ pub trait ToFeeAccount: Sized {
     fn to_fee_account(&self) -> Option<Self>;
 }
 
-pub trait ToMarkerAsset<TechAssetId, LstId>: Sized {
-    fn to_marker_asset(&self, lst_id: LstId) -> Option<TechAssetId>;
-}
-
-pub trait GetTechAssetWithLstTag<LstId, AssetId>: Sized {
-    fn get_tech_asset_with_lst_tag(tag: LstId, asset_id: AssetId) -> Result<Self, ()>;
-}
-
-pub trait GetLstIdAndTradingPairFromTechAsset<LstId, TradingPair> {
-    fn get_lst_id_and_trading_pair_from_tech_asset(&self) -> Option<(LstId, TradingPair)>;
-}
-
-pub trait ToTechUnitFromDEXAndAsset<DEXId, AssetId>: Sized {
-    fn to_tech_unit_from_dex_and_asset(dex_id: DEXId, asset_id: AssetId) -> Self;
-}
-
 pub trait ToXykTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {
     fn to_xyk_tech_unit_from_dex_and_trading_pair(dex_id: DEXId, trading_pair: TradingPair)
         -> Self;
@@ -666,7 +698,7 @@ impl<AssetId> GetPoolReserves<AssetId> for () {
 
 /// General trait for passing pswap amount burned information to required pallets.
 pub trait OnPswapBurned {
-    /// Report amount and fractions of burned pswap at the moment of invokation.
+    /// Report amount and fractions of burned pswap at the moment of invocation.
     fn on_pswap_burned(distribution: PswapRemintInfo);
 }
 

@@ -371,12 +371,14 @@ where
     PartialOrd,
     Ord,
     RuntimeDebug,
+    Default,
     scale_info::TypeInfo,
     MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
 pub enum DEXId {
+    #[default]
     Polkaswap = 0,
     PolkaswapXSTUSD = 1,
 }
@@ -384,12 +386,6 @@ pub enum DEXId {
 impl From<DEXId> for u32 {
     fn from(dex_id: DEXId) -> Self {
         dex_id as u32
-    }
-}
-
-impl Default for DEXId {
-    fn default() -> Self {
-        DEXId::Polkaswap
     }
 }
 
@@ -450,7 +446,7 @@ impl IsValid for AssetSymbol {
             && self
                 .0
                 .iter()
-                .all(|byte| (b'A'..=b'Z').contains(&byte) || (b'0'..=b'9').contains(&byte))
+                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
     }
 }
 
@@ -506,16 +502,25 @@ impl IsValid for AssetName {
         !self.0.is_empty()
             && self.0.len() <= ASSET_NAME_MAX_LENGTH
             && self.0.iter().all(|byte| {
-                (b'A'..=b'Z').contains(&byte)
-                    || (b'a'..=b'z').contains(&byte)
-                    || (b'0'..=b'9').contains(&byte)
+                byte.is_ascii_uppercase()
+                    || byte.is_ascii_lowercase()
+                    || byte.is_ascii_digit()
                     || byte == &b' '
             })
     }
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct ContentSource(pub Vec<u8>);
@@ -538,12 +543,6 @@ impl Display for ContentSource {
     }
 }
 
-impl Default for ContentSource {
-    fn default() -> Self {
-        Self(Vec::new())
-    }
-}
-
 impl IsValid for ContentSource {
     fn is_valid(&self) -> bool {
         self.0.is_ascii() && self.0.len() <= ASSET_CONTENT_SOURCE_MAX_LENGTH
@@ -551,7 +550,16 @@ impl IsValid for ContentSource {
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct Description(pub Vec<u8>);
@@ -574,12 +582,6 @@ impl Display for Description {
     }
 }
 
-impl Default for Description {
-    fn default() -> Self {
-        Self(Vec::new())
-    }
-}
-
 impl IsValid for Description {
     fn is_valid(&self) -> bool {
         self.0.len() <= ASSET_DESCRIPTION_MAX_LENGTH
@@ -587,7 +589,16 @@ impl IsValid for Description {
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct SymbolName(pub Vec<u8>);
@@ -615,12 +626,6 @@ impl Display for SymbolName {
     }
 }
 
-impl Default for SymbolName {
-    fn default() -> Self {
-        Self(Vec::new())
-    }
-}
-
 impl IsValid for SymbolName {
     /// Same as for AssetSymbol
     fn is_valid(&self) -> bool {
@@ -629,14 +634,23 @@ impl IsValid for SymbolName {
             && self
                 .0
                 .iter()
-                .all(|byte| (b'A'..=b'Z').contains(&byte) || (b'0'..=b'9').contains(&byte))
+                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
     }
 }
 
 const CROWDLOAN_TAG_MAX_LENGTH: u32 = 128;
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 pub struct CrowdloanTag(pub BoundedVec<u8, ConstU32<CROWDLOAN_TAG_MAX_LENGTH>>);
 
@@ -660,12 +674,6 @@ impl Display for CrowdloanTag {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
         let s: String = self.0.iter().map(|un| *un as char).collect();
         write!(f, "{}", s)
-    }
-}
-
-impl Default for CrowdloanTag {
-    fn default() -> Self {
-        Self(Default::default())
     }
 }
 
@@ -720,6 +728,7 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
     Ord,
     scale_info::TypeInfo,
     MaxEncodedLen,
+    strum::EnumIter,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
@@ -733,7 +742,7 @@ pub enum LiquiditySourceType {
     MockPool4,
     XSTPool,
 
-    #[cfg(feature = "wip")] // order-book
+    #[cfg(feature = "ready-to-test")] // order-book
     OrderBook,
 }
 
@@ -794,24 +803,15 @@ impl<DEXId: Copy, LiquiditySourceIndex: Copy> LiquiditySourceId<DEXId, Liquidity
 // LstId is Liquidity Source Type Id.
 impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
     fn is_pure(&self) -> bool {
-        match self {
-            TechAssetId::Wrapped(_) => false,
-            _ => true,
-        }
+        !matches!(self, TechAssetId::Wrapped(_))
     }
 
     fn is_wrapped(&self) -> bool {
-        match self {
-            TechAssetId::Wrapped(_) => true,
-            _ => false,
-        }
+        matches!(self, TechAssetId::Wrapped(_))
     }
 
     fn is_wrapped_regular(&self) -> bool {
-        match self {
-            TechAssetId::Wrapped(_) => true,
-            _ => false,
-        }
+        matches!(self, TechAssetId::Wrapped(_))
     }
 }
 
@@ -819,6 +819,7 @@ impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
+#[allow(clippy::unnecessary_cast)]
 pub enum TechPurpose<AssetId> {
     FeeCollector = 0,
     FeeCollectorForPair(TradingPair<AssetId>) = 1,
@@ -830,7 +831,9 @@ pub enum TechPurpose<AssetId> {
 /// Enum encoding of technical account id, pure and wrapped records.
 /// Enum record `WrappedRepr` is wrapped represention of `Pure` variant of enum, this is useful then
 /// representation is known but backward mapping is not known.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Pure(DEXId, TechPurpose<AssetId>),
@@ -838,16 +841,14 @@ pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Generic(Vec<u8>, Vec<u8>),
     Wrapped(AccountId),
     WrappedRepr(AccountId),
+    #[default]
     None,
 }
 
 /// Implementation of `IsRepresentation` for `TechAccountId`, because is has `WrappedRepr`.
 impl<AccountId, AssetId, DEXId> IsRepresentation for TechAccountId<AccountId, AssetId, DEXId> {
     fn is_representation(&self) -> bool {
-        match self {
-            TechAccountId::WrappedRepr(_) => true,
-            _ => false,
-        }
+        matches!(self, TechAccountId::WrappedRepr(_))
     }
 }
 
@@ -858,12 +859,6 @@ impl<AccountId, AssetId, DEXId> crate::traits::FromGenericPair
 {
     fn from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> Self {
         TechAccountId::Generic(tag, data)
-    }
-}
-
-impl<AccountId, AssetId, DEXId> Default for TechAccountId<AccountId, AssetId, DEXId> {
-    fn default() -> Self {
-        TechAccountId::None
     }
 }
 
@@ -880,13 +875,9 @@ impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
 {
     fn to_fee_account(&self) -> Option<Self> {
         match self {
-            TechAccountId::Pure(dex, purpose) => match purpose {
-                TechPurpose::XykLiquidityKeeper(tpair) => Some(TechAccountId::Pure(
-                    dex.clone(),
-                    TechPurpose::FeeCollectorForPair(tpair.clone()),
-                )),
-                _ => None,
-            },
+            TechAccountId::Pure(dex, TechPurpose::XykLiquidityKeeper(tpair)) => Some(
+                TechAccountId::Pure(dex.clone(), TechPurpose::FeeCollectorForPair(tpair.clone())),
+            ),
             _ => None,
         }
     }
@@ -950,24 +941,19 @@ where
     AccountId: IsRepresentation,
 {
     fn is_pure(&self) -> bool {
-        match self {
-            TechAccountId::Pure(_, _) => true,
-            TechAccountId::Generic(_, _) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            TechAccountId::Pure(_, _) | TechAccountId::Generic(_, _)
+        )
     }
     fn is_wrapped_regular(&self) -> bool {
-        match self {
-            TechAccountId::Wrapped(_) => true,
-            _ => false,
-        }
+        matches!(self, TechAccountId::Wrapped(_))
     }
     fn is_wrapped(&self) -> bool {
-        match self {
-            TechAccountId::Pure(_, _) => false,
-            TechAccountId::Generic(_, _) => false,
-            _ => true,
-        }
+        !matches!(
+            self,
+            TechAccountId::Pure(_, _) | TechAccountId::Generic(_, _)
+        )
     }
 }
 
@@ -1064,7 +1050,7 @@ impl Default for RewardReason {
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default, scale_info::TypeInfo)]
 pub struct PswapRemintInfo {
     pub liquidity_providers: Balance,
-    pub buy_back_xst: Balance,
+    pub buy_back_tbcd: Balance,
     pub vesting: Balance,
 }
 
@@ -1091,7 +1077,7 @@ mod tests {
         );
 
         // should not panic
-        serde_json::to_value(&asset_id).unwrap();
+        serde_json::to_value(asset_id).unwrap();
     }
 
     #[test]
@@ -1108,7 +1094,7 @@ mod tests {
         assert_eq!(unwrapped, balance);
 
         // should not panic
-        serde_json::to_value(&BalanceWrapper(balance)).unwrap();
+        serde_json::to_value(BalanceWrapper(balance)).unwrap();
     }
 }
 

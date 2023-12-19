@@ -79,13 +79,14 @@ where
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
-        let sender_network_id = sender.constant_fetch_or_default(&S::network_id())?;
+        let sender_network_id = sender.constant_fetch_or_default(&S::network_id().unvalidated())?;
 
         let GenericNetworkId::Sub(sender_network_id) = sender_network_id else {
             return Err(anyhow::anyhow!("Error! Sender is NOT a Substrate Network!"));
         };
 
-        let receiver_network_id = receiver.constant_fetch_or_default(&R::network_id())?;
+        let receiver_network_id =
+            receiver.constant_fetch_or_default(&R::network_id().unvalidated())?;
 
         let GenericNetworkId::Sub(receiver_network_id) = receiver_network_id else {
             return Err(anyhow::anyhow!("Error! Reciever is NOT a Substrate Network!"));
