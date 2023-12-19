@@ -35,16 +35,17 @@ use sp_runtime::RuntimeDebug;
 pub enum Bounds<Balance> {
     /// A consequence of computations instead of a value set by a user.
     Calculated(Balance),
-    /// A value set by used as fixed and determined value.
+    /// A value set by a user as fixed and determined value.
     Desired(Balance),
     /// An undetermined value, bounded by some logic or ranges.
     Min(Balance),
+    /// An undetermined value, bounded by some logic or ranges.
     Max(Balance),
     /// A determined value when pool is empty.
     /// When pool is not empty it works like a range.
     RangeFromDesiredToMin(Balance, Balance),
-    /// An unknown value that must be calculated and filled.
-    Decide,
+    /// An unknown value that must be calculated.
+    ToDecide,
     /// Used in when value is not needed (checks tests and predicates).
     Dummy,
 }
