@@ -10,6 +10,7 @@ use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
 
 use anyhow::Result as AnyResult;
 use framenode_runtime::assets::AssetIdOf;
+use framenode_runtime::order_book::WeightInfo;
 use framenode_runtime::{Runtime, Weight};
 use std::sync::Arc;
 
@@ -74,22 +75,21 @@ async fn main() -> AnyResult<()> {
         dbg!(path_2_weight);
         dbg!(path_3_weight);
         dbg!(path_4_weight);
-        #[cfg(feature = "ready-to-test")] // order-book
-        {
-            use framenode_runtime::order_book::WeightInfo;
 
-            let execute_order_weight =
-                <Runtime as framenode_runtime::order_book::Config>::WeightInfo::execute_market_order();
-            dbg!(execute_order_weight);
+        let execute_order_weight =
+            <Runtime as framenode_runtime::order_book::Config>::WeightInfo::execute_market_order();
+        dbg!(execute_order_weight);
 
-            println!("\nexchange weights:");
-            let max_orders = <Runtime as framenode_runtime::order_book::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
-            for n in [1, max_orders / 2, max_orders] {
-                let exchange = <Runtime as framenode_runtime::order_book::Config>::WeightInfo::exchange(n);
-                println!("{n} order(-s):");
-                dbg!(exchange);
-                println!();
-            }
+        println!("\nexchange weights:");
+        let max_orders = <Runtime as framenode_runtime::order_book::Config>::HARD_MIN_MAX_RATIO
+            .try_into()
+            .unwrap();
+        for n in [1, max_orders / 2, max_orders] {
+            let exchange =
+                <Runtime as framenode_runtime::order_book::Config>::WeightInfo::exchange(n);
+            println!("{n} order(-s):");
+            dbg!(exchange);
+            println!();
         }
         Ok(())
     });

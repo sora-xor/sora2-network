@@ -44,12 +44,6 @@ std = [
     "scale-info/std",
     "sp-std/std",
 ]
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-    "framenode-runtime/ready-to-test",
-    "common/ready-to-test",
-    "order-book/ready-to-test"
-]
 private-net = [
     "framenode-chain-spec/private-net",
     "framenode-runtime/private-net",

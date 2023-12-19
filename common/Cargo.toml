@@ -77,5 +77,3 @@ std = [
     "fixnum/std",
 ]
 test = ["env_logger"]
-
-ready-to-test = []

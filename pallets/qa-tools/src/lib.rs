@@ -35,7 +35,7 @@
 pub use pallet::*;
 
 // private-net to make circular dependencies work
-#[cfg(all(test, feature = "private-net", feature = "ready-to-test"))] // order-book
+#[cfg(all(test, feature = "private-net"))]
 mod tests;
 pub mod weights;
 pub use weights::*;
