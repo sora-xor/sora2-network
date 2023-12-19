@@ -444,15 +444,13 @@ pub mod pallet {
                 &T::TreasuryTechAccount::get(),
                 collateral_amount,
             )?;
-            <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.collateral_amount = cdp
-                        .collateral_amount
-                        .checked_add(collateral_amount)
-                        .ok_or(Error::<T>::ArithmeticError)?;
-                    DispatchResult::Ok(())
-                }
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.collateral_amount = cdp
+                    .collateral_amount
+                    .checked_add(collateral_amount)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
             })?;
             Self::deposit_event(Event::CollateralDeposit {
                 cdp_id,
@@ -492,12 +490,10 @@ pub mod pallet {
                 &who,
                 collateral_amount,
             )?;
-            <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.collateral_amount = new_collateral_amount;
-                    DispatchResult::Ok(())
-                }
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.collateral_amount = new_collateral_amount;
+                DispatchResult::Ok(())
             })?;
             Self::deposit_event(Event::CollateralWithdrawn {
                 cdp_id,
@@ -530,12 +526,10 @@ pub mod pallet {
             Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
             Self::ensure_protocol_cap(will_to_borrow_amount)?;
             Self::mint_to(&who, will_to_borrow_amount)?;
-            <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.debt = new_debt;
-                    DispatchResult::Ok(())
-                }
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.debt = new_debt;
+                DispatchResult::Ok(())
             })?;
             Self::deposit_event(Event::DebtIncreased {
                 cdp_id,
@@ -555,15 +549,13 @@ pub mod pallet {
             // if repaying amount exceeds debt, leftover is not burned
             let to_cover_debt = amount.min(cdp.debt);
             Self::burn_from(&who, to_cover_debt)?;
-            <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.debt = cdp
-                        .debt
-                        .checked_sub(to_cover_debt)
-                        .ok_or(Error::<T>::ArithmeticError)?;
-                    DispatchResult::Ok(())
-                }
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.debt = cdp
+                    .debt
+                    .checked_sub(to_cover_debt)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
             })?;
             Self::deposit_event(Event::DebtPayment {
                 cdp_id,
@@ -620,15 +612,13 @@ pub mod pallet {
                 SwapAmount::with_desired_input(collateral_to_liquidate, balance!(0)),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
-            <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.collateral_amount = cdp
-                        .collateral_amount
-                        .checked_sub(collateral_to_liquidate)
-                        .ok_or(Error::<T>::ArithmeticError)?;
-                    DispatchResult::Ok(())
-                }
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.collateral_amount = cdp
+                    .collateral_amount
+                    .checked_sub(collateral_to_liquidate)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
             })?;
             // penalty is a protocol profit which stays on treasury tech account
             let penalty = Self::liquidation_penalty() * swap_outcome.amount.min(cdp_debt);
@@ -651,26 +641,22 @@ pub mod pallet {
                     });
                 } else {
                     // partly covered
-                    <CDPDepository<T>>::try_mutate(cdp_id, {
-                        |cdp| {
-                            let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                            cdp.debt = cdp
-                                .debt
-                                .checked_sub(kusd_amount)
-                                .ok_or(Error::<T>::CDPNotFound)?;
-                            DispatchResult::Ok(())
-                        }
+                    <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                        let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                        cdp.debt = cdp
+                            .debt
+                            .checked_sub(kusd_amount)
+                            .ok_or(Error::<T>::CDPNotFound)?;
+                        DispatchResult::Ok(())
                     })?;
                 }
             } else {
                 Self::burn_treasury(cdp_debt)?;
                 // CDP debt is covered
-                <CDPDepository<T>>::try_mutate(cdp_id, {
-                    |cdp| {
-                        let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                        cdp.debt = 0;
-                        DispatchResult::Ok(())
-                    }
+                <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                    cdp.debt = 0;
+                    DispatchResult::Ok(())
                 })?;
                 // There is more KUSD than to cover debt and penalty, leftover goes to cdp.owner
                 let leftover = kusd_amount
@@ -776,10 +762,8 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
-            <LiquidationPenalty<T>>::mutate({
-                |liquidation_penalty| {
-                    *liquidation_penalty = new_liquidation_penalty;
-                }
+            <LiquidationPenalty<T>>::mutate(|liquidation_penalty| {
+                *liquidation_penalty = new_liquidation_penalty;
             });
             Self::deposit_event(Event::LiquidationPenaltyUpdated {
                 liquidation_penalty: new_liquidation_penalty,
