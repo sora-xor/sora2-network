@@ -32,10 +32,10 @@
 //! but they make modify-run iterations during development much quicker
 
 use assets::AssetIdOf;
-use common::prelude::err_pays_no;
+use common::prelude::{err_pays_no, QuoteAmount};
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, PredefinedAssetId,
-    PriceVariant, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
+    balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, LiquiditySource,
+    PredefinedAssetId, PriceVariant, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Hooks;
@@ -921,42 +921,60 @@ fn should_fill_orderbook_max_orders_count() {
 #[test]
 fn should_initialize_xyk_pool() {
     ext().execute_with(|| {
+        let pairs = vec![
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5).into()),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.1).into()),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(1).into()),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, DAI, balance!(10).into()),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5).into()),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5).into()),
+            XYKPair::new(
+                DEXId::PolkaswapXSTUSD.into(),
+                XSTUSD,
+                VAL,
+                balance!(0.5).into(),
+            ),
+            XYKPair::new(
+                DEXId::PolkaswapXSTUSD.into(),
+                XSTUSD,
+                PSWAP,
+                balance!(0.5).into(),
+            ),
+            XYKPair::new(
+                DEXId::PolkaswapXSTUSD.into(),
+                XSTUSD,
+                ETH,
+                balance!(0.5).into(),
+            ),
+            XYKPair::new(
+                DEXId::PolkaswapXSTUSD.into(),
+                XSTUSD,
+                DAI,
+                balance!(0.5).into(),
+            ),
+        ];
         assert_ok!(QAToolsPallet::initialize_xyk(
             RuntimeOrigin::root(),
             alice(),
-            vec![
-                XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5).into()),
-                XYKPair::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.5).into()),
-                XYKPair::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(0.5).into()),
-                XYKPair::new(DEXId::Polkaswap.into(), XOR, DAI, balance!(0.5).into()),
-                XYKPair::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5).into()),
-                XYKPair::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5).into()),
-                XYKPair::new(
-                    DEXId::PolkaswapXSTUSD.into(),
-                    XSTUSD,
-                    VAL,
-                    balance!(0.5).into()
-                ),
-                XYKPair::new(
-                    DEXId::PolkaswapXSTUSD.into(),
-                    XSTUSD,
-                    PSWAP,
-                    balance!(0.5).into()
-                ),
-                XYKPair::new(
-                    DEXId::PolkaswapXSTUSD.into(),
-                    XSTUSD,
-                    ETH,
-                    balance!(0.5).into()
-                ),
-                XYKPair::new(
-                    DEXId::PolkaswapXSTUSD.into(),
-                    XSTUSD,
-                    DAI,
-                    balance!(0.5).into()
-                )
-            ],
+            pairs.clone(),
         ));
+
+        for pair in pairs {
+            let result = pool_xyk::Pallet::<Runtime>::quote_without_impact(
+                &pair.dex_id,
+                &pair.asset_a,
+                &pair.asset_b,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: balance!(1),
+                },
+                false,
+            )
+            .unwrap();
+            // `deduce_fee` was set to false
+            assert_eq!(result.fee, 0);
+            let price = result.amount;
+            assert_eq!(*pair.price.balance(), price);
+        }
     })
 }
 
