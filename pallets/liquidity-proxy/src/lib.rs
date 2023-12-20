@@ -252,32 +252,19 @@ impl<T: Config> Pallet<T> {
     ) -> bool {
         let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
 
-        #[allow(unused_mut)] // order-book
-        #[allow(unused_assignments)] // order-book
-        // TODO remake
-        let mut is_order_book = match filter_mode {
-            FilterMode::ForbidSelected => true,
-            _ => false,
-        };
-
-        #[cfg(feature = "ready-to-test")] // order-book
-        {
-            is_order_book = selected_source_types.contains(&LiquiditySourceType::OrderBook);
-        }
-
         // check if user has selected only xyk either explicitly or by excluding other types
         // FIXME: such detection approach is unreliable, come up with better way
         let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
             && !selected_source_types
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
             && !selected_source_types.contains(&LiquiditySourceType::XSTPool)
-            && !is_order_book
+            && !selected_source_types.contains(&LiquiditySourceType::OrderBook)
             && filter_mode == &FilterMode::AllowSelected
             || selected_source_types
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
                 && selected_source_types.contains(&LiquiditySourceType::XSTPool)
                 && !selected_source_types.contains(&LiquiditySourceType::XYKPool)
-                && is_order_book
+                && selected_source_types.contains(&LiquiditySourceType::OrderBook)
                 && filter_mode == &FilterMode::ForbidSelected;
         // check if either of tbc reserve assets is present
         let reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)
@@ -969,7 +956,6 @@ impl<T: Config> Pallet<T> {
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         // The temp solution is to exclude OrderBook source if there are multiple sources.
         // Will be redesigned in #447
-        #[cfg(feature = "ready-to-test")] // order-book
         if sources.len() > 1 {
             sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
         }

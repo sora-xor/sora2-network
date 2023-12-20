@@ -19,9 +19,3 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 common = { path = "../../../common" }
 dex-runtime-api = { path = "../runtime-api" }
-
-[features]
-ready-to-test = [
-    "common/ready-to-test",
-    "dex-runtime-api/ready-to-test",
-]

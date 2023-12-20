@@ -40,8 +40,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "runtime-benchmarks")]
-// order-book
-#![cfg(feature = "ready-to-test")]
 #![allow(clippy::type_complexity)]
 // too many benchmarks, doesn't compile otherwise
 #![recursion_limit = "512"]

@@ -37,7 +37,6 @@ use assets::AssetIdOf;
 use common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
-#[cfg(feature = "ready-to-test")] // order-book
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
@@ -558,15 +557,13 @@ pub mod pallet {
                 max_lot_size,
             )?;
 
-            #[cfg(feature = "ready-to-test")] // order-book
-            {
-                T::TradingPairSourceManager::enable_source_for_trading_pair(
-                    &order_book_id.dex_id,
-                    &order_book_id.quote,
-                    &order_book_id.base,
-                    LiquiditySourceType::OrderBook,
-                )?;
-            }
+            T::TradingPairSourceManager::enable_source_for_trading_pair(
+                &order_book_id.dex_id,
+                &order_book_id.quote,
+                &order_book_id.base,
+                LiquiditySourceType::OrderBook,
+            )?;
+
             Self::create_orderbook_unchecked(
                 &order_book_id,
                 tick_size,
@@ -602,15 +599,12 @@ pub mod pallet {
                 .is_none();
             ensure!(is_empty, Error::<T>::OrderBookIsNotEmpty);
 
-            #[cfg(feature = "ready-to-test")] // order-book
-            {
-                T::TradingPairSourceManager::disable_source_for_trading_pair(
-                    &order_book_id.dex_id,
-                    &order_book_id.quote,
-                    &order_book_id.base,
-                    LiquiditySourceType::OrderBook,
-                )?;
-            }
+            T::TradingPairSourceManager::disable_source_for_trading_pair(
+                &order_book_id.dex_id,
+                &order_book_id.quote,
+                &order_book_id.base,
+                LiquiditySourceType::OrderBook,
+            )?;
 
             Self::deregister_tech_account(order_book_id)?;
             <OrderBooks<T>>::remove(order_book_id);
