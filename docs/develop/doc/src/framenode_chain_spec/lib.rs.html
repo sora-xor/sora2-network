@@ -2471,10 +2471,6 @@
 <a href="#2456" id="2456">2456</a>
 <a href="#2457" id="2457">2457</a>
 <a href="#2458" id="2458">2458</a>
-<a href="#2459" id="2459">2459</a>
-<a href="#2460" id="2460">2460</a>
-<a href="#2461" id="2461">2461</a>
-<a href="#2462" id="2462">2462</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4021,9 +4017,7 @@
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
                 LiquiditySourceType::XSTPool,
-
-                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-                </span>LiquiditySourceType::OrderBook,
+                LiquiditySourceType::OrderBook,
             ]
             .into(),
         },
@@ -4812,9 +4806,7 @@
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
-
-                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-                </span>LiquiditySourceType::OrderBook,
+                LiquiditySourceType::OrderBook,
             ]
             .into(),
         },

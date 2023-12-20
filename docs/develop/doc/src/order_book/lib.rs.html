@@ -1478,12 +1478,6 @@
 <a href="#1463" id="1463">1463</a>
 <a href="#1464" id="1464">1464</a>
 <a href="#1465" id="1465">1465</a>
-<a href="#1466" id="1466">1466</a>
-<a href="#1467" id="1467">1467</a>
-<a href="#1468" id="1468">1468</a>
-<a href="#1469" id="1469">1469</a>
-<a href="#1470" id="1470">1470</a>
-<a href="#1471" id="1471">1471</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1523,8 +1517,7 @@
 <span class="kw">use </span>common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-</span><span class="kw">use </span>common::LiquiditySourceType;
+<span class="kw">use </span>common::LiquiditySourceType;
 <span class="kw">use </span>common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
@@ -2044,15 +2037,13 @@
                 max_lot_size,
             )<span class="question-mark">?</span>;
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-            </span>{
-                T::TradingPairSourceManager::enable_source_for_trading_pair(
-                    <span class="kw-2">&amp;</span>order_book_id.dex_id,
-                    <span class="kw-2">&amp;</span>order_book_id.quote,
-                    <span class="kw-2">&amp;</span>order_book_id.base,
-                    LiquiditySourceType::OrderBook,
-                )<span class="question-mark">?</span>;
-            }
+            T::TradingPairSourceManager::enable_source_for_trading_pair(
+                <span class="kw-2">&amp;</span>order_book_id.dex_id,
+                <span class="kw-2">&amp;</span>order_book_id.quote,
+                <span class="kw-2">&amp;</span>order_book_id.base,
+                LiquiditySourceType::OrderBook,
+            )<span class="question-mark">?</span>;
+
             <span class="self">Self</span>::create_orderbook_unchecked(
                 <span class="kw-2">&amp;</span>order_book_id,
                 tick_size,
@@ -2088,15 +2079,12 @@
                 .is_none();
             <span class="macro">ensure!</span>(is_empty, Error::&lt;T&gt;::OrderBookIsNotEmpty);
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-            </span>{
-                T::TradingPairSourceManager::disable_source_for_trading_pair(
-                    <span class="kw-2">&amp;</span>order_book_id.dex_id,
-                    <span class="kw-2">&amp;</span>order_book_id.quote,
-                    <span class="kw-2">&amp;</span>order_book_id.base,
-                    LiquiditySourceType::OrderBook,
-                )<span class="question-mark">?</span>;
-            }
+            T::TradingPairSourceManager::disable_source_for_trading_pair(
+                <span class="kw-2">&amp;</span>order_book_id.dex_id,
+                <span class="kw-2">&amp;</span>order_book_id.quote,
+                <span class="kw-2">&amp;</span>order_book_id.base,
+                LiquiditySourceType::OrderBook,
+            )<span class="question-mark">?</span>;
 
             <span class="self">Self</span>::deregister_tech_account(order_book_id)<span class="question-mark">?</span>;
             &lt;OrderBooks&lt;T&gt;&gt;::remove(order_book_id);

@@ -2681,20 +2681,6 @@
 <a href="#2666" id="2666">2666</a>
 <a href="#2667" id="2667">2667</a>
 <a href="#2668" id="2668">2668</a>
-<a href="#2669" id="2669">2669</a>
-<a href="#2670" id="2670">2670</a>
-<a href="#2671" id="2671">2671</a>
-<a href="#2672" id="2672">2672</a>
-<a href="#2673" id="2673">2673</a>
-<a href="#2674" id="2674">2674</a>
-<a href="#2675" id="2675">2675</a>
-<a href="#2676" id="2676">2676</a>
-<a href="#2677" id="2677">2677</a>
-<a href="#2678" id="2678">2678</a>
-<a href="#2679" id="2679">2679</a>
-<a href="#2680" id="2680">2680</a>
-<a href="#2681" id="2681">2681</a>
-<a href="#2682" id="2682">2682</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2949,32 +2935,19 @@
     ) -&gt; bool {
         <span class="kw">let </span>tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
 
-        <span class="attr">#[allow(unused_mut)] </span><span class="comment">// order-book
-        </span><span class="attr">#[allow(unused_assignments)] </span><span class="comment">// order-book
-        // TODO remake
-        </span><span class="kw">let </span><span class="kw-2">mut </span>is_order_book = <span class="kw">match </span>filter_mode {
-            FilterMode::ForbidSelected =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        };
-
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-        </span>{
-            is_order_book = selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::OrderBook);
-        }
-
         <span class="comment">// check if user has selected only xyk either explicitly or by excluding other types
         // FIXME: such detection approach is unreliable, come up with better way
         </span><span class="kw">let </span>is_xyk_only = selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::XYKPool)
             &amp;&amp; !selected_source_types
                 .contains(<span class="kw-2">&amp;</span>LiquiditySourceType::MulticollateralBondingCurvePool)
             &amp;&amp; !selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::XSTPool)
-            &amp;&amp; !is_order_book
+            &amp;&amp; !selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::OrderBook)
             &amp;&amp; filter_mode == <span class="kw-2">&amp;</span>FilterMode::AllowSelected
             || selected_source_types
                 .contains(<span class="kw-2">&amp;</span>LiquiditySourceType::MulticollateralBondingCurvePool)
                 &amp;&amp; selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::XSTPool)
                 &amp;&amp; !selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::XYKPool)
-                &amp;&amp; is_order_book
+                &amp;&amp; selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::OrderBook)
                 &amp;&amp; filter_mode == <span class="kw-2">&amp;</span>FilterMode::ForbidSelected;
         <span class="comment">// check if either of tbc reserve assets is present
         </span><span class="kw">let </span>reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)
@@ -3666,7 +3639,6 @@
         sources.retain(|x| !locked.contains(<span class="kw-2">&amp;</span>x.liquidity_source_index));
         <span class="comment">// The temp solution is to exclude OrderBook source if there are multiple sources.
         // Will be redesigned in #447
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
         </span><span class="kw">if </span>sources.len() &gt; <span class="number">1 </span>{
             sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
         }

@@ -122,6 +122,7 @@
 
 <span class="kw">use </span>anyhow::Result <span class="kw">as </span>AnyResult;
 <span class="kw">use </span>framenode_runtime::assets::AssetIdOf;
+<span class="kw">use </span>framenode_runtime::order_book::WeightInfo;
 <span class="kw">use </span>framenode_runtime::{Runtime, Weight};
 <span class="kw">use </span>std::sync::Arc;
 
@@ -186,22 +187,21 @@
         <span class="macro">dbg!</span>(path_2_weight);
         <span class="macro">dbg!</span>(path_3_weight);
         <span class="macro">dbg!</span>(path_4_weight);
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-        </span>{
-            <span class="kw">use </span>framenode_runtime::order_book::WeightInfo;
 
-            <span class="kw">let </span>execute_order_weight =
-                &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::WeightInfo::execute_market_order();
-            <span class="macro">dbg!</span>(execute_order_weight);
+        <span class="kw">let </span>execute_order_weight =
+            &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::WeightInfo::execute_market_order();
+        <span class="macro">dbg!</span>(execute_order_weight);
 
-            <span class="macro">println!</span>(<span class="string">&quot;\nexchange weights:&quot;</span>);
-            <span class="kw">let </span>max_orders = &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::HARD_MIN_MAX_RATIO.try_into().unwrap();
-            <span class="kw">for </span>n <span class="kw">in </span>[<span class="number">1</span>, max_orders / <span class="number">2</span>, max_orders] {
-                <span class="kw">let </span>exchange = &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::WeightInfo::exchange(n);
-                <span class="macro">println!</span>(<span class="string">&quot;{n} order(-s):&quot;</span>);
-                <span class="macro">dbg!</span>(exchange);
-                <span class="macro">println!</span>();
-            }
+        <span class="macro">println!</span>(<span class="string">&quot;\nexchange weights:&quot;</span>);
+        <span class="kw">let </span>max_orders = &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::HARD_MIN_MAX_RATIO
+            .try_into()
+            .unwrap();
+        <span class="kw">for </span>n <span class="kw">in </span>[<span class="number">1</span>, max_orders / <span class="number">2</span>, max_orders] {
+            <span class="kw">let </span>exchange =
+                &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::WeightInfo::exchange(n);
+            <span class="macro">println!</span>(<span class="string">&quot;{n} order(-s):&quot;</span>);
+            <span class="macro">dbg!</span>(exchange);
+            <span class="macro">println!</span>();
         }
         <span class="prelude-val">Ok</span>(())
     });
