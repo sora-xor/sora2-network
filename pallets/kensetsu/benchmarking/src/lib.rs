@@ -79,8 +79,13 @@ fn set_xor_as_collateral_type<T: Config>() {
 
 /// Creates CDP with XOR as collateral
 fn create_cdp_with_xor<T: Config>() -> U256 {
-    kensetsu::Pallet::<T>::create_cdp(RawOrigin::Signed(caller::<T>()).into(), XOR.into())
-        .expect("Shall create CDP");
+    kensetsu::Pallet::<T>::create_cdp(
+        RawOrigin::Signed(caller::<T>()).into(),
+        XOR.into(),
+        balance!(0),
+        balance!(0),
+    )
+    .expect("Shall create CDP");
     kensetsu::NextCDPId::<T>::get()
 }
 
@@ -176,11 +181,29 @@ benchmarks! {
     }
 
     create_cdp {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
+            .expect("Must set risk manager");
+        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
+            RawOrigin::Signed(risk_manager::<T>()).into(),
+            Balance::MAX,
+        ).expect("Shall update hard cap");
+        initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
+        let collateral = balance!(10);
+        let debt = balance!(1);
+        assets::Pallet::<T>::update_balance(
+            RawOrigin::Root.into(),
+            caller::<T>(),
+            XOR.into(),
+            collateral.try_into().unwrap(),
+        )
+        .expect("Shall mint XOR");
     }: {
         kensetsu::Pallet::<T>::create_cdp(
             RawOrigin::Signed(caller::<T>()).into(),
-            XOR.into()
+            XOR.into(),
+            collateral,
+            debt
         ).unwrap();
     }
 

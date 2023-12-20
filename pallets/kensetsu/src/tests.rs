@@ -55,11 +55,11 @@ type System = frame_system::Pallet<TestRuntime>;
 fn test_create_cdp_only_signed_origin() {
     new_test_ext().execute_with(|| {
         assert_err!(
-            KensetsuPallet::create_cdp(RuntimeOrigin::none(), XOR),
+            KensetsuPallet::create_cdp(RuntimeOrigin::none(), XOR, balance!(0), balance!(0)),
             BadOrigin
         );
         assert_err!(
-            KensetsuPallet::create_cdp(RuntimeOrigin::root(), XOR),
+            KensetsuPallet::create_cdp(RuntimeOrigin::root(), XOR, balance!(0), balance!(0)),
             BadOrigin
         );
     });
@@ -71,7 +71,7 @@ fn test_create_cdp_only_signed_origin() {
 fn test_create_cdp_for_asset_not_listed_must_result_in_error() {
     new_test_ext().execute_with(|| {
         assert_err!(
-            KensetsuPallet::create_cdp(alice(), XOR),
+            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0)),
             KensetsuError::CollateralInfoNotFound
         );
     });
@@ -89,7 +89,7 @@ fn test_create_cdp_overflow_error() {
         NextCDPId::<TestRuntime>::set(U256::MAX);
 
         assert_err!(
-            KensetsuPallet::create_cdp(alice(), XOR),
+            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0)),
             KensetsuError::ArithmeticError
         );
     });
@@ -99,20 +99,41 @@ fn test_create_cdp_overflow_error() {
 #[test]
 fn test_create_cdp_sunny_day() {
     new_test_ext().execute_with(|| {
+        let collateral = balance!(10);
+        let debt = balance!(2);
         set_xor_as_collateral_type(
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
         );
+        set_balance(alice_account_id(), collateral);
 
-        assert_ok!(KensetsuPallet::create_cdp(alice(), XOR),);
+        assert_ok!(KensetsuPallet::create_cdp(alice(), XOR, collateral, debt),);
         let cdp_id = U256::from(1);
 
-        System::assert_last_event(
+        System::assert_has_event(
             Event::CDPCreated {
                 cdp_id,
                 owner: alice_account_id(),
                 collateral_asset_id: XOR,
+            }
+            .into(),
+        );
+        System::assert_has_event(
+            Event::CollateralDeposit {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR,
+                amount: collateral,
+            }
+            .into(),
+        );
+        System::assert_has_event(
+            Event::DebtIncreased {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR,
+                amount: debt,
             }
             .into(),
         );
@@ -123,8 +144,8 @@ fn test_create_cdp_sunny_day() {
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Shall create CDP");
         assert_eq!(cdp.owner, alice_account_id());
         assert_eq!(cdp.collateral_asset_id, XOR);
-        assert_eq!(cdp.collateral_amount, balance!(0));
-        assert_eq!(cdp.debt, balance!(0));
+        assert_eq!(cdp.collateral_amount, collateral);
+        assert_eq!(cdp.debt, debt);
     });
 }
 

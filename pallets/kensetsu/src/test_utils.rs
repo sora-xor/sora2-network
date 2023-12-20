@@ -140,15 +140,14 @@ pub fn create_cdp_for_xor(
     collateral: Balance,
     debt: Balance,
 ) -> U256 {
-    assert_ok!(KensetsuPallet::create_cdp(owner.clone(), XOR));
-    let cdp_id = NextCDPId::<TestRuntime>::get();
-    if collateral > 0 {
-        deposit_xor_to_cdp(owner.clone(), cdp_id, collateral);
-    }
-    if debt > 0 {
-        assert_ok!(KensetsuPallet::borrow(owner, cdp_id, debt));
-    }
-    cdp_id
+    set_balance(alice_account_id(), collateral);
+    assert_ok!(KensetsuPallet::create_cdp(
+        owner.clone(),
+        XOR,
+        collateral,
+        debt
+    ));
+    NextCDPId::<TestRuntime>::get()
 }
 
 /// Deposits to CDP

@@ -374,6 +374,8 @@ pub mod pallet {
         pub fn create_cdp(
             origin: OriginFor<T>,
             collateral_asset_id: AssetIdOf<T>,
+            collateral_amount: Balance,
+            borrow_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(
@@ -393,15 +395,21 @@ pub mod pallet {
                     collateral_asset_id,
                 });
                 <CDPDepository<T>>::insert(
-                    cdp_id,
+                    cdp_id.clone(),
                     CollateralizedDebtPosition {
-                        owner: who,
+                        owner: who.clone(),
                         collateral_asset_id,
                         collateral_amount: balance!(0),
                         debt: balance!(0),
                         interest_coefficient,
                     },
                 );
+                if collateral_amount > 0 {
+                    Self::deposit_internal(&who, *cdp_id, collateral_amount)?;
+                }
+                if borrow_amount > 0 {
+                    Self::borrow_internal(&who, *cdp_id, borrow_amount)?;
+                }
                 DispatchResult::Ok(())
             })?;
             Ok(())
@@ -437,29 +445,7 @@ pub mod pallet {
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            technical::Pallet::<T>::transfer_in(
-                &cdp.collateral_asset_id,
-                &who,
-                &T::TreasuryTechAccount::get(),
-                collateral_amount,
-            )?;
-            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
-                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                cdp.collateral_amount = cdp
-                    .collateral_amount
-                    .checked_add(collateral_amount)
-                    .ok_or(Error::<T>::ArithmeticError)?;
-                DispatchResult::Ok(())
-            })?;
-            Self::deposit_event(Event::CollateralDeposit {
-                cdp_id,
-                owner: who,
-                collateral_asset_id: cdp.collateral_asset_id,
-                amount: collateral_amount,
-            });
-
-            Ok(())
+            Self::deposit_internal(&who, cdp_id, collateral_amount)
         }
 
         #[pallet::call_index(3)]
@@ -513,32 +499,7 @@ pub mod pallet {
             will_to_borrow_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = Self::accrue_internal(cdp_id)?;
-            ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
-            let new_debt = cdp
-                .debt
-                .checked_add(will_to_borrow_amount)
-                .ok_or(Error::<T>::ArithmeticError)?;
-            ensure!(
-                Self::check_cdp_is_safe(new_debt, cdp.collateral_amount, cdp.collateral_asset_id)?,
-                Error::<T>::CDPUnsafe
-            );
-            Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
-            Self::ensure_protocol_cap(will_to_borrow_amount)?;
-            Self::mint_to(&who, will_to_borrow_amount)?;
-            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
-                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                cdp.debt = new_debt;
-                DispatchResult::Ok(())
-            })?;
-            Self::deposit_event(Event::DebtIncreased {
-                cdp_id,
-                owner: who,
-                collateral_asset_id: cdp.collateral_asset_id,
-                amount: will_to_borrow_amount,
-            });
-
-            Ok(())
+            Self::borrow_internal(&who, cdp_id, will_to_borrow_amount)
         }
 
         #[pallet::call_index(5)]
@@ -978,6 +939,71 @@ pub mod pallet {
                     <= Self::max_supply(),
                 Error::<T>::HardCapSupply
             );
+            Ok(())
+        }
+
+        /// Deposits collateral to CDP.
+        fn deposit_internal(
+            who: &AccountIdOf<T>,
+            cdp_id: U256,
+            collateral_amount: Balance,
+        ) -> DispatchResult {
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            technical::Pallet::<T>::transfer_in(
+                &cdp.collateral_asset_id,
+                &who,
+                &T::TreasuryTechAccount::get(),
+                collateral_amount,
+            )?;
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.collateral_amount = cdp
+                    .collateral_amount
+                    .checked_add(collateral_amount)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
+            })?;
+            Self::deposit_event(Event::CollateralDeposit {
+                cdp_id,
+                owner: who.clone(),
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: collateral_amount,
+            });
+
+            Ok(())
+        }
+
+        /// Borrows KUSD from CDP.
+        fn borrow_internal(
+            who: &AccountIdOf<T>,
+            cdp_id: U256,
+            will_to_borrow_amount: Balance,
+        ) -> DispatchResult {
+            let cdp = Self::accrue_internal(cdp_id)?;
+            ensure!(*who == cdp.owner, Error::<T>::OperationNotPermitted);
+            let new_debt = cdp
+                .debt
+                .checked_add(will_to_borrow_amount)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            ensure!(
+                Self::check_cdp_is_safe(new_debt, cdp.collateral_amount, cdp.collateral_asset_id)?,
+                Error::<T>::CDPUnsafe
+            );
+            Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
+            Self::ensure_protocol_cap(will_to_borrow_amount)?;
+            Self::mint_to(&who, will_to_borrow_amount)?;
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.debt = new_debt;
+                DispatchResult::Ok(())
+            })?;
+            Self::deposit_event(Event::DebtIncreased {
+                cdp_id,
+                owner: who.clone(),
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: will_to_borrow_amount,
+            });
+
             Ok(())
         }
 
