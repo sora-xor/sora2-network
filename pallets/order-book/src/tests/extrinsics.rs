@@ -1564,7 +1564,7 @@ fn should_align_a_lot_of_limit_orders() {
 
         // run to the next block to perform alignment
         let current_block = FrameSystem::block_number();
-        run_to_block(current_block + 8);
+        run_to_block(current_block + 9);
 
         check_limit_orders_aligned(order_book_id1, updated_amount);
         check_limit_orders_aligned(order_book_id2, updated_amount);
