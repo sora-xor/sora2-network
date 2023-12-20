@@ -33,9 +33,12 @@ use crate as kensetsu;
 use common::mock::ExistentialDeposits;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, Amount, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, DAI,
-    DEFAULT_BALANCE_PRECISION, KUSD, XOR, XST,
+    balance, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
+    KUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::parameter_types;
@@ -184,25 +187,6 @@ where
 }
 
 parameter_types! {
-    // Assets
-    pub const GetBaseAssetId: AssetId = XOR;
-    pub const GetBuyBackAssetId: AssetId = XST;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
-    pub const GetBuyBackPercentage: u8 = 0;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-
-    // Balances
-    pub const MaxLocks: u32 = 50;
-    pub const ExistentialDeposit: u128 = 1;
-    pub const MaxReserves: u32 = 50;
-
-    // Timestamp
-    pub const MinimumPeriod: u64 = 5;
-
-    // Kensetsu
     pub KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -221,108 +205,15 @@ parameter_types! {
 
 }
 
-impl assets::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<TestRuntime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-}
-
-impl pallet_balances::Config for TestRuntime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = MaxLocks;
-    type MaxReserves = MaxReserves;
-    type ReserveIdentifier = ();
-}
-
-impl common::Config for TestRuntime {
-    type DEXId = DEXId;
-    type LstId = LiquiditySourceType;
-}
-
-impl currencies::Config for TestRuntime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<TestRuntime, Balances, Amount, u64>;
-    type GetNativeCurrencyId = <TestRuntime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-impl frame_system::Config for TestRuntime {
-    type BaseCallFilter = frame_support::traits::Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = ConstU64<250>;
-    type DbWeight = ();
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ConstU16<42>;
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<16>;
-}
-
-impl permissions::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl technical::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = ();
-}
-
-impl tokens::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <TestRuntime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl pallet_timestamp::Config for TestRuntime {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
+mock_assets_config!(TestRuntime);
+mock_pallet_balances_config!(TestRuntime);
+mock_common_config!(TestRuntime);
+mock_currencies_config!(TestRuntime);
+mock_frame_system_config!(TestRuntime);
+mock_permissions_config!(TestRuntime);
+mock_technical_config!(TestRuntime);
+mock_tokens_config!(TestRuntime);
+mock_pallet_timestamp_config!(TestRuntime);
 
 impl kensetsu::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
