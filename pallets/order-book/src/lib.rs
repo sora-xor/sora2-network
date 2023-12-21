@@ -29,16 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(dead_code)] // todo (m.tagirov) remove
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
 
 use assets::AssetIdOf;
 use common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
-#[cfg(feature = "ready-to-test")] // order-book
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
@@ -52,9 +50,8 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
-use sp_runtime::traits::{CheckedDiv, CheckedMul};
-use sp_runtime::{BoundedVec, Perbill};
+use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, CheckedMul, MaybeDisplay, Zero};
+use sp_runtime::BoundedVec;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
@@ -118,12 +115,12 @@ pub mod pallet {
         const MAX_ORDER_LIFESPAN: MomentOf<Self>;
         const MIN_ORDER_LIFESPAN: MomentOf<Self>;
         const MILLISECS_PER_BLOCK: MomentOf<Self>;
-        const MAX_PRICE_SHIFT: Perbill;
         /// The soft ratio between min & max order amounts.
         /// In particular, it defines the optimal number of limit orders that could be executed by one big market order in one block.
         const SOFT_MIN_MAX_RATIO: usize;
-        /// The soft ratio between min & max order amounts.
+        /// The hard ratio between min & max order amounts.
         /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
+        /// During update of parameters, the limits must satisfy this ratio.
         const HARD_MIN_MAX_RATIO: usize;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -288,8 +285,8 @@ pub mod pallet {
     >;
 
     /// Earliest block with incomplete expirations;
-    /// Weight limit might not allow to finish all expirations for a block, so
-    /// they might be operated later.
+    /// Weight limit might not allow to finish all expirations for a block
+    /// so they might be operated later.
     #[pallet::storage]
     #[pallet::getter(fn incomplete_expirations_since)]
     pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, T::BlockNumber>;
@@ -484,9 +481,7 @@ pub mod pallet {
         InvalidMaxLotSize,
         /// Tick size & step lot size are too big and their multiplication overflows Balance
         TickSizeAndStepLotSizeAreTooBig,
-        /// Product of tick and step lot sizes goes out of precision. It must be accurately
-        /// represented by fixed-precision float to prevent rounding errors. I.e. the product
-        /// should not have more than 18 digits after the comma.
+        /// Product of tick and step lot sizes goes out of precision. It must be accurately represented by fixed-precision float to prevent rounding errors. I.e. the product should not have more than 18 digits after the comma.
         TickSizeAndStepLotSizeLosePrecision,
         /// Max lot size cannot be more that total supply of base asset
         MaxLotSizeIsMoreThanTotalSupply,
@@ -496,7 +491,7 @@ pub mod pallet {
         MarketOrdersAllowedOnlyForIndivisibleAssets,
         /// It is possible to delete an order-book only with the statuses: OnlyCancel or Stop
         ForbiddenStatusToDeleteOrderBook,
-        // It is possible to delete only empty order-book
+        /// It is possible to delete only empty order-book
         OrderBookIsNotEmpty,
         /// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
         ForbiddenStatusToUpdateOrderBook,
@@ -562,15 +557,13 @@ pub mod pallet {
                 max_lot_size,
             )?;
 
-            #[cfg(feature = "ready-to-test")] // order-book
-            {
-                T::TradingPairSourceManager::enable_source_for_trading_pair(
-                    &order_book_id.dex_id,
-                    &order_book_id.quote,
-                    &order_book_id.base,
-                    LiquiditySourceType::OrderBook,
-                )?;
-            }
+            T::TradingPairSourceManager::enable_source_for_trading_pair(
+                &order_book_id.dex_id,
+                &order_book_id.quote,
+                &order_book_id.base,
+                LiquiditySourceType::OrderBook,
+            )?;
+
             Self::create_orderbook_unchecked(
                 &order_book_id,
                 tick_size,
@@ -582,7 +575,7 @@ pub mod pallet {
                 order_book_id,
                 creator: maybe_who,
             });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(1)]
@@ -606,21 +599,18 @@ pub mod pallet {
                 .is_none();
             ensure!(is_empty, Error::<T>::OrderBookIsNotEmpty);
 
-            #[cfg(feature = "ready-to-test")] // order-book
-            {
-                T::TradingPairSourceManager::disable_source_for_trading_pair(
-                    &order_book_id.dex_id,
-                    &order_book_id.quote,
-                    &order_book_id.base,
-                    LiquiditySourceType::OrderBook,
-                )?;
-            }
+            T::TradingPairSourceManager::disable_source_for_trading_pair(
+                &order_book_id.dex_id,
+                &order_book_id.quote,
+                &order_book_id.base,
+                LiquiditySourceType::OrderBook,
+            )?;
 
             Self::deregister_tech_account(order_book_id)?;
             <OrderBooks<T>>::remove(order_book_id);
 
             Self::deposit_event(Event::<T>::OrderBookDeleted { order_book_id });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(2)]
@@ -685,7 +675,7 @@ pub mod pallet {
             }
             <OrderBooks<T>>::set(order_book_id, Some(order_book));
             Self::deposit_event(Event::<T>::OrderBookUpdated { order_book_id });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(3)]
@@ -703,7 +693,7 @@ pub mod pallet {
                     && status != OrderBookStatus::OnlyCancel
                     && status != OrderBookStatus::Stop
                 {
-                    return Err(Error::<T>::OrderBookIsLocked.into());
+                    return Err(Error::<T>::OrderBookIsLocked);
                 }
 
                 order_book.status = status;
@@ -713,7 +703,7 @@ pub mod pallet {
                 order_book_id,
                 new_status: status,
             });
-            Ok(().into())
+            Ok(())
         }
 
         #[pallet::call_index(4)]
@@ -741,7 +731,7 @@ pub mod pallet {
             };
             let order = LimitOrder::<T>::new(
                 order_id,
-                who.clone(),
+                who,
                 side,
                 OrderPrice::divisible(price),
                 amount,
@@ -864,7 +854,7 @@ pub mod pallet {
             order_book.execute_market_order(market_order, &mut data)?;
 
             data.commit();
-            Ok(().into())
+            Ok(())
         }
     }
 }
@@ -877,12 +867,7 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
-        technical::Pallet::<T>::transfer_in(
-            asset_id,
-            account,
-            &tech_account,
-            (*amount.balance()).into(),
-        )
+        technical::Pallet::<T>::transfer_in(asset_id, account, &tech_account, *amount.balance())
     }
 }
 
@@ -894,12 +879,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
-        technical::Pallet::<T>::transfer_out(
-            asset_id,
-            &tech_account,
-            account,
-            (*amount.balance()).into(),
-        )
+        technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, *amount.balance())
     }
 
     fn unlock_liquidity_batch(
@@ -1123,8 +1103,8 @@ impl<T: Config> Pallet<T> {
         T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             &order_book_id.dex_id,
-            &order_book_id.quote.into(),
-            &order_book_id.base.into(),
+            &order_book_id.quote,
+            &order_book_id.base,
         )?;
 
         ensure!(
@@ -1232,6 +1212,14 @@ impl<T: Config> Pallet<T> {
     }
 }
 
+#[cfg(feature = "private-net")]
+impl<T: Config> Pallet<T> {
+    /// Specifically created for `qa-tools` pallet
+    pub fn deposit_event_exposed(event: Event<T>) {
+        Self::deposit_event(event)
+    }
+}
+
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
     for Pallet<T>
 {
@@ -1334,7 +1322,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let amount = deal_info.base_amount();
 
         let market_order =
-            MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to.clone());
+            MarketOrder::<T>::new(sender.clone(), direction, order_book_id, amount, to);
 
         let (input_amount, output_amount, executed_orders_count) =
             order_book.execute_market_order(market_order, &mut data)?;
@@ -1361,8 +1349,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         data.commit();
 
-        let weight = <T as Config>::WeightInfo::exchange_single_order()
-            .saturating_mul(executed_orders_count as u64);
+        let weight = <T as Config>::WeightInfo::exchange(executed_orders_count as u32);
 
         Ok((result, weight))
     }
@@ -1467,9 +1454,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn exchange_weight() -> Weight {
-        // SOFT_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
-        <T as Config>::WeightInfo::exchange_single_order()
-            .saturating_mul(<T as Config>::SOFT_MIN_MAX_RATIO as u64)
+        // SOFT_MIN_MAX_RATIO is approximately the max number of limit orders
+        // that can be executed by one market order
+        <T as Config>::WeightInfo::exchange(T::SOFT_MIN_MAX_RATIO.try_into().unwrap())
     }
 
     fn check_rewards_weight() -> Weight {

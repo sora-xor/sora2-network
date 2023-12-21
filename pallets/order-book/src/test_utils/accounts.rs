@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "ready-to-test")] // order-book
-
 use codec::Decode;
 
 pub fn alice<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
@@ -57,7 +55,7 @@ pub fn generate_account<T: frame_system::Config>(
     let mut id = 0;
     while value != 0 {
         adr[31 - id] = (value % 256) as u8;
-        value = value / 256;
+        value /= 256;
         id += 1;
     }
 

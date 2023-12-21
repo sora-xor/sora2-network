@@ -47,10 +47,7 @@ const BASIS_POINTS_RANGE: u16 = 10000;
 /// Check if value belongs valid range of basis points.
 /// Returns true if range is valid, false otherwise.
 pub fn in_basis_points_range<BP: Into<u16>>(value: BP) -> bool {
-    match value.into() {
-        0..=BASIS_POINTS_RANGE => true,
-        _ => false,
-    }
+    matches!(value.into(), 0..=BASIS_POINTS_RANGE)
 }
 
 /// Create fraction as Fixed from BasisPoints value.
