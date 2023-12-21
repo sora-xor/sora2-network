@@ -193,7 +193,7 @@ pub mod pallet {
         /// Asset is not listed
         AssetIsNotListed,
         /// Collateral token does not exists
-        CollateralTokenDoesNotExists,
+        CollateralTokenDoesNotExist,
         /// No lending amount to borrow
         NoLendingAmountToBorrow,
         /// No liquidity for borrowing asset
@@ -305,10 +305,6 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            ensure!(
-                <PoolData<T>>::contains_key(lending_token),
-                Error::<T>::AssetIsNotListed
-            );
             let mut pool_info =
                 <PoolData<T>>::get(lending_token).ok_or(Error::<T>::AssetIsNotListed)?;
 
@@ -351,18 +347,14 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            ensure!(
-                <PoolData<T>>::contains_key(borrowing_token),
-                Error::<T>::AssetIsNotListed
-            );
-
-            ensure!(
-                <PoolData<T>>::contains_key(collateral_token),
-                Error::<T>::CollateralTokenDoesNotExists
-            );
-
             let mut borrow_pool_info =
                 <PoolData<T>>::get(borrowing_token).ok_or(Error::<T>::AssetIsNotListed)?;
+
+            ensure!(
+                borrowing_amount <= borrow_pool_info.total_liquidity,
+                Error::<T>::NoLiquidityForBorrowingAsset
+            );
+
             let mut collateral_pool_info =
                 <PoolData<T>>::get(collateral_token).ok_or(Error::<T>::AssetIsNotListed)?;
             let mut user_lending_info = <UserLendingInfo<T>>::get(user.clone(), collateral_token)
@@ -388,13 +380,8 @@ pub mod pallet {
                 Error::<T>::InvalidCollateralAmount
             );
 
-            ensure!(
-                borrowing_amount <= borrow_pool_info.total_liquidity,
-                Error::<T>::NoLiquidityForBorrowingAsset
-            );
-
-            let mut borrow_info = <UserBorrowingInfo<T>>::get(user.clone(), borrowing_token)
-                .ok_or(Error::<T>::NothingBorrowed)?;
+            let mut borrow_info =
+                <UserBorrowingInfo<T>>::get(user.clone(), borrowing_token).unwrap_or_default();
 
             // Add borrowing amount, collateral amount and interest to user if exists, otherwise create new user
             if let Some(mut user_info) = borrow_info.get_mut(&collateral_token) {
@@ -404,16 +391,6 @@ pub mod pallet {
                 user_info.collateral_amount += collateral_amount;
                 user_info.borrowing_amount += borrowing_amount;
                 user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
-                user_lending_info.lending_amount -= collateral_amount;
-                user_lending_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
-                borrow_pool_info.total_liquidity -= borrowing_amount;
-                borrow_pool_info.total_borrowed += borrowing_amount;
-                collateral_pool_info.total_collateral += collateral_amount;
-
-                <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, borrow_info);
-                <UserLendingInfo<T>>::insert(user.clone(), collateral_token, user_lending_info);
-                <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
-                <PoolData<T>>::insert(collateral_token, collateral_pool_info);
             } else {
                 let new_user_info = UserBorrowingPosition {
                     collateral_amount,
@@ -422,19 +399,18 @@ pub mod pallet {
                     last_borrowing_block: <frame_system::Pallet<T>>::block_number(),
                     borrowing_rewards: 0,
                 };
-
-                user_lending_info.lending_amount -= collateral_amount;
-                user_lending_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
-                borrow_pool_info.total_liquidity -= borrowing_amount;
-                borrow_pool_info.total_borrowed += borrowing_amount;
-                collateral_pool_info.total_collateral += collateral_amount;
-
                 borrow_info.insert(collateral_token, new_user_info);
-                <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, borrow_info);
-                <UserLendingInfo<T>>::insert(user.clone(), collateral_token, user_lending_info);
-                <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
-                <PoolData<T>>::insert(collateral_token, collateral_pool_info);
             }
+            user_lending_info.lending_amount -= collateral_amount;
+            user_lending_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
+            borrow_pool_info.total_liquidity -= borrowing_amount;
+            borrow_pool_info.total_borrowed += borrowing_amount;
+            collateral_pool_info.total_collateral += collateral_amount;
+
+            <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, borrow_info);
+            <UserLendingInfo<T>>::insert(user.clone(), collateral_token, user_lending_info);
+            <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
+            <PoolData<T>>::insert(collateral_token, collateral_pool_info);
 
             // Transfer borrowing amount to user
             Assets::<T>::transfer_from(
@@ -482,14 +458,13 @@ pub mod pallet {
                 let mut lend_user_info = <UserLendingInfo<T>>::get(user.clone(), asset_id)
                     .ok_or(Error::<T>::NothingLended)?;
 
+                let calculated_interest = Self::calculate_lending_earnings(&user, asset_id);
+                lend_user_info.lending_interest += calculated_interest;
+
                 ensure!(
                     lend_user_info.lending_interest > 0,
                     Error::<T>::NoRewardsToClaim
                 );
-
-                let calculated_interest = Self::calculate_lending_earnings(&user, asset_id);
-                lend_user_info.lending_interest += calculated_interest;
-                <UserLendingInfo<T>>::insert(user.clone(), asset_id, &lend_user_info);
 
                 Assets::<T>::transfer_from(
                     &CERES_ASSET_ID.into(),
@@ -554,11 +529,11 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            let mut user_info = <UserLendingInfo<T>>::get(user.clone(), lending_token)
-                .ok_or(Error::<T>::NothingLended)?;
-
             let mut pool_info =
                 <PoolData<T>>::get(lending_token).ok_or(Error::<T>::AssetIsNotListed)?;
+
+            let mut user_info = <UserLendingInfo<T>>::get(user.clone(), lending_token)
+                .ok_or(Error::<T>::NothingLended)?;
 
             ensure!(user_info.lending_amount > 0, Error::<T>::NoLendingAmount);
 
@@ -569,7 +544,6 @@ pub mod pallet {
 
             let calculated_interest = Self::calculate_lending_earnings(&user, lending_token);
             user_info.lending_interest += calculated_interest;
-            <UserLendingInfo<T>>::insert(user.clone(), lending_token, &user_info);
 
             ensure!(
                 lending_amount <= user_info.lending_amount,
@@ -642,15 +616,13 @@ pub mod pallet {
             let mut borrow_pool_info =
                 <PoolData<T>>::get(borrowing_token).ok_or(Error::<T>::AssetIsNotListed)?;
             let mut collateral_pool_info = <PoolData<T>>::get(collateral_token)
-                .ok_or(Error::<T>::CollateralTokenDoesNotExists)?;
-
-            ensure!(user_info.borrowing_interest > 0, Error::<T>::NothingToRepay);
+                .ok_or(Error::<T>::CollateralTokenDoesNotExist)?;
 
             let calculated_interest =
                 Self::calculate_borrowing_interest(&user, borrowing_token, collateral_token);
             user_info.borrowing_interest += calculated_interest;
-            borrow_user_info.insert(collateral_token, user_info.clone());
-            <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, &borrow_user_info);
+
+            ensure!(user_info.borrowing_interest > 0, Error::<T>::NothingToRepay);
 
             if amount_to_repay <= user_info.borrowing_interest {
                 //let reserve_allocation = amount_to_repay;
@@ -662,7 +634,6 @@ pub mod pallet {
                 borrow_pool_info.total_liquidity += amount_to_repay;
                 borrow_user_info.insert(collateral_token, user_info);
                 <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, borrow_user_info);
-                <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
             } else if amount_to_repay > user_info.borrowing_interest
                 && amount_to_repay < user_info.borrowing_interest + user_info.borrowing_amount
             {
@@ -687,7 +658,6 @@ pub mod pallet {
 
                 borrow_user_info.insert(collateral_token, user_info);
                 <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, &borrow_user_info);
-                <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
             } else if amount_to_repay == user_info.borrowing_interest + user_info.borrowing_amount {
                 //let reserve_allocation = user_info.borrowing_interest;
 
@@ -696,7 +666,6 @@ pub mod pallet {
                 borrow_pool_info.total_borrowed -= user_info.borrowing_amount;
                 borrow_pool_info.total_liquidity += user_info.borrowing_amount;
                 collateral_pool_info.total_collateral -= user_info.collateral_amount;
-                <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
                 <PoolData<T>>::insert(collateral_token, collateral_pool_info);
 
                 // Transfer collateral to user
@@ -730,6 +699,8 @@ pub mod pallet {
             } else {
                 return Err(Error::<T>::BorrowingAmountExceeds.into());
             }
+
+            <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
 
             //Emit event
             Self::deposit_event(Event::Repaid(user, borrowing_token, amount_to_repay));
