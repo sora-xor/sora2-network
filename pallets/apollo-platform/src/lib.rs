@@ -436,6 +436,7 @@ pub mod pallet {
                 <PoolData<T>>::insert(collateral_token, collateral_pool_info);
             }
 
+            // Transfer borrowing amount to user
             Assets::<T>::transfer_from(
                 &borrowing_token,
                 &Self::account_id(),
@@ -444,6 +445,7 @@ pub mod pallet {
             )
             .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
 
+            // Transfer collateral amount to pallet
             Assets::<T>::transfer_from(
                 &collateral_token,
                 &user,
@@ -565,14 +567,14 @@ pub mod pallet {
                 Error::<T>::CanNotTransferLendingAmount
             );
 
+            let calculated_interest = Self::calculate_lending_earnings(&user, lending_token);
+            user_info.lending_interest += calculated_interest;
+            <UserLendingInfo<T>>::insert(user.clone(), lending_token, &user_info);
+
             ensure!(
                 lending_amount <= user_info.lending_amount,
                 Error::<T>::LendingAmountExceeded
             );
-
-            let calculated_interest = Self::calculate_lending_earnings(&user, lending_token);
-            user_info.lending_interest += calculated_interest;
-            <UserLendingInfo<T>>::insert(user.clone(), lending_token, &user_info);
 
             // Check if lending amount is less than user's lending amount
             if lending_amount < user_info.lending_amount {
@@ -677,8 +679,8 @@ pub mod pallet {
 
                 Assets::<T>::transfer_from(
                     &borrowing_token,
-                    &Self::account_id(),
                     &user,
+                    &Self::account_id(),
                     remaining_amount,
                 )
                 .map_err(|_| Error::<T>::CanNotTransferAmountToRepay)?;
@@ -697,6 +699,7 @@ pub mod pallet {
                 <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
                 <PoolData<T>>::insert(collateral_token, collateral_pool_info);
 
+                // Transfer collateral to user
                 Assets::<T>::transfer_from(
                     &collateral_token,
                     &Self::account_id(),
@@ -705,14 +708,16 @@ pub mod pallet {
                 )
                 .map_err(|_| Error::<T>::UnableToTransferCollateral)?;
 
+                // Transfer borrowing amount to pallet
                 Assets::<T>::transfer_from(
                     &borrowing_token,
-                    &Self::account_id(),
                     &user,
+                    &Self::account_id(),
                     user_info.borrowing_amount,
                 )
                 .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
 
+                // Transfer borrowing rewards to user
                 Assets::<T>::transfer_from(
                     &CERES_ASSET_ID.into(),
                     &Self::account_id(),
