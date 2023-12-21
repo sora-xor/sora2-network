@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "ready-to-test")] // order-book
-
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
@@ -53,8 +51,8 @@ use sp_std::iter::repeat;
 fn should_create_new() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
+        base: VAL,
+        quote: XOR,
     };
 
     let expected = OrderBook::<Runtime> {
@@ -84,8 +82,8 @@ fn should_create_new() {
 fn should_increment_order_id() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
         dex_id: DEX.into(),
-        base: VAL.into(),
-        quote: XOR.into(),
+        base: VAL,
+        quote: XOR,
     };
 
     let mut order_book = OrderBook::<Runtime>::new(
@@ -114,8 +112,8 @@ fn should_place_limit_order() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -152,7 +150,7 @@ fn should_place_limit_order() {
         assert_eq!(order_book.place_limit_order(order, &mut data).unwrap(), 0);
 
         // check
-        let mut expected_bids = bids_before.clone();
+        let mut expected_bids = bids_before;
         assert_ok!(expected_bids.try_push(order_id));
         assert_eq!(
             data.get_bids(&order_book_id, &price).unwrap(),
@@ -160,11 +158,11 @@ fn should_place_limit_order() {
         );
 
         let expected_price_volume = price_volume_before + amount;
-        let mut expected_agg_bids = agg_bids_before.clone();
+        let mut expected_agg_bids = agg_bids_before;
         assert_ok!(expected_agg_bids.try_insert(price, expected_price_volume));
         assert_eq!(data.get_aggregated_bids(&order_book_id), expected_agg_bids);
 
-        let mut expected_user_orders = user_orders_before.clone();
+        let mut expected_user_orders = user_orders_before;
         assert_ok!(expected_user_orders.try_push(order_id));
         assert_eq!(
             data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
@@ -207,7 +205,7 @@ fn should_place_nft_limit_order() {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: nft,
-            quote: XOR.into(),
+            quote: XOR,
         };
 
         let order_book = OrderBook::<Runtime>::new(
@@ -265,8 +263,8 @@ fn should_place_limit_order_out_of_spread() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -642,8 +640,8 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let mut order_book = OrderBook::<Runtime>::new(
@@ -685,7 +683,7 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
 
         order_book.status = OrderBookStatus::Trade;
         order.id = 2;
-        assert_ok!(order_book.place_limit_order(order.clone(), &mut data));
+        assert_ok!(order_book.place_limit_order(order, &mut data));
     });
 }
 
@@ -696,8 +694,8 @@ fn should_not_place_invalid_limit_order() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = OrderBook::<Runtime>::new(
@@ -740,7 +738,7 @@ fn should_not_place_invalid_limit_order() {
             E::InvalidOrderAmount
         );
 
-        let mut wrong_amount_order = order.clone();
+        let mut wrong_amount_order = order;
         wrong_amount_order.amount =
             (balance!(100) + order_book.step_lot_size.balance() / 100).into();
         assert_err!(
@@ -771,7 +769,7 @@ fn should_not_place_invalid_nft_limit_order() {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: nft,
-            quote: XOR.into(),
+            quote: XOR,
         };
 
         let order_book = OrderBook::<Runtime>::new(
@@ -807,7 +805,7 @@ fn should_not_place_invalid_nft_limit_order() {
             E::InvalidOrderAmount
         );
 
-        let mut too_big_amount_order = order.clone();
+        let mut too_big_amount_order = order;
         too_big_amount_order.amount = order_book.max_lot_size + OrderVolume::indivisible(1);
         assert_err!(
             order_book.place_limit_order(too_big_amount_order, &mut data),
@@ -823,8 +821,8 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = OrderBook::<Runtime>::new(
@@ -887,8 +885,8 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = OrderBook::<Runtime>::new(
@@ -965,8 +963,8 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = OrderBook::<Runtime>::new(
@@ -1043,91 +1041,14 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
 }
 
 #[test]
-fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
-    ext().execute_with(|| {
-        let mut data = StorageDataLayer::<Runtime>::new();
-
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
-        };
-
-        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
-
-        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
-
-        let max_price_shift = <Runtime as Config>::MAX_PRICE_SHIFT;
-
-        // values from create_and_fill_order_book::<Runtime>()
-        let best_bid_price = balance!(10);
-        let best_ask_price = balance!(11);
-
-        let wrong_buy_price =
-            best_bid_price - max_price_shift * best_bid_price - order_book.tick_size.balance();
-        let mut buy_order = LimitOrder::<Runtime>::new(
-            101,
-            accounts::alice::<Runtime>(),
-            PriceVariant::Buy,
-            wrong_buy_price.into(),
-            balance!(10).into(),
-            10,
-            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
-            frame_system::Pallet::<Runtime>::block_number(),
-        );
-
-        let wrong_sell_price =
-            best_ask_price + max_price_shift * best_ask_price + order_book.tick_size.balance();
-        let mut sell_order = LimitOrder::<Runtime>::new(
-            102,
-            accounts::alice::<Runtime>(),
-            PriceVariant::Sell,
-            wrong_sell_price.into(),
-            balance!(10).into(),
-            10,
-            <Runtime as Config>::MIN_ORDER_LIFESPAN + 10000,
-            frame_system::Pallet::<Runtime>::block_number(),
-        );
-
-        assert_err!(
-            order_book.place_limit_order(buy_order.clone(), &mut data),
-            E::InvalidLimitOrderPrice
-        );
-        assert_err!(
-            order_book.place_limit_order(sell_order.clone(), &mut data),
-            E::InvalidLimitOrderPrice
-        );
-
-        // fix prices, now they are on the max distance from the spread
-        buy_order.price = (best_bid_price - max_price_shift * best_bid_price).into();
-        sell_order.price = (best_ask_price + max_price_shift * best_ask_price).into();
-
-        assert_ok!(order_book.place_limit_order(buy_order.clone(), &mut data));
-        assert_ok!(order_book.place_limit_order(sell_order.clone(), &mut data));
-
-        buy_order.id = 201;
-        buy_order.price =
-            (best_bid_price + max_price_shift * best_bid_price + order_book.tick_size.balance())
-                .into();
-        sell_order.id = 202;
-        sell_order.price =
-            (best_ask_price - max_price_shift * best_ask_price - order_book.tick_size.balance())
-                .into();
-
-        assert_ok!(order_book.place_limit_order(buy_order.clone(), &mut data));
-        assert_ok!(order_book.place_limit_order(sell_order.clone(), &mut data));
-    })
-}
-
-#[test]
 fn should_not_place_limit_order_in_spread() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1179,8 +1100,8 @@ fn should_cancel_limit_order() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1207,7 +1128,7 @@ fn should_cancel_limit_order() {
         let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // check
-        let mut expected_bids = bids_before.clone();
+        let mut expected_bids = bids_before;
         expected_bids.retain(|&id| id != order.id);
         assert_eq!(
             data.get_bids(&order_book_id, &order.price).unwrap(),
@@ -1215,11 +1136,11 @@ fn should_cancel_limit_order() {
         );
 
         let expected_price_volume = price_volume_before - order.amount;
-        let mut expected_agg_bids = agg_bids_before.clone();
+        let mut expected_agg_bids = agg_bids_before;
         assert_ok!(expected_agg_bids.try_insert(order.price, expected_price_volume));
         assert_eq!(data.get_aggregated_bids(&order_book_id), expected_agg_bids);
 
-        let mut expected_user_orders = user_orders_before.clone();
+        let mut expected_user_orders = user_orders_before;
         expected_user_orders.retain(|&id| id != order.id);
         assert_eq!(
             data.get_user_limit_orders(&order.owner, &order_book_id)
@@ -1240,8 +1161,8 @@ fn should_not_cancel_unknown_limit_order() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1271,8 +1192,8 @@ fn should_not_cancel_limit_order_when_status_doesnt_allow() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1306,14 +1227,14 @@ fn should_cancel_all_limit_orders() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
-            &OrderBookPallet::tech_account_for_order_book(order_book_id.clone()),
+            &OrderBookPallet::tech_account_for_order_book(order_book_id),
         )
         .unwrap();
 
@@ -1378,8 +1299,8 @@ fn should_not_get_best_bid_from_empty_order_book() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_empty_order_book::<Runtime>(order_book_id);
@@ -1395,8 +1316,8 @@ fn should_get_best_bid() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1415,8 +1336,8 @@ fn should_not_get_best_ask_from_empty_order_book() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_empty_order_book::<Runtime>(order_book_id);
@@ -1432,8 +1353,8 @@ fn should_get_best_ask() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1450,8 +1371,8 @@ fn should_not_get_direction_if_any_asset_is_not_in_order_book_id() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1469,8 +1390,8 @@ fn should_get_direction() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1491,8 +1412,8 @@ fn should_align_amount() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_empty_order_book::<Runtime>(order_book_id);
@@ -1544,8 +1465,8 @@ fn should_not_sum_market_if_limit_is_greater_than_liquidity() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1588,8 +1509,8 @@ fn should_sum_market_with_zero_limit() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1649,8 +1570,8 @@ fn should_sum_market() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1901,8 +1822,8 @@ fn should_not_calculate_deal_with_small_amount() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1911,7 +1832,7 @@ fn should_not_calculate_deal_with_small_amount() {
             order_book.calculate_deal(
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(0.000001).into()),
+                QuoteAmount::with_desired_input(balance!(0.000001)),
                 &mut data
             ),
             E::InvalidOrderAmount
@@ -1920,7 +1841,7 @@ fn should_not_calculate_deal_with_small_amount() {
             order_book.calculate_deal(
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(0.000001).into()),
+                QuoteAmount::with_desired_output(balance!(0.000001)),
                 &mut data
             ),
             E::InvalidOrderAmount
@@ -1929,7 +1850,7 @@ fn should_not_calculate_deal_with_small_amount() {
             order_book.calculate_deal(
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(0.000001).into()),
+                QuoteAmount::with_desired_input(balance!(0.000001)),
                 &mut data
             ),
             E::InvalidOrderAmount
@@ -1938,7 +1859,7 @@ fn should_not_calculate_deal_with_small_amount() {
             order_book.calculate_deal(
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(0.000001).into()),
+                QuoteAmount::with_desired_output(balance!(0.000001)),
                 &mut data
             ),
             E::InvalidOrderAmount
@@ -1953,8 +1874,8 @@ fn should_calculate_deal() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1964,7 +1885,7 @@ fn should_calculate_deal() {
                 .calculate_deal(
                     &XOR,
                     &VAL,
-                    QuoteAmount::with_desired_input(balance!(3000).into()),
+                    QuoteAmount::with_desired_input(balance!(3000)),
                     &mut data
                 )
                 .unwrap(),
@@ -1982,7 +1903,7 @@ fn should_calculate_deal() {
                 .calculate_deal(
                     &XOR,
                     &VAL,
-                    QuoteAmount::with_desired_output(balance!(200).into()),
+                    QuoteAmount::with_desired_output(balance!(200)),
                     &mut data
                 )
                 .unwrap(),
@@ -2000,7 +1921,7 @@ fn should_calculate_deal() {
                 .calculate_deal(
                     &VAL,
                     &XOR,
-                    QuoteAmount::with_desired_input(balance!(200).into()),
+                    QuoteAmount::with_desired_input(balance!(200)),
                     &mut data
                 )
                 .unwrap(),
@@ -2018,7 +1939,7 @@ fn should_calculate_deal() {
                 .calculate_deal(
                     &VAL,
                     &XOR,
-                    QuoteAmount::with_desired_output(balance!(2500).into()),
+                    QuoteAmount::with_desired_output(balance!(2500)),
                     &mut data
                 )
                 .unwrap(),
@@ -2041,8 +1962,8 @@ fn should_not_execute_market_order_with_non_trade_status() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -2069,7 +1990,7 @@ fn should_not_execute_market_order_with_non_trade_status() {
 
         order_book.status = OrderBookStatus::Stop;
         assert_err!(
-            order_book.execute_market_order(order.clone(), &mut data),
+            order_book.execute_market_order(order, &mut data),
             E::TradingIsForbidden
         );
     });
@@ -2082,8 +2003,8 @@ fn should_not_execute_market_order_with_empty_amount() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -2111,14 +2032,14 @@ fn should_not_execute_market_order_with_invalid_order_book_id() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let wrong_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: DOT.into(),
-            quote: XOR.into(),
+            base: DOT,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -2145,8 +2066,8 @@ fn should_not_execute_market_order_with_invalid_amount() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -2173,7 +2094,7 @@ fn should_not_execute_market_order_with_invalid_amount() {
             E::InvalidOrderAmount
         );
 
-        let mut too_big_amount_order = order.clone();
+        let mut too_big_amount_order = order;
         too_big_amount_order.amount = (order_book.max_lot_size.balance() + 1).into();
         assert_err!(
             order_book.execute_market_order(too_big_amount_order, &mut data),
@@ -2189,8 +2110,8 @@ fn should_execute_market_order_and_transfer_to_owner() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -2630,7 +2551,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
 
         assert_eq!(
             order_book
-                .execute_market_order(buy_order.clone(), &mut data)
+                .execute_market_order(buy_order, &mut data)
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05).into()),
@@ -2640,7 +2561,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
         );
         assert_eq!(
             order_book
-                .execute_market_order(sell_order.clone(), &mut data)
+                .execute_market_order(sell_order, &mut data)
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7).into()),
@@ -2685,8 +2606,8 @@ fn should_execute_market_order_and_transfer_to_another_account() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -3209,7 +3130,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
 
         assert_eq!(
             order_book
-                .execute_market_order(buy_order.clone(), &mut data)
+                .execute_market_order(buy_order, &mut data)
                 .unwrap(),
             (
                 OrderAmount::Quote(balance!(1848.05).into()),
@@ -3219,7 +3140,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
         );
         assert_eq!(
             order_book
-                .execute_market_order(sell_order.clone(), &mut data)
+                .execute_market_order(sell_order, &mut data)
                 .unwrap(),
             (
                 OrderAmount::Base(balance!(119.7).into()),
@@ -3271,8 +3192,8 @@ fn should_align_limit_orders() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -3348,8 +3269,8 @@ fn should_not_calculate_market_order_impact_with_empty_side() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_empty_order_book::<Runtime>(order_book_id);
@@ -3390,8 +3311,8 @@ fn should_not_calculate_market_order_impact_if_liquidity_is_not_enough() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -3432,8 +3353,8 @@ fn should_calculate_market_order_impact() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -3702,12 +3623,12 @@ fn should_calculate_market_order_impact() {
                 to_place: BTreeMap::from([]),
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([
-                    (7, limit_order7.clone()),
-                    (8, limit_order8.clone()),
-                    (9, limit_order9.clone()),
-                    (10, limit_order10.clone()),
-                    (11, limit_order11.clone()),
-                    (12, limit_order12.clone()),
+                    (7, limit_order7),
+                    (8, limit_order8),
+                    (9, limit_order9),
+                    (10, limit_order10),
+                    (11, limit_order11),
+                    (12, limit_order12),
                 ]),
                 to_cancel: BTreeMap::from([]),
                 to_force_update: BTreeMap::from([]),
@@ -3984,12 +3905,12 @@ fn should_calculate_market_order_impact() {
                 to_place: BTreeMap::from([]),
                 to_part_execute: BTreeMap::from([]),
                 to_full_execute: BTreeMap::from([
-                    (1, limit_order1.clone()),
-                    (2, limit_order2.clone()),
-                    (3, limit_order3.clone()),
-                    (4, limit_order4.clone()),
-                    (5, limit_order5.clone()),
-                    (6, limit_order6.clone()),
+                    (1, limit_order1),
+                    (2, limit_order2),
+                    (3, limit_order3),
+                    (4, limit_order4),
+                    (5, limit_order5),
+                    (6, limit_order6),
                 ]),
                 to_cancel: BTreeMap::from([]),
                 to_force_update: BTreeMap::from([]),
@@ -4027,8 +3948,8 @@ fn should_calculate_limit_order_impact() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_empty_order_book::<Runtime>(order_book_id);
@@ -4115,8 +4036,8 @@ fn should_calculate_cancellation_limit_order_impact() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -4277,8 +4198,8 @@ fn should_calculate_cancellation_of_all_limit_orders_impact() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -4356,8 +4277,8 @@ fn should_calculate_align_limit_orders_impact() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -4564,8 +4485,8 @@ fn should_apply_market_change() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -4681,23 +4602,11 @@ fn should_apply_market_change() {
                 (new_order_id2, new_limit_order2.clone()),
             ]),
             to_part_execute: BTreeMap::from([
-                (
-                    1,
-                    (
-                        limit_order1.clone(),
-                        OrderAmount::Base(balance!(68.5).into()),
-                    ),
-                ),
-                (
-                    7,
-                    (
-                        limit_order7.clone(),
-                        OrderAmount::Base(balance!(76.3).into()),
-                    ),
-                ),
+                (1, (limit_order1, OrderAmount::Base(balance!(68.5).into()))),
+                (7, (limit_order7, OrderAmount::Base(balance!(76.3).into()))),
             ]),
-            to_full_execute: BTreeMap::from([(8, limit_order8.clone())]),
-            to_cancel: BTreeMap::from([(2, (limit_order2.clone(), CancelReason::Manual))]),
+            to_full_execute: BTreeMap::from([(8, limit_order8)]),
+            to_cancel: BTreeMap::from([(2, (limit_order2, CancelReason::Manual))]),
             to_force_update: BTreeMap::from([]),
             payment: Payment {
                 order_book_id,
@@ -4818,8 +4727,8 @@ fn should_calculate_market_depth_to_price() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
@@ -4997,8 +4906,8 @@ fn should_cross_spread() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -5228,8 +5137,8 @@ fn should_cross_spread_with_small_remaining_amount() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);

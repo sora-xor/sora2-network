@@ -30,9 +30,6 @@
 
 //! General preparation logic for the benchmarking.
 
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
-
 // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(test)]
 use framenode_runtime::order_book as order_book_imported;
@@ -61,16 +58,80 @@ use order_book_imported::{
     cache_data_layer::CacheDataLayer, traits::DataLayer, LimitOrder, MomentOf, OrderBook,
     OrderBookId, OrderBooks, OrderPrice, OrderVolume,
 };
-use sp_runtime::traits::{CheckedMul, SaturatedConversion};
+use sp_runtime::traits::{CheckedMul, SaturatedConversion, Scale};
+use sp_std::iter::Peekable;
 
 use order_book_benchmarking_imported::{assert_orders_numbers, Config, DEX};
 
 use order_book_imported::Pallet as OrderBookPallet;
 
-/// Places buy orders for worst-case execution. Fill up max amount allowed by the storages or by
-/// `HARD_MIN_MAX_RATIO`.
+/// In order to scatter, the orders must be placed in the following way:
 ///
-/// If `double_cheapest_order_amount` is true, one order in the lowest price is set for twice of the
+/// ```text
+/// 1st part                    2nd part
+/// ==========================|
+/// ==========================|========================
+///
+/// worst price                              best_price
+/// ```
+///
+/// Returns `(settings_for_1st_part, settings_for_2nd_part)`
+///
+/// If not `scattered`, 2nd part is empty
+///
+fn worst_case_settings_parts<T: Config>(
+    fill_settings: FillSettings<T>,
+    scattered: bool,
+) -> (FillSettings<T>, FillSettings<T>) {
+    if scattered {
+        let max_side_orders = sp_std::cmp::min(
+            fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
+            fill_settings.executed_orders_limit as u128,
+        );
+        // the orders are to be placed as even as possible, having either
+        // `ceil(max_side_orders/max_side_price_count)` or `floor(max_side_orders/max_side_price_count)`
+        // orders in each price
+
+        // first part: `ceil(..)`
+        let settings_1st = FillSettings {
+            max_orders_per_price: max_side_orders
+                .div_ceil(fill_settings.max_side_price_count as u128)
+                .try_into()
+                .unwrap(),
+            max_side_price_count: max_side_orders
+                .rem(fill_settings.max_side_price_count as u128)
+                .try_into()
+                .unwrap(),
+            ..fill_settings
+        };
+        // second part: `floor(..)`
+        let settings_2nd = FillSettings {
+            max_orders_per_price: max_side_orders
+                .div_floor(fill_settings.max_side_price_count as u128)
+                .try_into()
+                .unwrap(),
+            max_side_price_count: fill_settings.max_side_price_count
+                - settings_1st.max_side_price_count,
+            ..fill_settings
+        };
+        (settings_1st, settings_2nd)
+    } else {
+        let empty_settings = FillSettings {
+            now: fill_settings.now,
+            max_side_price_count: 0,
+            max_orders_per_price: 0,
+            max_orders_per_user: 0,
+            max_expiring_orders_per_block: 0,
+            executed_orders_limit: 0,
+        };
+        (fill_settings, empty_settings)
+    }
+}
+
+/// Places buy orders for worst-case execution. Fill up max amount allowed by the storages or by
+/// `fill_settings.executed_orders_limit`.
+///
+/// If `double_worst_order_amount` is true, one order in the worst price is set for twice of the
 /// amount; it allows partial execution.
 ///
 /// Price of the order to execute is minimal possible in the order book.
@@ -78,21 +139,20 @@ use order_book_imported::Pallet as OrderBookPallet;
 /// Returns:
 /// - iterators in the same way as `fill_order_book_worst_case`
 /// - volume of an order for worst-case execution (for partial execution of the last one, in case
-/// `double_cheapest_order_amount` is true)
+/// `double_worst_order_amount` is true)
 /// - price variant of the order
 fn prepare_order_execute_worst_case<T: Config>(
     data: &mut impl DataLayer<T>,
     order_book: &mut OrderBook<T>,
     fill_settings: FillSettings<T>,
-    double_cheapest_order_amount: bool,
+    double_worst_order_amount: bool,
+    scatter: bool,
 ) -> (
-    impl Iterator<Item = T::AccountId>,
-    impl Iterator<Item = u64>,
+    Peekable<impl Iterator<Item = T::AccountId>>,
+    Peekable<impl Iterator<Item = u64>>,
     OrderVolume,
     PriceVariant,
 ) {
-    let mut bid_prices =
-        bid_prices_iterator(order_book.tick_size, fill_settings.max_side_price_count);
     let orders_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     let orders_side = PriceVariant::Buy;
     let max_price = order_book.tick_size * Scalar(2 * fill_settings.max_side_price_count);
@@ -103,24 +163,32 @@ fn prepare_order_execute_worst_case<T: Config>(
         orders_amount,
         max_price, // still mint max to reuse the iter later
         fill_settings.max_orders_per_user,
-    );
+    )
+    .peekable();
     // Lifespans for each placed order
-    let mut lifespans = lifespans_iterator::<T>(fill_settings.max_expiring_orders_per_block, 1);
-    // maximum number of executed orders is either max the storages allow or `HARD_MIN_MAX_RATIO`,
-    // whichever restricts the most
+    let mut lifespans =
+        lifespans_iterator::<T>(fill_settings.max_expiring_orders_per_block, 1).peekable();
+    // maximum number of executed orders is either max the storages allow or the value from
+    // the settings, whichever restricts the most
     let max_side_orders = sp_std::cmp::min(
         fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
-        T::HARD_MIN_MAX_RATIO as u128,
+        fill_settings.executed_orders_limit as u128,
     );
     let mut orders_to_place = max_side_orders;
+    let (mut settings_1st, settings_2nd) = worst_case_settings_parts(fill_settings, scatter);
+    let mut bid_prices = bid_prices_iterator(
+        order_book.tick_size,
+        settings_1st.max_side_price_count + settings_2nd.max_side_price_count,
+    );
 
-    // The cheapest price is a special case:
-    // the last order in the price has double of the amount to allow partial execution
-    if double_cheapest_order_amount {
-        debug!("Filling cheapest price to allow partial execution of one order");
+    if double_worst_order_amount {
+        // The worst price is a special case:
+        // the last order in the price has double of the amount to allow partial execution
+        debug!("Filling worst price to allow partial execution of one order");
+        // it always falls into `settings_1st`
         let min_price = bid_prices.next().unwrap();
 
-        let mut fill_price_settings = fill_settings.clone();
+        let mut fill_price_settings = settings_1st.clone();
         fill_price_settings.max_orders_per_price = sp_std::cmp::min(
             orders_to_place.try_into().unwrap_or(u32::MAX),
             fill_price_settings.max_orders_per_price,
@@ -159,16 +227,42 @@ fn prepare_order_execute_worst_case<T: Config>(
         .unwrap();
         order_book.place_limit_order(order, data).unwrap();
         orders_to_place -= 1;
+        settings_1st.max_side_price_count = settings_1st
+            .max_side_price_count
+            .checked_sub(1)
+            .expect("Must have at least one price in the first part");
     }
     // any of the iterators can limit number of placed orders; `users` is one of them
-    let mut limited_users = users.by_ref().take(orders_to_place.try_into().unwrap());
-    // all orders were placed
-    #[allow(unused_variables)]
-    let orders_to_place = 0;
+    let mut limited_users = users
+        .by_ref()
+        .take(orders_to_place.try_into().unwrap())
+        .peekable(); // would be great to reuse the peekable inside; not sure how
+
     debug!("Filling a side of the order book for worst-case execution");
+    debug!(
+        "Filling 1st part with settings ({:?} orders)",
+        settings_1st.max_side_price_count * settings_1st.max_orders_per_price
+    );
+    let mut bid_prices_1st = bid_prices
+        .by_ref()
+        .take(settings_1st.max_side_price_count as usize);
     fill_order_book_side(
         data,
-        fill_settings.clone(),
+        settings_1st,
+        order_book,
+        orders_side,
+        orders_amount,
+        &mut bid_prices_1st,
+        &mut limited_users,
+        &mut lifespans,
+    );
+    debug!(
+        "Filling 2nd part with settings ({:?} orders)",
+        settings_2nd.max_side_price_count * settings_2nd.max_orders_per_price
+    );
+    fill_order_book_side(
+        data,
+        settings_2nd,
         order_book,
         orders_side,
         orders_amount,
@@ -176,6 +270,11 @@ fn prepare_order_execute_worst_case<T: Config>(
         &mut limited_users,
         &mut lifespans,
     );
+
+    // all orders were placed
+    #[allow(unused_variables)]
+    let orders_to_place = 0;
+    assert!(limited_users.next().is_none(), "did not place all orders");
     debug!("Update order book to allow execution of max # of orders");
     let to_execute_volume = order_book
         .min_lot_size
@@ -194,7 +293,8 @@ fn prepare_order_execute_worst_case<T: Config>(
         None,
         Some(new_min_lot_size),
         Some(new_max_lot_size),
-    );
+    )
+    .unwrap();
     (users, lifespans, to_execute_volume, orders_side.switched())
 }
 
@@ -243,9 +343,11 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
         order_amount,
         order_book.tick_size,
         fill_settings.max_orders_per_user,
-    );
+    )
+    .peekable();
     // Lifespans for each placed order
-    let mut lifespans = lifespans_iterator::<T>(fill_settings.max_expiring_orders_per_block, 1);
+    let mut lifespans =
+        lifespans_iterator::<T>(fill_settings.max_expiring_orders_per_block, 1).peekable();
 
     // The price where the order is going to be placed should be filled
     let mut fill_price_settings = fill_settings.clone();
@@ -280,7 +382,7 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
     let mut lifespans = lifespans.skip_while(|b| *b == filled_block);
     let to_fill = lifespans.next().unwrap();
     // we are going to fill this lifespan, so skipping it for possible future use of the iter
-    let mut _lifespans = lifespans.skip_while(|b| *b == to_fill);
+    let _lifespans = lifespans.skip_while(|b| *b == to_fill);
     // different order book because we just want to fill expirations
     let order_book_id_2 = OrderBookId::<AssetIdOf<T>, T::DEXId> {
         dex_id: DEX.into(),
@@ -306,18 +408,20 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
     // leave a room for 1
     fill_expiration_settings.max_expiring_orders_per_block -= 1;
     // mint other base asset as well
-    let mut users = users.inspect(move |user| {
-        assets::Pallet::<T>::mint_unchecked(
-            &order_book_id_2.base,
-            &user,
-            *order_amount_2.balance(),
-        )
-        .unwrap();
-    });
+    let mut users = users
+        .inspect(move |user| {
+            assets::Pallet::<T>::mint_unchecked(
+                &order_book_id_2.base,
+                user,
+                *order_amount_2.balance(),
+            )
+            .unwrap();
+        })
+        .peekable();
 
     fill_expiration_schedule(
         &mut data_layer,
-        fill_expiration_settings.clone(),
+        fill_expiration_settings,
         &mut order_book_2,
         PriceVariant::Sell,
         order_amount_2,
@@ -344,7 +448,7 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
         order_book_id,
         Some(expected_user_orders),
         Some((fill_settings.max_orders_per_price - 1) as usize),
-        Some((author.clone(), expected_user_orders)),
+        Some((author, expected_user_orders)),
         Some((
             lifespan,
             (fill_settings.max_expiring_orders_per_block - 1) as usize,
@@ -402,7 +506,6 @@ pub fn cancel_limit_order<T: Config>(
     let mut fill_price_settings = fill_settings.clone();
     // account for previous fill + room for order to cancel
     fill_price_settings.max_orders_per_price -= 2;
-    // we don't want to face `MAX_PRICE_SHIFT`
     let target_price = data_layer.best_bid(&order_book_id).unwrap().0;
     let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
     fill_price(
@@ -487,21 +590,23 @@ pub fn cancel_limit_order<T: Config>(
     .expect("failed to create an order book");
     let mut order_book_2 = <OrderBooks<T>>::get(order_book_id_2).unwrap();
     let order_amount_2 = sp_std::cmp::max(order_book_2.step_lot_size, order_book_2.min_lot_size);
-    let mut fill_expiration_settings = fill_settings.clone();
+    let mut fill_expiration_settings = fill_settings;
     // we add one more separately
     fill_expiration_settings.max_expiring_orders_per_block -= 1;
     // mint other base asset as well
-    let mut users = users.inspect(move |user| {
-        assets::Pallet::<T>::mint_unchecked(
-            &order_book_id_2.base,
-            &user,
-            *order_amount_2.balance(),
-        )
-        .unwrap();
-    });
+    let mut users = users
+        .inspect(move |user| {
+            assets::Pallet::<T>::mint_unchecked(
+                &order_book_id_2.base,
+                user,
+                *order_amount_2.balance(),
+            )
+            .unwrap();
+        })
+        .peekable();
     fill_expiration_schedule(
         &mut data_layer,
-        fill_expiration_settings.clone(),
+        fill_expiration_settings,
         &mut order_book_2,
         PriceVariant::Sell,
         order_amount_2,
@@ -543,7 +648,7 @@ pub fn quote<T: Config>(
     let mut data_layer = CacheDataLayer::<T>::new();
 
     // fill aggregated bids
-    let mut buy_settings = fill_settings.clone();
+    let mut buy_settings = fill_settings;
     buy_settings.max_orders_per_price = 1;
     let _ = fill_order_book_worst_case::<T>(
         buy_settings,
@@ -578,18 +683,20 @@ pub fn quote<T: Config>(
 }
 
 /// Prepare worst-case scenario for market order execution (`swap`/`exchange`). In particular, execution of
-/// `HARD_MIN_MAX_RATIO` with partial execution of an order at the end.
+/// max possible orders # with partial execution of an order at the end.
 ///
 /// - `fill_settings` - settings for the benchmark; should be within storage constraints.
 /// - `author` - the account from which the order is going to be executed. It should not be from
 /// `test_utils::generate_account`.
 /// - `is_divisible` - controls the divisibility of order book base asset.
+/// - `scatter` - if true, spreads orders across all prices (as even as possible).
 ///
 /// Returns parameters necessary for the order execution. `OrderVolume` is in base asset.
 pub fn market_order_execution<T: Config + trading_pair::Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
     is_divisible: bool,
+    scatter: bool,
 ) -> (
     OrderBookId<AssetIdOf<T>, T::DEXId>,
     OrderVolume,
@@ -631,11 +738,11 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
 
         let id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
             dex_id: DEX.into(),
-            base: nft.clone(),
+            base: nft,
             quote: XOR.into(),
         };
         trading_pair::Pallet::<T>::register(
-            RawOrigin::Signed(creator.clone()).into(),
+            RawOrigin::Signed(creator).into(),
             DEX.into(),
             id.quote,
             id.base,
@@ -657,14 +764,15 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
     let mut data_layer = CacheDataLayer::<T>::new();
     let max_side_orders = sp_std::cmp::min(
         fill_settings.max_orders_per_price as u128 * fill_settings.max_side_price_count as u128,
-        T::HARD_MIN_MAX_RATIO as u128,
+        fill_settings.executed_orders_limit as u128,
     );
 
     let (_, _, amount, side) = prepare_order_execute_worst_case::<T>(
         &mut data_layer,
         &mut order_book,
-        fill_settings.clone(),
+        fill_settings,
         true,
+        scatter,
     );
 
     assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *amount.balance()).unwrap();
@@ -737,7 +845,7 @@ pub fn align_single_order<T: Config>(
     let (price, _) = aggregated_side.iter().nth(prices_count / 2).unwrap();
 
     debug!("Filling the price of the aligned order");
-    let mut price_settings = fill_settings.clone();
+    let mut price_settings = fill_settings;
     price_settings.max_orders_per_price -= 2;
     let amount = order_book.min_lot_size;
     fill_price(
@@ -751,7 +859,7 @@ pub fn align_single_order<T: Config>(
         &mut lifespans,
     );
 
-    let orders = data_layer.get_bids(&order_book_id, &price).unwrap();
+    let orders = data_layer.get_bids(&order_book_id, price).unwrap();
     let order_id_to_align = orders[orders.len() / 2];
     let order_to_align = data_layer
         .get_limit_order(&order_book_id, order_id_to_align)
@@ -788,7 +896,7 @@ pub mod presets {
 
     // the preset values must not exceed hard limits set in pallet parameters
     generate_presets!(
-        preset_1: 1024, 1024, 1024, 512;
-        preset_2: 64, 64, 1024, 512;
+        preset_1: 1024, 1024, 1024, 512, <T as Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
+        preset_2: 64, 64, 1024, 512, <T as Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
     );
 }

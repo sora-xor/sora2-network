@@ -40,8 +40,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "runtime-benchmarks")]
-// order-book
-#![cfg(feature = "ready-to-test")]
+#![allow(clippy::type_complexity)]
 // too many benchmarks, doesn't compile otherwise
 #![recursion_limit = "512"]
 #![feature(int_roundings)]
@@ -349,7 +348,7 @@ mod benchmarks_inner {
 
         execute_market_order {
             let settings = FillSettings::<T>::max();
-            let context = periphery::execute_market_order::init(settings.clone());
+            let context = periphery::execute_market_order_scattered::init(settings);
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -359,7 +358,7 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            periphery::execute_market_order::verify(settings, context);
+            periphery::execute_market_order_scattered::verify(context);
         }
 
         quote {
@@ -379,9 +378,11 @@ mod benchmarks_inner {
             // nothing changed
         }
 
-        exchange_single_order {
-            let settings = FillSettings::<T>::max();
-            let context = periphery::exchange_single_order::init(settings.clone());
+        exchange {
+            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
+            let mut settings = FillSettings::<T>::max();
+            settings.executed_orders_limit = e;
+            let context = periphery::exchange_scattered::init(settings);
         }: {
             OrderBookPallet::<T>::exchange(
                 &context.caller,
@@ -396,7 +397,7 @@ mod benchmarks_inner {
             .unwrap();
         }
         verify {
-            periphery::exchange_single_order::verify(settings, context);
+            periphery::exchange_scattered::verify(context);
         }
 
         align_single_order {
@@ -433,7 +434,6 @@ mod benchmarks_inner {
         }
         verify {}
 
-        // TODO: benchmark worst case
         service_single_expiration {
             // very similar to cancel_limit_order
             let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
@@ -486,7 +486,7 @@ mod benchmarks_inner {
         // python-codegen approach is chosen (:
 
         // the workflow is the following:
-        // 1. edit presets in ./preparation.rs (with names "preset_*" where * is 1,2,3,4,5,...)
+        // 1. edit presets in ./periphery/preparation.rs (with names "preset_*" where * is 1,2,3,4,5,...)
         // 2. in ./generate_benchmarks.py set `max_preset` to the highest preset number
         // 3. run ./generate_benchmarks.py
         // 4. paste output here (instead of existing benches)
@@ -607,9 +607,12 @@ mod benchmarks_inner {
 
 
         #[extra]
-        exchange_single_order_1 {
-            use periphery::exchange_single_order::{init, Context};
-            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init::<T>(preset_1());
+        exchange_1 {
+            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
+            use periphery::exchange_scattered::{init, Context};
+            let mut settings = preset_1::<T>();
+            settings.executed_orders_limit = e;
+            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
@@ -618,9 +621,12 @@ mod benchmarks_inner {
         }
 
         #[extra]
-        exchange_single_order_2 {
-            use periphery::exchange_single_order::{init, Context};
-            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init::<T>(preset_2());
+        exchange_2 {
+            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
+            use periphery::exchange_scattered::{init, Context};
+            let mut settings = preset_1::<T>();
+            settings.executed_orders_limit = e;
+            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,

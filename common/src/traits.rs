@@ -247,18 +247,18 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
 /// Implements trading pairs LockedLiquiditySources storage
 pub trait LockedLiquiditySourcesManager<LiquiditySourceType> {
     fn get() -> Vec<LiquiditySourceType>;
-    fn set(liquidity_source_types: Vec<LiquiditySourceType>) -> ();
-    fn append(liquidity_source_type: LiquiditySourceType) -> ();
+    fn set(liquidity_source_types: Vec<LiquiditySourceType>);
+    fn append(liquidity_source_type: LiquiditySourceType);
 }
 
 /// Implements trading pair EnabledSources storage
 pub trait EnabledSourcesManager<DEXId, AssetId> {
-    fn mutate_remove(dex_id: &DEXId, base_asset_id: &AssetId, target_asset_id: &AssetId) -> ();
+    fn mutate_remove(dex_id: &DEXId, base_asset_id: &AssetId, target_asset_id: &AssetId);
 }
 
 impl<DEXId, AssetId> EnabledSourcesManager<DEXId, AssetId> for () {
-    fn mutate_remove(_dex_id: &DEXId, _baset_asset_id: &AssetId, _target_asset_id: &AssetId) -> () {
-        todo!()
+    fn mutate_remove(_dex_id: &DEXId, _baset_asset_id: &AssetId, _target_asset_id: &AssetId) {
+        unimplemented!()
     }
 }
 
@@ -317,9 +317,7 @@ pub trait OnSymbolDisabled<Symbol> {
 }
 
 impl<Symbol> OnSymbolDisabled<Symbol> for () {
-    fn disable_symbol(_symbol: &Symbol) {
-        ()
-    }
+    fn disable_symbol(_symbol: &Symbol) {}
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
@@ -463,8 +461,12 @@ where
     fn list_liquidity_sources(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceIndex>,
+        filter: &LiquiditySourceFilter<DEXId, LiquiditySourceIndex>,
     ) -> Result<Vec<LiquiditySourceId<DEXId, LiquiditySourceIndex>>, Error>;
+
+    fn exchange_weight_filtered(
+        enabled_sources: impl Iterator<Item = LiquiditySourceIndex>,
+    ) -> Weight;
 }
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -617,22 +619,6 @@ where
 
 pub trait ToFeeAccount: Sized {
     fn to_fee_account(&self) -> Option<Self>;
-}
-
-pub trait ToMarkerAsset<TechAssetId, LstId>: Sized {
-    fn to_marker_asset(&self, lst_id: LstId) -> Option<TechAssetId>;
-}
-
-pub trait GetTechAssetWithLstTag<LstId, AssetId>: Sized {
-    fn get_tech_asset_with_lst_tag(tag: LstId, asset_id: AssetId) -> Result<Self, ()>;
-}
-
-pub trait GetLstIdAndTradingPairFromTechAsset<LstId, TradingPair> {
-    fn get_lst_id_and_trading_pair_from_tech_asset(&self) -> Option<(LstId, TradingPair)>;
-}
-
-pub trait ToTechUnitFromDEXAndAsset<DEXId, AssetId>: Sized {
-    fn to_tech_unit_from_dex_and_asset(dex_id: DEXId, asset_id: AssetId) -> Self;
 }
 
 pub trait ToXykTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {

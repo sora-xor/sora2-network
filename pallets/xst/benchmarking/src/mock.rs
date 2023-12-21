@@ -280,10 +280,7 @@ impl dex_api::Config for Runtime {
     type XSTPool = XSTPool;
     type MulticollateralBondingCurvePool = ();
     type DexInfoProvider = ();
-
-    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
-
     type WeightInfo = ();
 }
 

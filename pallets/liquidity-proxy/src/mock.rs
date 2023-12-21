@@ -332,10 +332,7 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = MockMCBCPool;
     type XSTPool = MockXSTPool;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-
-    #[cfg(feature = "ready-to-test")] // order-book
-    type OrderBook = (); // todo
-
+    type OrderBook = (); // todo (m.tagirov) ALT
     type WeightInfo = ();
 }
 
@@ -794,7 +791,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn exchange_weight() -> Weight {
-        Weight::zero()
+        Weight::from_all(1)
     }
 
     fn check_rewards_weight() -> Weight {
@@ -1144,7 +1141,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn exchange_weight() -> Weight {
-        Weight::zero()
+        Weight::from_all(1)
     }
 
     fn check_rewards_weight() -> Weight {
