@@ -162,7 +162,7 @@ pub mod source_initialization {
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
     /// - `settings`: Parameters for creation of the order book and placing the orders in each
     /// order book.
-    pub fn order_book<T: Config>(
+    pub fn order_book_create_and_fill<T: Config>(
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec<(
@@ -194,15 +194,6 @@ pub mod source_initialization {
         )?;
         Ok(())
     }
-}
-
-pub mod source_filling {
-    use crate::{settings, Config};
-    use frame_support::dispatch::DispatchResult;
-    use frame_support::ensure;
-    use frame_system::pallet_prelude::BlockNumberFor;
-    use order_book::{MomentOf, OrderBookId};
-    use sp_std::vec::Vec;
 
     /// Fill the order books according to given parameters.
     ///
@@ -212,7 +203,7 @@ pub mod source_filling {
     /// - `bids_owner`: Creator of the buy orders placed on the order books,
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
     /// - `settings`: Parameters for placing the orders in each order book.
-    pub fn order_book<T: Config>(
+    pub fn order_book_only_fill<T: Config>(
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec<(

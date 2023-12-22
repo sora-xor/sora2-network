@@ -140,7 +140,7 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            pallet_tools::liquidity_proxy::source_initialization::order_book::<T>(
+            pallet_tools::liquidity_proxy::source_initialization::order_book_create_and_fill::<T>(
                 bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
@@ -183,7 +183,7 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            pallet_tools::liquidity_proxy::source_fill::order_book::<T>(
+            pallet_tools::liquidity_proxy::source_initialization::order_book_only_fill::<T>(
                 bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
