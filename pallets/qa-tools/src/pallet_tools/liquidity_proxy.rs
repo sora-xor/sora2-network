@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod source_initializers {
+pub mod source_initialization {
     use crate::{Config, Error, OrderBookFillSettings};
     use assets::AssetIdOf;
     use codec::{Decode, Encode};
@@ -153,16 +153,15 @@ pub mod source_initializers {
         Ok(())
     }
 
-    /// Create multiple order books with default parameters if do not exist and
-    /// fill them according to given parameters.
+    /// Create multiple order books with parameters and fill them according to given parameters.
     ///
-    /// Balance for placing the orders is minted automatically, trading pairs are
-    /// created if needed.
+    /// Balance for placing the orders is minted automatically, trading pairs are created if needed.
     ///
     /// Parameters:
     /// - `bids_owner`: Creator of the buy orders placed on the order books,
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
-    /// - `settings`: Parameters for creation of the order book and placing the orders in each order book.
+    /// - `settings`: Parameters for creation of the order book and placing the orders in each
+    /// order book.
     pub fn order_book<T: Config>(
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,

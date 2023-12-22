@@ -53,9 +53,9 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
-    use pallet_tools::liquidity_proxy::source_initializers;
+    use pallet_tools::liquidity_proxy::source_initialization;
     pub use pallet_tools::order_book::OrderBookFillSettings;
-    pub use source_initializers::XYKPair;
+    pub use source_initialization::XYKPair;
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -140,7 +140,7 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            pallet_tools::liquidity_proxy::source_initializers::order_book::<T>(
+            pallet_tools::liquidity_proxy::source_initialization::order_book::<T>(
                 bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
@@ -183,7 +183,7 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            pallet_tools::liquidity_proxy::source_filling::order_book::<T>(
+            pallet_tools::liquidity_proxy::source_fill::order_book::<T>(
                 bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
@@ -218,7 +218,7 @@ pub mod pallet {
             // error messages for unsigned calls are non-informative
             let who = Self::ensure_in_whitelist(origin)?;
 
-            source_initializers::xyk::<T>(account, pairs).map_err(|e| {
+            source_initialization::xyk::<T>(account, pairs).map_err(|e| {
                 DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
