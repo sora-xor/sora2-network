@@ -33,7 +33,10 @@ pub mod source_initialization {
     use assets::AssetIdOf;
     use codec::{Decode, Encode};
     use common::prelude::BalanceUnit;
-    use common::{balance, AssetInfoProvider, DEXInfo, DexIdOf, DexInfoProvider, TradingPair, XOR};
+    use common::{
+        balance, AssetInfoProvider, DEXInfo, DexIdOf, DexInfoProvider, PriceVariant, TradingPair,
+        XOR,
+    };
     use frame_support::dispatch::{DispatchResult, RawOrigin};
     use order_book::{MomentOf, OrderBookId};
     use sp_arithmetic::traits::CheckedMul;
@@ -221,5 +224,24 @@ pub mod source_initialization {
             bids_owner, asks_owner, settings,
         )?;
         Ok(())
+    }
+
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    #[scale_info(skip_type_params(T))]
+    pub struct XSTSyntheticBasePrices {
+        pub buy: BalanceUnit,
+        pub sell: BalanceUnit,
+    }
+
+    /// Buy/sell price discrepancy is determined for all synthetics in `xst` pallet by synthetic
+    /// base (XST) asset prices;
+    ///
+    /// We can't control it granularly for each asset, so we just deduce it from the existing
+    /// pricing and price provided for the given variant
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    #[scale_info(skip_type_params(T))]
+    pub struct XSTSyntheticPrice {
+        pub price: BalanceUnit,
+        pub variant: PriceVariant,
     }
 }
