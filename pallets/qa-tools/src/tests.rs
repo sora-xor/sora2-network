@@ -32,7 +32,7 @@
 //! but they make modify-run iterations during development much quicker
 
 use assets::AssetIdOf;
-use common::prelude::{err_pays_no, QuoteAmount};
+use common::prelude::{err_pays_no, BalanceUnit, QuoteAmount};
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, LiquiditySource,
     PredefinedAssetId, PriceVariant, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
@@ -46,7 +46,7 @@ use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use qa_tools::pallet::XYKPair;
-use qa_tools::{settings, Error};
+use qa_tools::{settings, Error, XSTSyntheticBasePrices};
 use sp_runtime::traits::BadOrigin;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
@@ -1008,6 +1008,39 @@ fn should_not_initialize_existing_xyk_pool() {
             Err(err_pays_no(
                 pool_xyk::Error::<Runtime>::PoolIsAlreadyInitialized
             ))
+        );
+    })
+}
+
+#[test]
+fn should_update_xst_synthetic_base_price() {
+    ext().execute_with(|| {
+        assert_ok!(QAToolsPallet::initialize_xst(
+            RuntimeOrigin::root(),
+            Some(XSTSyntheticBasePrices {
+                // todo: replace all balanceunits with balance as synthetics are non-divisible (?)
+                buy: BalanceUnit::new(balance!(1.1), true),
+                sell: BalanceUnit::new(balance!(1), true),
+            }),
+            vec![],
+        ));
+    })
+}
+
+#[test]
+fn should_reject_incorrect_xst_synthetic_base_price() {
+    ext().execute_with(|| {
+        assert_err!(
+            QAToolsPallet::initialize_xst(
+                RuntimeOrigin::root(),
+                Some(XSTSyntheticBasePrices {
+                    // todo: replace all balanceunits with balance as synthetics are non-divisible (?)
+                    buy: BalanceUnit::new(balance!(1), true),
+                    sell: BalanceUnit::new(balance!(1.1), true),
+                }),
+                vec![],
+            ),
+            Error::<Runtime>::ArithmeticError
         );
     })
 }
