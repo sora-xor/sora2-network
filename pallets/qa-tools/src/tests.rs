@@ -1024,6 +1024,16 @@ fn should_update_xst_synthetic_base_price() {
             }),
             vec![],
         ));
+
+        // quite unrealistic but should be legal
+        assert_ok!(QAToolsPallet::initialize_xst(
+            RuntimeOrigin::root(),
+            Some(XSTSyntheticBasePrices {
+                buy: BalanceUnit::new(balance!(1), true),
+                sell: BalanceUnit::new(balance!(1), true),
+            }),
+            vec![],
+        ));
     })
 }
 
@@ -1040,7 +1050,7 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
                 }),
                 vec![],
             ),
-            Error::<Runtime>::ArithmeticError
+            Error::<Runtime>::BuyLessThanSell
         );
     })
 }

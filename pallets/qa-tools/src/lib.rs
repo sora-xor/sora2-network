@@ -93,7 +93,7 @@ pub mod pallet {
         /// The account intended for removal is not in whitelist
         NotInWhitelist,
 
-        // order_book pallet errors
+        // order book errors
         /// Did not find an order book with given id to fill. Likely an error with order book creation.
         CannotFillUnknownOrderBook,
         /// Order Book already exists
@@ -109,11 +109,15 @@ pub mod pallet {
         /// The count of prices to fill is too large.
         TooManyPrices,
 
-        // liquidity proxy errors
+        // xyk pool errors
         /// Cannot initialize pool with for non-divisible assets.
         AssetsMustBeDivisible,
         /// Error in calculations
         ArithmeticError,
+
+        // xst errors
+        /// Buy price cannot be lower than sell price of the synthetic base asset
+        BuyLessThanSell,
     }
 
     #[pallet::call]
@@ -246,8 +250,9 @@ pub mod pallet {
         ///
         /// Parameters:
         /// - `origin`: Root
-        /// - `base_prices`: Optionally update price of synthetic base asset
-        /// - `synthetics_prices`: Prices to set for synthetics; can only set either buy or sell price because the other one is determined by synthetic base asset price
+        /// - `base_prices`: Optionally update price of synthetic base asset. Usually buy price > sell.
+        /// - `synthetics_prices`: Prices to set for synthetics;
+        /// can only set either buy or sell price because the other one is determined by synthetic base asset price
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
         pub fn initialize_xst(

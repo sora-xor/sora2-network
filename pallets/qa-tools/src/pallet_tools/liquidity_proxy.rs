@@ -250,6 +250,9 @@ pub mod source_initialization {
         buy_price: BalanceUnit,
         sell_price: BalanceUnit,
     ) -> DispatchResult {
+        if buy_price < sell_price {
+            return Err(Error::<T>::BuyLessThanSell.into());
+        }
         let _ = price_tools::Pallet::<T>::register_asset(asset_id);
 
         for _ in 0..31 {
