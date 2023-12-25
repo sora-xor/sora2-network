@@ -34,8 +34,8 @@ pub mod source_initialization {
     use codec::{Decode, Encode};
     use common::prelude::BalanceUnit;
     use common::{
-        balance, AssetInfoProvider, DEXInfo, DexIdOf, DexInfoProvider, PriceVariant, TradingPair,
-        XOR,
+        balance, AssetInfoProvider, DEXInfo, DexIdOf, DexInfoProvider, PriceToolsPallet,
+        PriceVariant, TradingPair, XOR,
     };
     use frame_support::dispatch::{DispatchResult, RawOrigin};
     use order_book::{MomentOf, OrderBookId};
@@ -243,5 +243,43 @@ pub mod source_initialization {
     pub struct XSTSyntheticPrice {
         pub price: BalanceUnit,
         pub variant: PriceVariant,
+    }
+
+    fn set_prices_in_price_tools<T: Config + price_tools::Config>(
+        asset_id: &T::AssetId,
+        buy_price: BalanceUnit,
+        sell_price: BalanceUnit,
+    ) -> DispatchResult {
+        let _ = price_tools::Pallet::<T>::register_asset(asset_id);
+
+        for _ in 0..31 {
+            price_tools::Pallet::<T>::incoming_spot_price(
+                asset_id,
+                *buy_price.balance(),
+                PriceVariant::Buy,
+            )?;
+            price_tools::Pallet::<T>::incoming_spot_price(
+                asset_id,
+                *sell_price.balance(),
+                PriceVariant::Sell,
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn xst<T: Config + price_tools::Config>(
+        base: Option<XSTSyntheticBasePrices>,
+        synthetics: Vec<XSTSyntheticPrice>,
+    ) -> DispatchResult {
+        use frame_support::traits::Get;
+
+        if let Some(base_prices) = base {
+            set_prices_in_price_tools::<T>(
+                &<T as xst::Config>::GetSyntheticBaseAssetId::get(),
+                base_prices.buy,
+                base_prices.sell,
+            )?;
+        }
+        Ok(())
     }
 }
