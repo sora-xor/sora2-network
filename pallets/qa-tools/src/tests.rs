@@ -1040,7 +1040,7 @@ fn should_update_xst_synthetic_base_price() {
 #[test]
 fn should_reject_incorrect_xst_synthetic_base_price() {
     ext().execute_with(|| {
-        assert_err!(
+        assert_eq!(
             QAToolsPallet::initialize_xst(
                 RuntimeOrigin::root(),
                 Some(XSTSyntheticBasePrices {
@@ -1050,7 +1050,7 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
                 }),
                 vec![],
             ),
-            Error::<Runtime>::BuyLessThanSell
+            Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
         );
     })
 }
