@@ -32,6 +32,7 @@ hex-literal = "0.4.1"
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 price-tools = { path = "../price-tools" }
+liquidity-proxy = { path = "../liquidity-proxy" }
 
 [dev-dependencies]
 assets = { path = "../assets" }
@@ -51,6 +52,7 @@ pswap-distribution = { path = "../pswap-distribution" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
+liquidity-proxy = { path = "../liquidity-proxy" }
 
 [features]
 default = ['std']

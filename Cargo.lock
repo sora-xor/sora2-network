@@ -273,6 +273,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal 0.4.1",
+ "liquidity-proxy",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",

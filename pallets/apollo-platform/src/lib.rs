@@ -45,22 +45,25 @@ pub use pallet::*;
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use crate::{PoolInfo, UserBorrowingPosition, UserLendingPosition};
-    use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, PriceVariant};
-    use common::{CERES_ASSET_ID, DAI, XOR};
+    use common::prelude::{Balance, FixedWrapper, SwapAmount};
+    use common::{
+        balance, DEXId, FilterMode, PriceVariant, CERES_ASSET_ID, DAI, DEMETER_ASSET_ID, XOR,
+    };
     use frame_support::pallet_prelude::*;
-    use frame_support::pallet_prelude::{OptionQuery, ValueQuery};
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::PalletId;
     use frame_system::pallet_prelude::*;
+    use frame_system::RawOrigin;
     use hex_literal::hex;
-    use sp_runtime::traits::UniqueSaturatedInto;
+    use sp_runtime::traits::{UniqueSaturatedInto, Zero};
     use sp_std::collections::btree_map::BTreeMap;
 
     const PALLET_ID: PalletId = PalletId(*b"apollolb");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + price_tools::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + price_tools::Config + liquidity_proxy::Config
+    {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
     }
@@ -69,6 +72,7 @@ pub mod pallet {
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
     pub type PriceTools<T> = price_tools::Pallet<T>;
+    pub type LiquidityProxy<T> = liquidity_proxy::Pallet<T>;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -234,6 +238,8 @@ pub mod pallet {
         CanNotTransferBorrowingRewards,
         /// Can not transfer amount to repay
         CanNotTransferAmountToRepay,
+        /// Can not transfer amount to developers
+        CanNotTransferAmountToDevelopers,
     }
 
     #[pallet::call]
@@ -625,9 +631,8 @@ pub mod pallet {
             ensure!(user_info.borrowing_interest > 0, Error::<T>::NothingToRepay);
 
             if amount_to_repay <= user_info.borrowing_interest {
-                //let reserve_allocation = amount_to_repay;
-
                 // Reserve allocation
+                Self::reserve_factor(borrowing_token, amount_to_repay)?;
 
                 user_info.borrowing_interest -= amount_to_repay;
                 user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
@@ -637,9 +642,9 @@ pub mod pallet {
             } else if amount_to_repay > user_info.borrowing_interest
                 && amount_to_repay < user_info.borrowing_interest + user_info.borrowing_amount
             {
-                //let reserve_allocation = user_info.borrowing_interest;
-
                 // Reserve allocation
+                let reserve = user_info.borrowing_interest;
+                Self::reserve_factor(borrowing_token, reserve)?;
 
                 let remaining_amount = amount_to_repay - user_info.borrowing_interest;
                 user_info.borrowing_amount -= remaining_amount;
@@ -659,9 +664,8 @@ pub mod pallet {
                 borrow_user_info.insert(collateral_token, user_info);
                 <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, &borrow_user_info);
             } else if amount_to_repay == user_info.borrowing_interest + user_info.borrowing_amount {
-                //let reserve_allocation = user_info.borrowing_interest;
-
                 // Reserve allocation
+                Self::reserve_factor(borrowing_token, user_info.borrowing_interest)?;
 
                 borrow_pool_info.total_borrowed -= user_info.borrowing_amount;
                 borrow_pool_info.total_liquidity += user_info.borrowing_amount;
@@ -875,6 +879,66 @@ pub mod pallet {
             (borrowing_interest_per_block * FixedWrapper::from(totla_borrowing_blocks))
                 .try_into_balance()
                 .unwrap_or(0)
+        }
+
+        fn reserve_factor(asset_id: AssetIdOf<T>, amount: Balance) -> DispatchResultWithPostInfo {
+            let pool_info = PoolData::<T>::get(asset_id).ok_or(Error::<T>::AssetIsNotListed)?;
+
+            let caller = Self::account_id();
+
+            let reserve_factor = (FixedWrapper::from(pool_info.reserve_factor)
+                * FixedWrapper::from(amount))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            // Calculate 60% of reserve factor to transfer APOLLO to treasury
+            let apollo_amount = (FixedWrapper::from(reserve_factor) * balance!(0.6))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            // Calculate 20% of reserve factor to buyback CERES
+            let ceres_amount = (FixedWrapper::from(reserve_factor) * balance!(0.2))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            // Calculate 20% of reserve factor to go to developer fund
+            let developer_amount = (FixedWrapper::from(reserve_factor) * balance!(0.2))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            // Transfer APOLLO to treasury
+            LiquidityProxy::<T>::swap_transfer(
+                RawOrigin::Signed(caller.clone()).into(),
+                AuthorityAccount::<T>::get(),
+                DEXId::Polkaswap.into(),
+                asset_id,
+                DEMETER_ASSET_ID.into(),
+                SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
+                vec![],
+                FilterMode::Disabled,
+            )?;
+
+            // Buyback CERES
+            LiquidityProxy::<T>::swap(
+                RawOrigin::Signed(caller).into(),
+                DEXId::Polkaswap.into(),
+                asset_id,
+                CERES_ASSET_ID.into(),
+                SwapAmount::with_desired_input(ceres_amount, Balance::zero()),
+                vec![],
+                FilterMode::Disabled,
+            )?;
+
+            // Transfer amount to developer fund
+            Assets::<T>::transfer_from(
+                &asset_id,
+                &Self::account_id(),
+                &AuthorityAccount::<T>::get(),
+                developer_amount,
+            )
+            .map_err(|_| Error::<T>::CanNotTransferAmountToDevelopers)?;
+
+            Ok(().into())
         }
 
         fn liquidation(_current_block: T::BlockNumber) -> Weight {
