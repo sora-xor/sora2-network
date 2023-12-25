@@ -769,10 +769,12 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
             let rates = Self::calculate_rate(now);
-            //let liquidation = Self::liquidation(now);
+            let liquidation = Self::liquidation(now);
+            let distribution_rewards = Self::distribute_rewards_to_users(now);
 
-            //rates.saturating_add(liquidation) // ??????
             rates
+                .saturating_add(liquidation)
+                .saturating_add(distribution_rewards)
         }
     }
 
@@ -882,29 +884,51 @@ pub mod pallet {
         }
 
         fn reserve_factor(asset_id: AssetIdOf<T>, amount: Balance) -> DispatchResultWithPostInfo {
-            let pool_info = PoolData::<T>::get(asset_id).ok_or(Error::<T>::AssetIsNotListed)?;
+            let mut pool_info = PoolData::<T>::get(asset_id).ok_or(Error::<T>::AssetIsNotListed)?;
 
             let caller = Self::account_id();
 
-            let reserve_factor = (FixedWrapper::from(pool_info.reserve_factor)
+            // Calculate 10 or 20% of reserve factor
+            let reserve_factor_amount = (FixedWrapper::from(pool_info.reserve_factor)
                 * FixedWrapper::from(amount))
             .try_into_balance()
             .unwrap_or(0);
 
+            // Calculate rest of reserve factor (80-90%) to buyback APOLLO
+            let buyback_amount = (FixedWrapper::from(amount)
+                - FixedWrapper::from(reserve_factor_amount))
+            .try_into_balance()
+            .unwrap_or(0);
+
             // Calculate 60% of reserve factor to transfer APOLLO to treasury
-            let apollo_amount = (FixedWrapper::from(reserve_factor) * balance!(0.6))
+            let apollo_amount = (FixedWrapper::from(reserve_factor_amount) * balance!(0.6))
                 .try_into_balance()
                 .unwrap_or(0);
 
             // Calculate 20% of reserve factor to buyback CERES
-            let ceres_amount = (FixedWrapper::from(reserve_factor) * balance!(0.2))
+            let ceres_amount = (FixedWrapper::from(reserve_factor_amount) * balance!(0.2))
                 .try_into_balance()
                 .unwrap_or(0);
 
             // Calculate 20% of reserve factor to go to developer fund
-            let developer_amount = (FixedWrapper::from(reserve_factor) * balance!(0.2))
+            let developer_amount = (FixedWrapper::from(reserve_factor_amount) * balance!(0.2))
                 .try_into_balance()
                 .unwrap_or(0);
+
+            // Swap buyback_amount into APOLLO token, and transfer it to pool_info.rewards
+            LiquidityProxy::<T>::swap_transfer(
+                RawOrigin::Signed(caller.clone()).into(),
+                caller.clone(),
+                DEXId::Polkaswap.into(),
+                asset_id,
+                DEMETER_ASSET_ID.into(),
+                SwapAmount::with_desired_input(buyback_amount, Balance::zero()),
+                vec![],
+                FilterMode::Disabled,
+            )?;
+
+            // Add rewards to pool_info.rewards
+            pool_info.rewards += buyback_amount;
 
             // Transfer APOLLO to treasury
             LiquidityProxy::<T>::swap_transfer(
@@ -938,7 +962,86 @@ pub mod pallet {
             )
             .map_err(|_| Error::<T>::CanNotTransferAmountToDevelopers)?;
 
+            <PoolData<T>>::insert(asset_id, pool_info);
+
             Ok(().into())
+        }
+
+        fn distribute_rewards_to_users(_current_block: T::BlockNumber) -> Weight {
+            let counter: u64 = 0;
+            let blocks = 5_256_000_u128; // 1 year
+
+            for (_pool_asset_id, pool_info) in PoolData::<T>::iter() {
+                for (user, asset_id, mut user_info) in UserLendingInfo::<T>::iter() {
+                    if pool_info.rewards > 0 {
+                        let share_in_pool = (FixedWrapper::from(user_info.lending_amount)
+                            / FixedWrapper::from(pool_info.total_liquidity))
+                        .try_into_balance()
+                        .unwrap_or(0);
+
+                        let reward_per_block = (FixedWrapper::from(pool_info.rewards)
+                            / FixedWrapper::from(blocks))
+                        .try_into_balance()
+                        .unwrap_or(0);
+
+                        let reward_per_user = (FixedWrapper::from(share_in_pool)
+                            * FixedWrapper::from(reward_per_block))
+                        .try_into_balance()
+                        .unwrap_or(0);
+
+                        user_info.lending_interest += reward_per_user;
+                    }
+
+                    let fixed_lending_rewards = FixedWrapper::from(LendingRewards::<T>::get())
+                        .try_into_balance()
+                        .unwrap_or(0);
+
+                    let fixed_lending_rewards_per_block =
+                        FixedWrapper::from(LendingRewardsPerBlock::<T>::get())
+                            .try_into_balance()
+                            .unwrap_or(0);
+
+                    let total_fixed_rewards = (FixedWrapper::from(fixed_lending_rewards_per_block)
+                        * FixedWrapper::from(blocks))
+                    .try_into_balance()
+                    .unwrap_or(0);
+
+                    if total_fixed_rewards <= fixed_lending_rewards {
+                        user_info.lending_interest += fixed_lending_rewards_per_block;
+                    }
+
+                    <UserLendingInfo<T>>::insert(user.clone(), asset_id, user_info);
+                }
+
+                for (user, asset_id, mut user_infos) in UserBorrowingInfo::<T>::iter() {
+                    for (_collateral_token, mut user_info) in user_infos.iter_mut() {
+                        let fixed_borrowing_rewards =
+                            FixedWrapper::from(BorrowingRewards::<T>::get())
+                                .try_into_balance()
+                                .unwrap_or(0);
+
+                        let fixed_borrowing_rewards_per_block =
+                            FixedWrapper::from(BorrowingRewardsPerBlock::<T>::get())
+                                .try_into_balance()
+                                .unwrap_or(0);
+
+                        let total_fixed_rewards =
+                            (FixedWrapper::from(fixed_borrowing_rewards_per_block)
+                                * FixedWrapper::from(blocks))
+                            .try_into_balance()
+                            .unwrap_or(0);
+
+                        if total_fixed_rewards <= fixed_borrowing_rewards {
+                            user_info.borrowing_rewards += fixed_borrowing_rewards_per_block;
+                        }
+                    }
+                    <UserBorrowingInfo<T>>::insert(user.clone(), asset_id, user_infos.clone());
+                }
+            }
+
+            T::DbWeight::get()
+                .reads(counter + 1)
+                .saturating_add(T::DbWeight::get().writes(counter))
         }
 
         fn liquidation(_current_block: T::BlockNumber) -> Weight {
@@ -978,9 +1081,11 @@ pub mod pallet {
                         if liquidation_threshold > pool_info.liquidation_threshold
                             || health_factor < balance!(1)
                         {
+                            let _ = Self::reserve_factor(
+                                *collateral_token,
+                                user_info.collateral_amount,
+                            );
                             <UserBorrowingInfo<T>>::remove(user.clone(), asset_id);
-
-                            // Reserve factor
                         }
                     }
                 }
