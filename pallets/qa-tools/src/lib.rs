@@ -55,7 +55,7 @@ pub mod pallet {
     use order_book::{MomentOf, OrderBookId};
     use pallet_tools::liquidity_proxy::source_initialization;
     pub use pallet_tools::order_book::OrderBookFillSettings;
-    pub use source_initialization::XYKPair;
+    pub use source_initialization::{XSTSyntheticBasePrices, XSTSyntheticPrice, XYKPair};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -214,7 +214,7 @@ pub mod pallet {
         /// - `origin`: Root
         /// - `account`: Some account to use during the initialization
         /// - `pairs`: Asset pairs to initialize.
-        #[pallet::call_index(4)]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
         pub fn initialize_xyk(
             origin: OriginFor<T>,
@@ -225,6 +225,39 @@ pub mod pallet {
             let who = Self::ensure_in_whitelist(origin)?;
 
             source_initialization::xyk::<T>(account, pairs).map_err(|e| {
+                DispatchErrorWithPostInfo {
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                }
+            })?;
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        /// Initialize xst liquidity source.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        /// - `base_prices`: Optionally update price of synthetic base asset
+        /// - `synthetics_prices`: Prices to set for synthetics; can only set either buy or sell price because the other one is determined by synthetic base asset price
+        #[pallet::call_index(3)]
+        #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
+        pub fn initialize_xst(
+            origin: OriginFor<T>,
+            base_prices: Option<XSTSyntheticBasePrices>,
+            synthetics_prices: Vec<XSTSyntheticPrice>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            source_initialization::xst::<T>(base_prices, synthetics_prices).map_err(|e| {
                 DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
