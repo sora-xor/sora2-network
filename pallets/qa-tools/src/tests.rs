@@ -32,7 +32,7 @@
 //! but they make modify-run iterations during development much quicker
 
 use assets::AssetIdOf;
-use common::prelude::{err_pays_no, BalanceUnit, QuoteAmount};
+use common::prelude::{err_pays_no, QuoteAmount};
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, LiquiditySource,
     PredefinedAssetId, PriceVariant, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
@@ -922,36 +922,16 @@ fn should_fill_orderbook_max_orders_count() {
 fn should_initialize_xyk_pool() {
     ext().execute_with(|| {
         let pairs = vec![
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5).into()),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.1).into()),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(1).into()),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, DAI, balance!(10).into()),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5).into()),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5).into()),
-            XYKPair::new(
-                DEXId::PolkaswapXSTUSD.into(),
-                XSTUSD,
-                VAL,
-                balance!(0.5).into(),
-            ),
-            XYKPair::new(
-                DEXId::PolkaswapXSTUSD.into(),
-                XSTUSD,
-                PSWAP,
-                balance!(0.5).into(),
-            ),
-            XYKPair::new(
-                DEXId::PolkaswapXSTUSD.into(),
-                XSTUSD,
-                ETH,
-                balance!(0.5).into(),
-            ),
-            XYKPair::new(
-                DEXId::PolkaswapXSTUSD.into(),
-                XSTUSD,
-                DAI,
-                balance!(0.5).into(),
-            ),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.1)),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(1)),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, DAI, balance!(10)),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5)),
+            XYKPair::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5)),
+            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5)),
+            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, PSWAP, balance!(0.5)),
+            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, ETH, balance!(0.5)),
+            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, DAI, balance!(0.5)),
         ];
         assert_ok!(QAToolsPallet::initialize_xyk(
             RuntimeOrigin::root(),
@@ -973,7 +953,7 @@ fn should_initialize_xyk_pool() {
             // `deduce_fee` was set to false
             assert_eq!(result.fee, 0);
             let price = result.amount;
-            assert_eq!(*pair.price.balance(), price);
+            assert_eq!(pair.price, price);
         }
     })
 }
@@ -1019,8 +999,8 @@ fn should_update_xst_synthetic_base_price() {
             RuntimeOrigin::root(),
             Some(XSTSyntheticBasePrices {
                 // todo: replace all balanceunits with balance as synthetics are non-divisible (?)
-                buy: BalanceUnit::new(balance!(1.1), true),
-                sell: BalanceUnit::new(balance!(1), true),
+                buy: balance!(1.1),
+                sell: balance!(1),
             }),
             vec![],
         ));
@@ -1029,8 +1009,8 @@ fn should_update_xst_synthetic_base_price() {
         assert_ok!(QAToolsPallet::initialize_xst(
             RuntimeOrigin::root(),
             Some(XSTSyntheticBasePrices {
-                buy: BalanceUnit::new(balance!(1), true),
-                sell: BalanceUnit::new(balance!(1), true),
+                buy: balance!(1),
+                sell: balance!(1),
             }),
             vec![],
         ));
@@ -1045,8 +1025,8 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
                 RuntimeOrigin::root(),
                 Some(XSTSyntheticBasePrices {
                     // todo: replace all balanceunits with balance as synthetics are non-divisible (?)
-                    buy: BalanceUnit::new(balance!(1), true),
-                    sell: BalanceUnit::new(balance!(1.1), true),
+                    buy: balance!(1),
+                    sell: balance!(1.1),
                 }),
                 vec![],
             ),

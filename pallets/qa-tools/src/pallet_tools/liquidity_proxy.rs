@@ -34,7 +34,7 @@ pub mod source_initialization {
     use codec::{Decode, Encode};
     use common::prelude::BalanceUnit;
     use common::{
-        balance, AssetInfoProvider, DEXInfo, DexIdOf, DexInfoProvider, PriceToolsPallet,
+        balance, AssetInfoProvider, Balance, DEXInfo, DexIdOf, DexInfoProvider, PriceToolsPallet,
         PriceVariant, TradingPair, XOR,
     };
     use frame_support::dispatch::{DispatchResult, RawOrigin};
@@ -50,13 +50,13 @@ pub mod source_initialization {
         pub asset_a: AssetId,
         pub asset_b: AssetId,
         /// Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1 `asset_a`)
-        pub price: BalanceUnit,
+        pub price: Balance,
     }
 
     impl<DEXId, AssetId> XYKPair<DEXId, AssetId> {
         // `price` - Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1
         // `asset_a`)
-        pub fn new(dex_id: DEXId, asset_a: AssetId, asset_b: AssetId, price: BalanceUnit) -> Self {
+        pub fn new(dex_id: DEXId, asset_a: AssetId, asset_b: AssetId, price: Balance) -> Self {
             Self {
                 dex_id,
                 asset_a,
@@ -133,6 +133,7 @@ pub mod source_initialization {
             } else {
                 balance!(10000).into()
             };
+            let price = BalanceUnit::new(price, true);
             let value_b = value_a
                 .checked_mul(&price)
                 .ok_or(Error::<T>::ArithmeticError)?;
@@ -229,8 +230,8 @@ pub mod source_initialization {
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
     pub struct XSTSyntheticBasePrices {
-        pub buy: BalanceUnit,
-        pub sell: BalanceUnit,
+        pub buy: Balance,
+        pub sell: Balance,
     }
 
     /// Buy/sell price discrepancy is determined for all synthetics in `xst` pallet by synthetic
@@ -241,14 +242,14 @@ pub mod source_initialization {
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
     pub struct XSTSyntheticPrice {
-        pub price: BalanceUnit,
+        pub price: Balance,
         pub variant: PriceVariant,
     }
 
     fn set_prices_in_price_tools<T: Config + price_tools::Config>(
         asset_id: &T::AssetId,
-        buy_price: BalanceUnit,
-        sell_price: BalanceUnit,
+        buy_price: Balance,
+        sell_price: Balance,
     ) -> DispatchResult {
         if buy_price < sell_price {
             return Err(Error::<T>::BuyLessThanSell.into());
@@ -256,14 +257,10 @@ pub mod source_initialization {
         let _ = price_tools::Pallet::<T>::register_asset(asset_id);
 
         for _ in 0..31 {
+            price_tools::Pallet::<T>::incoming_spot_price(asset_id, buy_price, PriceVariant::Buy)?;
             price_tools::Pallet::<T>::incoming_spot_price(
                 asset_id,
-                *buy_price.balance(),
-                PriceVariant::Buy,
-            )?;
-            price_tools::Pallet::<T>::incoming_spot_price(
-                asset_id,
-                *sell_price.balance(),
+                sell_price,
                 PriceVariant::Sell,
             )?;
         }
