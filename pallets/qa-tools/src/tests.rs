@@ -995,6 +995,11 @@ fn should_not_initialize_existing_xyk_pool() {
 #[test]
 fn should_update_xst_synthetic_base_price() {
     ext().execute_with(|| {
+        let reference_asset_id = xst::ReferenceAssetId::<Runtime>::get();
+        let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
+
+        // let price_info = price_tools::PriceInfos::<Runtime>::get(reference_asset_id).unwrap();
+        // dbg!(price_info);
         assert_ok!(QAToolsPallet::initialize_xst(
             RuntimeOrigin::root(),
             Some(XSTSyntheticBasePrices {
@@ -1004,6 +1009,30 @@ fn should_update_xst_synthetic_base_price() {
             }),
             vec![],
         ));
+        // let price_info = price_tools::PriceInfos::<Runtime>::get(synthetic_base_asset_id)
+        //     .map(|aggregated_price_info| aggregated_price_info.price_of(PriceVariant::Buy))
+        //     .unwrap();
+        // dbg!(price_info.spot_prices.len());
+        // let price_info = price_tools::PriceInfos::<Runtime>::get(synthetic_base_asset_id)
+        //     .map(|aggregated_price_info| aggregated_price_info.price_of(PriceVariant::Sell))
+        //     .unwrap();
+        // dbg!(price_info.spot_prices.len());
+        assert_eq!(
+            price_tools::Pallet::<Runtime>::get_average_price(
+                &synthetic_base_asset_id,
+                &reference_asset_id,
+                PriceVariant::Buy
+            ),
+            Ok(balance!(1.1))
+        );
+        assert_eq!(
+            price_tools::Pallet::<Runtime>::get_average_price(
+                &synthetic_base_asset_id,
+                &reference_asset_id,
+                PriceVariant::Sell
+            ),
+            Ok(balance!(1))
+        );
 
         // quite unrealistic but should be legal
         assert_ok!(QAToolsPallet::initialize_xst(
@@ -1014,6 +1043,22 @@ fn should_update_xst_synthetic_base_price() {
             }),
             vec![],
         ));
+        assert_eq!(
+            price_tools::Pallet::<Runtime>::get_average_price(
+                &synthetic_base_asset_id,
+                &reference_asset_id,
+                PriceVariant::Buy
+            ),
+            Ok(balance!(1))
+        );
+        assert_eq!(
+            price_tools::Pallet::<Runtime>::get_average_price(
+                &synthetic_base_asset_id,
+                &reference_asset_id,
+                PriceVariant::Sell
+            ),
+            Ok(balance!(1))
+        );
     })
 }
 

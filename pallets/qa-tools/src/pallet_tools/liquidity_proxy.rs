@@ -227,6 +227,7 @@ pub mod source_initialization {
         Ok(())
     }
 
+    /// Price of `xst`'s synthetic base asset in terms of reference asset
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
     pub struct XSTSyntheticBasePrices {
