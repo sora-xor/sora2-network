@@ -55,7 +55,7 @@ pub mod pallet {
     use order_book::{MomentOf, OrderBookId};
     use pallet_tools::liquidity_proxy::source_initialization;
     pub use pallet_tools::order_book::OrderBookFillSettings;
-    pub use source_initialization::{XSTSyntheticBasePrices, XSTSyntheticPrice, XYKPair};
+    pub use source_initialization::{XSTBasePrice, XSTBasePrices, XSTSyntheticPrice, XYKPair};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -85,7 +85,7 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        // this pallet errors
+        // this pallet errors (todo: remove)
         /// Cannot add an account to the whitelist: it's full
         WhitelistFull,
         /// The account is already in the whitelist
@@ -98,7 +98,8 @@ pub mod pallet {
         CannotFillUnknownOrderBook,
         /// Order Book already exists
         OrderBookAlreadyExists,
-        /// Price step, best price, and worst price must be a multiple of order book's tick size. Price step must also be non-zero.
+        /// Price step, best price, and worst price must be a multiple of order book's tick size.
+        /// Price step must also be non-zero.
         IncorrectPrice,
         /// Provided range is incorrect, check that lower bound is less or equal than the upper one.
         EmptyRandomRange,
@@ -112,12 +113,14 @@ pub mod pallet {
         // xyk pool errors
         /// Cannot initialize pool with for non-divisible assets.
         AssetsMustBeDivisible,
-        /// Error in calculations
+        /// Error in calculations.
         ArithmeticError,
 
         // xst errors
-        /// Buy price cannot be lower than sell price of the synthetic base asset
+        /// Buy price cannot be lower than sell price of the base assets (synthetic base and reference).
         BuyLessThanSell,
+        /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
+        ReferenceAssetPriceNotFound,
     }
 
     #[pallet::call]
@@ -257,7 +260,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
         pub fn initialize_xst(
             origin: OriginFor<T>,
-            base_prices: Option<XSTSyntheticBasePrices>,
+            base_prices: Option<XSTBasePrices>,
             synthetics_prices: Vec<XSTSyntheticPrice>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;

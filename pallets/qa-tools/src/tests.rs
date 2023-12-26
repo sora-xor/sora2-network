@@ -46,7 +46,7 @@ use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use qa_tools::pallet::XYKPair;
-use qa_tools::{settings, Error, XSTSyntheticBasePrices};
+use qa_tools::{settings, Error, XSTBasePrice, XSTBasePrices};
 use sp_runtime::traits::BadOrigin;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
@@ -1002,10 +1002,13 @@ fn should_update_xst_synthetic_base_price() {
         // dbg!(price_info);
         assert_ok!(QAToolsPallet::initialize_xst(
             RuntimeOrigin::root(),
-            Some(XSTSyntheticBasePrices {
-                // todo: replace all balanceunits with balance as synthetics are non-divisible (?)
-                buy: balance!(1.1),
-                sell: balance!(1),
+            Some(XSTBasePrices {
+                buy: XSTBasePrice::OnlyDeduceSyntheticBase {
+                    synthetic_base: balance!(1.1)
+                },
+                sell: XSTBasePrice::OnlyDeduceSyntheticBase {
+                    synthetic_base: balance!(1)
+                },
             }),
             vec![],
         ));
@@ -1037,9 +1040,13 @@ fn should_update_xst_synthetic_base_price() {
         // quite unrealistic but should be legal
         assert_ok!(QAToolsPallet::initialize_xst(
             RuntimeOrigin::root(),
-            Some(XSTSyntheticBasePrices {
-                buy: balance!(1),
-                sell: balance!(1),
+            Some(XSTBasePrices {
+                buy: XSTBasePrice::OnlyDeduceSyntheticBase {
+                    synthetic_base: balance!(1)
+                },
+                sell: XSTBasePrice::OnlyDeduceSyntheticBase {
+                    synthetic_base: balance!(1)
+                },
             }),
             vec![],
         ));
@@ -1068,10 +1075,13 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
         assert_eq!(
             QAToolsPallet::initialize_xst(
                 RuntimeOrigin::root(),
-                Some(XSTSyntheticBasePrices {
-                    // todo: replace all balanceunits with balance as synthetics are non-divisible (?)
-                    buy: balance!(1),
-                    sell: balance!(1.1),
+                Some(XSTBasePrices {
+                    buy: XSTBasePrice::OnlyDeduceSyntheticBase {
+                        synthetic_base: balance!(1)
+                    },
+                    sell: XSTBasePrice::OnlyDeduceSyntheticBase {
+                        synthetic_base: balance!(1.1)
+                    },
                 }),
                 vec![],
             ),
