@@ -1190,6 +1190,7 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
 #[test]
 fn should_reject_deduce_only_with_uninitialized_reference_asset() {
     ext().execute_with(|| {
+        // Reject when not initialized
         assert_eq!(
             QAToolsPallet::initialize_xst(
                 RuntimeOrigin::root(),
@@ -1221,6 +1222,72 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
                 vec![],
             ),
             Err(err_pays_no(Error::<Runtime>::ReferenceAssetPriceNotFound))
+        );
+
+        // Initialize the reference asset
+        assert_ok!(QAToolsPallet::initialize_xst(
+            RuntimeOrigin::root(),
+            Some(XSTBaseBuySellPrices {
+                buy: XSTBasePrices::SetReferenceDeduceSyntheticBase {
+                    synthetic_base: balance!(3),
+                    reference: balance!(5),
+                },
+                sell: XSTBasePrices::SetReferenceDeduceSyntheticBase {
+                    synthetic_base: balance!(1),
+                    reference: balance!(2),
+                },
+            }),
+            vec![],
+        ));
+
+        // Now it should work fine
+        let (synthetic_buy_base_price, synthetic_sell_base_price) = (balance!(11), balance!(7));
+        assert_ok!(QAToolsPallet::initialize_xst(
+            RuntimeOrigin::root(),
+            Some(XSTBaseBuySellPrices {
+                buy: XSTBasePrices::OnlyDeduceSyntheticBase {
+                    synthetic_base: synthetic_buy_base_price,
+                },
+                sell: XSTBasePrices::OnlyDeduceSyntheticBase {
+                    synthetic_base: synthetic_sell_base_price,
+                },
+            }),
+            vec![],
+        ));
+        // check prices
+        let reference_price_in_xor = price_tools::Pallet::<Runtime>::get_average_price(
+            &xst::ReferenceAssetId::<Runtime>::get(),
+            &XOR.into(),
+            PriceVariant::Buy,
+        )
+        .unwrap();
+        let synthetic_buy_base_price_xor = BalanceUnit::divisible(synthetic_buy_base_price)
+            * BalanceUnit::divisible(reference_price_in_xor);
+        assert_eq!(
+            price_tools::Pallet::<Runtime>::get_average_price(
+                &<Runtime as xst::Config>::GetSyntheticBaseAssetId::get(),
+                &XOR.into(),
+                PriceVariant::Buy,
+            )
+            .unwrap(),
+            *synthetic_buy_base_price_xor.balance()
+        );
+        let reference_price_in_xor = price_tools::Pallet::<Runtime>::get_average_price(
+            &xst::ReferenceAssetId::<Runtime>::get(),
+            &XOR.into(),
+            PriceVariant::Sell,
+        )
+        .unwrap();
+        let synthetic_sell_base_price_xor = BalanceUnit::divisible(synthetic_sell_base_price)
+            * BalanceUnit::divisible(reference_price_in_xor);
+        assert_eq!(
+            price_tools::Pallet::<Runtime>::get_average_price(
+                &<Runtime as xst::Config>::GetSyntheticBaseAssetId::get(),
+                &XOR.into(),
+                PriceVariant::Sell,
+            )
+            .unwrap(),
+            *synthetic_sell_base_price_xor.balance()
         );
     })
 }
