@@ -1314,9 +1314,56 @@ mod tests {
         }
     }
 
+    fn check_partial_eq_consistent_with_ord() {
+        // `eq` and `.cmp().is_eq()` must be consistent
+        for a in [
+            BalanceUnit::indivisible(1),
+            BalanceUnit::divisible(balance!(1)),
+            BalanceUnit::divisible(0),
+            BalanceUnit::indivisible(0),
+        ] {
+            for b in [
+                BalanceUnit::indivisible(1),
+                BalanceUnit::divisible(balance!(1)),
+                BalanceUnit::divisible(0),
+                BalanceUnit::indivisible(0),
+            ] {
+                if a.eq(&b) {
+                    assert!(a.cmp(&b).is_eq());
+                } else {
+                    assert!(a.cmp(&b).is_ne());
+                }
+            }
+        }
+    }
+
     #[test]
     fn check_partial_eq() {
-        // We do not want weird system with, for example, two separate (neq) zeros. Therefore,
+        // `eq` and `ne` must be consistent with each other
+        for a in [
+            BalanceUnit::indivisible(1),
+            BalanceUnit::divisible(balance!(1)),
+            BalanceUnit::divisible(0),
+            BalanceUnit::indivisible(0),
+        ] {
+            for b in [
+                BalanceUnit::indivisible(1),
+                BalanceUnit::divisible(balance!(1)),
+                BalanceUnit::divisible(0),
+                BalanceUnit::indivisible(0),
+            ] {
+                if a.eq(&b) {
+                    assert!(!a.ne(&b));
+                } else if a.ne(&b) {
+                    assert!(!a.eq(&b));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn check_eq() {
+        // We do not want weird system with, for example, two separate (not eq) zeros. Therefore,
         // we need to equalize indivisible numbers with their divisible counterparts (in absence
         // of overflows).
         // This leads to predictable behaviour when operating this type.
