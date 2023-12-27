@@ -46,7 +46,7 @@ use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use qa_tools::pallet::XYKPair;
-use qa_tools::{settings, Error, XSTBasePrice, XSTBasePrices};
+use qa_tools::{settings, Error, XSTBaseBuySellPrices, XSTBasePrices, XSTBaseXorPrices};
 use sp_runtime::traits::{BadOrigin, CheckedDiv, CheckedMul, One};
 use sp_runtime::DispatchErrorWithPostInfo;
 
@@ -1073,12 +1073,12 @@ fn should_update_xst_synthetic_base_price() {
         );
 
         // quite unrealistic but should be legal
-        let prices = XSTBasePrices {
-            buy: XSTBasePrice::SetReferenceDeduceSyntheticBase {
+        let prices = XSTBaseBuySellPrices {
+            buy: XSTBasePrices::SetReferenceDeduceSyntheticBase {
                 synthetic_base: balance!(1),
                 reference: balance!(1),
             },
-            sell: XSTBasePrice::SetReferenceDeduceSyntheticBase {
+            sell: XSTBasePrices::SetReferenceDeduceSyntheticBase {
                 synthetic_base: balance!(1),
                 reference: balance!(1),
             },
@@ -1114,12 +1114,12 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
         assert_eq!(
             QAToolsPallet::initialize_xst(
                 RuntimeOrigin::root(),
-                Some(XSTBasePrices {
-                    buy: XSTBasePrice::SetReferenceDeduceSyntheticBase {
+                Some(XSTBaseBuySellPrices {
+                    buy: XSTBasePrices::SetReferenceDeduceSyntheticBase {
                         synthetic_base: balance!(1),
                         reference: balance!(1),
                     },
-                    sell: XSTBasePrice::SetReferenceDeduceSyntheticBase {
+                    sell: XSTBasePrices::SetReferenceDeduceSyntheticBase {
                         synthetic_base: balance!(1.1),
                         reference: balance!(1),
                     },
@@ -1131,12 +1131,12 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
         assert_eq!(
             QAToolsPallet::initialize_xst(
                 RuntimeOrigin::root(),
-                Some(XSTBasePrices {
-                    buy: XSTBasePrice::SetReferenceDeduceSyntheticBase {
+                Some(XSTBaseBuySellPrices {
+                    buy: XSTBasePrices::SetReferenceDeduceSyntheticBase {
                         synthetic_base: balance!(1),
                         reference: balance!(1),
                     },
-                    sell: XSTBasePrice::SetReferenceDeduceSyntheticBase {
+                    sell: XSTBasePrices::SetReferenceDeduceSyntheticBase {
                         synthetic_base: balance!(1),
                         reference: balance!(1.1),
                     },

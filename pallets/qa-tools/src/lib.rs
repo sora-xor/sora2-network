@@ -55,7 +55,9 @@ pub mod pallet {
     use order_book::{MomentOf, OrderBookId};
     use pallet_tools::liquidity_proxy::source_initialization;
     pub use pallet_tools::order_book::OrderBookFillSettings;
-    pub use source_initialization::{XSTBasePrice, XSTBasePrices, XSTSyntheticPrice, XYKPair};
+    pub use source_initialization::{
+        XSTBaseBuySellPrices, XSTBasePrices, XSTBaseXorPrices, XSTSyntheticPrice, XYKPair,
+    };
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -260,7 +262,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
         pub fn initialize_xst(
             origin: OriginFor<T>,
-            base_prices: Option<XSTBasePrices>,
+            base_prices: Option<XSTBaseBuySellPrices>,
             synthetics_prices: Vec<XSTSyntheticPrice>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
