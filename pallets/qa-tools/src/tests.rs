@@ -1150,5 +1150,77 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
             ),
             Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
         );
+        assert_eq!(
+            QAToolsPallet::initialize_xst(
+                RuntimeOrigin::root(),
+                Some(XSTBaseBuySellPrices {
+                    buy: XSTBasePrices::SetBoth(XSTBaseXorPrices {
+                        synthetic_base: balance!(1),
+                        reference: balance!(1),
+                    }),
+                    sell: XSTBasePrices::SetBoth(XSTBaseXorPrices {
+                        synthetic_base: balance!(1),
+                        reference: balance!(1.1),
+                    }),
+                }),
+                vec![],
+            ),
+            Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
+        );
+        assert_eq!(
+            QAToolsPallet::initialize_xst(
+                RuntimeOrigin::root(),
+                Some(XSTBaseBuySellPrices {
+                    buy: XSTBasePrices::SetBoth(XSTBaseXorPrices {
+                        synthetic_base: balance!(1),
+                        reference: balance!(1),
+                    }),
+                    sell: XSTBasePrices::SetBoth(XSTBaseXorPrices {
+                        synthetic_base: balance!(1.1),
+                        reference: balance!(1),
+                    }),
+                }),
+                vec![],
+            ),
+            Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
+        );
+    })
+}
+
+#[test]
+fn should_reject_deduce_only_with_uninitialized_reference_asset() {
+    ext().execute_with(|| {
+        assert_eq!(
+            QAToolsPallet::initialize_xst(
+                RuntimeOrigin::root(),
+                Some(XSTBaseBuySellPrices {
+                    buy: XSTBasePrices::OnlyDeduceSyntheticBase {
+                        synthetic_base: balance!(1),
+                    },
+                    sell: XSTBasePrices::SetReferenceDeduceSyntheticBase {
+                        synthetic_base: balance!(1),
+                        reference: balance!(1),
+                    },
+                }),
+                vec![],
+            ),
+            Err(err_pays_no(Error::<Runtime>::ReferenceAssetPriceNotFound))
+        );
+        assert_eq!(
+            QAToolsPallet::initialize_xst(
+                RuntimeOrigin::root(),
+                Some(XSTBaseBuySellPrices {
+                    buy: XSTBasePrices::SetReferenceDeduceSyntheticBase {
+                        synthetic_base: balance!(1),
+                        reference: balance!(1),
+                    },
+                    sell: XSTBasePrices::OnlyDeduceSyntheticBase {
+                        synthetic_base: balance!(1),
+                    },
+                }),
+                vec![],
+            ),
+            Err(err_pays_no(Error::<Runtime>::ReferenceAssetPriceNotFound))
+        );
     })
 }

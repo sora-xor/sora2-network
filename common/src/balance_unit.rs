@@ -1321,6 +1321,7 @@ mod tests {
         }
     }
 
+    #[test]
     fn check_partial_eq_consistent_with_ord() {
         // `eq` and `.cmp().is_eq()` must be consistent
         for a in [
