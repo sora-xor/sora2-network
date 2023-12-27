@@ -318,8 +318,10 @@ pub mod source_initialization {
         }
         let _ = price_tools::Pallet::<T>::register_asset(asset_id);
 
-        price_tools::Pallet::<T>::incoming_spot_price_failure(asset_id, PriceVariant::Buy);
-        price_tools::Pallet::<T>::incoming_spot_price_failure(asset_id, PriceVariant::Sell);
+        for _ in 0..price_tools::AVG_BLOCK_SPAN {
+            price_tools::Pallet::<T>::incoming_spot_price_failure(asset_id, PriceVariant::Buy);
+            price_tools::Pallet::<T>::incoming_spot_price_failure(asset_id, PriceVariant::Sell);
+        }
         for _ in 0..31 {
             price_tools::Pallet::<T>::incoming_spot_price(asset_id, buy_price, PriceVariant::Buy)?;
             price_tools::Pallet::<T>::incoming_spot_price(

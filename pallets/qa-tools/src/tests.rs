@@ -1042,8 +1042,6 @@ fn should_update_xst_synthetic_base_price() {
             (expected_avg_buy, expected_avg_sell)
         }
 
-        dbg!(price_tools::PriceInfos::<Runtime>::get(synthetic_base_asset_id).unwrap());
-        dbg!(price_tools::PriceInfos::<Runtime>::get(reference_asset_id).unwrap());
         let prices = XSTBaseBuySellPrices {
             buy: XSTBasePrices::SetReferenceDeduceSyntheticBase {
                 synthetic_base: balance!(3),
@@ -1060,8 +1058,6 @@ fn should_update_xst_synthetic_base_price() {
             Some(prices),
             vec![],
         ));
-        dbg!(price_tools::PriceInfos::<Runtime>::get(synthetic_base_asset_id).unwrap());
-        dbg!(price_tools::PriceInfos::<Runtime>::get(reference_asset_id).unwrap());
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
                 &synthetic_base_asset_id,
@@ -1096,8 +1092,8 @@ fn should_update_xst_synthetic_base_price() {
             Some(prices),
             vec![],
         ));
-        dbg!(price_tools::PriceInfos::<Runtime>::get(synthetic_base_asset_id).unwrap());
-        dbg!(price_tools::PriceInfos::<Runtime>::get(reference_asset_id).unwrap());
+        // dbg!(price_tools::PriceInfos::<Runtime>::get(synthetic_base_asset_id).unwrap());
+        // dbg!(price_tools::PriceInfos::<Runtime>::get(reference_asset_id).unwrap());
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
                 &synthetic_base_asset_id,
