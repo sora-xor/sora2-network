@@ -928,7 +928,7 @@ pub mod pallet {
             )?;
 
             // Add rewards to pool_info.rewards
-            pool_info.rewards += buyback_amount;
+            pool_info.rewards += buyback_amount; // Needs to be changed to apollo token amount, and add it in rewards (free_balance?)
 
             // Transfer APOLLO to treasury
             LiquidityProxy::<T>::swap_transfer(
@@ -968,7 +968,7 @@ pub mod pallet {
         }
 
         fn distribute_rewards_to_users(_current_block: T::BlockNumber) -> Weight {
-            let counter: u64 = 0;
+            let mut counter: u64 = 0;
             let blocks = 5_256_000_u128; // 1 year
 
             for (_pool_asset_id, pool_info) in PoolData::<T>::iter() {
@@ -1011,6 +1011,7 @@ pub mod pallet {
                     }
 
                     <UserLendingInfo<T>>::insert(user.clone(), asset_id, user_info);
+                    counter += 1;
                 }
 
                 for (user, asset_id, mut user_infos) in UserBorrowingInfo::<T>::iter() {
@@ -1036,6 +1037,7 @@ pub mod pallet {
                         }
                     }
                     <UserBorrowingInfo<T>>::insert(user.clone(), asset_id, user_infos.clone());
+                    counter += 1;
                 }
             }
 
@@ -1045,7 +1047,7 @@ pub mod pallet {
         }
 
         fn liquidation(_current_block: T::BlockNumber) -> Weight {
-            let counter: u64 = 0;
+            let mut counter: u64 = 0;
 
             for (pool_asset_id, pool_info) in PoolData::<T>::iter() {
                 for (user, asset_id, user_infos) in UserBorrowingInfo::<T>::iter() {
@@ -1086,6 +1088,7 @@ pub mod pallet {
                                 user_info.collateral_amount,
                             );
                             <UserBorrowingInfo<T>>::remove(user.clone(), asset_id);
+                            counter += 1;
                         }
                     }
                 }
