@@ -1055,14 +1055,6 @@ fn should_update_xst_synthetic_base_price() {
             Some(prices),
             vec![],
         ));
-        // let price_info = price_tools::PriceInfos::<Runtime>::get(synthetic_base_asset_id)
-        //     .map(|aggregated_price_info| aggregated_price_info.price_of(PriceVariant::Buy))
-        //     .unwrap();
-        // dbg!(price_info.spot_prices.len());
-        // let price_info = price_tools::PriceInfos::<Runtime>::get(synthetic_base_asset_id)
-        //     .map(|aggregated_price_info| aggregated_price_info.price_of(PriceVariant::Sell))
-        //     .unwrap();
-        // dbg!(price_info.spot_prices.len());
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
                 &synthetic_base_asset_id,
