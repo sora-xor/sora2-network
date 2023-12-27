@@ -36,6 +36,7 @@ use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use fixnum::ops::RoundMode;
 use fixnum::typenum::Unsigned;
 use fixnum::ArithmeticError;
+use num_traits::One;
 use sp_arithmetic::traits::IntegerSquareRoot;
 use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Saturating, Zero};
 
@@ -93,6 +94,19 @@ impl Zero for BalanceUnit {
 
     fn is_zero(&self) -> bool {
         self.inner.is_zero()
+    }
+}
+
+impl One for BalanceUnit {
+    fn one() -> Self {
+        Self::new(1, false)
+    }
+
+    fn is_one(&self) -> bool
+    where
+        Self: PartialEq,
+    {
+        self.cmp(&Self::one()).is_eq()
     }
 }
 
