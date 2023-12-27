@@ -50,9 +50,7 @@ use {
 const RATIO: u128 = 1_000_000_000_000_000_000;
 
 /// BalanceUnit wraps Balance and provides proper math operations between divisible & non-divisible balances that have different precision.
-#[derive(
-    Encode, Decode, Copy, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen,
-)]
+#[derive(Encode, Decode, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BalanceUnit {
     inner: Balance,
@@ -62,6 +60,15 @@ pub struct BalanceUnit {
     /// false - means the precision of 0 digits
     is_divisible: bool,
 }
+
+impl PartialEq for BalanceUnit {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other).is_eq()
+    }
+}
+
+// reflexivity, symmetry, and transitivity are satisfied
+impl Eq for BalanceUnit {}
 
 impl Ord for BalanceUnit {
     fn cmp(&self, other: &Self) -> Ordering {
