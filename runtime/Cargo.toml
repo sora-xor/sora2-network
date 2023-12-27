@@ -74,7 +74,7 @@ faucet = { path = "../pallets/faucet", default-features = false, optional = true
 hermes-governance-platform = { path = "../pallets/hermes-governance-platform", default-features = false }
 iroha-migration = { path = "../pallets/iroha-migration", default-features = false }
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
-kensetsu = { path = "../pallets/kensetsu", default-features = false}
+kensetsu = { path = "../pallets/kensetsu", default-features = false, optional = true }
 kensetsu-benchmarking = { path = "../pallets/kensetsu/benchmarking", default-features = false, optional = true }
 liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false }
 liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
