@@ -234,7 +234,9 @@ pub mod source_initialization {
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
     pub struct XSTBaseXorPrice {
+        /// Price of synthetic base asset in XOR
         synthetic_base: Balance,
+        /// Price of reference asset in XOR
         reference: Balance,
     }
 
@@ -243,17 +245,47 @@ pub mod source_initialization {
     #[scale_info(skip_type_params(T))]
     pub enum XSTBasePrice {
         /// Synthetic base asset - set price w.r.t. XOR
+        ///
         /// Reference asset - set price w.r.t. XOR
         SetBoth(XSTBaseXorPrice),
         /// Synthetic base asset - set price w.r.t. reference asset
+        ///
         /// Reference asset - set price w.r.t. XOR
         SetReferenceDeduceSyntheticBase {
+            /// Price in reference asset
             synthetic_base: Balance,
+            /// Price in XOR
             reference: Balance,
         },
         /// Synthetic base asset - set price w.r.t. reference asset
+        ///
         /// Reference asset - do not touch; should have price in `price_tools` beforehand
-        OnlyDeduceSyntheticBase { synthetic_base: Balance },
+        OnlyDeduceSyntheticBase {
+            /// Price in reference asset
+            synthetic_base: Balance,
+        },
+    }
+
+    impl XSTBasePrice {
+        pub fn synthetic_base_price(&self) -> Balance {
+            match *self {
+                XSTBasePrice::SetBoth(XSTBaseXorPrice { synthetic_base, .. }) => synthetic_base,
+                XSTBasePrice::SetReferenceDeduceSyntheticBase { synthetic_base, .. } => {
+                    synthetic_base
+                }
+
+                XSTBasePrice::OnlyDeduceSyntheticBase { synthetic_base } => synthetic_base,
+            }
+        }
+
+        pub fn reference_price(&self) -> Option<Balance> {
+            match *self {
+                XSTBasePrice::SetBoth(XSTBaseXorPrice { reference, .. }) => Some(reference),
+                XSTBasePrice::SetReferenceDeduceSyntheticBase { reference, .. } => Some(reference),
+
+                XSTBasePrice::OnlyDeduceSyntheticBase { .. } => None,
+            }
+        }
     }
 
     /// Initialize prices of `xst`'s synthetic base asset (in terms of reference asset)
