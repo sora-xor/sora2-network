@@ -1246,19 +1246,20 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
         ));
 
         // Now it should work fine
-        let (synthetic_buy_base_price, synthetic_sell_base_price) = (balance!(11), balance!(7));
+        let (synthetic_base_buy_per_reference, synthetic_base_sell_per_reference) =
+            (balance!(11), balance!(7));
         assert_ok!(QAToolsPallet::initialize_xst(
             RuntimeOrigin::root(),
             Some(XSTBaseBuySellInput {
                 buy: XSTBaseInput {
                     synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(
-                        synthetic_buy_base_price
+                        synthetic_base_buy_per_reference
                     ),
                     reference: XSTReferencePriceInput::None,
                 },
                 sell: XSTBaseInput {
                     synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(
-                        synthetic_sell_base_price
+                        synthetic_base_sell_per_reference
                     ),
                     reference: XSTReferencePriceInput::None,
                 },
@@ -1267,39 +1268,39 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
         ));
         // todo check if need other way
         // check prices
-        let reference_price_for_xor = price_tools::Pallet::<Runtime>::get_average_price(
+        let reference_buy_per_xor = price_tools::Pallet::<Runtime>::get_average_price(
             &xst::ReferenceAssetId::<Runtime>::get(),
             &XOR.into(),
             PriceVariant::Buy,
         )
         .unwrap();
-        let synthetic_buy_base_price_xor = BalanceUnit::divisible(synthetic_buy_base_price)
-            * BalanceUnit::divisible(reference_price_for_xor);
+        let synthetic_base_buy_per_xor = BalanceUnit::divisible(synthetic_base_buy_per_reference)
+            * BalanceUnit::divisible(reference_buy_per_xor);
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
-                &<Runtime as xst::Config>::GetSyntheticBaseAssetId::get(),
                 &XOR.into(),
+                &<Runtime as xst::Config>::GetSyntheticBaseAssetId::get(),
                 PriceVariant::Buy,
             )
             .unwrap(),
-            *synthetic_buy_base_price_xor.balance()
+            *synthetic_base_buy_per_xor.balance()
         );
-        let reference_price_for_xor = price_tools::Pallet::<Runtime>::get_average_price(
+        let reference_sell_per_xor = price_tools::Pallet::<Runtime>::get_average_price(
             &xst::ReferenceAssetId::<Runtime>::get(),
             &XOR.into(),
             PriceVariant::Sell,
         )
         .unwrap();
-        let synthetic_sell_base_price_xor = BalanceUnit::divisible(synthetic_sell_base_price)
-            * BalanceUnit::divisible(reference_price_for_xor);
+        let synthetic_base_sell_per_xor = BalanceUnit::divisible(synthetic_base_sell_per_reference)
+            * BalanceUnit::divisible(reference_sell_per_xor);
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
-                &<Runtime as xst::Config>::GetSyntheticBaseAssetId::get(),
                 &XOR.into(),
+                &<Runtime as xst::Config>::GetSyntheticBaseAssetId::get(),
                 PriceVariant::Sell,
             )
             .unwrap(),
-            *synthetic_sell_base_price_xor.balance()
+            *synthetic_base_sell_per_xor.balance()
         );
     })
 }
