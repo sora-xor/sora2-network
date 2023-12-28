@@ -474,7 +474,7 @@ mod tests {
         );
 
         assert_eq!(
-            BalanceUnit::new(10, false),
+            BalanceUnit::indivisible(10),
             BalanceUnit {
                 inner: 10,
                 is_divisible: false

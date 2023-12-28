@@ -136,7 +136,7 @@ pub mod source_initialization {
             } else {
                 balance!(10000).into()
             };
-            let price = BalanceUnit::new(price, true);
+            let price = BalanceUnit::divisible(price);
             let value_b = value_a
                 .checked_mul(&price)
                 .ok_or(Error::<T>::ArithmeticError)?;
@@ -331,8 +331,8 @@ pub mod source_initialization {
         let synthetic_base_per_xor = match input_price.synthetic_base {
             XSTSyntheticBasePriceInput::BasePerXor(p) => p,
             XSTSyntheticBasePriceInput::BasePerReference(synthetic_base_per_reference) => {
-                let synthetic_base_per_xor = BalanceUnit::new(synthetic_base_per_reference, true)
-                    * BalanceUnit::new(reference_per_xor, true);
+                let synthetic_base_per_xor = BalanceUnit::divisible(synthetic_base_per_reference)
+                    * BalanceUnit::divisible(reference_per_xor);
                 *synthetic_base_per_xor.balance()
             }
         };
