@@ -1266,11 +1266,10 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
             }),
             vec![],
         ));
-        // todo check if need other way
         // check prices
         let reference_buy_per_xor = price_tools::Pallet::<Runtime>::get_average_price(
-            &xst::ReferenceAssetId::<Runtime>::get(),
             &XOR.into(),
+            &xst::ReferenceAssetId::<Runtime>::get(),
             PriceVariant::Buy,
         )
         .unwrap();
@@ -1286,8 +1285,8 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
             *synthetic_base_buy_per_xor.balance()
         );
         let reference_sell_per_xor = price_tools::Pallet::<Runtime>::get_average_price(
-            &xst::ReferenceAssetId::<Runtime>::get(),
             &XOR.into(),
+            &xst::ReferenceAssetId::<Runtime>::get(),
             PriceVariant::Sell,
         )
         .unwrap();
