@@ -230,70 +230,60 @@ pub mod source_initialization {
         Ok(())
     }
 
-    /// Prices with 10^18 precision in terms of XOR
+    /// Prices with 10^18 precision. Amount of the asset per 1 XOR. The same format as used
+    /// in price tools.
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
     pub struct XSTBaseXorPrices {
-        /// Price of synthetic base asset in XOR
+        /// Amount of synthetic base asset per XOR
         pub synthetic_base: Balance,
-        /// Price of reference asset in XOR
+        /// Amount of reference asset per XOR
         pub reference: Balance,
     }
 
-    /// Only buy or sell prices; with 10^18 precision
+    /// Prices with 10^18 precision
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
-    pub enum XSTBasePrices {
-        /// Synthetic base asset - set price w.r.t. XOR
-        ///
-        /// Reference asset - set price w.r.t. XOR
-        SetBoth(XSTBaseXorPrices),
-        /// Synthetic base asset - set price w.r.t. reference asset
-        ///
-        /// Reference asset - set price w.r.t. XOR
-        SetReferenceDeduceSyntheticBase {
-            /// Price in reference asset
-            synthetic_base: Balance,
-            /// Price in XOR
-            reference: Balance,
-        },
-        /// Synthetic base asset - set price w.r.t. reference asset
-        ///
-        /// Reference asset - do not touch; should have price in `price_tools` beforehand
-        OnlyDeduceSyntheticBase {
-            /// Price in reference asset
-            synthetic_base: Balance,
-        },
+    pub enum XSTSyntheticBasePriceInput {
+        /// How much synthetic base per 1 XOR
+        BasePerXor(Balance),
+        /// How much synthetic base per 1 reference asset
+        BasePerReference(Balance),
     }
 
-    impl XSTBasePrices {
-        pub fn synthetic_base_price(&self) -> Balance {
-            match *self {
-                XSTBasePrices::SetBoth(XSTBaseXorPrices { synthetic_base, .. }) => synthetic_base,
-                XSTBasePrices::SetReferenceDeduceSyntheticBase { synthetic_base, .. } => {
-                    synthetic_base
-                }
+    /// Price with 10^18 precision
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    #[scale_info(skip_type_params(T))]
+    pub enum XSTReferencePriceInput {
+        /// How much reference asset per 1 XOR
+        ReferencePerXor(Balance),
+        /// Leave existing price
+        None,
+    }
 
-                XSTBasePrices::OnlyDeduceSyntheticBase { synthetic_base } => synthetic_base,
+    impl XSTReferencePriceInput {
+        pub fn should_update(&self) -> bool {
+            match self {
+                XSTReferencePriceInput::ReferencePerXor(_) => true,
+                XSTReferencePriceInput::None => false,
             }
         }
+    }
 
-        pub fn reference_price(&self) -> Option<Balance> {
-            match *self {
-                XSTBasePrices::SetBoth(XSTBaseXorPrices { reference, .. }) => Some(reference),
-                XSTBasePrices::SetReferenceDeduceSyntheticBase { reference, .. } => Some(reference),
-
-                XSTBasePrices::OnlyDeduceSyntheticBase { .. } => None,
-            }
-        }
+    /// Input for setting prices for xst base assets
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    #[scale_info(skip_type_params(T))]
+    pub struct XSTBaseInput {
+        pub synthetic_base: XSTSyntheticBasePriceInput,
+        pub reference: XSTReferencePriceInput,
     }
 
     /// Price initialization parameters of `xst`'s synthetic base asset (in terms of reference asset)
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
-    pub struct XSTBaseBuySellPrices {
-        pub buy: XSTBasePrices,
-        pub sell: XSTBasePrices,
+    pub struct XSTBaseBuySellInput {
+        pub buy: XSTBaseInput,
+        pub sell: XSTBaseInput,
     }
 
     /// Buy/sell price discrepancy is determined for all synthetics in `xst` pallet by synthetic
@@ -310,66 +300,58 @@ pub mod source_initialization {
 
     fn set_prices_in_price_tools<T: Config>(
         asset_id: &T::AssetId,
-        buy_price: Balance,
-        sell_price: Balance,
+        price: Balance,
+        variant: PriceVariant,
     ) -> DispatchResult {
-        if buy_price < sell_price {
-            return Err(Error::<T>::BuyLessThanSell.into());
-        }
         let _ = price_tools::Pallet::<T>::register_asset(asset_id);
 
         for _ in 0..price_tools::AVG_BLOCK_SPAN {
-            price_tools::Pallet::<T>::incoming_spot_price_failure(asset_id, PriceVariant::Buy);
-            price_tools::Pallet::<T>::incoming_spot_price_failure(asset_id, PriceVariant::Sell);
+            price_tools::Pallet::<T>::incoming_spot_price_failure(asset_id, variant);
         }
         for _ in 0..31 {
-            price_tools::Pallet::<T>::incoming_spot_price(asset_id, buy_price, PriceVariant::Buy)?;
-            price_tools::Pallet::<T>::incoming_spot_price(
-                asset_id,
-                sell_price,
-                PriceVariant::Sell,
-            )?;
+            price_tools::Pallet::<T>::incoming_spot_price(asset_id, price, variant)?;
         }
         Ok(())
     }
 
     /// Returns resulting prices `(synthetic base, reference)` in XOR.
     fn calculate_xor_price<T: Config>(
-        input_price: XSTBasePrices,
+        input_price: XSTBaseInput,
         variant: PriceVariant,
     ) -> Result<XSTBaseXorPrices, DispatchError> {
-        let (synthetic_base_price, reference_price) = match input_price {
-            XSTBasePrices::SetBoth(xor_price) => return Ok(xor_price),
-            XSTBasePrices::SetReferenceDeduceSyntheticBase {
-                synthetic_base,
-                reference,
-            } => (synthetic_base, reference),
-            XSTBasePrices::OnlyDeduceSyntheticBase { synthetic_base } => {
-                let reference = price_tools::Pallet::<T>::get_average_price(
-                    &xst::ReferenceAssetId::<T>::get(),
-                    &XOR.into(),
-                    variant,
-                )
-                .map_err(|_| Error::<T>::ReferenceAssetPriceNotFound)?;
-                (synthetic_base, reference)
+        let reference_per_xor = match input_price.reference {
+            XSTReferencePriceInput::ReferencePerXor(p) => p,
+            XSTReferencePriceInput::None => price_tools::Pallet::<T>::get_average_price(
+                &XOR.into(),
+                &xst::ReferenceAssetId::<T>::get(),
+                variant,
+            )
+            .map_err(|_| Error::<T>::ReferenceAssetPriceNotFound)?,
+        };
+        let synthetic_base_per_xor = match input_price.synthetic_base {
+            XSTSyntheticBasePriceInput::BasePerXor(p) => p,
+            XSTSyntheticBasePriceInput::BasePerReference(synthetic_base_per_reference) => {
+                let synthetic_base_per_xor = BalanceUnit::new(synthetic_base_per_reference, true)
+                    * BalanceUnit::new(reference_per_xor, true);
+                *synthetic_base_per_xor.balance()
             }
         };
-        let synthetic_base_in_xor =
-            BalanceUnit::new(synthetic_base_price, true) * BalanceUnit::new(reference_price, true);
         Ok(XSTBaseXorPrices {
-            synthetic_base: *synthetic_base_in_xor.balance(),
-            reference: reference_price,
+            synthetic_base: synthetic_base_per_xor,
+            reference: reference_per_xor,
         })
     }
 
     pub fn xst<T: Config + price_tools::Config>(
-        base: Option<XSTBaseBuySellPrices>,
+        base: Option<XSTBaseBuySellInput>,
         synthetics: Vec<XSTSyntheticPrice>,
     ) -> DispatchResult {
         if let Some(base_prices) = base {
             let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
             let reference_asset_id = xst::ReferenceAssetId::<T>::get();
 
+            let should_update_reference_buy = base_prices.buy.reference.should_update();
+            let should_update_reference_sell = base_prices.sell.reference.should_update();
             let buy_prices = calculate_xor_price::<T>(base_prices.buy, PriceVariant::Buy)?;
             let sell_prices = calculate_xor_price::<T>(base_prices.sell, PriceVariant::Sell)?;
             ensure!(
@@ -380,13 +362,27 @@ pub mod source_initialization {
             set_prices_in_price_tools::<T>(
                 &synthetic_base_asset_id,
                 buy_prices.synthetic_base,
-                sell_prices.synthetic_base,
+                PriceVariant::Buy,
             )?;
             set_prices_in_price_tools::<T>(
-                &reference_asset_id,
-                buy_prices.reference,
-                sell_prices.reference,
+                &synthetic_base_asset_id,
+                sell_prices.synthetic_base,
+                PriceVariant::Sell,
             )?;
+            if should_update_reference_buy {
+                set_prices_in_price_tools::<T>(
+                    &reference_asset_id,
+                    buy_prices.reference,
+                    PriceVariant::Buy,
+                )?;
+            }
+            if should_update_reference_sell {
+                set_prices_in_price_tools::<T>(
+                    &reference_asset_id,
+                    sell_prices.reference,
+                    PriceVariant::Sell,
+                )?;
+            }
         }
         Ok(())
     }
