@@ -88,14 +88,6 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        // this pallet errors (todo: remove)
-        /// Cannot add an account to the whitelist: it's full
-        WhitelistFull,
-        /// The account is already in the whitelist
-        AlreadyInWhitelist,
-        /// The account intended for removal is not in whitelist
-        NotInWhitelist,
-
         // order book errors
         /// Did not find an order book with given id to fill. Likely an error with order book creation.
         CannotFillUnknownOrderBook,
