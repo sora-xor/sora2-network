@@ -277,6 +277,11 @@ pub mod pallet {
     pub type CDPDepository<T: Config> =
         StorageMap<_, Identity, U256, CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>>;
 
+    /// Index links owner to CDP ids, not needed by protocol, but used by front-end
+    #[pallet::storage]
+    #[pallet::getter(fn cdp_owner_index)]
+    pub type CdpOwnerIndex<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, Vec<U256>>;
+
     #[pallet::storage]
     #[pallet::getter(fn risk_managers)]
     pub type RiskManagers<T: Config> = StorageValue<_, BTreeSet<T::AccountId>>;
@@ -384,7 +389,6 @@ pub mod pallet {
         /// - Creates a new CDP with a unique ID and emits a [`Event::CDPCreated`] event.
         /// - Initialises the CDP's collateral and debt amounts based on provided values.
         /// - Internal functions [`Self::deposit_internal`] and [`Self::borrow_internal`] are called to handle collateral deposit and borrowing if amounts are greater than zero.
-
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::create_cdp())]
         pub fn create_cdp(
@@ -420,6 +424,7 @@ pub mod pallet {
                         interest_coefficient,
                     },
                 );
+                CdpOwnerIndex::<T>::append(&who, cdp_id.clone());
                 if collateral_amount > 0 {
                     Self::deposit_internal(&who, *cdp_id, collateral_amount)?;
                 }
@@ -454,7 +459,6 @@ pub mod pallet {
         /// - If the transaction sender is not the CDP owner: [`Error::OperationNotPermitted`].
         /// - If there's still outstanding debt on the CDP: [`Error::OutstandingDebt`].
         /// - Errors from the [`technical::Pallet::<T>::transfer_out`] function if collateral transfer fails.
-
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
@@ -468,7 +472,7 @@ pub mod pallet {
                 &who,
                 cdp.collateral_amount,
             )?;
-            <CDPDepository<T>>::remove(cdp_id);
+            Self::delete_cdp(cdp_id, &who);
             Self::deposit_event(Event::CDPClosed {
                 cdp_id,
                 owner: who,
@@ -495,7 +499,6 @@ pub mod pallet {
         ///
         /// This function can return errors in the following cases:
         /// - Errors from the [`Self::deposit_internal`] function if collateral deposit fails.
-
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::deposit_collateral())]
         pub fn deposit_collateral(
@@ -534,7 +537,6 @@ pub mod pallet {
         /// - If the CDP becomes unsafe after collateral withdrawal: [`Error::CDPUnsafe`].
         /// - Errors from the [`technical::Pallet::<T>::transfer_out`] function if collateral transfer fails.
         /// - If the specified CDP is not found: [`Error::CDPNotFound`].
-
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_collateral())]
         pub fn withdraw_collateral(
@@ -591,7 +593,6 @@ pub mod pallet {
         /// This function is used to borrow funds against a CDP:
         /// - Verifies the transaction's origin.
         /// - Initiates the internal [`Self::borrow_internal`] function to handle the borrowing process.
-
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::borrow())]
         pub fn borrow(
@@ -626,7 +627,6 @@ pub mod pallet {
         /// - If the specified CDP is not found: [`Error::CDPNotFound`].
         /// - If an arithmetic operation fails during debt subtraction: [`Error::ArithmeticError`].
         /// - Errors from the [`Self::burn_from`] function if burning tokens fails.
-
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: U256, amount: Balance) -> DispatchResult {
@@ -652,6 +652,7 @@ pub mod pallet {
 
             Ok(())
         }
+
         /// Liquidates a Collateralized Debt Position (CDP) if it becomes unsafe.
         ///
         /// ## Parameters
@@ -677,13 +678,13 @@ pub mod pallet {
         /// - If the specified collateral asset info is not found: [`Error::CollateralInfoNotFound`].
         /// - If an arithmetic operation fails during liquidation calculations: [`Error::ArithmeticError`].
         /// - Errors from the Liquidity Proxy functions or asset transfers if the liquidation process fails.
-
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             let cdp = Self::accrue_internal(cdp_id)?;
             let cdp_debt = cdp.debt;
             let cdp_collateral_amount = cdp.collateral_amount;
+            let cdp_owner = cdp.owner;
             ensure!(
                 !Self::check_cdp_is_safe(cdp_debt, cdp_collateral_amount, cdp.collateral_asset_id)?,
                 Error::<T>::CDPSafe
@@ -743,10 +744,10 @@ pub mod pallet {
                     // CDP debt is not covered with liquidation, now it is a protocol bad debt
                     Self::cover_with_protocol(shortage)?;
                     // close empty CDP, debt == 0, collateral == 0
-                    <CDPDepository<T>>::remove(cdp_id);
+                    Self::delete_cdp(cdp_id, &cdp_owner);
                     Self::deposit_event(Event::CDPClosed {
                         cdp_id,
-                        owner: cdp.owner,
+                        owner: cdp_owner,
                         collateral_asset_id: cdp.collateral_asset_id,
                     });
                 } else {
@@ -775,7 +776,7 @@ pub mod pallet {
                 assets::Pallet::<T>::transfer_from(
                     &T::KusdAssetId::get(),
                     &technical_account_id,
-                    &cdp.owner,
+                    &cdp_owner,
                     leftover,
                 )?;
             };
@@ -802,7 +803,6 @@ pub mod pallet {
         /// This function is used to accrue interest on a CDP:
         /// - Checks if the CDP has debt to accrue interest on.
         /// - Initiates the internal [`Self::accrue_internal`] function to handle interest accrual for the CDP.
-
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::accrue())]
         pub fn accrue(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
@@ -833,7 +833,6 @@ pub mod pallet {
         /// - If the transaction sender is not authorized as a risk manager.
         /// - If the provided collateral asset ID does not exist: [`Error::WrongAssetId`].
         /// - Errors from storage mutation or collateral information updates.
-
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::update_collateral_risk_parameters())]
         pub fn update_collateral_risk_parameters(
@@ -892,7 +891,6 @@ pub mod pallet {
         /// This function can return errors in the following cases:
         /// - If the transaction sender is not authorized as a risk manager.
         /// - Errors from the storage mutation or updating the hard cap for the total supply.
-
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::update_hard_cap_total_supply())]
         pub fn update_hard_cap_total_supply(
@@ -931,8 +929,6 @@ pub mod pallet {
         /// This function can return errors in the following cases:
         /// - If the transaction sender is not authorized as a risk manager.
         /// - Errors from the storage mutation or updating the liquidation penalty.
-        ///
-
         #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::update_liquidation_penalty())]
         pub fn update_liquidation_penalty(
@@ -969,8 +965,6 @@ pub mod pallet {
         /// This function can return errors in the following cases:
         /// - If the transaction sender is not authorized as the protocol owner.
         /// - Errors from the [`technical::Pallet::transfer_out`] function if the transfer of stablecoin fails.
-        ///
-
         #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_profit())]
         pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
@@ -1007,8 +1001,6 @@ pub mod pallet {
         ///
         /// This function can return errors in the following cases:
         /// - Errors from attempting to cover bad debt using the [`Self::cover_bad_debt`] function.
-        ///
-
         #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::donate())]
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
@@ -1042,7 +1034,6 @@ pub mod pallet {
         /// ## Note
         ///
         /// The added account ID gains the privilege to perform risk manager actions within the system.
-
         #[pallet::call_index(13)]
         #[pallet::weight(<T as Config>::WeightInfo::add_risk_manager())]
         pub fn add_risk_manager(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
@@ -1082,7 +1073,6 @@ pub mod pallet {
         /// ## Note
         ///
         /// The removed account ID loses the privilege previously granted as a risk manager.
-
         #[pallet::call_index(14)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_risk_manager())]
         pub fn remove_risk_manager(
@@ -1183,24 +1173,6 @@ pub mod pallet {
         /// - `debt`: The current debt amount in the CDP.
         /// - `collateral`: The current collateral amount in the CDP.
         /// - `collateral_asset_id`: The asset ID associated with the collateral in the CDP.
-        ///
-        /// ## Description
-        ///
-        /// This function assesses the safety of a CDP by comparing its debt and collateral:
-        /// - Retrieves the liquidation ratio from the collateral information associated with the given collateral asset.
-        /// - Obtains the reference price for the collateral asset from the Reference Price Provider.
-        /// - Calculates the value of the collateral based on its reference price and current amount.
-        /// - Determines the maximum safe debt amount based on the liquidation ratio and collateral value.
-        /// - Compares the CDP's current debt with the maximum safe debt to determine safety.
-        ///
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the collateral information for the specified asset ID is not found: [`Error::<T>::CollateralInfoNotFound`].
-        /// - If there are issues with arithmetic calculations during the evaluation of collateral value or safe debt.
-        ///
-
         pub(crate) fn check_cdp_is_safe(
             debt: Balance,
             collateral: Balance,
@@ -1264,6 +1236,18 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Removes CDP entry from the storage
+        fn delete_cdp(cdp_id: U256, cdp_owner: &AccountIdOf<T>) {
+            <CDPDepository<T>>::remove(cdp_id);
+            if let Some(mut cdp_ids) = <CdpOwnerIndex<T>>::take(&cdp_owner) {
+                cdp_ids.retain(|&x| x != cdp_id);
+                if !cdp_ids.is_empty() {
+                    <CdpOwnerIndex<T>>::insert(cdp_owner, cdp_ids);
+                }
+            }
+        }
+
+        /// Deposits collateral to CDP.
         /// Handles internal deposit of collateral into a Collateralized Debt Position (CDP).
         ///
         /// ## Parameters
@@ -1271,27 +1255,6 @@ pub mod pallet {
         /// - `who`: The account making the collateral deposit.
         /// - `cdp_id`: The ID of the CDP where the collateral is being deposited.
         /// - `collateral_amount`: The amount of collateral being deposited.
-        ///
-        /// ## Description
-        ///
-        /// This function manages the internal deposit of collateral into a specific CDP:
-        /// - Retrieves the CDP based on the provided ID and ensures it exists; otherwise, it throws an error.
-        /// - Transfers the specified amount of collateral from the account to the treasury's technical account.
-        /// - Updates the collateral amount in the CDP after the successful deposit.
-        /// - Emits a `CollateralDeposit` event to indicate the successful deposit of collateral into the CDP.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the CDP specified by `cdp_id` is not found: [`Error::<T>::CDPNotFound`].
-        /// - If there are issues during the collateral transfer or updating the collateral amount in the CDP.
-        /// - If there are arithmetic errors during balance calculations.
-        ///
-        /// ## Note
-        ///
-        /// The function manages the internal deposit of collateral into a CDP, updating its collateral amount
-        /// and emitting an event signaling the successful deposit for transparency and tracking purposes.
-
         fn deposit_internal(
             who: &AccountIdOf<T>,
             cdp_id: U256,
@@ -1329,32 +1292,6 @@ pub mod pallet {
         /// - `who`: The account ID initiating the borrowing operation.
         /// - `cdp_id`: The ID of the CDP involved in the borrowing.
         /// - `will_to_borrow_amount`: The amount to be borrowed.
-        ///
-        /// ## Description
-        ///
-        /// This function manages the internal borrowing process within a CDP:
-        /// - Accrues interest on the CDP and retrieves its current state.
-        /// - Ensures that the caller is the owner of the CDP; otherwise, it throws an error.
-        /// - Calculates the new debt value after borrowing and verifies the safety of the CDP.
-        /// - Validates the collateral cap to accommodate the additional borrowing amount.
-        /// - Checks the protocol's capacity to handle the borrowing amount.
-        /// - Mints the borrowed amount to the specified account.
-        /// - Updates the CDP's debt value after the borrowing operation.
-        /// - Emits a [`Event::<T>::DebtIncreased`] event indicating the successful increase in debt.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the caller is not the owner of the CDP: [`Error::<T>::OperationNotPermitted`].
-        /// - If the safety check of the CDP fails: [`Error::<T>::CDPUnsafe`].
-        /// - If there are issues related to arithmetic calculations: [`Error::<T>::ArithmeticError`].
-        /// - If collateral cap or protocol capacity checks fail: Specific errors related to those checks.
-        ///
-        /// ## Note
-        ///
-        /// The function facilitates borrowing operations within a CDP, ensuring safety and capacity limits.
-        /// It updates the CDP's debt value and emits an event signaling the increase in debt.
-
         fn borrow_internal(
             who: &AccountIdOf<T>,
             cdp_id: U256,
@@ -1396,23 +1333,6 @@ pub mod pallet {
         ///
         /// - `from`: The account from which the stablecoin will be used to cover bad debt.
         /// - `kusd_amount`: The amount of stablecoin to cover bad debt.
-        ///
-        /// ## Description
-        ///
-        /// This function covers bad debt using a specified amount of stablecoin (KUSD):
-        /// - Retrieves the current bad debt from storage.
-        /// - Determines the amount to cover, which might be the full specified amount or the available bad debt, whichever is lower.
-        /// - Transfers the appropriate amount of stablecoin to the treasury to cover the bad debt if necessary.
-        /// - Burns the stablecoin from the provided account to cover the bad debt.
-        /// - Updates the bad debt value after covering the debt.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If there are issues during the transfer of stablecoin to the treasury or burning process.
-        /// - If there are arithmetic errors during balance calculations or updating bad debt.
-        ///
-
         fn cover_bad_debt(from: &AccountIdOf<T>, kusd_amount: Balance) -> DispatchResult {
             let bad_debt = <BadDebt<T>>::get();
             let to_cover_debt = if kusd_amount < bad_debt {
@@ -1487,33 +1407,6 @@ pub mod pallet {
         /// ## Parameters
         ///
         /// - `cdp_id`: The ID of the CDP for interest accrual.
-        ///
-        /// ## Description
-        ///
-        /// This function performs the accrual of interest on a specific CDP:
-        /// - Retrieves the CDP based on the provided ID and ensures it exists, throwing an error if not found.
-        /// - Updates the interest coefficient for the collateral asset.
-        /// - Calculates the stability fee based on the difference in interest coefficients.
-        /// - Increases the CDP's debt value according to the stability fee calculated.
-        /// - Adjusts the CDP's parameters, including debt and interest coefficient, after the accrual.
-        /// - Handles bad debt deduction if it exists, reducing the stability fee from the bad debt amount.
-        /// - Mints the stability fee as profit for the protocol treasury.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the CDP specified by `cdp_id` is not found: [`Error::CDPNotFound`].
-        /// - Arithmetic errors during stability fee calculation or debt adjustment.
-        ///
-        /// ## Returns
-        ///
-        /// - Result containing the updated Collateralized Debt Position if successful.
-        ///
-        /// # Note
-        ///
-        /// The function updates the CDP's debt and interest coefficient based on the interest accrual.
-        /// It also handles bad debt deductions and mints the stability fee as profit for the protocol treasury.
-
         fn accrue_internal(
             cdp_id: U256,
         ) -> Result<CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>, DispatchError>
@@ -1610,23 +1503,6 @@ pub mod pallet {
         ///
         /// - `account`: The account from which the asset will be burnt.
         /// - `amount`: The amount of the asset to be burnt.
-        ///
-        /// ## Description
-        ///
-        /// This function handles the burning of a specified amount of an asset from an account:
-        /// - Retrieves the technical account ID associated with the treasury from the technical pallet.
-        /// - Uses the assets pallet to burn the specified amount of the asset from the provided account to the technical account.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If there are issues encountered during the burning process, such as insufficient balance or permission errors.
-        ///
-        /// ## Note
-        ///
-        /// The function facilitates the burning of an asset from a specific account to the technical account,
-        /// possibly for various purposes like reducing the total supply or managing the asset distribution.
-
         fn burn_from(account: &AccountIdOf<T>, amount: Balance) -> DispatchResult {
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
