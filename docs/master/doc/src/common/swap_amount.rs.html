@@ -867,7 +867,7 @@
                 <span class="self">Self</span>::WithDesiredInput {
                     desired_amount_in: in_b,
                 },
-            ) =&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::with_desired_input(in_a.checked_add(<span class="kw-2">&amp;</span>in_b)<span class="question-mark">?</span>)),
+            ) =&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::with_desired_input(in_a.checked_add(in_b)<span class="question-mark">?</span>)),
             (
                 <span class="self">Self</span>::WithDesiredOutput {
                     desired_amount_out: out_a,
@@ -875,7 +875,7 @@
                 <span class="self">Self</span>::WithDesiredOutput {
                     desired_amount_out: out_b,
                 },
-            ) =&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::with_desired_output(out_a.checked_add(<span class="kw-2">&amp;</span>out_b)<span class="question-mark">?</span>)),
+            ) =&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::with_desired_output(out_a.checked_add(out_b)<span class="question-mark">?</span>)),
             (<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -1239,7 +1239,7 @@
     </span>T: Copy + Into&lt;Fixed&gt; + From&lt;Fixed&gt;,
 {
     <span class="kw">fn </span>mul_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rhs: Fixed) {
-        <span class="kw">match </span><span class="self">self</span>.clone() {
+        <span class="kw">match </span><span class="kw-2">*</span><span class="self">self </span>{
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
                 min_amount_out,

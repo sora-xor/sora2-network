@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["pallet","pallets"]};
+window.SIDEBAR_ITEMS = {"mod":["pallet","pallet_tools"]};

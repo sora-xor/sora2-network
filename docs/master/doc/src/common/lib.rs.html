@@ -215,7 +215,6 @@
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
 <a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -247,8 +246,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
-</span><span class="comment">// TODO #167: fix clippy warnings
-</span><span class="attr">#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 </span><span class="kw">extern crate </span>alloc;
@@ -409,13 +407,13 @@
         <span class="kw">let </span>num_of_seconds: u32 =
             ((unlocking_block - current_block) * <span class="number">6u32</span>.into()).unique_saturated_into();
         <span class="kw">let </span><span class="kw-2">mut </span>timestamp: T::Moment = num_of_seconds.into();
-        timestamp = timestamp * <span class="number">1000u32</span>.into();
+        timestamp <span class="kw-2">*</span>= <span class="number">1000u32</span>.into();
         current_timestamp + timestamp
     } <span class="kw">else </span>{
         <span class="kw">let </span>num_of_seconds: u32 =
             ((current_block - unlocking_block) * <span class="number">6u32</span>.into()).unique_saturated_into();
         <span class="kw">let </span><span class="kw-2">mut </span>timestamp: T::Moment = num_of_seconds.into();
-        timestamp = timestamp * <span class="number">1000u32</span>.into();
+        timestamp <span class="kw-2">*</span>= <span class="number">1000u32</span>.into();
         current_timestamp - timestamp
     }
 }

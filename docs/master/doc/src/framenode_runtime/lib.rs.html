@@ -3336,21 +3336,6 @@
 <a href="#3321" id="3321">3321</a>
 <a href="#3322" id="3322">3322</a>
 <a href="#3323" id="3323">3323</a>
-<a href="#3324" id="3324">3324</a>
-<a href="#3325" id="3325">3325</a>
-<a href="#3326" id="3326">3326</a>
-<a href="#3327" id="3327">3327</a>
-<a href="#3328" id="3328">3328</a>
-<a href="#3329" id="3329">3329</a>
-<a href="#3330" id="3330">3330</a>
-<a href="#3331" id="3331">3331</a>
-<a href="#3332" id="3332">3332</a>
-<a href="#3333" id="3333">3333</a>
-<a href="#3334" id="3334">3334</a>
-<a href="#3335" id="3335">3335</a>
-<a href="#3336" id="3336">3336</a>
-<a href="#3337" id="3337">3337</a>
-<a href="#3338" id="3338">3338</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3421,8 +3406,7 @@
 <span class="kw">use </span>common::{XOR, XSTUSD};
 <span class="kw">use </span>constants::currency::deposit;
 <span class="kw">use </span>constants::time::<span class="kw-2">*</span>;
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-</span><span class="kw">use </span>frame_support::traits::EitherOf;
+<span class="kw">use </span>frame_support::traits::EitherOf;
 <span class="kw">use </span>frame_support::weights::ConstantMultiplier;
 
 <span class="comment">// Make the WASM binary available.
@@ -3435,8 +3419,7 @@
 <span class="kw">use </span>frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 <span class="kw">use </span>frame_system::offchain::{Account, SigningTypes};
 <span class="kw">use </span>frame_system::EnsureRoot;
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-</span><span class="kw">use </span>frame_system::EnsureSigned;
+<span class="kw">use </span>frame_system::EnsureSigned;
 <span class="kw">use </span>hex_literal::hex;
 <span class="kw">use </span>pallet_grandpa::{
     fg_primitives, AuthorityId <span class="kw">as </span>GrandpaId, AuthorityList <span class="kw">as </span>GrandpaAuthorityList,
@@ -3511,13 +3494,13 @@
 };
 
 <span class="kw">use </span>frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
-<span class="attr">#[cfg(all(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>, feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// order-book
+<span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
 </span><span class="kw">pub use </span>order_book_benchmarking;
-<span class="attr">#[cfg(all(feature = <span class="string">&quot;private-net&quot;</span>, feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// order-book
+<span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
 </span><span class="kw">pub use </span>qa_tools;
 <span class="kw">pub use </span>{
-    assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
-    xst,
+    assets, dex_api, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book,
+    trading_pair, xst,
 };
 
 <span class="doccomment">/// An index to a block.
@@ -3611,10 +3594,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">70</span>,
+    spec_version: <span class="number">71</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">70</span>,
+    transaction_version: <span class="number">71</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4466,9 +4449,7 @@
     <span class="kw">type </span>XYKPool = pool_xyk::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>XSTPool = xst::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
-
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-    </span><span class="kw">type </span>OrderBook = order_book::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>OrderBook = order_book::Pallet&lt;Runtime&gt;;
 
     <span class="kw">type </span>WeightInfo = dex_api::weights::SubstrateWeight&lt;Runtime&gt;;
 }
@@ -4817,7 +4798,7 @@
     <span class="kw">pub </span>QaToolsWhitelistCapacity: u32 = <span class="number">512</span>;
 }
 
-<span class="attr">#[cfg(all(feature = <span class="string">&quot;private-net&quot;</span>, feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// order-book
+<span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
 </span><span class="kw">impl </span>qa_tools::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>AssetInfoProvider = Assets;
     <span class="kw">type </span>QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
@@ -5277,12 +5258,10 @@
     <span class="kw">pub </span>AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(<span class="number">35</span>) * BlockWeights::get().max_block;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-</span><span class="kw">impl </span>order_book::Config <span class="kw">for </span>Runtime {
-    <span class="kw">const </span>MAX_ORDER_LIFESPAN: Moment = <span class="number">30 </span>* (DAYS <span class="kw">as </span>Moment) * MILLISECS_PER_BLOCK; <span class="comment">// 30 days
-    </span><span class="kw">const </span>MIN_ORDER_LIFESPAN: Moment = (MINUTES <span class="kw">as </span>Moment) * MILLISECS_PER_BLOCK; <span class="comment">// 1 minute
+<span class="kw">impl </span>order_book::Config <span class="kw">for </span>Runtime {
+    <span class="kw">const </span>MAX_ORDER_LIFESPAN: Moment = <span class="number">30 </span>* (DAYS <span class="kw">as </span>Moment) * MILLISECS_PER_BLOCK; <span class="comment">// 30 days = 2_592_000_000
+    </span><span class="kw">const </span>MIN_ORDER_LIFESPAN: Moment = (MINUTES <span class="kw">as </span>Moment) * MILLISECS_PER_BLOCK; <span class="comment">// 1 minute = 60_000
     </span><span class="kw">const </span>MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
-    <span class="kw">const </span>MAX_PRICE_SHIFT: Perbill = Perbill::from_percent(<span class="number">50</span>);
     <span class="kw">const </span>SOFT_MIN_MAX_RATIO: usize = <span class="number">1000</span>;
     <span class="kw">const </span>HARD_MIN_MAX_RATIO: usize = <span class="number">4000</span>;
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
@@ -5303,7 +5282,7 @@
     </span><span class="kw">type </span>MaxOpenedLimitOrdersPerUser = ConstU32&lt;<span class="number">1024</span>&gt;;
     <span class="kw">type </span>MaxLimitOrdersForPrice = ConstU32&lt;<span class="number">1024</span>&gt;;
     <span class="kw">type </span>MaxSidePriceCount = ConstU32&lt;<span class="number">1024</span>&gt;;
-    <span class="kw">type </span>MaxExpiringOrdersPerBlock = ConstU32&lt;<span class="number">512</span>&gt;;
+    <span class="kw">type </span>MaxExpiringOrdersPerBlock = ConstU32&lt;<span class="number">1024</span>&gt;;
     <span class="kw">type </span>MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
     <span class="kw">type </span>MaxAlignmentWeightPerBlock = AlignmentSchedulerMaxWeight;
     <span class="kw">type </span>EnsureTradingPairExists = TradingPair;
@@ -5713,9 +5692,7 @@
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">54</span>,
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">55</span>,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">56</span>,
-
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-        </span>OrderBook: order_book::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">57</span>,
+        OrderBook: order_book::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">57</span>,
 
         <span class="comment">// Leaf provider should be placed before any pallet which is uses it
         </span>LeafProvider: leaf_provider::{Pallet, Storage, Event&lt;T&gt;} = <span class="number">99</span>,
@@ -5767,7 +5744,7 @@
         <span class="comment">// Available only for test net
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
         </span>Faucet: faucet::{Pallet, Call, Config&lt;T&gt;, Event&lt;T&gt;} = <span class="number">80</span>,
-        <span class="attr">#[cfg(all(feature = <span class="string">&quot;private-net&quot;</span>, feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// order-book
+        <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
         </span>QATools: qa_tools::{Pallet, Call} = <span class="number">112</span>,
     }
 }
@@ -6477,8 +6454,7 @@
             <span class="kw">use </span>ceres_liquidity_locker_benchmarking::Pallet <span class="kw">as </span>CeresLiquidityLockerBench;
             <span class="kw">use </span>demeter_farming_platform_benchmarking::Pallet <span class="kw">as </span>DemeterFarmingPlatformBench;
             <span class="kw">use </span>xst_benchmarking::Pallet <span class="kw">as </span>XSTPoolBench;
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-            </span><span class="kw">use </span>order_book_benchmarking::Pallet <span class="kw">as </span>OrderBookBench;
+            <span class="kw">use </span>order_book_benchmarking::Pallet <span class="kw">as </span>OrderBookBench;
 
             <span class="kw">let </span><span class="kw-2">mut </span>list = Vec::&lt;BenchmarkList&gt;::new();
 
@@ -6509,9 +6485,7 @@
             <span class="macro">list_benchmark!</span>(list, extra, band, Band);
             <span class="macro">list_benchmark!</span>(list, extra, xst, XSTPoolBench::&lt;Runtime&gt;);
             <span class="macro">list_benchmark!</span>(list, extra, oracle_proxy, OracleProxy);
-
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-            </span><span class="macro">list_benchmark!</span>(list, extra, order_book, OrderBookBench::&lt;Runtime&gt;);
+            <span class="macro">list_benchmark!</span>(list, extra, order_book, OrderBookBench::&lt;Runtime&gt;);
 
             <span class="comment">// Trustless bridge
             </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
@@ -6554,16 +6528,14 @@
             <span class="kw">use </span>ceres_liquidity_locker_benchmarking::Pallet <span class="kw">as </span>CeresLiquidityLockerBench;
             <span class="kw">use </span>demeter_farming_platform_benchmarking::Pallet <span class="kw">as </span>DemeterFarmingPlatformBench;
             <span class="kw">use </span>xst_benchmarking::Pallet <span class="kw">as </span>XSTPoolBench;
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-            </span><span class="kw">use </span>order_book_benchmarking::Pallet <span class="kw">as </span>OrderBookBench;
+            <span class="kw">use </span>order_book_benchmarking::Pallet <span class="kw">as </span>OrderBookBench;
 
             <span class="kw">impl </span>liquidity_proxy_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>pool_xyk_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>pswap_distribution_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>ceres_liquidity_locker_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>xst_benchmarking::Config <span class="kw">for </span>Runtime {}
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-            </span><span class="kw">impl </span>order_book_benchmarking::Config <span class="kw">for </span>Runtime {}
+            <span class="kw">impl </span>order_book_benchmarking::Config <span class="kw">for </span>Runtime {}
 
             <span class="kw">let </span>whitelist: Vec&lt;TrackedStorageKey&gt; = <span class="macro">vec!</span>[
                 <span class="comment">// Block Number
@@ -6610,9 +6582,7 @@
             <span class="macro">add_benchmark!</span>(params, batches, xst, XSTPoolBench::&lt;Runtime&gt;);
             <span class="macro">add_benchmark!</span>(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             <span class="macro">add_benchmark!</span>(params, batches, oracle_proxy, OracleProxy);
-
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-            </span><span class="macro">add_benchmark!</span>(params, batches, order_book, OrderBookBench::&lt;Runtime&gt;);
+            <span class="macro">add_benchmark!</span>(params, batches, order_book, OrderBookBench::&lt;Runtime&gt;);
 
             <span class="comment">// Trustless bridge
             </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge

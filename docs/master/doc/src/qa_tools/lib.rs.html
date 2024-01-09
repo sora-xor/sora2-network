@@ -203,6 +203,10 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -234,17 +238,17 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
-</span><span class="comment">// TODO #167: fix clippy warnings
-</span><span class="attr">#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 
 </span><span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
 
 <span class="comment">// private-net to make circular dependencies work
-</span><span class="attr">#[cfg(all(test, feature = <span class="string">&quot;private-net&quot;</span>, feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// order-book
+</span><span class="attr">#[cfg(all(test, feature = <span class="string">&quot;private-net&quot;</span>))]
 </span><span class="kw">mod </span>tests;
 <span class="kw">pub mod </span>weights;
 <span class="kw">pub use </span>weights::<span class="kw-2">*</span>;
-<span class="kw">mod </span>pallets;
+<span class="kw">mod </span>pallet_tools;
 
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
@@ -252,11 +256,11 @@
     <span class="kw">use </span>common::{
         AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
     };
-    <span class="kw">use </span>frame_support::dispatch::DispatchErrorWithPostInfo;
-    <span class="kw">use </span>frame_support::{dispatch::PostDispatchInfo, pallet_prelude::<span class="kw-2">*</span>};
+    <span class="kw">use </span>frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
+    <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>order_book::{MomentOf, OrderBookId};
-    <span class="kw">pub use </span>pallets::order_book_tools::{OrderBookAttributes, OrderBookFillSettings};
+    <span class="kw">pub use </span>pallet_tools::order_book::settings;
     <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
 
     <span class="attr">#[pallet::pallet]
@@ -288,42 +292,62 @@
         </span>NotInWhitelist,
 
         <span class="comment">// order_book pallet errors
-        </span><span class="doccomment">/// Did not find an order book with given id to fill. Likely an error with
-        /// order book creation.
+        </span><span class="doccomment">/// Did not find an order book with given id to fill. Likely an error with order book creation.
         </span>CannotFillUnknownOrderBook,
+        <span class="doccomment">/// Order Book already exists
+        </span>OrderBookAlreadyExists,
+        <span class="doccomment">/// Price step, best price, and worst price must be a multiple of order book&#39;s tick size. Price step must also be non-zero.
+        </span>IncorrectPrice,
+        <span class="doccomment">/// Provided range is incorrect, check that lower bound is less or equal than the upper one.
+        </span>EmptyRandomRange,
+        <span class="doccomment">/// The range for generating order amounts must be within order book&#39;s accepted values.
+        </span>OutOfBoundsRandomRange,
+        <span class="doccomment">/// The count of created orders is too large.
+        </span>TooManyOrders,
+        <span class="doccomment">/// The count of prices to fill is too large.
+        </span>TooManyPrices,
     }
 
     <span class="attr">#[pallet::call]
     </span><span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-        <span class="doccomment">/// Create multiple order books with default parameters (if do not exist yet).
+        <span class="doccomment">/// Create multiple many order books with parameters and fill them according to given parameters.
+        ///
+        /// Balance for placing the orders is minted automatically, trading pairs are
+        /// created if needed.
+        ///
+        /// In order to create empty order books, one can leave settings empty.
         ///
         /// Parameters:
-        /// - `origin`: caller, should be account because error messages for unsigned txs are unclear,
-        /// - `order_book_ids`: ids of the created order books; trading pairs are created
-        /// if necessary,
+        /// - `origin`: root
+        /// - `bids_owner`: Creator of the buy orders placed on the order books,
+        /// - `asks_owner`: Creator of the sell orders placed on the order books,
+        /// - `settings`: Parameters for creation of the order book and placing the orders in each order book.
         </span><span class="attr">#[pallet::call_index(<span class="number">0</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::order_book_create_empty_batch())]
-        </span><span class="kw">pub fn </span>order_book_create_empty_batch(
+        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::order_book_create_and_fill_batch())]
+        </span><span class="kw">pub fn </span>order_book_create_and_fill_batch(
             origin: OriginFor&lt;T&gt;,
-            order_book_ids: Vec&lt;OrderBookId&lt;T::AssetId, T::DEXId&gt;&gt;,
+            bids_owner: T::AccountId,
+            asks_owner: T::AccountId,
+            settings: Vec&lt;(
+                OrderBookId&lt;T::AssetId, T::DEXId&gt;,
+                settings::OrderBookAttributes,
+                settings::OrderBookFill&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
+            )&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>order_book_settings: Vec&lt;<span class="kw">_</span>&gt; = order_book_ids
-                .iter()
-                .map(|id| (<span class="kw-2">*</span>id, OrderBookAttributes::default()))
-                .collect();
-
-            <span class="comment">// replace with more convenient `with_pays_fee` when/if available
+            <span class="comment">// Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            </span>pallets::order_book_tools::create_multiple_empty_unchecked::&lt;T&gt;(order_book_settings)
-                .map_err(|e| DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: <span class="prelude-val">None</span>,
-                        pays_fee: Pays::No,
-                    },
-                    error: e,
-                })<span class="question-mark">?</span>;
+            </span>pallet_tools::liquidity_proxy::source_initializers::order_book::&lt;T&gt;(
+                bids_owner, asks_owner, settings,
+            )
+            .map_err(|e| DispatchErrorWithPostInfo {
+                post_info: PostDispatchInfo {
+                    actual_weight: <span class="prelude-val">None</span>,
+                    pays_fee: Pays::No,
+                },
+                error: e,
+            })<span class="question-mark">?</span>;
 
             <span class="comment">// Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -333,47 +357,31 @@
             })
         }
 
-        <span class="doccomment">/// Create multiple many order books with default parameters if do not exist and
-        /// fill them according to given parameters.
+        <span class="doccomment">/// Fill the order books according to given parameters.
         ///
-        /// Balance for placing the orders is minted automatically, trading pairs are
-        /// created if needed.
+        /// Balance for placing the orders is minted automatically.
         ///
         /// Parameters:
-        /// - `origin`: caller, should be account because unsigned error messages are unclear,
-        /// - `dex_id`: DEXId for all created order books,
+        /// - `origin`: root
         /// - `bids_owner`: Creator of the buy orders placed on the order books,
         /// - `asks_owner`: Creator of the sell orders placed on the order books,
         /// - `settings`: Parameters for placing the orders in each order book.
-        /// `best_bid_price` should be at least 3 price steps from the lowest accepted price,
-        /// and `best_ask_price` - at least 3 steps below maximum price,
         </span><span class="attr">#[pallet::call_index(<span class="number">1</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::order_book_create_and_fill_batch())]
-        </span><span class="kw">pub fn </span>order_book_create_and_fill_batch(
+        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::order_book_fill_batch())]
+        </span><span class="kw">pub fn </span>order_book_fill_batch(
             origin: OriginFor&lt;T&gt;,
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
             settings: Vec&lt;(
                 OrderBookId&lt;T::AssetId, T::DEXId&gt;,
-                OrderBookAttributes,
-                OrderBookFillSettings&lt;MomentOf&lt;T&gt;&gt;,
+                settings::OrderBookFill&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
             )&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>order_book_ids: Vec&lt;<span class="kw">_</span>&gt; = settings
-                .iter()
-                .map(|(id, attributes, <span class="kw">_</span>)| (<span class="kw-2">*</span>id, <span class="kw-2">*</span>attributes))
-                .collect();
-            pallets::order_book_tools::create_multiple_empty_unchecked::&lt;T&gt;(order_book_ids)
-                .map_err(|e| DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: <span class="prelude-val">None</span>,
-                        pays_fee: Pays::No,
-                    },
-                    error: e,
-                })<span class="question-mark">?</span>;
-            pallets::order_book_tools::fill_multiple_empty_unchecked::&lt;T&gt;(
+            <span class="comment">// Replace with more convenient `with_pays_fee` when/if available
+            // https://github.com/paritytech/substrate/pull/14470
+            </span>pallet_tools::liquidity_proxy::source_filling::order_book::&lt;T&gt;(
                 bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {

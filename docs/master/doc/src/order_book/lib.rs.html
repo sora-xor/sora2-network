@@ -1478,19 +1478,6 @@
 <a href="#1463" id="1463">1463</a>
 <a href="#1464" id="1464">1464</a>
 <a href="#1465" id="1465">1465</a>
-<a href="#1466" id="1466">1466</a>
-<a href="#1467" id="1467">1467</a>
-<a href="#1468" id="1468">1468</a>
-<a href="#1469" id="1469">1469</a>
-<a href="#1470" id="1470">1470</a>
-<a href="#1471" id="1471">1471</a>
-<a href="#1472" id="1472">1472</a>
-<a href="#1473" id="1473">1473</a>
-<a href="#1474" id="1474">1474</a>
-<a href="#1475" id="1475">1475</a>
-<a href="#1476" id="1476">1476</a>
-<a href="#1477" id="1477">1477</a>
-<a href="#1478" id="1478">1478</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1522,17 +1509,15 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
-#![allow(dead_code)] </span><span class="comment">// todo (m.tagirov) remove
-// TODO #167: fix clippy warnings
-</span><span class="attr">#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
 
 </span><span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-</span><span class="kw">use </span>common::LiquiditySourceType;
+<span class="kw">use </span>common::LiquiditySourceType;
 <span class="kw">use </span>common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
@@ -1545,9 +1530,8 @@
 <span class="kw">use </span>frame_support::traits::{Get, Time};
 <span class="kw">use </span>frame_support::weights::{Weight, WeightMeter};
 <span class="kw">use </span>frame_system::pallet_prelude::BlockNumberFor;
-<span class="kw">use </span>sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
-<span class="kw">use </span>sp_runtime::traits::{CheckedDiv, CheckedMul};
-<span class="kw">use </span>sp_runtime::{BoundedVec, Perbill};
+<span class="kw">use </span>sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, CheckedMul, MaybeDisplay, Zero};
+<span class="kw">use </span>sp_runtime::BoundedVec;
 <span class="kw">use </span>sp_std::collections::btree_map::BTreeMap;
 <span class="kw">use </span>sp_std::vec::Vec;
 
@@ -1611,12 +1595,12 @@
         <span class="kw">const </span>MAX_ORDER_LIFESPAN: MomentOf&lt;<span class="self">Self</span>&gt;;
         <span class="kw">const </span>MIN_ORDER_LIFESPAN: MomentOf&lt;<span class="self">Self</span>&gt;;
         <span class="kw">const </span>MILLISECS_PER_BLOCK: MomentOf&lt;<span class="self">Self</span>&gt;;
-        <span class="kw">const </span>MAX_PRICE_SHIFT: Perbill;
         <span class="doccomment">/// The soft ratio between min &amp; max order amounts.
         /// In particular, it defines the optimal number of limit orders that could be executed by one big market order in one block.
         </span><span class="kw">const </span>SOFT_MIN_MAX_RATIO: usize;
-        <span class="doccomment">/// The soft ratio between min &amp; max order amounts.
+        <span class="doccomment">/// The hard ratio between min &amp; max order amounts.
         /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
+        /// During update of parameters, the limits must satisfy this ratio.
         </span><span class="kw">const </span>HARD_MIN_MAX_RATIO: usize;
 
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
@@ -1781,8 +1765,8 @@
     &gt;;
 
     <span class="doccomment">/// Earliest block with incomplete expirations;
-    /// Weight limit might not allow to finish all expirations for a block, so
-    /// they might be operated later.
+    /// Weight limit might not allow to finish all expirations for a block
+    /// so they might be operated later.
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>incomplete_expirations_since)]
     </span><span class="kw">pub type </span>IncompleteExpirationsSince&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, T::BlockNumber&gt;;
@@ -1977,9 +1961,7 @@
         </span>InvalidMaxLotSize,
         <span class="doccomment">/// Tick size &amp; step lot size are too big and their multiplication overflows Balance
         </span>TickSizeAndStepLotSizeAreTooBig,
-        <span class="doccomment">/// Product of tick and step lot sizes goes out of precision. It must be accurately
-        /// represented by fixed-precision float to prevent rounding errors. I.e. the product
-        /// should not have more than 18 digits after the comma.
+        <span class="doccomment">/// Product of tick and step lot sizes goes out of precision. It must be accurately represented by fixed-precision float to prevent rounding errors. I.e. the product should not have more than 18 digits after the comma.
         </span>TickSizeAndStepLotSizeLosePrecision,
         <span class="doccomment">/// Max lot size cannot be more that total supply of base asset
         </span>MaxLotSizeIsMoreThanTotalSupply,
@@ -1989,7 +1971,7 @@
         </span>MarketOrdersAllowedOnlyForIndivisibleAssets,
         <span class="doccomment">/// It is possible to delete an order-book only with the statuses: OnlyCancel or Stop
         </span>ForbiddenStatusToDeleteOrderBook,
-        <span class="comment">// It is possible to delete only empty order-book
+        <span class="doccomment">/// It is possible to delete only empty order-book
         </span>OrderBookIsNotEmpty,
         <span class="doccomment">/// It is possible to update an order-book only with the statuses: OnlyCancel or Stop
         </span>ForbiddenStatusToUpdateOrderBook,
@@ -2055,15 +2037,13 @@
                 max_lot_size,
             )<span class="question-mark">?</span>;
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-            </span>{
-                T::TradingPairSourceManager::enable_source_for_trading_pair(
-                    <span class="kw-2">&amp;</span>order_book_id.dex_id,
-                    <span class="kw-2">&amp;</span>order_book_id.quote,
-                    <span class="kw-2">&amp;</span>order_book_id.base,
-                    LiquiditySourceType::OrderBook,
-                )<span class="question-mark">?</span>;
-            }
+            T::TradingPairSourceManager::enable_source_for_trading_pair(
+                <span class="kw-2">&amp;</span>order_book_id.dex_id,
+                <span class="kw-2">&amp;</span>order_book_id.quote,
+                <span class="kw-2">&amp;</span>order_book_id.base,
+                LiquiditySourceType::OrderBook,
+            )<span class="question-mark">?</span>;
+
             <span class="self">Self</span>::create_orderbook_unchecked(
                 <span class="kw-2">&amp;</span>order_book_id,
                 tick_size,
@@ -2075,7 +2055,7 @@
                 order_book_id,
                 creator: maybe_who,
             });
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">1</span>)]
@@ -2099,21 +2079,18 @@
                 .is_none();
             <span class="macro">ensure!</span>(is_empty, Error::&lt;T&gt;::OrderBookIsNotEmpty);
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-            </span>{
-                T::TradingPairSourceManager::disable_source_for_trading_pair(
-                    <span class="kw-2">&amp;</span>order_book_id.dex_id,
-                    <span class="kw-2">&amp;</span>order_book_id.quote,
-                    <span class="kw-2">&amp;</span>order_book_id.base,
-                    LiquiditySourceType::OrderBook,
-                )<span class="question-mark">?</span>;
-            }
+            T::TradingPairSourceManager::disable_source_for_trading_pair(
+                <span class="kw-2">&amp;</span>order_book_id.dex_id,
+                <span class="kw-2">&amp;</span>order_book_id.quote,
+                <span class="kw-2">&amp;</span>order_book_id.base,
+                LiquiditySourceType::OrderBook,
+            )<span class="question-mark">?</span>;
 
             <span class="self">Self</span>::deregister_tech_account(order_book_id)<span class="question-mark">?</span>;
             &lt;OrderBooks&lt;T&gt;&gt;::remove(order_book_id);
 
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::OrderBookDeleted { order_book_id });
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">2</span>)]
@@ -2178,7 +2155,7 @@
             }
             &lt;OrderBooks&lt;T&gt;&gt;::set(order_book_id, <span class="prelude-val">Some</span>(order_book));
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::OrderBookUpdated { order_book_id });
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">3</span>)]
@@ -2196,7 +2173,7 @@
                     &amp;&amp; status != OrderBookStatus::OnlyCancel
                     &amp;&amp; status != OrderBookStatus::Stop
                 {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::OrderBookIsLocked.into());
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::OrderBookIsLocked);
                 }
 
                 order_book.status = status;
@@ -2206,7 +2183,7 @@
                 order_book_id,
                 new_status: status,
             });
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">4</span>)]
@@ -2234,7 +2211,7 @@
             };
             <span class="kw">let </span>order = LimitOrder::&lt;T&gt;::new(
                 order_id,
-                who.clone(),
+                who,
                 side,
                 OrderPrice::divisible(price),
                 amount,
@@ -2357,7 +2334,7 @@
             order_book.execute_market_order(market_order, <span class="kw-2">&amp;mut </span>data)<span class="question-mark">?</span>;
 
             data.commit();
-            <span class="prelude-val">Ok</span>(().into())
+            <span class="prelude-val">Ok</span>(())
         }
     }
 }
@@ -2370,12 +2347,7 @@
         amount: OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account = <span class="self">Self</span>::tech_account_for_order_book(order_book_id);
-        technical::Pallet::&lt;T&gt;::transfer_in(
-            asset_id,
-            account,
-            <span class="kw-2">&amp;</span>tech_account,
-            (<span class="kw-2">*</span>amount.balance()).into(),
-        )
+        technical::Pallet::&lt;T&gt;::transfer_in(asset_id, account, <span class="kw-2">&amp;</span>tech_account, <span class="kw-2">*</span>amount.balance())
     }
 }
 
@@ -2387,12 +2359,7 @@
         amount: OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account = <span class="self">Self</span>::tech_account_for_order_book(order_book_id);
-        technical::Pallet::&lt;T&gt;::transfer_out(
-            asset_id,
-            <span class="kw-2">&amp;</span>tech_account,
-            account,
-            (<span class="kw-2">*</span>amount.balance()).into(),
-        )
+        technical::Pallet::&lt;T&gt;::transfer_out(asset_id, <span class="kw-2">&amp;</span>tech_account, account, <span class="kw-2">*</span>amount.balance())
     }
 
     <span class="kw">fn </span>unlock_liquidity_batch(
@@ -2616,8 +2583,8 @@
         T::AssetInfoProvider::ensure_asset_exists(<span class="kw-2">&amp;</span>order_book_id.base)<span class="question-mark">?</span>;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             <span class="kw-2">&amp;</span>order_book_id.dex_id,
-            <span class="kw-2">&amp;</span>order_book_id.quote.into(),
-            <span class="kw-2">&amp;</span>order_book_id.base.into(),
+            <span class="kw-2">&amp;</span>order_book_id.quote,
+            <span class="kw-2">&amp;</span>order_book_id.base,
         )<span class="question-mark">?</span>;
 
         <span class="macro">ensure!</span>(
@@ -2725,6 +2692,14 @@
     }
 }
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
+</span><span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
+    <span class="doccomment">/// Specifically created for `qa-tools` pallet
+    </span><span class="kw">pub fn </span>deposit_event_exposed(event: Event&lt;T&gt;) {
+        <span class="self">Self</span>::deposit_event(event)
+    }
+}
+
 <span class="kw">impl</span>&lt;T: Config&gt; LiquiditySource&lt;T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError&gt;
     <span class="kw">for </span>Pallet&lt;T&gt;
 {
@@ -2827,7 +2802,7 @@
         <span class="kw">let </span>amount = deal_info.base_amount();
 
         <span class="kw">let </span>market_order =
-            MarketOrder::&lt;T&gt;::new(sender.clone(), direction, order_book_id, amount, to.clone());
+            MarketOrder::&lt;T&gt;::new(sender.clone(), direction, order_book_id, amount, to);
 
         <span class="kw">let </span>(input_amount, output_amount, executed_orders_count) =
             order_book.execute_market_order(market_order, <span class="kw-2">&amp;mut </span>data)<span class="question-mark">?</span>;
@@ -2854,8 +2829,7 @@
 
         data.commit();
 
-        <span class="kw">let </span>weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange_single_order()
-            .saturating_mul(executed_orders_count <span class="kw">as </span>u64);
+        <span class="kw">let </span>weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange(executed_orders_count <span class="kw">as </span>u32);
 
         <span class="prelude-val">Ok</span>((result, weight))
     }
@@ -2960,9 +2934,9 @@
     }
 
     <span class="kw">fn </span>exchange_weight() -&gt; Weight {
-        <span class="comment">// SOFT_MIN_MAX_RATIO is approximately the max number of limit orders could be executed by one market order
-        </span>&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange_single_order()
-            .saturating_mul(&lt;T <span class="kw">as </span>Config&gt;::SOFT_MIN_MAX_RATIO <span class="kw">as </span>u64)
+        <span class="comment">// SOFT_MIN_MAX_RATIO is approximately the max number of limit orders
+        // that can be executed by one market order
+        </span>&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange(T::SOFT_MIN_MAX_RATIO.try_into().unwrap())
     }
 
     <span class="kw">fn </span>check_rewards_weight() -&gt; Weight {

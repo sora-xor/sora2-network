@@ -550,17 +550,6 @@
 <a href="#535" id="535">535</a>
 <a href="#536" id="536">536</a>
 <a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
-<a href="#546" id="546">546</a>
-<a href="#547" id="547">547</a>
-<a href="#548" id="548">548</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -595,7 +584,6 @@
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
 <span class="kw">use </span>common::prelude::BalanceUnit;
 <span class="kw">use </span>common::{PriceVariant, TradingPair};
-<span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
 <span class="kw">use </span>frame_support::{BoundedBTreeMap, BoundedVec};
 <span class="kw">use </span>sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedSub, Saturating, Zero};
@@ -687,10 +675,10 @@
     }
 
     <span class="kw">pub fn </span>is_same(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
-        <span class="kw">match </span>(<span class="self">self</span>, other) {
-            (<span class="self">Self</span>::Base(..), <span class="self">Self</span>::Base(..)) | (<span class="self">Self</span>::Quote(..), <span class="self">Self</span>::Quote(..)) =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        }
+        <span class="macro">matches!</span>(
+            (<span class="self">self</span>, other),
+            (<span class="self">Self</span>::Base(..), <span class="self">Self</span>::Base(..)) | (<span class="self">Self</span>::Quote(..), <span class="self">Self</span>::Quote(..))
+        )
     }
 
     <span class="kw">pub fn </span>copy_type(<span class="kw-2">&amp;</span><span class="self">self</span>, amount: OrderVolume) -&gt; <span class="self">Self </span>{
@@ -710,36 +698,38 @@
         }
     }
 
-    <span class="kw">pub fn </span>average_price(input: OrderAmount, output: OrderAmount) -&gt; <span class="prelude-ty">Result</span>&lt;OrderPrice, ()&gt; {
+    <span class="kw">pub fn </span>average_price(input: OrderAmount, output: OrderAmount) -&gt; <span class="prelude-ty">Option</span>&lt;OrderPrice&gt; {
         <span class="kw">if </span>input.is_quote() {
-            input.value().checked_div(output.value()).ok_or(())
+            input.value().checked_div(output.value())
         } <span class="kw">else </span>{
-            output.value().checked_div(input.value()).ok_or(())
+            output.value().checked_div(input.value())
         }
     }
 }
 
 <span class="kw">impl </span>Add <span class="kw">for </span>OrderAmount {
-    <span class="kw">type </span>Output = <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ()&gt;;
+    <span class="kw">type </span>Output = <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
-        <span class="macro">ensure!</span>(<span class="self">self</span>.is_same(<span class="kw-2">&amp;</span>other), ());
-        <span class="kw">let </span><span class="prelude-val">Some</span>(result) = <span class="self">self</span>.value().checked_add(other.value()) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(());
-        };
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.copy_type(result))
+        <span class="kw">if </span>!<span class="self">self</span>.is_same(<span class="kw-2">&amp;</span>other) {
+            <span class="kw">return </span><span class="prelude-val">None</span>;
+        }
+
+        <span class="kw">let </span>result = <span class="self">self</span>.value().checked_add(other.value())<span class="question-mark">?</span>;
+        <span class="prelude-val">Some</span>(<span class="self">self</span>.copy_type(result))
     }
 }
 
 <span class="kw">impl </span>Sub <span class="kw">for </span>OrderAmount {
-    <span class="kw">type </span>Output = <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ()&gt;;
+    <span class="kw">type </span>Output = <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;;
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
-        <span class="macro">ensure!</span>(<span class="self">self</span>.is_same(<span class="kw-2">&amp;</span>other), ());
-        <span class="kw">let </span><span class="prelude-val">Some</span>(result) = <span class="self">self</span>.value().checked_sub(other.value()) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(());
-        };
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.copy_type(result))
+        <span class="kw">if </span>!<span class="self">self</span>.is_same(<span class="kw-2">&amp;</span>other) {
+            <span class="kw">return </span><span class="prelude-val">None</span>;
+        }
+
+        <span class="kw">let </span>result = <span class="self">self</span>.value().checked_sub(other.value())<span class="question-mark">?</span>;
+        <span class="prelude-val">Some</span>(<span class="self">self</span>.copy_type(result))
     }
 }
 
@@ -773,16 +763,6 @@
     </span><span class="kw">pub </span>quote: AssetId,
 }
 
-<span class="kw">impl</span>&lt;AssetId, DEXId&gt; OrderBookId&lt;AssetId, DEXId&gt; {
-    <span class="kw">fn </span>from_trading_pair(trading_pair: TradingPair&lt;AssetId&gt;, dex_id: DEXId) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            dex_id,
-            base: trading_pair.target_asset_id,
-            quote: trading_pair.base_asset_id,
-        }
-    }
-}
-
 <span class="kw">impl</span>&lt;AssetId, DEXId&gt; From&lt;OrderBookId&lt;AssetId, DEXId&gt;&gt; <span class="kw">for </span>TradingPair&lt;AssetId&gt; {
     <span class="kw">fn </span>from(order_book_id: OrderBookId&lt;AssetId, DEXId&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -803,7 +783,8 @@
 }
 
 <span class="kw">impl</span>&lt;AssetId: PartialEq&gt; DealInfo&lt;AssetId&gt; {
-    <span class="kw">pub fn </span>is_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    <span class="attr">#[allow(clippy::nonminimal_bool)]
+    </span><span class="kw">pub fn </span>is_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.input_asset_id != <span class="self">self</span>.output_asset_id
             &amp;&amp; !(<span class="self">self</span>.input_amount.is_base() &amp;&amp; <span class="self">self</span>.output_amount.is_base())
             &amp;&amp; !(<span class="self">self</span>.input_amount.is_quote() &amp;&amp; <span class="self">self</span>.output_amount.is_quote())
@@ -853,8 +834,10 @@
         }
     }
 
-    <span class="kw">pub fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-        <span class="macro">ensure!</span>(<span class="self">self</span>.order_book_id == other.order_book_id, ());
+    <span class="kw">pub fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;()&gt; {
+        <span class="kw">if </span><span class="self">self</span>.order_book_id != other.order_book_id {
+            <span class="kw">return </span><span class="prelude-val">None</span>;
+        }
 
         <span class="kw">for </span>(map, to_merge) <span class="kw">in </span>[
             (<span class="kw-2">&amp;mut </span><span class="self">self</span>.to_lock, <span class="kw-2">&amp;</span>other.to_lock),
@@ -863,7 +846,7 @@
             <span class="self">Self</span>::merge_asset_map(map, to_merge);
         }
 
-        <span class="prelude-val">Ok</span>(())
+        <span class="prelude-val">Some</span>(())
     }
 
     <span class="kw">fn </span>merge_account_map(
@@ -987,18 +970,17 @@
         }
     }
 
-    <span class="kw">pub fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>other: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-        <span class="kw">let </span>join = |lhs: <span class="prelude-ty">Option</span>&lt;OrderAmount&gt;,
-                    rhs: <span class="prelude-ty">Option</span>&lt;OrderAmount&gt;|
-         -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;OrderAmount&gt;, ()&gt; {
-            <span class="kw">let </span>result = <span class="kw">match </span>(lhs, rhs) {
-                (<span class="prelude-val">Some</span>(left_amount), <span class="prelude-val">Some</span>(right_amount)) =&gt; <span class="prelude-val">Some</span>((left_amount + right_amount)<span class="question-mark">?</span>),
-                (<span class="prelude-val">Some</span>(left_amount), <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Some</span>(left_amount),
-                (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(right_amount)) =&gt; <span class="prelude-val">Some</span>(right_amount),
-                (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
+    <span class="kw">pub fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>other: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;()&gt; {
+        <span class="kw">let </span>join =
+            |lhs: <span class="prelude-ty">Option</span>&lt;OrderAmount&gt;, rhs: <span class="prelude-ty">Option</span>&lt;OrderAmount&gt;| -&gt; <span class="prelude-ty">Option</span>&lt;<span class="prelude-ty">Option</span>&lt;OrderAmount&gt;&gt; {
+                <span class="kw">let </span>result = <span class="kw">match </span>(lhs, rhs) {
+                    (<span class="prelude-val">Some</span>(left_amount), <span class="prelude-val">Some</span>(right_amount)) =&gt; <span class="prelude-val">Some</span>((left_amount + right_amount)<span class="question-mark">?</span>),
+                    (<span class="prelude-val">Some</span>(left_amount), <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Some</span>(left_amount),
+                    (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(right_amount)) =&gt; <span class="prelude-val">Some</span>(right_amount),
+                    (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
+                };
+                <span class="prelude-val">Some</span>(result)
             };
-            <span class="prelude-val">Ok</span>(result)
-        };
 
         <span class="self">self</span>.deal_input = join(<span class="self">self</span>.deal_input, other.deal_input)<span class="question-mark">?</span>;
         <span class="self">self</span>.deal_output = join(<span class="self">self</span>.deal_output, other.deal_output)<span class="question-mark">?</span>;
@@ -1016,7 +998,7 @@
         <span class="self">self</span>.ignore_unschedule_error =
             <span class="self">self</span>.ignore_unschedule_error || other.ignore_unschedule_error;
 
-        <span class="prelude-val">Ok</span>(())
+        <span class="prelude-val">Some</span>(())
     }
 
     <span class="kw">pub fn </span>average_deal_price(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;OrderPrice&gt; {
@@ -1024,11 +1006,7 @@
             <span class="kw">return </span><span class="prelude-val">None</span>;
         };
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>(price) = OrderAmount::average_price(input, output) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        };
-
-        <span class="prelude-val">Some</span>(price)
+        OrderAmount::average_price(input, output)
     }
 
     <span class="kw">pub fn </span>deal_base_amount(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;OrderVolume&gt; {

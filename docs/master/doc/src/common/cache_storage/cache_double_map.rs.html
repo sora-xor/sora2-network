@@ -238,6 +238,12 @@
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
 <a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -285,6 +291,18 @@
 {
     cache: BTreeMap&lt;Key1, BTreeMap&lt;Key2, <span class="prelude-ty">Option</span>&lt;Item&lt;Value&gt;&gt;&gt;&gt;,
     _phantom: PhantomData&lt;Storage&gt;,
+}
+
+<span class="kw">impl</span>&lt;Key1, Key2, Value, Storage&gt; Default <span class="kw">for </span>CacheStorageDoubleMap&lt;Key1, Key2, Value, Storage&gt;
+<span class="kw">where
+    </span>Key1: Ord + FullCodec + Clone,
+    Key2: Ord + FullCodec + Clone,
+    Value: FullCodec + Clone + PartialEq,
+    Storage: IterableStorageDoubleMap&lt;Key1, Key2, Value&gt;,
+{
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
+    }
 }
 
 <span class="kw">impl</span>&lt;Key1, Key2, Value, Storage&gt; CacheStorageDoubleMap&lt;Key1, Key2, Value, Storage&gt;
@@ -410,13 +428,7 @@
                 }
             }
 
-            second_map.retain(|<span class="kw">_</span>, v| {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(Item::Original(<span class="kw">_</span>)) = v {
-                    <span class="bool-val">true
-                </span>} <span class="kw">else </span>{
-                    <span class="bool-val">false
-                </span>}
-            });
+            second_map.retain(|<span class="kw">_</span>, v| <span class="macro">matches!</span>(v, <span class="prelude-val">Some</span>(Item::Original(<span class="kw">_</span>))));
         }
     }
 

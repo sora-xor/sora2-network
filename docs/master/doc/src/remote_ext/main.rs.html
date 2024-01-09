@@ -89,22 +89,41 @@
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
 </pre><pre class="rust"><code><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
 
-#[macro_use]
-</span><span class="kw">extern crate </span>log;
-
-<span class="kw">use </span>clap::Parser;
-<span class="kw">use </span>common::prelude::QuoteAmount;
-<span class="kw">use </span>common::{balance, DEXId, LiquiditySourceFilter};
+</span><span class="kw">use </span>clap::Parser;
+<span class="kw">use </span>common::prelude::SwapVariant;
+<span class="kw">use </span>common::{DEXId, FilterMode};
 <span class="kw">use </span>frame_remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities};
-<span class="kw">use </span>frame_support::traits::OnRuntimeUpgrade;
 <span class="kw">use </span>jsonrpsee::ws_client::{WsClient, WsClientBuilder};
 <span class="kw">use </span>sp_runtime::{traits::Block <span class="kw">as </span>BlockT, DeserializeOwned};
 
 <span class="kw">use </span>anyhow::Result <span class="kw">as </span>AnyResult;
-<span class="kw">use </span>framenode_runtime::Runtime;
+<span class="kw">use </span>framenode_runtime::assets::AssetIdOf;
+<span class="kw">use </span>framenode_runtime::order_book::WeightInfo;
+<span class="kw">use </span>framenode_runtime::{Runtime, Weight};
 <span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">async fn </span>create_ext&lt;B&gt;(client: Arc&lt;WsClient&gt;) -&gt; AnyResult&lt;RemoteExternalities&lt;B&gt;&gt;
@@ -146,21 +165,44 @@
     <span class="kw">let </span>client = Arc::new(client);
     <span class="kw">let </span><span class="kw-2">mut </span>ext = create_ext::&lt;framenode_runtime::Block&gt;(client.clone()).<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="kw">let </span>_res: AnyResult&lt;()&gt; = ext.execute_with(|| {
-        framenode_runtime::migrations::Migrations::on_runtime_upgrade();
-        <span class="kw">let </span>input = QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">1000.0</span>));
-        <span class="kw">let </span>res = liquidity_proxy::Pallet::&lt;Runtime&gt;::inner_quote(
-            DEXId::Polkaswap.into(),
-            <span class="kw-2">&amp;</span>common::DAI.into(),
-            <span class="kw-2">&amp;</span>common::XSTUSD.into(),
-            input.clone(),
-            LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            <span class="bool-val">true</span>,
-            <span class="bool-val">true</span>,
-        )
-        .unwrap()
-        .<span class="number">0
-        </span>.outcome;
-        <span class="macro">info!</span>(<span class="string">&quot;quote(0, DAI, XSTUSD, {input:?}) = {res:?}&quot;</span>);
+        <span class="kw">fn </span>get_path_weight(input: AssetIdOf&lt;Runtime&gt;, output: AssetIdOf&lt;Runtime&gt;) -&gt; Weight {
+            liquidity_proxy::Pallet::&lt;Runtime&gt;::swap_weight(
+                <span class="kw-2">&amp;</span>DEXId::Polkaswap.into(),
+                <span class="kw-2">&amp;</span>input,
+                <span class="kw-2">&amp;</span>output,
+                SwapVariant::WithDesiredOutput,
+                <span class="kw-2">&amp;</span>Vec::new(),
+                <span class="kw-2">&amp;</span>FilterMode::Disabled,
+            )
+        }
+        <span class="comment">// Base -&gt; Basic
+        </span><span class="kw">let </span>path_2_weight = get_path_weight(common::XOR, common::PSWAP);
+
+        <span class="comment">// Basic -&gt; Basic
+        </span><span class="kw">let </span>path_3_weight = get_path_weight(common::VAL, common::PSWAP);
+
+        <span class="comment">// Synthetic -&gt; Basic
+        </span><span class="kw">let </span>path_4_weight = get_path_weight(common::XSTUSD, common::PSWAP);
+
+        <span class="macro">dbg!</span>(path_2_weight);
+        <span class="macro">dbg!</span>(path_3_weight);
+        <span class="macro">dbg!</span>(path_4_weight);
+
+        <span class="kw">let </span>execute_order_weight =
+            &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::WeightInfo::execute_market_order();
+        <span class="macro">dbg!</span>(execute_order_weight);
+
+        <span class="macro">println!</span>(<span class="string">&quot;\nexchange weights:&quot;</span>);
+        <span class="kw">let </span>max_orders = &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::HARD_MIN_MAX_RATIO
+            .try_into()
+            .unwrap();
+        <span class="kw">for </span>n <span class="kw">in </span>[<span class="number">1</span>, max_orders / <span class="number">2</span>, max_orders] {
+            <span class="kw">let </span>exchange =
+                &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::WeightInfo::exchange(n);
+            <span class="macro">println!</span>(<span class="string">&quot;{n} order(-s):&quot;</span>);
+            <span class="macro">dbg!</span>(exchange);
+            <span class="macro">println!</span>();
+        }
         <span class="prelude-val">Ok</span>(())
     });
     <span class="prelude-val">Ok</span>(())

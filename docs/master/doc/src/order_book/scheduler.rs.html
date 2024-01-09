@@ -391,7 +391,7 @@
                 );
                 <span class="comment">// in `release` will emit event
                 </span><span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::ExpirationFailure {
-                    order_book_id: order_book_id.clone(),
+                    order_book_id: <span class="kw-2">*</span>order_book_id,
                     order_id,
                     error,
                 });
@@ -402,7 +402,7 @@
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;apparently removal of order book did not cleanup expiration schedule; \
                 order {:?} is set to expire but corresponding order book {:?} is not found&quot;</span>, order_id, order_book_id);
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::ExpirationFailure {
-                order_book_id: order_book_id.clone(),
+                order_book_id: <span class="kw-2">*</span>order_book_id,
                 order_id,
                 error: Error::&lt;T&gt;::UnknownOrderBook.into(),
             });
@@ -421,7 +421,7 @@
                     order_id, error
                 );
                 <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::ExpirationFailure {
-                    order_book_id: order_book_id.clone(),
+                    order_book_id: <span class="kw-2">*</span>order_book_id,
                     order_id,
                     error,
                 });
@@ -575,7 +575,7 @@
             <span class="kw">let </span><span class="prelude-val">Some</span>(order_book) = &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id) <span class="kw">else </span>{
                 <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;order-book {order_book_id:?} was not found during alignment&quot;</span>);
                 <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::AlignmentFailure {
-                    order_book_id: order_book_id.clone(),
+                    order_book_id,
                     error: Error::&lt;T&gt;::UnknownOrderBook.into(),
                 });
                 <span class="kw">return</span>;
@@ -611,7 +611,7 @@
                         <span class="string">&quot;Error {error:?} occurs during the alignment of order-book {order_book_id:?}&quot;
                     </span>);
                     <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::AlignmentFailure {
-                        order_book_id: order_book_id,
+                        order_book_id,
                         error,
                     });
                     <span class="kw">return</span>;

@@ -355,7 +355,7 @@
             .to_vec()
         );
     }: {
-        T::LiquidityRegistry::list_liquidity_sources(<span class="kw-2">&amp;</span>from_asset, <span class="kw-2">&amp;</span>to_asset, filter).unwrap();
+        T::LiquidityRegistry::list_liquidity_sources(<span class="kw-2">&amp;</span>from_asset, <span class="kw-2">&amp;</span>to_asset, <span class="kw-2">&amp;</span>filter).unwrap();
     }
     verify {
     }

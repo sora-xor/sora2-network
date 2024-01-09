@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["OrderBookCreateAndFillBatch","OrderBookCreateEmptyBatch","TransactionApi"]};
+window.SIDEBAR_ITEMS = {"struct":["OrderBookCreateAndFillBatch","OrderBookFillBatch","TransactionApi"]};

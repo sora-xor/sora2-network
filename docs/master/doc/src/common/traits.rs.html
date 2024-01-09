@@ -1128,20 +1128,6 @@
 <a href="#1113" id="1113">1113</a>
 <a href="#1114" id="1114">1114</a>
 <a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
-<a href="#1122" id="1122">1122</a>
-<a href="#1123" id="1123">1123</a>
-<a href="#1124" id="1124">1124</a>
-<a href="#1125" id="1125">1125</a>
-<a href="#1126" id="1126">1126</a>
-<a href="#1127" id="1127">1127</a>
-<a href="#1128" id="1128">1128</a>
-<a href="#1129" id="1129">1129</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1391,18 +1377,18 @@
 <span class="doccomment">/// Implements trading pairs LockedLiquiditySources storage
 </span><span class="kw">pub trait </span>LockedLiquiditySourcesManager&lt;LiquiditySourceType&gt; {
     <span class="kw">fn </span>get() -&gt; Vec&lt;LiquiditySourceType&gt;;
-    <span class="kw">fn </span>set(liquidity_source_types: Vec&lt;LiquiditySourceType&gt;) -&gt; ();
-    <span class="kw">fn </span>append(liquidity_source_type: LiquiditySourceType) -&gt; ();
+    <span class="kw">fn </span>set(liquidity_source_types: Vec&lt;LiquiditySourceType&gt;);
+    <span class="kw">fn </span>append(liquidity_source_type: LiquiditySourceType);
 }
 
 <span class="doccomment">/// Implements trading pair EnabledSources storage
 </span><span class="kw">pub trait </span>EnabledSourcesManager&lt;DEXId, AssetId&gt; {
-    <span class="kw">fn </span>mutate_remove(dex_id: <span class="kw-2">&amp;</span>DEXId, base_asset_id: <span class="kw-2">&amp;</span>AssetId, target_asset_id: <span class="kw-2">&amp;</span>AssetId) -&gt; ();
+    <span class="kw">fn </span>mutate_remove(dex_id: <span class="kw-2">&amp;</span>DEXId, base_asset_id: <span class="kw-2">&amp;</span>AssetId, target_asset_id: <span class="kw-2">&amp;</span>AssetId);
 }
 
 <span class="kw">impl</span>&lt;DEXId, AssetId&gt; EnabledSourcesManager&lt;DEXId, AssetId&gt; <span class="kw">for </span>() {
-    <span class="kw">fn </span>mutate_remove(_dex_id: <span class="kw-2">&amp;</span>DEXId, _baset_asset_id: <span class="kw-2">&amp;</span>AssetId, _target_asset_id: <span class="kw-2">&amp;</span>AssetId) -&gt; () {
-        <span class="macro">todo!</span>()
+    <span class="kw">fn </span>mutate_remove(_dex_id: <span class="kw-2">&amp;</span>DEXId, _baset_asset_id: <span class="kw-2">&amp;</span>AssetId, _target_asset_id: <span class="kw-2">&amp;</span>AssetId) {
+        <span class="macro">unimplemented!</span>()
     }
 }
 
@@ -1461,9 +1447,7 @@
 }
 
 <span class="kw">impl</span>&lt;Symbol&gt; OnSymbolDisabled&lt;Symbol&gt; <span class="kw">for </span>() {
-    <span class="kw">fn </span>disable_symbol(_symbol: <span class="kw-2">&amp;</span>Symbol) {
-        ()
-    }
+    <span class="kw">fn </span>disable_symbol(_symbol: <span class="kw-2">&amp;</span>Symbol) {}
 }
 
 <span class="kw">impl</span>&lt;DEXId, AccountId, AssetId&gt; LiquiditySource&lt;DEXId, AccountId, AssetId, Fixed, DispatchError&gt;
@@ -1607,8 +1591,12 @@
     </span><span class="kw">fn </span>list_liquidity_sources(
         input_asset_id: <span class="kw-2">&amp;</span>AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>AssetId,
-        filter: LiquiditySourceFilter&lt;DEXId, LiquiditySourceIndex&gt;,
+        filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;DEXId, LiquiditySourceIndex&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LiquiditySourceId&lt;DEXId, LiquiditySourceIndex&gt;&gt;, Error&gt;;
+
+    <span class="kw">fn </span>exchange_weight_filtered(
+        enabled_sources: <span class="kw">impl </span>Iterator&lt;Item = LiquiditySourceIndex&gt;,
+    ) -&gt; Weight;
 }
 
 <span class="kw">pub type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
@@ -1761,22 +1749,6 @@
 
 <span class="kw">pub trait </span>ToFeeAccount: Sized {
     <span class="kw">fn </span>to_fee_account(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;;
-}
-
-<span class="kw">pub trait </span>ToMarkerAsset&lt;TechAssetId, LstId&gt;: Sized {
-    <span class="kw">fn </span>to_marker_asset(<span class="kw-2">&amp;</span><span class="self">self</span>, lst_id: LstId) -&gt; <span class="prelude-ty">Option</span>&lt;TechAssetId&gt;;
-}
-
-<span class="kw">pub trait </span>GetTechAssetWithLstTag&lt;LstId, AssetId&gt;: Sized {
-    <span class="kw">fn </span>get_tech_asset_with_lst_tag(tag: LstId, asset_id: AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ()&gt;;
-}
-
-<span class="kw">pub trait </span>GetLstIdAndTradingPairFromTechAsset&lt;LstId, TradingPair&gt; {
-    <span class="kw">fn </span>get_lst_id_and_trading_pair_from_tech_asset(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(LstId, TradingPair)&gt;;
-}
-
-<span class="kw">pub trait </span>ToTechUnitFromDEXAndAsset&lt;DEXId, AssetId&gt;: Sized {
-    <span class="kw">fn </span>to_tech_unit_from_dex_and_asset(dex_id: DEXId, asset_id: AssetId) -&gt; <span class="self">Self</span>;
 }
 
 <span class="kw">pub trait </span>ToXykTechUnitFromDEXAndTradingPair&lt;DEXId, TradingPair&gt;: Sized {

@@ -1167,22 +1167,6 @@
 <a href="#1152" id="1152">1152</a>
 <a href="#1153" id="1153">1153</a>
 <a href="#1154" id="1154">1154</a>
-<a href="#1155" id="1155">1155</a>
-<a href="#1156" id="1156">1156</a>
-<a href="#1157" id="1157">1157</a>
-<a href="#1158" id="1158">1158</a>
-<a href="#1159" id="1159">1159</a>
-<a href="#1160" id="1160">1160</a>
-<a href="#1161" id="1161">1161</a>
-<a href="#1162" id="1162">1162</a>
-<a href="#1163" id="1163">1163</a>
-<a href="#1164" id="1164">1164</a>
-<a href="#1165" id="1165">1165</a>
-<a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
-<a href="#1169" id="1169">1169</a>
-<a href="#1170" id="1170">1170</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1544,25 +1528,21 @@
     PartialOrd,
     Ord,
     RuntimeDebug,
+    Default,
     scale_info::TypeInfo,
     MaxEncodedLen,
 )]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
 </span><span class="kw">pub enum </span>DEXId {
-    Polkaswap = <span class="number">0</span>,
+    <span class="attr">#[default]
+    </span>Polkaswap = <span class="number">0</span>,
     PolkaswapXSTUSD = <span class="number">1</span>,
 }
 
 <span class="kw">impl </span>From&lt;DEXId&gt; <span class="kw">for </span>u32 {
     <span class="kw">fn </span>from(dex_id: DEXId) -&gt; <span class="self">Self </span>{
         dex_id <span class="kw">as </span>u32
-    }
-}
-
-<span class="kw">impl </span>Default <span class="kw">for </span>DEXId {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        DEXId::Polkaswap
     }
 }
 
@@ -1611,7 +1591,7 @@
             &amp;&amp; <span class="self">self
                 </span>.<span class="number">0
                 </span>.iter()
-                .all(|byte| (<span class="string">b&#39;A&#39;</span>..=<span class="string">b&#39;Z&#39;</span>).contains(<span class="kw-2">&amp;</span>byte) || (<span class="string">b&#39;0&#39;</span>..=<span class="string">b&#39;9&#39;</span>).contains(<span class="kw-2">&amp;</span>byte))
+                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
     }
 }
 
@@ -1655,16 +1635,25 @@
         !<span class="self">self</span>.<span class="number">0</span>.is_empty()
             &amp;&amp; <span class="self">self</span>.<span class="number">0</span>.len() &lt;= ASSET_NAME_MAX_LENGTH
             &amp;&amp; <span class="self">self</span>.<span class="number">0</span>.iter().all(|byte| {
-                (<span class="string">b&#39;A&#39;</span>..=<span class="string">b&#39;Z&#39;</span>).contains(<span class="kw-2">&amp;</span>byte)
-                    || (<span class="string">b&#39;a&#39;</span>..=<span class="string">b&#39;z&#39;</span>).contains(<span class="kw-2">&amp;</span>byte)
-                    || (<span class="string">b&#39;0&#39;</span>..=<span class="string">b&#39;9&#39;</span>).contains(<span class="kw-2">&amp;</span>byte)
+                byte.is_ascii_uppercase()
+                    || byte.is_ascii_lowercase()
+                    || byte.is_ascii_digit()
                     || byte == <span class="kw-2">&amp;</span><span class="string">b&#39; &#39;
             </span>})
     }
 }
 
 <span class="attr">#[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Hash))]
 </span><span class="kw">pub struct </span>ContentSource(<span class="kw">pub </span>Vec&lt;u8&gt;);
@@ -1687,12 +1676,6 @@
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>ContentSource {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>(Vec::new())
-    }
-}
-
 <span class="kw">impl </span>IsValid <span class="kw">for </span>ContentSource {
     <span class="kw">fn </span>is_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.<span class="number">0</span>.is_ascii() &amp;&amp; <span class="self">self</span>.<span class="number">0</span>.len() &lt;= ASSET_CONTENT_SOURCE_MAX_LENGTH
@@ -1700,7 +1683,16 @@
 }
 
 <span class="attr">#[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Hash))]
 </span><span class="kw">pub struct </span>Description(<span class="kw">pub </span>Vec&lt;u8&gt;);
@@ -1723,12 +1715,6 @@
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>Description {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>(Vec::new())
-    }
-}
-
 <span class="kw">impl </span>IsValid <span class="kw">for </span>Description {
     <span class="kw">fn </span>is_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.<span class="number">0</span>.len() &lt;= ASSET_DESCRIPTION_MAX_LENGTH
@@ -1736,7 +1722,16 @@
 }
 
 <span class="attr">#[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Hash))]
 </span><span class="kw">pub struct </span>SymbolName(<span class="kw">pub </span>Vec&lt;u8&gt;);
@@ -1764,12 +1759,6 @@
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>SymbolName {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>(Vec::new())
-    }
-}
-
 <span class="kw">impl </span>IsValid <span class="kw">for </span>SymbolName {
     <span class="doccomment">/// Same as for AssetSymbol
     </span><span class="kw">fn </span>is_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -1778,14 +1767,23 @@
             &amp;&amp; <span class="self">self
                 </span>.<span class="number">0
                 </span>.iter()
-                .all(|byte| (<span class="string">b&#39;A&#39;</span>..=<span class="string">b&#39;Z&#39;</span>).contains(<span class="kw-2">&amp;</span>byte) || (<span class="string">b&#39;0&#39;</span>..=<span class="string">b&#39;9&#39;</span>).contains(<span class="kw-2">&amp;</span>byte))
+                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
     }
 }
 
 <span class="kw">const </span>CROWDLOAN_TAG_MAX_LENGTH: u32 = <span class="number">128</span>;
 
 <span class="attr">#[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 </span><span class="kw">pub struct </span>CrowdloanTag(<span class="kw">pub </span>BoundedVec&lt;u8, ConstU32&lt;CROWDLOAN_TAG_MAX_LENGTH&gt;&gt;);
 
@@ -1809,12 +1807,6 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; sp_std::fmt::Result {
         <span class="kw">let </span>s: String = <span class="self">self</span>.<span class="number">0</span>.iter().map(|un| <span class="kw-2">*</span>un <span class="kw">as </span>char).collect();
         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, s)
-    }
-}
-
-<span class="kw">impl </span>Default <span class="kw">for </span>CrowdloanTag {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>(Default::default())
     }
 }
 
@@ -1869,6 +1861,7 @@
     Ord,
     scale_info::TypeInfo,
     MaxEncodedLen,
+    strum::EnumIter,
 )]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Serialize, Deserialize))]
 #[repr(u8)]
@@ -1881,9 +1874,7 @@
     MockPool3,
     MockPool4,
     XSTPool,
-
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// order-book
-    </span>OrderBook,
+    OrderBook,
 }
 
 <span class="attr">#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
@@ -1943,24 +1934,15 @@
 <span class="comment">// LstId is Liquidity Source Type Id.
 </span><span class="kw">impl</span>&lt;AssetId&gt; PureOrWrapped&lt;AssetId&gt; <span class="kw">for </span>TechAssetId&lt;AssetId&gt; {
     <span class="kw">fn </span>is_pure(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            TechAssetId::Wrapped(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
-        }
+        !<span class="macro">matches!</span>(<span class="self">self</span>, TechAssetId::Wrapped(<span class="kw">_</span>))
     }
 
     <span class="kw">fn </span>is_wrapped(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            TechAssetId::Wrapped(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        }
+        <span class="macro">matches!</span>(<span class="self">self</span>, TechAssetId::Wrapped(<span class="kw">_</span>))
     }
 
     <span class="kw">fn </span>is_wrapped_regular(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            TechAssetId::Wrapped(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        }
+        <span class="macro">matches!</span>(<span class="self">self</span>, TechAssetId::Wrapped(<span class="kw">_</span>))
     }
 }
 
@@ -1968,6 +1950,7 @@
 </span><span class="attr">#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Serialize, Deserialize))]
 #[repr(u8)]
+#[allow(clippy::unnecessary_cast)]
 </span><span class="kw">pub enum </span>TechPurpose&lt;AssetId&gt; {
     FeeCollector = <span class="number">0</span>,
     FeeCollectorForPair(TradingPair&lt;AssetId&gt;) = <span class="number">1</span>,
@@ -1979,7 +1962,9 @@
 <span class="doccomment">/// Enum encoding of technical account id, pure and wrapped records.
 /// Enum record `WrappedRepr` is wrapped represention of `Pure` variant of enum, this is useful then
 /// representation is known but backward mapping is not known.
-</span><span class="attr">#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
+</span><span class="attr">#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Serialize, Deserialize))]
 </span><span class="kw">pub enum </span>TechAccountId&lt;AccountId, AssetId, DEXId&gt; {
     Pure(DEXId, TechPurpose&lt;AssetId&gt;),
@@ -1987,16 +1972,14 @@
     </span>Generic(Vec&lt;u8&gt;, Vec&lt;u8&gt;),
     Wrapped(AccountId),
     WrappedRepr(AccountId),
-    <span class="prelude-val">None</span>,
+    <span class="attr">#[default]
+    </span><span class="prelude-val">None</span>,
 }
 
 <span class="doccomment">/// Implementation of `IsRepresentation` for `TechAccountId`, because is has `WrappedRepr`.
 </span><span class="kw">impl</span>&lt;AccountId, AssetId, DEXId&gt; IsRepresentation <span class="kw">for </span>TechAccountId&lt;AccountId, AssetId, DEXId&gt; {
     <span class="kw">fn </span>is_representation(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            TechAccountId::WrappedRepr(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        }
+        <span class="macro">matches!</span>(<span class="self">self</span>, TechAccountId::WrappedRepr(<span class="kw">_</span>))
     }
 }
 
@@ -2007,12 +1990,6 @@
 {
     <span class="kw">fn </span>from_generic_pair(tag: Vec&lt;u8&gt;, data: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
         TechAccountId::Generic(tag, data)
-    }
-}
-
-<span class="kw">impl</span>&lt;AccountId, AssetId, DEXId&gt; Default <span class="kw">for </span>TechAccountId&lt;AccountId, AssetId, DEXId&gt; {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        TechAccountId::None
     }
 }
 
@@ -2029,13 +2006,9 @@
 {
     <span class="kw">fn </span>to_fee_account(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            TechAccountId::Pure(dex, purpose) =&gt; <span class="kw">match </span>purpose {
-                TechPurpose::XykLiquidityKeeper(tpair) =&gt; <span class="prelude-val">Some</span>(TechAccountId::Pure(
-                    dex.clone(),
-                    TechPurpose::FeeCollectorForPair(tpair.clone()),
-                )),
-                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-            },
+            TechAccountId::Pure(dex, TechPurpose::XykLiquidityKeeper(tpair)) =&gt; <span class="prelude-val">Some</span>(
+                TechAccountId::Pure(dex.clone(), TechPurpose::FeeCollectorForPair(tpair.clone())),
+            ),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -2099,24 +2072,19 @@
     </span>AccountId: IsRepresentation,
 {
     <span class="kw">fn </span>is_pure(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            TechAccountId::Pure(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            TechAccountId::Generic(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        }
+        <span class="macro">matches!</span>(
+            <span class="self">self</span>,
+            TechAccountId::Pure(<span class="kw">_</span>, <span class="kw">_</span>) | TechAccountId::Generic(<span class="kw">_</span>, <span class="kw">_</span>)
+        )
     }
     <span class="kw">fn </span>is_wrapped_regular(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            TechAccountId::Wrapped(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        }
+        <span class="macro">matches!</span>(<span class="self">self</span>, TechAccountId::Wrapped(<span class="kw">_</span>))
     }
     <span class="kw">fn </span>is_wrapped(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            TechAccountId::Pure(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            TechAccountId::Generic(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
-        }
+        !<span class="macro">matches!</span>(
+            <span class="self">self</span>,
+            TechAccountId::Pure(<span class="kw">_</span>, <span class="kw">_</span>) | TechAccountId::Generic(<span class="kw">_</span>, <span class="kw">_</span>)
+        )
     }
 }
 
@@ -2240,7 +2208,7 @@
         );
 
         <span class="comment">// should not panic
-        </span>serde_json::to_value(<span class="kw-2">&amp;</span>asset_id).unwrap();
+        </span>serde_json::to_value(asset_id).unwrap();
     }
 
     <span class="attr">#[test]
@@ -2257,7 +2225,7 @@
         <span class="macro">assert_eq!</span>(unwrapped, balance);
 
         <span class="comment">// should not panic
-        </span>serde_json::to_value(<span class="kw-2">&amp;</span>BalanceWrapper(balance)).unwrap();
+        </span>serde_json::to_value(BalanceWrapper(balance)).unwrap();
     }
 }
 

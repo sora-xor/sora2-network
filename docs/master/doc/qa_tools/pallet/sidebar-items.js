@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error"],"struct":["OrderBookAttributes","OrderBookFillSettings","Pallet"],"trait":["Config"],"type":["Module"]};
+window.SIDEBAR_ITEMS = {"enum":["Call","Error"],"mod":["settings"],"struct":["Pallet"],"trait":["Config"],"type":["Module"]};
