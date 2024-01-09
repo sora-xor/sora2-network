@@ -7,7 +7,10 @@
 use ceres_liquidity_locker::AccountIdOf;
 use codec::Decode;
 use common::prelude::Balance;
-use common::{balance, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION, XOR};
+use common::{
+    balance, AssetName, AssetSymbol, DEXId, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
+    XOR,
+};
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -17,13 +20,12 @@ use assets::Pallet as Assets;
 use pallet_timestamp::Pallet as Timestamp;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
-use trading_pair::Pallet as TradingPair;
 
 #[cfg(test)]
 mod mock;
 
 pub struct Pallet<T: Config>(ceres_liquidity_locker::Pallet<T>);
-pub trait Config: ceres_liquidity_locker::Config + trading_pair::Config + pool_xyk::Config {}
+pub trait Config: ceres_liquidity_locker::Config + pool_xyk::Config {}
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
@@ -42,8 +44,6 @@ pub fn AUTHORITY<T: frame_system::Config>() -> T::AccountId {
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
-        RawOrigin::Signed(owner.clone()).into();
     let ceres_asset_id = common::AssetId32::from_bytes(hex!(
         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
     ));
@@ -85,13 +85,8 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         None,
     );
 
-    TradingPair::<T>::register(
-        owner_origin.clone(),
-        DEX.into(),
-        XOR.into(),
-        ceres_asset_id.into(),
-    )
-    .unwrap();
+    T::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), ceres_asset_id.into())
+        .unwrap();
 
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
     Assets::<T>::mint_to(

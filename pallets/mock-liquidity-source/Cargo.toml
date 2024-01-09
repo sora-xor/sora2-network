@@ -43,7 +43,6 @@ hex-literal = "0.4.1"
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 technical = { path = "../technical" }
-trading-pair = { path = "../trading-pair" }
 
 [features]
 default = ['std']

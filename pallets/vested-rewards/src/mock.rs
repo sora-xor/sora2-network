@@ -62,7 +62,6 @@ construct_runtime! {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-        TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
@@ -248,13 +247,6 @@ impl assets::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-}
-
 impl technical::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TechAssetId = TechAssetId;
@@ -300,6 +292,10 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
+    type EnabledSourcesManager = ();
     type GetFee = GetXykFee;
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = ();
@@ -310,9 +306,10 @@ impl pool_xyk::Config for Runtime {
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = MockLiquidityProxy;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type VestedRewardsPallet = VestedRewards;
+    type TradingPairSourceManager = ();
     type PriceToolsPallet = ();
     type BuyBackHandler = ();
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;

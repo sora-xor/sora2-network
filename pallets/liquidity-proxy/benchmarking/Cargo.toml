@@ -82,5 +82,3 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
 ]
-
-ready-to-test = ["common/ready-to-test", "dex-api/ready-to-test", "liquidity-proxy/ready-to-test"]

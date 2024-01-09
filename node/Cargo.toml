@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "3.0.0"
+version = "3.2.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -141,9 +141,6 @@ wip = [
 ready-to-test = [
     "framenode-chain-spec/ready-to-test",
     "framenode-runtime/ready-to-test",
-    "common/ready-to-test",
-    "dex-api-rpc/ready-to-test",
-    "liquidity-proxy-rpc/ready-to-test",
 ]
 
 runtime-benchmarks = [

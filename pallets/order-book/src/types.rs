@@ -32,7 +32,6 @@ use crate::traits::{CurrencyLocker, CurrencyUnlocker};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::BalanceUnit;
 use common::{PriceVariant, TradingPair};
-use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::{BoundedBTreeMap, BoundedVec};
 use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedSub, Saturating, Zero};
@@ -124,10 +123,10 @@ impl OrderAmount {
     }
 
     pub fn is_same(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Base(..), Self::Base(..)) | (Self::Quote(..), Self::Quote(..)) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (Self::Base(..), Self::Base(..)) | (Self::Quote(..), Self::Quote(..))
+        )
     }
 
     pub fn copy_type(&self, amount: OrderVolume) -> Self {
@@ -147,36 +146,38 @@ impl OrderAmount {
         }
     }
 
-    pub fn average_price(input: OrderAmount, output: OrderAmount) -> Result<OrderPrice, ()> {
+    pub fn average_price(input: OrderAmount, output: OrderAmount) -> Option<OrderPrice> {
         if input.is_quote() {
-            input.value().checked_div(output.value()).ok_or(())
+            input.value().checked_div(output.value())
         } else {
-            output.value().checked_div(input.value()).ok_or(())
+            output.value().checked_div(input.value())
         }
     }
 }
 
 impl Add for OrderAmount {
-    type Output = Result<Self, ()>;
+    type Output = Option<Self>;
 
     fn add(self, other: Self) -> Self::Output {
-        ensure!(self.is_same(&other), ());
-        let Some(result) = self.value().checked_add(other.value()) else {
-            return Err(());
-        };
-        Ok(self.copy_type(result))
+        if !self.is_same(&other) {
+            return None;
+        }
+
+        let result = self.value().checked_add(other.value())?;
+        Some(self.copy_type(result))
     }
 }
 
 impl Sub for OrderAmount {
-    type Output = Result<Self, ()>;
+    type Output = Option<Self>;
 
     fn sub(self, other: Self) -> Self::Output {
-        ensure!(self.is_same(&other), ());
-        let Some(result) = self.value().checked_sub(other.value()) else {
-            return Err(());
-        };
-        Ok(self.copy_type(result))
+        if !self.is_same(&other) {
+            return None;
+        }
+
+        let result = self.value().checked_sub(other.value())?;
+        Some(self.copy_type(result))
     }
 }
 
@@ -210,16 +211,6 @@ pub struct OrderBookId<AssetId, DEXId> {
     pub quote: AssetId,
 }
 
-impl<AssetId, DEXId> OrderBookId<AssetId, DEXId> {
-    fn from_trading_pair(trading_pair: TradingPair<AssetId>, dex_id: DEXId) -> Self {
-        Self {
-            dex_id,
-            base: trading_pair.target_asset_id,
-            quote: trading_pair.base_asset_id,
-        }
-    }
-}
-
 impl<AssetId, DEXId> From<OrderBookId<AssetId, DEXId>> for TradingPair<AssetId> {
     fn from(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
         Self {
@@ -240,6 +231,7 @@ pub struct DealInfo<AssetId> {
 }
 
 impl<AssetId: PartialEq> DealInfo<AssetId> {
+    #[allow(clippy::nonminimal_bool)]
     pub fn is_valid(&self) -> bool {
         self.input_asset_id != self.output_asset_id
             && !(self.input_amount.is_base() && self.output_amount.is_base())
@@ -290,8 +282,10 @@ where
         }
     }
 
-    pub fn merge(&mut self, other: &Self) -> Result<(), ()> {
-        ensure!(self.order_book_id == other.order_book_id, ());
+    pub fn merge(&mut self, other: &Self) -> Option<()> {
+        if self.order_book_id != other.order_book_id {
+            return None;
+        }
 
         for (map, to_merge) in [
             (&mut self.to_lock, &other.to_lock),
@@ -300,7 +294,7 @@ where
             Self::merge_asset_map(map, to_merge);
         }
 
-        Ok(())
+        Some(())
     }
 
     fn merge_account_map(
@@ -424,18 +418,17 @@ where
         }
     }
 
-    pub fn merge(&mut self, mut other: Self) -> Result<(), ()> {
-        let join = |lhs: Option<OrderAmount>,
-                    rhs: Option<OrderAmount>|
-         -> Result<Option<OrderAmount>, ()> {
-            let result = match (lhs, rhs) {
-                (Some(left_amount), Some(right_amount)) => Some((left_amount + right_amount)?),
-                (Some(left_amount), None) => Some(left_amount),
-                (None, Some(right_amount)) => Some(right_amount),
-                (None, None) => None,
+    pub fn merge(&mut self, mut other: Self) -> Option<()> {
+        let join =
+            |lhs: Option<OrderAmount>, rhs: Option<OrderAmount>| -> Option<Option<OrderAmount>> {
+                let result = match (lhs, rhs) {
+                    (Some(left_amount), Some(right_amount)) => Some((left_amount + right_amount)?),
+                    (Some(left_amount), None) => Some(left_amount),
+                    (None, Some(right_amount)) => Some(right_amount),
+                    (None, None) => None,
+                };
+                Some(result)
             };
-            Ok(result)
-        };
 
         self.deal_input = join(self.deal_input, other.deal_input)?;
         self.deal_output = join(self.deal_output, other.deal_output)?;
@@ -453,7 +446,7 @@ where
         self.ignore_unschedule_error =
             self.ignore_unschedule_error || other.ignore_unschedule_error;
 
-        Ok(())
+        Some(())
     }
 
     pub fn average_deal_price(&self) -> Option<OrderPrice> {
@@ -461,11 +454,7 @@ where
             return None;
         };
 
-        let Ok(price) = OrderAmount::average_price(input, output) else {
-            return None;
-        };
-
-        Some(price)
+        OrderAmount::average_price(input, output)
     }
 
     pub fn deal_base_amount(&self) -> Option<OrderVolume> {

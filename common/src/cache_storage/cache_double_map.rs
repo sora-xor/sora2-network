@@ -47,6 +47,18 @@ where
     _phantom: PhantomData<Storage>,
 }
 
+impl<Key1, Key2, Value, Storage> Default for CacheStorageDoubleMap<Key1, Key2, Value, Storage>
+where
+    Key1: Ord + FullCodec + Clone,
+    Key2: Ord + FullCodec + Clone,
+    Value: FullCodec + Clone + PartialEq,
+    Storage: IterableStorageDoubleMap<Key1, Key2, Value>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<Key1, Key2, Value, Storage> CacheStorageDoubleMap<Key1, Key2, Value, Storage>
 where
     Key1: Ord + FullCodec + Clone,
@@ -170,13 +182,7 @@ where
                 }
             }
 
-            second_map.retain(|_, v| {
-                if let Some(Item::Original(_)) = v {
-                    true
-                } else {
-                    false
-                }
-            });
+            second_map.retain(|_, v| matches!(v, Some(Item::Original(_))));
         }
     }
 
