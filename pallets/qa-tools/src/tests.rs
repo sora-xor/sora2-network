@@ -1095,8 +1095,6 @@ fn should_update_xst_synthetic_base_price() {
             Some(prices),
             vec![],
         ));
-        // dbg!(price_tools::PriceInfos::<Runtime>::get(synthetic_base_asset_id).unwrap());
-        // dbg!(price_tools::PriceInfos::<Runtime>::get(reference_asset_id).unwrap());
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
                 &synthetic_base_asset_id,
