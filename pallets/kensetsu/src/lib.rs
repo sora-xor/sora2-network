@@ -382,13 +382,6 @@ pub mod pallet {
         /// - `collateral_asset_id`: The identifier of the asset used as collateral.
         /// - `collateral_amount`: The amount of collateral to be deposited.
         /// - `borrow_amount`: The amount the user wants to borrow.
-        ///
-        /// ## Usage
-        ///
-        /// - Verifies the transaction's origin and checks if collateral information exists for the provided asset ID.
-        /// - Creates a new CDP with a unique ID and emits a [`Event::CDPCreated`] event.
-        /// - Initialises the CDP's collateral and debt amounts based on provided values.
-        /// - Internal functions [`Self::deposit_internal`] and [`Self::borrow_internal`] are called to handle collateral deposit and borrowing if amounts are greater than zero.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::create_cdp())]
         pub fn create_cdp(
@@ -415,7 +408,7 @@ pub mod pallet {
                     collateral_asset_id,
                 });
                 <CDPDepository<T>>::insert(
-                    cdp_id.clone(),
+                    *cdp_id,
                     CollateralizedDebtPosition {
                         owner: who.clone(),
                         collateral_asset_id,
@@ -424,7 +417,7 @@ pub mod pallet {
                         interest_coefficient,
                     },
                 );
-                CdpOwnerIndex::<T>::append(&who, cdp_id.clone());
+                CdpOwnerIndex::<T>::append(&who, *cdp_id);
                 if collateral_amount > 0 {
                     Self::deposit_internal(&who, *cdp_id, collateral_amount)?;
                 }
@@ -442,23 +435,6 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `cdp_id`: The ID of the CDP to be closed.
-        ///
-        /// ## Usage
-        ///
-        /// This function is utilized to:
-        /// - Verify the transaction's origin and retrieve the associated CDP using [`Self::accrue_internal`].
-        /// - Check if the transaction sender is the owner of the CDP (`who == cdp.owner`).
-        /// - Ensure there is no outstanding debt on the CDP (`cdp.debt == 0`).
-        /// - Transfer the collateral back to the owner's account.
-        /// - Remove the CDP from storage.
-        /// - Emit a [`Event::CDPClosed`] event indicating the closure of the CDP.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the transaction sender is not the CDP owner: [`Error::OperationNotPermitted`].
-        /// - If there's still outstanding debt on the CDP: [`Error::OutstandingDebt`].
-        /// - Errors from the [`technical::Pallet::<T>::transfer_out`] function if collateral transfer fails.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
@@ -488,17 +464,6 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction.
         /// - `cdp_id`: The ID of the CDP to deposit collateral into.
         /// - `collateral_amount`: The amount of collateral to deposit.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to deposit collateral into a CDP:
-        /// - Verifies the transaction's origin.
-        /// - Initiates the internal [`Self::deposit_internal`] function to handle the collateral deposit.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - Errors from the [`Self::deposit_internal`] function if collateral deposit fails.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::deposit_collateral())]
         pub fn deposit_collateral(
@@ -517,26 +482,6 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction.
         /// - `cdp_id`: The ID of the CDP to withdraw collateral from.
         /// - `collateral_amount`: The amount of collateral to withdraw.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to withdraw collateral from a CDP:
-        /// - Verifies the transaction's origin and retrieves the associated CDP using [`Self::accrue_internal`].
-        /// - Ensures that the transaction sender is the owner of the CDP (`who == cdp.owner`).
-        /// - Verifies that there is enough collateral in the CDP to withdraw (`cdp.collateral_amount >= collateral_amount`).
-        /// - Checks if the updated collateral amount after withdrawal keeps the CDP safe ([`Self::check_cdp_is_safe`] function).
-        /// - Transfers the collateral to the sender and updates the collateral amount in the CDP.
-        /// - Emits a [`Event::CollateralWithdrawn`] event indicating the withdrawal of collateral from the CDP.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the transaction sender is not the CDP owner: [`Error::OperationNotPermitted`].
-        /// - If there's not enough collateral in the CDP: [`Error::NotEnoughCollateral`].
-        /// - If an arithmetic operation fails during collateral subtraction: [`Error::ArithmeticError`].
-        /// - If the CDP becomes unsafe after collateral withdrawal: [`Error::CDPUnsafe`].
-        /// - Errors from the [`technical::Pallet::<T>::transfer_out`] function if collateral transfer fails.
-        /// - If the specified CDP is not found: [`Error::CDPNotFound`].
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_collateral())]
         pub fn withdraw_collateral(
@@ -587,12 +532,6 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction.
         /// - `cdp_id`: The ID of the CDP to borrow against.
         /// - `will_to_borrow_amount`: The amount the user intends to borrow.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to borrow funds against a CDP:
-        /// - Verifies the transaction's origin.
-        /// - Initiates the internal [`Self::borrow_internal`] function to handle the borrowing process.
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::borrow())]
         pub fn borrow(
@@ -611,22 +550,6 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction.
         /// - `cdp_id`: The ID of the CDP to repay debt for.
         /// - `amount`: The amount to repay against the CDP's debt.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to repay debt against a CDP:
-        /// - Verifies the transaction's origin and retrieves the associated CDP using [`Self::accrue_internal`].
-        /// - Calculates the amount to cover the debt (cannot exceed the CDP's debt).
-        /// - Burns the specified amount from the sender's account.
-        /// - Updates the CDP's debt by subtracting the covered amount.
-        /// - Emits a [`Event::DebtPayment`] event indicating the repayment of debt against the CDP.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the specified CDP is not found: [`Error::CDPNotFound`].
-        /// - If an arithmetic operation fails during debt subtraction: [`Error::ArithmeticError`].
-        /// - Errors from the [`Self::burn_from`] function if burning tokens fails.
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: U256, amount: Balance) -> DispatchResult {
@@ -659,25 +582,6 @@ pub mod pallet {
         ///
         /// - `_origin`: The origin of the transaction (unused).
         /// - `cdp_id`: The ID of the CDP to be liquidated.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to liquidate a CDP if it becomes unsafe:
-        /// - Checks if the CDP is unsafe based on its debt, collateral amount, and risk parameters.
-        /// - Calculates the desired amount of stablecoin (KUSD) needed for liquidation.
-        /// - Quotes the amount of collateral needed for liquidation against KUSD using the Liquidity Proxy.
-        /// - Initiates the exchange of collateral for stablecoin through the Liquidity Proxy.
-        /// - Updates the CDP's collateral amount and debt after liquidation.
-        /// - Handles protocol profit (penalty) and potential debt coverage based on liquidation outcomes.
-        /// - Emits a [`Event::Liquidated`] event indicating the liquidation of the CDP.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the specified CDP is found to be safe: [`Error::CDPSafe`].
-        /// - If the specified collateral asset info is not found: [`Error::CollateralInfoNotFound`].
-        /// - If an arithmetic operation fails during liquidation calculations: [`Error::ArithmeticError`].
-        /// - Errors from the Liquidity Proxy functions or asset transfers if the liquidation process fails.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
@@ -797,12 +701,6 @@ pub mod pallet {
         ///
         /// - `_origin`: The origin of the transaction (unused).
         /// - `cdp_id`: The ID of the CDP to accrue interest on.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to accrue interest on a CDP:
-        /// - Checks if the CDP has debt to accrue interest on.
-        /// - Initiates the internal [`Self::accrue_internal`] function to handle interest accrual for the CDP.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::accrue())]
         pub fn accrue(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
@@ -818,21 +716,6 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction.
         /// - `collateral_asset_id`: The identifier of the collateral asset.
         /// - `new_risk_parameters`: The new risk parameters to be set for the collateral asset.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to update the risk parameters for a collateral asset:
-        /// - Verifies the transaction's origin as a risk manager.
-        /// - Checks if the provided collateral asset ID exists.
-        /// - Updates the risk parameters for the existing collateral asset or adds new collateral information if none exists.
-        /// - Emits a [`Event::CollateralRiskParametersUpdated`] event indicating the update of risk parameters for the collateral asset.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the transaction sender is not authorized as a risk manager.
-        /// - If the provided collateral asset ID does not exist: [`Error::WrongAssetId`].
-        /// - Errors from storage mutation or collateral information updates.
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::update_collateral_risk_parameters())]
         pub fn update_collateral_risk_parameters(
@@ -878,19 +761,6 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `new_hard_cap`: The new hard cap value to be set for the total supply.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to update the hard cap for the total supply of a stablecoin:
-        /// - Verifies the transaction's origin as a risk manager.
-        /// - Updates the hard cap for the total supply.
-        /// - Emits a [`Event::KusdHardCapUpdated`] event indicating the update of the hard cap for the total supply.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the transaction sender is not authorized as a risk manager.
-        /// - Errors from the storage mutation or updating the hard cap for the total supply.
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::update_hard_cap_total_supply())]
         pub fn update_hard_cap_total_supply(
@@ -916,19 +786,6 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `new_liquidation_penalty`: The new liquidation penalty percentage to be set.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to update the liquidation penalty applied during CDP liquidation:
-        /// - Verifies the transaction's origin as a risk manager.
-        /// - Updates the liquidation penalty percentage.
-        /// - Emits a [`Event::LiquidationPenaltyUpdated`] event indicating the update of the liquidation penalty.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the transaction sender is not authorized as a risk manager.
-        /// - Errors from the storage mutation or updating the liquidation penalty.
         #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::update_liquidation_penalty())]
         pub fn update_liquidation_penalty(
@@ -952,19 +809,6 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to withdraw as protocol profit.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to withdraw protocol profit in the form of stablecoin (KUSD):
-        /// - Verifies the transaction's origin as the protocol owner.
-        /// - Transfers the specified amount of stablecoin from the protocol treasury to the caller.
-        /// - Emits a [`Event::ProfitWithdrawn`] event indicating the successful withdrawal of protocol profit.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the transaction sender is not authorized as the protocol owner.
-        /// - Errors from the [`technical::Pallet::transfer_out`] function if the transfer of stablecoin fails.
         #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_profit())]
         pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
@@ -989,18 +833,6 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to donate to cover bad debt.
-        ///
-        /// ## Usage
-        ///
-        /// This function is used to donate stablecoin (KUSD) to cover protocol bad debt:
-        /// - Verifies the transaction's origin.
-        /// - Attempts to cover bad debt with the provided amount of stablecoin.
-        /// - Emits a [`Event::Donation`] event indicating the donation of stablecoin to cover bad debt.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - Errors from attempting to cover bad debt using the [`Self::cover_bad_debt`] function.
         #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::donate())]
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
@@ -1019,21 +851,6 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `account_id`: The account ID to be added as a risk manager.
-        ///
-        /// ## Usage
-        ///
-        /// This function adds a new account ID to the set of risk managers:
-        /// - Requires root permission to execute.
-        /// - Inserts the provided account ID into the set of risk managers.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the caller does not have root permission.
-        ///
-        /// ## Note
-        ///
-        /// The added account ID gains the privilege to perform risk manager actions within the system.
         #[pallet::call_index(13)]
         #[pallet::weight(<T as Config>::WeightInfo::add_risk_manager())]
         pub fn add_risk_manager(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
@@ -1058,21 +875,6 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `account_id`: The account ID to be removed from the set of risk managers.
-        ///
-        /// ## Usage
-        ///
-        /// This function removes an account ID from the set of risk managers:
-        /// - Requires root permission to execute.
-        /// - Removes the provided account ID from the set of risk managers, if present.
-        ///
-        /// ## Errors
-        ///
-        /// This function can return errors in the following cases:
-        /// - If the caller does not have root permission.
-        ///
-        /// ## Note
-        ///
-        /// The removed account ID loses the privilege previously granted as a risk manager.
         #[pallet::call_index(14)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_risk_manager())]
         pub fn remove_risk_manager(
@@ -1239,7 +1041,7 @@ pub mod pallet {
         /// Removes CDP entry from the storage
         fn delete_cdp(cdp_id: U256, cdp_owner: &AccountIdOf<T>) {
             <CDPDepository<T>>::remove(cdp_id);
-            if let Some(mut cdp_ids) = <CdpOwnerIndex<T>>::take(&cdp_owner) {
+            if let Some(mut cdp_ids) = <CdpOwnerIndex<T>>::take(cdp_owner) {
                 cdp_ids.retain(|&x| x != cdp_id);
                 if !cdp_ids.is_empty() {
                     <CdpOwnerIndex<T>>::insert(cdp_owner, cdp_ids);
@@ -1263,7 +1065,7 @@ pub mod pallet {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             technical::Pallet::<T>::transfer_in(
                 &cdp.collateral_asset_id,
-                &who,
+                who,
                 &T::TreasuryTechAccount::get(),
                 collateral_amount,
             )?;
@@ -1309,7 +1111,7 @@ pub mod pallet {
             );
             Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
             Self::ensure_protocol_cap(will_to_borrow_amount)?;
-            Self::mint_to(&who, will_to_borrow_amount)?;
+            Self::mint_to(who, will_to_borrow_amount)?;
             <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                 cdp.debt = new_debt;
@@ -1517,7 +1319,7 @@ pub mod pallet {
         }
 
         /// Cover CDP debt with protocol balance
-        /// If protocol balance is less thatn amount to cover, it is a bad debt
+        /// If protocol balance is less than amount to cover, it is a bad debt
         fn cover_with_protocol(amount: Balance) -> DispatchResult {
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),

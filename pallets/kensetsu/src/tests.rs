@@ -147,7 +147,7 @@ fn test_create_cdp_sunny_day() {
         assert_eq!(cdp.collateral_amount, collateral);
         assert_eq!(cdp.debt, debt);
         assert_eq!(
-            KensetsuPallet::cdp_owner_index(&alice_account_id()),
+            KensetsuPallet::cdp_owner_index(alice_account_id()),
             Some(vec![U256::from(1)])
         );
     });
@@ -244,7 +244,7 @@ fn test_close_cdp_sunny_day() {
         );
         assert_balance(&alice_account_id(), &XOR, balance!(10));
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
-        assert_eq!(KensetsuPallet::cdp_owner_index(&alice_account_id()), None);
+        assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
     });
 }
 
@@ -263,18 +263,18 @@ fn test_multiple_cdp_close() {
 
         // 2 CDPs by user Alice
         assert_eq!(
-            KensetsuPallet::cdp_owner_index(&alice_account_id()),
+            KensetsuPallet::cdp_owner_index(alice_account_id()),
             Some(vec![cdp_id_1, cdp_id_2])
         );
 
         assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id_1));
         assert_eq!(
-            KensetsuPallet::cdp_owner_index(&alice_account_id()),
+            KensetsuPallet::cdp_owner_index(alice_account_id()),
             Some(vec![cdp_id_2])
         );
 
         assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id_2));
-        assert_eq!(KensetsuPallet::cdp_owner_index(&alice_account_id()), None);
+        assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
     });
 }
 
@@ -1272,7 +1272,7 @@ fn test_liquidate_kusd_amount_not_covers_cdp_debt() {
         assert_balance(&tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
-        assert_eq!(KensetsuPallet::cdp_owner_index(&alice_account_id()), None);
+        assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
         assert_balance(&alice_account_id(), &KUSD, debt);
         let kusd_supply = get_total_supply(&KUSD);
         // 100 KUSD which is debt amount is burned
@@ -1341,7 +1341,7 @@ fn test_liquidate_kusd_bad_debt() {
         assert_balance(&tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(10));
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
-        assert_eq!(KensetsuPallet::cdp_owner_index(&alice_account_id()), None);
+        assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
         assert_balance(&alice_account_id(), &KUSD, debt);
         let kusd_supply = get_total_supply(&KUSD);
         // 100 KUSD which is debt amount is burned
