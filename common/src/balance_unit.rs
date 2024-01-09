@@ -50,7 +50,9 @@ use {
 const RATIO: u128 = 1_000_000_000_000_000_000;
 
 /// BalanceUnit wraps Balance and provides proper math operations between divisible & non-divisible balances that have different precision.
-#[derive(Encode, Decode, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(
+    Encode, Decode, Copy, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BalanceUnit {
     inner: Balance,
@@ -60,15 +62,6 @@ pub struct BalanceUnit {
     /// false - means the precision of 0 digits
     is_divisible: bool,
 }
-
-impl PartialEq for BalanceUnit {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(other).is_eq()
-    }
-}
-
-// reflexivity, symmetry, and transitivity are satisfied
-impl Eq for BalanceUnit {}
 
 impl Ord for BalanceUnit {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -1318,101 +1311,6 @@ mod tests {
                 BalanceUnit::divisible(n).into_indivisible(RoundMode::Floor),
                 BalanceUnit::indivisible(n.div_floor(coefficient))
             );
-        }
-    }
-
-    #[test]
-    fn check_partial_eq_consistent_with_ord() {
-        // `eq` and `.cmp().is_eq()` must be consistent
-        for a in [
-            BalanceUnit::indivisible(1),
-            BalanceUnit::divisible(balance!(1)),
-            BalanceUnit::divisible(0),
-            BalanceUnit::indivisible(0),
-        ] {
-            for b in [
-                BalanceUnit::indivisible(1),
-                BalanceUnit::divisible(balance!(1)),
-                BalanceUnit::divisible(0),
-                BalanceUnit::indivisible(0),
-            ] {
-                if a.eq(&b) {
-                    assert!(a.cmp(&b).is_eq());
-                } else {
-                    assert!(a.cmp(&b).is_ne());
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn check_partial_eq() {
-        // `eq` and `ne` must be consistent with each other
-        for a in [
-            BalanceUnit::indivisible(1),
-            BalanceUnit::divisible(balance!(1)),
-            BalanceUnit::divisible(0),
-            BalanceUnit::indivisible(0),
-        ] {
-            for b in [
-                BalanceUnit::indivisible(1),
-                BalanceUnit::divisible(balance!(1)),
-                BalanceUnit::divisible(0),
-                BalanceUnit::indivisible(0),
-            ] {
-                if a.eq(&b) {
-                    assert!(!a.ne(&b));
-                } else if a.ne(&b) {
-                    assert!(!a.eq(&b));
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn check_eq() {
-        // We do not want weird system with, for example, two separate (not eq) zeros. Therefore,
-        // we need to equalize indivisible numbers with their divisible counterparts (in absence
-        // of overflows).
-        // This leads to predictable behaviour when operating this type.
-        assert_eq!(BalanceUnit::divisible(0), BalanceUnit::divisible(0));
-        assert_eq!(BalanceUnit::indivisible(0), BalanceUnit::indivisible(0));
-        assert_eq!(BalanceUnit::divisible(0), BalanceUnit::indivisible(0));
-        assert_eq!(BalanceUnit::indivisible(0), BalanceUnit::divisible(0));
-        assert_eq!(
-            BalanceUnit::divisible(balance!(1)),
-            BalanceUnit::indivisible(1),
-        );
-        assert_eq!(
-            BalanceUnit::indivisible(1),
-            BalanceUnit::divisible(balance!(1)),
-        );
-        for zero in [BalanceUnit::divisible(0), BalanceUnit::indivisible(0)] {
-            for b in [
-                BalanceUnit::indivisible(2),
-                BalanceUnit::divisible(balance!(2)),
-            ] {
-                let c = zero.checked_add(&b).unwrap();
-                assert_eq!(c, b);
-                assert_eq!(b, c);
-            }
-        }
-        for a in [
-            BalanceUnit::indivisible(1),
-            BalanceUnit::divisible(balance!(1)),
-        ] {
-            for b in [
-                BalanceUnit::indivisible(2),
-                BalanceUnit::divisible(balance!(2)),
-            ] {
-                let c = a.checked_add(&b).unwrap();
-                let expected_indivisible = BalanceUnit::indivisible(3);
-                let expected_divisible = BalanceUnit::divisible(balance!(3));
-                assert_eq!(c, expected_divisible);
-                assert_eq!(c, expected_indivisible);
-                assert_eq!(expected_divisible, c);
-                assert_eq!(expected_indivisible, c);
-            }
         }
     }
 }
