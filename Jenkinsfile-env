@@ -8,5 +8,6 @@ def pipeline = new org.docker.AppPipeline(steps: this,
     triggerCommonBuildGrepRegex:  'housekeeping',
     secretScannerExclusion:       '.*Cargo.toml',
     nameCI:                       'env-CI',
+    clippyLinter:                 false,
     dockerImageTags:              ['substrate-4.0.0':'sub4'])
 pipeline.runPipeline()
