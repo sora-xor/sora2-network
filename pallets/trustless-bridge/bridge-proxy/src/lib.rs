@@ -86,19 +86,13 @@ pub mod pallet {
     {
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        // type EthApp: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
-
-        // type ERC20App: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
-
-        // type ParachainApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
-
-        // type HashiBridge: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
-
         type EthApp: BridgeApp<MainnetAccountId, H160, Self::AssetId, Balance>;
 
         type ERC20App: BridgeApp<MainnetAccountId, H160, Self::AssetId, Balance>;
 
         type ParachainApp: BridgeApp<MainnetAccountId, ParachainAccountId, Self::AssetId, Balance>;
+
+        type LiberlandApp: BridgeApp<MainnetAccountId, GenericAccount, Self::AssetId, Balance>;
 
         type HashiBridge: BridgeApp<MainnetAccountId, H160, Self::AssetId, Balance>;
 
@@ -266,6 +260,15 @@ pub mod pallet {
                 GenericAccount::Sora(_) | GenericAccount::Unknown | GenericAccount::Root => {
                     frame_support::fail!(Error::<T>::WrongAccountKind);
                 }
+                GenericAccount::Liberland(recipient) => {
+                    T::LiberlandApp::transfer(
+                        network_id,
+                        asset_id,
+                        sender,
+                        GenericAccount::Liberland(recipient),
+                        amount,
+                    )?;
+                }
             }
             Ok(().into())
         }
@@ -323,6 +326,7 @@ pub mod pallet {
             res.extend(T::ERC20App::list_apps());
             res.extend(T::HashiBridge::list_apps());
             res.extend(T::ParachainApp::list_apps());
+            res.extend(T::LiberlandApp::list_apps());
             res
         }
 
@@ -332,6 +336,7 @@ pub mod pallet {
             res.extend(T::ERC20App::list_supported_assets(network_id));
             res.extend(T::HashiBridge::list_supported_assets(network_id));
             res.extend(T::ParachainApp::list_supported_assets(network_id));
+            res.extend(T::LiberlandApp::list_supported_assets(network_id));
             res
         }
 
@@ -349,6 +354,8 @@ pub mod pallet {
                 T::HashiBridge::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::ParachainApp::is_asset_supported(network_id, asset_id) {
                 T::ParachainApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else if T::LiberlandApp::is_asset_supported(network_id, asset_id) {
+                T::LiberlandApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::EthApp::is_asset_supported(network_id, asset_id) {
                 T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else {
@@ -363,6 +370,7 @@ pub mod pallet {
                 .max(T::EthApp::transfer_weight())
                 .max(T::ERC20App::transfer_weight())
                 .max(T::ParachainApp::transfer_weight())
+                .max(T::LiberlandApp::transfer_weight())
                 .saturating_add(T::HashiBridge::is_asset_supported_weight())
                 .saturating_add(T::EthApp::is_asset_supported_weight())
                 .saturating_add(T::ERC20App::is_asset_supported_weight())

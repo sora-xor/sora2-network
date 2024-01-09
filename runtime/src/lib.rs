@@ -2136,6 +2136,7 @@ impl bridge_proxy::Config for Runtime {
 
     type HashiBridge = EthBridge;
     type ParachainApp = ParachainBridgeApp;
+    type LiberlandApp = LiberlandBridgeApp;
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
@@ -2415,7 +2416,7 @@ construct_runtime! {
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
 
         #[cfg(feature = "wip")] // Liberland
-        LiberlandApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
+        LiberlandBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
         // Beefy pallets should be placed after channels

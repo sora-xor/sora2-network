@@ -224,20 +224,20 @@ pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "
 # multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.19" }
 
 [patch."https://github.com/sora-xor/sora2-common.git"]
-beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-dispatch = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-parachain-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
-multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", branch = "update_channels" }
+beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+dispatch = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+parachain-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
+multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", branch = "generic-substrate-app" }
 
 # [patch."https://github.com/sora-xor/sora2-common.git"]
 # beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }
