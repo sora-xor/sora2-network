@@ -2,14 +2,14 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-// #[cfg(test)]
-// mod mock;
+#[cfg(test)]
+mod mock;
 
-// #[cfg(test)]
-// mod test;
+#[cfg(test)]
+mod test;
 
-// #[cfg(feature = "runtime-benchmarks")]
-// mod benchmarking;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 pub mod migrations;
 pub mod weights;
 
@@ -19,7 +19,7 @@ use bridge_types::{
         TimepointProvider,
     },
     types::{AssetKind, MessageDirection, MessageStatus},
-    Address, GenericAccount, GenericNetworkId, GenericTimepoint, H160, H256,
+    Address, GenericAccount, GenericNetworkId, GenericTimepoint, MainnetAccountId, H160, H256,
 };
 use codec::{Decode, Encode};
 use common::{prelude::FixedWrapper, Balance};
@@ -86,15 +86,15 @@ pub mod pallet {
     {
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        type EthApp: BridgeApp<MainnetAccountId, H160, Self::AssetId, Balance>;
+        type EthApp: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
-        type ERC20App: BridgeApp<MainnetAccountId, H160, Self::AssetId, Balance>;
+        type ERC20App: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
-        type ParachainApp: BridgeApp<MainnetAccountId, ParachainAccountId, Self::AssetId, Balance>;
+        type ParachainApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
 
-        type LiberlandApp: BridgeApp<MainnetAccountId, GenericAccount, Self::AssetId, Balance>;
+        type LiberlandApp: BridgeApp<Self::AccountId, GenericAccount, Self::AssetId, Balance>;
 
-        type HashiBridge: BridgeApp<MainnetAccountId, H160, Self::AssetId, Balance>;
+        type HashiBridge: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
         type ReferencePriceProvider: ReferencePriceProvider<Self::AssetId, Balance>;
 
@@ -104,7 +104,7 @@ pub mod pallet {
 
         type WeightInfo: WeightInfo;
 
-        type AccountIdConverter: Convert<Self::AccountId, MainnetAccountId>;
+        type AccountIdConverter: Convert<MainnetAccountId, Self::AccountId>;
     }
 
     #[pallet::storage]
@@ -241,7 +241,6 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
-            let sender = T::AccountIdConverter::convert(sender);
             match recipient {
                 GenericAccount::EVM(recipient) => {
                     if T::HashiBridge::is_asset_supported(network_id, asset_id) {
@@ -350,6 +349,7 @@ pub mod pallet {
             let GenericAccount::Sora(beneficiary) = beneficiary else {
                 return Err(Error::<T>::WrongAccountKind.into());
             };
+            let beneficiary = T::AccountIdConverter::convert(beneficiary);
             if T::HashiBridge::is_asset_supported(network_id, asset_id) {
                 T::HashiBridge::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::ParachainApp::is_asset_supported(network_id, asset_id) {
@@ -378,7 +378,10 @@ pub mod pallet {
     }
 }
 
-impl<T: Config> GasTracker<Balance> for Pallet<T> {
+impl<T: Config> GasTracker<Balance> for Pallet<T>
+where
+    T::AccountId: From<bridge_types::MainnetAccountId>,
+{
     /// Records fee paid by relayer for message submission.
     /// - network_id - ethereum network id,
     /// - batch_nonce - batch nonce,
@@ -413,7 +416,10 @@ impl<T: Config> GasTracker<Balance> for Pallet<T> {
     }
 }
 
-impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pallet<T> {
+impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pallet<T>
+where
+    MainnetAccountId: From<T::AccountId>,
+{
     fn update_status(
         network_id: GenericNetworkId,
         message_id: H256,
@@ -476,7 +482,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
             &message_id,
             BridgeRequest {
                 source,
-                dest: GenericAccount::Sora(T::AccountIdConverter::convert(dest.clone())),
+                dest: GenericAccount::Sora(dest.clone().into()),
                 asset_id,
                 amount,
                 status,
@@ -502,7 +508,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
             (&network_id, &source),
             &message_id,
             BridgeRequest {
-                source: GenericAccount::Sora(T::AccountIdConverter::convert(source.clone())),
+                source: GenericAccount::Sora(source.clone().into()),
                 dest,
                 asset_id,
                 amount,

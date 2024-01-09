@@ -435,27 +435,6 @@ pub fn liberland_dev_net_coded() -> ChainSpec {
                         hex!("4be870c72a1ac412a5c239d701b5dd62a9e030899943faad55b48eb2c7c9dc2a"),
                         hex!("031b4b72dc354abf2efa3ba17d27907a0ef73de252719e8b5953f568a86eca9a18"),
                     ),
-                    // authority_keys_from_public_keys(
-                    //     hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956"),
-                    //     hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
-                    //     hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
-                    //     hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1"),
-                    //     hex!("03cafa6f45bfad692c66ff5b8b3f24f826802f4dd863b31821fc05832cad3e8389"),
-                    // ),
-                    // authority_keys_from_public_keys(
-                    //     hex!("22a886a8f0a0ddd031518a2bc567585b0046d02d7aacbdb058857b42da40444b"),
-                    //     hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
-                    //     hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
-                    //     hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b"),
-                    //     hex!("0249197248076adbd30b1e162c6ec6517ed552b1f63f1f102efa6fc57c892d4f03"),
-                    // ),
-                    // authority_keys_from_public_keys(
-                    //     hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316"),
-                    //     hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
-                    //     hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
-                    //     hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d"),
-                    //     hex!("026b0e88acde2c1e83b22c1638bd41d4c70464e6b9dc2434a731adc97f3d16c677"),
-                    // ),
                 ],
                 vec![
                     hex!("a63e5398515c405aba87c13b56d344f1a7d32d2226062fac396d58154d45380a").into(),

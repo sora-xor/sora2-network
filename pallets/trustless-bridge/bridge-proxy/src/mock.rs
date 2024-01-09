@@ -364,10 +364,12 @@ impl proxy::Config for Test {
     type ERC20App = ERC20App;
     type ParachainApp = ();
     type HashiBridge = ();
+    type LiberlandApp = ();
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider = ReferencePriceProvider;
     type ManagerOrigin = EnsureRoot<AccountId>;
     type WeightInfo = ();
+    type AccountIdConverter = sp_runtime::traits::Identity;
 }
 
 impl pallet_timestamp::Config for Test {
