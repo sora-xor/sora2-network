@@ -44,11 +44,11 @@ RUN add-apt-repository \
     rm -rf /var/lib/apt/lists/*
 
 # Install rust
-ENV RUST_NIGHTLY_VERSION=nightly-2023-03-21
+ENV RUST_VERSION=1.73.0
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain stable && \
-    rustup toolchain install ${RUST_NIGHTLY_VERSION} && \
+    rustup toolchain install ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown && \
-    rustup target add wasm32-unknown-unknown --toolchain ${RUST_NIGHTLY_VERSION} && \
+    rustup target add wasm32-unknown-unknown --toolchain ${RUST_VERSION} && \
     rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"
 
 RUN curl https://github.com/chevdor/subwasm/releases/download/v0.17.0/subwasm_linux_amd64_v0.17.0.deb -sSL -o subw.deb && \
