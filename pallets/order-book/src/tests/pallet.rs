@@ -33,7 +33,6 @@ use core::cmp::min;
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
-use common::test_utils::assert_last_event;
 use common::{
     balance, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant, VAL, XOR, XSTUSD,
 };
@@ -922,7 +921,7 @@ fn should_emit_event_on_expiration_failure() {
             non_existent_order_id
         ));
         run_to_block(expiration_block);
-        assert_last_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_has_event(
             order_book::Event::ExpirationFailure {
                 order_book_id: non_existent_order_book_id,
                 order_id: non_existent_order_id,
