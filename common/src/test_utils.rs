@@ -56,21 +56,3 @@ macro_rules! assert_noop_msg {
 pub fn init_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
-
-/// TODO replace with:
-/// frame_system::Pallet::<Runtime>::assert_last_event()
-#[deprecated]
-pub fn assert_last_event<T: frame_system::Config>(
-    generic_event: <T as frame_system::Config>::RuntimeEvent,
-) {
-    frame_system::Pallet::<T>::assert_last_event(generic_event);
-}
-
-/// TODO replace with:
-/// frame_system::Pallet::<Runtime>::assert_has_event()
-#[deprecated]
-pub fn assert_event<T: frame_system::Config>(
-    generic_event: <T as frame_system::Config>::RuntimeEvent,
-) {
-    frame_system::Pallet::<T>::assert_has_event(generic_event);
-}
