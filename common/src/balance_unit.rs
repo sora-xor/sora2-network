@@ -221,7 +221,7 @@ impl BalanceUnit {
 
     pub fn into_indivisible(mut self, mode: RoundMode) -> Self {
         if self.is_divisible {
-            let div_coefficient: u128 = 10u128.pow(FixedPrecision::U32.into());
+            let div_coefficient: u128 = 10u128.pow(FixedPrecision::U32);
             self.inner = match mode {
                 RoundMode::Ceil => self.inner.div_ceil(div_coefficient),
                 RoundMode::Floor => self.inner.div_floor(div_coefficient),
@@ -233,7 +233,7 @@ impl BalanceUnit {
 
     pub fn into_divisible(mut self) -> Option<Self> {
         if !self.is_divisible {
-            let div_coefficient: u128 = 10u128.pow(FixedPrecision::U32.into());
+            let div_coefficient: u128 = 10u128.pow(FixedPrecision::U32);
             self.inner = self.inner.checked_mul(div_coefficient)?;
             self.is_divisible = true;
         }
