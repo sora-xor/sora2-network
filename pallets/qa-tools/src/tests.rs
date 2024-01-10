@@ -1060,6 +1060,7 @@ fn should_update_xst_synthetic_base_price() {
             RuntimeOrigin::root(),
             Some(prices),
             vec![],
+            alice(),
         ));
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
@@ -1094,6 +1095,7 @@ fn should_update_xst_synthetic_base_price() {
             RuntimeOrigin::root(),
             Some(prices),
             vec![],
+            alice(),
         ));
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
@@ -1131,6 +1133,7 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
                     },
                 }),
                 vec![],
+                alice(),
             ),
             Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
         );
@@ -1148,6 +1151,7 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
                     },
                 }),
                 vec![],
+                alice(),
             ),
             Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
         );
@@ -1165,6 +1169,7 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
                     },
                 }),
                 vec![],
+                alice(),
             ),
             Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
         );
@@ -1182,6 +1187,7 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
                     },
                 }),
                 vec![],
+                alice(),
             ),
             Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
         );
@@ -1206,6 +1212,7 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
                     },
                 }),
                 vec![],
+                alice(),
             ),
             Err(err_pays_no(Error::<Runtime>::ReferenceAssetPriceNotFound))
         );
@@ -1223,6 +1230,7 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
                     },
                 }),
                 vec![],
+                alice(),
             ),
             Err(err_pays_no(Error::<Runtime>::ReferenceAssetPriceNotFound))
         );
@@ -1241,6 +1249,7 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
                 },
             }),
             vec![],
+            alice(),
         ));
 
         // Now it should work fine
@@ -1263,6 +1272,7 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
                 },
             }),
             vec![],
+            alice(),
         ));
         // check prices
         let reference_buy_per_xor = price_tools::Pallet::<Runtime>::get_average_price(

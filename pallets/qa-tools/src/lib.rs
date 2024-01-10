@@ -31,6 +31,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
+// it was stabilized in 1.70 so should be safe to apply
+#![feature(is_some_and)]
 
 pub use pallet::*;
 
@@ -47,7 +49,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider,
+        DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
@@ -57,7 +59,7 @@ pub mod pallet {
     pub use pallet_tools::order_book::OrderBookFillSettings;
     pub use source_initialization::{
         XSTBaseBuySellInput, XSTBaseInput, XSTBaseXorPrices, XSTReferencePriceInput,
-        XSTSyntheticBasePriceInput, XSTSyntheticPrice, XYKPair,
+        XSTSyntheticBasePriceInput, XSTSyntheticInput, XYKPair,
     };
     use sp_std::prelude::*;
 
@@ -71,6 +73,8 @@ pub mod pallet {
         + pool_xyk::Config
         + xst::Config
         + price_tools::Config
+        + band::Config
+        + oracle_proxy::Config
     {
         type WeightInfo: WeightInfo;
         type AssetInfoProvider: AssetInfoProvider<
@@ -83,7 +87,14 @@ pub mod pallet {
             Description,
         >;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
         type QaToolsWhitelistCapacity: Get<u32>;
+        type Symbol: From<<Self as band::Config>::Symbol>
+            + From<<Self as xst::Config>::Symbol>
+            + Into<<Self as xst::Config>::Symbol>
+            + Into<<Self as band::Config>::Symbol>
+            + Parameter
+            + Ord;
     }
 
     #[pallet::error]
@@ -116,6 +127,10 @@ pub mod pallet {
         BuyLessThanSell,
         /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
         ReferenceAssetPriceNotFound,
+        /// Could not find already existing synthetic.
+        UnknownSynthetic,
+        /// Price is too large to use in band pallet
+        PriceOverflow,
     }
 
     #[pallet::call]
@@ -244,7 +259,8 @@ pub mod pallet {
             })
         }
 
-        /// Initialize xst liquidity source.
+        /// Initialize xst liquidity source. In xst's `quote`, one of the assets is the synthetic base
+        /// (XST) and the other one is a synthetic asset.
         ///
         /// Parameters:
         /// - `origin`: Root
@@ -256,19 +272,20 @@ pub mod pallet {
         pub fn initialize_xst(
             origin: OriginFor<T>,
             base_prices: Option<XSTBaseBuySellInput>,
-            synthetics_prices: Vec<XSTSyntheticPrice>,
+            synthetics_prices: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+            relayer: T::AccountId,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            source_initialization::xst::<T>(base_prices, synthetics_prices).map_err(|e| {
-                DispatchErrorWithPostInfo {
+            source_initialization::xst::<T>(base_prices, synthetics_prices, relayer).map_err(
+                |e| DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
                         pays_fee: Pays::No,
                     },
                     error: e,
-                }
-            })?;
+                },
+            )?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.

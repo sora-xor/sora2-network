@@ -34,10 +34,12 @@ pub mod source_initialization {
     use codec::{Decode, Encode};
     use common::prelude::BalanceUnit;
     use common::{
-        balance, AssetInfoProvider, Balance, DEXInfo, DexIdOf, DexInfoProvider, PriceToolsPallet,
-        PriceVariant, TradingPair, XOR,
+        balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXInfo, DexIdOf,
+        DexInfoProvider, Oracle, PriceToolsPallet, PriceVariant, TradingPair, XOR,
     };
-    use frame_support::dispatch::{DispatchError, DispatchResult, RawOrigin};
+    use frame_support::dispatch::{
+        DispatchError, DispatchResult, DispatchResultWithPostInfo, RawOrigin,
+    };
     use frame_support::ensure;
     use frame_support::traits::Get;
     use frame_system::pallet_prelude::BlockNumberFor;
@@ -45,6 +47,7 @@ pub mod source_initialization {
     use sp_arithmetic::traits::CheckedMul;
     use sp_std::fmt::Debug;
     use sp_std::vec::Vec;
+    use xst::SyntheticInfo;
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
@@ -286,6 +289,18 @@ pub mod source_initialization {
         pub sell: XSTBaseInput,
     }
 
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    #[scale_info(skip_type_params(T))]
+    pub enum XSTSyntheticExistence<Symbol> {
+        AlreadyExists,
+        RegisterNewAsset {
+            symbol: AssetSymbol,
+            name: AssetName,
+            reference_symbol: Symbol,
+            fee_ratio: common::Fixed,
+        },
+    }
+
     /// Buy/sell price discrepancy is determined for all synthetics in `xst` pallet by synthetic
     /// base (XST) asset prices;
     ///
@@ -293,9 +308,12 @@ pub mod source_initialization {
     /// pricing and price provided for the given variant
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
-    pub struct XSTSyntheticPrice {
+    pub struct XSTSyntheticInput<AssetId, Symbol> {
+        pub asset_id: AssetId,
+        // how much DAI per unit of `asset_id`
         pub price: Balance,
-        pub variant: PriceVariant,
+        // pub variant: PriceVariant,
+        pub existence: XSTSyntheticExistence<Symbol>,
     }
 
     fn set_prices_in_price_tools<T: Config>(
@@ -342,9 +360,27 @@ pub mod source_initialization {
         })
     }
 
+    fn relay_symbol<T: Config>(
+        symbol: <T as Config>::Symbol,
+        relayer: T::AccountId,
+        price_band: u64,
+    ) -> DispatchResultWithPostInfo {
+        let symbol = symbol.into();
+        let latest_rate = band::Pallet::<T>::rates(&symbol);
+        let resolve_time = latest_rate.map_or(0, |rate| rate.last_updated + 1);
+        let request_id = latest_rate.map_or(0, |rate| rate.request_id + 1);
+        band::Pallet::<T>::relay(
+            RawOrigin::Signed(relayer).into(),
+            vec![(symbol, price_band)].try_into().unwrap(),
+            resolve_time,
+            request_id,
+        )
+    }
+
     pub fn xst<T: Config + price_tools::Config>(
         base: Option<XSTBaseBuySellInput>,
-        synthetics: Vec<XSTSyntheticPrice>,
+        synthetics: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+        relayer: T::AccountId,
     ) -> DispatchResult {
         if let Some(base_prices) = base {
             let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
@@ -383,6 +419,55 @@ pub mod source_initialization {
                     PriceVariant::Sell,
                 )?;
             }
+        }
+
+        if !band::Pallet::<T>::trusted_relayers().is_some_and(|t| t.contains(&relayer)) {
+            band::Pallet::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])
+                .map_err(|e| e.error)?;
+        };
+        if !oracle_proxy::Pallet::<T>::enabled_oracles().contains(&Oracle::BandChainFeed) {
+            oracle_proxy::Pallet::<T>::enable_oracle(RawOrigin::Root.into(), Oracle::BandChainFeed)
+                .map_err(|e| e.error)?;
+        }
+        for synthetic in synthetics {
+            let synthetic_info = match xst::Pallet::<T>::enabled_synthetics(synthetic.asset_id) {
+                Some(info) => info,
+                None => match synthetic.existence {
+                    XSTSyntheticExistence::AlreadyExists => {
+                        return Err(Error::<T>::UnknownSynthetic.into())
+                    }
+                    XSTSyntheticExistence::RegisterNewAsset {
+                        symbol,
+                        name,
+                        reference_symbol,
+                        fee_ratio,
+                    } => {
+                        let reference_symbol: <T as xst::Config>::Symbol =
+                            reference_symbol.clone().into();
+                        xst::Pallet::<T>::register_synthetic_asset(
+                            RawOrigin::Root.into(),
+                            symbol,
+                            name,
+                            reference_symbol.clone(),
+                            fee_ratio.clone(),
+                        )
+                        .map_err(|e| e.error)?;
+                        SyntheticInfo {
+                            reference_symbol,
+                            fee_ratio,
+                        }
+                    }
+                },
+            };
+            relay_symbol::<T>(
+                synthetic_info.reference_symbol.into(),
+                relayer.clone(),
+                synthetic
+                    .price
+                    .try_into()
+                    .map_err(|_| Error::<T>::PriceOverflow)?,
+            )
+            .map_err(|e| e.error)?;
         }
         Ok(())
     }

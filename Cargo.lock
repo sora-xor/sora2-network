@@ -9391,11 +9391,13 @@ name = "qa-tools"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "band",
  "common",
  "frame-support",
  "frame-system",
  "framenode-chain-spec",
  "framenode-runtime",
+ "oracle-proxy",
  "order-book",
  "parity-scale-codec",
  "pool-xyk",

@@ -120,9 +120,9 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
 #[derive(RuntimeDebug, Clone, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct SyntheticInfo<Symbol> {
-    reference_symbol: Symbol,
+    pub reference_symbol: Symbol,
     /// Fee ratio. 1 = 100%
-    fee_ratio: Fixed,
+    pub fee_ratio: Fixed,
 }
 
 #[frame_support::pallet]

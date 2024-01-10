@@ -24,6 +24,8 @@ sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 assets = { path = "../assets", default-features = false }
+band = { path = "../band", default-features = false }
+oracle-proxy = { path = "../oracle-proxy", default-features = false }
 order-book = { path = "../order-book", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 price-tools = { path = "../price-tools", default-features = false }

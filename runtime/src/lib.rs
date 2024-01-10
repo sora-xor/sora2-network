@@ -1464,8 +1464,10 @@ parameter_types! {
 impl qa_tools::Config for Runtime {
     type AssetInfoProvider = Assets;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type SyntheticInfoProvider = XSTPool;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
+    type Symbol = <Runtime as band::Config>::Symbol;
 }
 
 parameter_types! {
