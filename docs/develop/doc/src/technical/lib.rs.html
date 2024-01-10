@@ -691,7 +691,7 @@
         assets::Pallet::&lt;T&gt;::mint_to(asset, <span class="kw-2">&amp;</span>account_id, <span class="kw-2">&amp;</span>account_id, amount)
     }
 
-    <span class="doccomment">/// Burn specific asset from the given `TechAccountId`.
+    <span class="doccomment">/// Returns total balance for asset from the given `TechAccountId`.
     </span><span class="kw">pub fn </span>total_balance(
         asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         tech_id: <span class="kw-2">&amp;</span>T::TechAccountId,
@@ -726,8 +726,8 @@
             + From&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
 
         <span class="doccomment">/// Like AccountId but controlled by consensus, not signing by user.
-        /// This extra traits exist here bacause no way to do it by constraints, problem exist with
-        /// constraints and substrate macroses, and place this traits here is solution.
+        /// This extra traits exist here because no way to do it by constraints, problem exist with
+        /// constraints and substrate macros, and place this traits here is solution.
         </span><span class="kw">type </span>TechAccountId: Ord
             + Member
             + Parameter
