@@ -4,9 +4,9 @@ def pipeline = new org.docker.AppPipeline(steps: this,
     dockerImageName:              'sora2/env',
     dockerRegistryCred:           'bot-sora2-rw',
     dockerFileName:               "housekeeping/docker/env/Dockerfile",
-    triggerCommonBuildExpression: (env.BRANCH_NAME in ['develop', 'master']),
+    // triggerCommonBuildExpression: (env.BRANCH_NAME in ['develop', 'master']),
     triggerCommonBuildGrepRegex:  'housekeeping',
     secretScannerExclusion:       '.*Cargo.toml',
     nameCI:                       'env-CI',
-    dockerImageTags:              ['master': 'env', 'develop': 'env'])
+    dockerImageTags:              ['master': 'env', 'develop': 'env', 'feature/dops-2942': 'env'])
 pipeline.runPipeline()
