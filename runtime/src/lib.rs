@@ -2136,7 +2136,12 @@ impl bridge_proxy::Config for Runtime {
 
     type HashiBridge = EthBridge;
     type ParachainApp = ParachainBridgeApp;
+
+    #[cfg(feature = "wip")]
     type LiberlandApp = LiberlandBridgeApp;
+    #[cfg(not(feature = "wip"))]
+    type LiberlandApp = ();
+
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
