@@ -1337,8 +1337,6 @@ fn euro_init_input<T: qa_tools::Config>(
 #[test]
 fn should_update_xst_synthetic_price() {
     ext().execute_with(|| {
-        // DAI
-        let reference_asset_id = xst::ReferenceAssetId::<Runtime>::get();
         // XST
         let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
 
@@ -1363,10 +1361,46 @@ fn should_update_xst_synthetic_price() {
         ));
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
-            &XST,
+            &synthetic_base_asset_id,
             &euro_init.asset_id,
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: balance!(1),
+            },
+            false,
+        )
+        .unwrap();
+        assert_eq!(quote_result.amount, balance!(1));
+        assert_eq!(quote_result.fee, 0);
+        let (quote_result, _) = xst::Pallet::<Runtime>::quote(
+            &DEXId::Polkaswap.into(),
+            &synthetic_base_asset_id,
+            &euro_init.asset_id,
+            QuoteAmount::WithDesiredOutput {
+                desired_amount_out: balance!(1),
+            },
+            false,
+        )
+        .unwrap();
+        assert_eq!(quote_result.amount, balance!(1));
+        assert_eq!(quote_result.fee, 0);
+        let (quote_result, _) = xst::Pallet::<Runtime>::quote(
+            &DEXId::Polkaswap.into(),
+            &euro_init.asset_id,
+            &synthetic_base_asset_id,
+            QuoteAmount::WithDesiredInput {
+                desired_amount_in: balance!(1),
+            },
+            false,
+        )
+        .unwrap();
+        assert_eq!(quote_result.amount, balance!(1));
+        assert_eq!(quote_result.fee, 0);
+        let (quote_result, _) = xst::Pallet::<Runtime>::quote(
+            &DEXId::Polkaswap.into(),
+            &euro_init.asset_id,
+            &synthetic_base_asset_id,
+            QuoteAmount::WithDesiredOutput {
+                desired_amount_out: balance!(1),
             },
             false,
         )
