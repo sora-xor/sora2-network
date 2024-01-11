@@ -132,8 +132,6 @@ pub mod pallet {
         AssetAlreadyExists,
         /// Could not find already existing synthetic.
         UnknownSynthetic,
-        /// Price is too large to use in band pallet
-        PriceOverflow,
     }
 
     #[pallet::call]
