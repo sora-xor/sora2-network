@@ -59,7 +59,7 @@ pub mod pallet {
     pub use pallet_tools::order_book::OrderBookFillSettings;
     pub use source_initialization::{
         XSTBaseBuySellInput, XSTBaseInput, XSTBaseXorPrices, XSTReferencePriceInput,
-        XSTSyntheticBasePriceInput, XSTSyntheticInput, XYKPair,
+        XSTSyntheticBasePriceInput, XSTSyntheticExistence, XSTSyntheticInput, XYKPair,
     };
     use sp_std::prelude::*;
 
@@ -93,6 +93,7 @@ pub mod pallet {
             + From<<Self as xst::Config>::Symbol>
             + Into<<Self as xst::Config>::Symbol>
             + Into<<Self as band::Config>::Symbol>
+            + From<common::SymbolName>
             + Parameter
             + Ord;
     }
@@ -127,6 +128,8 @@ pub mod pallet {
         BuyLessThanSell,
         /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
         ReferenceAssetPriceNotFound,
+        /// Cannot register new asset because it already exists.
+        AssetAlreadyExists,
         /// Could not find already existing synthetic.
         UnknownSynthetic,
         /// Price is too large to use in band pallet

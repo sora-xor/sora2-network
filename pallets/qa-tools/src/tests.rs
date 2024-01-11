@@ -34,10 +34,11 @@
 use assets::AssetIdOf;
 use common::prelude::{err_pays_no, BalanceUnit, QuoteAmount};
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, LiquiditySource,
-    PredefinedAssetId, PriceVariant, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
+    balance, fixed, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, LiquiditySource,
+    PredefinedAssetId, PriceVariant, SymbolName, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
-use frame_support::pallet_prelude::DispatchResult;
+use core::str::FromStr;
+use frame_support::dispatch::{Pays, PostDispatchInfo};
 use frame_support::traits::Hooks;
 use frame_support::{assert_err, assert_ok};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -48,7 +49,7 @@ use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, Order
 use qa_tools::pallet::XYKPair;
 use qa_tools::{
     settings, Error, XSTBaseBuySellInput, XSTBaseInput, XSTBaseXorPrices, XSTReferencePriceInput,
-    XSTSyntheticBasePriceInput,
+    XSTSyntheticBasePriceInput, XSTSyntheticExistence, XSTSyntheticInput,
 };
 use sp_runtime::traits::{BadOrigin, CheckedDiv, CheckedMul, One};
 use sp_runtime::DispatchErrorWithPostInfo;
@@ -1309,5 +1310,85 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
             .unwrap(),
             *synthetic_base_sell_per_xor.balance()
         );
+    })
+}
+
+fn euro_init_input<T: qa_tools::Config>(
+    price: Balance,
+) -> XSTSyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol> {
+    let symbol_name =
+        SymbolName::from_str("EURO").expect("Failed to parse `symbol_name` as a symbol name");
+    let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&symbol_name);
+    let symbol = AssetSymbol("XSTEUR".into());
+    let name = AssetName("XST Euro".into());
+    let fee_ratio = fixed!(0);
+    XSTSyntheticInput {
+        asset_id: asset_id.into(),
+        price,
+        existence: XSTSyntheticExistence::RegisterNewAsset {
+            symbol,
+            name,
+            reference_symbol: symbol_name.into(),
+            fee_ratio,
+        },
+    }
+}
+
+#[test]
+fn should_update_xst_synthetic_price() {
+    ext().execute_with(|| {
+        // DAI
+        let reference_asset_id = xst::ReferenceAssetId::<Runtime>::get();
+        // XST
+        let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
+
+        // simple for calculations, even though quite unrealistic
+        let prices = XSTBaseBuySellInput {
+            buy: XSTBaseInput {
+                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
+                reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+            },
+            sell: XSTBaseInput {
+                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
+                reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+            },
+        };
+
+        let euro_init = euro_init_input::<Runtime>(10u128.pow(9));
+        assert_ok!(QAToolsPallet::initialize_xst(
+            RuntimeOrigin::root(),
+            Some(prices),
+            vec![euro_init.clone()],
+            alice(),
+        ));
+        let (quote_result, _) = xst::Pallet::<Runtime>::quote(
+            &DEXId::Polkaswap.into(),
+            &XST,
+            &euro_init.asset_id,
+            QuoteAmount::WithDesiredInput {
+                desired_amount_in: balance!(1),
+            },
+            false,
+        )
+        .unwrap();
+        assert_eq!(quote_result.amount, balance!(1));
+        assert_eq!(quote_result.fee, 0);
+
+        let prices = XSTBaseBuySellInput {
+            buy: XSTBaseInput {
+                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(3)),
+                reference: XSTReferencePriceInput::ReferencePerXor(balance!(5)),
+            },
+            sell: XSTBaseInput {
+                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
+                reference: XSTReferencePriceInput::ReferencePerXor(balance!(2)),
+            },
+        };
+        assert_ok!(QAToolsPallet::initialize_xst(
+            RuntimeOrigin::root(),
+            Some(prices),
+            vec![],
+            alice(),
+        ));
     })
 }

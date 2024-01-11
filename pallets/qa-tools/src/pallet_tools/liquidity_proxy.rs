@@ -430,44 +430,55 @@ pub mod source_initialization {
                 .map_err(|e| e.error)?;
         }
         for synthetic in synthetics {
-            let synthetic_info = match xst::Pallet::<T>::enabled_synthetics(synthetic.asset_id) {
-                Some(info) => info,
-                None => match synthetic.existence {
-                    XSTSyntheticExistence::AlreadyExists => {
-                        return Err(Error::<T>::UnknownSynthetic.into())
-                    }
+            match (
+                xst::Pallet::<T>::enabled_synthetics(synthetic.asset_id),
+                synthetic.existence,
+            ) {
+                (Some(info), XSTSyntheticExistence::AlreadyExists) => {
+                    relay_symbol::<T>(
+                        info.reference_symbol.into(),
+                        relayer.clone(),
+                        synthetic
+                            .price
+                            .try_into()
+                            .map_err(|_| Error::<T>::PriceOverflow)?,
+                    )
+                    .map_err(|e| e.error)?;
+                }
+                (
+                    None,
                     XSTSyntheticExistence::RegisterNewAsset {
                         symbol,
                         name,
                         reference_symbol,
                         fee_ratio,
-                    } => {
-                        let reference_symbol: <T as xst::Config>::Symbol =
-                            reference_symbol.clone().into();
-                        xst::Pallet::<T>::register_synthetic_asset(
-                            RawOrigin::Root.into(),
-                            symbol,
-                            name,
-                            reference_symbol.clone(),
-                            fee_ratio.clone(),
-                        )
-                        .map_err(|e| e.error)?;
-                        SyntheticInfo {
-                            reference_symbol,
-                            fee_ratio,
-                        }
-                    }
-                },
-            };
-            relay_symbol::<T>(
-                synthetic_info.reference_symbol.into(),
-                relayer.clone(),
-                synthetic
-                    .price
-                    .try_into()
-                    .map_err(|_| Error::<T>::PriceOverflow)?,
-            )
-            .map_err(|e| e.error)?;
+                    },
+                ) => {
+                    relay_symbol::<T>(
+                        reference_symbol.clone(),
+                        relayer.clone(),
+                        synthetic
+                            .price
+                            .try_into()
+                            .map_err(|_| Error::<T>::PriceOverflow)?,
+                    )
+                    .map_err(|e| e.error)?;
+                    xst::Pallet::<T>::register_synthetic_asset(
+                        RawOrigin::Root.into(),
+                        symbol,
+                        name,
+                        reference_symbol.into(),
+                        fee_ratio.clone(),
+                    )
+                    .map_err(|e| e.error)?;
+                }
+                (Some(info), XSTSyntheticExistence::RegisterNewAsset { .. }) => {
+                    return Err(Error::<T>::AssetAlreadyExists.into())
+                }
+                (None, XSTSyntheticExistence::AlreadyExists) => {
+                    return Err(Error::<T>::UnknownSynthetic.into())
+                }
+            }
         }
         Ok(())
     }
