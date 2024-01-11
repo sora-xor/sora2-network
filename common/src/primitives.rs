@@ -428,9 +428,9 @@ impl From<Vec<u8>> for AssetSymbol {
     }
 }
 
-impl Into<Vec<u8>> for AssetSymbol {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<AssetSymbol> for Vec<u8> {
+    fn from(value: AssetSymbol) -> Self {
+        value.0
     }
 }
 
@@ -486,9 +486,9 @@ impl From<Vec<u8>> for AssetName {
     }
 }
 
-impl Into<Vec<u8>> for AssetName {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<AssetName> for Vec<u8> {
+    fn from(value: AssetName) -> Self {
+        value.0
     }
 }
 
