@@ -47,7 +47,6 @@ pub mod source_initialization {
     use sp_arithmetic::traits::CheckedMul;
     use sp_std::fmt::Debug;
     use sp_std::vec::Vec;
-    use xst::SyntheticInfo;
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
@@ -85,8 +84,8 @@ pub mod source_initialization {
             })
         } else if asset_b == dex_info.base_asset_id {
             Some(TradingPair {
-                base_asset_id: asset_a,
-                target_asset_id: asset_b,
+                base_asset_id: asset_b,
+                target_asset_id: asset_a,
             })
         } else {
             None
@@ -468,11 +467,11 @@ pub mod source_initialization {
                         symbol,
                         name,
                         reference_symbol.into(),
-                        fee_ratio.clone(),
+                        fee_ratio,
                     )
                     .map_err(|e| e.error)?;
                 }
-                (Some(info), XSTSyntheticExistence::RegisterNewAsset { .. }) => {
+                (Some(_), XSTSyntheticExistence::RegisterNewAsset { .. }) => {
                     return Err(Error::<T>::AssetAlreadyExists.into())
                 }
                 (None, XSTSyntheticExistence::AlreadyExists) => {
