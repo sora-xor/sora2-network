@@ -7,4 +7,10 @@ export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
 cargo test --features private-net,ready-to-test,wip
 
 grcov . --binary-path ./target/debug -s . -t html --branch -o ./cobertura_report --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src"
+
+# Check coverage errors
+if [ $? -eq 1 ]; then
+    exit 1
+fi
+
 find . -type f -name '*.profraw' -delete
