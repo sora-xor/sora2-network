@@ -310,7 +310,7 @@ pub mod source_initialization {
     pub struct XSTSyntheticInput<AssetId, Symbol> {
         pub asset_id: AssetId,
         /// how much DAI per unit of `asset_id`. Note that precision is 10^9, as used by band team.
-        pub price: u64,
+        pub price_reference_per_asset: u64,
         // pub variant: PriceVariant,
         pub existence: XSTSyntheticExistence<Symbol>,
     }
@@ -437,7 +437,7 @@ pub mod source_initialization {
                     relay_symbol::<T>(
                         info.reference_symbol.into(),
                         relayer.clone(),
-                        synthetic.price,
+                        synthetic.price_reference_per_asset,
                     )
                     .map_err(|e| e.error)?;
                 }
@@ -450,8 +450,12 @@ pub mod source_initialization {
                         fee_ratio,
                     },
                 ) => {
-                    relay_symbol::<T>(reference_symbol.clone(), relayer.clone(), synthetic.price)
-                        .map_err(|e| e.error)?;
+                    relay_symbol::<T>(
+                        reference_symbol.clone(),
+                        relayer.clone(),
+                        synthetic.price_reference_per_asset,
+                    )
+                    .map_err(|e| e.error)?;
                     xst::Pallet::<T>::register_synthetic_asset(
                         RawOrigin::Root.into(),
                         symbol,
