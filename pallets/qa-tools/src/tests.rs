@@ -48,10 +48,9 @@ use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use qa_tools::pallet::XYKPair;
 use qa_tools::{
-    settings, Error, XSTBaseBuySellInput, XSTBaseInput, XSTBaseXorPrices, XSTReferencePriceInput,
-    XSTSyntheticBasePriceInput, XSTSyntheticExistence, XSTSyntheticInput,
+    settings, Error, XSTBaseInput, XSTBaseSideInput, XSTSyntheticExistence, XSTSyntheticInput,
 };
-use sp_runtime::traits::{BadOrigin, CheckedDiv, CheckedMul, One};
+use sp_runtime::traits::{BadOrigin, One};
 use sp_runtime::DispatchErrorWithPostInfo;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
@@ -1000,61 +999,19 @@ fn should_update_xst_synthetic_base_price() {
         // XST
         let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
 
-        fn calculate_avg_buy_sell(prices: &XSTBaseBuySellInput) -> (BalanceUnit, BalanceUnit) {
-            // we need exact prices for 1 xor to account for some possible inaccuracies
-            fn get_prices_for_xor(side_prices: &XSTBaseInput) -> XSTBaseXorPrices {
-                let reference_per_xor = match side_prices.reference {
-                    XSTReferencePriceInput::ReferencePerXor(p) => p,
-                    XSTReferencePriceInput::None => panic!("can't calculate for this enum variant"),
-                };
-                let synthetic_base_per_xor = match side_prices.synthetic_base {
-                    XSTSyntheticBasePriceInput::BasePerXor(p) => p,
-                    XSTSyntheticBasePriceInput::BasePerReference(synthetic_base_per_reference) => {
-                        let synthetic_base_per_xor =
-                            BalanceUnit::divisible(synthetic_base_per_reference)
-                                * BalanceUnit::divisible(reference_per_xor);
-                        *synthetic_base_per_xor.balance()
-                    }
-                };
-                XSTBaseXorPrices {
-                    synthetic_base: synthetic_base_per_xor,
-                    reference: reference_per_xor,
-                }
-            }
-            let prices_buy_for_xor = get_prices_for_xor(&prices.buy);
-            let prices_sell_for_xor = get_prices_for_xor(&prices.sell);
-
-            // (synthetic -buy-> reference) = (synthetic -buy-> xor) * (xor -buy-> reference) =
-            // = 1 / (xor -sell-> synthetic) * (xor -buy-> reference)
-            let expected_avg_buy = BalanceUnit::one()
-                .checked_div(&BalanceUnit::divisible(prices_sell_for_xor.synthetic_base))
-                .unwrap()
-                .checked_mul(&BalanceUnit::divisible(prices_buy_for_xor.reference))
-                .unwrap();
-            // (synthetic -sell-> reference) = (synthetic -sell-> xor) * (xor -sell-> reference) =
-            // = 1 / (xor -buy-> synthetic) * (xor -sell-> reference)
-            let expected_avg_sell = BalanceUnit::one()
-                .checked_div(&BalanceUnit::divisible(prices_buy_for_xor.synthetic_base))
-                .unwrap()
-                .checked_mul(&BalanceUnit::divisible(prices_sell_for_xor.reference))
-                .unwrap();
-            (expected_avg_buy, expected_avg_sell)
-        }
-
-        let prices = XSTBaseBuySellInput {
-            buy: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(3)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(5)),
+        let prices = XSTBaseInput {
+            buy: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(3),
+                reference_per_xor: Some(balance!(5)),
             },
-            sell: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(2)),
+            sell: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(1),
+                reference_per_xor: Some(balance!(2)),
             },
         };
-        let (expected_avg_buy, expected_avg_sell) = calculate_avg_buy_sell(&prices);
         assert_ok!(QAToolsPallet::initialize_xst(
             RuntimeOrigin::root(),
-            Some(prices),
+            Some(prices.clone()),
             vec![],
             alice(),
         ));
@@ -1064,7 +1021,7 @@ fn should_update_xst_synthetic_base_price() {
                 &reference_asset_id,
                 PriceVariant::Buy
             ),
-            Ok(*expected_avg_buy.balance())
+            Ok(prices.buy.reference_per_synthetic_base)
         );
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
@@ -1072,24 +1029,23 @@ fn should_update_xst_synthetic_base_price() {
                 &reference_asset_id,
                 PriceVariant::Sell
             ),
-            Ok(*expected_avg_sell.balance())
+            Ok(prices.sell.reference_per_synthetic_base)
         );
 
         // quite unrealistic but should be legal
-        let prices = XSTBaseBuySellInput {
-            buy: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+        let prices = XSTBaseInput {
+            buy: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(1),
+                reference_per_xor: Some(balance!(1)),
             },
-            sell: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+            sell: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(1),
+                reference_per_xor: Some(balance!(1)),
             },
         };
-        let (expected_avg_buy, expected_avg_sell) = calculate_avg_buy_sell(&prices);
         assert_ok!(QAToolsPallet::initialize_xst(
             RuntimeOrigin::root(),
-            Some(prices),
+            Some(prices.clone()),
             vec![],
             alice(),
         ));
@@ -1099,7 +1055,7 @@ fn should_update_xst_synthetic_base_price() {
                 &reference_asset_id,
                 PriceVariant::Buy
             ),
-            Ok(*expected_avg_buy.balance())
+            Ok(prices.buy.reference_per_synthetic_base)
         );
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
@@ -1107,7 +1063,7 @@ fn should_update_xst_synthetic_base_price() {
                 &reference_asset_id,
                 PriceVariant::Sell
             ),
-            Ok(*expected_avg_sell.balance())
+            Ok(prices.sell.reference_per_synthetic_base)
         );
     })
 }
@@ -1118,32 +1074,14 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
         assert_eq!(
             QAToolsPallet::initialize_xst(
                 RuntimeOrigin::root(),
-                Some(XSTBaseBuySellInput {
-                    buy: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                        reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+                Some(XSTBaseInput {
+                    buy: XSTBaseSideInput {
+                        reference_per_synthetic_base: balance!(1),
+                        reference_per_xor: Some(balance!(1)),
                     },
-                    sell: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1.1)),
-                        reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
-                    },
-                }),
-                vec![],
-                alice(),
-            ),
-            Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
-        );
-        assert_eq!(
-            QAToolsPallet::initialize_xst(
-                RuntimeOrigin::root(),
-                Some(XSTBaseBuySellInput {
-                    buy: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                        reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
-                    },
-                    sell: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                        reference: XSTReferencePriceInput::ReferencePerXor(balance!(1.1)),
+                    sell: XSTBaseSideInput {
+                        reference_per_synthetic_base: balance!(1.1),
+                        reference_per_xor: Some(balance!(1)),
                     },
                 }),
                 vec![],
@@ -1154,32 +1092,14 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
         assert_eq!(
             QAToolsPallet::initialize_xst(
                 RuntimeOrigin::root(),
-                Some(XSTBaseBuySellInput {
-                    buy: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerXor(balance!(1)),
-                        reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+                Some(XSTBaseInput {
+                    buy: XSTBaseSideInput {
+                        reference_per_synthetic_base: balance!(1),
+                        reference_per_xor: Some(balance!(1)),
                     },
-                    sell: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerXor(balance!(1)),
-                        reference: XSTReferencePriceInput::ReferencePerXor(balance!(1.1)),
-                    },
-                }),
-                vec![],
-                alice(),
-            ),
-            Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
-        );
-        assert_eq!(
-            QAToolsPallet::initialize_xst(
-                RuntimeOrigin::root(),
-                Some(XSTBaseBuySellInput {
-                    buy: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerXor(balance!(1)),
-                        reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
-                    },
-                    sell: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerXor(balance!(1.1)),
-                        reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+                    sell: XSTBaseSideInput {
+                        reference_per_synthetic_base: balance!(1),
+                        reference_per_xor: Some(balance!(1.1)),
                     },
                 }),
                 vec![],
@@ -1197,14 +1117,14 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
         assert_eq!(
             QAToolsPallet::initialize_xst(
                 RuntimeOrigin::root(),
-                Some(XSTBaseBuySellInput {
-                    buy: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                        reference: XSTReferencePriceInput::None,
+                Some(XSTBaseInput {
+                    buy: XSTBaseSideInput {
+                        reference_per_synthetic_base: balance!(1),
+                        reference_per_xor: Some(balance!(1)),
                     },
-                    sell: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                        reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+                    sell: XSTBaseSideInput {
+                        reference_per_synthetic_base: balance!(1),
+                        reference_per_xor: Some(balance!(1)),
                     },
                 }),
                 vec![],
@@ -1215,14 +1135,14 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
         assert_eq!(
             QAToolsPallet::initialize_xst(
                 RuntimeOrigin::root(),
-                Some(XSTBaseBuySellInput {
-                    buy: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                        reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+                Some(XSTBaseInput {
+                    buy: XSTBaseSideInput {
+                        reference_per_synthetic_base: balance!(1),
+                        reference_per_xor: Some(balance!(1)),
                     },
-                    sell: XSTBaseInput {
-                        synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                        reference: XSTReferencePriceInput::None,
+                    sell: XSTBaseSideInput {
+                        reference_per_synthetic_base: balance!(1),
+                        reference_per_xor: None,
                     },
                 }),
                 vec![],
@@ -1234,14 +1154,14 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
         // Initialize the reference asset
         assert_ok!(QAToolsPallet::initialize_xst(
             RuntimeOrigin::root(),
-            Some(XSTBaseBuySellInput {
-                buy: XSTBaseInput {
-                    synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(3)),
-                    reference: XSTReferencePriceInput::ReferencePerXor(balance!(5)),
+            Some(XSTBaseInput {
+                buy: XSTBaseSideInput {
+                    reference_per_synthetic_base: balance!(3),
+                    reference_per_xor: Some(balance!(5)),
                 },
-                sell: XSTBaseInput {
-                    synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                    reference: XSTReferencePriceInput::ReferencePerXor(balance!(2)),
+                sell: XSTBaseSideInput {
+                    reference_per_synthetic_base: balance!(1),
+                    reference_per_xor: Some(balance!(2)),
                 },
             }),
             vec![],
@@ -1253,18 +1173,14 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
             (balance!(11), balance!(7));
         assert_ok!(QAToolsPallet::initialize_xst(
             RuntimeOrigin::root(),
-            Some(XSTBaseBuySellInput {
-                buy: XSTBaseInput {
-                    synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(
-                        synthetic_base_buy_per_reference
-                    ),
-                    reference: XSTReferencePriceInput::None,
+            Some(XSTBaseInput {
+                buy: XSTBaseSideInput {
+                    reference_per_synthetic_base: synthetic_base_buy_per_reference,
+                    reference_per_xor: None,
                 },
-                sell: XSTBaseInput {
-                    synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(
-                        synthetic_base_sell_per_reference
-                    ),
-                    reference: XSTReferencePriceInput::None,
+                sell: XSTBaseSideInput {
+                    reference_per_synthetic_base: synthetic_base_sell_per_reference,
+                    reference_per_xor: None,
                 },
             }),
             vec![],
@@ -1336,14 +1252,14 @@ fn should_init_xst_synthetic_price_unit_prices() {
         let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
 
         // simple for calculations, even though quite unrealistic
-        let prices = XSTBaseBuySellInput {
-            buy: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+        let prices = XSTBaseInput {
+            buy: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(1),
+                reference_per_xor: Some(balance!(1)),
             },
-            sell: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+            sell: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(1),
+                reference_per_xor: Some(balance!(1)),
             },
         };
 
@@ -1403,14 +1319,14 @@ fn should_init_xst_synthetic_price_unit_prices() {
         assert_eq!(quote_result.amount, balance!(1));
         assert_eq!(quote_result.fee, 0);
 
-        let prices = XSTBaseBuySellInput {
-            buy: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(3)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(5)),
+        let prices = XSTBaseInput {
+            buy: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(3),
+                reference_per_xor: Some(balance!(5)),
             },
-            sell: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(2)),
+            sell: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(1),
+                reference_per_xor: Some(balance!(2)),
             },
         };
         assert_ok!(QAToolsPallet::initialize_xst(
@@ -1430,14 +1346,14 @@ fn should_init_xst_synthetic_price_various_prices() {
 
         let main_per_ref_buy = balance!(5);
         let main_per_ref_sell = balance!(2);
-        let prices = XSTBaseBuySellInput {
-            buy: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(main_per_ref_buy),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(7)),
+        let prices = XSTBaseInput {
+            buy: XSTBaseSideInput {
+                reference_per_synthetic_base: main_per_ref_buy,
+                reference_per_xor: Some(balance!(7)),
             },
-            sell: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(main_per_ref_sell),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(3)),
+            sell: XSTBaseSideInput {
+                reference_per_synthetic_base: main_per_ref_sell,
+                reference_per_xor: Some(balance!(3)),
             },
         };
 
@@ -1471,6 +1387,8 @@ fn should_init_xst_synthetic_price_various_prices() {
                 * BalanceUnit::divisible(
                     euro_init.price_reference_per_asset as u128 * 10u128.pow(9),
                 ));
+        dbg!(main_per_ref_sell);
+        dbg!(euro_init.price_reference_per_asset as u128 * 10u128.pow(9));
         assert_eq!(quote_result.amount, *expected_out.balance());
         assert_eq!(quote_result.fee, 0);
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
@@ -1552,14 +1470,14 @@ fn should_update_xst_synthetic_price() {
         let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
 
         // Some initial values
-        let prices = XSTBaseBuySellInput {
-            buy: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(3)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(5)),
+        let prices = XSTBaseInput {
+            buy: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(3),
+                reference_per_xor: Some(balance!(5)),
             },
-            sell: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(2)),
+            sell: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(1),
+                reference_per_xor: Some(balance!(2)),
             },
         };
         let euro_init = euro_init_input::<Runtime>(123 * 10u64.pow(9));
@@ -1571,14 +1489,14 @@ fn should_update_xst_synthetic_price() {
         ));
 
         // correctly updates prices
-        let prices = XSTBaseBuySellInput {
-            buy: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+        let prices = XSTBaseInput {
+            buy: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(1),
+                reference_per_xor: Some(balance!(1)),
             },
-            sell: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(1)),
+            sell: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(1),
+                reference_per_xor: Some(balance!(1)),
             },
         };
 
@@ -1642,14 +1560,14 @@ fn should_update_xst_synthetic_price() {
         assert_eq!(quote_result.amount, balance!(1));
         assert_eq!(quote_result.fee, 0);
 
-        let prices = XSTBaseBuySellInput {
-            buy: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(3)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(5)),
+        let prices = XSTBaseInput {
+            buy: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(3),
+                reference_per_xor: Some(balance!(5)),
             },
-            sell: XSTBaseInput {
-                synthetic_base: XSTSyntheticBasePriceInput::BasePerReference(balance!(1)),
-                reference: XSTReferencePriceInput::ReferencePerXor(balance!(2)),
+            sell: XSTBaseSideInput {
+                reference_per_synthetic_base: balance!(1),
+                reference_per_xor: Some(balance!(2)),
             },
         };
         assert_ok!(QAToolsPallet::initialize_xst(
