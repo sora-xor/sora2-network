@@ -3,7 +3,7 @@
 export RUSTFLAGS="-Cinstrument-coverage"
 export SKIP_WASM_BUILD=1
 export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
-profraw=$(find . -name '*.profraw')
+profraw=$(find . -type f -name '*.profraw')
 
 cargo test --features private-net,ready-to-test,wip
 
@@ -16,4 +16,4 @@ if [ $? -eq 1 ]; then
     exit 1
 fi
 
-find . -type f -name '*.profraw' -delete
+#find . -type f -name '*.profraw' -delete
