@@ -247,10 +247,27 @@ pub mod source_initialization {
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
     pub enum XSTSyntheticBasePriceInput {
-        /// How much synthetic base per 1 XOR
+        // TODO: probably remove this variant
+        /// How much synthetic base per 1 XOR. It can be complex to figure out the result,
+        /// so it's preferable to use `BasePerReference`, because it better represents the
+        /// values used in `quote` price calculation
+        ///
+        /// Price in reference asset will be:
+        /// ```text
+        /// (synthetic -buy-> reference) = (synthetic -buy-> xor) * (xor -buy-> reference) =
+        /// = 1 / (xor -sell-> synthetic) * (xor -buy-> reference)
+        /// ```
+        /// or
+        /// ```text
+        /// (synthetic -sell-> reference) = (synthetic -sell-> xor) * (xor -sell-> reference) =
+        /// = 1 / (xor -buy-> synthetic) * (xor -sell-> reference)
+        /// ```
         BasePerXor(Balance),
-        /// How much synthetic base per 1 reference asset
-        BasePerReference(Balance),
+        /// How much reference per 1 synthetic base asset
+        ///
+        /// Prices in price tools are set so that `get_average_price` for
+        /// `(synthetic -buy/sell-> reference)` is equal to this value.
+        ReferencePerBase(Balance),
     }
 
     /// Price with 10^18 precision
@@ -347,9 +364,10 @@ pub mod source_initialization {
         };
         let synthetic_base_per_xor = match input_price.synthetic_base {
             XSTSyntheticBasePriceInput::BasePerXor(p) => p,
-            XSTSyntheticBasePriceInput::BasePerReference(synthetic_base_per_reference) => {
-                let synthetic_base_per_xor = BalanceUnit::divisible(synthetic_base_per_reference)
-                    * BalanceUnit::divisible(reference_per_xor);
+            XSTSyntheticBasePriceInput::ReferencePerBase(reference_per_synthetic_base) => {
+                // todo: fix mixed buy/sell prices here
+                let synthetic_base_per_xor = BalanceUnit::divisible(reference_per_xor)
+                    / BalanceUnit::divisible(reference_per_synthetic_base);
                 *synthetic_base_per_xor.balance()
             }
         };
