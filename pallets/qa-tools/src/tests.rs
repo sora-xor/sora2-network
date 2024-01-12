@@ -991,24 +991,13 @@ fn should_not_initialize_existing_xyk_pool() {
     })
 }
 
-#[test]
-fn should_update_xst_synthetic_base_price() {
+fn test_init_xst_synthetic_base_price(prices: XSTBaseInput) {
     ext().execute_with(|| {
         // DAI
         let reference_asset_id = xst::ReferenceAssetId::<Runtime>::get();
         // XST
         let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
 
-        let prices = XSTBaseInput {
-            buy: XSTBaseSideInput {
-                reference_per_synthetic_base: balance!(3),
-                reference_per_xor: Some(balance!(5)),
-            },
-            sell: XSTBaseSideInput {
-                reference_per_synthetic_base: balance!(1),
-                reference_per_xor: Some(balance!(2)),
-            },
-        };
         assert_ok!(QAToolsPallet::initialize_xst(
             RuntimeOrigin::root(),
             Some(prices.clone()),
@@ -1031,41 +1020,33 @@ fn should_update_xst_synthetic_base_price() {
             ),
             Ok(prices.sell.reference_per_synthetic_base)
         );
+    });
+}
 
-        // quite unrealistic but should be legal
-        let prices = XSTBaseInput {
-            buy: XSTBaseSideInput {
-                reference_per_synthetic_base: balance!(1),
-                reference_per_xor: Some(balance!(1)),
-            },
-            sell: XSTBaseSideInput {
-                reference_per_synthetic_base: balance!(1),
-                reference_per_xor: Some(balance!(1)),
-            },
-        };
-        assert_ok!(QAToolsPallet::initialize_xst(
-            RuntimeOrigin::root(),
-            Some(prices.clone()),
-            vec![],
-            alice(),
-        ));
-        assert_eq!(
-            price_tools::Pallet::<Runtime>::get_average_price(
-                &synthetic_base_asset_id,
-                &reference_asset_id,
-                PriceVariant::Buy
-            ),
-            Ok(prices.buy.reference_per_synthetic_base)
-        );
-        assert_eq!(
-            price_tools::Pallet::<Runtime>::get_average_price(
-                &synthetic_base_asset_id,
-                &reference_asset_id,
-                PriceVariant::Sell
-            ),
-            Ok(prices.sell.reference_per_synthetic_base)
-        );
-    })
+#[test]
+fn should_init_xst_synthetic_base_price() {
+    let prices = XSTBaseInput {
+        buy: XSTBaseSideInput {
+            reference_per_synthetic_base: balance!(1),
+            reference_per_xor: Some(balance!(1)),
+        },
+        sell: XSTBaseSideInput {
+            reference_per_synthetic_base: balance!(1),
+            reference_per_xor: Some(balance!(1)),
+        },
+    };
+    test_init_xst_synthetic_base_price(prices);
+    let prices = XSTBaseInput {
+        buy: XSTBaseSideInput {
+            reference_per_synthetic_base: balance!(3),
+            reference_per_xor: Some(balance!(5)),
+        },
+        sell: XSTBaseSideInput {
+            reference_per_synthetic_base: balance!(1),
+            reference_per_xor: Some(balance!(2)),
+        },
+    };
+    test_init_xst_synthetic_base_price(prices);
 }
 
 #[test]
