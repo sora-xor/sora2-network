@@ -332,7 +332,8 @@ pub mod source_initialization {
         // = (1 / (xor -buy-> synthetic)) * (xor -sell-> reference)
 
         // Get known values from the formula:
-        let synthetic_buy_reference = input_prices.buy.reference_per_synthetic_base;
+        let synthetic_buy_reference =
+            BalanceUnit::divisible(input_prices.buy.reference_per_synthetic_base);
         let xor_buy_reference = match input_prices.buy.reference_per_xor {
             Some(p) => p,
             None => price_tools::Pallet::<T>::get_average_price(
@@ -342,7 +343,9 @@ pub mod source_initialization {
             )
             .map_err(|_| Error::<T>::ReferenceAssetPriceNotFound)?,
         };
-        let synthetic_sell_reference = input_prices.sell.reference_per_synthetic_base;
+        let xor_buy_reference = BalanceUnit::divisible(xor_buy_reference);
+        let synthetic_sell_reference =
+            BalanceUnit::divisible(input_prices.sell.reference_per_synthetic_base);
         let xor_sell_reference = match input_prices.sell.reference_per_xor {
             Some(p) => p,
             None => price_tools::Pallet::<T>::get_average_price(
@@ -352,6 +355,7 @@ pub mod source_initialization {
             )
             .map_err(|_| Error::<T>::ReferenceAssetPriceNotFound)?,
         };
+        let xor_sell_reference = BalanceUnit::divisible(xor_sell_reference);
 
         // B:
         // (synthetic -buy-> reference) = (xor -buy-> reference) / (xor -sell-> synthetic)
@@ -374,12 +378,12 @@ pub mod source_initialization {
         let xor_buy_synthetic = xor_sell_reference / synthetic_sell_reference;
         Ok(XSTBaseXorPrices {
             buy: XSTBaseXorSidePrices {
-                synthetic_base: xor_buy_synthetic,
-                reference: xor_buy_reference,
+                synthetic_base: *xor_buy_synthetic.balance(),
+                reference: *xor_buy_reference.balance(),
             },
             sell: XSTBaseXorSidePrices {
-                synthetic_base: xor_sell_synthetic,
-                reference: xor_sell_reference,
+                synthetic_base: *xor_sell_synthetic.balance(),
+                reference: *xor_sell_reference.balance(),
             },
         })
     }
