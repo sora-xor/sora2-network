@@ -29,5 +29,3 @@ std = [
     "sp-std/std",
     "common/std",
 ]
-
-ready-to-test = ["common/ready-to-test"]

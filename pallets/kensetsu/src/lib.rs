@@ -30,14 +30,15 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// Kensetsu is a over collateralized lending protocol, clone of MakerDAO.
-/// An individual can create a collateral debt positions (CDPs) for one of the listed token and
-/// deposit or lock amount of the token in CDP as collateral. Then the individual is allowed to
-/// borrow new minted Kensetsu USD (KUSD) in amount up to value of collateral corrected by
-/// `liquidation_ratio` coefficient. The debt in KUSD is a subject of `stability_fee` interest rate.
-/// Collateral may be unlocked only when the debt and the interest are payed back. If the value of
-/// collateral has changed in a way that it does not secure the debt, the collateral is liquidated
-/// to cover the debt and the interest.
+//! Kensetsu is a over collateralized lending protocol, clone of MakerDAO.
+//! An individual can create a collateral debt positions (CDPs) for one of the listed token and
+//! deposit or lock amount of the token in CDP as collateral. Then the individual is allowed to
+//! borrow new minted Kensetsu USD (KUSD) in amount up to value of collateral corrected by
+//! `liquidation_ratio` coefficient. The debt in KUSD is a subject of `stability_fee` interest rate.
+//! Collateral may be unlocked only when the debt and the interest are payed back. If the value of
+//! collateral has changed in a way that it does not secure the debt, the collateral is liquidated
+//! to cover the debt and the interest.
+
 pub use pallet::*;
 
 use assets::AssetIdOf;
@@ -290,6 +291,12 @@ pub mod pallet {
         StorageMap<_, Identity, U256, CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>>;
 
     /// Accoutns of risk management team
+    /// Index links owner to CDP ids, not needed by protocol, but used by front-end
+    #[pallet::storage]
+    #[pallet::getter(fn cdp_owner_index)]
+    pub type CdpOwnerIndex<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, Vec<U256>>;
+
+    /// Accounts of risk management team
     #[pallet::storage]
     #[pallet::getter(fn risk_managers)]
     pub type RiskManagers<T: Config> = StorageValue<_, BTreeSet<T::AccountId>>;
@@ -382,11 +389,21 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Creates a Collateralized Debt Position (CDP) allowing users to lock collateral assets and borrow against them.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `collateral_asset_id`: The identifier of the asset used as collateral.
+        /// - `collateral_amount`: The amount of collateral to be deposited.
+        /// - `borrow_amount`: The amount the user wants to borrow.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::create_cdp())]
         pub fn create_cdp(
             origin: OriginFor<T>,
             collateral_asset_id: AssetIdOf<T>,
+            collateral_amount: Balance,
+            borrow_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(
@@ -406,20 +423,33 @@ pub mod pallet {
                     collateral_asset_id,
                 });
                 <CDPDepository<T>>::insert(
-                    cdp_id,
+                    *cdp_id,
                     CollateralizedDebtPosition {
-                        owner: who,
+                        owner: who.clone(),
                         collateral_asset_id,
                         collateral_amount: balance!(0),
                         debt: balance!(0),
                         interest_coefficient,
                     },
                 );
+                CdpOwnerIndex::<T>::append(&who, *cdp_id);
+                if collateral_amount > 0 {
+                    Self::deposit_internal(&who, *cdp_id, collateral_amount)?;
+                }
+                if borrow_amount > 0 {
+                    Self::borrow_internal(&who, *cdp_id, borrow_amount)?;
+                }
                 DispatchResult::Ok(())
             })?;
             Ok(())
         }
 
+        /// Closes a Collateralized Debt Position (CDP).
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `cdp_id`: The ID of the CDP to be closed.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
@@ -433,7 +463,7 @@ pub mod pallet {
                 &who,
                 cdp.collateral_amount,
             )?;
-            <CDPDepository<T>>::remove(cdp_id);
+            Self::delete_cdp(cdp_id, &who);
             Self::deposit_event(Event::CDPClosed {
                 cdp_id,
                 owner: who,
@@ -442,6 +472,13 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Deposits collateral into a Collateralized Debt Position (CDP).
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `cdp_id`: The ID of the CDP to deposit collateral into.
+        /// - `collateral_amount`: The amount of collateral to deposit.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::deposit_collateral())]
         pub fn deposit_collateral(
@@ -450,33 +487,16 @@ pub mod pallet {
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            technical::Pallet::<T>::transfer_in(
-                &cdp.collateral_asset_id,
-                &who,
-                &T::TreasuryTechAccount::get(),
-                collateral_amount,
-            )?;
-            <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.collateral_amount = cdp
-                        .collateral_amount
-                        .checked_add(collateral_amount)
-                        .ok_or(Error::<T>::ArithmeticError)?;
-                    DispatchResult::Ok(())
-                }
-            })?;
-            Self::deposit_event(Event::CollateralDeposit {
-                cdp_id,
-                owner: who,
-                collateral_asset_id: cdp.collateral_asset_id,
-                amount: collateral_amount,
-            });
-
-            Ok(())
+            Self::deposit_internal(&who, cdp_id, collateral_amount)
         }
 
+        /// Withdraws collateral from a Collateralized Debt Position (CDP).
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `cdp_id`: The ID of the CDP to withdraw collateral from.
+        /// - `collateral_amount`: The amount of collateral to withdraw.
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_collateral())]
         pub fn withdraw_collateral(
@@ -505,12 +525,10 @@ pub mod pallet {
                 &who,
                 collateral_amount,
             )?;
-            <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.collateral_amount = new_collateral_amount;
-                    DispatchResult::Ok(())
-                }
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.collateral_amount = new_collateral_amount;
+                DispatchResult::Ok(())
             })?;
             Self::deposit_event(Event::CollateralWithdrawn {
                 cdp_id,
@@ -522,6 +540,13 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Borrows funds against a Collateralized Debt Position (CDP).
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `cdp_id`: The ID of the CDP to borrow against.
+        /// - `will_to_borrow_amount`: The amount the user intends to borrow.
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::borrow())]
         pub fn borrow(
@@ -530,36 +555,16 @@ pub mod pallet {
             will_to_borrow_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = Self::accrue_internal(cdp_id)?;
-            ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
-            let new_debt = cdp
-                .debt
-                .checked_add(will_to_borrow_amount)
-                .ok_or(Error::<T>::ArithmeticError)?;
-            ensure!(
-                Self::check_cdp_is_safe(new_debt, cdp.collateral_amount, cdp.collateral_asset_id)?,
-                Error::<T>::CDPUnsafe
-            );
-            Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
-            Self::ensure_protocol_cap(will_to_borrow_amount)?;
-            Self::mint_to(&who, will_to_borrow_amount)?;
-            <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.debt = new_debt;
-                    DispatchResult::Ok(())
-                }
-            })?;
-            Self::deposit_event(Event::DebtIncreased {
-                cdp_id,
-                owner: who,
-                collateral_asset_id: cdp.collateral_asset_id,
-                amount: will_to_borrow_amount,
-            });
-
-            Ok(())
+            Self::borrow_internal(&who, cdp_id, will_to_borrow_amount)
         }
 
+        /// Repays debt against a Collateralized Debt Position (CDP).
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `cdp_id`: The ID of the CDP to repay debt for.
+        /// - `amount`: The amount to repay against the CDP's debt.
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: U256, amount: Balance) -> DispatchResult {
@@ -568,15 +573,13 @@ pub mod pallet {
             // if repaying amount exceeds debt, leftover is not burned
             let to_cover_debt = amount.min(cdp.debt);
             Self::burn_from(&who, to_cover_debt)?;
-            <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.debt = cdp
-                        .debt
-                        .checked_sub(to_cover_debt)
-                        .ok_or(Error::<T>::ArithmeticError)?;
-                    DispatchResult::Ok(())
-                }
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.debt = cdp
+                    .debt
+                    .checked_sub(to_cover_debt)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
             })?;
             Self::deposit_event(Event::DebtPayment {
                 cdp_id,
@@ -588,13 +591,19 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Liquidates part of unsafe CDP
+        /// Liquidates a Collateralized Debt Position (CDP) if it becomes unsafe.
+        ///
+        /// ## Parameters
+        ///
+        /// - `_origin`: The origin of the transaction (unused).
+        /// - `cdp_id`: The ID of the CDP to be liquidated.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
             let cdp = Self::accrue_internal(cdp_id)?;
             let cdp_debt = cdp.debt;
             let cdp_collateral_amount = cdp.collateral_amount;
+            let cdp_owner = cdp.owner;
             ensure!(
                 !Self::check_cdp_is_safe(cdp_debt, cdp_collateral_amount, cdp.collateral_asset_id)?,
                 Error::<T>::CDPSafe
@@ -633,15 +642,13 @@ pub mod pallet {
                 SwapAmount::with_desired_input(collateral_to_liquidate, balance!(0)),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
-            <CDPDepository<T>>::try_mutate(cdp_id, {
-                |cdp| {
-                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    cdp.collateral_amount = cdp
-                        .collateral_amount
-                        .checked_sub(collateral_to_liquidate)
-                        .ok_or(Error::<T>::ArithmeticError)?;
-                    DispatchResult::Ok(())
-                }
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.collateral_amount = cdp
+                    .collateral_amount
+                    .checked_sub(collateral_to_liquidate)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
             })?;
             // penalty is a protocol profit which stays on treasury tech account
             let penalty = Self::liquidation_penalty() * swap_outcome.amount.min(cdp_debt);
@@ -656,34 +663,30 @@ pub mod pallet {
                     // CDP debt is not covered with liquidation, now it is a protocol bad debt
                     Self::cover_with_protocol(shortage)?;
                     // close empty CDP, debt == 0, collateral == 0
-                    <CDPDepository<T>>::remove(cdp_id);
+                    Self::delete_cdp(cdp_id, &cdp_owner);
                     Self::deposit_event(Event::CDPClosed {
                         cdp_id,
-                        owner: cdp.owner,
+                        owner: cdp_owner,
                         collateral_asset_id: cdp.collateral_asset_id,
                     });
                 } else {
                     // partly covered
-                    <CDPDepository<T>>::try_mutate(cdp_id, {
-                        |cdp| {
-                            let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                            cdp.debt = cdp
-                                .debt
-                                .checked_sub(proceeds)
-                                .ok_or(Error::<T>::CDPNotFound)?;
-                            DispatchResult::Ok(())
-                        }
+                    <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                        let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                        cdp.debt = cdp
+                            .debt
+                            .checked_sub(proceeds)
+                            .ok_or(Error::<T>::CDPNotFound)?;
+                        DispatchResult::Ok(())
                     })?;
                 }
             } else {
                 Self::burn_treasury(cdp_debt)?;
                 // CDP debt is covered
-                <CDPDepository<T>>::try_mutate(cdp_id, {
-                    |cdp| {
-                        let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                        cdp.debt = 0;
-                        DispatchResult::Ok(())
-                    }
+                <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                    let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                    cdp.debt = 0;
+                    DispatchResult::Ok(())
                 })?;
                 // There is more KUSD than to cover debt and penalty, leftover goes to cdp.owner
                 let leftover = proceeds
@@ -692,7 +695,7 @@ pub mod pallet {
                 assets::Pallet::<T>::transfer_from(
                     &T::KusdAssetId::get(),
                     &technical_account_id,
-                    &cdp.owner,
+                    &cdp_owner,
                     leftover,
                 )?;
             };
@@ -707,8 +710,12 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Updates cdp debt with interest
-        /// Unsigned call possible
+        /// Accrues interest on a Collateralized Debt Position (CDP).
+        ///
+        /// ## Parameters
+        ///
+        /// - `_origin`: The origin of the transaction (unused).
+        /// - `cdp_id`: The ID of the CDP to accrue interest on.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::accrue())]
         pub fn accrue(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
@@ -717,8 +724,13 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Updates collateral risk parameters
-        /// Is set by risk management
+        /// Updates the risk parameters for a specific collateral asset.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `collateral_asset_id`: The identifier of the collateral asset.
+        /// - `new_risk_parameters`: The new risk parameters to be set for the collateral asset.
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::update_collateral_risk_parameters())]
         pub fn update_collateral_risk_parameters(
@@ -758,8 +770,12 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Sets hard cap for total KUSD supply
-        /// Is set by risk management
+        /// Updates the hard cap for the total supply of a stablecoin.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `new_hard_cap`: The new hard cap value to be set for the total supply.
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::update_hard_cap_total_supply())]
         pub fn update_hard_cap_total_supply(
@@ -779,8 +795,12 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Sets liquidation penalty
-        /// Is set by risk management
+        /// Updates the liquidation penalty applied during CDP liquidation.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `new_liquidation_penalty`: The new liquidation penalty percentage to be set.
         #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::update_liquidation_penalty())]
         pub fn update_liquidation_penalty(
@@ -789,10 +809,8 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
-            <LiquidationPenalty<T>>::mutate({
-                |liquidation_penalty| {
-                    *liquidation_penalty = new_liquidation_penalty;
-                }
+            <LiquidationPenalty<T>>::mutate(|liquidation_penalty| {
+                *liquidation_penalty = new_liquidation_penalty;
             });
             Self::deposit_event(Event::LiquidationPenaltyUpdated {
                 liquidation_penalty: new_liquidation_penalty,
@@ -800,9 +818,12 @@ pub mod pallet {
 
             Ok(())
         }
-
-        /// Withdraws profit from protocol treasury
-        /// Is called by protocol owner
+        /// Withdraws protocol profit in the form of stablecoin (KUSD).
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `kusd_amount`: The amount of stablecoin (KUSD) to withdraw as protocol profit.
         #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_profit())]
         pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
@@ -821,7 +842,12 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Donate KUSD to the protocol to cover bad debt or increase protocol profit
+        /// Donates stablecoin (KUSD) to cover protocol bad debt.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `kusd_amount`: The amount of stablecoin (KUSD) to donate to cover bad debt.
         #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::donate())]
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
@@ -834,7 +860,12 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Adds risk manager account
+        /// Adds a new account ID to the set of risk managers.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `account_id`: The account ID to be added as a risk manager.
         #[pallet::call_index(13)]
         #[pallet::weight(<T as Config>::WeightInfo::add_risk_manager())]
         pub fn add_risk_manager(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
@@ -853,7 +884,12 @@ pub mod pallet {
             Ok(())
         }
 
-        // Removes risk manager account
+        /// Removes an account ID from the set of risk managers.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `account_id`: The account ID to be removed from the set of risk managers.
         #[pallet::call_index(14)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_risk_manager())]
         pub fn remove_risk_manager(
@@ -945,8 +981,15 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Checks loan-to-value ratio is `safe` and is not going to be liquidated
-        /// Returns true if CDP is safe, LTV <= liquidation threshold
+        /// Checks whether a Collateralized Debt Position (CDP) is currently considered safe based on its debt and collateral.
+        /// The function evaluates the safety of a CDP based on predefined liquidation ratios and collateral values,
+        /// providing an indication of its current safety status.
+        ///
+        /// ## Parameters
+        ///
+        /// - `debt`: The current debt amount in the CDP.
+        /// - `collateral`: The current collateral amount in the CDP.
+        /// - `collateral_asset_id`: The asset ID associated with the collateral in the CDP.
         pub(crate) fn check_cdp_is_safe(
             debt: Balance,
             collateral: Balance,
@@ -1010,7 +1053,103 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Recalculates bad debt with `kusd_amount` profit, leftover goes to protocol profit
+        /// Removes CDP entry from the storage
+        fn delete_cdp(cdp_id: U256, cdp_owner: &AccountIdOf<T>) {
+            <CDPDepository<T>>::remove(cdp_id);
+            if let Some(mut cdp_ids) = <CdpOwnerIndex<T>>::take(cdp_owner) {
+                cdp_ids.retain(|&x| x != cdp_id);
+                if !cdp_ids.is_empty() {
+                    <CdpOwnerIndex<T>>::insert(cdp_owner, cdp_ids);
+                }
+            }
+        }
+
+        /// Deposits collateral to CDP.
+        /// Handles internal deposit of collateral into a Collateralized Debt Position (CDP).
+        ///
+        /// ## Parameters
+        ///
+        /// - `who`: The account making the collateral deposit.
+        /// - `cdp_id`: The ID of the CDP where the collateral is being deposited.
+        /// - `collateral_amount`: The amount of collateral being deposited.
+        fn deposit_internal(
+            who: &AccountIdOf<T>,
+            cdp_id: U256,
+            collateral_amount: Balance,
+        ) -> DispatchResult {
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            technical::Pallet::<T>::transfer_in(
+                &cdp.collateral_asset_id,
+                who,
+                &T::TreasuryTechAccount::get(),
+                collateral_amount,
+            )?;
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.collateral_amount = cdp
+                    .collateral_amount
+                    .checked_add(collateral_amount)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                DispatchResult::Ok(())
+            })?;
+            Self::deposit_event(Event::CollateralDeposit {
+                cdp_id,
+                owner: who.clone(),
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: collateral_amount,
+            });
+
+            Ok(())
+        }
+
+        /// Handles the internal borrowing operation within a Collateralized Debt Position (CDP).
+        ///
+        /// ## Parameters
+        ///
+        /// - `who`: The account ID initiating the borrowing operation.
+        /// - `cdp_id`: The ID of the CDP involved in the borrowing.
+        /// - `will_to_borrow_amount`: The amount to be borrowed.
+        fn borrow_internal(
+            who: &AccountIdOf<T>,
+            cdp_id: U256,
+            will_to_borrow_amount: Balance,
+        ) -> DispatchResult {
+            let cdp = Self::accrue_internal(cdp_id)?;
+            ensure!(*who == cdp.owner, Error::<T>::OperationNotPermitted);
+            let new_debt = cdp
+                .debt
+                .checked_add(will_to_borrow_amount)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            ensure!(
+                Self::check_cdp_is_safe(new_debt, cdp.collateral_amount, cdp.collateral_asset_id)?,
+                Error::<T>::CDPUnsafe
+            );
+            Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
+            Self::ensure_protocol_cap(will_to_borrow_amount)?;
+            Self::mint_to(who, will_to_borrow_amount)?;
+            <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.debt = new_debt;
+                DispatchResult::Ok(())
+            })?;
+            Self::deposit_event(Event::DebtIncreased {
+                cdp_id,
+                owner: who.clone(),
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: will_to_borrow_amount,
+            });
+
+            Ok(())
+        }
+
+        /// Covers bad debt using a specified amount of stablecoin (KUSD).
+        /// The function facilitates the covering of bad debt using stablecoin from a specific account,
+        /// handling the transfer and burning of stablecoin as needed to cover the bad debt.
+        ///
+        /// ## Parameters
+        ///
+        /// - `from`: The account from which the stablecoin will be used to cover bad debt.
+        /// - `kusd_amount`: The amount of stablecoin to cover bad debt.
         fn cover_bad_debt(from: &AccountIdOf<T>, kusd_amount: Balance) -> DispatchResult {
             let bad_debt = <BadDebt<T>>::get();
             let to_cover_debt = if kusd_amount < bad_debt {
@@ -1080,9 +1219,11 @@ pub mod pallet {
             Ok(collateral_info)
         }
 
-        /// Accrue stability fee from CDP
-        /// Calculates fees accrued since last update using continuous compounding formula.
-        /// The fees is a protocol gain.
+        /// Accrues interest on a Collateralized Debt Position (CDP) and updates relevant parameters.
+        ///
+        /// ## Parameters
+        ///
+        /// - `cdp_id`: The ID of the CDP for interest accrual.
         fn accrue_internal(
             cdp_id: U256,
         ) -> Result<CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>, DispatchError>
@@ -1173,7 +1314,12 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Burns tokens from AccountId
+        /// Burns a specified amount of an asset from an account.
+        ///
+        /// ## Parameters
+        ///
+        /// - `account`: The account from which the asset will be burnt.
+        /// - `amount`: The amount of the asset to be burnt.
         fn burn_from(account: &AccountIdOf<T>, amount: Balance) -> DispatchResult {
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
@@ -1188,7 +1334,7 @@ pub mod pallet {
         }
 
         /// Cover CDP debt with protocol balance
-        /// If protocol balance is less thatn amount to cover, it is a bad debt
+        /// If protocol balance is less than amount to cover, it is a bad debt
         fn cover_with_protocol(amount: Balance) -> DispatchResult {
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),

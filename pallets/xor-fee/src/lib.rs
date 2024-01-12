@@ -233,13 +233,12 @@ where
             );
             if let Some(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
                 let referrer_portion = referrer_xor.peek();
-                if T::XorCurrency::resolve_into_existing(&referrer, referrer_xor).is_ok() {
-                    Self::deposit_event(Event::ReferrerRewarded(
-                        who.clone(),
-                        referrer,
-                        referrer_portion.into(),
-                    ));
-                }
+                T::XorCurrency::resolve_creating(&referrer, referrer_xor);
+                Self::deposit_event(Event::ReferrerRewarded(
+                    who.clone(),
+                    referrer,
+                    referrer_portion.into(),
+                ));
             }
 
             // TODO: decide what should be done with XOR if there is no referrer.

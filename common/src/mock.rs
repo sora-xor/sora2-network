@@ -185,3 +185,178 @@ pub fn bob() -> AccountId32 {
 pub fn charlie() -> AccountId32 {
     AccountId32::from([3; 32])
 }
+
+/// Mock of pallet `assets::Config`.
+#[macro_export]
+macro_rules! mock_assets_config {
+    ($runtime:ty) => {
+        parameter_types! {
+            pub const GetBaseAssetId: AssetId = XOR;
+            pub const GetBuyBackAssetId: AssetId = XST;
+            pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
+            pub const GetBuyBackPercentage: u8 = 0;
+            pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+                    "0000000000000000000000000000000000000000000000000000000000000023"
+            ));
+            pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+        }
+        impl assets::Config for $runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type ExtraAccountId = [u8; 32];
+            type ExtraAssetRecordArg =
+                common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
+            type AssetId = AssetId;
+            type GetBaseAssetId = GetBaseAssetId;
+            type GetBuyBackAssetId = GetBuyBackAssetId;
+            type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+            type GetBuyBackPercentage = GetBuyBackPercentage;
+            type GetBuyBackAccountId = GetBuyBackAccountId;
+            type GetBuyBackDexId = GetBuyBackDexId;
+            type BuyBackLiquidityProxy = ();
+            type Currency = currencies::Pallet<TestRuntime>;
+            type GetTotalBalance = ();
+            type WeightInfo = ();
+        }
+    };
+}
+
+/// Mock of pallet `pallet_balances::Config`.
+#[macro_export]
+macro_rules! mock_pallet_balances_config {
+    ($runtime:ty) => {
+        parameter_types! {
+            pub const MaxLocks: u32 = 50;
+            pub const ExistentialDeposit: u128 = 1;
+            pub const MaxReserves: u32 = 50;
+        }
+        impl pallet_balances::Config for $runtime {
+            type Balance = Balance;
+            type DustRemoval = ();
+            type RuntimeEvent = RuntimeEvent;
+            type ExistentialDeposit = ExistentialDeposit;
+            type AccountStore = System;
+            type WeightInfo = ();
+            type MaxLocks = MaxLocks;
+            type MaxReserves = MaxReserves;
+            type ReserveIdentifier = ();
+        }
+    };
+}
+
+/// Mock of pallet `common::Config`.
+#[macro_export]
+macro_rules! mock_common_config {
+    ($runtime:ty) => {
+        impl common::Config for $runtime {
+            type DEXId = DEXId;
+            type LstId = LiquiditySourceType;
+        }
+    };
+}
+
+/// Mock of pallet `currencies::Config`.
+#[macro_export]
+macro_rules! mock_currencies_config {
+    ($runtime:ty) => {
+        impl currencies::Config for $runtime {
+            type MultiCurrency = Tokens;
+            type NativeCurrency = BasicCurrencyAdapter<TestRuntime, Balances, Amount, u64>;
+            type GetNativeCurrencyId = <TestRuntime as assets::Config>::GetBaseAssetId;
+            type WeightInfo = ();
+        }
+    };
+}
+
+/// Mock of pallet `frame_system::Config`.
+#[macro_export]
+macro_rules! mock_frame_system_config {
+    ($runtime:ty) => {
+        impl frame_system::Config for $runtime {
+            type BaseCallFilter = frame_support::traits::Everything;
+            type BlockWeights = ();
+            type BlockLength = ();
+            type RuntimeOrigin = RuntimeOrigin;
+            type RuntimeCall = RuntimeCall;
+            type Index = u64;
+            type BlockNumber = u64;
+            type Hash = H256;
+            type Hashing = BlakeTwo256;
+            type AccountId = AccountId;
+            type Lookup = IdentityLookup<Self::AccountId>;
+            type Header = Header;
+            type RuntimeEvent = RuntimeEvent;
+            type BlockHashCount = ConstU64<250>;
+            type DbWeight = ();
+            type Version = ();
+            type PalletInfo = PalletInfo;
+            type AccountData = pallet_balances::AccountData<Balance>;
+            type OnNewAccount = ();
+            type OnKilledAccount = ();
+            type SystemWeightInfo = ();
+            type SS58Prefix = ConstU16<42>;
+            type OnSetCode = ();
+            type MaxConsumers = frame_support::traits::ConstU32<16>;
+        }
+    };
+}
+
+/// Mock of pallet `permissions::Config`.
+#[macro_export]
+macro_rules! mock_permissions_config {
+    ($runtime:ty) => {
+        impl permissions::Config for $runtime {
+            type RuntimeEvent = RuntimeEvent;
+        }
+    };
+}
+
+/// Mock of pallet `technical::Config`.
+#[macro_export]
+macro_rules! mock_technical_config {
+    ($runtime:ty) => {
+        impl technical::Config for $runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type TechAssetId = TechAssetId;
+            type TechAccountId = TechAccountId;
+            type Trigger = ();
+            type Condition = ();
+            type SwapAction = ();
+        }
+    };
+}
+
+/// Mock of pallet `tokens::Config`.
+#[macro_export]
+macro_rules! mock_tokens_config {
+    ($runtime:ty) => {
+        impl tokens::Config for $runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type Balance = Balance;
+            type Amount = Amount;
+            type CurrencyId = <TestRuntime as assets::Config>::AssetId;
+            type WeightInfo = ();
+            type ExistentialDeposits = ExistentialDeposits;
+            type CurrencyHooks = ();
+            type MaxLocks = ();
+            type MaxReserves = ();
+            type ReserveIdentifier = ();
+            type DustRemovalWhitelist = Everything;
+        }
+    };
+}
+
+/// Mock of pallet `pallet_timestamp::Config`.
+#[macro_export]
+macro_rules! mock_pallet_timestamp_config {
+    ($runtime:ty) => {
+        parameter_types! {
+            pub const MinimumPeriod: u64 = 5;
+        }
+        impl pallet_timestamp::Config for $runtime {
+            type Moment = Moment;
+            type OnTimestampSet = ();
+            type MinimumPeriod = MinimumPeriod;
+            type WeightInfo = ();
+        }
+    };
+}
