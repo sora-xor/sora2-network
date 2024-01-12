@@ -1101,7 +1101,7 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
                 Some(XSTBaseInput {
                     buy: XSTBaseSideInput {
                         reference_per_synthetic_base: balance!(1),
-                        reference_per_xor: Some(balance!(1)),
+                        reference_per_xor: None,
                     },
                     sell: XSTBaseSideInput {
                         reference_per_synthetic_base: balance!(1),
