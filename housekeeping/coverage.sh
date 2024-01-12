@@ -3,7 +3,7 @@
 export RUSTFLAGS="-Cinstrument-coverage"
 export SKIP_WASM_BUILD=1
 export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
-profraw=$(find . -name 'sora2-*.profraw')
+profraw=$(find . -name 'sora2-*.profraw')'
 
 cargo test --features private-net,ready-to-test,wip
 

@@ -7,6 +7,8 @@ ENV PATH="$PATH:$CARGO_HOME/bin"
 ENV CARGO_BUILD_DEP_INFO_BASEDIR="."
 ENV CC=clang-13
 ENV CXX=clang++-13
+ENV RUST_NIGHTLY_VERSION=nightly-2023-03-21
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
 RUN apt-get update && \
@@ -44,16 +46,12 @@ RUN add-apt-repository \
     rm -rf /var/lib/apt/lists/*
 
 # Install rust
-ENV RUST_NIGHTLY_VERSION=nightly-2023-03-21
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_NIGHTLY_VERSION} && \
     rustup toolchain install ${RUST_NIGHTLY_VERSION} && \
     rustup target add wasm32-unknown-unknown && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_NIGHTLY_VERSION} && \
-    rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"
-
-RUN curl https://github.com/chevdor/subwasm/releases/download/v0.17.0/subwasm_linux_amd64_v0.17.0.deb -sSL -o subw.deb && \
-    dpkg -i subw.deb && rm subw.deb
-
-RUN cargo install grcov && \
+    curl https://github.com/chevdor/subwasm/releases/download/v0.17.0/subwasm_linux_amd64_v0.17.0.deb -sSL -o subw.deb && \
+    dpkg -i subw.deb && rm subw.deb && \
     rustup component add llvm-tools-preview && \
+    cargo install grcov && \
     rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"
