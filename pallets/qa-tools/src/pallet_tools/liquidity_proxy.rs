@@ -243,7 +243,7 @@ pub mod source_initialization {
         pub reference: Balance,
     }
 
-    /// Prices with 10^18 precision
+    /// Price with 10^18 precision
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     #[scale_info(skip_type_params(T))]
     pub enum XSTSyntheticBasePriceInput {
