@@ -44,7 +44,7 @@ RUN add-apt-repository \
     rm -rf /var/lib/apt/lists/*
 
 # Install rust
-ENV RUST_NIGHTLY_VERSION=nightly-2024-01-09
+ENV RUST_NIGHTLY_VERSION=nightly-2023-03-21
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_NIGHTLY_VERSION} && \
     rustup toolchain install ${RUST_NIGHTLY_VERSION} && \
     rustup target add wasm32-unknown-unknown && \
