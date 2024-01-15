@@ -62,8 +62,63 @@ macro_rules! assert_noop_msg {
 pub fn init_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
-// Calculate if two values are approximately equal
-// (up to some absolute tolerance (constant value))
-pub fn are_approx_eq_abs(left: FixedWrapper, right: FixedWrapper, tolerance: FixedWrapper) -> bool {
-    left.clone() < right.clone() + tolerance.clone() && right < left + tolerance
+
+/// Calculate if two values are approximately equal
+/// up to some absolute tolerance (constant value)
+pub fn are_approx_eq_abs(left: Fixed, right: Fixed, tolerance: Fixed) -> bool {
+    left.clone() < right.clone().saturating_add(tolerance.clone())
+        && right < left.saturating_add(tolerance)
+}
+
+/// Calculate relative absolute tolerance for two numbers: percentage of their magnitude
+/// `a.abs() + b.abs()`
+fn calculate_relative_tolerance(a: Fixed, b: Fixed, percentage: Fixed) -> Fixed {
+    debug_assert!(
+        percentage >= Fixed::from_bits(0)
+            && percentage < Fixed::from_bits(10i128.pow(crate::FixedPrecision::I32 as u32)),
+        "relative tolerance must be in [0, 1)"
+    );
+    let magnitude = a
+        .abs()
+        .unwrap_or(Fixed::MAX)
+        .saturating_add(b.abs().unwrap_or(Fixed::MAX));
+    // should not saturate as tolerance is in [0, 1)
+    magnitude.saturating_rmul(percentage, RoundMode::Ceil)
+}
+
+/// Calculate if two values are approximately equal
+/// up to some relative tolerance (percentage of their magnitude `a.abs() + b.abs()`)
+pub fn are_approx_eq_rel(left: Fixed, right: Fixed, percentage: Fixed) -> bool {
+    let tolerance = calculate_relative_tolerance(left, right, percentage);
+    are_approx_eq_abs(
+        FixedWrapper::from(left),
+        FixedWrapper::from(right),
+        FixedWrapper::from(tolerance),
+    )
+}
+
+/// Determine if two numbers `left` and `right` are equal up to some tolerance.
+///
+/// ## Tolerance
+/// Both relative and absolute tolerances are considered here.
+///
+/// Absolute tolerance is a constant `A > 0`. `left` is approx equal to `right` if
+/// `left + a = right` for some `-A <= a <= A`.
+///
+/// Relative tolerance for two numbers (`R > 0`) is calculated as percentage of their magnitude
+/// (`M = left.abs() + right.abs()`). So `left` is approx equal to `right` if
+/// `left + r = right` for some `-M*R <= r <= M*R`.
+///
+/// Satisfying any of the tolerances is enough to consider the numbers approximately equal.
+pub fn are_approx_eq(
+    left: Fixed,
+    right: Fixed,
+    absolute_tolerance: Fixed,
+    relative_percentage: Fixed,
+) -> bool {
+    are_approx_eq_abs(
+        FixedWrapper::from(left),
+        FixedWrapper::from(right),
+        FixedWrapper::from(absolute_tolerance),
+    ) || are_approx_eq_rel(left, right, relative_percentage)
 }

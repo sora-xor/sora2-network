@@ -33,8 +33,8 @@
 
 use assets::AssetIdOf;
 use common::{
-    assert_approx_eq_abs, balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf,
-    PredefinedAssetId, PriceVariant, PSWAP, VAL, XOR,
+    balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, PredefinedAssetId,
+    PriceVariant, PSWAP, VAL, XOR,
 };
 use frame_support::dispatch::{Pays, PostDispatchInfo};
 use frame_support::traits::Hooks;
