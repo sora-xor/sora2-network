@@ -8,6 +8,7 @@ ENV TZ=Europe/Moscow
 ENV CC=clang-13
 ENV CXX=clang++-13
 ENV SUBWASM_VER=v0.17.0
+ENV GRCOV_VERSION=0.5.15
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
@@ -32,7 +33,7 @@ RUN apt-get update && \
     curl https://github.com/chevdor/subwasm/releases/download/${SUBWASM_VER}/subwasm_linux_amd64_${SUBWASM_VER}.deb -sSL -o subw.deb && \
     dpkg -i subw.deb && rm subw.deb && \
     rustup update && \
-    cargo install grcov --version 0.6.0 && \
+    cargo install grcov --version ${GRCOV_VERSION} && \
     rustup component add llvm-tools-preview && \
     apt-get autoremove -y && \
     apt-get clean && \
