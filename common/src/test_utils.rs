@@ -66,8 +66,8 @@ pub fn init_logger() {
 /// Calculate if two values are approximately equal
 /// up to some absolute tolerance (constant value)
 pub fn are_approx_eq_abs(left: Fixed, right: Fixed, tolerance: Fixed) -> bool {
-    left.clone() < right.clone().saturating_add(tolerance.clone())
-        && right < left.saturating_add(tolerance)
+    left.clone() <= right.clone().saturating_add(tolerance.clone())
+        && right <= left.saturating_add(tolerance)
 }
 
 /// Calculate relative absolute tolerance for two numbers: percentage of their magnitude
