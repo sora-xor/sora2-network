@@ -90,11 +90,7 @@ fn calculate_relative_tolerance(a: Fixed, b: Fixed, percentage: Fixed) -> Fixed 
 /// up to some relative tolerance (percentage of their magnitude `a.abs() + b.abs()`)
 pub fn are_approx_eq_rel(left: Fixed, right: Fixed, percentage: Fixed) -> bool {
     let tolerance = calculate_relative_tolerance(left, right, percentage);
-    are_approx_eq_abs(
-        FixedWrapper::from(left),
-        FixedWrapper::from(right),
-        FixedWrapper::from(tolerance),
-    )
+    are_approx_eq_abs(left, right, tolerance)
 }
 
 /// Determine if two numbers `left` and `right` are equal up to some tolerance.
@@ -116,9 +112,6 @@ pub fn are_approx_eq(
     absolute_tolerance: Fixed,
     relative_percentage: Fixed,
 ) -> bool {
-    are_approx_eq_abs(
-        FixedWrapper::from(left),
-        FixedWrapper::from(right),
-        FixedWrapper::from(absolute_tolerance),
-    ) || are_approx_eq_rel(left, right, relative_percentage)
+    let relative_tolerance = calculate_relative_tolerance(left, right, relative_percentage);
+    are_approx_eq_abs(left, right, absolute_tolerance.max(relative_tolerance))
 }
