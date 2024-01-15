@@ -138,22 +138,74 @@ macro_rules! our_include_bytes {
 }
 
 /// Assertion that two values are approximately equal
-/// (up to some absolute tolerance (constant value))
+/// up to some absolute tolerance (constant value)
 #[macro_export]
 macro_rules! assert_approx_eq_abs {
     ($left:expr, $right:expr, $tol:expr) => {{
-        let tolerance = $crate::prelude::FixedWrapper::from($tol)
-            .get()
-            .expect("cannot approx compare errors");
+        // using `FixedWrapper` allows to work with `Fixed`, `f64`, and int types.
         let left = $crate::prelude::FixedWrapper::from($left)
             .get()
             .expect("cannot approx compare errors");
         let right = $crate::prelude::FixedWrapper::from($right)
             .get()
             .expect("cannot approx compare errors");
+        let tolerance = $crate::prelude::FixedWrapper::from($tol)
+            .get()
+            .expect("cannot approx compare errors");
         assert!(
             $crate::test_utils::are_approx_eq_abs(left, right, tolerance).unwrap(),
-            "{:?} != {:?} with tolerance {:?}",
+            "{:?} != {:?} with absolute tolerance {:?}",
+            $left,
+            $right,
+            $tol
+        );
+    }};
+}
+
+/// Assertion that two values are approximately equal
+/// up to some relative tolerance (percentage of their magnitude `a.abs() + b.abs()`)
+#[macro_export]
+macro_rules! assert_approx_eq_rel {
+    ($left:expr, $right:expr, $tol:expr) => {{
+        // using `FixedWrapper` allows to work with `Fixed`, `f64`, and int types.
+        let left = $crate::prelude::FixedWrapper::from($left)
+            .get()
+            .expect("cannot approx compare errors");
+        let right = $crate::prelude::FixedWrapper::from($right)
+            .get()
+            .expect("cannot approx compare errors");
+        let tolerance = $crate::prelude::FixedWrapper::from($tol)
+            .get()
+            .expect("cannot approx compare errors");
+        assert!(
+            $crate::test_utils::are_approx_eq_rel(left, right, tolerance).unwrap(),
+            "{:?} != {:?} with relative tolerance {:?}",
+            $left,
+            $right,
+            $tol
+        );
+    }};
+}
+
+/// Assertion if two numbers `left` and `right` are equal up to some tolerance.
+///
+/// See details in [crate::test_utils::are_approx_eq].
+#[macro_export]
+macro_rules! assert_approx_eq {
+    ($left:expr, $right:expr, $tol:expr) => {{
+        // using `FixedWrapper` allows to work with `Fixed`, `f64`, and int types.
+        let left = $crate::prelude::FixedWrapper::from($left)
+            .get()
+            .expect("cannot approx compare errors");
+        let right = $crate::prelude::FixedWrapper::from($right)
+            .get()
+            .expect("cannot approx compare errors");
+        let tolerance = $crate::prelude::FixedWrapper::from($tol)
+            .get()
+            .expect("cannot approx compare errors");
+        assert!(
+            $crate::test_utils::are_approx_eq_rel(left, right, tolerance).unwrap(),
+            "{:?} != {:?} with relative tolerance {:?}",
             $left,
             $right,
             $tol
@@ -190,7 +242,7 @@ mod tests {
     }
 
     #[test]
-    fn assert_approx_eq_works() {
+    fn assert_approx_eq_abs_works() {
         use crate::Fixed;
 
         let tol: Fixed = fixed!(0.000000001);
