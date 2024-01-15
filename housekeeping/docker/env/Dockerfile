@@ -8,7 +8,7 @@ ENV TZ=Europe/Moscow
 ENV CC=clang-17
 ENV CXX=clang++-17
 ENV SUBWASM_VER=v0.17.0
-ENV GRCOV_VERSION=0.6.0
+ENV GRCOV_VERSION=0.8.19
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
