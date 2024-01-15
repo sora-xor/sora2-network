@@ -28,6 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::prelude::FixedWrapper;
+use crate::Fixed;
+use fixnum::_priv::RoundMode;
+use fixnum::ops::{Bounded, CheckedAdd, RoundingMul};
+use fixnum::typenum::Unsigned;
+
 /// Can be useful to check that an extrinsic is failed due to an error in another pallet
 #[macro_export]
 macro_rules! assert_noop_msg {
@@ -55,4 +61,9 @@ macro_rules! assert_noop_msg {
 
 pub fn init_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
+}
+// Calculate if two values are approximately equal
+// (up to some absolute tolerance (constant value))
+pub fn are_approx_eq_abs(left: FixedWrapper, right: FixedWrapper, tolerance: FixedWrapper) -> bool {
+    left.clone() < right.clone() + tolerance.clone() && right < left + tolerance
 }

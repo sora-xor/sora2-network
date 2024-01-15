@@ -32,7 +32,7 @@
 mod tests {
     use crate::{Error, Pallet, mock::*, test_utils::{relay_new_symbol, relay_symbol}};
     use band::FeeCalculationParameters;
-    use common::{self, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, AssetId32};
+    use common::{self, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq_abs, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, AssetId32};
     use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::Zero;
     use frame_support::traits::Hooks;
@@ -359,9 +359,9 @@ mod tests {
             // amount out = (A_in * S) / X = (100 * 1) / 220 = 0.(45) XST (A_out)
             // deduced fee = A_out * F = 0.(45) * 0.00666 = 0.0030(27) XST (F_xst)
             // deduced fee in XOR = F_xst / X_b = 0.0030(27) / 0.6 = 0.0060(54) XOR (since we are buying XOR with XST)
-            assert_approx_eq!(price_a.fee, balance!(0.006054545454545454), 2);
+            assert_approx_eq_abs!(price_a.fee, balance!(0.006054545454545454), 2);
             // amount out with deduced fee = A_out - F_xst = 0.(45) - 0.0030(27) = 0.4515(18) XST
-            assert_approx_eq!(price_a.amount, balance!(0.451518181818181818), 2);
+            assert_approx_eq_abs!(price_a.amount, balance!(0.451518181818181818), 2);
 
             let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -374,7 +374,7 @@ mod tests {
             assert_eq!(price_b.fee, balance!(0));
             // we need to convert XOR fee back to XST 
             let xst_fee = (FixedWrapper::from(price_a.fee)*balance!(0.5)).into_balance();
-            assert_approx_eq!(price_b.amount, xst_fee + price_a.amount, 2);
+            assert_approx_eq_abs!(price_b.amount, xst_fee + price_a.amount, 2);
 
             let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -396,8 +396,8 @@ mod tests {
             // deduced fee = A_out / (1 - F_r) - A_out = 100 / (1 - 0.00666) - 100 = 0.670465298890611 XST (F_xst)
             // amount in = ((A_out + F_xst) * X) / S = ((100 + 0.670465298890611) * 220) / 1 = 22147.5023657559344 XSTUSD (A_in)
             // deduced fee in XOR = F_xst / X_b = 0.670465298890611 / 0.5 = 1.340930597781222944 XOR (since we are buying XOR with XST)
-            assert_approx_eq!(price_a.fee, balance!(1.340930597781222944), 1000);
-            assert_approx_eq!(price_a.amount, balance!(22147.5023657559344), 1000_000);
+            assert_approx_eq_abs!(price_a.fee, balance!(1.340930597781222944), 1000);
+            assert_approx_eq_abs!(price_a.amount, balance!(22147.5023657559344), 1000_000);
 
             let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -468,7 +468,7 @@ mod tests {
             // amount out = (A_in * S) / X = (100 * 1) / 220 = 0.(45) XST (A_out)
             // deduced fee = A_out * F = 0.(45) * 0.00666 = 0.0030(27) XST (F_xst)
             // deduced fee in XOR = F_xst / X_b = 0.0030(27) / 0.5 = 0.0060(54) XOR (since we are buying XOR with XST)
-            assert_approx_eq!(price_a.fee, balance!(0.006054545454545454), 2);
+            assert_approx_eq_abs!(price_a.fee, balance!(0.006054545454545454), 2);
 
             // Sell
             let (price_c, _) = XSTPool::quote(
@@ -501,7 +501,7 @@ mod tests {
             // deduced fee = A_in / (1 - F) - A_in = 0.(6) / (1 - 0.00666) - A_in ~ 0.004469768659270743 XST (F_xst)
             // deduced fee in XOR = F_xst / X_b = 0.004469768659270743 / 0.5 ~ 0.008939537319 XOR
             // (since we are buying XOR with XST)
-            assert_approx_eq!(price_c.fee, balance!(0.008939537318541485), 2);
+            assert_approx_eq_abs!(price_c.fee, balance!(0.008939537318541485), 2);
         });
     }
 
@@ -720,7 +720,7 @@ mod tests {
             // fee ratio for XSTUSD = 0. (F_r)
             // amount in = 100 XST (A_in)
             // amount out = (A_in * X) / S = (100 * 150) / 2 = 7500 XSTEURO (A_out)
-            assert_approx_eq!(swap_outcome_before.amount, balance!(7500), 10000);
+            assert_approx_eq_abs!(swap_outcome_before.amount, balance!(7500), 10000);
             assert_eq!(swap_outcome_before.fee, 0);
 
 
@@ -883,8 +883,8 @@ mod tests {
             // amount in = 100 XST (A_in)
             // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.7) / 3 = 3500 XSTEURO (A_out)
             // fee = F_xst / X_b = 0.3 * 100 / 0.5 = 60 XOR
-            assert_approx_eq!(swap_outcome_before.amount, balance!(3500), 10000);
-            assert_approx_eq!(swap_outcome_before.fee, balance!(60), 10000);
+            assert_approx_eq_abs!(swap_outcome_before.amount, balance!(3500), 10000);
+            assert_approx_eq_abs!(swap_outcome_before.fee, balance!(60), 10000);
 
             assert_ok!(XSTPool::set_synthetic_asset_fee(
                 RuntimeOrigin::root(),
@@ -911,8 +911,8 @@ mod tests {
             // amount in = 100 XST (A_in)
             // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.4) / 3 = 2000 XSTEURO (A_out)
             // fee = F_xst / X_b = 0.6 * 100 / 0.5 = 120 XOR
-            assert_approx_eq!(swap_outcome_after.amount, balance!(2000), 10000);
-            assert_approx_eq!(swap_outcome_after.fee, balance!(120), 10000);
+            assert_approx_eq_abs!(swap_outcome_after.amount, balance!(2000), 10000);
+            assert_approx_eq_abs!(swap_outcome_after.fee, balance!(120), 10000);
         });
     }
 

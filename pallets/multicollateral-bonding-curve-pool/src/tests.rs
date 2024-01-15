@@ -33,7 +33,7 @@ mod tests {
         mock::*, DistributionAccount, DistributionAccountData, DistributionAccounts, Error, Pallet,
         RETRY_DISTRIBUTION_FREQUENCY,
     };
-    use common::assert_approx_eq;
+    use common::assert_approx_eq_abs;
     use common::{
         self, balance, fixed, fixed_wrapper,
         fixnum::ops::One as _,
@@ -57,8 +57,8 @@ mod tests {
         right: SwapOutcome<Balance>,
         tolerance: Balance,
     ) {
-        assert_approx_eq!(left.amount, right.amount, tolerance);
-        assert_approx_eq!(left.fee, right.fee, tolerance);
+        assert_approx_eq_abs!(left.amount, right.amount, tolerance);
+        assert_approx_eq_abs!(left.fee, right.fee, tolerance);
     }
 
     fn ensure_distribution_accounts_balances(

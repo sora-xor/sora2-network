@@ -137,15 +137,16 @@ macro_rules! our_include_bytes {
     }};
 }
 
-// Assertion that two values are approximately equale (up to some tolerance)
+// Assertion that two values are approximately equal
+// (up to some absolute tolerance (constant value))
 #[macro_export]
-macro_rules! assert_approx_eq {
+macro_rules! assert_approx_eq_abs {
     ($left:expr, $right:expr, $tol:expr) => {{
         let tolerance = $crate::prelude::FixedWrapper::from($tol);
         let left = $crate::prelude::FixedWrapper::from($left);
         let right = $crate::prelude::FixedWrapper::from($right);
         assert!(
-            left.clone() < right.clone() + tolerance.clone() && right < left + tolerance,
+            $crate::test_utils::are_approx_eq_abs(left, right, tolerance),
             "{:?} != {:?} with tolerance {:?}",
             $left,
             $right,
@@ -187,12 +188,12 @@ mod tests {
         use crate::Fixed;
 
         let tol: Fixed = fixed!(0.000000001);
-        assert_approx_eq!(balance!(1.11111111111111), balance!(1.11111111111112), tol);
-        assert_approx_eq!(
+        assert_approx_eq_abs!(balance!(1.11111111111111), balance!(1.11111111111112), tol);
+        assert_approx_eq_abs!(
             Fixed::from_bits(111111111111111),
             Fixed::from_bits(111111111111110),
             tol
         );
-        assert_approx_eq!(100, 99, 2);
+        assert_approx_eq_abs!(100, 99, 2);
     }
 }
