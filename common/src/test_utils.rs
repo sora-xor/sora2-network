@@ -162,7 +162,35 @@ mod test {
     use fixnum::ops::{Bounded, Zero};
 
     #[test]
-    fn should_error_incorrect_relative_percentage() {
+    fn should_equalize_exact_numbers() {
+        for number in [
+            Fixed::ZERO,
+            Fixed::MAX,
+            Fixed::MIN,
+            Fixed::from_bits(1),
+            Fixed::from_bits(-1),
+        ] {
+            assert!(are_approx_eq(number, number, Fixed::ZERO, Fixed::ZERO).unwrap());
+            assert!(are_approx_eq(number, number, Fixed::MAX, Fixed::ZERO).unwrap());
+            assert!(are_approx_eq(
+                number,
+                number,
+                Fixed::ZERO,
+                Fixed::from_bits(balance!(1) as FixedInner - 1)
+            )
+            .unwrap());
+            assert!(are_approx_eq(
+                number,
+                number,
+                Fixed::MAX,
+                Fixed::from_bits(balance!(1) as FixedInner - 1)
+            )
+            .unwrap());
+        }
+    }
+
+    #[test]
+    fn should_fail_incorrect_relative_percentage() {
         let percentage = Fixed::from_bits(-1234);
         assert_eq!(
             are_approx_eq(Fixed::ZERO, Fixed::ZERO, Fixed::ZERO, percentage,),
@@ -176,7 +204,7 @@ mod test {
     }
 
     #[test]
-    fn should_error_incorrect_absolute_percentage() {
+    fn should_fail_incorrect_absolute_percentage() {
         let abs_tolerance = Fixed::from_bits(-1);
         assert_eq!(
             are_approx_eq(Fixed::ZERO, Fixed::ZERO, abs_tolerance, Fixed::ZERO,),
