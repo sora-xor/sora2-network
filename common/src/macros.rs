@@ -137,14 +137,20 @@ macro_rules! our_include_bytes {
     }};
 }
 
-// Assertion that two values are approximately equal
-// (up to some absolute tolerance (constant value))
+/// Assertion that two values are approximately equal
+/// (up to some absolute tolerance (constant value))
 #[macro_export]
 macro_rules! assert_approx_eq_abs {
     ($left:expr, $right:expr, $tol:expr) => {{
-        let tolerance = $crate::prelude::FixedWrapper::from($tol);
-        let left = $crate::prelude::FixedWrapper::from($left);
-        let right = $crate::prelude::FixedWrapper::from($right);
+        let tolerance = $crate::prelude::FixedWrapper::from($tol)
+            .get()
+            .expect("cannot approx compare errors");
+        let left = $crate::prelude::FixedWrapper::from($left)
+            .get()
+            .expect("cannot approx compare errors");
+        let right = $crate::prelude::FixedWrapper::from($right)
+            .get()
+            .expect("cannot approx compare errors");
         assert!(
             $crate::test_utils::are_approx_eq_abs(left, right, tolerance),
             "{:?} != {:?} with tolerance {:?}",
