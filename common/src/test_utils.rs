@@ -30,7 +30,7 @@
 
 use crate::Fixed;
 use fixnum::_priv::RoundMode;
-use fixnum::ops::{Bounded, CheckedAdd, RoundingMul};
+use fixnum::ops::{Bounded, CheckedAdd, RoundingMul, Zero};
 use fixnum::typenum::Unsigned;
 use thiserror::Error;
 
@@ -84,7 +84,7 @@ pub fn are_approx_eq_abs(
     right: Fixed,
     tolerance: Fixed,
 ) -> Result<bool, ApproxEqError> {
-    if tolerance >= Fixed::from_bits(0) {
+    if tolerance >= Fixed::ZERO {
         Ok(are_approx_eq_abs_unchecked(left, right, tolerance))
     } else {
         Err(ApproxEqError::NegativeAbsoluteTolerance(tolerance))
@@ -98,7 +98,7 @@ fn calculate_relative_tolerance(
     b: Fixed,
     percentage: Fixed,
 ) -> Result<Fixed, ApproxEqError> {
-    let percentage_correct = percentage >= Fixed::from_bits(0)
+    let percentage_correct = percentage >= Fixed::ZERO
         && percentage < Fixed::from_bits(10i128.pow(crate::FixedPrecision::I32 as u32));
     if !percentage_correct {
         return Err(ApproxEqError::IncorrectRelativePercentage(percentage));
@@ -144,7 +144,7 @@ pub fn are_approx_eq(
 ) -> Result<bool, ApproxEqError> {
     let relative_tolerance = calculate_relative_tolerance(left, right, relative_percentage)?;
     // `max` may overshadow incorrect argumant, so we need to check it here as well
-    if absolute_tolerance >= Fixed::from_bits(0) {
+    if absolute_tolerance >= Fixed::ZERO {
         Ok(are_approx_eq_abs_unchecked(
             left,
             right,
@@ -159,27 +159,18 @@ pub fn are_approx_eq(
 mod test {
     use crate::test_utils::{are_approx_eq, ApproxEqError};
     use crate::{balance, Fixed, FixedInner};
+    use fixnum::ops::{Bounded, Zero};
 
     #[test]
     fn should_error_incorrect_relative_percentage() {
         let percentage = Fixed::from_bits(-1234);
         assert_eq!(
-            are_approx_eq(
-                Fixed::from_bits(0),
-                Fixed::from_bits(0),
-                Fixed::from_bits(0),
-                percentage,
-            ),
+            are_approx_eq(Fixed::ZERO, Fixed::ZERO, Fixed::ZERO, percentage,),
             Err(ApproxEqError::IncorrectRelativePercentage(percentage))
         );
         let percentage = Fixed::from_bits(balance!(1) as FixedInner + 1);
         assert_eq!(
-            are_approx_eq(
-                Fixed::from_bits(0),
-                Fixed::from_bits(0),
-                Fixed::from_bits(0),
-                percentage,
-            ),
+            are_approx_eq(Fixed::ZERO, Fixed::ZERO, Fixed::ZERO, percentage,),
             Err(ApproxEqError::IncorrectRelativePercentage(percentage))
         );
     }
@@ -188,22 +179,12 @@ mod test {
     fn should_error_incorrect_absolute_percentage() {
         let abs_tolerance = Fixed::from_bits(-1);
         assert_eq!(
-            are_approx_eq(
-                Fixed::from_bits(0),
-                Fixed::from_bits(0),
-                abs_tolerance,
-                Fixed::from_bits(0),
-            ),
+            are_approx_eq(Fixed::ZERO, Fixed::ZERO, abs_tolerance, Fixed::ZERO,),
             Err(ApproxEqError::NegativeAbsoluteTolerance(abs_tolerance))
         );
         let abs_tolerance = Fixed::from_bits(i128::MIN);
         assert_eq!(
-            are_approx_eq(
-                Fixed::from_bits(0),
-                Fixed::from_bits(0),
-                abs_tolerance,
-                Fixed::from_bits(0),
-            ),
+            are_approx_eq(Fixed::ZERO, Fixed::ZERO, abs_tolerance, Fixed::ZERO,),
             Err(ApproxEqError::NegativeAbsoluteTolerance(abs_tolerance))
         );
     }
