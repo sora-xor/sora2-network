@@ -157,7 +157,7 @@ pub fn are_approx_eq(
 
 #[cfg(test)]
 mod test {
-    use crate::test_utils::{are_approx_eq, are_approx_eq_abs, ApproxEqError};
+    use crate::test_utils::{are_approx_eq, are_approx_eq_abs, are_approx_eq_rel, ApproxEqError};
     use crate::{balance, Fixed, FixedInner};
     use fixnum::ops::{Bounded, Zero};
 
@@ -214,6 +214,7 @@ mod test {
         }
     }
 
+    // Test cases where the numbers are approx. equal only by absolute tolerance
     const APPROX_EQ_ABS_MATCH_CASES: &[ApproxEqTestCase] = &[
         // -5        0 1       5
         // |         | |       |
@@ -345,6 +346,33 @@ mod test {
                 right,
                 left,
                 absolute_tolerance
+            );
+        }
+    }
+
+    #[test]
+    fn should_approx_eq_rel_not_match_abs_tolerance() {
+        for ApproxEqTestCase {
+            left,
+            right,
+            absolute_tolerance: _,
+            relative_percentage,
+        } in APPROX_EQ_ABS_MATCH_CASES
+        {
+            let left = Fixed::from_bits(*left);
+            let right = Fixed::from_bits(*right);
+            let relative_percentage = Fixed::from_bits(*relative_percentage);
+            assert!(
+                !are_approx_eq_rel(left, right, relative_percentage).unwrap(),
+                "Expected {} != {} with relative tolerance (%) {}, but got '='",
+                left,
+                right,
+                relative_percentage
+            );
+            assert!(
+                !are_approx_eq_rel(right, left, relative_percentage).unwrap(),
+                "Expected approx eq to be symmetrical; {} != {}, but {} == {} for rel tolerance (%) {}",
+                left, right, right, left, relative_percentage
             );
         }
     }
