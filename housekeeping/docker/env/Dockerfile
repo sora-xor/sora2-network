@@ -32,7 +32,7 @@ RUN apt-get update && \
     curl https://github.com/chevdor/subwasm/releases/download/${SUBWASM_VER}/subwasm_linux_amd64_${SUBWASM_VER}.deb -sSL -o subw.deb && \
     dpkg -i subw.deb && rm subw.deb && \
     rustup update && \
-    cargo install grcov && \
+    cargo install grcov --version 0.6.0 && \
     rustup component add llvm-tools-preview && \
     apt-get autoremove -y && \
     apt-get clean && \
