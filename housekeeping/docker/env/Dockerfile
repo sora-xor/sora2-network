@@ -21,7 +21,6 @@ RUN apt-get update && \
     software-properties-common && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup toolchain install ${RUST_VERSION} && \
-    rustup target add wasm32-unknown-unknown && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_VERSION} && \
     curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     echo "deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
@@ -38,5 +37,5 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git" &&\
+    rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git" && \
     ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
