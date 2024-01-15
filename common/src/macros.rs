@@ -152,7 +152,7 @@ macro_rules! assert_approx_eq_abs {
             .get()
             .expect("cannot approx compare errors");
         assert!(
-            $crate::test_utils::are_approx_eq_abs(left, right, tolerance),
+            $crate::test_utils::are_approx_eq_abs(left, right, tolerance).unwrap(),
             "{:?} != {:?} with tolerance {:?}",
             $left,
             $right,
