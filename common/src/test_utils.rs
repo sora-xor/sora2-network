@@ -220,8 +220,8 @@ mod test {
         // |         | |       |
         // <=========.=========>
         //           ^right    ^left
-        // abs tolerance: [-5, 5]
-        // rel tolerance: [-0.05, 0.05]
+        // abs tolerance: +-5
+        // rel tolerance: +-0.05
         ApproxEqTestCase::new(
             balance!(5) as FixedInner,
             balance!(0) as FixedInner,
@@ -232,8 +232,8 @@ mod test {
         // |         | |       |
         // <=========.=========>
         // ^left     ^right
-        // abs tolerance: [-5, 5]
-        // rel tolerance: [-0.05, 0.05]
+        // abs tolerance: +-5
+        // rel tolerance: +-0.05
         ApproxEqTestCase::new(
             balance!(-5) as FixedInner,
             balance!(0) as FixedInner,
@@ -245,8 +245,8 @@ mod test {
         // <=========.=========>
         //           ^right
         //            ^~left
-        // abs tolerance: [-5, 5]
-        // rel tolerance: [-0.05, 0.05]
+        // abs tolerance: +-5
+        // rel tolerance: +-0.05
         ApproxEqTestCase::new(
             balance!(0.05) as FixedInner + 1,
             balance!(0) as FixedInner,
@@ -258,8 +258,8 @@ mod test {
         // <=========.=========>
         //           ^right
         //          ^~left
-        // abs tolerance: [-5, 5]
-        // rel tolerance: [-0.05, 0.05]
+        // abs tolerance: +-5
+        // rel tolerance: +-0.05
         ApproxEqTestCase::new(
             balance!(-0.05) as FixedInner + 1,
             balance!(0) as FixedInner,
@@ -270,8 +270,8 @@ mod test {
         // |         |         |
         // <=========.=========>
         // ^left     ^right
-        // abs tolerance: [-5, 5]
-        // rel tolerance: [-4.95, 4.95]
+        // abs tolerance: +-5
+        // rel tolerance: +-4.95
         ApproxEqTestCase::new(
             balance!(47) as FixedInner,
             balance!(52) as FixedInner,
@@ -283,8 +283,8 @@ mod test {
         // |            |
         // <============.============>
         // ^left     ^right
-        // abs tolerance: [-5, 5]
-        // rel tolerance: [-4.95, 4.95]
+        // abs tolerance: +-5
+        // rel tolerance: +-4.95
         ApproxEqTestCase::new(
             balance!(47.02) as FixedInner,
             balance!(51.98) as FixedInner,
