@@ -162,7 +162,7 @@ mod test {
     use fixnum::ops::{Bounded, Zero};
 
     #[test]
-    fn should_equalize_exact_numbers() {
+    fn should_approx_eq_equalize_exact_numbers() {
         for number in [
             Fixed::ZERO,
             Fixed::MAX,
@@ -171,6 +171,13 @@ mod test {
             Fixed::from_bits(-1),
         ] {
             assert!(are_approx_eq(number, number, Fixed::ZERO, Fixed::ZERO).unwrap());
+            // almost zero
+            assert!(are_approx_eq(number, number, Fixed::from_bits(1), Fixed::ZERO).unwrap());
+            assert!(are_approx_eq(number, number, Fixed::ZERO, Fixed::from_bits(1)).unwrap());
+            assert!(
+                are_approx_eq(number, number, Fixed::from_bits(1), Fixed::from_bits(1)).unwrap()
+            );
+            // max values
             assert!(are_approx_eq(number, number, Fixed::MAX, Fixed::ZERO).unwrap());
             assert!(are_approx_eq(
                 number,
@@ -183,6 +190,41 @@ mod test {
                 number,
                 number,
                 Fixed::MAX,
+                Fixed::from_bits(balance!(1) as FixedInner - 1)
+            )
+            .unwrap());
+        }
+    }
+
+    #[test]
+    fn should_approx_eq_abs_equalize_exact_numbers() {
+        for number in [
+            Fixed::ZERO,
+            Fixed::MAX,
+            Fixed::MIN,
+            Fixed::from_bits(1),
+            Fixed::from_bits(-1),
+        ] {
+            assert!(are_approx_eq_abs(number, number, Fixed::ZERO).unwrap());
+            assert!(are_approx_eq_abs(number, number, Fixed::from_bits(1)).unwrap());
+            assert!(are_approx_eq_abs(number, number, Fixed::MAX).unwrap());
+        }
+    }
+
+    #[test]
+    fn should_approx_eq_rel_equalize_exact_numbers() {
+        for number in [
+            Fixed::ZERO,
+            Fixed::MAX,
+            Fixed::MIN,
+            Fixed::from_bits(1),
+            Fixed::from_bits(-1),
+        ] {
+            assert!(are_approx_eq_rel(number, number, Fixed::ZERO).unwrap());
+            assert!(are_approx_eq_rel(number, number, Fixed::from_bits(1)).unwrap());
+            assert!(are_approx_eq_rel(
+                number,
+                number,
                 Fixed::from_bits(balance!(1) as FixedInner - 1)
             )
             .unwrap());
