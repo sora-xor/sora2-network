@@ -73,8 +73,7 @@ pub enum ApproxEqError {
 
 #[inline]
 fn are_approx_eq_abs_unchecked(left: Fixed, right: Fixed, tolerance: Fixed) -> bool {
-    left.clone() <= right.clone().saturating_add(tolerance.clone())
-        && right <= left.saturating_add(tolerance)
+    left <= right.saturating_add(tolerance) && right <= left.saturating_add(tolerance)
 }
 
 /// Calculate if two values are approximately equal
