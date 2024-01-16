@@ -8,6 +8,6 @@ echo 'running tests'
 cargo test --features private-net,ready-to-test,wip
 
 echo 'running coverage'
-grcov . --binary-path ./target/debug -s . -t cobertura --branch -o ./cobertura_report --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src" --llvm-path /usr/lib/llvm-17/bin
+grcov . --binary-path ./target/debug -s . -t cobertura --branch -o ./cobertura_report --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src"
 
 find . -type f -name '*.profraw' -delete
