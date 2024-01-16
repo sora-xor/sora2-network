@@ -24,11 +24,11 @@ RUN apt-get update && \
     rustup toolchain install ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_VERSION} && \
     curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-    echo "deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-17 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
-    echo "deb-src http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-17 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
+    echo "deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-17 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-17.list && \
+    echo "deb-src http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-17 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-17.list && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
-    clang-17 lldb-17 lld-17 libclang-17-dev llvm-13 protobuf-compiler && \
+    clang-17 lldb-17 lld-17 libclang-17-dev llvm-17 protobuf-compiler && \
     update-alternatives --install /usr/bin/cc cc /usr/bin/${CC} 100 && \
     curl https://github.com/chevdor/subwasm/releases/download/${SUBWASM_VER}/subwasm_linux_amd64_${SUBWASM_VER}.deb -sSL -o subw.deb && \
     dpkg -i subw.deb && rm subw.deb && \
