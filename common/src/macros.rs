@@ -267,11 +267,10 @@ mod tests {
     #[test]
     #[should_panic]
     fn assert_approx_eq_fails_u128() {
-        // absolute tolerance fails
         assert_approx_eq!(
             balance!(0.99),
-            balance!(1.01),
-            balance!(0.01),
+            balance!(1.01001),
+            balance!(0.02),
             balance!(0.01)
         );
     }
@@ -280,21 +279,17 @@ mod tests {
     #[should_panic]
     fn assert_approx_eq_fails_fixed() {
         use crate::{Fixed, FixedInner};
-
-        // relative tolerance fails
         assert_approx_eq!(
             Fixed::from_bits(100000000000000),
             Fixed::from_bits(100000000000003),
-            Fixed::from_bits(3),
-            Fixed::from_bits(balance!(0.0000000000001) as FixedInner),
+            Fixed::from_bits(2),
+            Fixed::from_bits(balance!(0.000000000000005) as FixedInner),
         );
     }
 
     #[test]
     #[should_panic]
     fn assert_approx_eq_fails_f64() {
-        use crate::fixed_wrapper::FixedWrapper;
-
         // both fail
         assert_approx_eq!(49f64, 51.1f64, 2f64, 0.02f64);
     }

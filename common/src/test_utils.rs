@@ -143,9 +143,6 @@ pub fn are_approx_eq(
     relative_percentage: Fixed,
 ) -> Result<bool, ApproxEqError> {
     let relative_tolerance = calculate_relative_tolerance(left, right, relative_percentage)?;
-    dbg!(absolute_tolerance.max(relative_tolerance));
-    dbg!(left.saturating_add(absolute_tolerance.max(relative_tolerance)));
-    dbg!(right <= left.saturating_add(absolute_tolerance.max(relative_tolerance)));
     // `max` may overshadow incorrect argument, so we need to check it here as well
     if absolute_tolerance >= Fixed::ZERO {
         Ok(are_approx_eq_abs_unchecked(
