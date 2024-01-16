@@ -277,7 +277,7 @@ mod test {
         // abs tolerance: +-5
         // rel tolerance: +-0.05
         ApproxEqTestCase::new(
-            balance!(-5) as FixedInner,
+            -(balance!(5) as FixedInner),
             balance!(0) as FixedInner,
             balance!(5) as FixedInner,
             balance!(0.01) as FixedInner,
@@ -303,7 +303,7 @@ mod test {
         // abs tolerance: +-5
         // rel tolerance: +-0.05
         ApproxEqTestCase::new(
-            balance!(-0.05) as FixedInner + 1,
+            -(balance!(0.05) as FixedInner) + 1,
             balance!(0) as FixedInner,
             balance!(5) as FixedInner,
             balance!(0.01) as FixedInner,
@@ -441,8 +441,8 @@ mod test {
         // abs tolerance: 0
         // rel tolerance: +-2
         ApproxEqTestCase::new(
-            balance!(9) as FixedInner,
             balance!(11) as FixedInner,
+            balance!(9) as FixedInner,
             balance!(0) as FixedInner,
             balance!(0.1) as FixedInner,
         ),
@@ -454,8 +454,8 @@ mod test {
         // abs tolerance: +-1.9999
         // rel tolerance: +-2
         ApproxEqTestCase::new(
-            balance!(9) as FixedInner,
             balance!(11) as FixedInner,
+            balance!(9) as FixedInner,
             balance!(1.9999) as FixedInner,
             balance!(0.1) as FixedInner,
         ),
