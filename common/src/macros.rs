@@ -141,7 +141,7 @@ macro_rules! our_include_bytes {
 /// up to some absolute tolerance (constant value)
 #[macro_export]
 macro_rules! assert_approx_eq_abs {
-    ($left:expr, $right:expr, $tol:expr) => {{
+    ($left:expr, $right:expr, $tol:expr $(,)?) => {{
         // using `FixedWrapper` allows to work with `Fixed`, `f64`, and int types.
         let left = $crate::prelude::FixedWrapper::from($left)
             .get()
@@ -166,7 +166,7 @@ macro_rules! assert_approx_eq_abs {
 /// up to some relative tolerance (percentage of their magnitude `a.abs() + b.abs()`)
 #[macro_export]
 macro_rules! assert_approx_eq_rel {
-    ($left:expr, $right:expr, $tol:expr) => {{
+    ($left:expr, $right:expr, $tol:expr $(,)?) => {{
         // using `FixedWrapper` allows to work with `Fixed`, `f64`, and int types.
         let left = $crate::prelude::FixedWrapper::from($left)
             .get()
@@ -192,7 +192,7 @@ macro_rules! assert_approx_eq_rel {
 /// See details in [crate::test_utils::are_approx_eq].
 #[macro_export]
 macro_rules! assert_approx_eq {
-    ($left:expr, $right:expr, $tol:expr) => {{
+    ($left:expr, $right:expr, $tol:expr $(,)?) => {{
         // using `FixedWrapper` allows to work with `Fixed`, `f64`, and int types.
         let left = $crate::prelude::FixedWrapper::from($left)
             .get()
