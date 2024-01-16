@@ -558,6 +558,274 @@ mod test {
         }
     }
 
+    // Test cases where the numbers are not approx. equal
+    const APPROX_EQ_BOTH_MATCH_CASES: &[ApproxEqTestCase] = &[
+        // 0       5 6
+        // |       | |
+        //       {#.#}
+        //         ^right
+        //           ^left
+        // abs tolerance: +-1.1
+        // rel tolerance: +-1.1
+        ApproxEqTestCase::new(
+            balance!(6) as FixedInner,
+            balance!(5) as FixedInner,
+            balance!(1.1) as FixedInner,
+            balance!(0.1) as FixedInner,
+        ),
+        //   9   11
+        //   |   |
+        // ##.###}
+        //   ^left
+        //       ^right
+        // abs tolerance: +-2
+        // rel tolerance: +-2
+        ApproxEqTestCase::new(
+            balance!(9) as FixedInner,
+            balance!(11) as FixedInner,
+            balance!(2) as FixedInner,
+            balance!(0.1) as FixedInner,
+        ),
+        //   9      11
+        //   |      |
+        // ##.###}
+        //    ^right
+        //   ^left
+        // abs tolerance: +-2
+        // rel tolerance: +-2
+        ApproxEqTestCase::new(
+            balance!(9) as FixedInner,
+            balance!(9) as FixedInner + 1,
+            balance!(2) as FixedInner,
+            balance!(0.1) as FixedInner,
+        ),
+        //   9   10.1
+        //   |   |
+        // ##.###}
+        //   ^left
+        //       ^right
+        // abs tolerance: +-1.11
+        // rel tolerance: +-1.91
+        ApproxEqTestCase::new(
+            balance!(9) as FixedInner,
+            balance!(10.1) as FixedInner,
+            balance!(1.11) as FixedInner,
+            balance!(0.1) as FixedInner,
+        ),
+    ];
+
+    #[test]
+    fn should_approx_eq_match_both_tolerance() {
+        for ApproxEqTestCase {
+            left,
+            right,
+            absolute_tolerance,
+            relative_percentage,
+        } in APPROX_EQ_BOTH_MATCH_CASES
+        {
+            let left = Fixed::from_bits(*left);
+            let right = Fixed::from_bits(*right);
+            let absolute_tolerance = Fixed::from_bits(*absolute_tolerance);
+            let relative_percentage = Fixed::from_bits(*relative_percentage);
+            assert!(
+                are_approx_eq(left, right, absolute_tolerance, relative_percentage).unwrap(),
+                "Expected {} = {} with absolute tolerance {} and relative tolerance (%) {}, but got '!='",
+                left, right, absolute_tolerance, relative_percentage
+            );
+            assert!(
+                are_approx_eq(right, left, absolute_tolerance, relative_percentage).unwrap(),
+                "Expected approx eq to be symmetrical; {} = {}, but {} != {} for abs tolerance {} rel tolerance (%) {}",
+                left, right, right, left, absolute_tolerance, relative_percentage
+            );
+        }
+    }
+
+    #[test]
+    fn should_approx_eq_abs_match_both_tolerance() {
+        for ApproxEqTestCase {
+            left,
+            right,
+            absolute_tolerance,
+            relative_percentage: _,
+        } in APPROX_EQ_BOTH_MATCH_CASES
+        {
+            let left = Fixed::from_bits(*left);
+            let right = Fixed::from_bits(*right);
+            let absolute_tolerance = Fixed::from_bits(*absolute_tolerance);
+            assert!(
+                are_approx_eq_abs(left, right, absolute_tolerance).unwrap(),
+                "Expected {} = {} with absolute tolerance {}, but got '!='",
+                left,
+                right,
+                absolute_tolerance
+            );
+            assert!(
+                are_approx_eq_abs(right, left, absolute_tolerance).unwrap(),
+                "Expected approx eq to be symmetrical; {} = {}, but {} != {} for abs tolerance {}",
+                left,
+                right,
+                right,
+                left,
+                absolute_tolerance
+            );
+        }
+    }
+
+    #[test]
+    fn should_approx_eq_rel_match_both_tolerance() {
+        for ApproxEqTestCase {
+            left,
+            right,
+            absolute_tolerance: _,
+            relative_percentage,
+        } in APPROX_EQ_BOTH_MATCH_CASES
+        {
+            let left = Fixed::from_bits(*left);
+            let right = Fixed::from_bits(*right);
+            let relative_percentage = Fixed::from_bits(*relative_percentage);
+            assert!(
+                are_approx_eq_rel(left, right, relative_percentage).unwrap(),
+                "Expected {} = {} with relative tolerance (%) {}, but got '!='",
+                left,
+                right,
+                relative_percentage
+            );
+            assert!(
+                are_approx_eq_rel(right, left, relative_percentage).unwrap(),
+                "Expected approx eq to be symmetrical; {} = {}, but {} != {} for rel tolerance (%) {}",
+                left, right, right, left, relative_percentage
+            );
+        }
+    }
+
+    // Test cases where the numbers are not approx. equal
+    const APPROX_EQ_NOT_MATCH_CASES: &[ApproxEqTestCase] = &[
+        // -5        0 1       5
+        // |         | |       |
+        // <=========.=========>
+        //           ^right     ^left
+        // abs tolerance: +-5
+        // rel tolerance: +-0.05
+        ApproxEqTestCase::new(
+            balance!(5) as FixedInner + 1,
+            balance!(0) as FixedInner,
+            balance!(5) as FixedInner,
+            balance!(0.01) as FixedInner,
+        ),
+        //  -5        0 1       5
+        //  |         | |       |
+        //  <=========.=========>
+        // ^left      ^right
+        // abs tolerance: +-5
+        // rel tolerance: +-0.05
+        ApproxEqTestCase::new(
+            -(balance!(5) as FixedInner) - 1,
+            balance!(0) as FixedInner,
+            balance!(5) as FixedInner,
+            balance!(0.01) as FixedInner,
+        ),
+        // -5        0 1       5
+        // |         | |       |
+        // <=========.=========>
+        //           ^right
+        // abs tolerance: +-5
+        // rel tolerance: +-(0.01*FixedInner::MAX)
+        ApproxEqTestCase::new(
+            FixedInner::MAX,
+            balance!(0) as FixedInner,
+            balance!(5) as FixedInner,
+            balance!(0.01) as FixedInner,
+        ),
+        // -5        0 1       5
+        // |         | |       |
+        // <=========.=========>
+        //           ^right
+        // abs tolerance: +-5
+        // rel tolerance: +-(0.01*FixedInner::MIN.abs())
+        ApproxEqTestCase::new(
+            FixedInner::MIN,
+            balance!(0) as FixedInner,
+            balance!(5) as FixedInner,
+            balance!(0.01) as FixedInner,
+        ),
+        //  47        52        57
+        //  |         |         |
+        //   <=========.=========>
+        // ^left       ^right
+        // abs tolerance: +-5
+        // rel tolerance: +-4.95
+        ApproxEqTestCase::new(
+            balance!(47) as FixedInner - 1,
+            balance!(52) as FixedInner + 1,
+            balance!(5) as FixedInner,
+            balance!(0.05) as FixedInner,
+        ),
+        //  47        53        57
+        //  |         |         |
+        //   <=========.=========>
+        // ^left       ^right
+        // abs tolerance: +-5
+        // rel tolerance: +-5
+        ApproxEqTestCase::new(
+            balance!(47) as FixedInner - 1,
+            balance!(53) as FixedInner + 1,
+            balance!(5) as FixedInner,
+            balance!(0.05) as FixedInner,
+        ),
+        //   9   11
+        //   |   |
+        // ##.###}
+        //   ^left
+        //        ^right
+        // abs tolerance: 0
+        // rel tolerance: +-2
+        ApproxEqTestCase::new(
+            balance!(9) as FixedInner,
+            balance!(11) as FixedInner + 10,
+            balance!(0) as FixedInner,
+            balance!(0.1) as FixedInner,
+        ),
+        //   9   11
+        //   |   |
+        // ##.###}
+        //   ^left
+        //        ^right
+        // abs tolerance: +-1.9999
+        // rel tolerance: +-2
+        ApproxEqTestCase::new(
+            balance!(9) as FixedInner,
+            balance!(11) as FixedInner + 10,
+            balance!(1.9999) as FixedInner,
+            balance!(0.1) as FixedInner,
+        ),
+    ];
+
+    #[test]
+    fn should_approx_eq_not_match() {
+        for ApproxEqTestCase {
+            left,
+            right,
+            absolute_tolerance,
+            relative_percentage,
+        } in APPROX_EQ_NOT_MATCH_CASES
+        {
+            let left = Fixed::from_bits(*left);
+            let right = Fixed::from_bits(*right);
+            let absolute_tolerance = Fixed::from_bits(*absolute_tolerance);
+            let relative_percentage = Fixed::from_bits(*relative_percentage);
+            assert!(
+                !are_approx_eq(left, right, absolute_tolerance, relative_percentage).unwrap(),
+                "Expected {} != {} with absolute tolerance {} and relative tolerance (%) {}, but got '=='",
+                left, right, absolute_tolerance, relative_percentage
+            );
+            assert!(
+                !are_approx_eq(right, left, absolute_tolerance, relative_percentage).unwrap(),
+                "Expected approx eq to be symmetrical; {} != {}, but {} = {} for abs tolerance {} rel tolerance (%) {}",
+                left, right, right, left, absolute_tolerance, relative_percentage
+            );
+        }
+    }
+
     #[test]
     fn should_fail_incorrect_relative_percentage() {
         let percentage = Fixed::from_bits(-1234);
