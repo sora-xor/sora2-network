@@ -318,20 +318,20 @@ mod test {
             balance!(47) as FixedInner,
             balance!(52) as FixedInner,
             balance!(5) as FixedInner,
-            balance!(0.01) as FixedInner,
+            balance!(0.05) as FixedInner,
         ),
         // closer to rel tolerance:
         // 47.02        51.98
         // |            |
         // <============.============>
-        // ^left     ^right
+        // ^left        ^right
         // abs tolerance: +-5
         // rel tolerance: +-4.95
         ApproxEqTestCase::new(
             balance!(47.02) as FixedInner,
             balance!(51.98) as FixedInner,
             balance!(5) as FixedInner,
-            balance!(0.01) as FixedInner,
+            balance!(0.05) as FixedInner,
         ),
     ];
 
@@ -418,7 +418,7 @@ mod test {
             );
         }
     }
-    // Test cases where the numbers are approx. equal only by absolute tolerance
+    // Test cases where the numbers are approx. equal only by relative tolerance
     const APPROX_EQ_REL_MATCH_CASES: &[ApproxEqTestCase] = &[
         // 0       5 6
         // |       | |
@@ -428,8 +428,8 @@ mod test {
         // abs tolerance: 0
         // rel tolerance: +-1.1
         ApproxEqTestCase::new(
-            balance!(5) as FixedInner,
             balance!(6) as FixedInner,
+            balance!(5) as FixedInner,
             balance!(0) as FixedInner,
             balance!(0.1) as FixedInner,
         ),
