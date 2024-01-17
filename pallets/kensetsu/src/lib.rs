@@ -157,7 +157,6 @@ pub mod pallet {
                 "Entering off-chain worker, block number is {:?}",
                 block_number
             );
-            // TODO implement better solution, with offchain storage
             let now = Timestamp::<T>::get();
             let outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
             let mut collaterals_to_update = BTreeSet::new();
@@ -166,6 +165,7 @@ pub mod pallet {
                     collaterals_to_update.insert(collateral_asset_id);
                 }
             }
+            // TODO optimize CDP accrue
             for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
                 // Debt recalculation with interest
                 if collaterals_to_update.contains(&cdp.collateral_asset_id) {
@@ -254,8 +254,6 @@ pub mod pallet {
     }
 
     pub type Timestamp<T> = timestamp::Pallet<T>;
-
-    // TODO system live parameter
 
     /// System bad debt, the amount of KUSD not secured with collateral.
     #[pallet::storage]
