@@ -6,8 +6,8 @@ export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
 
 echo 'running tests'
 cargo test --features private-net,ready-to-test,wip
-
+mkdir -p reports
 echo 'running coverage'
-grcov . --binary-path ./target/debug -s . -t cobertura --branch -o ./cobertura_report --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src" "node/src" --llvm-path /usr/lib/llvm-14/bin
+grcov . --binary-path ./target/debug -s . -t cobertura --branch -o ./reports/cobertura_report --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src" "node/src" --llvm-path /usr/lib/llvm-14/bin
 
 find . -type f -name '*.profraw' -delete
