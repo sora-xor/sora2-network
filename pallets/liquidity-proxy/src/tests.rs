@@ -4214,3 +4214,30 @@ fn test_xorless_transfer_fails_on_transfer() {
         );
     });
 }
+
+#[test]
+fn test_liquidity_proxy_trait_not_enough_liquidity() {
+    ExtBuilder::default()
+        .with_xyk_pool()
+        .build()
+        .execute_with(|| {
+            // Swap amount exceeds pool liquidity
+            let big_amount = balance!(999999);
+            <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
+                DEX_C_ID,
+                &GetBaseAssetId::get(),
+                &USDT,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: big_amount,
+                },
+                LiquiditySourceFilter::with_allowed(
+                    DEX_C_ID,
+                    [LiquiditySourceType::XYKPool].into(),
+                ),
+                true,
+            )
+            .expect("Failed to get a quote via LiquiditySource trait");
+            // Expect trait error: not enough liquidity, got:
+            // Module(ModuleError { index: 17, error: [48, 0, 0, 0], message: Some("FixedWrapperCalculationFailed") })
+        });
+}
