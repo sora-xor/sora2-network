@@ -50,13 +50,14 @@ pub mod pallet {
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
+        TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
     use pallet_tools::liquidity_proxy::source_initialization;
-    pub use pallet_tools::order_book::OrderBookFillSettings;
+    use pallet_tools::order_book::settings;
     pub use source_initialization::{
         XSTBaseInput, XSTBaseSideInput, XSTBaseXorPrices, XSTBaseXorSidePrices,
         XSTSyntheticExistence, XSTSyntheticInput, XYKPair,
@@ -88,6 +89,7 @@ pub mod pallet {
         >;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type QaToolsWhitelistCapacity: Get<u32>;
         type Symbol: From<<Self as band::Config>::Symbol>
             + From<<Self as xst::Config>::Symbol>
@@ -239,8 +241,7 @@ pub mod pallet {
             account: AccountIdOf<T>,
             pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
         ) -> DispatchResultWithPostInfo {
-            // error messages for unsigned calls are non-informative
-            let who = Self::ensure_in_whitelist(origin)?;
+            ensure_root(origin)?;
 
             source_initialization::xyk::<T>(account, pairs).map_err(|e| {
                 DispatchErrorWithPostInfo {

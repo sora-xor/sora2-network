@@ -28,10 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::settings::{RandomAmount, SideFill};
 use crate::Config;
-use common::fixnum::ops::RoundMode;
-use common::{balance, AssetInfoProvider, Balance, PriceVariant};
+use common::{Balance, PriceVariant, TradingPairSourceManager};
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
@@ -142,12 +140,12 @@ pub fn create_multiple_empty_unchecked<T: Config>(
         .filter(|(id, _)| !<order_book::OrderBooks<T>>::contains_key(id))
         .collect();
     for (order_book_id, _) in &to_create_ids {
-        if !T::TradingPairSourceManager::is_trading_pair_enabled(
+        if !<T as Config>::TradingPairSourceManager::is_trading_pair_enabled(
             &order_book_id.dex_id,
             &order_book_id.quote,
             &order_book_id.base,
         )? {
-            T::TradingPairSourceManager::register_pair(
+            <T as Config>::TradingPairSourceManager::register_pair(
                 order_book_id.dex_id,
                 order_book_id.quote,
                 order_book_id.base,
@@ -203,7 +201,7 @@ pub fn fill_multiple_empty_unchecked<T: Config>(
 }
 
 fn verify_fill_side_price_params<T: Config>(
-    params: &SideFill<MomentOf<T>>,
+    params: &settings::SideFill<MomentOf<T>>,
     tick_size: OrderPrice,
 ) -> Result<(), DispatchError> {
     let tick = tick_size.balance();
@@ -253,8 +251,8 @@ fn verify_amount_range_within_bounds<T: Config>(
     Ok(())
 }
 
-fn max_amount_range<T: Config>(order_book: &OrderBook<T>) -> RandomAmount {
-    RandomAmount::new(
+fn max_amount_range<T: Config>(order_book: &OrderBook<T>) -> settings::RandomAmount {
+    settings::RandomAmount::new(
         *order_book.min_lot_size.balance(),
         *order_book.max_lot_size.balance(),
     )

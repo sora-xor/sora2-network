@@ -48,7 +48,8 @@ use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use qa_tools::pallet::XYKPair;
 use qa_tools::{
-    settings, Error, XSTBaseInput, XSTBaseSideInput, XSTSyntheticExistence, XSTSyntheticInput,
+    pallet_tools::order_book::settings, Error, XSTBaseInput, XSTBaseSideInput,
+    XSTSyntheticExistence, XSTSyntheticInput,
 };
 use sp_runtime::traits::BadOrigin;
 use sp_runtime::DispatchErrorWithPostInfo;

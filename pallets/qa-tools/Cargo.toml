@@ -51,7 +51,6 @@ std = [
     "order-book/std",
     "pool-xyk/std",
     "price-tools/std",
-    "trading-pair/std",
     "xst/std",
 ]
 private-net = [

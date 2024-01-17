@@ -29,13 +29,15 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod source_initialization {
-    use crate::{Config, Error, OrderBookFillSettings};
+    use crate::pallet_tools::order_book::settings;
+    use crate::{Config, Error};
     use assets::AssetIdOf;
     use codec::{Decode, Encode};
     use common::prelude::BalanceUnit;
     use common::{
         balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXInfo, DexIdOf,
-        DexInfoProvider, Oracle, PriceToolsPallet, PriceVariant, TradingPair, XOR,
+        DexInfoProvider, Oracle, PriceToolsPallet, PriceVariant, TradingPair,
+        TradingPairSourceManager, XOR,
     };
     use frame_support::dispatch::{
         DispatchError, DispatchResult, DispatchResultWithPostInfo, RawOrigin,
@@ -113,12 +115,12 @@ pub mod source_initialization {
             let trading_pair = trading_pair_from_asset_ids::<T>(dex_info, asset_a, asset_b)
                 .ok_or(pool_xyk::Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?;
 
-            if !trading_pair::Pallet::<T>::is_trading_pair_enabled(
+            if !<T as Config>::TradingPairSourceManager::is_trading_pair_enabled(
                 &dex_id,
                 &trading_pair.base_asset_id,
                 &trading_pair.target_asset_id,
             )? {
-                trading_pair::Pallet::<T>::register_pair(
+                <T as Config>::TradingPairSourceManager::register_pair(
                     dex_id,
                     trading_pair.base_asset_id,
                     trading_pair.target_asset_id,
