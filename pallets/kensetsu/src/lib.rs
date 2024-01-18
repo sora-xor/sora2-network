@@ -132,7 +132,8 @@ pub mod pallet {
     use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter, ReferencePriceProvider,
+        DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter, PriceToolsPallet,
+        PriceVariant, DAI,
     };
     use frame_support::pallet_prelude::*;
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
@@ -150,6 +151,7 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -239,7 +241,7 @@ pub mod pallet {
         >;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
         type KusdAssetId: Get<Self::AssetId>;
-        type ReferencePriceProvider: ReferencePriceProvider<AssetIdOf<Self>, Balance>;
+        type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
 
         /// Maximum number of CDP that one user can create
@@ -249,6 +251,7 @@ pub mod pallet {
         /// Maximum number of risk manager team members
         #[pallet::constant]
         type MaxRiskManagementTeamSize: Get<u32>;
+
         /// Accrue() for a single CDP can be called once per this period
         #[pallet::constant]
         type AccrueInterestPeriod: Get<Self::Moment>;
@@ -928,9 +931,13 @@ pub mod pallet {
                 .ok_or(Error::<T>::CollateralInfoNotFound)?
                 .risk_parameters
                 .liquidation_ratio;
-            let collateral_reference_price = FixedU128::from_inner(
-                T::ReferencePriceProvider::get_reference_price(&collateral_asset_id)?,
-            );
+            // DAI is assumed as $1
+            let collateral_reference_price =
+                FixedU128::from_inner(T::PriceToolsPallet::get_average_price(
+                    &collateral_asset_id,
+                    &DAI.into(),
+                    PriceVariant::Sell,
+                )?);
             let collateral_volume = collateral_reference_price
                 .checked_mul(&FixedU128::from_inner(collateral))
                 .ok_or(Error::<T>::ArithmeticError)?;

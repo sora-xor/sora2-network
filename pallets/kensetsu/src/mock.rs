@@ -37,10 +37,12 @@ use common::{
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
     AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
-    KUSD, XOR, XST,
+    LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, PriceToolsPallet, PriceVariant,
+    DAI, DEFAULT_BALANCE_PRECISION, KUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
+use frame_support::dispatch::DispatchResult;
+use frame_support::parameter_types;
 use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild};
 use frame_support::{ensure, parameter_types};
 use frame_system::offchain::SendTransactionTypes;
@@ -64,14 +66,21 @@ type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 
-pub struct ReferencePriceProviderMock;
+pub struct PriceToolsMock;
 
-impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProviderMock {
+impl PriceToolsPallet<AssetId> for PriceToolsMock {
     /// Returns `asset_id` price is $1
-    fn get_reference_price(
-        _asset_id: &AssetId,
-    ) -> Result<Balance, frame_support::dispatch::DispatchError> {
+    fn get_average_price(
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _price_variant: PriceVariant,
+    ) -> Result<Balance, DispatchError> {
         Ok(balance!(1))
+    }
+
+    /// Method not used
+    fn register_asset(_asset_id: &AssetId) -> DispatchResult {
+        Ok(())
     }
 }
 
@@ -232,7 +241,7 @@ impl kensetsu::Config for TestRuntime {
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KusdAssetId = KusdAssetId;
-    type ReferencePriceProvider = ReferencePriceProviderMock;
+    type PriceToolsPallet = PriceToolsMock;
     type LiquidityProxy = MockLiquidityProxy;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;

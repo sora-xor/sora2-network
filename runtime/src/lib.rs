@@ -1952,8 +1952,7 @@ impl kensetsu::Config for Runtime {
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KusdAssetId = KusdAssetId;
-    type ReferencePriceProvider =
-        liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
+    type PriceToolsPallet = PriceTools;
     type LiquidityProxy = LiquidityProxy;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
