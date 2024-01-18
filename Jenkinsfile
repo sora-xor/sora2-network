@@ -14,6 +14,6 @@ def pipeline = new org.rust.AppPipeline(steps: this,
       pushToPublicRegistry: true,
       sonarProjectKey: 'sora:sora2-network',
       sonarProjectName: 'sora2-network',
-      dojoProductType: 'sora'
+      dojoProductType: 'polkaswap'
 )
 pipeline.runPipeline()
