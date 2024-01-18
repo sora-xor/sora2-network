@@ -33,7 +33,7 @@ use common::prelude::QuoteAmount;
 use frame_support::RuntimeDebug;
 use sp_std::vec::Vec;
 
-#[cfg(feature = "wip")] // order-book / ALT
+#[cfg(feature = "wip")] // ALT
 use {
     common::prelude::SwapVariant,
     common::{fixed, Balance, SwapChunk},
@@ -43,7 +43,7 @@ use {
     sp_std::collections::vec_deque::VecDeque,
 };
 
-#[cfg(feature = "wip")] // order-book / ALT
+#[cfg(feature = "wip")] // ALT
                         // info with input & output amounts for liquidity source
 type SwapInfo<LiquiditySourceType, AmountType> =
     BTreeMap<LiquiditySourceType, (AmountType, AmountType)>;
@@ -75,7 +75,7 @@ impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdT
     }
 }
 
-#[cfg(feature = "wip")] // order-book / ALT
+#[cfg(feature = "wip")] // ALT
 /// Aggregates the liquidity from the provided liquidity sources.
 /// Liquidity sources provide discretized liquidity curve by chunks and then Liquidity Aggregator selects the best chunks from different sources to gain the best swap amount.
 #[derive(Clone)]
@@ -84,7 +84,7 @@ pub struct LiquidityAggregator<LiquiditySourceType> {
     variant: SwapVariant,
 }
 
-#[cfg(feature = "wip")] // order-book / ALT
+#[cfg(feature = "wip")] // ALT
 impl<LiquiditySourceType> LiquidityAggregator<LiquiditySourceType>
 where
     LiquiditySourceType: Clone + Ord,
@@ -211,7 +211,7 @@ where
     }
 }
 
-#[cfg(feature = "wip")] // order-book / ALT
+#[cfg(feature = "wip")] // ALT
 #[cfg(test)]
 mod tests {
     use crate::liquidity_aggregator::*;

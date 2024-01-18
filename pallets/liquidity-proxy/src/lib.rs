@@ -71,13 +71,13 @@ use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
 pub use weights::WeightInfo;
 
-#[cfg(not(feature = "wip"))] // order-book / ALT
+#[cfg(not(feature = "wip"))] // ALT
 use {
     common::prelude::fixnum::ops::{Bounded, Zero as _},
     sp_runtime::traits::CheckedSub,
 };
 
-#[cfg(feature = "wip")] // order-book / ALT
+#[cfg(feature = "wip")] // ALT
 use liquidity_aggregator::LiquidityAggregator;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
@@ -1003,7 +1003,7 @@ impl<T: Config> Pallet<T> {
             ));
         }
 
-        #[cfg(not(feature = "wip"))] // order-book / ALT
+        #[cfg(not(feature = "wip"))] // ALT
         {
             // Check if we have exactly two sources: the primary market and the secondary market
             // Do the "smart" swap split (with fallback)
@@ -1044,7 +1044,7 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        #[cfg(feature = "wip")] // order-book / ALT
+        #[cfg(feature = "wip")] // ALT
         {
             let (outcome, rewards, weight) = Self::new_smart_split(
                 &sources,
@@ -1060,7 +1060,7 @@ impl<T: Config> Pallet<T> {
             Ok((outcome, rewards, sources, total_weight))
         }
 
-        #[cfg(not(feature = "wip"))] // order-book / ALT
+        #[cfg(not(feature = "wip"))] // ALT
         fail!(Error::<T>::UnavailableExchangePath);
     }
 
@@ -1448,7 +1448,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[cfg(feature = "wip")] // order-book / ALT
+    #[cfg(feature = "wip")] // ALT
     fn new_smart_split(
         sources: &Vec<LiquiditySourceIdOf<T>>,
         base_asset_id: &T::AssetId,
@@ -1521,7 +1521,7 @@ impl<T: Config> Pallet<T> {
         Ok((aggregate_swap_outcome, rewards, total_weight))
     }
 
-    #[cfg(not(feature = "wip"))] // order-book / ALT
+    #[cfg(not(feature = "wip"))] // ALT
     /// Implements the "smart" split algorithm.
     ///
     /// - `primary_source_id` - ID of the primary market liquidity source,
@@ -1740,7 +1740,7 @@ impl<T: Config> Pallet<T> {
         ))
     }
 
-    #[cfg(not(feature = "wip"))] // order-book / ALT
+    #[cfg(not(feature = "wip"))] // ALT
     /// Determines the share of a swap that should be exchanged in the primary market
     /// (i.e., the multi-collateral bonding curve pool) based on the current reserves of
     /// the base asset and the collateral asset in the secondary market (e.g., an XYK pool)
@@ -1841,7 +1841,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[cfg(not(feature = "wip"))] // order-book / ALT
+    #[cfg(not(feature = "wip"))] // ALT
     /// Determines the share of a swap that should be exchanged in the primary market
     /// (i.e. the multi-collateral bonding curve pool) based on the current reserves of
     /// the base asset and the collateral asset in the secondary market (e.g. an XYK pool)
