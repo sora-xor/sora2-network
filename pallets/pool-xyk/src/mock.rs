@@ -31,7 +31,7 @@
 use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
 use common::GetMarketInfo;
-use common::{balance, fixed, hash, DEXInfo, PSWAP, VAL, XST};
+use common::{balance, fixed, hash, DEXInfo, PSWAP, TBCD, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
@@ -191,7 +191,7 @@ impl currencies::Config for Runtime {
 }
 
 parameter_types! {
-    pub GetBuyBackAssetId: AssetId = XST.into();
+    pub GetBuyBackAssetId: AssetId = TBCD.into();
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
@@ -231,7 +231,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetXSTAssetId = GetBuyBackAssetId;
+    type GetTBCDAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -337,6 +337,10 @@ impl Config for Runtime {
         crate::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();

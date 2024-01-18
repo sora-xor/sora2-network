@@ -188,14 +188,12 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
         + common::Config
         + assets::Config
         + technical::Config
-        + trading_pair::Config
         + pool_xyk::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -208,8 +206,9 @@ pub mod pallet {
         >;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
-        type BuyBackXSTPercent: Get<Fixed>;
+        type BuyBackTBCDPercent: Get<Fixed>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -784,7 +783,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         common::with_transaction(|| {
             let base_asset_id = T::GetBaseAssetId::get();
-            let swapped_xor_amount = <T as pallet::Config>::LiquidityProxy::exchange(
+            let swapped_xor_amount = T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
                 holder,
                 holder,
@@ -825,12 +824,12 @@ impl<T: Config> Pallet<T> {
                 undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
             }
 
-            let amount = fw_swapped_xor_amount * T::BuyBackXSTPercent::get();
+            let amount = fw_swapped_xor_amount * T::BuyBackTBCDPercent::get();
             let amount = amount
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
             undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
-            T::BuyBackHandler::mint_buy_back_and_burn(&base_asset_id, &XST.into(), amount)?;
+            T::BuyBackHandler::mint_buy_back_and_burn(&base_asset_id, &TBCD.into(), amount)?;
 
             // undistributed_xor_amount includes xor_allocation and val_holders portions
             T::BuyBackHandler::mint_buy_back_and_burn(
@@ -874,14 +873,13 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::PoolAlreadyInitializedForPair
             );
             T::PriceToolsPallet::register_asset(&collateral_asset_id)?;
-            T::EnsureTradingPairExists::ensure_trading_pair_exists(
+            <T as Config>::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &collateral_asset_id,
             )?;
 
-            // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-            trading_pair::Pallet::<T>::enable_source_for_trading_pair(
+            <T as Config>::TradingPairSourceManager::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &collateral_asset_id,
@@ -1427,7 +1425,7 @@ impl<T: Config> Pallet<T> {
         let price = if asset_id == &reference_asset_id || asset_id == &common::TBCD.into() {
             balance!(1)
         } else {
-            <T as pallet::Config>::PriceToolsPallet::get_average_price(
+            <T as Config>::PriceToolsPallet::get_average_price(
                 asset_id,
                 &reference_asset_id,
                 price_variant,

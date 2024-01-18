@@ -29,8 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
 
 #[macro_use]
 extern crate alloc;
@@ -53,6 +52,7 @@ pub mod macros;
 pub mod migrations;
 mod primitives;
 pub mod serialization;
+pub mod storage;
 mod swap_amount;
 mod traits;
 pub mod utils;
@@ -190,13 +190,13 @@ pub fn convert_block_number_to_timestamp<T: Config + pallet_timestamp::Config>(
         let num_of_seconds: u32 =
             ((unlocking_block - current_block) * 6u32.into()).unique_saturated_into();
         let mut timestamp: T::Moment = num_of_seconds.into();
-        timestamp = timestamp * 1000u32.into();
+        timestamp *= 1000u32.into();
         current_timestamp + timestamp
     } else {
         let num_of_seconds: u32 =
             ((current_block - unlocking_block) * 6u32.into()).unique_saturated_into();
         let mut timestamp: T::Moment = num_of_seconds.into();
-        timestamp = timestamp * 1000u32.into();
+        timestamp *= 1000u32.into();
         current_timestamp - timestamp
     }
 }

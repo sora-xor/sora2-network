@@ -34,7 +34,7 @@ use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION,
-    ETH, PSWAP, USDT, VAL, XOR, XST,
+    ETH, PSWAP, TBCD, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -107,7 +107,6 @@ construct_runtime! {
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
-        TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -153,13 +152,6 @@ impl frame_system::Config for Runtime {
 
 impl dex_manager::Config for Runtime {}
 
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-}
-
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = ();
     type EnsureDEXManager = ();
@@ -170,6 +162,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = MockDEXApi;
+    type TradingPairSourceManager = TradingPair;
     type WeightInfo = ();
 }
 
@@ -200,7 +193,7 @@ impl common::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = XST;
+    pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
@@ -256,7 +249,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetXSTAssetId = GetBuyBackAssetId;
+    type GetTBCDAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -278,6 +271,62 @@ impl demeter_farming_platform::Config for Runtime {
     type WeightInfo = ();
 }
 
+pub struct TradingPair;
+
+impl common::TradingPairSourceManager<DEXId, AssetId> for TradingPair {
+    fn list_enabled_sources_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+    ) -> Result<scale_info::prelude::collections::BTreeSet<LiquiditySourceType>, DispatchError>
+    {
+        Ok(Default::default())
+    }
+
+    fn is_source_enabled_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError> {
+        Ok(false)
+    }
+
+    fn enable_source_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        Ok(())
+    }
+
+    fn disable_source_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        Ok(())
+    }
+
+    fn is_trading_pair_enabled(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError> {
+        Ok(false)
+    }
+
+    fn register_pair(
+        _dex_id: DEXId,
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -288,6 +337,10 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = TradingPair;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
+    type EnabledSourcesManager = ();
     type GetFee = GetXykFee;
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = PriceTools;

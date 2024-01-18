@@ -1,13 +1,13 @@
 use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem};
 use bridge_types::{GenericNetworkId, H256};
 
-use crate::substrate::{LeafProof, OffchainDataOf};
+use crate::substrate::{BlockNumberOrHash, GenericCommitmentWithBlockOf, LeafProof};
 use crate::{prelude::*, substrate::BlockNumber};
 use bridge_common::simplified_proof::convert_to_simplified_mmr_proof;
 use sp_runtime::traits::{Keccak256, UniqueSaturatedInto};
 
 pub struct MessageCommitmentWithProof<S: SenderConfig> {
-    pub offchain_data: OffchainDataOf<S>,
+    pub offchain_data: GenericCommitmentWithBlockOf<S>,
     pub digest: AuxiliaryDigest,
     pub leaf: bridge_common::beefy_types::BeefyMMRLeaf,
     pub proof: bridge_common::simplified_proof::Proof<H256>,
@@ -51,7 +51,9 @@ pub async fn load_commitment_with_proof<S: SenderConfig>(
     batch_nonce: u64,
     latest_beefy_block: u32,
 ) -> AnyResult<MessageCommitmentWithProof<S>> {
-    let offchain_data = sender.bridge_commitment(network_id, batch_nonce).await?;
+    let offchain_data = sender
+        .commitment_with_nonce(network_id, batch_nonce, BlockNumberOrHash::Finalized)
+        .await?;
     let digest = load_digest(
         sender,
         network_id,

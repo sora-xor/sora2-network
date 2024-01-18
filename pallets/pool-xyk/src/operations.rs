@@ -38,7 +38,7 @@ use crate::bounds::*;
 pub struct Resource<AssetId, Balance> {
     // This is `AssetId` of `Resource`.
     pub asset: AssetId,
-    // This is amount of `Resurce`.
+    // This is amount of `Resource`.
     pub amount: Bounds<Balance>,
 }
 

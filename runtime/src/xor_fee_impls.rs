@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::*;
 use common::LiquidityProxyTrait;
 use pallet_utility::Call as UtilityCall;
@@ -84,9 +114,8 @@ impl CustomFees {
             | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
                 ..
             })
-            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => {
-                Some(BIG_FEE)
-            }
+            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_rewards { .. })
+            | RuntimeCall::OrderBook(order_book::Call::update_orderbook { .. }) => Some(BIG_FEE),
             RuntimeCall::Assets(..)
             | RuntimeCall::EthBridge(..)
             | RuntimeCall::LiquidityProxy(..)
@@ -96,7 +125,8 @@ impl CustomFees {
             | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
             | RuntimeCall::TradingPair(..)
             | RuntimeCall::Band(..)
-            | RuntimeCall::Referrals(..) => Some(SMALL_FEE),
+            | RuntimeCall::Referrals(..)
+            | RuntimeCall::OrderBook(..) => Some(SMALL_FEE),
             _ => None,
         }
     }
@@ -106,6 +136,9 @@ impl CustomFees {
 pub enum CustomFeeDetails {
     /// Regular call with custom fee without any additional logic
     Regular(Balance),
+
+    /// OrderBook::place_limit_order custom fee depends on limit order lifetime
+    LimitOrderLifetime(Option<Moment>),
 }
 
 // Flat fees implementation for the selected extrinsics.
@@ -116,7 +149,15 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
 
     fn compute_fee(call: &RuntimeCall) -> Option<(Balance, CustomFeeDetails)> {
         let fee = Self::base_fee(call)?;
-        Some((fee, CustomFeeDetails::Regular(fee)))
+
+        let details = match call {
+            RuntimeCall::OrderBook(order_book::Call::place_limit_order { lifespan, .. }) => {
+                CustomFeeDetails::LimitOrderLifetime(*lifespan)
+            }
+            _ => CustomFeeDetails::Regular(fee),
+        };
+
+        Some((fee, details))
     }
 
     fn should_be_postponed(
@@ -193,6 +234,55 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
                     return false;
                 }
             }
+            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+                dex_id,
+                asset_id,
+                amount,
+                selected_source_types,
+                filter_mode,
+                desired_xor_amount,
+                max_amount_in,
+                ..
+            }) => {
+                // Pay fee as usual
+                if balance > fee {
+                    return false;
+                }
+
+                // Check how much user has input asset
+                let user_input_balance = Currencies::free_balance(*asset_id, who);
+
+                // The amount of input asset needed for this swap is more than the user has, so error
+                if amount.saturating_add(*max_amount_in) > user_input_balance {
+                    return false;
+                }
+
+                let filter = LiquiditySourceFilter::with_mode(
+                    *dex_id,
+                    filter_mode.clone(),
+                    selected_source_types.clone(),
+                );
+                let Ok(swap_result) = LiquidityProxy::quote(
+                        *dex_id,
+                        asset_id,
+                        &XOR,
+                        QuoteAmount::with_desired_output(*desired_xor_amount),
+                        filter,
+                        true,
+                    ) else {
+                        return false;
+                    };
+                if swap_result.amount <= *max_amount_in
+                    && balance
+                        .saturating_add(*desired_xor_amount)
+                        .saturating_sub(Balances::minimum_balance())
+                        >= fee
+                {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
             _ => return false,
         }
     }
@@ -213,6 +303,13 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
         let fee_details = fee_details?;
         match fee_details {
             CustomFeeDetails::Regular(fee) => Some(fee),
+            CustomFeeDetails::LimitOrderLifetime(lifetime) => {
+                order_book::fee_calculator::FeeCalculator::<Runtime>::place_limit_order_fee(
+                    lifetime,
+                    _post_info.actual_weight.is_some(),
+                    _result.is_err(),
+                )
+            }
         }
     }
 

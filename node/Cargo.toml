@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "3.0.0"
+version = "3.2.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -50,7 +50,6 @@ pswap-distribution-rpc = { path = "../pallets/pswap-distribution/rpc" }
 vested-rewards-rpc = { path = "../pallets/vested-rewards/rpc" }
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
 beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common.git" }
 oracle-proxy-rpc = { path = "../pallets/oracle-proxy/rpc" }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }
 
@@ -109,6 +108,9 @@ leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git" }
 sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 enum-as-inner = "=0.5.1"
+# TODO remove after toolchain is updated
+# newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
+ahash="=0.8.5"
 
 [build-dependencies]
 substrate-build-script-utils = "3"
@@ -135,9 +137,6 @@ private-net = [
 wip = [
     "framenode-chain-spec/wip",
     "framenode-runtime/wip",
-    "common/wip",
-    "dex-api-rpc/wip",
-    "liquidity-proxy-rpc/wip",
     "beefy-light-client",
     "beefy-light-client-rpc",
 ]

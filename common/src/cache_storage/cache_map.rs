@@ -46,7 +46,18 @@ where
     _phantom: PhantomData<Storage>,
 }
 
-impl<Key: Ord, Value, Storage> CacheStorageMap<Key, Value, Storage>
+impl<Key, Value, Storage> Default for CacheStorageMap<Key, Value, Storage>
+where
+    Key: Ord + FullEncode + Clone,
+    Value: FullCodec + Clone + PartialEq,
+    Storage: StorageMap<Key, Value>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Key, Value, Storage> CacheStorageMap<Key, Value, Storage>
 where
     Key: Ord + FullEncode + Clone,
     Value: FullCodec + Clone + PartialEq,
@@ -134,17 +145,33 @@ where
                 }
             }
         }
-        self.cache.retain(|_, v| {
-            if let Some(Item::Original(_)) = v {
-                true
-            } else {
-                false
-            }
-        });
+        self.cache
+            .retain(|_, v| matches!(v, Some(Item::Original(_))));
     }
 
     /// Resets the cache
     pub fn reset(&mut self) {
         self.cache.clear();
+    }
+
+    /// Returns mutable reference to the cached value if it is,
+    /// otherwise tries to get the value from `Storage`.
+    /// If `Storage` has the value, CacheStorageDoubleMap caches it and returns
+    /// mutable ref to it.
+    /// If `Storage` has no the value, then `None` is kept and returned.
+    ///
+    /// When client calls `get` with the same `key` again,
+    /// ref to the cached value or None is returned without
+    /// trying to get it from `Storage`.
+    pub fn get_mut(&mut self, key: &Key) -> Option<&mut Value> {
+        if let Some(item) = self.cache.entry(key.clone()).or_insert_with(|| {
+            Storage::try_get(key)
+                .ok()
+                .map(|value| Item::Original(value))
+        }) {
+            item.value_mut()
+        } else {
+            None
+        }
     }
 }

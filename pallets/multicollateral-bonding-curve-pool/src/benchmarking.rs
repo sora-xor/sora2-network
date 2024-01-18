@@ -51,7 +51,6 @@ use crate::Pallet as MBCPool;
 use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
-use trading_pair::Pallet as TradingPair;
 
 #[cfg(not(test))]
 use price_tools::Pallet as PriceTools;
@@ -176,8 +175,7 @@ benchmarks! {
             None,
             None
         ).unwrap();
-        TradingPair::<T>::register(
-            RawOrigin::Signed(caller.clone()).into(),
+        <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             USDT.into()
@@ -244,7 +242,7 @@ benchmarks! {
             None,
             None
         ).unwrap();
-        TradingPair::<T>::register(RawOrigin::Signed(caller.clone()).into(), common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
+        <T as Config>::TradingPairSourceManager::register_pair( common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
         MBCPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), USDT.into()).unwrap();
     }: {
         Pallet::<T>::set_optional_reward_multiplier(
@@ -333,8 +331,7 @@ benchmarks! {
             None,
         )
         .unwrap();
-        TradingPair::<T>::register(
-            RawOrigin::Signed(caller.clone()).into(),
+    <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             USDT.into(),
@@ -448,8 +445,7 @@ benchmarks! {
             balance!(50000000),
         )
         .unwrap();
-        TradingPair::<T>::register(
-            RawOrigin::Signed(caller.clone()).into(),
+    <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             USDT.into(),
@@ -507,8 +503,7 @@ benchmarks! {
             None,
             None
         ).unwrap();
-        TradingPair::<T>::register(
-            RawOrigin::Signed(caller.clone()).into(),
+        <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             USDT.into()
@@ -557,8 +552,7 @@ benchmarks! {
             balance!(50000000),
         )
         .unwrap();
-        TradingPair::<T>::register(
-            RawOrigin::Signed(caller.clone()).into(),
+    <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             USDT.into(),
@@ -585,7 +579,7 @@ benchmarks! {
 
     impl_benchmark_test_suite!(
         Pallet,
-        crate::mock::ExtBuilder::bench_init().build_for_benchmarks(),
+        crate::mock::ExtBuilder::bench_init().build(),
         crate::mock::Runtime
     );
 }

@@ -36,10 +36,10 @@ use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use core::marker::PhantomData;
 
 pub trait WeightInfo {
-	fn order_book_create_empty_batch() -> Weight {
+	fn order_book_create_and_fill_batch() -> Weight {
         Weight::zero()
     }
-	fn order_book_create_and_fill_batch() -> Weight {
+    fn order_book_fill_batch() -> Weight {
         Weight::zero()
     }
 }

@@ -47,6 +47,18 @@ where
     _phantom: PhantomData<Storage>,
 }
 
+impl<Key1, Key2, Value, Storage> Default for CacheStorageDoubleMap<Key1, Key2, Value, Storage>
+where
+    Key1: Ord + FullCodec + Clone,
+    Key2: Ord + FullCodec + Clone,
+    Value: FullCodec + Clone + PartialEq,
+    Storage: IterableStorageDoubleMap<Key1, Key2, Value>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<Key1, Key2, Value, Storage> CacheStorageDoubleMap<Key1, Key2, Value, Storage>
 where
     Key1: Ord + FullCodec + Clone,
@@ -109,7 +121,7 @@ where
                 .or_default()
                 .iter()
                 .filter_map(|(key2, maybe_item)| {
-                    if let Some(Some(value)) = maybe_item.clone().map(|item| item.value().cloned())
+                    if let Some(Some(value)) = maybe_item.as_ref().map(|item| item.value().cloned())
                     {
                         Some((key2.clone(), value))
                     } else {
@@ -170,13 +182,7 @@ where
                 }
             }
 
-            second_map.retain(|_, v| {
-                if let Some(Item::Original(_)) = v {
-                    true
-                } else {
-                    false
-                }
-            });
+            second_map.retain(|_, v| matches!(v, Some(Item::Original(_))));
         }
     }
 
@@ -193,6 +199,33 @@ where
             second_map
                 .entry(key2)
                 .or_insert(Some(Item::Original(value)));
+        }
+    }
+
+    /// Returns mutable reference to the cached value if it is,
+    /// otherwise tries to get the value from `Storage`.
+    /// If `Storage` has the value, CacheStorageDoubleMap caches it and returns
+    /// mutable ref to it.
+    /// If `Storage` has no the value, then `None` is kept and returned.
+    ///
+    /// When client calls `get` with the same `keys` again,
+    /// ref to the cached value or None is returned without
+    /// trying to get it from `Storage`.
+    pub fn get_mut(&mut self, key1: &Key1, key2: &Key2) -> Option<&mut Value> {
+        if let Some(item) = self
+            .cache
+            .entry(key1.clone())
+            .or_default()
+            .entry(key2.clone())
+            .or_insert_with(|| {
+                Storage::try_get(key1, key2)
+                    .ok()
+                    .map(|value| Item::Original(value))
+            })
+        {
+            item.value_mut()
+        } else {
+            None
         }
     }
 }

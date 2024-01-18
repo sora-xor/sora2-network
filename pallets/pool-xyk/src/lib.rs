@@ -45,9 +45,9 @@ use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
-    LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
-    RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
+    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
+    PoolXykPallet, RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
     TradingPairSourceManager,
 };
 
@@ -182,8 +182,7 @@ impl<T: Config> Pallet<T> {
             (asset_a_pair.0, asset_b_pair.0)
         };
 
-        // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-        trading_pair::Pallet::<T>::enable_source_for_trading_pair(
+        T::TradingPairSourceManager::enable_source_for_trading_pair(
             dex_id,
             sorted_asset_a,
             sorted_asset_b,
@@ -244,7 +243,7 @@ impl<T: Config> Pallet<T> {
         // can be done, check every condition for `PoolIsAlreadyInitialized`.
         if technical::Pallet::<T>::ensure_tech_account_registered(&tech_acc_id).is_ok() {
             if technical::Pallet::<T>::ensure_tech_account_registered(&fee_acc_id).is_ok()
-                && trading_pair::Pallet::<T>::ensure_trading_pair_exists(
+                && T::EnsureTradingPairExists::ensure_trading_pair_exists(
                     &dex_id,
                     &trading_pair.base_asset_id.into(),
                     &trading_pair.target_asset_id.into(),
@@ -746,19 +745,17 @@ use sp_runtime::traits::Zero;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, Fixed, GetMarketInfo, OnPoolCreated};
+    use common::{AccountIdOf, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use orml_traits::GetByKey;
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
         + technical::Config
-        + trading_pair::Config
         + ceres_liquidity_locker::Config
         + demeter_farming_platform::Config
     {
@@ -780,6 +777,14 @@ pub mod pallet {
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type EnabledSourcesManager: EnabledSourcesManager<Self::DEXId, Self::AssetId>;
+        type EnsureTradingPairExists: EnsureTradingPairExists<
+            Self::DEXId,
+            Self::AssetId,
+            DispatchError,
+        >;
         type XSTMarketInfo: GetMarketInfo<Self::AssetId>;
         type GetFee: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;

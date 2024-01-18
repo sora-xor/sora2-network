@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use bridge_types::GenericNetworkId;
+
 use crate::{cli::prelude::*, substrate::BlockNumber};
 
 #[derive(Args, Clone, Debug)]
@@ -74,15 +76,13 @@ impl Command {
             )
             .await?
             .ok_or(anyhow!("Beefy authorities not found"))?;
-        let network_id = para
-            .storage_fetch(
-                &parachain_runtime::storage()
-                    .beefy_light_client()
-                    .this_network_id(),
-                block_hash,
-            )
-            .await?
-            .ok_or(anyhow!("Network id not found"))?;
+        let GenericNetworkId::Sub(network_id) = para.constant_fetch_or_default(
+            &parachain_runtime::constants()
+                .substrate_bridge_outbound_channel()
+                .this_network_id().unvalidated(),
+        )? else {
+            return Err(anyhow!("Network id not found"));
+        };
 
         let call = mainnet_runtime::runtime_types::framenode_runtime::RuntimeCall::BeefyLightClient(
             mainnet_runtime::runtime_types::beefy_light_client::pallet::Call::initialize {

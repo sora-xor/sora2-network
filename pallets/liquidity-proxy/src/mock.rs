@@ -34,7 +34,7 @@ use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
     LiquiditySourceType, RewardReason, SwapChunk, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM,
-    PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -48,7 +48,7 @@ use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcom
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot};
 use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
-use sp_core::H256;
+use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, DispatchError, Perbill, Percent};
@@ -152,7 +152,7 @@ construct_runtime! {
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Pallet, Call, Config<T>, Storage},
         Technical: technical::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage},
+        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
         TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
         PoolXyk: pool_xyk::{Pallet, Call, Storage, Event<T>},
@@ -200,8 +200,13 @@ impl Config for Runtime {
     type PrimaryMarketXST = MockXSTPool;
     type SecondaryMarket = mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
+
     type GetADARAccountId = GetADARAccountId;
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
+    type MaxAdditionalDataLength = ConstU32<128>;
+    type LockedLiquiditySourcesManager = trading_pair::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -226,14 +231,14 @@ impl currencies::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = XST;
+    pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
             "0000000000000000000000000000000000000000000000000000000000000023"
     ));
     pub const GetBuyBackDexId: DEXId = DEX_A_ID;
-    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
+    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
 impl assets::Config for Runtime {
@@ -315,6 +320,7 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type MockLiquiditySource =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
@@ -326,9 +332,9 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type MulticollateralBondingCurvePool = MockMCBCPool;
     type XSTPool = MockXSTPool;
-
-    #[cfg(feature = "wip")] // order-book
-    type OrderBook = (); // todo
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type OrderBook = (); // todo (m.tagirov) ALT
+    type WeightInfo = ();
 }
 
 impl trading_pair::Config for Runtime {
@@ -342,7 +348,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetXSTAssetId = GetBuyBackAssetId;
+    type GetTBCDAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -374,6 +380,10 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = ();
     type GetFee = GetXykFee;
@@ -403,9 +413,10 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type VestedRewardsPallet = VestedRewards;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type PriceToolsPallet = ();
-    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
+    type BuyBackHandler = LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
+    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type WeightInfo = ();
 }
 
@@ -837,7 +848,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn exchange_weight() -> Weight {
-        Weight::zero()
+        Weight::from_all(1)
     }
 
     fn check_rewards_weight() -> Weight {
@@ -1079,6 +1090,8 @@ impl ExtBuilder {
                     .unwrap();
                 }
             }
+            // Set block number to 1 to start events tracking
+            frame_system::Pallet::<Runtime>::set_block_number(1);
         });
 
         ext
@@ -1229,7 +1242,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn exchange_weight() -> Weight {
-        Weight::zero()
+        Weight::from_all(1)
     }
 
     fn check_rewards_weight() -> Weight {

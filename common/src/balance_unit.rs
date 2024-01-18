@@ -34,6 +34,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use core::cmp::Ordering;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use fixnum::ArithmeticError;
+use num_traits::Unsigned;
 use sp_arithmetic::traits::IntegerSquareRoot;
 use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Saturating, Zero};
 
@@ -73,7 +74,7 @@ impl Ord for BalanceUnit {
 
 impl PartialOrd for BalanceUnit {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -371,6 +372,38 @@ impl Saturating for BalanceUnit {
             self.inner.saturating_pow(exp as u32)
         };
         Self::new(balance, self.is_divisible)
+    }
+}
+
+/// `BalanceUnit` can be multiplied by scalars using this type.
+#[derive(Copy, Clone)]
+pub struct Scalar<N>(pub N);
+
+impl<N: Unsigned + Into<u128>> Mul<Scalar<N>> for BalanceUnit {
+    type Output = Self;
+
+    fn mul(mut self, rhs: Scalar<N>) -> Self::Output {
+        self.inner *= rhs.0.into();
+        self
+    }
+}
+
+impl<N: Unsigned + Into<u128>> MulAssign<Scalar<N>> for BalanceUnit {
+    fn mul_assign(&mut self, rhs: Scalar<N>) {
+        *self = *self * rhs
+    }
+}
+
+// `num_traits::CheckedMul` trait doesn't allow `Rhs` other than `Self`
+impl BalanceUnit {
+    pub fn checked_mul_by_scalar<N: Unsigned + Into<u128> + Copy>(
+        &self,
+        rhs: Scalar<N>,
+    ) -> Option<Self> {
+        Some(Self::new(
+            self.inner.checked_mul(rhs.0.into())?,
+            self.is_divisible,
+        ))
     }
 }
 

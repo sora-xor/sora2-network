@@ -37,6 +37,7 @@ use common::cache_storage::{CacheStorageDoubleMap, CacheStorageMap};
 use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
+use frame_support::traits::Len;
 use sp_runtime::traits::{CheckedAdd, CheckedSub, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
@@ -78,6 +79,12 @@ pub struct CacheDataLayer<T: Config> {
     >,
 }
 
+impl<T: Config> Default for CacheDataLayer<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Config> CacheDataLayer<T> {
     pub fn new() -> Self {
         Self {
@@ -113,13 +120,15 @@ impl<T: Config> CacheDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         limit_order: &LimitOrder<T>,
     ) -> Result<(), ()> {
-        let mut bids = self
-            .bids
-            .get(order_book_id, &limit_order.price)
-            .cloned()
-            .unwrap_or_default();
-        bids.try_push(limit_order.id).map_err(|_| ())?;
-        self.bids.set(order_book_id, &limit_order.price, bids);
+        if let Some(bids) = self.bids.get_mut(order_book_id, &limit_order.price) {
+            bids.try_push(limit_order.id).map_err(|_| ())?;
+        } else {
+            let bids = sp_runtime::BoundedVec::<T::OrderId, T::MaxLimitOrdersForPrice>::try_from(
+                Vec::from([limit_order.id]),
+            )
+            .map_err(|_| ())?;
+            self.bids.set(order_book_id, &limit_order.price, bids);
+        }
         Ok(())
     }
 
@@ -128,17 +137,13 @@ impl<T: Config> CacheDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         limit_order: &LimitOrder<T>,
     ) {
-        let mut bids = self
-            .bids
-            .get(order_book_id, &limit_order.price)
-            .cloned()
-            .unwrap_or_default();
-        bids.retain(|x| *x != limit_order.id);
-        if bids.is_empty() {
-            self.bids.remove(order_book_id, &limit_order.price);
-        } else {
-            self.bids.set(order_book_id, &limit_order.price, bids);
+        if let Some(bids) = self.bids.get_mut(order_book_id, &limit_order.price) {
+            bids.retain(|x| *x != limit_order.id);
+            if bids.is_empty() {
+                self.bids.remove(order_book_id, &limit_order.price);
+            }
         }
+        // don't need to do anything if `bids` is empty
     }
 
     fn add_to_asks(
@@ -146,13 +151,15 @@ impl<T: Config> CacheDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         limit_order: &LimitOrder<T>,
     ) -> Result<(), ()> {
-        let mut asks = self
-            .asks
-            .get(order_book_id, &limit_order.price)
-            .cloned()
-            .unwrap_or_default();
-        asks.try_push(limit_order.id).map_err(|_| ())?;
-        self.asks.set(order_book_id, &limit_order.price, asks);
+        if let Some(asks) = self.asks.get_mut(order_book_id, &limit_order.price) {
+            asks.try_push(limit_order.id).map_err(|_| ())?;
+        } else {
+            let asks = sp_runtime::BoundedVec::<T::OrderId, T::MaxLimitOrdersForPrice>::try_from(
+                Vec::from([limit_order.id]),
+            )
+            .map_err(|_| ())?;
+            self.asks.set(order_book_id, &limit_order.price, asks);
+        }
         Ok(())
     }
 
@@ -161,17 +168,13 @@ impl<T: Config> CacheDataLayer<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         limit_order: &LimitOrder<T>,
     ) {
-        let mut asks = self
-            .asks
-            .get(order_book_id, &limit_order.price)
-            .cloned()
-            .unwrap_or_default();
-        asks.retain(|x| *x != limit_order.id);
-        if asks.is_empty() {
-            self.asks.remove(order_book_id, &limit_order.price);
-        } else {
-            self.asks.set(order_book_id, &limit_order.price, asks);
+        if let Some(asks) = self.asks.get_mut(order_book_id, &limit_order.price) {
+            asks.retain(|x| *x != limit_order.id);
+            if asks.is_empty() {
+                self.asks.remove(order_book_id, &limit_order.price);
+            }
         }
+        // don't need to do anything if `asks` is empty
     }
 
     fn add_to_aggregated_bids(
@@ -180,19 +183,23 @@ impl<T: Config> CacheDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut agg_bids = self
-            .aggregated_bids
-            .get(order_book_id)
-            .cloned()
-            .unwrap_or_default();
-        let volume = agg_bids
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_add(value)
-            .ok_or(())?;
-        agg_bids.try_insert(*price, volume).map_err(|_| ())?;
-        self.aggregated_bids.set(order_book_id.clone(), agg_bids);
+        if let Some(agg_bids) = self.aggregated_bids.get_mut(order_book_id) {
+            let volume = agg_bids
+                .get(price)
+                .copied()
+                .unwrap_or_default()
+                .checked_add(value)
+                .ok_or(())?;
+            agg_bids.try_insert(*price, volume).map_err(|_| ())?;
+        } else {
+            let agg_bids = sp_runtime::BoundedBTreeMap::<
+                OrderPrice,
+                OrderVolume,
+                T::MaxSidePriceCount,
+            >::try_from(BTreeMap::from([(*price, *value)]))
+            .map_err(|_| ())?;
+            self.aggregated_bids.set(*order_book_id, agg_bids);
+        }
         Ok(())
     }
 
@@ -202,24 +209,27 @@ impl<T: Config> CacheDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut agg_bids = self
-            .aggregated_bids
-            .get(order_book_id)
-            .cloned()
-            .unwrap_or_default();
-        let volume = agg_bids
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_sub(value)
-            .ok_or(())?;
-        if volume.is_zero() {
-            agg_bids.remove(price);
+        if let Some(agg_bids) = self.aggregated_bids.get_mut(order_book_id) {
+            let volume = agg_bids.get(price).copied().unwrap_or_default();
+            let volume = volume.checked_sub(value).ok_or(())?;
+            if volume.is_zero() {
+                agg_bids.remove(price);
+            } else {
+                // realistically error should never be triggered;
+                // if there was value at `price` then it should insert at the same key
+                // if there was no value with this key, then subtracting unsigned number from 0
+                //     cannot give non-zero value (thus avoiding this branch).
+                agg_bids.try_insert(*price, volume).map_err(|_| ())?;
+            }
+            Ok(())
+        } else if !price.is_zero() {
+            // no aggregated bids for the order_book, thus we assume 0's for all prices
+            // can't subtract non-zero from 0u128
+            return Err(());
         } else {
-            agg_bids.try_insert(*price, volume).map_err(|_| ())?;
+            // 0 - 0 = 0
+            Ok(())
         }
-        self.aggregated_bids.set(order_book_id.clone(), agg_bids);
-        Ok(())
     }
 
     fn add_to_aggregated_asks(
@@ -228,19 +238,23 @@ impl<T: Config> CacheDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut agg_asks = self
-            .aggregated_asks
-            .get(order_book_id)
-            .cloned()
-            .unwrap_or_default();
-        let volume = agg_asks
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_add(value)
-            .ok_or(())?;
-        agg_asks.try_insert(*price, volume).map_err(|_| ())?;
-        self.aggregated_asks.set(order_book_id.clone(), agg_asks);
+        if let Some(agg_asks) = self.aggregated_asks.get_mut(order_book_id) {
+            let volume = agg_asks
+                .get(price)
+                .copied()
+                .unwrap_or_default()
+                .checked_add(value)
+                .ok_or(())?;
+            agg_asks.try_insert(*price, volume).map_err(|_| ())?;
+        } else {
+            let agg_asks = sp_runtime::BoundedBTreeMap::<
+                OrderPrice,
+                OrderVolume,
+                T::MaxSidePriceCount,
+            >::try_from(BTreeMap::from([(*price, *value)]))
+            .map_err(|_| ())?;
+            self.aggregated_asks.set(*order_book_id, agg_asks);
+        }
         Ok(())
     }
 
@@ -250,24 +264,27 @@ impl<T: Config> CacheDataLayer<T> {
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
-        let mut agg_asks = self
-            .aggregated_asks
-            .get(order_book_id)
-            .cloned()
-            .unwrap_or_default();
-        let volume = agg_asks
-            .get(price)
-            .map(|x| *x)
-            .unwrap_or_default()
-            .checked_sub(value)
-            .ok_or(())?;
-        if volume.is_zero() {
-            agg_asks.remove(price);
+        if let Some(agg_asks) = self.aggregated_asks.get_mut(order_book_id) {
+            let volume = agg_asks.get(price).copied().unwrap_or_default();
+            let volume = volume.checked_sub(value).ok_or(())?;
+            if volume.is_zero() {
+                agg_asks.remove(price);
+            } else {
+                // realistically error should never be triggered;
+                // if there was value at `price` then it should insert at the same key
+                // if there was no value with this key, then subtracting unsigned number from 0
+                //     cannot give non-zero value (thus avoiding this branch).
+                agg_asks.try_insert(*price, volume).map_err(|_| ())?;
+            }
+            Ok(())
+        } else if !price.is_zero() {
+            // no aggregated asks for the order_book, thus we assume 0's for all prices
+            // can't subtract non-zero from 0u128
+            return Err(());
         } else {
-            agg_asks.try_insert(*price, volume).map_err(|_| ())?;
+            // 0 - 0 = 0
+            Ok(())
         }
-        self.aggregated_asks.set(order_book_id.clone(), agg_asks);
-        Ok(())
     }
 }
 
@@ -431,12 +448,32 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         self.bids.get(order_book_id, price).cloned()
     }
 
+    fn is_bid_price_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool> {
+        self.bids
+            .get(order_book_id, price)
+            .map(|orders| orders.is_full())
+    }
+
     fn get_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
         self.asks.get(order_book_id, price).cloned()
+    }
+
+    fn is_ask_price_full(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: &OrderPrice,
+    ) -> Option<bool> {
+        self.asks
+            .get(order_book_id, price)
+            .map(|orders| orders.is_full())
     }
 
     fn get_aggregated_bids(
@@ -449,6 +486,22 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
             .unwrap_or_default()
     }
 
+    fn get_aggregated_bids_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<usize> {
+        self.aggregated_bids.get(order_book_id).map(|l| l.len())
+    }
+
+    fn best_bid(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)> {
+        self.aggregated_bids
+            .get(order_book_id)
+            .and_then(|side| side.iter().max().map(|(k, v)| (*k, *v)))
+    }
+
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
@@ -459,12 +512,38 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
             .unwrap_or_default()
     }
 
+    fn get_aggregated_asks_len(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<usize> {
+        self.aggregated_asks.get(order_book_id).map(|l| l.len())
+    }
+
+    fn best_ask(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<(OrderPrice, OrderVolume)> {
+        self.aggregated_asks
+            .get(order_book_id)
+            .and_then(|side| side.iter().min().map(|(k, v)| (*k, *v)))
+    }
+
     fn get_user_limit_orders(
         &mut self,
         account: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>> {
         self.user_limit_orders.get(account, order_book_id).cloned()
+    }
+
+    fn is_user_limit_orders_full(
+        &mut self,
+        account: &T::AccountId,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Option<bool> {
+        self.user_limit_orders
+            .get_mut(account, order_book_id)
+            .map(|orders| orders.is_full())
     }
 
     fn get_all_user_limit_orders(

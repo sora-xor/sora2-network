@@ -54,15 +54,13 @@ impl Command {
             })?;
 
         let network_id = sub
-            .storage_fetch(
-                &mainnet_runtime::storage()
-                    .multisig_verifier()
-                    .this_network_id(),
-                (),
+            .constant_fetch_or_default(
+                &mainnet_runtime::constants()
+                    .bridge_inbound_channel()
+                    .this_network_id()
+                    .unvalidated(),
             )
-            .await
-            .context("Fetch this network id")?
-            .ok_or(anyhow!("Network id not found"))?;
+            .context("Fetch this network id")?;
 
         let call = mainnet_runtime::runtime_types::framenode_runtime::RuntimeCall::BridgeDataSigner(
             mainnet_runtime::runtime_types::bridge_data_signer::pallet::Call::register_network {
