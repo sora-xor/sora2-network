@@ -33,7 +33,7 @@ pub mod source_initialization {
     use crate::{Config, Error};
     use assets::AssetIdOf;
     use codec::{Decode, Encode};
-    use common::prelude::BalanceUnit;
+    use common::prelude::{BalanceUnit, QuoteAmount};
     use common::{
         balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXInfo, DexIdOf,
         DexInfoProvider, Oracle, PriceToolsPallet, PriceVariant, TradingPair,
@@ -51,7 +51,6 @@ pub mod source_initialization {
     use sp_std::vec::Vec;
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-    #[scale_info(skip_type_params(T))]
     pub struct XYKPair<DEXId, AssetId> {
         pub dex_id: DEXId,
         pub asset_a: AssetId,
@@ -255,7 +254,6 @@ pub mod source_initialization {
     /// Prices with 10^18 precision. Amount of the asset per 1 XOR. The same format as used
     /// in price tools.
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-    #[scale_info(skip_type_params(T))]
     pub struct XSTBaseXorSidePrices {
         /// Amount of synthetic base asset per XOR
         pub synthetic_base: Balance,
@@ -265,7 +263,6 @@ pub mod source_initialization {
 
     /// Price initialization parameters of `xst`'s synthetic base asset (in terms of reference asset)
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-    #[scale_info(skip_type_params(T))]
     pub struct XSTBaseXorPrices {
         pub buy: XSTBaseXorSidePrices,
         pub sell: XSTBaseXorSidePrices,
@@ -273,7 +270,6 @@ pub mod source_initialization {
 
     /// Input for setting prices for xst base assets
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-    #[scale_info(skip_type_params(T))]
     pub struct XSTBaseSideInput {
         pub reference_per_synthetic_base: Balance,
         /// `None` - get existing price
@@ -288,14 +284,12 @@ pub mod source_initialization {
 
     /// Price initialization parameters of `xst`'s synthetic base asset (in terms of reference asset)
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-    #[scale_info(skip_type_params(T))]
     pub struct XSTBaseInput {
         pub buy: XSTBaseSideInput,
         pub sell: XSTBaseSideInput,
     }
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-    #[scale_info(skip_type_params(T))]
     pub enum XSTSyntheticExistence<Symbol> {
         AlreadyExists,
         RegisterNewAsset {
@@ -306,19 +300,41 @@ pub mod source_initialization {
         },
     }
 
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    pub enum XSTSyntheticQuoteDirection {
+        SyntheticBaseToSynthetic,
+        SyntheticToSyntheticBase,
+    }
+
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    pub struct XSTSyntheticQuote {
+        direction: XSTSyntheticQuoteDirection,
+        amount: QuoteAmount<Balance>,
+        expected_result: Balance,
+    }
+
     /// Buy/sell price discrepancy is determined for all synthetics in `xst` pallet by synthetic
     /// base (XST) asset prices;
     ///
     /// We can't control it granularly for each asset, so we just deduce it from the existing
     /// pricing and price provided for the given variant
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-    #[scale_info(skip_type_params(T))]
     pub struct XSTSyntheticInput<AssetId, Symbol> {
         pub asset_id: AssetId,
-        /// how much DAI per unit of `asset_id`. Note that precision is 10^9, as used by band team.
-        pub price_reference_per_asset: u64,
-        // pub variant: PriceVariant,
+        /// Quote call with expected output.
+        /// The initialization tries to set up pallets to achieve these values
+        pub quote_expected: XSTSyntheticQuote,
         pub existence: XSTSyntheticExistence<Symbol>,
+    }
+
+    /// Resulting of initialization for `asset_id`.
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    pub struct XSTSyntheticOutput<AssetId> {
+        pub asset_id: AssetId,
+        /// Quote call with output.
+        /// Sometimes, due to fixed-point precision limitations the exact value cannot be
+        /// reproduced exactly. This provides a way to get the actual result for further usage.
+        pub quote_achieved: XSTSyntheticQuote,
     }
 
     fn set_prices_in_price_tools<T: Config>(
@@ -425,11 +441,103 @@ pub mod source_initialization {
         )
     }
 
+    /// Calculate the band price needed to achieve the expected quote values (closely enough).
+    fn calculate_band_price<T: Config>(
+        target_quote: XSTSyntheticQuote,
+    ) -> Result<u64, DispatchError> {
+        // band price is `ref_per_synthetic`.
+        // we need to get it from formulae in xst pallet.
+        let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
+
+        let ref_per_synthetic: BalanceUnit = match (
+            target_quote.direction,
+            target_quote.amount,
+            target_quote.expected_result,
+        ) {
+            // sell:
+            // synthetic base (xst) -> synthetic (xst***)
+            // synthetic base (also called main) - sell price, synthetic - no diff between buy/sell
+            // (all prices in reference assets per this asset)
+            (
+                XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: amount_in,
+                },
+                amount_out,
+            )
+            | (
+                XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: amount_out,
+                },
+                amount_in,
+            ) => {
+                // equivalent formulae for desired input/output:
+                //
+                // amount_out = amount_in * ref_per_synthetic_base (sell) / ref_per_synthetic
+                // amount_in = amount_out * ref_per_synthetic / ref_per_synthetic_base (sell)
+
+                // from this,
+                // ref_per_synthetic = ref_per_synthetic_base (sell) * amount_in / amount_out
+                let ref_per_synthetic_base_sell =
+                    BalanceUnit::divisible(xst::Pallet::<T>::reference_price(
+                        &synthetic_base_asset_id,
+                        PriceVariant::Sell,
+                    )?);
+                ref_per_synthetic_base_sell * BalanceUnit::divisible(amount_in)
+                    / BalanceUnit::divisible(amount_out)
+            }
+            // buy
+            // synthetic (xst***) -> synthetic base (xst)
+            // synthetic base (also called main) - buy price, synthetic - no diff between buy/sell
+            // (all prices in reference assets per this asset)
+            (
+                XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: amount_in,
+                },
+                amount_out,
+            )
+            | (
+                XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: amount_out,
+                },
+                amount_in,
+            ) => {
+                // equivalent formulae for desired input/output:
+                //
+                // amount_out = amount_in * ref_per_synthetic_base (buy) / ref_per_synthetic
+                // amount_in = amount_out * ref_per_synthetic / ref_per_synthetic_base (buy)
+
+                // from this,
+                // ref_per_synthetic = ref_per_synthetic_base (buy) * amount_in / amount_out
+                let ref_per_synthetic_base_buy = BalanceUnit::divisible(
+                    xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Buy)?,
+                );
+                ref_per_synthetic_base_buy * BalanceUnit::divisible(amount_in)
+                    / BalanceUnit::divisible(amount_out)
+            }
+        };
+        // band price
+        (*ref_per_synthetic.balance() / 10u128.pow(9))
+            .try_into()
+            .map_err(|_| Error::<T>::ArithmeticError.into())
+    }
+
+    /// Initialize xst liquidity source. Can both update prices of base assets and synthetics.
+    ///
+    /// ## Return
+    ///
+    /// Due to limited precision of fixed-point numbers, the requested price might not be precisely
+    /// obtainable. Therefore, actual resulting price of synthetics is returned.
+    ///
+    /// `quote` in `xst` pallet requires swap to involve synthetic base asset, as well as
     pub fn xst<T: Config + price_tools::Config>(
         base: Option<XSTBaseInput>,
         synthetics: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
         relayer: T::AccountId,
-    ) -> DispatchResult {
+    ) -> Result<Vec<XSTSyntheticOutput<T::AssetId>>, DispatchError> {
         if let Some(base_prices) = base {
             let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
             let reference_asset_id = xst::ReferenceAssetId::<T>::get();
@@ -477,17 +585,14 @@ pub mod source_initialization {
                 .map_err(|e| e.error)?;
         }
         for synthetic in synthetics {
+            let band_price = calculate_band_price::<T>(synthetic.quote_expected)?;
             match (
                 xst::Pallet::<T>::enabled_synthetics(synthetic.asset_id),
                 synthetic.existence,
             ) {
                 (Some(info), XSTSyntheticExistence::AlreadyExists) => {
-                    relay_symbol::<T>(
-                        info.reference_symbol.into(),
-                        relayer.clone(),
-                        synthetic.price_reference_per_asset,
-                    )
-                    .map_err(|e| e.error)?;
+                    relay_symbol::<T>(info.reference_symbol.into(), relayer.clone(), band_price)
+                        .map_err(|e| e.error)?;
                 }
                 (
                     None,
@@ -498,12 +603,8 @@ pub mod source_initialization {
                         fee_ratio,
                     },
                 ) => {
-                    relay_symbol::<T>(
-                        reference_symbol.clone(),
-                        relayer.clone(),
-                        synthetic.price_reference_per_asset,
-                    )
-                    .map_err(|e| e.error)?;
+                    relay_symbol::<T>(reference_symbol.clone(), relayer.clone(), band_price)
+                        .map_err(|e| e.error)?;
                     xst::Pallet::<T>::register_synthetic_asset(
                         RawOrigin::Root.into(),
                         symbol,
@@ -521,6 +622,6 @@ pub mod source_initialization {
                 }
             }
         }
-        Ok(())
+        Ok(vec![])
     }
 }

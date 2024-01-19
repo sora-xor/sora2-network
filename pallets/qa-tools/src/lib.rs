@@ -99,6 +99,10 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
+        // common errors
+        /// Error in calculations.
+        ArithmeticError,
+
         // order book errors
         /// Did not find an order book with given id to fill. Likely an error with order book creation.
         CannotFillUnknownOrderBook,
@@ -119,8 +123,6 @@ pub mod pallet {
         // xyk pool errors
         /// Cannot initialize pool with for non-divisible assets.
         AssetsMustBeDivisible,
-        /// Error in calculations.
-        ArithmeticError,
 
         // xst errors
         /// Buy price cannot be lower than sell price of the base assets (synthetic base and reference).

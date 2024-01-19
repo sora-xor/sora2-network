@@ -924,7 +924,7 @@ impl<T: Config> Pallet<T> {
     /// Therefore the price is calculated as REF_sell_price_tools_price / MAIN_buy_price_tools_price
     ///
     /// Refer to price-tools pallet documentation for clarification.
-    fn reference_price(
+    pub fn reference_price(
         asset_id: &T::AssetId,
         price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
