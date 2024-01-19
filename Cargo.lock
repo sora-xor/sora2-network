@@ -160,9 +160,9 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.8.6"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91429305e9f0a25f6205c5b8e0d2db09e0708a7a6df0f42212bb56c32c8ac97a"
+checksum = "cd7d5a2cecb58716e47d67d5703a249964b14c7be1ec3cad3affc295b2d1c35d"
 dependencies = [
  "cfg-if 1.0.0",
  "getrandom 0.2.11",
@@ -4475,6 +4475,7 @@ dependencies = [
 name = "framenode"
 version = "3.2.0"
 dependencies = [
+ "ahash 0.8.5",
  "ansi_term",
  "assert_cmd",
  "assets-rpc",
@@ -10934,7 +10935,7 @@ name = "sc-finality-grandpa"
 version = "0.10.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "array-bytes",
  "async-trait",
  "dyn-clone",
@@ -11117,7 +11118,7 @@ name = "sc-network-gossip"
 version = "0.10.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "futures 0.3.29",
  "futures-timer",
  "libp2p",
@@ -11710,7 +11711,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "772575a524feeb803e5b0fcbc6dd9f367e579488197c94c6e4023aad2305774d"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "cfg-if 1.0.0",
  "hashbrown 0.13.2",
 ]
@@ -12839,7 +12840,7 @@ name = "sp-trie"
 version = "7.0.0"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "hash-db",
  "hashbrown 0.12.3",
  "lazy_static",
