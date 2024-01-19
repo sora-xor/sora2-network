@@ -39,6 +39,14 @@ use crate::{to_balance, to_fixed_wrapper};
 
 use crate::{Config, Error, Pallet};
 
+// TODO move to better place
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum QuoteError {
+    NotEnoughAmountForFee,
+    NotEnoughLiquidityForSwap,
+    DispatchError(DispatchError),
+}
+
 impl<T: Config> Pallet<T> {
     // https://github.com/Uniswap/uniswap-v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/libraries/UniswapV2Library.sol#L36
     // Original uniswap code.
@@ -177,7 +185,7 @@ impl<T: Config> Pallet<T> {
         y: &Balance,
         y_out: &Balance,
         deduce_fee: bool,
-    ) -> Result<(Balance, Balance), DispatchError> {
+    ) -> Result<(Balance, Balance), QuoteError> {
         let fxw_x = FixedWrapper::from(x.clone());
         let fxw_y = FixedWrapper::from(y.clone());
         let fxw_y_out = FixedWrapper::from(y_out.clone());
@@ -192,14 +200,25 @@ impl<T: Config> Pallet<T> {
                 fxw_y_out.clone()
             };
             let nominator = fxw_x * y_out_with_fee.clone();
+            ensure!(fxw_y > y_out_with_fee, QuoteError::NotEnoughAmountForFee);
             let denominator = fxw_y - y_out_with_fee.clone();
             let x_in = nominator / denominator;
-            Ok((to_balance!(x_in), to_balance!(y_out_with_fee - fxw_y_out)))
+            Ok((
+                x_in.try_into_balance().map_err(|_| {
+                    QuoteError::DispatchError(Error::<T>::FixedWrapperCalculationFailed.into())
+                })?,
+                (y_out_with_fee - fxw_y_out)
+                    .try_into_balance()
+                    .map_err(|_| {
+                        QuoteError::DispatchError(Error::<T>::FixedWrapperCalculationFailed.into())
+                    })?,
+            ))
         } else {
             // input token is xor, user indicates desired output amount:
             // x_in * (1 - fee) = (x * y_out) / (y - y_out)
             let fxw_y_out = fxw_y_out.clone() + Fixed::from_bits(1); // by 1 correction to overestimate required input
             let nominator = fxw_x * fxw_y_out.clone();
+            ensure!(fxw_y > fxw_y_out, QuoteError::NotEnoughLiquidityForSwap);
             let denominator = fxw_y - fxw_y_out;
             let x_in_without_fee = nominator / denominator;
             let x_in = if deduce_fee {
@@ -207,9 +226,21 @@ impl<T: Config> Pallet<T> {
             } else {
                 x_in_without_fee.clone()
             };
+            ensure!(
+                x_in.clone().get().is_ok(),
+                QuoteError::NotEnoughLiquidityForSwap
+            );
+            ensure!(
+                x_in > x_in_without_fee,
+                QuoteError::NotEnoughLiquidityForSwap
+            );
             Ok((
-                to_balance!(x_in.clone()),
-                to_balance!(x_in - x_in_without_fee),
+                x_in.clone().try_into_balance().map_err(|_| {
+                    QuoteError::DispatchError(Error::<T>::FixedWrapperCalculationFailed.into())
+                })?,
+                (x_in - x_in_without_fee).try_into_balance().map_err(|_| {
+                    QuoteError::DispatchError(Error::<T>::FixedWrapperCalculationFailed.into())
+                })?,
             ))
         }
     }

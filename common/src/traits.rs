@@ -187,6 +187,13 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum QuoteError {
+    NotEnoughAmountForFee,
+    NotEnoughLiquidityForSwap,
+    DispatchError(DispatchError),
+}
+
 /// Indicates that particular object can be used to perform exchanges.
 pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
     /// Check if liquidity source provides an exchange from given input asset to output asset.
@@ -203,7 +210,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Amount>, Weight), DispatchError>;
+    ) -> Result<(SwapOutcome<Amount>, Weight), QuoteError>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
@@ -337,8 +344,8 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Fixed>, Weight), DispatchError> {
-        Err(DispatchError::CannotLookup)
+    ) -> Result<(SwapOutcome<Fixed>, Weight), QuoteError> {
+        Err(QuoteError::DispatchError(DispatchError::CannotLookup))
     }
 
     fn exchange(
@@ -402,8 +409,8 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
-        Err(DispatchError::CannotLookup)
+    ) -> Result<(SwapOutcome<Balance>, Weight), QuoteError> {
+        Err(QuoteError::DispatchError(DispatchError::CannotLookup))
     }
 
     fn exchange(
@@ -845,6 +852,15 @@ impl OnValBurned for () {
     }
 }
 
+/// LiquidityProxyTrait errors used for handling specific cases without underlying dependencies.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum LiquidityProxyError {
+    /// Liquidity source have not enough liquidity for the operation
+    NotEnoughLiquidity,
+    /// Underlying error
+    DispatchError(DispatchError),
+}
+
 /// Indicates that particular object can be used to perform exchanges with aggregation capability.
 pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
     /// Get spot price of tokens based on desired amount, None returned if liquidity source
@@ -856,7 +872,7 @@ pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError>;
+    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
@@ -867,7 +883,7 @@ pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError>;
+    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError>;
 }
 
 impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, AccountId, AssetId>
@@ -880,7 +896,7 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
         _amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
         unimplemented!()
     }
 
@@ -892,7 +908,7 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
         _output_asset_id: &AssetId,
         _amount: SwapAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
         unimplemented!()
     }
 }

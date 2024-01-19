@@ -45,7 +45,7 @@ mod weights;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
-use common::{RewardReason, TradingPair};
+use common::{QuoteError, RewardReason, TradingPair};
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -107,7 +107,12 @@ impl<T: Config> Pallet<T> {
                 asset_id,
                 QuoteAmount::with_desired_output(balance!(1)),
                 false,
-            )?;
+            )
+            .map_err(|error| match error {
+                QuoteError::NotEnoughAmountForFee => Error::<T>::QuoteError.into(),
+                QuoteError::NotEnoughLiquidityForSwap => Error::<T>::QuoteError.into(),
+                QuoteError::DispatchError(error) => error,
+            })?;
             frame_support::log::debug!("{outcome:?}");
             Ok(FixedWrapper::from(outcome.amount))
         }
@@ -377,6 +382,7 @@ pub mod pallet {
     pub enum Error<T> {
         /// Increment account reference error.
         IncRefError,
+        QuoteError,
     }
 
     /// Pools whose farmers are refreshed at the specific block. Block => Pools

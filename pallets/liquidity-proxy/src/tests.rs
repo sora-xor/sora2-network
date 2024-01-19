@@ -4215,6 +4215,9 @@ fn test_xorless_transfer_fails_on_transfer() {
     });
 }
 
+/// @given XYK pool with some liquidity and `LiquidityProxyTrait` over it
+/// @when quote `WithDesiredOutput` called with amount > liquidity in the pool
+/// @then specific trait error is returned, so this case can be handled
 #[test]
 fn test_liquidity_proxy_trait_not_enough_liquidity() {
     ExtBuilder::default()
@@ -4222,7 +4225,8 @@ fn test_liquidity_proxy_trait_not_enough_liquidity() {
         .build()
         .execute_with(|| {
             // Swap amount exceeds pool liquidity
-            let big_amount = balance!(999999);
+            // let big_amount = balance!(999999);
+            let big_amount = balance!(10000) - 2;
             <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
                 DEX_C_ID,
                 &GetBaseAssetId::get(),
@@ -4241,3 +4245,6 @@ fn test_liquidity_proxy_trait_not_enough_liquidity() {
             // Module(ModuleError { index: 17, error: [48, 0, 0, 0], message: Some("FixedWrapperCalculationFailed") })
         });
 }
+
+// TODO add swap amount close to LP liquidity that results in infinity input
+// TODO add a test with small amount for not enough fee to swap error
