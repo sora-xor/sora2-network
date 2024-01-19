@@ -1967,6 +1967,24 @@ impl order_book::Config for Runtime {
     type WeightInfo = order_book::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+    pub const ConfigDepositBase: Balance = balance!(5);
+    pub const FriendDepositFactor: Balance = balance!(3);
+    pub const MaxFriends: u16 = 10;
+    pub const RecoveryDeposit: Balance = balance!(5);
+}
+
+impl pallet_recovery::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = pallet_recovery::weights::SubstrateWeight<Runtime>;
+    type RuntimeCall = RuntimeCall;
+    type Currency = Balances;
+    type ConfigDepositBase = ConfigDepositBase;
+    type FriendDepositFactor = FriendDepositFactor;
+    type MaxFriends = MaxFriends;
+    type RecoveryDeposit = RecoveryDeposit;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
@@ -2355,6 +2373,8 @@ construct_runtime! {
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
+
+        Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,

@@ -140,6 +140,8 @@ pallet-transaction-payment = { git = "https://github.com/sora-xor/substrate.git"
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-utility = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-bags-list = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-recovery = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+
 
 sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-block-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -254,6 +256,7 @@ std = [
     "pallet-offences/std",
     "pallet-preimage/std",
     "pallet-randomness-collective-flip/std",
+    "pallet-recovery/std",
     "pallet-scheduler/std",
     "pallet-session/std",
     "pallet-staking/std",
