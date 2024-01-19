@@ -1348,16 +1348,6 @@ fn should_init_xst_synthetic_price_various_prices() {
             vec![euro_init.clone()],
             alice(),
         ));
-        let (quote_result, _) = xst::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
-            &synthetic_base_asset_id,
-            &euro_init.asset_id,
-            QuoteAmount::WithDesiredInput {
-                desired_amount_in: balance!(1),
-            },
-            false,
-        )
-        .unwrap();
 
         // sell:
         // synthetic base (xst) -> synthetic (xsteur)
@@ -1367,10 +1357,29 @@ fn should_init_xst_synthetic_price_various_prices() {
         // `WithDesiredInput`, so
         // amount_out = amount_in * ref_per_synthetic_base (sell) / ref_per_synthetic (buy)
         // amount_out = ref_per_synthetic_base / ref_per_synthetic
+        let (quote_result, _) = xst::Pallet::<Runtime>::quote(
+            &DEXId::Polkaswap.into(),
+            &synthetic_base_asset_id,
+            &euro_init.asset_id,
+            QuoteAmount::WithDesiredInput {
+                desired_amount_in: balance!(1),
+            },
+            false,
+        )
+        .unwrap();
         let expected_out = BalanceUnit::divisible(prices.sell.reference_per_synthetic_base)
             / BalanceUnit::divisible(euro_init.price_reference_per_asset as u128 * 10u128.pow(9));
         assert_eq!(quote_result.amount, *expected_out.balance());
         assert_eq!(quote_result.fee, 0);
+
+        // sell:
+        // synthetic base (xst) -> synthetic (xsteur)
+        // synthetic base (also called main) - sell price, synthetic - buy price
+        // (all prices in reference assets per this asset)
+        //
+        // `WithDesiredOutput`, so
+        // amount_in = amount_out * ref_per_synthetic (buy) / ref_per_synthetic_base (sell)
+        // amount_in = ref_per_synthetic / ref_per_synthetic_base
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
             &synthetic_base_asset_id,
@@ -1381,19 +1390,20 @@ fn should_init_xst_synthetic_price_various_prices() {
             false,
         )
         .unwrap();
-        // sell:
-        // synthetic base (xst) -> synthetic (xsteur)
-        // synthetic base (also called main) - sell price, synthetic - buy price
-        // (all prices in reference assets per this asset)
-        //
-        // `WithDesiredOutput`, so
-        // amount_in = amount_out * ref_per_synthetic (buy) / ref_per_synthetic_base (sell)
-        // amount_in = ref_per_synthetic / ref_per_synthetic_base
         let expected_in =
             BalanceUnit::divisible(euro_init.price_reference_per_asset as u128 * 10u128.pow(9))
                 / BalanceUnit::divisible(prices.sell.reference_per_synthetic_base);
         assert_eq!(quote_result.amount, *expected_in.balance());
         assert_eq!(quote_result.fee, 0);
+
+        // buy:
+        // synthetic (xsteur) -> synthetic base (xst)
+        // synthetic base (also called main) - buy price, synthetic - sell price
+        // (all prices in reference assets per this asset)
+        //
+        // `WithDesiredInput`, so
+        // amount_out = amount_in * ref_per_synthetic_base (buy) / ref_per_synthetic (sell)
+        // amount_out = ref_per_synthetic_base / ref_per_synthetic
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
             &euro_init.asset_id,
@@ -1404,18 +1414,19 @@ fn should_init_xst_synthetic_price_various_prices() {
             false,
         )
         .unwrap();
+        let expected_out = BalanceUnit::divisible(prices.buy.reference_per_synthetic_base)
+            / BalanceUnit::divisible(euro_init.price_reference_per_asset as u128 * 10u128.pow(9));
+        assert_eq!(quote_result.amount, *expected_out.balance());
+        assert_eq!(quote_result.fee, 0);
+
         // buy:
         // synthetic (xsteur) -> synthetic base (xst)
         // synthetic base (also called main) - buy price, synthetic - sell price
         // (all prices in reference assets per this asset)
         //
-        // `WithDesiredInput`, so
-        // amount_out = amount_in * ref_per_synthetic_base (buy) / ref_per_synthetic (sell)
-        // amount_out = ref_per_synthetic_base / ref_per_synthetic
-        let expected_out = BalanceUnit::divisible(prices.buy.reference_per_synthetic_base)
-            / BalanceUnit::divisible(euro_init.price_reference_per_asset as u128 * 10u128.pow(9));
-        assert_eq!(quote_result.amount, *expected_out.balance());
-        assert_eq!(quote_result.fee, 0);
+        // `WithDesiredOutput`, so
+        // amount_in = amount_out * ref_per_synthetic (sell) / ref_per_synthetic_base (buy)
+        // amount_in = ref_per_synthetic / ref_per_synthetic_base
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
             &euro_init.asset_id,
@@ -1426,14 +1437,6 @@ fn should_init_xst_synthetic_price_various_prices() {
             false,
         )
         .unwrap();
-        // buy:
-        // synthetic (xsteur) -> synthetic base (xst)
-        // synthetic base (also called main) - buy price, synthetic - sell price
-        // (all prices in reference assets per this asset)
-        //
-        // `WithDesiredOutput`, so
-        // amount_in = amount_out * ref_per_synthetic (sell) / ref_per_synthetic_base (buy)
-        // amount_in = ref_per_synthetic / ref_per_synthetic_base
         let expected_in =
             BalanceUnit::divisible(euro_init.price_reference_per_asset as u128 * 10u128.pow(9))
                 / BalanceUnit::divisible(prices.buy.reference_per_synthetic_base);

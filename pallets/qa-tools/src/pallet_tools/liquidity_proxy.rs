@@ -96,6 +96,8 @@ pub mod source_initialization {
 
     /// Initialize xyk liquidity source for multiple asset pairs at once.
     ///
+    /// ## Return
+    ///
     /// Due to limited precision of fixed-point numbers, the requested price might not be precisely
     /// obtainable. Therefore, actual resulting price is returned.
     ///
