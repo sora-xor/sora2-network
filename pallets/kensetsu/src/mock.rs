@@ -80,7 +80,7 @@ impl PriceToolsPallet<AssetId> for PriceToolsMock {
 
     /// Method not used
     fn register_asset(_asset_id: &AssetId) -> DispatchResult {
-        Ok(())
+        unimplemented!()
     }
 }
 
