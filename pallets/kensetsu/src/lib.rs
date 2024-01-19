@@ -288,7 +288,6 @@ pub mod pallet {
     pub type CDPDepository<T: Config> =
         StorageMap<_, Identity, U256, CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>>;
 
-    /// Accoutns of risk management team
     /// Index links owner to CDP ids, not needed by protocol, but used by front-end
     #[pallet::storage]
     #[pallet::getter(fn cdp_owner_index)]
@@ -505,14 +504,10 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
-            ensure!(
-                cdp.collateral_amount >= collateral_amount,
-                Error::<T>::NotEnoughCollateral
-            );
             let new_collateral_amount = cdp
                 .collateral_amount
                 .checked_sub(collateral_amount)
-                .ok_or(Error::<T>::ArithmeticError)?;
+                .ok_or(Error::<T>::NotEnoughCollateral)?;
             ensure!(
                 Self::check_cdp_is_safe(cdp.debt, new_collateral_amount, cdp.collateral_asset_id,)?,
                 Error::<T>::CDPUnsafe
@@ -868,15 +863,10 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::add_risk_manager())]
         pub fn add_risk_manager(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
-            <RiskManagers<T>>::mutate(|option_risk_managers| match option_risk_managers {
-                Some(risk_managers) => {
-                    let _ = risk_managers.insert(account_id);
-                }
-                None => {
-                    let mut risk_managers = BTreeSet::new();
-                    let _ = risk_managers.insert(account_id);
-                    let _ = option_risk_managers.insert(risk_managers);
-                }
+            <RiskManagers<T>>::mutate(|option_risk_managers| {
+                let _ = option_risk_managers
+                    .get_or_insert(BTreeSet::new())
+                    .insert(account_id);
             });
 
             Ok(())
@@ -916,6 +906,7 @@ pub mod pallet {
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
             match call {
                 // TODO spamming with accrue calls, add some filter to not call too often
+                // https://github.com/sora-xor/sora2-network/issues/878
                 Call::accrue { cdp_id } => {
                     if Self::is_accruable(cdp_id)
                         .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_ACCRUE))?

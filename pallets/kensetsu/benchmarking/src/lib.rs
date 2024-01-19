@@ -50,7 +50,7 @@ pub trait Config:
 
 /// Client account id
 fn caller<T: Config>() -> T::AccountId {
-    let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+    let bytes = hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
