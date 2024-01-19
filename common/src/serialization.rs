@@ -1,3 +1,5 @@
+#![allow(clippy::redundant_closure)]
+
 #[cfg(feature = "std")]
 use super::*;
 #[cfg(feature = "std")]

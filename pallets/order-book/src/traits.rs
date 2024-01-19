@@ -224,26 +224,30 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, DEXId, OrderId, Error> {
     ///
     /// If the weight limit is reached, it should continue where it's left at the
     /// next block.
-    fn service(current_block: BlockNumber, weight: &mut WeightMeter);
+    fn service_expiration(current_block: BlockNumber, weight: &mut WeightMeter);
 
     /// Schedule the order for expiration at block `when`.
-    fn schedule(
+    fn schedule_expiration(
         when: BlockNumber,
         order_book_id: OrderBookId,
         order_id: OrderId,
     ) -> Result<(), Error>;
 
     /// Remove the order from expiration schedule for block `when`.
-    fn unschedule(
+    fn unschedule_expiration(
         when: BlockNumber,
         order_book_id: OrderBookId,
         order_id: OrderId,
     ) -> Result<(), Error>;
 }
 
-pub trait Delegate<AccountId, AssetId, OrderId, DEXId> {
+pub trait AlignmentScheduler {
+    fn service_alignment(weight: &mut WeightMeter);
+}
+
+pub trait Delegate<AccountId, AssetId, OrderId, DEXId, Moment> {
     fn emit_event(
         order_book_id: OrderBookId<AssetId, DEXId>,
-        event: OrderBookEvent<AccountId, OrderId>,
+        event: OrderBookEvent<AccountId, OrderId, Moment>,
     );
 }

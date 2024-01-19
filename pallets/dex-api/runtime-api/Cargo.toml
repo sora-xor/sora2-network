@@ -30,7 +30,3 @@ std = [
 	"sp-std/std",
 	"common/std",
 ]
-
-wip = [
-    "common/wip",
-]

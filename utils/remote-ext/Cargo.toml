@@ -41,10 +41,3 @@ liquidity-proxy = { path = "../../pallets/liquidity-proxy" }
 dex-manager = { path = "../../pallets/dex-manager" }
 xst = { path = "../../pallets/xst" }
 common = { path = "../../common" }
-
-[features]
-wip = [
-    "common/wip",
-    "liquidity-proxy/wip",
-    "framenode-runtime/wip",
-]

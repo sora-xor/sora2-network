@@ -29,14 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    DataLayer, DealInfo, Delegate, Error, ExpirationScheduler, LimitOrder, MarketChange,
-    MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId, OrderBookStatus, OrderPrice,
-    OrderVolume, Payment,
+    CancelReason, DataLayer, DealInfo, Delegate, Error, ExpirationScheduler, LimitOrder,
+    MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId,
+    OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::QuoteAmount;
-use common::{balance, Balance, PriceVariant};
+use common::{Balance, PriceVariant};
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
@@ -44,7 +44,7 @@ use frame_support::traits::Get;
 use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero};
 use sp_std::cmp::Ordering;
 use sp_std::collections::btree_map::BTreeMap;
-use sp_std::ops::Add;
+use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, PartialEq, Eq, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
@@ -59,6 +59,7 @@ where
     pub step_lot_size: OrderVolume, // amount precision
     pub min_lot_size: OrderVolume,
     pub max_lot_size: OrderVolume,
+    pub tech_status: OrderBookTechStatus,
 }
 
 impl<T: crate::Config + Sized> OrderBook<T> {
@@ -77,31 +78,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             step_lot_size,
             min_lot_size,
             max_lot_size,
+            tech_status: OrderBookTechStatus::Ready,
         }
     }
 
-    pub fn default(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
-        Self::new(
-            order_book_id,
-            OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
-            OrderVolume::divisible(balance!(0.00001)),
-            OrderVolume::divisible(balance!(1)),
-            OrderVolume::divisible(balance!(1000)),
-        )
-    }
-
-    pub fn default_indivisible(order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>) -> Self {
-        Self::new(
-            order_book_id,
-            OrderPrice::divisible(balance!(0.00001)), // TODO: order-book clarify
-            OrderVolume::indivisible(1),
-            OrderVolume::indivisible(1),
-            OrderVolume::indivisible(1000),
-        )
-    }
-
     pub fn next_order_id(&mut self) -> T::OrderId {
-        self.last_order_id = self.last_order_id.add(T::OrderId::one());
+        self.last_order_id = self.last_order_id.saturating_add(T::OrderId::one());
         self.last_order_id
     }
 
@@ -138,7 +120,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         let order_id = limit_order.id;
         let owner_id = limit_order.owner.clone();
-        let amount = limit_order.amount;
 
         let market_change = if cross_spread {
             if self.status == OrderBookStatus::Trade {
@@ -159,22 +140,30 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.apply_market_change(market_change, data)?;
 
         match (market_input, deal_input) {
+            // nothing goes into the market (as limit order), all goes to the deal (as market order)
             (None, Some(market_order_input)) => {
                 let direction = if market_order_input.is_quote() {
                     PriceVariant::Buy
                 } else {
                     PriceVariant::Sell
                 };
+                let (Some(deal_amount), Some(average_price)) = (maybe_deal_amount, maybe_average_price) else {
+                    // should never happen
+                    return Err(Error::<T>::PriceCalculationFailed.into());
+                };
                 T::Delegate::emit_event(
                     self.order_book_id,
                     OrderBookEvent::LimitOrderConvertedToMarketOrder {
                         owner_id,
                         direction,
-                        amount: OrderAmount::Base(amount),
+                        amount: OrderAmount::Base(deal_amount),
+                        average_price,
                     },
                 );
             }
+            // all goes into the market (as limit order), nothing goes to the deal (as market order)
             (Some(..), None) => (),
+            // some liquidity goes into the market (as limit order) and another part of liquidity goes to the deal (as market order)
             (Some(..), Some(market_order_input)) => {
                 let market_order_direction = if market_order_input.is_quote() {
                     PriceVariant::Buy
@@ -217,20 +206,29 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::CancellationOfLimitOrdersIsForbidden
         );
 
-        self.cancel_limit_order_unchecked(limit_order, data, false)
+        self.cancel_limit_order_unchecked(limit_order, CancelReason::Manual, data, false)
     }
 
     pub fn cancel_all_limit_orders(
         &self,
+        reason: CancelReason,
         data: &mut impl DataLayer<T>,
     ) -> Result<usize, DispatchError> {
-        let market_change = self.calculate_cancellation_of_all_limit_orders_impact(data)?;
+        let market_change = self.calculate_cancellation_of_all_limit_orders_impact(reason, data)?;
 
         let count = market_change.to_cancel.len();
 
         self.apply_market_change(market_change, data)?;
 
         Ok(count)
+    }
+
+    pub fn expire_limit_order(
+        &self,
+        limit_order: LimitOrder<T>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<(), DispatchError> {
+        self.cancel_limit_order_unchecked(limit_order, CancelReason::Expired, data, true)
     }
 
     /// Executes market order and returns input & output amounts & count of executed limit orders
@@ -277,9 +275,15 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok((input, output, executed_orders_count))
     }
 
-    pub fn align_limit_orders(&self, data: &mut impl DataLayer<T>) -> Result<(), DispatchError> {
-        let market_change = self.calculate_align_limit_orders_impact(data)?;
-        self.apply_market_change(market_change, data)?;
+    pub fn align_limit_orders(
+        &self,
+        limit_orders: Vec<LimitOrder<T>>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<(), DispatchError> {
+        if !limit_orders.is_empty() {
+            let market_change = self.calculate_align_limit_orders_impact(limit_orders)?;
+            self.apply_market_change(market_change, data)?;
+        }
         Ok(())
     }
 
@@ -352,6 +356,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     pub fn calculate_cancellation_limit_order_impact(
         &self,
         limit_order: LimitOrder<T>,
+        reason: CancelReason,
         ignore_unschedule_error: bool,
     ) -> Result<
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
@@ -371,7 +376,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .and_modify(|pay| *pay = pay.saturating_add(*unlock_amount.value()))
             .or_insert(*unlock_amount.value());
 
-        limit_orders_to_cancel.insert(limit_order.id, limit_order);
+        limit_orders_to_cancel.insert(limit_order.id, (limit_order, reason));
 
         Ok(MarketChange {
             deal_input: None,
@@ -390,6 +395,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     pub fn calculate_cancellation_of_all_limit_orders_impact(
         &self,
+        reason: CancelReason,
         data: &mut impl DataLayer<T>,
     ) -> Result<
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
@@ -412,7 +418,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 .and_modify(|pay| *pay = pay.saturating_add(*unlock_amount.value()))
                 .or_insert(*unlock_amount.value());
 
-            limit_orders_to_cancel.insert(limit_order.id, limit_order);
+            limit_orders_to_cancel.insert(limit_order.id, (limit_order, reason));
         }
 
         Ok(MarketChange {
@@ -574,7 +580,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     pub fn calculate_align_limit_orders_impact(
         &self,
-        data: &mut impl DataLayer<T>,
+        limit_orders: Vec<LimitOrder<T>>,
     ) -> Result<
         MarketChange<T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder<T>>,
         DispatchError,
@@ -583,12 +589,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         let mut limit_orders_to_force_update = BTreeMap::new();
         let mut payment = Payment::new(self.order_book_id);
 
-        let limit_orders = data.get_all_limit_orders(&self.order_book_id);
-
         for mut limit_order in limit_orders {
             if limit_order.amount.balance() % self.step_lot_size.balance() != 0 {
                 let refund = if limit_order.amount < self.step_lot_size {
-                    limit_orders_to_cancel.insert(limit_order.id, limit_order.clone());
+                    limit_orders_to_cancel
+                        .insert(limit_order.id, (limit_order.clone(), CancelReason::Aligned));
                     limit_order.amount
                 } else {
                     let amount = self.align_amount(limit_order.amount);
@@ -681,7 +686,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         };
 
         let average_price = OrderAmount::average_price(input_amount, output_amount)
-            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+            .ok_or(Error::<T>::PriceCalculationFailed)?;
 
         Ok(DealInfo::<AssetIdOf<T>> {
             input_asset_id: *input_asset_id,
@@ -798,9 +803,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             .payment
             .execute_all::<T::Locker, T::Unlocker>()?;
 
-        for limit_order in market_change.to_cancel.into_values() {
+        for (limit_order, reason) in market_change.to_cancel.into_values() {
             data.delete_limit_order(&self.order_book_id, limit_order.id)?;
-            let unschedule_result = T::Scheduler::unschedule(
+            let unschedule_result = T::Scheduler::unschedule_expiration(
                 limit_order.expires_at,
                 self.order_book_id,
                 limit_order.id,
@@ -814,13 +819,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 OrderBookEvent::LimitOrderCanceled {
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
+                    reason,
                 },
             );
         }
 
         for limit_order in market_change.to_full_execute.into_values() {
             data.delete_limit_order(&self.order_book_id, limit_order.id)?;
-            let unschedule_result = T::Scheduler::unschedule(
+            let unschedule_result = T::Scheduler::unschedule_expiration(
                 limit_order.expires_at,
                 self.order_book_id,
                 limit_order.id,
@@ -833,9 +839,18 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 self.order_book_id,
                 OrderBookEvent::LimitOrderExecuted {
                     order_id: limit_order.id,
-                    owner_id: limit_order.owner,
+                    owner_id: limit_order.owner.clone(),
                     side: limit_order.side,
+                    price: limit_order.price,
                     amount: OrderAmount::Base(limit_order.amount),
+                },
+            );
+
+            T::Delegate::emit_event(
+                self.order_book_id,
+                OrderBookEvent::LimitOrderFilled {
+                    order_id: limit_order.id,
+                    owner_id: limit_order.owner,
                 },
             );
         }
@@ -853,6 +868,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
                     side: limit_order.side,
+                    price: limit_order.price,
                     amount: executed_amount,
                 },
             );
@@ -870,20 +886,29 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 OrderBookEvent::LimitOrderUpdated {
                     order_id: limit_order.id,
                     owner_id: limit_order.owner,
+                    new_amount: limit_order.amount,
                 },
             );
         }
 
         for limit_order in market_change.to_place.into_values() {
-            let order_id = limit_order.id;
-            let owner_id = limit_order.owner.clone();
-            let expires_at = limit_order.expires_at;
-            data.insert_limit_order(&self.order_book_id, limit_order)?;
-            T::Scheduler::schedule(expires_at, self.order_book_id, order_id)?;
+            data.insert_limit_order(&self.order_book_id, limit_order.clone())?;
+            T::Scheduler::schedule_expiration(
+                limit_order.expires_at,
+                self.order_book_id,
+                limit_order.id,
+            )?;
 
             T::Delegate::emit_event(
                 self.order_book_id,
-                OrderBookEvent::LimitOrderPlaced { order_id, owner_id },
+                OrderBookEvent::LimitOrderPlaced {
+                    order_id: limit_order.id,
+                    owner_id: limit_order.owner,
+                    side: limit_order.side,
+                    price: limit_order.price,
+                    amount: limit_order.amount,
+                    lifetime: limit_order.lifespan,
+                },
             );
         }
 
@@ -920,14 +945,18 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     /// This is useful for expiration of orders where we want to use the universal interface
     /// to remove an order. In such case the schedule already does not have the order, because
     /// it is removed more efficiently than in `unschedule()`
-    pub(crate) fn cancel_limit_order_unchecked(
+    fn cancel_limit_order_unchecked(
         &self,
         limit_order: LimitOrder<T>,
+        reason: CancelReason,
         data: &mut impl DataLayer<T>,
         ignore_unschedule_error: bool,
     ) -> Result<(), DispatchError> {
-        let market_change =
-            self.calculate_cancellation_limit_order_impact(limit_order, ignore_unschedule_error)?;
+        let market_change = self.calculate_cancellation_limit_order_impact(
+            limit_order,
+            reason,
+            ignore_unschedule_error,
+        )?;
 
         self.apply_market_change(market_change, data)
     }
@@ -1002,18 +1031,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                         Error::<T>::OrderBookReachedMaxCountOfPricesForSide
                     );
                 }
-
-                if let Some((best_bid_price, _)) = self.best_bid(data) {
-                    if limit_order.price < best_bid_price {
-                        let diff = best_bid_price
-                            .balance()
-                            .abs_diff(*limit_order.price.balance());
-                        ensure!(
-                            diff <= T::MAX_PRICE_SHIFT * (*best_bid_price.balance()),
-                            Error::<T>::InvalidLimitOrderPrice
-                        );
-                    }
-                }
             }
             PriceVariant::Sell => {
                 if let Some(is_ask_price_full) =
@@ -1033,18 +1050,6 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                             < T::MaxSidePriceCount::get() as usize,
                         Error::<T>::OrderBookReachedMaxCountOfPricesForSide
                     );
-                }
-
-                if let Some((best_ask_price, _)) = self.best_ask(data) {
-                    if limit_order.price > best_ask_price {
-                        let diff = best_ask_price
-                            .balance()
-                            .abs_diff(*limit_order.price.balance());
-                        ensure!(
-                            diff <= T::MAX_PRICE_SHIFT * (*best_ask_price.balance()),
-                            Error::<T>::InvalidLimitOrderPrice
-                        );
-                    }
                 }
             }
         }
@@ -1080,7 +1085,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         volume
     }
 
-    pub fn cross_spread<'a>(
+    pub fn cross_spread(
         &self,
         limit_order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
@@ -1133,11 +1138,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
 
         if !limit_amount.is_zero() {
-            let mut new_limit_order = limit_order.clone();
+            let mut new_limit_order = limit_order;
             new_limit_order.amount = limit_amount;
             market_change
                 .merge(self.calculate_limit_order_impact(new_limit_order)?)
-                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+                .ok_or(Error::<T>::AmountCalculationFailed)?;
         }
 
         Ok(market_change)
