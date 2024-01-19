@@ -56,12 +56,9 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
-    use pallet_tools::liquidity_proxy::source_initialization;
+    pub use pallet_tools::liquidity_proxy::source_initialization;
     use pallet_tools::order_book::settings;
-    pub use source_initialization::{
-        XSTBaseInput, XSTBaseSideInput, XSTBaseXorPrices, XSTBaseXorSidePrices,
-        XSTSyntheticExistence, XSTSyntheticInput, XYKPair,
-    };
+    use source_initialization::{XSTBaseInput, XSTSyntheticInput, XYKPair};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -166,7 +163,7 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            pallet_tools::liquidity_proxy::source_initialization::order_book_create_and_fill::<T>(
+            source_initialization::order_book_create_and_fill::<T>(
                 bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
@@ -209,16 +206,14 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            pallet_tools::liquidity_proxy::source_initialization::order_book_only_fill::<T>(
-                bids_owner, asks_owner, settings,
-            )
-            .map_err(|e| DispatchErrorWithPostInfo {
-                post_info: PostDispatchInfo {
-                    actual_weight: None,
-                    pays_fee: Pays::No,
-                },
-                error: e,
-            })?;
+            source_initialization::order_book_only_fill::<T>(bids_owner, asks_owner, settings)
+                .map_err(|e| DispatchErrorWithPostInfo {
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                })?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -243,7 +238,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            source_initialization::xyk::<T>(account, pairs).map_err(|e| {
+            let _result = source_initialization::xyk::<T>(account, pairs).map_err(|e| {
                 DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
@@ -252,6 +247,7 @@ pub mod pallet {
                     error: e,
                 }
             })?;
+            // TODO: event
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.

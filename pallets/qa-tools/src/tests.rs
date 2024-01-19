@@ -34,8 +34,9 @@
 use assets::AssetIdOf;
 use common::prelude::{err_pays_no, BalanceUnit, QuoteAmount};
 use common::{
-    balance, fixed, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, LiquiditySource,
-    PredefinedAssetId, PriceVariant, SymbolName, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
+    assert_approx_eq, balance, fixed, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf,
+    LiquiditySource, PredefinedAssetId, PriceVariant, SymbolName, DAI, ETH, PSWAP, TBCD, VAL, XOR,
+    XST, XSTUSD,
 };
 use core::str::FromStr;
 use frame_support::dispatch::{Pays, PostDispatchInfo};
@@ -46,11 +47,10 @@ use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
-use qa_tools::pallet::XYKPair;
-use qa_tools::{
-    pallet_tools::order_book::settings, Error, XSTBaseInput, XSTBaseSideInput,
-    XSTSyntheticExistence, XSTSyntheticInput,
+use qa_tools::source_initialization::{
+    XSTBaseInput, XSTBaseSideInput, XSTSyntheticExistence, XSTSyntheticInput, XYKPair,
 };
+use qa_tools::{pallet_tools::order_book::settings, Error};
 use sp_runtime::traits::BadOrigin;
 use sp_runtime::DispatchErrorWithPostInfo;
 
@@ -935,20 +935,22 @@ fn should_initialize_xyk_pool() {
             XYKPair::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5)),
             XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5)),
             XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, PSWAP, balance!(0.5)),
-            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, ETH, balance!(0.5)),
+            XYKPair::new(
+                DEXId::PolkaswapXSTUSD.into(),
+                XSTUSD,
+                ETH,
+                balance!(0.000000000000000001),
+            ),
             XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, DAI, balance!(0.5)),
         ];
-        assert_ok!(QAToolsPallet::initialize_xyk(
-            RuntimeOrigin::root(),
-            alice(),
-            pairs.clone(),
-        ));
+        let prices =
+            qa_tools::source_initialization::xyk::<Runtime>(alice(), pairs.clone()).unwrap();
 
-        for pair in pairs {
+        for (expected_pair, actual_pair) in pairs.into_iter().zip(prices.into_iter()) {
             let result = pool_xyk::Pallet::<Runtime>::quote_without_impact(
-                &pair.dex_id,
-                &pair.asset_a,
-                &pair.asset_b,
+                &expected_pair.dex_id,
+                &expected_pair.asset_a,
+                &expected_pair.asset_b,
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(1),
                 },
@@ -958,7 +960,8 @@ fn should_initialize_xyk_pool() {
             // `deduce_fee` was set to false
             assert_eq!(result.fee, 0);
             let price = result.amount;
-            assert_eq!(pair.price, price);
+            assert_eq!(actual_pair.price, price);
+            assert_approx_eq!(actual_pair.price, expected_pair.price, 10, 0);
         }
     })
 }
@@ -1366,8 +1369,6 @@ fn should_init_xst_synthetic_price_various_prices() {
         // amount_out = ref_per_synthetic_base / ref_per_synthetic
         let expected_out = BalanceUnit::divisible(prices.sell.reference_per_synthetic_base)
             / BalanceUnit::divisible(euro_init.price_reference_per_asset as u128 * 10u128.pow(9));
-        dbg!(prices.sell.reference_per_synthetic_base);
-        dbg!(euro_init.price_reference_per_asset as u128 * 10u128.pow(9));
         assert_eq!(quote_result.amount, *expected_out.balance());
         assert_eq!(quote_result.fee, 0);
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(

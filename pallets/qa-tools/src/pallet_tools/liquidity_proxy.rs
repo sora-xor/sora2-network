@@ -94,16 +94,29 @@ pub mod source_initialization {
         }
     }
 
+    /// Initialize xyk liquidity source for multiple asset pairs at once.
+    ///
+    /// Due to limited precision of fixed-point numbers, the requested price might not be precisely
+    /// obtainable. Therefore, actual resulting price is returned.
+    ///
+    /// Note: with current implementation the prices should always be equal
     pub fn xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
         pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
-    ) -> DispatchResult {
-        for XYKPair {
-            dex_id,
-            asset_a,
-            asset_b,
-            price,
-        } in pairs
+    ) -> Result<Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>, DispatchError> {
+        let mut actual_prices = pairs.clone();
+        for (
+            XYKPair {
+                dex_id,
+                asset_a,
+                asset_b,
+                price: expected_price,
+            },
+            XYKPair {
+                price: actual_price,
+                ..
+            },
+        ) in pairs.into_iter().zip(actual_prices.iter_mut())
         {
             if <T as Config>::AssetInfoProvider::is_non_divisible(&asset_a)
                 || <T as Config>::AssetInfoProvider::is_non_divisible(&asset_b)
@@ -135,12 +148,14 @@ pub mod source_initialization {
             )
             .map_err(|e| e.error)?;
 
+            // Some magic numbers taken from existing init code
+            // https://github.com/soramitsu/sora2-api-tests/blob/f590995abbd3b191a57b988ba3c10607a89d6f89/tests/testAccount/mintTokensForPairs.test.ts#L136
             let value_a: BalanceUnit = if asset_a == XOR.into() {
                 balance!(1000000).into()
             } else {
                 balance!(10000).into()
             };
-            let price = BalanceUnit::divisible(price);
+            let price = BalanceUnit::divisible(expected_price);
             let value_b = value_a
                 .checked_mul(&price)
                 .ok_or(Error::<T>::ArithmeticError)?;
@@ -148,6 +163,7 @@ pub mod source_initialization {
             assets::Pallet::<T>::mint_unchecked(&asset_a, &caller, *value_a.balance())?;
             assets::Pallet::<T>::mint_unchecked(&asset_b, &caller, *value_b.balance())?;
 
+            *actual_price = *(value_b / value_a).balance();
             pool_xyk::Pallet::<T>::deposit_liquidity(
                 RawOrigin::Signed(caller.clone()).into(),
                 dex_id,
@@ -161,7 +177,7 @@ pub mod source_initialization {
             )
             .map_err(|e| e.error)?;
         }
-        Ok(())
+        Ok(actual_prices)
     }
 
     /// Create multiple order books with parameters and fill them according to given parameters.
