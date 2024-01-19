@@ -306,6 +306,9 @@ private-net = [
 
 wip = [
     "framenode-chain-spec/wip",
+    "liquidity-proxy/wip",
+    "liquidity-proxy-runtime-api/wip",
+    "liquidity-proxy-benchmarking/wip",
     "pallet-mmr",
     "beefy-light-client",
     "beefy-light-client-runtime-api",

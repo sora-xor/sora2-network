@@ -44,7 +44,7 @@ use {
 };
 
 #[cfg(feature = "wip")] // ALT
-                        // info with input & output amounts for liquidity source
+/// Info with input & output amounts for liquidity source
 type SwapInfo<LiquiditySourceType, AmountType> =
     BTreeMap<LiquiditySourceType, (AmountType, AmountType)>;
 

@@ -52,7 +52,7 @@ use common::{
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
-    TradingPairSourceManager, VestedRewardsPallet, XSTUSD,
+    TradingPairSourceManager, VestedRewardsPallet,
 };
 use core::marker::PhantomData;
 use fallible_iterator::FallibleIterator as _;
@@ -74,6 +74,7 @@ pub use weights::WeightInfo;
 #[cfg(not(feature = "wip"))] // ALT
 use {
     common::prelude::fixnum::ops::{Bounded, Zero as _},
+    common::XSTUSD,
     sp_runtime::traits::CheckedSub,
 };
 
@@ -1207,6 +1208,12 @@ impl<T: Config> Pallet<T> {
             return REJECTION_WEIGHT;
         };
 
+        #[cfg(not(feature = "wip"))] // ALT
+        let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(T::LiquidityRegistry::quote_weight().saturating_mul(4))
+            .saturating_add(T::LiquidityRegistry::check_rewards_weight().saturating_mul(2));
+
+        #[cfg(feature = "wip")] // ALT
         let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
             .saturating_add(Self::smart_split_weight());
 

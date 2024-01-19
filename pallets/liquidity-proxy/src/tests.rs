@@ -804,6 +804,7 @@ fn test_swap_weight_considers_available_sources() {
         let swap_base_weight = <Runtime as crate::Config>::WeightInfo::check_indivisible_assets()
             .saturating_add(<Runtime as crate::Config>::WeightInfo::is_forbidden_filter());
 
+        #[cfg(not(feature = "wip"))] // ALT
         let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
             .saturating_add(
                 <Runtime as crate::Config>::LiquidityRegistry::quote_weight().saturating_mul(4),
@@ -812,6 +813,17 @@ fn test_swap_weight_considers_available_sources() {
                 <Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight()
                     .saturating_mul(2),
             );
+
+        #[cfg(feature = "wip")] // ALT
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(<Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight())
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::step_quote_weight(
+                    <Runtime as crate::Config>::GetNumSamples::get(),
+                )
+                .saturating_mul(4),
+            );
+
         let exchange_base_weight = <Runtime as crate::Config>::WeightInfo::new_trivial()
             .saturating_add(quote_single_weight); // once within a path
         let multicollateral_weight =
@@ -914,6 +926,7 @@ fn test_swap_weight_filters_sources() {
         let swap_base_weight = <Runtime as crate::Config>::WeightInfo::check_indivisible_assets()
             .saturating_add(<Runtime as crate::Config>::WeightInfo::is_forbidden_filter());
 
+        #[cfg(not(feature = "wip"))] // ALT
         let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
             .saturating_add(
                 <Runtime as crate::Config>::LiquidityRegistry::quote_weight().saturating_mul(4),
@@ -922,6 +935,17 @@ fn test_swap_weight_filters_sources() {
                 <Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight()
                     .saturating_mul(2),
             );
+
+        #[cfg(feature = "wip")] // ALT
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(<Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight())
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::step_quote_weight(
+                    <Runtime as crate::Config>::GetNumSamples::get(),
+                )
+                .saturating_mul(4),
+            );
+
         let exchange_base_weight = <Runtime as crate::Config>::WeightInfo::new_trivial()
             .saturating_add(quote_single_weight); // once within a path
         let multicollateral_weight =
