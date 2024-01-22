@@ -109,9 +109,11 @@ impl<T: Config> Pallet<T> {
                 false,
             )
             .map_err(|error| match error {
-                LiquiditySourceQuoteError::NotEnoughAmountForFee => Error::<T>::QuoteError.into(),
+                LiquiditySourceQuoteError::NotEnoughAmountForFee => {
+                    Error::<T>::LiquiditySourceQuoteError.into()
+                }
                 LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
-                    Error::<T>::QuoteError.into()
+                    Error::<T>::LiquiditySourceQuoteError.into()
                 }
                 LiquiditySourceQuoteError::DispatchError(error) => error,
             })?;
@@ -384,7 +386,7 @@ pub mod pallet {
     pub enum Error<T> {
         /// Increment account reference error.
         IncRefError,
-        QuoteError,
+        LiquiditySourceQuoteError,
     }
 
     /// Pools whose farmers are refreshed at the specific block. Block => Pools
