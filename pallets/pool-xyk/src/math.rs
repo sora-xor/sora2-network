@@ -39,11 +39,14 @@ use crate::{to_balance, to_fixed_wrapper};
 
 use crate::{Config, Error, Pallet};
 
-// TODO move to better place
+/// Quote specific calculation errors
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum QuoteError {
+    /// Amount not enough to pay fees
     NotEnoughAmountForFee,
+    /// Not enough liquidity for swap
     NotEnoughLiquidityForSwap,
+    /// Other pallet error
     DispatchError(DispatchError),
 }
 

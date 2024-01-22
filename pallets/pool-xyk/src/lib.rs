@@ -45,9 +45,9 @@ use common::prelude::{
 };
 use common::{
     fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
-    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
-    PoolXykPallet, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
-    TradingPairSourceManager,
+    GetPoolReserves, LiquiditySource, LiquiditySourceQuoteError, LiquiditySourceType,
+    ManagementMode, OnPoolReservesChanged, PoolXykPallet, RewardReason, TechAccountId, TechPurpose,
+    ToFeeAccount, TradingPair, TradingPairSourceManager,
 };
 
 mod aliases;
@@ -379,33 +379,33 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), common::LiquiditySourceQuoteError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
         let dex_info = T::DexInfoProvider::get_dex_info(dex_id)
-            .map_err(|error| common::LiquiditySourceQuoteError::DispatchError(error.into()))?;
+            .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
             *input_asset_id,
             *output_asset_id,
         )
-        .map_err(|error| common::LiquiditySourceQuoteError::DispatchError(error.into()))?;
+        .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
 
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)
-            .map_err(|error| common::LiquiditySourceQuoteError::DispatchError(error.into()))?;
+            .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
 
         // Get actual pool reserves.
         let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)
-            .map_err(|error| common::LiquiditySourceQuoteError::DispatchError(error.into()))?;
+            .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
         let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)
-            .map_err(|error| common::LiquiditySourceQuoteError::DispatchError(error.into()))?;
+            .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
-            fail!(common::LiquiditySourceQuoteError::DispatchError(
+            fail!(LiquiditySourceQuoteError::DispatchError(
                 Error::<T>::PoolIsEmpty.into()
             ));
         } else if reserve_input <= 0 || reserve_output <= 0 {
-            fail!(common::LiquiditySourceQuoteError::DispatchError(
+            fail!(LiquiditySourceQuoteError::DispatchError(
                 Error::<T>::PoolIsInvalid.into()
             ));
         }
@@ -416,7 +416,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             input_asset_id,
             output_asset_id,
         )
-        .map_err(|error| common::LiquiditySourceQuoteError::DispatchError(error.into()))?;
+        .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
 
         // Calculate quote.
         match amount {
@@ -429,7 +429,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     &desired_amount_in,
                     deduce_fee,
                 )
-                .map_err(|error| common::LiquiditySourceQuoteError::DispatchError(error.into()))?;
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
                 Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
@@ -443,13 +443,13 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 )
                 .map_err(|error| match error {
                     QuoteError::NotEnoughAmountForFee => {
-                        common::LiquiditySourceQuoteError::NotEnoughAmountForFee
+                        LiquiditySourceQuoteError::NotEnoughAmountForFee
                     }
                     QuoteError::NotEnoughLiquidityForSwap => {
-                        common::LiquiditySourceQuoteError::NotEnoughLiquidityForSwap
+                        LiquiditySourceQuoteError::NotEnoughLiquidityForSwap
                     }
                     QuoteError::DispatchError(error) => {
-                        common::LiquiditySourceQuoteError::DispatchError(error)
+                        LiquiditySourceQuoteError::DispatchError(error)
                     }
                 })?;
                 Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))

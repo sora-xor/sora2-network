@@ -38,8 +38,9 @@ use common::prelude::{Balance, QuoteAmount};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, AssetName, AssetSymbol,
     BalancePrecision, ContentSource, DEXInfo, Description, Fixed, FromGenericPair,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet,
-    PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, USDT, VAL, XOR, XST,
+    LiquidityProxyError, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    PriceToolsPallet, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, USDT,
+    VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
@@ -481,7 +482,11 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
             QuoteAmount::with_desired_input(balance!(1)),
             LiquiditySourceFilter::with_allowed(0u32, [LiquiditySourceType::XYKPool].to_vec()),
             true,
-        );
+        )
+        .map_err(|error| match error {
+            LiquidityProxyError::NotEnoughLiquidity => DispatchError::Other("NotEnoughLiquidity"),
+            LiquidityProxyError::DispatchError(error) => error,
+        });
         Ok(res?.amount)
     }
 

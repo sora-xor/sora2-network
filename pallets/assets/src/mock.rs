@@ -217,7 +217,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             &MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT,
             amount,
         )
-        .map_err(|error| LiquidityProxyError::DispatchError(error))?;
+        .map_err(LiquidityProxyError::DispatchError)?;
 
         <Currencies as traits::MultiCurrency<_>>::transfer(
             *output_asset_id,
@@ -225,7 +225,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             receiver,
             amount,
         )
-        .map_err(|error| LiquidityProxyError::DispatchError(error))?;
+        .map_err(LiquidityProxyError::DispatchError)?;
 
         Ok(SwapOutcome::new(amount, 0))
     }
