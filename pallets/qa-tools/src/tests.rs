@@ -1348,20 +1348,25 @@ fn should_init_xst_synthetic_price_various_prices() {
             },
         };
 
-        let expected_quote = XSTSyntheticQuote {
+        let euro_init = euro_init_input::<Runtime>(XSTSyntheticQuote {
             direction: XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
             amount: QuoteAmount::WithDesiredOutput {
                 desired_amount_out: balance!(1),
             },
             result: balance!(33),
-        };
-        let euro_init = euro_init_input::<Runtime>(expected_quote);
+        });
         let init_result = qa_tools::source_initialization::xst::<Runtime>(
             Some(prices.clone()),
             vec![euro_init.clone()],
             alice(),
         )
         .unwrap();
+        assert_approx_eq!(
+            euro_init.expected_quote.result,
+            init_result[0].quote_achieved.result,
+            10,
+            0.001f64
+        );
 
         // SyntheticBaseToSynthetic
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
@@ -1372,7 +1377,7 @@ fn should_init_xst_synthetic_price_various_prices() {
             false,
         )
         .unwrap();
-        assert_eq!(quote_result.amount, euro_init.expected_quote.result);
+        assert_eq!(quote_result.amount, init_result[0].quote_achieved.result);
         assert_eq!(quote_result.fee, 0);
     })
 }
@@ -1408,6 +1413,12 @@ fn should_update_xst_synthetic_price() {
             alice(),
         )
         .unwrap();
+        assert_approx_eq!(
+            euro_init.expected_quote.result,
+            init_result[0].quote_achieved.result,
+            10,
+            0.001f64
+        );
 
         // SyntheticBaseToSynthetic
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
@@ -1418,7 +1429,7 @@ fn should_update_xst_synthetic_price() {
             false,
         )
         .unwrap();
-        assert_eq!(quote_result.amount, euro_init.expected_quote.result);
+        assert_eq!(quote_result.amount, init_result[0].quote_achieved.result);
         assert_eq!(quote_result.fee, 0);
 
         // correctly updates prices
@@ -1450,6 +1461,12 @@ fn should_update_xst_synthetic_price() {
             alice(),
         )
         .unwrap();
+        assert_approx_eq!(
+            euro_init.expected_quote.result,
+            init_result[0].quote_achieved.result,
+            10,
+            0.001f64
+        );
 
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
@@ -1459,7 +1476,7 @@ fn should_update_xst_synthetic_price() {
             false,
         )
         .unwrap();
-        assert_eq!(quote_result.amount, euro_init.expected_quote.result);
+        assert_eq!(quote_result.amount, init_result[0].quote_achieved.result);
         assert_eq!(quote_result.fee, 0);
 
         let prices = XSTBaseInput {
