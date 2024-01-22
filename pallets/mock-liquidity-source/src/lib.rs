@@ -293,7 +293,7 @@ impl<T: Config<I>, I: 'static>
         deduce_fee: bool,
     ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
         let dex_info = T::DexInfoProvider::get_dex_info(dex_id)
-            .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
+            .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
         let amount = amount.try_into().map_err(|_| {
             LiquiditySourceQuoteError::DispatchError(Error::<T, I>::CalculationError.into())
         })?;
@@ -355,9 +355,7 @@ impl<T: Config<I>, I: 'static>
                     target_reserve,
                     deduce_fee,
                 )
-                .map_err(|_| {
-                    LiquiditySourceQuoteError::DispatchError(Error::<T, I>::CalculationError.into())
-                })?
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?
                 .try_into()
                 .map_err(|_| {
                     LiquiditySourceQuoteError::DispatchError(Error::<T, I>::CalculationError.into())
@@ -376,14 +374,14 @@ impl<T: Config<I>, I: 'static>
                         target_reserve_a,
                         deduce_fee,
                     )
-                    .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
+                    .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
                     let outcome_b: SwapOutcome<Fixed> = Self::get_target_amount_out(
                         outcome_a.amount,
                         base_reserve_b,
                         target_reserve_b,
                         deduce_fee,
                     )
-                    .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
+                    .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
                     let outcome_a_fee: FixedWrapper = outcome_a.fee.into();
                     let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
                     let amount = outcome_b.amount.into_bits().try_into().map_err(|_| {
@@ -409,14 +407,14 @@ impl<T: Config<I>, I: 'static>
                         target_reserve_b,
                         deduce_fee,
                     )
-                    .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
+                    .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
                     let outcome_a: SwapOutcome<Fixed> = Self::get_target_amount_in(
                         outcome_b.amount,
                         base_reserve_a,
                         target_reserve_a,
                         deduce_fee,
                     )
-                    .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
+                    .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?;
                     let outcome_a_fee: FixedWrapper = outcome_a.fee.into();
                     let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
                     let amount = outcome_a.amount.into_bits().try_into().map_err(|_| {

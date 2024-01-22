@@ -1577,10 +1577,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let base_asset_id = &T::GetBaseAssetId::get();
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
             Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee)
-                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?
         } else {
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)
-                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?
         };
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((

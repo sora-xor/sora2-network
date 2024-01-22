@@ -1250,14 +1250,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             return Err(LiquiditySourceQuoteError::DispatchError(Error::<T>::UnknownOrderBook.into()));
         };
 
-        let order_book = <OrderBooks<T>>::get(order_book_id)
-            .ok_or(Error::<T>::UnknownOrderBook)
-            .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
+        let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(
+            LiquiditySourceQuoteError::DispatchError(Error::<T>::UnknownOrderBook.into()),
+        )?;
         let mut data = CacheDataLayer::<T>::new();
 
         let deal_info = order_book
             .calculate_deal(input_asset_id, output_asset_id, amount, &mut data)
-            .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
+            .map_err(LiquiditySourceQuoteError::DispatchError)?;
 
         ensure!(
             deal_info.is_valid(),

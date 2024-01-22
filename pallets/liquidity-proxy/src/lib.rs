@@ -2184,7 +2184,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
-        match Pallet::<T>::inner_exchange(
+        let (outcome, _, _) = Pallet::<T>::inner_exchange(
             dex_id,
             sender,
             receiver,
@@ -2192,13 +2192,9 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
             output_asset_id,
             amount,
             filter,
-        ) {
-            Ok(result) => {
-                let (outcome, _, _) = result;
-                Ok(outcome)
-            }
-            Err(error) => Err(LiquidityProxyError::DispatchError(error)),
-        }
+        )
+        .map_err(|error| LiquidityProxyError::DispatchError(error))?;
+        Ok(outcome)
     }
 }
 
