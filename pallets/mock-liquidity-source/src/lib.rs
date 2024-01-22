@@ -309,9 +309,7 @@ impl<T: Config<I>, I: 'static>
                     target_reserve,
                     deduce_fee,
                 )
-                .map_err(|_| {
-                    LiquiditySourceQuoteError::DispatchError(Error::<T, I>::CalculationError.into())
-                })?
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?
                 .try_into()
                 .map_err(|_| {
                     LiquiditySourceQuoteError::DispatchError(Error::<T, I>::CalculationError.into())
@@ -325,9 +323,7 @@ impl<T: Config<I>, I: 'static>
                     target_reserve,
                     deduce_fee,
                 )
-                .map_err(|_| {
-                    LiquiditySourceQuoteError::DispatchError(Error::<T, I>::CalculationError.into())
-                })?
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?
                 .try_into()
                 .map_err(|_| {
                     LiquiditySourceQuoteError::DispatchError(Error::<T, I>::CalculationError.into())
@@ -345,9 +341,7 @@ impl<T: Config<I>, I: 'static>
                     target_reserve,
                     deduce_fee,
                 )
-                .map_err(|_| {
-                    LiquiditySourceQuoteError::DispatchError(Error::<T, I>::CalculationError.into())
-                })?
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?
                 .try_into()
                 .map_err(|_| {
                     LiquiditySourceQuoteError::DispatchError(Error::<T, I>::CalculationError.into())

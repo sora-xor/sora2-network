@@ -231,7 +231,7 @@ impl<T: Config> Pallet<T> {
                 QuoteError::NotEnoughLiquidityForSwap
             );
             ensure!(
-                x_in > x_in_without_fee,
+                x_in >= x_in_without_fee,
                 QuoteError::NotEnoughLiquidityForSwap
             );
             Ok((

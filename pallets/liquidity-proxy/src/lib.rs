@@ -996,7 +996,6 @@ impl<T: Config> Pallet<T> {
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {
             let src = sources.first().unwrap();
-            // TODO check quote here
             let (outcome, weight) = T::LiquidityRegistry::quote(
                 src,
                 input_asset_id,
@@ -1005,7 +1004,6 @@ impl<T: Config> Pallet<T> {
                 deduce_fee,
             )
             .map_err(|error| match error {
-                // TODO
                 LiquiditySourceQuoteError::NotEnoughAmountForFee => {
                     Error::<T>::InsufficientBalance.into()
                 }
