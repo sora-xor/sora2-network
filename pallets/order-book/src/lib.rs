@@ -42,7 +42,7 @@ use common::{
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
-use common::{LiquiditySourceType, QuoteError};
+use common::{LiquiditySourceQuoteError, LiquiditySourceType};
 use core::fmt::Debug;
 use frame_support::dispatch::{DispatchResultWithPostInfo, PostDispatchInfo};
 use frame_support::ensure;
@@ -1245,23 +1245,23 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), QuoteError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
-            return Err(QuoteError::DispatchError(Error::<T>::UnknownOrderBook.into()));
+            return Err(LiquiditySourceQuoteError::DispatchError(Error::<T>::UnknownOrderBook.into()));
         };
 
         let order_book = <OrderBooks<T>>::get(order_book_id)
             .ok_or(Error::<T>::UnknownOrderBook)
-            .map_err(|error| QuoteError::DispatchError(error.into()))?;
+            .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
         let mut data = CacheDataLayer::<T>::new();
 
         let deal_info = order_book
             .calculate_deal(input_asset_id, output_asset_id, amount, &mut data)
-            .map_err(|error| QuoteError::DispatchError(error.into()))?;
+            .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
 
         ensure!(
             deal_info.is_valid(),
-            QuoteError::DispatchError(Error::<T>::PriceCalculationFailed.into())
+            LiquiditySourceQuoteError::DispatchError(Error::<T>::PriceCalculationFailed.into())
         );
 
         // order-book doesn't take fee

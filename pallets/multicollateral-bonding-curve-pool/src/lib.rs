@@ -53,8 +53,8 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
-    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
-    ManagementMode, PriceVariant, QuoteError, RewardReason, TradingPairSourceManager,
+    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceQuoteError,
+    LiquiditySourceType, ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager,
     VestedRewardsPallet, PSWAP, TBCD, VAL, XOR, XST,
 };
 use common::{BuyBackHandler, LiquidityProxyError};
@@ -1568,17 +1568,19 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), QuoteError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
-            fail!(QuoteError::DispatchError(Error::<T>::CantExchange.into()));
+            fail!(LiquiditySourceQuoteError::DispatchError(
+                Error::<T>::CantExchange.into()
+            ));
         }
         let base_asset_id = &T::GetBaseAssetId::get();
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
             Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee)
-                .map_err(|error| QuoteError::DispatchError(error.into()))?
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?
         } else {
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)
-                .map_err(|error| QuoteError::DispatchError(error.into()))?
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?
         };
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((

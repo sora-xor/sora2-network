@@ -390,9 +390,7 @@ impl<T: Config> Pallet<T> {
             false,
         )
         .map_err(|error| match error {
-            LiquidityProxyError::NotEnoughLiquidity => {
-                assets::Error::<T>::NotEnoughLiquidity.into()
-            }
+            LiquidityProxyError::NotEnoughLiquidity => Error::<T>::NotEnoughLiquidity.into(),
             LiquidityProxyError::DispatchError(dispatch_error) => dispatch_error,
         })
         .map(|so| so.amount)

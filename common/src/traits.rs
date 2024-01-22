@@ -187,10 +187,15 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
     }
 }
 
+/// Specific LiquiditySource trait error.
+/// Distinguish underlying DispatchErrors and specific errors and makes specific trait errors processable.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum QuoteError {
+pub enum LiquiditySourceQuoteError {
+    /// Swap output amount is not enough to pay fees
     NotEnoughAmountForFee,
+    /// There is not enough liquidity for swap with DesiredOutput
     NotEnoughLiquidityForSwap,
+    /// DispatchError of underlying pallet implementation
     DispatchError(DispatchError),
 }
 
@@ -210,7 +215,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Amount>, Weight), QuoteError>;
+    ) -> Result<(SwapOutcome<Amount>, Weight), LiquiditySourceQuoteError>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
@@ -344,8 +349,10 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Fixed>, Weight), QuoteError> {
-        Err(QuoteError::DispatchError(DispatchError::CannotLookup))
+    ) -> Result<(SwapOutcome<Fixed>, Weight), LiquiditySourceQuoteError> {
+        Err(LiquiditySourceQuoteError::DispatchError(
+            DispatchError::CannotLookup,
+        ))
     }
 
     fn exchange(
@@ -409,8 +416,10 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), QuoteError> {
-        Err(QuoteError::DispatchError(DispatchError::CannotLookup))
+    ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
+        Err(LiquiditySourceQuoteError::DispatchError(
+            DispatchError::CannotLookup,
+        ))
     }
 
     fn exchange(

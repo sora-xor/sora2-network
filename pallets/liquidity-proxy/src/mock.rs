@@ -33,8 +33,8 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, QuoteError, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM,
-    PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    LiquiditySourceQuoteError, LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION,
+    DOT, ETH, KSM, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -632,7 +632,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), QuoteError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
@@ -641,7 +641,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             TechAccountId::Generic(b"mcbc_pool".to_vec(), b"main".to_vec());
         let reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id)
-                .map_err(|error| QuoteError::DispatchError(error.into()))?;
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
         let current_supply = pallet_balances::Pallet::<Runtime>::total_issuance();
 
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
@@ -686,7 +686,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                     let output_wrapped: FixedWrapper = desired_amount_out.into();
                     ensure!(
                         output_wrapped < collateral_reserves,
-                        QuoteError::DispatchError(
+                        LiquiditySourceQuoteError::DispatchError(
                             crate::Error::<Runtime>::InsufficientLiquidity.into()
                         )
                     );
@@ -787,13 +787,13 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         // TODO: implement if needed
         Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
             .map_err(|error| match error {
-                QuoteError::NotEnoughAmountForFee => {
+                LiquiditySourceQuoteError::NotEnoughAmountForFee => {
                     crate::Error::<Runtime>::InsufficientBalance.into()
                 }
-                QuoteError::NotEnoughLiquidityForSwap => {
+                LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
                     crate::Error::<Runtime>::InsufficientLiquidity.into()
                 }
-                QuoteError::DispatchError(error) => error,
+                LiquiditySourceQuoteError::DispatchError(error) => error,
             })
             .map(|(outcome, _)| outcome)
     }
@@ -1085,7 +1085,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), QuoteError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
@@ -1093,7 +1093,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             TechAccountId::Generic(b"xst_pool".to_vec(), b"main".to_vec());
         let _reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id)
-                .map_err(|error| QuoteError::DispatchError(error.into()))?;
+                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))?;
 
         let input_asset_price: FixedWrapper = get_reference_prices()[input_asset_id].into();
         let output_asset_price: FixedWrapper = get_reference_prices()[output_asset_id].into();
@@ -1147,13 +1147,13 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         // TODO: implement if needed
         Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
             .map_err(|error| match error {
-                QuoteError::NotEnoughAmountForFee => {
+                LiquiditySourceQuoteError::NotEnoughAmountForFee => {
                     crate::Error::<Runtime>::InsufficientBalance.into()
                 }
-                QuoteError::NotEnoughLiquidityForSwap => {
+                LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
                     crate::Error::<Runtime>::InsufficientLiquidity.into()
                 }
-                QuoteError::DispatchError(error) => error,
+                LiquiditySourceQuoteError::DispatchError(error) => error,
             })
             .map(|(outcome, _)| outcome)
     }

@@ -56,8 +56,9 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    QuoteError, Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceQuoteError, LiquiditySourceType,
+    OnSymbolDisabled, PriceVariant, Rate, RewardReason, SyntheticInfoProvider,
+    TradingPairSourceManager, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
@@ -1072,7 +1073,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), QuoteError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
         Self::inner_quote(
             dex_id,
             input_asset_id,
@@ -1081,7 +1082,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             deduce_fee,
             true,
         )
-        .map_err(|error| QuoteError::DispatchError(error.into()))
+        .map_err(|error| LiquiditySourceQuoteError::DispatchError(error.into()))
     }
 
     fn exchange(

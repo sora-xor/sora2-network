@@ -35,7 +35,7 @@
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, QuoteError, RewardReason,
+    LiquiditySourceId, LiquiditySourceQuoteError, LiquiditySourceType, RewardReason,
 };
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
@@ -95,7 +95,7 @@ impl<T: Config>
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), QuoteError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
         use LiquiditySourceType::*;
         macro_rules! quote {
             ($source_type:ident) => {
@@ -109,7 +109,7 @@ impl<T: Config>
             };
         }
         match liquidity_source_id.liquidity_source_index {
-            LiquiditySourceType::XYKPool => quote!(XYKPool),
+            XYKPool => quote!(XYKPool),
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
             XSTPool => quote!(XSTPool),
             OrderBook => quote!(OrderBook),

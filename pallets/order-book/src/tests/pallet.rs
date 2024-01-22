@@ -34,8 +34,8 @@ use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant, QuoteError, VAL, XOR,
-    XSTUSD,
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceQuoteError,
+    PriceVariant, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
@@ -1231,7 +1231,7 @@ fn should_not_quote_with_non_existed_order_book() {
                 QuoteAmount::with_desired_output(balance!(200)),
                 true
             ),
-            QuoteError::DispatchError(E::UnknownOrderBook.into())
+            LiquiditySourceQuoteError::DispatchError(E::UnknownOrderBook.into())
         );
 
         assert_err!(
@@ -1242,7 +1242,7 @@ fn should_not_quote_with_non_existed_order_book() {
                 QuoteAmount::with_desired_output(balance!(2500)),
                 true
             ),
-            QuoteError::DispatchError(E::UnknownOrderBook.into())
+            LiquiditySourceQuoteError::DispatchError(E::UnknownOrderBook.into())
         );
     });
 }
@@ -1266,7 +1266,7 @@ fn should_not_quote_with_empty_side() {
                 QuoteAmount::with_desired_output(balance!(200)),
                 true
             ),
-            QuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
+            LiquiditySourceQuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
         );
 
         assert_err!(
@@ -1277,7 +1277,7 @@ fn should_not_quote_with_empty_side() {
                 QuoteAmount::with_desired_output(balance!(2500)),
                 true
             ),
-            QuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
+            LiquiditySourceQuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
         );
     });
 }
@@ -1301,7 +1301,7 @@ fn should_not_quote_with_small_amount() {
                 QuoteAmount::with_desired_output(balance!(0.000001)),
                 true
             ),
-            QuoteError::DispatchError(E::InvalidOrderAmount.into())
+            LiquiditySourceQuoteError::DispatchError(E::InvalidOrderAmount.into())
         );
 
         assert_err!(
@@ -1312,7 +1312,7 @@ fn should_not_quote_with_small_amount() {
                 QuoteAmount::with_desired_output(balance!(0)),
                 true
             ),
-            QuoteError::DispatchError(E::InvalidOrderAmount.into())
+            LiquiditySourceQuoteError::DispatchError(E::InvalidOrderAmount.into())
         );
 
         assert_err!(
@@ -1323,7 +1323,7 @@ fn should_not_quote_with_small_amount() {
                 QuoteAmount::with_desired_output(balance!(0.000001)),
                 true
             ),
-            QuoteError::DispatchError(E::InvalidOrderAmount.into())
+            LiquiditySourceQuoteError::DispatchError(E::InvalidOrderAmount.into())
         );
 
         assert_err!(
@@ -1334,7 +1334,7 @@ fn should_not_quote_with_small_amount() {
                 QuoteAmount::with_desired_output(balance!(0)),
                 true
             ),
-            QuoteError::DispatchError(E::InvalidOrderAmount.into())
+            LiquiditySourceQuoteError::DispatchError(E::InvalidOrderAmount.into())
         );
     });
 }
@@ -1358,7 +1358,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
                 QuoteAmount::with_desired_output(balance!(1000)),
                 true
             ),
-            QuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
+            LiquiditySourceQuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
         );
 
         assert_err!(
@@ -1369,7 +1369,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
                 QuoteAmount::with_desired_output(balance!(10000)),
                 true
             ),
-            QuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
+            LiquiditySourceQuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
         );
     });
 }

@@ -45,7 +45,7 @@ mod weights;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
-use common::{QuoteError, RewardReason, TradingPair};
+use common::{LiquiditySourceQuoteError, RewardReason, TradingPair};
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -109,9 +109,11 @@ impl<T: Config> Pallet<T> {
                 false,
             )
             .map_err(|error| match error {
-                QuoteError::NotEnoughAmountForFee => Error::<T>::QuoteError.into(),
-                QuoteError::NotEnoughLiquidityForSwap => Error::<T>::QuoteError.into(),
-                QuoteError::DispatchError(error) => error,
+                LiquiditySourceQuoteError::NotEnoughAmountForFee => Error::<T>::QuoteError.into(),
+                LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
+                    Error::<T>::QuoteError.into()
+                }
+                LiquiditySourceQuoteError::DispatchError(error) => error,
             })?;
             frame_support::log::debug!("{outcome:?}");
             Ok(FixedWrapper::from(outcome.amount))

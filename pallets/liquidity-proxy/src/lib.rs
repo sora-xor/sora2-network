@@ -46,8 +46,9 @@ use common::{
     balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyError,
     LiquidityProxyTrait, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, LockedLiquiditySourcesManager, QuoteError,
-    RewardReason, TradingPair, TradingPairSourceManager, VestedRewardsPallet, XSTUSD,
+    LiquiditySourceId, LiquiditySourceQuoteError, LiquiditySourceType,
+    LockedLiquiditySourcesManager, RewardReason, TradingPair, TradingPairSourceManager,
+    VestedRewardsPallet, XSTUSD,
 };
 use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
@@ -1005,9 +1006,13 @@ impl<T: Config> Pallet<T> {
             )
             .map_err(|error| match error {
                 // TODO
-                QuoteError::NotEnoughAmountForFee => Error::<T>::InsufficientBalance.into(),
-                QuoteError::NotEnoughLiquidityForSwap => Error::<T>::InsufficientLiquidity.into(),
-                QuoteError::DispatchError(error) => error,
+                LiquiditySourceQuoteError::NotEnoughAmountForFee => {
+                    Error::<T>::InsufficientBalance.into()
+                }
+                LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
+                    Error::<T>::InsufficientLiquidity.into()
+                }
+                LiquiditySourceQuoteError::DispatchError(error) => error,
             })?;
             total_weight = total_weight.saturating_add(weight);
             let rewards = if skip_info {
@@ -1559,9 +1564,13 @@ impl<T: Config> Pallet<T> {
                 deduce_fee,
             )
             .map_err(|error| match error {
-                QuoteError::NotEnoughAmountForFee => Error::<T>::InsufficientBalance.into(),
-                QuoteError::NotEnoughLiquidityForSwap => Error::<T>::InsufficientLiquidity.into(),
-                QuoteError::DispatchError(error) => error,
+                LiquiditySourceQuoteError::NotEnoughAmountForFee => {
+                    Error::<T>::InsufficientBalance.into()
+                }
+                LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
+                    Error::<T>::InsufficientLiquidity.into()
+                }
+                LiquiditySourceQuoteError::DispatchError(error) => error,
             })
             .and_then(|(outcome_primary, weight)| {
                 total_weight = total_weight.saturating_add(weight);
@@ -1577,11 +1586,13 @@ impl<T: Config> Pallet<T> {
                         deduce_fee,
                     )
                     .map_err(|error| match error {
-                        QuoteError::NotEnoughAmountForFee => Error::<T>::InsufficientBalance.into(),
-                        QuoteError::NotEnoughLiquidityForSwap => {
+                        LiquiditySourceQuoteError::NotEnoughAmountForFee => {
+                            Error::<T>::InsufficientBalance.into()
+                        }
+                        LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
                             Error::<T>::InsufficientLiquidity.into()
                         }
-                        QuoteError::DispatchError(error) => error,
+                        LiquiditySourceQuoteError::DispatchError(error) => error,
                     })
                     .and_then(|(outcome_secondary, weight)| {
                         total_weight = total_weight.saturating_add(weight);
@@ -1639,9 +1650,13 @@ impl<T: Config> Pallet<T> {
             deduce_fee,
         )
         .map_err(|error| match error {
-            QuoteError::NotEnoughAmountForFee => Error::<T>::InsufficientBalance.into(),
-            QuoteError::NotEnoughLiquidityForSwap => Error::<T>::InsufficientLiquidity.into(),
-            QuoteError::DispatchError(error) => error,
+            LiquiditySourceQuoteError::NotEnoughAmountForFee => {
+                Error::<T>::InsufficientBalance.into()
+            }
+            LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
+                Error::<T>::InsufficientLiquidity.into()
+            }
+            LiquiditySourceQuoteError::DispatchError(error) => error,
         })
         .and_then(|(outcome, weight)| {
             total_weight = total_weight.saturating_add(weight);
