@@ -5,7 +5,7 @@ use common::Balance;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct UserLendingPosition<BlockNumberFor> {
+pub struct LendingPosition<BlockNumberFor> {
     pub lending_amount: Balance,
     pub lending_interest: Balance,
     pub last_lending_block: BlockNumberFor,
@@ -13,7 +13,7 @@ pub struct UserLendingPosition<BlockNumberFor> {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, Clone, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct UserBorrowingPosition<BlockNumberFor> {
+pub struct BorrowingPosition<BlockNumberFor> {
     pub collateral_amount: Balance,
     pub borrowing_amount: Balance,
     pub borrowing_interest: Balance,
@@ -44,7 +44,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
-    use crate::{PoolInfo, UserBorrowingPosition, UserLendingPosition};
+    use crate::{BorrowingPosition, LendingPosition, PoolInfo};
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{
         balance, DEXId, FilterMode, PriceVariant, CERES_ASSET_ID, DAI, DEMETER_ASSET_ID, XOR,
@@ -64,7 +64,6 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + assets::Config + price_tools::Config + liquidity_proxy::Config
     {
-        /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
     }
 
@@ -73,12 +72,14 @@ pub mod pallet {
     pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
     pub type PriceTools<T> = price_tools::Pallet<T>;
     pub type LiquidityProxy<T> = liquidity_proxy::Pallet<T>;
+    pub type PoolXYK<T> = pool_xyk::Pallet<T>;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
+    /// AccountId -> Lended asset -> LendingPosition
     #[pallet::storage]
     #[pallet::getter(fn user_lending_info)]
     pub type UserLendingInfo<T: Config> = StorageDoubleMap<
@@ -87,10 +88,11 @@ pub mod pallet {
         AccountIdOf<T>,
         Identity,
         AssetIdOf<T>,
-        UserLendingPosition<BlockNumberFor<T>>,
+        LendingPosition<BlockNumberFor<T>>,
         OptionQuery,
     >;
 
+    /// AccountId -> Borrowed asset -> (Collateral asset, BorrowingPosition)
     #[pallet::storage]
     #[pallet::getter(fn user_borrowing_info)]
     pub type UserBorrowingInfo<T: Config> = StorageDoubleMap<
@@ -99,7 +101,7 @@ pub mod pallet {
         AccountIdOf<T>,
         Identity,
         AssetIdOf<T>,
-        BTreeMap<AssetIdOf<T>, UserBorrowingPosition<BlockNumberFor<T>>>,
+        BTreeMap<AssetIdOf<T>, BorrowingPosition<BlockNumberFor<T>>>,
         OptionQuery,
     >;
 
@@ -113,7 +115,6 @@ pub mod pallet {
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
-    /// Account which has permissions for creating a poll
     #[pallet::storage]
     #[pallet::getter(fn authority_account)]
     pub type AuthorityAccount<T: Config> =
@@ -170,8 +171,8 @@ pub mod pallet {
         PoolAdded(AccountIdOf<T>, AssetIdOf<T>),
         /// Lended [who, asset_id, amount]
         Lended(AccountIdOf<T>, AssetIdOf<T>, Balance),
-        /// Borrowed [who, borrow_asset, collateral_asset, borrow_amount, collateral_amount]
-        Borrowed(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, Balance, Balance),
+        /// Borrowed [who, collateral_asset, collateral_amount, borrow_asset, borrow_amount]
+        Borrowed(AccountIdOf<T>, AssetIdOf<T>, Balance, AssetIdOf<T>, Balance),
         /// ClaimedLendingRewards [who, asset_id, amount]
         ClaimedLendingRewards(AccountIdOf<T>, AssetIdOf<T>, Balance),
         /// ClaimedBorrowingRewards [who, asset_id, amount]
@@ -194,8 +195,8 @@ pub mod pallet {
         AssetAlreadyListed,
         /// Invalid pool parameters
         InvalidPoolParameters,
-        /// Asset is not listed
-        AssetIsNotListed,
+        /// Pool does not exist
+        PoolDoesNotExist,
         /// Collateral token does not exists
         CollateralTokenDoesNotExist,
         /// No lending amount to borrow
@@ -216,8 +217,8 @@ pub mod pallet {
         NoRewardsToClaim,
         /// Unable to transfer rewards
         UnableToTransferRewards,
-        /// No lending amount
-        NoLendingAmount,
+        /// Insufficient lending amount
+        InsufficientLendingAmount,
         /// Lending amount exceeded
         LendingAmountExceeded,
         /// Can not transfer lending amount
@@ -269,7 +270,7 @@ pub mod pallet {
                 Error::<T>::AssetAlreadyListed
             );
 
-            // Chech parameters
+            // Check parameters
             if loan_to_value > balance!(1)
                 || liquidation_threshold > balance!(1)
                 || optimal_utilization_rate > balance!(1)
@@ -295,9 +296,8 @@ pub mod pallet {
             };
 
             <PoolData<T>>::insert(asset_id, pool_info);
-            //Emit event
-            Self::deposit_event(Event::PoolAdded(user, asset_id));
 
+            Self::deposit_event(Event::PoolAdded(user, asset_id));
             Ok(().into())
         }
 
@@ -306,40 +306,38 @@ pub mod pallet {
         #[pallet::weight(10_000)]
         pub fn lend(
             origin: OriginFor<T>,
-            lending_token: AssetIdOf<T>,
+            lending_asset: AssetIdOf<T>,
             lending_amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
             let mut pool_info =
-                <PoolData<T>>::get(lending_token).ok_or(Error::<T>::AssetIsNotListed)?;
+                <PoolData<T>>::get(lending_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
 
             // Add lending amount and interest to user if exists, otherwise create new user
-            if let Some(mut user_info) = <UserLendingInfo<T>>::get(user.clone(), lending_token) {
+            if let Some(mut user_info) = <UserLendingInfo<T>>::get(user.clone(), lending_asset) {
                 // Calculate interest in APOLLO token
-                let calculated_interest = Self::calculate_lending_earnings(&user, lending_token);
+                let calculated_interest = Self::calculate_lending_earnings(&user, lending_asset);
                 user_info.lending_interest += calculated_interest;
                 user_info.lending_amount += lending_amount;
                 user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
-                <UserLendingInfo<T>>::insert(user.clone(), lending_token, user_info);
+                <UserLendingInfo<T>>::insert(user.clone(), lending_asset, user_info);
             } else {
-                let new_user_info = UserLendingPosition {
+                let new_user_info = LendingPosition {
                     lending_amount,
                     lending_interest: 0,
                     last_lending_block: <frame_system::Pallet<T>>::block_number(),
                 };
-                <UserLendingInfo<T>>::insert(user.clone(), lending_token, new_user_info);
+                <UserLendingInfo<T>>::insert(user.clone(), lending_asset, new_user_info);
             }
 
             // Transfer lending amount to pallet
-            Assets::<T>::transfer_from(&lending_token, &user, &Self::account_id(), lending_amount)
+            Assets::<T>::transfer_from(&lending_asset, &user, &Self::account_id(), lending_amount)
                 .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
-
             pool_info.total_liquidity += lending_amount;
-            <PoolData<T>>::insert(lending_token, pool_info);
-            //Emit event
-            Self::deposit_event(Event::Lended(user, lending_token, lending_amount));
+            <PoolData<T>>::insert(lending_asset, pool_info);
 
+            Self::deposit_event(Event::Lended(user, lending_asset, lending_amount));
             Ok(().into())
         }
 
@@ -347,28 +345,27 @@ pub mod pallet {
         #[pallet::weight(10_000)]
         pub fn borrow(
             origin: OriginFor<T>,
-            borrowing_token: AssetIdOf<T>,
-            collateral_token: AssetIdOf<T>,
+            collateral_asset: AssetIdOf<T>,
+            borrowing_asset: AssetIdOf<T>,
             borrowing_amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
             let mut borrow_pool_info =
-                <PoolData<T>>::get(borrowing_token).ok_or(Error::<T>::AssetIsNotListed)?;
-
+                <PoolData<T>>::get(borrowing_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
             ensure!(
                 borrowing_amount <= borrow_pool_info.total_liquidity,
                 Error::<T>::NoLiquidityForBorrowingAsset
             );
 
             let mut collateral_pool_info =
-                <PoolData<T>>::get(collateral_token).ok_or(Error::<T>::AssetIsNotListed)?;
-            let mut user_lending_info = <UserLendingInfo<T>>::get(user.clone(), collateral_token)
+                <PoolData<T>>::get(collateral_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
+            let mut user_lending_info = <UserLendingInfo<T>>::get(user.clone(), collateral_asset)
                 .ok_or(Error::<T>::NothingLended)?;
-            let asset_price = Self::get_price(collateral_token);
-            let borrow_asset_price = Self::get_price(borrowing_token);
+            let collateral_asset_price = Self::get_price(collateral_asset);
+            let borrow_asset_price = Self::get_price(borrowing_asset);
 
-            // Calculate collateral amount in dollars of borrowing asset
+            // Calculate required collateral asset in dollars
             let coll_amount_in_dollars = ((FixedWrapper::from(borrowing_amount)
                 / FixedWrapper::from(borrow_pool_info.loan_to_value))
                 * FixedWrapper::from(borrow_asset_price))
@@ -387,18 +384,18 @@ pub mod pallet {
             );
 
             let mut borrow_info =
-                <UserBorrowingInfo<T>>::get(user.clone(), borrowing_token).unwrap_or_default();
+                <UserBorrowingInfo<T>>::get(user.clone(), borrowing_asset).unwrap_or_default();
 
             // Add borrowing amount, collateral amount and interest to user if exists, otherwise create new user
-            if let Some(mut user_info) = borrow_info.get_mut(&collateral_token) {
+            if let Some(mut user_info) = borrow_info.get_mut(&collateral_asset) {
                 let calculated_interest =
-                    Self::calculate_borrowing_interest(&user, borrowing_token, collateral_token);
+                    Self::calculate_borrowing_interest(&user, borrowing_asset, collateral_asset);
                 user_info.borrowing_interest += calculated_interest;
                 user_info.collateral_amount += collateral_amount;
                 user_info.borrowing_amount += borrowing_amount;
                 user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
             } else {
-                let new_user_info = UserBorrowingPosition {
+                let new_user_info = BorrowingPosition {
                     collateral_amount,
                     borrowing_amount,
                     borrowing_interest: 0,
@@ -407,20 +404,29 @@ pub mod pallet {
                 };
                 borrow_info.insert(collateral_token, new_user_info);
             }
+            <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, borrow_info);
+
+            // Update user's lending info according to given collateral
+            let calculated_interest = Self::calculate_lending_earnings(&user, collateral_asset);
+            user_lending_info.lending_interest += calculated_interest;
             user_lending_info.lending_amount -= collateral_amount;
             user_lending_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
+            <UserLendingInfo<T>>::insert(user.clone(), collateral_asset, user_lending_info);
+
+            // Update collateral and borrowing assets pools
             borrow_pool_info.total_liquidity -= borrowing_amount;
             borrow_pool_info.total_borrowed += borrowing_amount;
-            collateral_pool_info.total_collateral += collateral_amount;
-
-            <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, borrow_info);
-            <UserLendingInfo<T>>::insert(user.clone(), collateral_token, user_lending_info);
-            <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
-            <PoolData<T>>::insert(collateral_token, collateral_pool_info);
+            if (borrowing_asset == collateral_asset) {
+                borrow_pool_info.total_collateral += collateral_amount;
+            } else {
+                collateral_pool_info.total_collateral += collateral_amount;
+                <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
+            }
+            <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
 
             // Transfer borrowing amount to user
             Assets::<T>::transfer_from(
-                &borrowing_token,
+                &borrowing_asset,
                 &Self::account_id(),
                 &user,
                 borrowing_amount,
@@ -429,22 +435,20 @@ pub mod pallet {
 
             // Transfer collateral amount to pallet
             Assets::<T>::transfer_from(
-                &collateral_token,
+                &collateral_asset,
                 &user,
                 &Self::account_id(),
                 collateral_amount,
             )
             .map_err(|_| Error::<T>::CanNotTransferCollateralAmount)?;
 
-            //Emit event
             Self::deposit_event(Event::Borrowed(
                 user,
-                borrowing_token,
-                collateral_token,
-                borrowing_amount,
+                collateral_asset,
                 collateral_amount,
+                borrowing_asset,
+                borrowing_amount,
             ));
-
             Ok(().into())
         }
 
@@ -454,7 +458,7 @@ pub mod pallet {
         pub fn get_rewards(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
-            collateral_token: AssetIdOf<T>,
+            collateral_asset: AssetIdOf<T>,
             is_lending: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -466,6 +470,7 @@ pub mod pallet {
 
                 let calculated_interest = Self::calculate_lending_earnings(&user, asset_id);
                 lend_user_info.lending_interest += calculated_interest;
+                lend_user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
 
                 ensure!(
                     lend_user_info.lending_interest > 0,
@@ -480,46 +485,41 @@ pub mod pallet {
                 )
                 .map_err(|_| Error::<T>::UnableToTransferRewards)?;
 
+                let lending_rewards = lend_user_info.lending_interest;
                 lend_user_info.lending_interest = 0;
                 <UserLendingInfo<T>>::insert(user.clone(), asset_id, &lend_user_info);
 
-                //Emit event
                 Self::deposit_event(Event::ClaimedLendingRewards(
                     user,
                     asset_id,
-                    lend_user_info.lending_interest,
+                    lending_rewards,
                 ));
             } else {
                 let mut user_info = <UserBorrowingInfo<T>>::get(user.clone(), asset_id)
                     .ok_or(Error::<T>::NothingBorrowed)?;
 
-                let mut borrow_user_info = user_info
-                    .get(&collateral_token)
-                    .cloned()
-                    .ok_or(Error::<T>::NothingBorrowed)?;
+                let mut borrowing_rewards = 0;
+                for borrowing_position in user_info.values_mut() {
+                    borrowing_rewards += borrowing_position.borrowing_rewards;
+                    borrowing_position.borrowing_rewards = 0;
+                }
 
-                ensure!(
-                    borrow_user_info.borrowing_rewards > 0,
-                    Error::<T>::NoRewardsToClaim
-                );
+                ensure!(borrowing_rewards > 0, Error::<T>::NoRewardsToClaim);
 
                 Assets::<T>::transfer_from(
                     &CERES_ASSET_ID.into(),
                     &Self::account_id(),
                     &user,
-                    borrow_user_info.borrowing_rewards,
+                    borrowing_rewards,
                 )
                 .map_err(|_| Error::<T>::UnableToTransferRewards)?;
 
-                borrow_user_info.borrowing_rewards = 0;
-                user_info.insert(asset_id, borrow_user_info.clone());
                 <UserBorrowingInfo<T>>::insert(user.clone(), asset_id, &user_info);
 
-                //Emit event
                 Self::deposit_event(Event::ClaimedBorrowingRewards(
                     user,
                     asset_id,
-                    borrow_user_info.borrowing_rewards,
+                    borrowing_rewards,
                 ));
             }
             Ok(().into())
@@ -530,50 +530,43 @@ pub mod pallet {
         #[pallet::weight(10_000)]
         pub fn withdraw(
             origin: OriginFor<T>,
-            lending_token: AssetIdOf<T>,
+            lending_asset: AssetIdOf<T>,
             lending_amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
             let mut pool_info =
-                <PoolData<T>>::get(lending_token).ok_or(Error::<T>::AssetIsNotListed)?;
-
-            let mut user_info = <UserLendingInfo<T>>::get(user.clone(), lending_token)
+                <PoolData<T>>::get(lending_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
+            let mut user_info = <UserLendingInfo<T>>::get(user.clone(), lending_asset)
                 .ok_or(Error::<T>::NothingLended)?;
 
-            ensure!(user_info.lending_amount > 0, Error::<T>::NoLendingAmount);
-
+            ensure!(
+                user_info.lending_amount > 0,
+                Error::<T>::InsufficientLendingAmount
+            );
+            ensure!(
+                lending_amount <= user_info.lending_amount,
+                Error::<T>::LendingAmountExceeded
+            );
             ensure!(
                 lending_amount < pool_info.total_liquidity,
                 Error::<T>::CanNotTransferLendingAmount
             );
 
-            let calculated_interest = Self::calculate_lending_earnings(&user, lending_token);
+            let calculated_interest = Self::calculate_lending_earnings(&user, lending_asset);
+            user_info.lending_amount -= lending_amount;
             user_info.lending_interest += calculated_interest;
+            user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
 
-            ensure!(
-                lending_amount <= user_info.lending_amount,
-                Error::<T>::LendingAmountExceeded
-            );
+            // Transfer lending amount
+            Assets::<T>::transfer_from(&lending_asset, &Self::account_id(), &user, lending_amount)
+                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
 
             // Check if lending amount is less than user's lending amount
             if lending_amount < user_info.lending_amount {
-                user_info.lending_amount -= lending_amount;
-                user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
-                pool_info.total_liquidity -= lending_amount;
-
-                Assets::<T>::transfer_from(
-                    &lending_token,
-                    &Self::account_id(),
-                    &user,
-                    lending_amount,
-                )
-                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
-
-                <UserLendingInfo<T>>::insert(user.clone(), lending_token, user_info);
-                <PoolData<T>>::insert(lending_token, pool_info);
+                <UserLendingInfo<T>>::insert(user.clone(), lending_asset, user_info);
             } else {
-                // Transfer lending interest when user withdraws all lending amount
+                // Transfer lending interest when user withdraws whole lending amount
                 Assets::<T>::transfer_from(
                     &CERES_ASSET_ID.into(),
                     &Self::account_id(),
@@ -581,25 +574,13 @@ pub mod pallet {
                     user_info.lending_interest,
                 )
                 .map_err(|_| Error::<T>::CanNotTransferLendingInterest)?;
-
-                pool_info.total_liquidity -= lending_amount;
-
-                // Transfer lending amount
-                Assets::<T>::transfer_from(
-                    &lending_token,
-                    &Self::account_id(),
-                    &user,
-                    lending_amount,
-                )
-                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
-
-                <UserLendingInfo<T>>::remove(user.clone(), lending_token);
-                <PoolData<T>>::insert(lending_token, pool_info);
+                <UserLendingInfo<T>>::remove(user.clone(), lending_asset);
             }
 
-            //Emit event
-            Self::deposit_event(Event::Withdrawn(user, lending_token, lending_amount));
+            pool_info.total_liquidity -= lending_amount;
+            <PoolData<T>>::insert(lending_asset, pool_info);
 
+            Self::deposit_event(Event::Withdrawn(user, lending_asset, lending_amount));
             Ok(().into())
         }
 
@@ -607,88 +588,94 @@ pub mod pallet {
         #[pallet::weight(10_000)]
         pub fn repay(
             origin: OriginFor<T>,
-            borrowing_token: AssetIdOf<T>,
+            collateral_asset: AssetIdOf<T>,
+            borrowing_asset: AssetIdOf<T>,
             amount_to_repay: Balance,
-            collateral_token: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            let mut borrow_user_info = <UserBorrowingInfo<T>>::get(user.clone(), borrowing_token)
+            let mut borrow_pool_info =
+                <PoolData<T>>::get(borrowing_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
+            let mut collateral_pool_info =
+                <PoolData<T>>::get(collateral_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
+            let mut borrow_user_info = <UserBorrowingInfo<T>>::get(user.clone(), borrowing_asset)
                 .ok_or(Error::<T>::NothingBorrowed)?;
             let mut user_info = borrow_user_info
-                .get(&collateral_token)
+                .get(&collateral_asset)
                 .cloned()
                 .ok_or(Error::<T>::NothingBorrowed)?;
-            let mut borrow_pool_info =
-                <PoolData<T>>::get(borrowing_token).ok_or(Error::<T>::AssetIsNotListed)?;
-            let mut collateral_pool_info = <PoolData<T>>::get(collateral_token)
-                .ok_or(Error::<T>::CollateralTokenDoesNotExist)?;
 
             let calculated_interest =
-                Self::calculate_borrowing_interest(&user, borrowing_token, collateral_token);
+                Self::calculate_borrowing_interest(&user, borrowing_asset, collateral_asset);
             user_info.borrowing_interest += calculated_interest;
-
-            ensure!(user_info.borrowing_interest > 0, Error::<T>::NothingToRepay);
+            user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
 
             if amount_to_repay <= user_info.borrowing_interest {
-                // Reserve allocation
-                Self::reserve_factor(borrowing_token, amount_to_repay)?;
-
+                // If user is repaying only part or whole interest
                 user_info.borrowing_interest -= amount_to_repay;
-                user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
-                borrow_pool_info.total_liquidity += amount_to_repay;
-                borrow_user_info.insert(collateral_token, user_info);
-                <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, borrow_user_info);
+                Assets::<T>::transfer_from(
+                    &borrowing_asset,
+                    &user,
+                    &Self::account_id(),
+                    amount_to_repay,
+                )
+                .map_err(|_| Error::<T>::CanNotTransferAmountToRepay)?;
+                Self::distribute_protocol_interest(borrowing_asset, amount_to_repay)?;
             } else if amount_to_repay > user_info.borrowing_interest
                 && amount_to_repay < user_info.borrowing_interest + user_info.borrowing_amount
             {
-                // Reserve allocation
-                let reserve = user_info.borrowing_interest;
-                Self::reserve_factor(borrowing_token, reserve)?;
-
+                // If user is repaying whole interest plus part of the borrowed amount
+                let repaid_amount = user_info.borrowing_interest;
                 let remaining_amount = amount_to_repay - user_info.borrowing_interest;
                 user_info.borrowing_amount -= remaining_amount;
                 user_info.borrowing_interest = 0;
-                user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
                 borrow_pool_info.total_borrowed -= remaining_amount;
                 borrow_pool_info.total_liquidity += remaining_amount;
+                <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
 
                 Assets::<T>::transfer_from(
-                    &borrowing_token,
+                    &borrowing_asset,
                     &user,
                     &Self::account_id(),
-                    remaining_amount,
+                    amount_to_repay,
                 )
                 .map_err(|_| Error::<T>::CanNotTransferAmountToRepay)?;
 
-                borrow_user_info.insert(collateral_token, user_info);
-                <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, &borrow_user_info);
+                borrow_user_info.insert(collateral_asset, user_info);
+                <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_asset, &borrow_user_info);
+                Self::distribute_protocol_interest(borrowing_asset, repaid_amount)?;
             } else if amount_to_repay == user_info.borrowing_interest + user_info.borrowing_amount {
-                // Reserve allocation
-                Self::reserve_factor(borrowing_token, user_info.borrowing_interest)?;
+                // If user is repaying the whole position
+                let repaid_amount = user_info.borrowing_interest;
 
+                // Update pools
                 borrow_pool_info.total_borrowed -= user_info.borrowing_amount;
                 borrow_pool_info.total_liquidity += user_info.borrowing_amount;
-                collateral_pool_info.total_collateral -= user_info.collateral_amount;
-                <PoolData<T>>::insert(collateral_token, collateral_pool_info);
+                if (borrowing_asset == collateral_asset) {
+                    borrow_pool_info.total_collateral -= user_info.collateral_amount;
+                } else {
+                    collateral_pool_info.total_collateral -= user_info.collateral_amount;
+                    <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
+                }
+                <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
+
+                // Transfer borrowing amount and borrowing interest to pallet
+                Assets::<T>::transfer_from(
+                    &borrowing_asset,
+                    &user,
+                    &Self::account_id(),
+                    amount_to_repay,
+                )
+                .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
 
                 // Transfer collateral to user
                 Assets::<T>::transfer_from(
-                    &collateral_token,
+                    &collateral_asset,
                     &Self::account_id(),
                     &user,
                     user_info.collateral_amount,
                 )
                 .map_err(|_| Error::<T>::UnableToTransferCollateral)?;
-
-                // Transfer borrowing amount to pallet
-                Assets::<T>::transfer_from(
-                    &borrowing_token,
-                    &user,
-                    &Self::account_id(),
-                    user_info.borrowing_amount,
-                )
-                .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
 
                 // Transfer borrowing rewards to user
                 Assets::<T>::transfer_from(
@@ -699,16 +686,13 @@ pub mod pallet {
                 )
                 .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
 
-                <UserBorrowingInfo<T>>::remove(user.clone(), borrowing_token);
+                <UserBorrowingInfo<T>>::remove(user.clone(), borrowing_asset);
+                Self::distribute_protocol_interest(borrowing_asset, repaid_amount)?;
             } else {
                 return Err(Error::<T>::BorrowingAmountExceeds.into());
             }
 
-            <PoolData<T>>::insert(borrowing_token, borrow_pool_info);
-
-            //Emit event
-            Self::deposit_event(Event::Repaid(user, borrowing_token, amount_to_repay));
-
+            Self::deposit_event(Event::Repaid(user, borrowing_asset, amount_to_repay));
             Ok(().into())
         }
 
@@ -731,9 +715,7 @@ pub mod pallet {
                 <BorrowingRewards<T>>::put(amount);
             }
 
-            //Emit event
             Self::deposit_event(Event::ChangedRewardsAmount(user, is_lending, amount));
-
             Ok(().into())
         }
 
@@ -756,11 +738,9 @@ pub mod pallet {
                 <BorrowingRewardsPerBlock<T>>::put(amount);
             }
 
-            //Emit event
             Self::deposit_event(Event::ChangedRewardsAmountPerBlock(
                 user, is_lending, amount,
             ));
-
             Ok(().into())
         }
     }
@@ -785,14 +765,14 @@ pub mod pallet {
         }
 
         fn get_price(asset_id: AssetIdOf<T>) -> Balance {
-            //Get XOR price from spot price function in PriceTools pallet
+            // Get XOR price from the spot price function in PriceTools pallet
             let xor_price = PriceTools::<T>::spot_price(&DAI.into()).unwrap();
 
             if asset_id == XOR.into() {
                 return xor_price;
             }
 
-            // Get price from price-tools pallet
+            // Get average price from PriceTools pallet
             let buy_price =
                 PriceTools::<T>::get_average_price(&XOR.into(), &asset_id, PriceVariant::Buy)
                     .unwrap();
@@ -845,18 +825,16 @@ pub mod pallet {
         }
 
         fn calculate_lending_earnings(user: &AccountIdOf<T>, asset_id: AssetIdOf<T>) -> Balance {
-            let blocks = 5_256_000_u128; // 1 year
             let block_number = <frame_system::Pallet<T>>::block_number();
             let user_info = UserLendingInfo::<T>::get(user, asset_id).unwrap();
             let pool_info = PoolData::<T>::get(asset_id).unwrap();
 
-            let totla_lending_blocks: u128 =
+            let total_lending_blocks: u128 =
                 (block_number - user_info.last_lending_block).unique_saturated_into();
-            let lending_interest_per_block = (FixedWrapper::from(user_info.lending_amount)
-                * FixedWrapper::from(pool_info.lending_rate))
-                / FixedWrapper::from(blocks);
+            let lending_interest_per_block = FixedWrapper::from(user_info.lending_amount)
+                * FixedWrapper::from(pool_info.lending_rate);
 
-            (lending_interest_per_block * FixedWrapper::from(totla_lending_blocks))
+            (lending_interest_per_block * FixedWrapper::from(total_lending_blocks))
                 .try_into_balance()
                 .unwrap_or(0)
         }
@@ -864,93 +842,107 @@ pub mod pallet {
         fn calculate_borrowing_interest(
             user: &AccountIdOf<T>,
             asset_id: AssetIdOf<T>,
-            collateral_token: AssetIdOf<T>,
+            collateral_asset: AssetIdOf<T>,
         ) -> Balance {
-            let blocks = 5_256_000_u128; // 1 year
             let block_number = <frame_system::Pallet<T>>::block_number();
             let borrow_user_info = UserBorrowingInfo::<T>::get(user, asset_id).unwrap();
             let user_info = borrow_user_info.get(&collateral_token).unwrap();
             let pool_info = PoolData::<T>::get(asset_id).unwrap();
 
-            let totla_borrowing_blocks: u128 =
+            let total_borrowing_blocks: u128 =
                 (block_number - user_info.last_borrowing_block).unique_saturated_into();
-            let borrowing_interest_per_block = (FixedWrapper::from(user_info.borrowing_amount)
-                * FixedWrapper::from(pool_info.borrowing_rate))
-                / FixedWrapper::from(blocks);
+            let borrowing_interest_per_block = FixedWrapper::from(user_info.borrowing_amount)
+                * FixedWrapper::from(pool_info.borrowing_rate);
 
-            (borrowing_interest_per_block * FixedWrapper::from(totla_borrowing_blocks))
+            return (borrowing_interest_per_block * FixedWrapper::from(total_borrowing_blocks))
                 .try_into_balance()
-                .unwrap_or(0)
+                .unwrap_or(0);
         }
 
-        fn reserve_factor(asset_id: AssetIdOf<T>, amount: Balance) -> DispatchResultWithPostInfo {
-            let mut pool_info = PoolData::<T>::get(asset_id).ok_or(Error::<T>::AssetIsNotListed)?;
-
+        fn distribute_protocol_interest(
+            asset_id: AssetIdOf<T>,
+            amount: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let mut pool_info = PoolData::<T>::get(asset_id).ok_or(Error::<T>::PoolDoesNotExist)?;
             let caller = Self::account_id();
 
-            // Calculate 10 or 20% of reserve factor
-            let reserve_factor_amount = (FixedWrapper::from(pool_info.reserve_factor)
+            // Calculate rewards and reserves amounts based on Reserve Factor
+            let reserves_amount = (FixedWrapper::from(pool_info.reserve_factor)
                 * FixedWrapper::from(amount))
             .try_into_balance()
             .unwrap_or(0);
+            let rewards_amount = amount - reserves_amount;
 
-            // Calculate rest of reserve factor (80-90%) to buyback APOLLO
-            let buyback_amount = (FixedWrapper::from(amount)
-                - FixedWrapper::from(reserve_factor_amount))
+            // Buyback APOLLO for the lending rewards
+            let (outcome, _) = PoolXYK::<T>::quote(
+                &DEXId::Polkaswap.into(),
+                &asset_id,
+                CERES_ASSET_ID.into(),
+                QuoteAmount::with_desired_output(rewards_amount),
+                false,
+            )?;
+            let buyback_amount = outcome.amount;
+            LiquidityProxy::<T>::swap(
+                RawOrigin::Signed(caller.clone()).into(),
+                DEXId::Polkaswap.into(),
+                asset_id,
+                CERES_ASSET_ID.into(),
+                SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
+                [LiquiditySourceType::XYKPool].to_vec(),
+                FilterMode::Disabled,
+            )?;
+            pool_info.rewards += buyback_amount;
+            pool_info.lending_rate += (FixedWrapper::from(buyback_amount)
+                / FixedWrapper::from(balance!(5256000)))
             .try_into_balance()
             .unwrap_or(0);
 
-            // Calculate 60% of reserve factor to transfer APOLLO to treasury
-            let apollo_amount = (FixedWrapper::from(reserve_factor_amount) * balance!(0.6))
-                .try_into_balance()
-                .unwrap_or(0);
+            // Calculate 60% of reserves to transfer APOLLO to treasury
+            let apollo_amount = (FixedWrapper::from(reserves_amount)
+                * FixedWrapper::from(balance!(0.6)))
+            .try_into_balance()
+            .unwrap_or(0);
 
-            // Calculate 20% of reserve factor to buyback CERES
-            let ceres_amount = (FixedWrapper::from(reserve_factor_amount) * balance!(0.2))
-                .try_into_balance()
-                .unwrap_or(0);
+            // Calculate 20% of reserves to buyback CERES
+            let ceres_amount = (FixedWrapper::from(reserves_amount)
+                * FixedWrapper::from(balance!(0.2)))
+            .try_into_balance()
+            .unwrap_or(0);
 
-            // Calculate 20% of reserve factor to go to developer fund
-            let developer_amount = (FixedWrapper::from(reserve_factor_amount) * balance!(0.2))
-                .try_into_balance()
-                .unwrap_or(0);
-
-            // Swap buyback_amount into APOLLO token, and transfer it to pool_info.rewards
-            LiquidityProxy::<T>::swap_transfer(
-                RawOrigin::Signed(caller.clone()).into(),
-                caller.clone(),
-                DEXId::Polkaswap.into(),
-                asset_id,
-                DEMETER_ASSET_ID.into(),
-                SwapAmount::with_desired_input(buyback_amount, Balance::zero()),
-                vec![],
-                FilterMode::Disabled,
-            )?;
-
-            // Add rewards to pool_info.rewards
-            pool_info.rewards += buyback_amount; // Needs to be changed to apollo token amount, and add it in rewards (free_balance?)
+            // Calculate 20% of reserves to go to developer fund
+            let developer_amount = (FixedWrapper::from(reserves_amount)
+                * FixedWrapper::from(balance!(0.2)))
+            .try_into_balance()
+            .unwrap_or(0);
 
             // Transfer APOLLO to treasury
             LiquidityProxy::<T>::swap_transfer(
                 RawOrigin::Signed(caller.clone()).into(),
-                AuthorityAccount::<T>::get(),
+                AuthorityAccount::<T>::get(), // APOLLO Treasury
                 DEXId::Polkaswap.into(),
                 asset_id,
-                DEMETER_ASSET_ID.into(),
+                CERES_ASSET_ID.into(),
                 SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
-                vec![],
+                [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::Disabled,
             )?;
 
-            // Buyback CERES
+            // Buyback and burn CERES
             LiquidityProxy::<T>::swap(
                 RawOrigin::Signed(caller).into(),
                 DEXId::Polkaswap.into(),
                 asset_id,
                 CERES_ASSET_ID.into(),
                 SwapAmount::with_desired_input(ceres_amount, Balance::zero()),
-                vec![],
+                [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::Disabled,
+            )?;
+            let ceres_balance =
+                Assets::<T>::free_balance(&CERES_ASSET_ID.into(), &caller).unwrap_or(0);
+            Assets::<T>::burn(
+                RawOrigin::Signed(caller.clone()).into(),
+                CERES_ASSET_ID.into(),
+                ceres_amount,
             )?;
 
             // Transfer amount to developer fund
