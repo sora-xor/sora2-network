@@ -5407,8 +5407,8 @@ fn should_return_empty_market_depth() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_empty_order_book(order_book_id);
@@ -5432,8 +5432,8 @@ fn should_return_market_depth() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_book = create_and_fill_order_book(order_book_id);

@@ -1610,8 +1610,8 @@ fn should_step_quote() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let _ = create_and_fill_order_book::<Runtime>(order_book_id);
@@ -1623,7 +1623,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(0).into()),
+                QuoteAmount::with_desired_input(balance!(0)),
                 10,
                 true
             )
@@ -1637,7 +1637,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(1000).into()),
+                QuoteAmount::with_desired_input(balance!(1000)),
                 10,
                 false
             )
@@ -1651,7 +1651,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(2000).into()),
+                QuoteAmount::with_desired_input(balance!(2000)),
                 10,
                 true
             )
@@ -1668,7 +1668,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(5000).into()),
+                QuoteAmount::with_desired_input(balance!(5000)),
                 10,
                 false
             )
@@ -1686,7 +1686,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_input(balance!(10000).into()),
+                QuoteAmount::with_desired_input(balance!(10000)),
                 10,
                 true
             )
@@ -1706,7 +1706,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(0).into()),
+                QuoteAmount::with_desired_output(balance!(0)),
                 10,
                 false
             )
@@ -1720,7 +1720,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(100).into()),
+                QuoteAmount::with_desired_output(balance!(100)),
                 10,
                 true
             )
@@ -1734,7 +1734,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200).into()),
+                QuoteAmount::with_desired_output(balance!(200)),
                 10,
                 false
             )
@@ -1751,7 +1751,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(500).into()),
+                QuoteAmount::with_desired_output(balance!(500)),
                 10,
                 true
             )
@@ -1769,7 +1769,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(1000).into()),
+                QuoteAmount::with_desired_output(balance!(1000)),
                 10,
                 false
             )
@@ -1789,7 +1789,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(0).into()),
+                QuoteAmount::with_desired_input(balance!(0)),
                 10,
                 true
             )
@@ -1803,7 +1803,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(100).into()),
+                QuoteAmount::with_desired_input(balance!(100)),
                 10,
                 false
             )
@@ -1817,7 +1817,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(200).into()),
+                QuoteAmount::with_desired_input(balance!(200)),
                 10,
                 true
             )
@@ -1834,7 +1834,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(500).into()),
+                QuoteAmount::with_desired_input(balance!(500)),
                 10,
                 false
             )
@@ -1852,7 +1852,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_input(balance!(1000).into()),
+                QuoteAmount::with_desired_input(balance!(1000)),
                 10,
                 true
             )
@@ -1872,7 +1872,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(0).into()),
+                QuoteAmount::with_desired_output(balance!(0)),
                 10,
                 false
             )
@@ -1886,7 +1886,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(1000).into()),
+                QuoteAmount::with_desired_output(balance!(1000)),
                 10,
                 true
             )
@@ -1900,7 +1900,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2000).into()),
+                QuoteAmount::with_desired_output(balance!(2000)),
                 10,
                 false
             )
@@ -1917,7 +1917,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(5000).into()),
+                QuoteAmount::with_desired_output(balance!(5000)),
                 10,
                 true
             )
@@ -1935,7 +1935,7 @@ fn should_step_quote() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(10000).into()),
+                QuoteAmount::with_desired_output(balance!(10000)),
                 10,
                 false
             )
@@ -1958,7 +1958,7 @@ fn should_not_step_quote_with_non_existed_order_book() {
                 &DEX.into(),
                 &XOR,
                 &VAL,
-                QuoteAmount::with_desired_output(balance!(200).into()),
+                QuoteAmount::with_desired_output(balance!(200)),
                 10,
                 true
             ),
@@ -1970,7 +1970,7 @@ fn should_not_step_quote_with_non_existed_order_book() {
                 &DEX.into(),
                 &VAL,
                 &XOR,
-                QuoteAmount::with_desired_output(balance!(2500).into()),
+                QuoteAmount::with_desired_output(balance!(2500)),
                 10,
                 false
             ),
