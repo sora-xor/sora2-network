@@ -1955,6 +1955,8 @@ impl kensetsu::Config for Runtime {
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
     type LiquidityProxy = LiquidityProxy;
+    type MaxCdpsPerOwner = ConstU32<100>;
+    type MaxRiskManagementTeamSize = ConstU32<100>;
     type AccrueInterestPeriod = AccrueInterestPeriod;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;

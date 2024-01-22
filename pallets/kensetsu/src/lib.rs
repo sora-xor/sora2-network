@@ -137,6 +137,7 @@ pub mod pallet {
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::{CheckedMul, Saturating};
     use sp_arithmetic::Percent;
+    use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
     use sp_core::U256;
     use sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One};
     use sp_std::collections::btree_set::BTreeSet;
@@ -237,6 +238,13 @@ pub mod pallet {
         type ReferencePriceProvider: ReferencePriceProvider<AssetIdOf<Self>, Balance>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
 
+        /// Maximum number of CDP that one user can create
+        #[pallet::constant]
+        type MaxCdpsPerOwner: Get<u32>;
+
+        /// Maximum number of risk manager team members
+        #[pallet::constant]
+        type MaxRiskManagementTeamSize: Get<u32>;
         /// Accrue() for a single CDP can be called once per this period
         #[pallet::constant]
         type AccrueInterestPeriod: Get<Self::Moment>;
@@ -291,12 +299,14 @@ pub mod pallet {
     /// Index links owner to CDP ids, not needed by protocol, but used by front-end
     #[pallet::storage]
     #[pallet::getter(fn cdp_owner_index)]
-    pub type CdpOwnerIndex<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, Vec<U256>>;
+    pub type CdpOwnerIndex<T: Config> =
+        StorageMap<_, Identity, AccountIdOf<T>, BoundedVec<U256, T::MaxCdpsPerOwner>>;
 
     /// Accounts of risk management team
     #[pallet::storage]
     #[pallet::getter(fn risk_managers)]
-    pub type RiskManagers<T: Config> = StorageValue<_, BTreeSet<T::AccountId>>;
+    pub type RiskManagers<T: Config> =
+        StorageValue<_, BoundedBTreeSet<T::AccountId, T::MaxRiskManagementTeamSize>>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -373,6 +383,10 @@ pub mod pallet {
         CollateralInfoNotFound,
         CDPSafe,
         CDPUnsafe,
+        /// Too many CDPs per user
+        CDPLimitPerUser,
+        // Risk management team size exceeded
+        TooManyManagers,
         NotEnoughCollateral,
         OperationNotPermitted,
         OutstandingDebt,
@@ -429,7 +443,8 @@ pub mod pallet {
                         interest_coefficient,
                     },
                 );
-                CdpOwnerIndex::<T>::append(&who, *cdp_id);
+                CdpOwnerIndex::<T>::try_append(&who, *cdp_id)
+                    .map_err(|_| Error::<T>::CDPLimitPerUser)?;
                 if collateral_amount > 0 {
                     Self::deposit_internal(&who, *cdp_id, collateral_amount)?;
                 }
@@ -863,11 +878,12 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::add_risk_manager())]
         pub fn add_risk_manager(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
-            <RiskManagers<T>>::mutate(|option_risk_managers| {
-                let _ = option_risk_managers
-                    .get_or_insert(BTreeSet::new())
-                    .insert(account_id);
-            });
+            <RiskManagers<T>>::try_mutate(|option_risk_managers| {
+                option_risk_managers
+                    .get_or_insert(BoundedBTreeSet::new())
+                    .try_insert(account_id)
+                    .map_err(|_| Error::<T>::TooManyManagers)
+            })?;
 
             Ok(())
         }

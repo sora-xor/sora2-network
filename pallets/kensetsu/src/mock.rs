@@ -47,7 +47,7 @@ use frame_system::offchain::SendTransactionTypes;
 use hex_literal::hex;
 use permissions::Scope;
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
+use sp_core::{ConstU32, H256};
 use sp_runtime::{
     testing::{Header, TestXt},
     traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
@@ -222,6 +222,8 @@ impl kensetsu::Config for TestRuntime {
     type KusdAssetId = KusdAssetId;
     type ReferencePriceProvider = ReferencePriceProviderMock;
     type LiquidityProxy = MockLiquidityProxy;
+    type MaxCdpsPerOwner = ConstU32<100>;
+    type MaxRiskManagementTeamSize = ConstU32<100>;
     type AccrueInterestPeriod = AccrueInterestPeriod;
     type UnsignedPriority = ConstU64<100>;
     type UnsignedLongevity = ConstU64<100>;
