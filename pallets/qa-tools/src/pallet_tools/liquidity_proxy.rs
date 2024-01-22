@@ -308,9 +308,9 @@ pub mod source_initialization {
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     pub struct XSTSyntheticQuote {
-        direction: XSTSyntheticQuoteDirection,
-        amount: QuoteAmount<Balance>,
-        expected_result: Balance,
+        pub direction: XSTSyntheticQuoteDirection,
+        pub amount: QuoteAmount<Balance>,
+        pub result: Balance,
     }
 
     /// Buy/sell price discrepancy is determined for all synthetics in `xst` pallet by synthetic
@@ -323,7 +323,7 @@ pub mod source_initialization {
         pub asset_id: AssetId,
         /// Quote call with expected output.
         /// The initialization tries to set up pallets to achieve these values
-        pub quote_expected: XSTSyntheticQuote,
+        pub expected_quote: XSTSyntheticQuote,
         pub existence: XSTSyntheticExistence<Symbol>,
     }
 
@@ -443,16 +443,16 @@ pub mod source_initialization {
 
     /// Calculate the band price needed to achieve the expected quote values (closely enough).
     fn calculate_band_price<T: Config>(
-        target_quote: XSTSyntheticQuote,
+        target_quote: &XSTSyntheticQuote,
     ) -> Result<u64, DispatchError> {
         // band price is `ref_per_synthetic`.
         // we need to get it from formulae in xst pallet.
         let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
 
         let ref_per_synthetic: BalanceUnit = match (
-            target_quote.direction,
+            &target_quote.direction,
             target_quote.amount,
-            target_quote.expected_result,
+            target_quote.result,
         ) {
             // sell:
             // synthetic base (xst) -> synthetic (xst***)
@@ -525,6 +525,81 @@ pub mod source_initialization {
             .map_err(|_| Error::<T>::ArithmeticError.into())
     }
 
+    fn calculate_actual_quote<T: Config>(
+        asset_id: T::AssetId,
+        expected_quote: XSTSyntheticQuote,
+        synthetic_band_price: u64,
+    ) -> XSTSyntheticOutput<T::AssetId> {
+        let ref_per_synthetic = synthetic_band_price as Balance * 10_u128.pow(9);
+        let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
+        // todo: pass as args
+        let ref_per_synthetic_base_sell =
+            xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Sell)
+                .unwrap();
+        let ref_per_synthetic_base_buy =
+            xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Buy).unwrap();
+        let actual_quote_result = match (&expected_quote.direction, &expected_quote.amount) {
+            // sell:
+            // synthetic base (xst) -> synthetic (xst***)
+            // synthetic base (also called main) - sell price, synthetic - no diff between buy/sell
+            // (all prices in reference assets per this asset)
+            (
+                XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: amount_in,
+                },
+            ) => {
+                // amount_out = amount_in * ref_per_synthetic_base (sell) / ref_per_synthetic
+                BalanceUnit::divisible(*amount_in)
+                    * BalanceUnit::divisible(ref_per_synthetic_base_sell)
+                    / BalanceUnit::divisible(ref_per_synthetic)
+            }
+            (
+                XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: amount_out,
+                },
+            ) => {
+                // amount_in = amount_out * ref_per_synthetic / ref_per_synthetic_base (sell)
+                BalanceUnit::divisible(*amount_out) * BalanceUnit::divisible(ref_per_synthetic)
+                    / BalanceUnit::divisible(ref_per_synthetic_base_sell)
+            }
+            // buy
+            // synthetic (xst***) -> synthetic base (xst)
+            // synthetic base (also called main) - buy price, synthetic - no diff between buy/sell
+            // (all prices in reference assets per this asset)
+            (
+                XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: amount_in,
+                },
+            ) => {
+                // amount_out = amount_in * ref_per_synthetic_base (buy) / ref_per_synthetic
+                BalanceUnit::divisible(*amount_in)
+                    * BalanceUnit::divisible(ref_per_synthetic_base_buy)
+                    / BalanceUnit::divisible(ref_per_synthetic)
+            }
+            (
+                XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: amount_out,
+                },
+            ) => {
+                // amount_in = amount_out * ref_per_synthetic / ref_per_synthetic_base (buy)
+                BalanceUnit::divisible(*amount_out) * BalanceUnit::divisible(ref_per_synthetic)
+                    / BalanceUnit::divisible(ref_per_synthetic_base_buy)
+            }
+        };
+        let actual_quote = XSTSyntheticQuote {
+            result: *actual_quote_result.balance(),
+            ..expected_quote
+        };
+        XSTSyntheticOutput {
+            asset_id,
+            quote_achieved: actual_quote,
+        }
+    }
+
     /// Initialize xst liquidity source. Can both update prices of base assets and synthetics.
     ///
     /// ## Return
@@ -538,6 +613,7 @@ pub mod source_initialization {
         synthetics: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
         relayer: T::AccountId,
     ) -> Result<Vec<XSTSyntheticOutput<T::AssetId>>, DispatchError> {
+        // todo: split into fns
         if let Some(base_prices) = base {
             let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
             let reference_asset_id = xst::ReferenceAssetId::<T>::get();
@@ -584,8 +660,14 @@ pub mod source_initialization {
             oracle_proxy::Pallet::<T>::enable_oracle(RawOrigin::Root.into(), Oracle::BandChainFeed)
                 .map_err(|e| e.error)?;
         }
+        let mut synthetic_init_results = vec![];
         for synthetic in synthetics {
-            let band_price = calculate_band_price::<T>(synthetic.quote_expected)?;
+            let band_price = calculate_band_price::<T>(&synthetic.expected_quote)?;
+            synthetic_init_results.push(calculate_actual_quote::<T>(
+                synthetic.asset_id,
+                synthetic.expected_quote,
+                band_price,
+            ));
             match (
                 xst::Pallet::<T>::enabled_synthetics(synthetic.asset_id),
                 synthetic.existence,
@@ -622,6 +704,6 @@ pub mod source_initialization {
                 }
             }
         }
-        Ok(vec![])
+        Ok(synthetic_init_results)
     }
 }
