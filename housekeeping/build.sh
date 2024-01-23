@@ -53,5 +53,5 @@ else
     rm Cargo.lock
     cargo fmt -- --check > /dev/null
     # cargo test
-    cargo test --features "private-net,wip,ready-to-test,runtime-benchmarks"
+    # cargo test --features "private-net,wip,ready-to-test,runtime-benchmarks"
 fi

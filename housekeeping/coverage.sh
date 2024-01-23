@@ -10,7 +10,7 @@ export RUSTDOCFLAGS="-Cpanic=abort"
 
 
 # echo 'running tests'
-# cargo test --features "private-net,ready-to-test,wip" -- --test-threads 3
+cargo test --features "private-net,ready-to-test,wip" -- --test-threads 3
 
 echo 'running coverage'
 grcov . --binary-path ./target/debug -s . -t cobertura --branch -o cobertura.xml --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src" "node/src" --log-level "ERROR" --llvm-path /usr/lib/llvm-14/bin
