@@ -30,8 +30,8 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
-        printf "⚡️ Testing with features: %s\n" "$featureList"
-        cargo test --release --features "$featureList"
+        printf "⚡️ Testing with features: private-net runtime-benchmark \n"
+        cargo test --release --features "private-net runtime-benchmarks"
         printf "⚡️ Building with features: %s\n" "$featureList"
         printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
         rm -rf target
