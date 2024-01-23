@@ -30,10 +30,8 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
-    if [ $test = true ]; then
-        cargo test --release --features "private-net runtime-benchmarks"
-    fi
-    if [ $build = true ]; then
+        printf "⚡️ Testing with features: %s\n" "$featureList"
+        cargo test --release --features "$featureList"
         printf "⚡️ Building with features: %s\n" "$featureList"
         printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
         rm -rf target
@@ -46,10 +44,7 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
         set +e
         subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
         if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
-    fi
 else
-    build=false
-    test=false
     # If TAG_NAME is not defined, run tests and checks
     if [[ $prBranch == 'master' ]]; then
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
