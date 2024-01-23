@@ -50,6 +50,7 @@ else
         printf "⚡️ Running Tests for code coverage only %s\n"
         cargo fmt -- --check > /dev/null
         export RUSTFLAGS="-Cinstrument-coverage"
+        export CARGO_INCREMENTAL=0
         export SKIP_WASM_BUILD=1
         export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         cargo test --features "private-net,ready-to-test,wip"
