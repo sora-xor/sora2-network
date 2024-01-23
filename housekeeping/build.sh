@@ -48,6 +48,8 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
         if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
     fi
 else
+    build=false
+    test=false
     # If TAG_NAME is not defined, run tests and checks
     if [[ $prBranch == 'master' ]]; then
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
