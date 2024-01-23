@@ -4,8 +4,8 @@ set -e
 # export RUSTFLAGS="-Cinstrument-coverage"
 # export SKIP_WASM_BUILD=1
 # export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
-# new params
-# export CARGO_INCREMENTAL=0
+# # new params
+# # export CARGO_INCREMENTAL=0
 # export RUSTFLAGS="-Cinstrument-coverage -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
 # export RUSTDOCFLAGS="-Cpanic=abort"
 

@@ -9,9 +9,9 @@ RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
-    printf "Tag is %s\n" $buildTag ${TAG_NAME}
+    printf "⚡️ Tag is %s\n" $buildTag ${TAG_NAME}
 else
-    printf "⚡️ There is no tag here. "
+    printf "⚡️ There is no tag here. %s\n"
 fi
 
 # build
@@ -30,33 +30,34 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
-    printf "⚡️ Building with features: %s\n" "$featureList"
-    printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
-    cargo test --release --features "private-net runtime-benchmarks"
-    rm -rf target
-    cargo build --release --features "$featureList"
-    mv ./target/release/framenode .
-    mv ./target/release/relayer ./relayer.bin
-    mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
-    subwasm --json info framenode_runtime.compact.compressed.wasm > $wasmReportFile
-    subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
-    set +e
-    subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
-    if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
+    if [ $test = true ]; then
+        cargo test --release --features "private-net runtime-benchmarks"
+    fi
+    if [ $build = true ]; then
+        printf "⚡️ Building with features: %s\n" "$featureList"
+        printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
+        rm -rf target
+        cargo build --release --features "$featureList"
+        mv ./target/release/framenode .
+        mv ./target/release/relayer ./relayer.bin
+        mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
+        subwasm --json info framenode_runtime.compact.compressed.wasm > $wasmReportFile
+        subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
+        set +e
+        subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
+        if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
+    fi
 else
     # If TAG_NAME is not defined, run tests and checks
     if [[ $prBranch == 'master' ]]; then
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
     fi
     printf "⚡️ Running Tests for code coverage only %s\n"
-    rm -rf ~/.cargo/.package-cache
-    rm Cargo.lock
+    # rm -rf ~/.cargo/.package-cache
+    # rm Cargo.lock
     cargo fmt -- --check > /dev/null
+    export RUSTFLAGS="-Cinstrument-coverage"
     export SKIP_WASM_BUILD=1
     export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
-    # new params
-    export CARGO_INCREMENTAL=0
-    export RUSTFLAGS="-Cinstrument-coverage -Zprofile -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
-    export RUSTDOCFLAGS="-Cpanic=abort"
     cargo test --features "private-net,ready-to-test,wip"
 fi
