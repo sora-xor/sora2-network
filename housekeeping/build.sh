@@ -26,7 +26,8 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
-        printf "⚡️ Testing with features: private-net runtime-benchmark \n"
+        printf "⚡️ Testing with features: private-net runtime-benchmark %s\n"
+        # we should always run these tests for these features
         cargo test --release --features "private-net runtime-benchmarks"
         printf "⚡️ Building with features: %s\n" "$featureList"
         printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
@@ -43,14 +44,14 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
 else
     # If TAG_NAME is not defined, run tests and checks
     if [[ $prBranch == 'master' ]]; then
+        printf "⚡️ Running tests and migrations %s\n"
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
+    else
+        printf "⚡️ Running Tests for code coverage only %s\n"
+        cargo fmt -- --check > /dev/null
+        export RUSTFLAGS="-Cinstrument-coverage"
+        export SKIP_WASM_BUILD=1
+        export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
+        cargo test --features "private-net,ready-to-test,wip"
     fi
-    printf "⚡️ Running Tests for code coverage only %s\n"
-    # rm -rf ~/.cargo/.package-cache
-    # rm Cargo.lock
-    cargo fmt -- --check > /dev/null
-    export RUSTFLAGS="-Cinstrument-coverage"
-    export SKIP_WASM_BUILD=1
-    export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
-    cargo test --features "private-net,ready-to-test,wip"
 fi
