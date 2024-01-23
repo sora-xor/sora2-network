@@ -30,8 +30,8 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
-    printf "Building with features: %s\n" "$featureList"
-    printf "Checking sudo pallet: %s\n" "$sudoCheckStatus"
+    printf "⚡️ Building with features: %s\n" "$featureList"
+    printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
     cargo test --release --features "private-net runtime-benchmarks"
     rm -rf target
     cargo build --release --features "$featureList"
@@ -48,10 +48,15 @@ else
     if [[ $prBranch == 'master' ]]; then
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
     fi
-    printf "⚡️ only tests run %s\n"
+    printf "⚡️ Running Tests for code coverage only %s\n"
     rm -rf ~/.cargo/.package-cache
     rm Cargo.lock
     cargo fmt -- --check > /dev/null
-    # cargo test
-    # cargo test --features "private-net,wip,ready-to-test,runtime-benchmarks"
+    export SKIP_WASM_BUILD=1
+    export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
+    # new params
+    export CARGO_INCREMENTAL=0
+    export RUSTFLAGS="-Cinstrument-coverage -Zprofile -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
+    export RUSTDOCFLAGS="-Cpanic=abort"
+    cargo test --features "private-net,ready-to-test,wip"
 fi
