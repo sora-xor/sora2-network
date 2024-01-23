@@ -27,7 +27,8 @@ pub struct PoolInfo {
     pub total_liquidity: Balance,
     pub total_borrowed: Balance,
     pub total_collateral: Balance,
-    pub lending_rate: Balance,
+    pub basic_lending_rate: Balance,
+    pub profit_lending_rate: Balance,
     pub borrowing_rate: Balance,
     pub loan_to_value: Balance,
     pub liquidation_threshold: Balance,
@@ -45,9 +46,10 @@ pub use pallet::*;
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo};
-    use common::prelude::{Balance, FixedWrapper, SwapAmount};
+    use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount};
     use common::{
-        balance, DEXId, FilterMode, PriceVariant, CERES_ASSET_ID, DAI, DEMETER_ASSET_ID, XOR,
+        balance, AssetInfoProvider, DEXId, FilterMode, LiquiditySource, LiquiditySourceType,
+        PriceVariant, CERES_ASSET_ID, DAI, XOR,
     };
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
@@ -283,7 +285,8 @@ pub mod pallet {
                 total_liquidity: 0,
                 total_borrowed: 0,
                 total_collateral: 0,
-                lending_rate: 0,
+                basic_lending_rate: 0,
+                profit_lending_rate: 0,
                 borrowing_rate: 0,
                 loan_to_value,
                 liquidation_threshold,
@@ -317,8 +320,10 @@ pub mod pallet {
             // Add lending amount and interest to user if exists, otherwise create new user
             if let Some(mut user_info) = <UserLendingInfo<T>>::get(user.clone(), lending_asset) {
                 // Calculate interest in APOLLO token
-                let calculated_interest = Self::calculate_lending_earnings(&user, lending_asset);
-                user_info.lending_interest += calculated_interest;
+                let block_number = <frame_system::Pallet<T>>::block_number();
+                let interests =
+                    Self::calculate_lending_earnings(&user, lending_asset, block_number);
+                user_info.lending_interest += interests.0 + interests.1;
                 user_info.lending_amount += lending_amount;
                 user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
                 <UserLendingInfo<T>>::insert(user.clone(), lending_asset, user_info);
@@ -374,7 +379,7 @@ pub mod pallet {
 
             // Calculate collateral amount in tokens of chosen asset
             let collateral_amount = coll_amount_in_dollars
-                / FixedWrapper::from(asset_price)
+                / FixedWrapper::from(collateral_asset_price)
                     .try_into_balance()
                     .unwrap_or(0);
 
@@ -388,12 +393,17 @@ pub mod pallet {
 
             // Add borrowing amount, collateral amount and interest to user if exists, otherwise create new user
             if let Some(mut user_info) = borrow_info.get_mut(&collateral_asset) {
-                let calculated_interest =
-                    Self::calculate_borrowing_interest(&user, borrowing_asset, collateral_asset);
-                user_info.borrowing_interest += calculated_interest;
+                let block_number = <frame_system::Pallet<T>>::block_number();
+                let calculated_interest = Self::calculate_borrowing_interest_and_reward(
+                    &user,
+                    borrowing_asset,
+                    collateral_asset,
+                    block_number,
+                );
+                user_info.borrowing_interest += calculated_interest.0;
                 user_info.collateral_amount += collateral_amount;
                 user_info.borrowing_amount += borrowing_amount;
-                user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
+                user_info.last_borrowing_block = block_number;
             } else {
                 let new_user_info = BorrowingPosition {
                     collateral_amount,
@@ -402,13 +412,14 @@ pub mod pallet {
                     last_borrowing_block: <frame_system::Pallet<T>>::block_number(),
                     borrowing_rewards: 0,
                 };
-                borrow_info.insert(collateral_token, new_user_info);
+                borrow_info.insert(collateral_asset, new_user_info);
             }
-            <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_token, borrow_info);
+            <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_asset, borrow_info);
 
             // Update user's lending info according to given collateral
-            let calculated_interest = Self::calculate_lending_earnings(&user, collateral_asset);
-            user_lending_info.lending_interest += calculated_interest;
+            let block_number = <frame_system::Pallet<T>>::block_number();
+            let interests = Self::calculate_lending_earnings(&user, collateral_asset, block_number);
+            user_lending_info.lending_interest += interests.0 + interests.1;
             user_lending_info.lending_amount -= collateral_amount;
             user_lending_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
             <UserLendingInfo<T>>::insert(user.clone(), collateral_asset, user_lending_info);
@@ -416,7 +427,7 @@ pub mod pallet {
             // Update collateral and borrowing assets pools
             borrow_pool_info.total_liquidity -= borrowing_amount;
             borrow_pool_info.total_borrowed += borrowing_amount;
-            if (borrowing_asset == collateral_asset) {
+            if borrowing_asset == collateral_asset {
                 borrow_pool_info.total_collateral += collateral_amount;
             } else {
                 collateral_pool_info.total_collateral += collateral_amount;
@@ -458,18 +469,17 @@ pub mod pallet {
         pub fn get_rewards(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
-            collateral_asset: AssetIdOf<T>,
             is_lending: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
+            let block_number = <frame_system::Pallet<T>>::block_number();
             // Check if user has lended or borrowed rewards
             if is_lending {
                 let mut lend_user_info = <UserLendingInfo<T>>::get(user.clone(), asset_id)
                     .ok_or(Error::<T>::NothingLended)?;
-
-                let calculated_interest = Self::calculate_lending_earnings(&user, asset_id);
-                lend_user_info.lending_interest += calculated_interest;
+                let interests = Self::calculate_lending_earnings(&user, asset_id, block_number);
+                lend_user_info.lending_interest += interests.0 + interests.1;
                 lend_user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
 
                 ensure!(
@@ -553,10 +563,11 @@ pub mod pallet {
                 Error::<T>::CanNotTransferLendingAmount
             );
 
-            let calculated_interest = Self::calculate_lending_earnings(&user, lending_asset);
+            let block_number = <frame_system::Pallet<T>>::block_number();
+            let interests = Self::calculate_lending_earnings(&user, lending_asset, block_number);
             user_info.lending_amount -= lending_amount;
-            user_info.lending_interest += calculated_interest;
-            user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
+            user_info.lending_interest += interests.0 + interests.1;
+            user_info.last_lending_block = block_number;
 
             // Transfer lending amount
             Assets::<T>::transfer_from(&lending_asset, &Self::account_id(), &user, lending_amount)
@@ -605,10 +616,15 @@ pub mod pallet {
                 .cloned()
                 .ok_or(Error::<T>::NothingBorrowed)?;
 
-            let calculated_interest =
-                Self::calculate_borrowing_interest(&user, borrowing_asset, collateral_asset);
-            user_info.borrowing_interest += calculated_interest;
-            user_info.last_borrowing_block = <frame_system::Pallet<T>>::block_number();
+            let block_number = <frame_system::Pallet<T>>::block_number();
+            let interest_and_reward = Self::calculate_borrowing_interest_and_reward(
+                &user,
+                borrowing_asset,
+                collateral_asset,
+                block_number,
+            );
+            user_info.borrowing_interest += interest_and_reward.0;
+            user_info.last_borrowing_block = block_number;
 
             if amount_to_repay <= user_info.borrowing_interest {
                 // If user is repaying only part or whole interest
@@ -651,7 +667,7 @@ pub mod pallet {
                 // Update pools
                 borrow_pool_info.total_borrowed -= user_info.borrowing_amount;
                 borrow_pool_info.total_liquidity += user_info.borrowing_amount;
-                if (borrowing_asset == collateral_asset) {
+                if borrowing_asset == collateral_asset {
                     borrow_pool_info.total_collateral -= user_info.collateral_amount;
                 } else {
                     collateral_pool_info.total_collateral -= user_info.collateral_amount;
@@ -748,13 +764,13 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
-            let rates = Self::calculate_rate(now);
-            let liquidation = Self::liquidation(now);
-            let distribution_rewards = Self::distribute_rewards_to_users(now);
+            let distribution_rewards = Self::update_interests(now);
+            //let rates = Self::calculate_rates(now);
+            //let liquidation = Self::check_liquidations(now);
 
-            rates
-                .saturating_add(liquidation)
-                .saturating_add(distribution_rewards)
+            distribution_rewards
+            //.saturating_add(rates)
+            //.saturating_add(liquidation)
         }
     }
 
@@ -787,76 +803,71 @@ pub mod pallet {
                 .unwrap_or(0)
         }
 
-        fn calculate_rate(_current_block: T::BlockNumber) -> Weight {
-            let mut counter: u64 = 0;
-            for (asset_id, mut pool_info) in PoolData::<T>::iter() {
-                let utilization_rate = (FixedWrapper::from(pool_info.total_borrowed)
-                    / FixedWrapper::from(pool_info.total_liquidity))
-                .try_into_balance()
-                .unwrap_or(0);
-
-                if utilization_rate < pool_info.optimal_utilization_rate {
-                    pool_info.borrowing_rate = (FixedWrapper::from(pool_info.base_rate)
-                        + (utilization_rate
-                            / FixedWrapper::from(pool_info.optimal_utilization_rate))
-                            * FixedWrapper::from(pool_info.slope_rate_1))
-                    .try_into_balance()
-                    .unwrap_or(0);
-                } else {
-                    pool_info.borrowing_rate = (FixedWrapper::from(pool_info.base_rate)
-                        + FixedWrapper::from(pool_info.slope_rate_1)
-                        + ((utilization_rate
-                            - FixedWrapper::from(pool_info.optimal_utilization_rate))
-                            / (FixedWrapper::from(1)
-                                - FixedWrapper::from(pool_info.optimal_utilization_rate)))
-                            * FixedWrapper::from(pool_info.slope_rate_2))
-                    .try_into_balance()
-                    .unwrap_or(0);
-                }
-                pool_info.lending_rate = utilization_rate;
-
-                <PoolData<T>>::insert(asset_id, pool_info);
-                counter += 1;
-            }
-
-            T::DbWeight::get()
-                .reads(counter + 1)
-                .saturating_add(T::DbWeight::get().writes(counter))
-        }
-
-        fn calculate_lending_earnings(user: &AccountIdOf<T>, asset_id: AssetIdOf<T>) -> Balance {
-            let block_number = <frame_system::Pallet<T>>::block_number();
+        fn calculate_lending_earnings(
+            user: &AccountIdOf<T>,
+            asset_id: AssetIdOf<T>,
+            block_number: BlockNumberFor<T>,
+        ) -> (Balance, Balance) {
             let user_info = UserLendingInfo::<T>::get(user, asset_id).unwrap();
             let pool_info = PoolData::<T>::get(asset_id).unwrap();
 
             let total_lending_blocks: u128 =
                 (block_number - user_info.last_lending_block).unique_saturated_into();
-            let lending_interest_per_block = FixedWrapper::from(user_info.lending_amount)
-                * FixedWrapper::from(pool_info.lending_rate);
 
-            (lending_interest_per_block * FixedWrapper::from(total_lending_blocks))
-                .try_into_balance()
-                .unwrap_or(0)
+            let share_in_pool = FixedWrapper::from(user_info.lending_amount)
+                / FixedWrapper::from(pool_info.total_liquidity);
+
+            // Rewards from initial APOLLO distribution
+            let basic_reward_per_block =
+                FixedWrapper::from(pool_info.basic_lending_rate) * share_in_pool.clone();
+
+            // Rewards from profit made through repayments and liquidations
+            let profit_reward_per_block =
+                FixedWrapper::from(pool_info.profit_lending_rate) * share_in_pool.clone();
+
+            // Return (basic_lending_interest, profit_lending_interest)
+            (
+                (basic_reward_per_block * FixedWrapper::from(total_lending_blocks))
+                    .try_into_balance()
+                    .unwrap_or(0),
+                (profit_reward_per_block * FixedWrapper::from(total_lending_blocks))
+                    .try_into_balance()
+                    .unwrap_or(0),
+            )
         }
 
-        fn calculate_borrowing_interest(
+        fn calculate_borrowing_interest_and_reward(
             user: &AccountIdOf<T>,
             asset_id: AssetIdOf<T>,
             collateral_asset: AssetIdOf<T>,
-        ) -> Balance {
-            let block_number = <frame_system::Pallet<T>>::block_number();
+            block_number: BlockNumberFor<T>,
+        ) -> (Balance, Balance) {
             let borrow_user_info = UserBorrowingInfo::<T>::get(user, asset_id).unwrap();
-            let user_info = borrow_user_info.get(&collateral_token).unwrap();
+            let user_info = borrow_user_info.get(&collateral_asset).unwrap();
             let pool_info = PoolData::<T>::get(asset_id).unwrap();
-
             let total_borrowing_blocks: u128 =
                 (block_number - user_info.last_borrowing_block).unique_saturated_into();
-            let borrowing_interest_per_block = FixedWrapper::from(user_info.borrowing_amount)
-                * FixedWrapper::from(pool_info.borrowing_rate);
 
-            return (borrowing_interest_per_block * FixedWrapper::from(total_borrowing_blocks))
-                .try_into_balance()
-                .unwrap_or(0);
+            // Calculate borrowing interest
+            let borrowing_interest_per_block = FixedWrapper::from(user_info.borrowing_amount)
+                / FixedWrapper::from(pool_info.borrowing_rate);
+
+            // Calculate borrowing reward
+            let share_in_pool = FixedWrapper::from(user_info.borrowing_amount)
+                / FixedWrapper::from(pool_info.total_borrowed);
+
+            let borrowing_reward_per_block =
+                FixedWrapper::from(pool_info.borrowing_rate) * share_in_pool;
+
+            // Return (borrowing_interest, borrowing_reward)
+            (
+                (borrowing_interest_per_block * FixedWrapper::from(total_borrowing_blocks))
+                    .try_into_balance()
+                    .unwrap_or(0),
+                (borrowing_reward_per_block * FixedWrapper::from(total_borrowing_blocks))
+                    .try_into_balance()
+                    .unwrap_or(0),
+            )
         }
 
         fn distribute_protocol_interest(
@@ -877,7 +888,7 @@ pub mod pallet {
             let (outcome, _) = PoolXYK::<T>::quote(
                 &DEXId::Polkaswap.into(),
                 &asset_id,
-                CERES_ASSET_ID.into(),
+                &CERES_ASSET_ID.into(),
                 QuoteAmount::with_desired_output(rewards_amount),
                 false,
             )?;
@@ -892,10 +903,11 @@ pub mod pallet {
                 FilterMode::Disabled,
             )?;
             pool_info.rewards += buyback_amount;
-            pool_info.lending_rate += (FixedWrapper::from(buyback_amount)
+            pool_info.basic_lending_rate += (FixedWrapper::from(buyback_amount)
                 / FixedWrapper::from(balance!(5256000)))
             .try_into_balance()
             .unwrap_or(0);
+            <PoolData<T>>::insert(asset_id, pool_info);
 
             // Calculate 60% of reserves to transfer APOLLO to treasury
             let apollo_amount = (FixedWrapper::from(reserves_amount)
@@ -929,7 +941,7 @@ pub mod pallet {
 
             // Buyback and burn CERES
             LiquidityProxy::<T>::swap(
-                RawOrigin::Signed(caller).into(),
+                RawOrigin::Signed(caller.clone()).into(),
                 DEXId::Polkaswap.into(),
                 asset_id,
                 CERES_ASSET_ID.into(),
@@ -942,7 +954,7 @@ pub mod pallet {
             Assets::<T>::burn(
                 RawOrigin::Signed(caller.clone()).into(),
                 CERES_ASSET_ID.into(),
-                ceres_amount,
+                ceres_balance,
             )?;
 
             // Transfer amount to developer fund
@@ -954,83 +966,93 @@ pub mod pallet {
             )
             .map_err(|_| Error::<T>::CanNotTransferAmountToDevelopers)?;
 
-            <PoolData<T>>::insert(asset_id, pool_info);
-
             Ok(().into())
         }
 
-        fn distribute_rewards_to_users(_current_block: T::BlockNumber) -> Weight {
+        fn update_interests(block_number: BlockNumberFor<T>) -> Weight {
             let mut counter: u64 = 0;
-            let blocks = 5_256_000_u128; // 1 year
 
-            for (_pool_asset_id, pool_info) in PoolData::<T>::iter() {
-                for (user, asset_id, mut user_info) in UserLendingInfo::<T>::iter() {
-                    if pool_info.rewards > 0 {
-                        let share_in_pool = (FixedWrapper::from(user_info.lending_amount)
-                            / FixedWrapper::from(pool_info.total_liquidity))
-                        .try_into_balance()
-                        .unwrap_or(0);
+            // Update lending interests
+            let mut rewards_by_pools: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
+            for (user, asset_id, mut user_info) in UserLendingInfo::<T>::iter() {
+                let user_interests =
+                    Self::calculate_lending_earnings(&user, asset_id, block_number);
+                user_info.lending_interest += user_interests.0 + user_interests.1;
+                user_info.last_lending_block = block_number;
 
-                        let reward_per_block = (FixedWrapper::from(pool_info.rewards)
-                            / FixedWrapper::from(blocks))
-                        .try_into_balance()
-                        .unwrap_or(0);
+                if rewards_by_pools.contains_key(&asset_id) {
+                    let mut rewards = rewards_by_pools[&asset_id];
+                    rewards += user_interests.1;
+                    rewards_by_pools.insert(asset_id, rewards);
+                } else {
+                    rewards_by_pools.insert(asset_id, user_interests.1);
+                }
 
-                        let reward_per_user = (FixedWrapper::from(share_in_pool)
-                            * FixedWrapper::from(reward_per_block))
-                        .try_into_balance()
-                        .unwrap_or(0);
+                <UserLendingInfo<T>>::insert(user.clone(), asset_id, user_info);
+                counter += 1;
+            }
 
-                        user_info.lending_interest += reward_per_user;
-                    }
+            for (pool_asset_id, mut pool_info) in PoolData::<T>::iter() {
+                pool_info.rewards = pool_info
+                    .rewards
+                    .checked_sub(rewards_by_pools[&pool_asset_id])
+                    .unwrap_or(0);
+                <PoolData<T>>::insert(pool_asset_id, pool_info);
+                counter += 1;
+            }
 
-                    let fixed_lending_rewards = FixedWrapper::from(LendingRewards::<T>::get())
-                        .try_into_balance()
-                        .unwrap_or(0);
+            // Update borrowing interests
+            for (user, asset_id, mut user_infos) in UserBorrowingInfo::<T>::iter() {
+                for (collateral_asset, mut user_info) in user_infos.iter_mut() {
+                    let user_interests = Self::calculate_borrowing_interest_and_reward(
+                        &user,
+                        asset_id,
+                        *collateral_asset,
+                        block_number,
+                    );
+                    user_info.borrowing_interest += user_interests.0;
+                    user_info.borrowing_rewards += user_interests.1;
+                    user_info.last_borrowing_block = block_number;
+                }
+                <UserBorrowingInfo<T>>::insert(user.clone(), asset_id, user_infos.clone());
+                counter += 1;
+            }
 
-                    let fixed_lending_rewards_per_block =
-                        FixedWrapper::from(LendingRewardsPerBlock::<T>::get())
-                            .try_into_balance()
-                            .unwrap_or(0);
+            T::DbWeight::get()
+                .reads(counter)
+                .saturating_add(T::DbWeight::get().writes(counter))
+        }
 
-                    let total_fixed_rewards = (FixedWrapper::from(fixed_lending_rewards_per_block)
-                        * FixedWrapper::from(blocks))
+        /*fn calculate_rates(_current_block: T::BlockNumber) -> Weight {
+            let mut counter: u64 = 0;
+            for (asset_id, mut pool_info) in PoolData::<T>::iter() {
+                let utilization_rate = (FixedWrapper::from(pool_info.total_borrowed)
+                    / FixedWrapper::from(pool_info.total_liquidity))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                if utilization_rate < pool_info.optimal_utilization_rate {
+                    pool_info.borrowing_rate = (FixedWrapper::from(pool_info.base_rate)
+                        + (utilization_rate
+                            / FixedWrapper::from(pool_info.optimal_utilization_rate))
+                            * FixedWrapper::from(pool_info.slope_rate_1))
                     .try_into_balance()
                     .unwrap_or(0);
-
-                    if total_fixed_rewards <= fixed_lending_rewards {
-                        user_info.lending_interest += fixed_lending_rewards_per_block;
-                    }
-
-                    <UserLendingInfo<T>>::insert(user.clone(), asset_id, user_info);
-                    counter += 1;
+                } else {
+                    pool_info.borrowing_rate = (FixedWrapper::from(pool_info.base_rate)
+                        + FixedWrapper::from(pool_info.slope_rate_1)
+                        + ((utilization_rate
+                            - FixedWrapper::from(pool_info.optimal_utilization_rate))
+                            / (FixedWrapper::from(1)
+                                - FixedWrapper::from(pool_info.optimal_utilization_rate)))
+                            * FixedWrapper::from(pool_info.slope_rate_2))
+                    .try_into_balance()
+                    .unwrap_or(0);
                 }
+                pool_info.basic_lending_rate = utilization_rate;
 
-                for (user, asset_id, mut user_infos) in UserBorrowingInfo::<T>::iter() {
-                    for (_collateral_token, mut user_info) in user_infos.iter_mut() {
-                        let fixed_borrowing_rewards =
-                            FixedWrapper::from(BorrowingRewards::<T>::get())
-                                .try_into_balance()
-                                .unwrap_or(0);
-
-                        let fixed_borrowing_rewards_per_block =
-                            FixedWrapper::from(BorrowingRewardsPerBlock::<T>::get())
-                                .try_into_balance()
-                                .unwrap_or(0);
-
-                        let total_fixed_rewards =
-                            (FixedWrapper::from(fixed_borrowing_rewards_per_block)
-                                * FixedWrapper::from(blocks))
-                            .try_into_balance()
-                            .unwrap_or(0);
-
-                        if total_fixed_rewards <= fixed_borrowing_rewards {
-                            user_info.borrowing_rewards += fixed_borrowing_rewards_per_block;
-                        }
-                    }
-                    <UserBorrowingInfo<T>>::insert(user.clone(), asset_id, user_infos.clone());
-                    counter += 1;
-                }
+                <PoolData<T>>::insert(asset_id, pool_info);
+                counter += 1;
             }
 
             T::DbWeight::get()
@@ -1038,7 +1060,7 @@ pub mod pallet {
                 .saturating_add(T::DbWeight::get().writes(counter))
         }
 
-        fn liquidation(_current_block: T::BlockNumber) -> Weight {
+        fn check_liquidations(_current_block: T::BlockNumber) -> Weight {
             let mut counter: u64 = 0;
 
             for (pool_asset_id, pool_info) in PoolData::<T>::iter() {
@@ -1089,6 +1111,6 @@ pub mod pallet {
             T::DbWeight::get()
                 .reads(counter + 1)
                 .saturating_add(T::DbWeight::get().writes(counter))
-        }
+        }*/
     }
 }
