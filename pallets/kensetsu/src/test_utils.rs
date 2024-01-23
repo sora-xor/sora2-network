@@ -127,6 +127,7 @@ pub fn set_xor_as_collateral_type(
                 liquidation_ratio,
                 stability_fee_rate,
             },
+            kusd_supply: balance!(0),
             last_fee_update_time: 0,
             interest_coefficient: FixedU128::one(),
         }),
