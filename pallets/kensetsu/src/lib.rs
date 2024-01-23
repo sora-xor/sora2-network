@@ -169,7 +169,7 @@ pub mod pallet {
                     collaterals_to_update.insert(collateral_asset_id);
                 }
             }
-            // TODO optimize CDP accrue
+            // TODO optimize CDP accrue (https://github.com/sora-xor/sora2-network/issues/878)
             for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
                 // Debt recalculation with interest
                 if collaterals_to_update.contains(&cdp.collateral_asset_id) {
@@ -637,6 +637,7 @@ pub mod pallet {
                 .ok_or(Error::<T>::ArithmeticError)?;
             // TODO if desired amount < LP liquidity, returns error which fails extrinsic
             // it must proceed with amount = cdp.collateral_amount
+            // see https://github.com/sora-xor/sora2-network/pull/879
             let SwapOutcome { amount, .. } = T::LiquidityProxy::quote(
                 DEXId::Polkaswap.into(),
                 &cdp.collateral_asset_id,
