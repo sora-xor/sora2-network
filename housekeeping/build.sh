@@ -8,15 +8,11 @@ PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 
-if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
-    printf "⚡️ Tag is %s\n" $buildTag ${TAG_NAME}
-else
-    printf "⚡️ There is no tag here %s\n"
-fi
-
 # build
 # If TAG_NAME is defined, build for a specific tag
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
+    printf "⚡️ Tag is %s\n" $buildTag ${TAG_NAME}
+    build=true
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=0
