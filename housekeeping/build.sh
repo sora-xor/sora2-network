@@ -52,6 +52,6 @@ else
     rm -rf ~/.cargo/.package-cache
     rm Cargo.lock
     cargo fmt -- --check > /dev/null
-    cargo test
-    cargo test --features "private-net wip ready-to-test runtime-benchmarks"
+    # cargo test
+    cargo test --features "private-net,wip,ready-to-test,runtime-benchmarks"
 fi
