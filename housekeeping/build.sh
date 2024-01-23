@@ -11,7 +11,7 @@ RUNTIME_DIR='runtime'
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
     printf "⚡️ Tag is %s\n" $buildTag ${TAG_NAME}
 else
-    printf "⚡️ There is no tag here. %s\n"
+    printf "⚡️ There is no tag here %s\n"
 fi
 
 # build
