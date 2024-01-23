@@ -39,7 +39,7 @@ use crate::test_utils::{
 };
 
 use common::{balance, AssetId32, Balance, KUSD, XOR};
-use frame_support::{assert_err, assert_ok};
+use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use sp_arithmetic::{ArithmeticError, Percent};
 use sp_core::bounded::BoundedVec;
@@ -55,11 +55,11 @@ type System = frame_system::Pallet<TestRuntime>;
 #[test]
 fn test_create_cdp_only_signed_origin() {
     new_test_ext().execute_with(|| {
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::create_cdp(RuntimeOrigin::none(), XOR, balance!(0), balance!(0)),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::create_cdp(RuntimeOrigin::root(), XOR, balance!(0), balance!(0)),
             BadOrigin
         );
@@ -71,7 +71,7 @@ fn test_create_cdp_only_signed_origin() {
 #[test]
 fn test_create_cdp_for_asset_not_listed_must_result_in_error() {
     new_test_ext().execute_with(|| {
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0)),
             KensetsuError::CollateralInfoNotFound
         );
@@ -89,7 +89,7 @@ fn test_create_cdp_overflow_error() {
         );
         NextCDPId::<TestRuntime>::set(U256::MAX);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0)),
             KensetsuError::ArithmeticError
         );
@@ -162,11 +162,11 @@ fn test_close_cdp_only_signed_origin() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::close_cdp(RuntimeOrigin::none(), cdp_id),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::close_cdp(RuntimeOrigin::root(), cdp_id),
             BadOrigin
         );
@@ -185,7 +185,7 @@ fn test_close_cdp_only_owner() {
         // Alice is CDP owner
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::close_cdp(bob(), cdp_id),
             KensetsuError::OperationNotPermitted
         );
@@ -198,7 +198,7 @@ fn test_close_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::close_cdp(alice(), cdp_id),
             KensetsuError::CDPNotFound
         );
@@ -216,7 +216,7 @@ fn test_close_cdp_outstanding_debt() {
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(1));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::close_cdp(alice(), cdp_id),
             KensetsuError::OutstandingDebt
         );
@@ -287,11 +287,11 @@ fn test_deposit_only_signed_origin() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::deposit_collateral(RuntimeOrigin::none(), cdp_id, balance!(0)),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::deposit_collateral(RuntimeOrigin::root(), cdp_id, balance!(0)),
             BadOrigin
         );
@@ -304,7 +304,7 @@ fn test_deposit_collateral_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::deposit_collateral(alice(), cdp_id, balance!(0)),
             KensetsuError::CDPNotFound
         );
@@ -322,7 +322,7 @@ fn test_deposit_collateral_not_enough_balance() {
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::deposit_collateral(alice(), cdp_id, balance!(1)),
             pallet_balances::Error::<TestRuntime>::InsufficientBalance
         );
@@ -345,7 +345,7 @@ fn test_deposit_collateral_overflow() {
         set_balance(alice_account_id(), max_i128_amount);
 
         // ArithmeticError::Overflow from pallet_balances
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::deposit_collateral(alice(), cdp_id, max_i128_amount),
             ArithmeticError::Overflow
         );
@@ -416,11 +416,11 @@ fn test_withdraw_collateral_only_signed_origin() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::withdraw_collateral(RuntimeOrigin::none(), cdp_id, balance!(0)),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::withdraw_collateral(RuntimeOrigin::root(), cdp_id, balance!(0)),
             BadOrigin
         );
@@ -439,7 +439,7 @@ fn test_withdraw_collateral_only_owner() {
         // Alice is CDP owner
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::withdraw_collateral(bob(), cdp_id, balance!(0)),
             KensetsuError::OperationNotPermitted
         );
@@ -452,7 +452,7 @@ fn test_withdraw_collateral_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::withdraw_collateral(alice(), cdp_id, balance!(0)),
             KensetsuError::CDPNotFound
         );
@@ -470,7 +470,7 @@ fn test_withdraw_collateral_gt_amount() {
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(0));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::withdraw_collateral(alice(), cdp_id, balance!(20)),
             KensetsuError::NotEnoughCollateral
         );
@@ -488,7 +488,7 @@ fn test_withdraw_collateral_unsafe() {
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(5));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::withdraw_collateral(alice(), cdp_id, balance!(1)),
             KensetsuError::CDPUnsafe
         );
@@ -560,11 +560,11 @@ fn test_borrow_only_signed_origin() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::borrow(RuntimeOrigin::none(), cdp_id, balance!(0)),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::borrow(RuntimeOrigin::root(), cdp_id, balance!(0)),
             BadOrigin
         );
@@ -583,7 +583,7 @@ fn test_borrow_only_owner() {
         // Alice is CDP owner
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::borrow(bob(), cdp_id, balance!(0)),
             KensetsuError::OperationNotPermitted
         );
@@ -596,7 +596,7 @@ fn test_borrow_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::borrow(alice(), cdp_id, balance!(0)),
             KensetsuError::CDPNotFound
         );
@@ -616,7 +616,7 @@ fn test_borrow_cdp_overflow() {
         let max_i128_amount = Balance::MAX / 2;
         let cdp_id = create_cdp_for_xor(alice(), max_i128_amount, max_i128_amount);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::borrow(alice(), cdp_id, u128::MAX),
             KensetsuError::ArithmeticError
         );
@@ -635,7 +635,7 @@ fn test_borrow_cdp_unsafe() {
         let amount = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), amount, balance!(0));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::borrow(alice(), cdp_id, amount),
             KensetsuError::CDPUnsafe
         );
@@ -654,7 +654,7 @@ fn test_borrow_cdp_type_hard_cap() {
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::borrow(alice(), cdp_id, balance!(20)),
             KensetsuError::HardCapSupply
         );
@@ -678,7 +678,7 @@ fn test_borrow_protocol_hard_cap() {
         ));
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::borrow(alice(), cdp_id, balance!(20)),
             KensetsuError::HardCapSupply
         );
@@ -789,11 +789,11 @@ fn test_repay_debt_only_signed_origin() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::repay_debt(RuntimeOrigin::none(), cdp_id, balance!(0)),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::repay_debt(RuntimeOrigin::root(), cdp_id, balance!(0)),
             BadOrigin
         );
@@ -806,7 +806,7 @@ fn test_repay_debt_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::repay_debt(alice(), cdp_id, balance!(1)),
             KensetsuError::CDPNotFound
         );
@@ -1001,7 +1001,7 @@ fn test_liquidate_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::liquidate(RuntimeOrigin::none(), cdp_id),
             KensetsuError::CDPNotFound
         );
@@ -1019,7 +1019,7 @@ fn test_liquidate_cdp_safe() {
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::liquidate(RuntimeOrigin::none(), cdp_id),
             KensetsuError::CDPSafe
         );
@@ -1385,7 +1385,7 @@ fn test_accrue_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
         let cdp_id = U256::from(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
             KensetsuError::CDPNotFound
         );
@@ -1403,7 +1403,7 @@ fn test_accrue_no_debt() {
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
             KensetsuError::NoDebt
         );
@@ -1423,7 +1423,7 @@ fn test_accrue_wrong_time() {
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
             KensetsuError::AccrueWrongTime
         );
@@ -1443,7 +1443,7 @@ fn test_accrue_overflow() {
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(50));
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(9999);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
             KensetsuError::ArithmeticError
         );
@@ -1638,7 +1638,7 @@ fn test_update_collateral_risk_parameters_only_signed_origin() {
             stability_fee_rate: FixedU128::from_float(0.1),
         };
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::update_collateral_risk_parameters(
                 RuntimeOrigin::none(),
                 XOR,
@@ -1646,7 +1646,7 @@ fn test_update_collateral_risk_parameters_only_signed_origin() {
             ),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::update_collateral_risk_parameters(
                 RuntimeOrigin::root(),
                 XOR,
@@ -1668,7 +1668,7 @@ fn test_update_collateral_risk_parameters_only_risk_manager() {
             stability_fee_rate: FixedU128::from_float(0.1),
         };
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::update_collateral_risk_parameters(alice(), XOR, parameters),
             KensetsuError::OperationNotPermitted
         );
@@ -1690,7 +1690,7 @@ fn test_update_collateral_risk_parameters_wrong_asset_id() {
             "0000000000000000000000000000000000000000000000000000000007654321"
         ));
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::update_collateral_risk_parameters(
                 risk_manager(),
                 wrong_asset_id,
@@ -1765,11 +1765,11 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
 #[test]
 fn test_update_hard_cap_only_signed_origin() {
     new_test_ext().execute_with(|| {
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::update_hard_cap_total_supply(RuntimeOrigin::none(), balance!(0)),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::update_hard_cap_total_supply(RuntimeOrigin::root(), balance!(0)),
             BadOrigin
         );
@@ -1780,7 +1780,7 @@ fn test_update_hard_cap_only_signed_origin() {
 #[test]
 fn test_update_hard_cap_only_risk_manager() {
     new_test_ext().execute_with(|| {
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::update_hard_cap_total_supply(alice(), balance!(0)),
             KensetsuError::OperationNotPermitted
         );
@@ -1810,11 +1810,11 @@ fn test_update_liquidation_penalty_only_signed_origin() {
     new_test_ext().execute_with(|| {
         let liquidation_penalty = Percent::from_percent(10);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::update_liquidation_penalty(RuntimeOrigin::none(), liquidation_penalty),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::update_liquidation_penalty(RuntimeOrigin::root(), liquidation_penalty),
             BadOrigin
         );
@@ -1827,7 +1827,7 @@ fn test_update_liquidation_penalty_only_risk_manager() {
     new_test_ext().execute_with(|| {
         let liquidation_penalty = Percent::from_percent(10);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::update_liquidation_penalty(alice(), liquidation_penalty),
             KensetsuError::OperationNotPermitted
         );
@@ -1865,11 +1865,11 @@ fn test_donate_only_signed_origin() {
     new_test_ext().execute_with(|| {
         let donation = balance!(10);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::donate(RuntimeOrigin::none(), donation),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::donate(RuntimeOrigin::root(), donation),
             BadOrigin
         );
@@ -1988,11 +1988,11 @@ fn test_withdraw_profit_only_signed_origin() {
     new_test_ext().execute_with(|| {
         let profit = balance!(10);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::withdraw_profit(RuntimeOrigin::none(), profit),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::withdraw_profit(RuntimeOrigin::root(), profit),
             BadOrigin
         );
@@ -2005,7 +2005,7 @@ fn test_withdraw_profit_only_risk_manager() {
     new_test_ext().execute_with(|| {
         let profit = balance!(10);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::withdraw_profit(alice(), profit),
             KensetsuError::OperationNotPermitted
         );
@@ -2019,7 +2019,7 @@ fn test_withdraw_profit_not_enough() {
         set_up_risk_manager();
         let profit = balance!(10);
 
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::withdraw_profit(protocol_owner(), profit),
             tokens::Error::<TestRuntime>::BalanceTooLow
         );
@@ -2068,11 +2068,11 @@ fn test_withdraw_profit_sunny_day() {
 #[test]
 fn test_add_risk_manager_only_root() {
     new_test_ext().execute_with(|| {
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::add_risk_manager(RuntimeOrigin::none(), alice_account_id()),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::add_risk_manager(alice(), alice_account_id()),
             BadOrigin
         );
@@ -2118,11 +2118,11 @@ fn test_add_risk_manager_twice() {
 #[test]
 fn test_remove_risk_manager_only_root() {
     new_test_ext().execute_with(|| {
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::remove_risk_manager(RuntimeOrigin::none(), alice_account_id()),
             BadOrigin
         );
-        assert_err!(
+        assert_noop!(
             KensetsuPallet::remove_risk_manager(alice(), alice_account_id()),
             BadOrigin
         );
