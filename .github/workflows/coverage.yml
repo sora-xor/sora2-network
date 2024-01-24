@@ -33,7 +33,6 @@ jobs:
 
       - name: Generate Cobertura report
         run: |
-          cargo tarpaulin --out Xml
           grcov . --binary-path ./target/debug -s . -t cobertura --branch -o cobertura.xml --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src"
 
       - name: Upload Cobertura report
