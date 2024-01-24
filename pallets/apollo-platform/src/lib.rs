@@ -43,7 +43,6 @@ pub struct PoolInfo {
 pub use pallet::*;
 
 #[frame_support::pallet]
-#[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo};
     use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount};
@@ -527,7 +526,7 @@ pub mod pallet {
                     let interest_and_reward = Self::calculate_borrowing_interest_and_reward(
                         &user,
                         asset_id,
-                        collateral_asset,
+                        *collateral_asset,
                         block_number,
                     );
                     user_info.borrowing_interest += interest_and_reward.0;
@@ -547,7 +546,7 @@ pub mod pallet {
                 )
                 .map_err(|_| Error::<T>::UnableToTransferRewards)?;
 
-                <UserBorrowingInfo<T>>::insert(user.clone(), asset_id, &user_info);
+                <UserBorrowingInfo<T>>::insert(user.clone(), asset_id, &user_infos);
 
                 Self::deposit_event(Event::ClaimedBorrowingRewards(
                     user,
@@ -773,7 +772,7 @@ pub mod pallet {
 
             if is_lending {
                 // Recalculate basic lending rate
-                let mut num_of_pools = <PoolData<T>>::iter().count() as u32;
+                let num_of_pools = <PoolData<T>>::iter().count() as u32;
                 let basic_lending_rate = (FixedWrapper::from(amount)
                     / FixedWrapper::from(num_of_pools))
                 .try_into_balance()
@@ -799,11 +798,11 @@ pub mod pallet {
         fn on_initialize(now: T::BlockNumber) -> Weight {
             let distribution_rewards = Self::update_interests(now);
             let rates = Self::update_rates(now);
-            //let liquidation = Self::check_liquidations(now);
+            let liquidation = Self::check_liquidations(now);
 
             distribution_rewards
-            //.saturating_add(rates)
-            //.saturating_add(liquidation)
+                .saturating_add(rates)
+                .saturating_add(liquidation)
         }
     }
 
@@ -937,7 +936,7 @@ pub mod pallet {
             )?;
             pool_info.rewards += buyback_amount;
             pool_info.basic_lending_rate += (FixedWrapper::from(buyback_amount)
-                / FixedWrapper::from(balance!(5256000)))
+                / FixedWrapper::from(5256000))
             .try_into_balance()
             .unwrap_or(0);
             <PoolData<T>>::insert(asset_id, pool_info);
@@ -1065,7 +1064,6 @@ pub mod pallet {
 
         fn update_rates(_current_block: T::BlockNumber) -> Weight {
             let mut counter: u64 = 0;
-            let one_year = balance!(5_256_000);
 
             for (asset_id, mut pool_info) in PoolData::<T>::iter() {
                 let utilization_rate = (FixedWrapper::from(pool_info.total_borrowed)
@@ -1076,7 +1074,7 @@ pub mod pallet {
                 if utilization_rate < pool_info.optimal_utilization_rate {
                     // Update lending rate
                     pool_info.profit_lending_rate = (FixedWrapper::from(pool_info.rewards)
-                        / FixedWrapper::from(one_year))
+                        / FixedWrapper::from(5256000))
                     .try_into_balance()
                     .unwrap_or(0);
 
@@ -1085,13 +1083,13 @@ pub mod pallet {
                         + (FixedWrapper::from(utilization_rate)
                             / FixedWrapper::from(pool_info.optimal_utilization_rate))
                             * FixedWrapper::from(pool_info.slope_rate_1))
-                        / FixedWrapper::from(one_year))
+                        / FixedWrapper::from(5256000))
                     .try_into_balance()
                     .unwrap_or(0);
                 } else {
                     // Update lending rate
                     pool_info.profit_lending_rate = ((FixedWrapper::from(pool_info.rewards)
-                        / FixedWrapper::from(one_year))
+                        / FixedWrapper::from(5256000))
                         * (FixedWrapper::from(balance!(1)) + FixedWrapper::from(utilization_rate)))
                     .try_into_balance()
                     .unwrap_or(0);
@@ -1117,57 +1115,70 @@ pub mod pallet {
                 .saturating_add(T::DbWeight::get().writes(counter))
         }
 
-        /*fn check_liquidations(_current_block: T::BlockNumber) -> Weight {
+        fn check_liquidations(_current_block: T::BlockNumber) -> Weight {
             let mut counter: u64 = 0;
 
-            for (pool_asset_id, pool_info) in PoolData::<T>::iter() {
-                for (user, asset_id, user_infos) in UserBorrowingInfo::<T>::iter() {
-                    for (collateral_token, user_info) in user_infos.iter() {
-                        let collateral_asset_price = Self::get_price(*collateral_token);
-                        let borrow_asset_price = Self::get_price(pool_asset_id);
+            for (user, asset_id, user_infos) in UserBorrowingInfo::<T>::iter() {
+                // Calculate health factor -> HF = SUM(collateral_in_dollars * liquidation_threshold) / total_borrowed_in_dollars
+                let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap();
+                let mut sum_of_thresholds: Balance = 0;
+                let mut total_borrowed: Balance = 0;
+                let mut collaterals: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
 
-                        let collateral_in_dollars =
-                            (FixedWrapper::from(user_info.collateral_amount)
-                                * FixedWrapper::from(collateral_asset_price))
-                            .try_into_balance()
-                            .unwrap_or(0);
+                for (collateral_asset, user_info) in user_infos.iter() {
+                    let collateral_pool_info = PoolData::<T>::get(collateral_asset).unwrap();
+                    let collateral_asset_price = Self::get_price(*collateral_asset);
 
-                        let liquidation_threshold = ((collateral_in_dollars
-                            * FixedWrapper::from(pool_info.liquidation_threshold))
-                            / (FixedWrapper::from(pool_info.total_collateral)
-                                * FixedWrapper::from(collateral_asset_price)))
-                        .try_into_balance()
-                        .unwrap_or(0);
+                    // Multiply collateral value and liquidation threshold and then add it to the sum
+                    let collateral_in_dollars = FixedWrapper::from(user_info.collateral_amount)
+                        * FixedWrapper::from(collateral_asset_price);
 
-                        let total_borrows_in_dollars =
-                            (FixedWrapper::from(pool_info.total_borrowed)
-                                * FixedWrapper::from(borrow_asset_price))
-                            .try_into_balance()
-                            .unwrap_or(0);
+                    sum_of_thresholds += (collateral_in_dollars
+                        * FixedWrapper::from(collateral_pool_info.liquidation_threshold))
+                    .try_into_balance()
+                    .unwrap_or(0);
 
-                        let health_factor = ((collateral_in_dollars
-                            * FixedWrapper::from(pool_info.liquidation_threshold))
-                            / total_borrows_in_dollars)
-                            .try_into_balance()
-                            .unwrap_or(0);
+                    // Add borrowing amount to total borrowed
+                    total_borrowed += user_info.borrowing_amount;
 
-                        if liquidation_threshold > pool_info.liquidation_threshold
-                            || health_factor < balance!(1)
-                        {
-                            let _ = Self::reserve_factor(
-                                *collateral_token,
-                                user_info.collateral_amount,
-                            );
-                            <UserBorrowingInfo<T>>::remove(user.clone(), asset_id);
-                            counter += 1;
-                        }
+                    collaterals.insert(*collateral_asset, user_info.collateral_amount);
+                }
+
+                let borrowing_asset_price = Self::get_price(asset_id);
+                let total_borrowed_in_dollars: u128 = (FixedWrapper::from(total_borrowed)
+                    * FixedWrapper::from(borrowing_asset_price))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                let health_factor = (FixedWrapper::from(sum_of_thresholds)
+                    / FixedWrapper::from(total_borrowed_in_dollars))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                // Check liquidation
+                if health_factor < balance!(1) {
+                    // Distribute liquidated collaterals to users and reserves
+                    for (collateral_asset, collateral_amount) in collaterals.iter() {
+                        let _ = Self::distribute_protocol_interest(
+                            *collateral_asset,
+                            *collateral_amount,
+                        );
+                        let mut collateral_pool_info =
+                            PoolData::<T>::get(*collateral_asset).unwrap();
+                        collateral_pool_info.total_collateral -= *collateral_amount;
+                        <PoolData<T>>::insert(*collateral_asset, collateral_pool_info);
+                        counter += 1;
                     }
+                    borrow_pool_info.total_borrowed -= total_borrowed;
+                    <PoolData<T>>::insert(asset_id, borrow_pool_info);
+                    <UserBorrowingInfo<T>>::remove(user.clone(), asset_id);
+                    counter += 2;
                 }
             }
 
             T::DbWeight::get()
-                .reads(counter + 1)
+                .reads(counter + 2)
                 .saturating_add(T::DbWeight::get().writes(counter))
-        }*/
+        }
     }
 }
