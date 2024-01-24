@@ -27,7 +27,7 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          
+
       - name: Test
         run: cargo test --features private-net,ready-to-test,wip
       
@@ -42,15 +42,13 @@ jobs:
 
       - name: Generate Cobertura report
         run: |
+          cargo tarpaulin --out Xml
           grcov . --binary-path ./target/debug -s . -t cobertura --branch -o cobertura.xml --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src"
-
-      - name: Upload Cobertura report
-        uses: actions/upload-artifact@v2
-        with:
-          name: cobertura-report
-          path: cobertura.xml
+          find . -type f -name '*.profraw' -delete
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v3
         with:
+          files: ./cobertura.xml
+          gcov: true
           token: ${{ secrets.CODECOV_TOKEN }}
