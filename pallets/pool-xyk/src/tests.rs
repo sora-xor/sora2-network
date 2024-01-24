@@ -548,6 +548,58 @@ fn check_empty_step_quote() {
 }
 
 #[test]
+fn check_step_quote_with_zero_samples_count() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            balance!(100000),
+            balance!(200000),
+            balance!(100000),
+            balance!(200000),
+        ));
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::with_desired_input(balance!(100)),
+                0,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([SwapChunk::new(
+                balance!(100),
+                balance!(199.800199800199800199),
+                0
+            )])
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::with_desired_output(balance!(200)),
+                0,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([SwapChunk::new(
+                balance!(100.100100100100100100),
+                balance!(200),
+                0
+            )])
+        );
+    })]);
+}
+
+#[test]
 fn check_step_quote_without_fee() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
@@ -935,6 +987,129 @@ fn check_step_quote_with_fee() {
                     balance!(0.030090270812437312)
                 ),
             ])
+        );
+    })]);
+}
+
+fn compare_quotes(
+    dex_id: &DEXId,
+    input_asset_id: &AssetId,
+    output_asset_id: &AssetId,
+    amount: QuoteAmount<Balance>,
+    deduce_fee: bool,
+) {
+    let (step_quote_input, step_quote_output, step_quote_fee) =
+        crate::Pallet::<Runtime>::step_quote(
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            10,
+            deduce_fee,
+        )
+        .unwrap()
+        .0
+        .iter()
+        .fold((balance!(0), balance!(0), balance!(0)), |acc, item| {
+            (acc.0 + item.input, acc.1 + item.output, acc.2 + item.fee)
+        });
+
+    let quote_result = crate::Pallet::<Runtime>::quote(
+        dex_id,
+        input_asset_id,
+        output_asset_id,
+        amount,
+        deduce_fee,
+    )
+    .unwrap()
+    .0;
+
+    let (quote_input, quote_output, quote_fee) = match amount {
+        QuoteAmount::WithDesiredInput { desired_amount_in } => {
+            (desired_amount_in, quote_result.amount, quote_result.fee)
+        }
+        QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+            (quote_result.amount, desired_amount_out, quote_result.fee)
+        }
+    };
+
+    assert_eq!(step_quote_input, quote_input);
+    assert_eq!(step_quote_output, quote_output);
+    assert_eq!(step_quote_fee, quote_fee);
+}
+
+#[test]
+fn check_step_quote_equal_with_qoute() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            balance!(100000),
+            balance!(200000),
+            balance!(100000),
+            balance!(200000),
+        ));
+
+        compare_quotes(
+            &dex_id,
+            &gt,
+            &bp,
+            QuoteAmount::with_desired_input(balance!(100)),
+            false,
+        );
+        compare_quotes(
+            &dex_id,
+            &gt,
+            &bp,
+            QuoteAmount::with_desired_output(balance!(100)),
+            false,
+        );
+
+        compare_quotes(
+            &dex_id,
+            &bp,
+            &gt,
+            QuoteAmount::with_desired_input(balance!(100)),
+            false,
+        );
+        compare_quotes(
+            &dex_id,
+            &bp,
+            &gt,
+            QuoteAmount::with_desired_output(balance!(100)),
+            false,
+        );
+
+        compare_quotes(
+            &dex_id,
+            &gt,
+            &bp,
+            QuoteAmount::with_desired_input(balance!(100)),
+            true,
+        );
+        compare_quotes(
+            &dex_id,
+            &gt,
+            &bp,
+            QuoteAmount::with_desired_output(balance!(100)),
+            true,
+        );
+
+        compare_quotes(
+            &dex_id,
+            &bp,
+            &gt,
+            QuoteAmount::with_desired_input(balance!(100)),
+            true,
+        );
+        compare_quotes(
+            &dex_id,
+            &bp,
+            &gt,
+            QuoteAmount::with_desired_output(balance!(100)),
+            true,
         );
     })]);
 }

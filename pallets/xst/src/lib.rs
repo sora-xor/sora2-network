@@ -1101,6 +1101,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             return Ok((VecDeque::new(), Weight::zero()));
         }
 
+        let samples_count = if recommended_samples_count < 1 {
+            1
+        } else {
+            recommended_samples_count
+        };
+
         let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
 
         // Get the price without checking the limit, because even if it exceeds the limit it will be rounded below.
@@ -1137,7 +1143,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             }
         }
 
-        let ratio = (FixedWrapper::from(1) / FixedWrapper::from(recommended_samples_count))
+        let ratio = (FixedWrapper::from(1) / FixedWrapper::from(samples_count))
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
 
@@ -1145,10 +1151,31 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             .rescale_by_ratio(ratio)
             .ok_or(Error::<T>::PriceCalculationFailed)?;
 
-        Ok((
-            vec![chunk; recommended_samples_count].into(),
-            Self::step_quote_weight(recommended_samples_count),
-        ))
+        let mut chunks: VecDeque<SwapChunk<Balance>> = vec![chunk; samples_count - 1].into();
+
+        // add remaining values as the last chunk to not loss the liquidity on the rounding
+        chunks.push_back(SwapChunk::new(
+            monolith.input.saturating_sub(
+                chunk
+                    .input
+                    .checked_mul(samples_count as Balance - 1)
+                    .ok_or(Error::<T>::PriceCalculationFailed)?,
+            ),
+            monolith.output.saturating_sub(
+                chunk
+                    .output
+                    .checked_mul(samples_count as Balance - 1)
+                    .ok_or(Error::<T>::PriceCalculationFailed)?,
+            ),
+            monolith.fee.saturating_sub(
+                chunk
+                    .fee
+                    .checked_mul(samples_count as Balance - 1)
+                    .ok_or(Error::<T>::PriceCalculationFailed)?,
+            ),
+        ));
+
+        Ok((chunks, Self::step_quote_weight(samples_count)))
     }
 
     fn exchange(

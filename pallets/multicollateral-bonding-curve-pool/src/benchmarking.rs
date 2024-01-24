@@ -73,6 +73,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Pallet::<T>::inc_providers(&owner);
     #[cfg(test)]
     crate::mock::MockDEXApi::init_without_reserves().unwrap();
     let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
@@ -155,6 +156,7 @@ benchmarks! {
 
     initialize_pool {
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -190,6 +192,7 @@ benchmarks! {
 
     set_reference_asset {
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -220,6 +223,7 @@ benchmarks! {
 
     set_optional_reward_multiplier {
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -262,6 +266,7 @@ benchmarks! {
 
     set_price_change_config {
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -284,6 +289,7 @@ benchmarks! {
 
     set_price_bias {
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -304,6 +310,7 @@ benchmarks! {
 
     quote {
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -357,6 +364,7 @@ benchmarks! {
         let a in 10..1000;
 
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -408,6 +416,7 @@ benchmarks! {
 
     exchange {
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -474,6 +483,7 @@ benchmarks! {
 
     can_exchange {
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -513,6 +523,7 @@ benchmarks! {
 
     check_rewards {
         let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),

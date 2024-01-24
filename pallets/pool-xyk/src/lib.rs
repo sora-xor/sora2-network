@@ -447,6 +447,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             return Ok((VecDeque::new(), Weight::zero()));
         }
 
+        let samples_count = if recommended_samples_count < 1 {
+            1
+        } else {
+            recommended_samples_count
+        };
+
         let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
@@ -474,10 +480,23 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             output_asset_id,
         )?;
 
-        let step = amount
+        let common_step = amount
             .amount()
-            .checked_div(recommended_samples_count as Balance)
+            .checked_div(samples_count as Balance)
             .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+
+        // volume & step
+        let mut volumes = Vec::new();
+
+        let mut remaining = amount.amount();
+        for i in 1..=samples_count - 1 {
+            let volume = common_step
+                .checked_mul(i as Balance)
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+            volumes.push((volume, common_step));
+            remaining = remaining.saturating_sub(common_step);
+        }
+        volumes.push((amount.amount(), remaining));
 
         let mut chunks = VecDeque::new();
         let mut sub_sum = Balance::zero();
@@ -485,11 +504,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => {
-                for i in 1..=recommended_samples_count {
-                    let volume = step
-                        .checked_mul(i as Balance)
-                        .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
-
+                for (volume, step) in volumes {
                     let (calculated, fee) = Pallet::<T>::calc_output_for_exact_input(
                         T::GetFee::get(),
                         get_fee_from_destination,
@@ -507,11 +522,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 }
             }
             QuoteAmount::WithDesiredOutput { .. } => {
-                for i in 1..=recommended_samples_count {
-                    let volume = step
-                        .checked_mul(i as Balance)
-                        .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
-
+                for (volume, step) in volumes {
                     let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
                         T::GetFee::get(),
                         get_fee_from_destination,
@@ -530,7 +541,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             }
         }
 
-        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
+        Ok((chunks, Self::step_quote_weight(samples_count)))
     }
 
     fn exchange(
