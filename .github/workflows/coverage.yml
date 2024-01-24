@@ -1,0 +1,48 @@
+name: Coverage
+on:
+  # pull_request:
+  push:
+    branches:
+      - feature/dops-2942
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    container:
+      image: sora2/substrate:env
+    env:
+      CARGO_INCREMENTAL: 0
+      SKIP_WASM_BUILD: 1
+      LLVM_PROFILE_FILE: "sora2-%p-%m.profraw"
+      RUST_BACKTRACE: short
+      RUSTFLAGS: "-Cinstrument-coverage"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Test
+        run: cargo test --features kusama,polkadot,rococo,runtime-benchmarks
+      
+      - name: Storing cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Generate Cobertura report
+        run: |
+          cargo tarpaulin --out Xml
+          grcov . --binary-path ./target/debug -s . -t cobertura --branch -o cobertura.xml --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src"
+
+      - name: Upload Cobertura report
+        uses: actions/upload-artifact@v2
+        with:
+          name: cobertura-report
+          path: cobertura.xml
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
