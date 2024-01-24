@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Test
-        run: cargo test --features kusama,polkadot,rococo,runtime-benchmarks
+        run: cargo test --features private-net,ready-to-test,wip
       
       - name: Storing cache
         uses: actions/cache@v2
