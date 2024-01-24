@@ -37,6 +37,7 @@ mod tests {
     use sp_arithmetic::traits::Zero;
     use frame_support::traits::Hooks;
     use frame_system::pallet_prelude::BlockNumberFor;
+    use sp_arithmetic::FixedU128;
 
     type XSTPool = Pallet<Runtime>;
     type PriceTools = price_tools::Pallet<Runtime>;
@@ -498,10 +499,10 @@ mod tests {
             // fee ratio for XSTUSD = 0.00666 (F_r)
             // amount out = 100 XSTUSD (A_out)
             // amount in = (A_out * S) / X = (100 * 1) / 150 = 0.(6) XST (A_in)
-            // deduced fee = A_in / (1 - F) - A_in = 0.(6) / (1 - 0.00666) - A_in ~ 0.004469768659270743 XST (F_xst)
-            // deduced fee in XOR = F_xst / X_b = 0.004469768659270743 / 0.5 ~ 0.008939537319 XOR
+            // deduced fee = A_in / (1 - F) - A_in = 0.(6) / (1 - 0.00666) - A_in = 0.004469768659270743 XST (F_xst)
+            // deduced fee in XOR = F_xst / X_b = 0.004469768659270743 / 0.5 = 0.008939537318541486 XOR
             // (since we are buying XOR with XST)
-            assert_eq!(price_c.fee, balance!(0.008939537318541485));
+            assert_eq!(price_c.fee, balance!(0.008939537318541486));
         });
     }
 
@@ -716,11 +717,20 @@ mod tests {
             // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
             // 1 XOR = 90 DAI in sell case (D_s)
             // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
+            let xst_sell_price = FixedU128::from_inner(
+                PriceTools::get_average_price(
+                    &XST.into(),
+                    &DAI.into(),
+                    PriceVariant::Sell,
+                ).expect("Expected to calculate price XST->DAI")
+            );
             // 1 XSTEURO = 2 DAI (S)
             // fee ratio for XSTUSD = 0. (F_r)
             // amount in = 100 XST (A_in)
+            let a_in = FixedU128::from(100);
             // amount out = (A_in * X) / S = (100 * 150) / 2 = 7500 XSTEURO (A_out)
-            assert_eq!(swap_outcome_before.amount, balance!(7500));
+            let expected_amount_out = a_in * xst_sell_price / FixedU128::from(2);
+            assert_eq!(swap_outcome_before.amount, expected_amount_out.into_inner());
             assert_eq!(swap_outcome_before.fee, 0);
 
 
@@ -872,18 +882,27 @@ mod tests {
                 true
             )
             .expect("Failed to quote XST -> XSTEURO ");
-            
+
             // 1 XOR = 0.5 XST in sell case (X_s)
             // 1 XOR = 0.6 XST in buy case (X_b)
             // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
             // 1 XOR = 90 DAI in sell case (D_s)
             // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
+            let xst_sell_price = FixedU128::from_inner(
+                PriceTools::get_average_price(
+                    &XST.into(),
+                    &DAI.into(),
+                    PriceVariant::Sell,
+                ).expect("Expected to calculate price XST->DAI")
+            );
             // 1 XSTEURO = 3 DAI (S)
             // fee ratio for XSTEURO = 0.3 (F_r)
             // amount in = 100 XST (A_in)
+            let a_in = FixedU128::from(100);
             // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.7) / 3 = 3500 XSTEURO (A_out)
+            let expected_amount_out = a_in * xst_sell_price * (FixedU128::from_float(0.7)) / FixedU128::from(3);
+            assert_eq!(swap_outcome_before.amount, expected_amount_out.into_inner());
             // fee = F_xst / X_b = 0.3 * 100 / 0.5 = 60 XOR
-            assert_eq!(swap_outcome_before.amount, balance!(3500));
             assert_eq!(swap_outcome_before.fee, balance!(60));
 
             assert_ok!(XSTPool::set_synthetic_asset_fee(
@@ -910,8 +929,9 @@ mod tests {
             // fee ratio for XSTEURO = 0.6 (F_r) <- dynamic fee + synthetic fee
             // amount in = 100 XST (A_in)
             // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.4) / 3 = 2000 XSTEURO (A_out)
+            let expected_amount_out = a_in * xst_sell_price * (FixedU128::from_float(0.4)) / FixedU128::from(3);
+            assert_eq!(swap_outcome_after.amount, expected_amount_out.into_inner());
             // fee = F_xst / X_b = 0.6 * 100 / 0.5 = 120 XOR
-            assert_eq!(swap_outcome_after.amount, balance!(2000));
             assert_eq!(swap_outcome_after.fee, balance!(120));
         });
     }
