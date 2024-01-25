@@ -29,7 +29,7 @@ jobs:
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Test
-        run: cargo test --features private-net
+        run: cargo test --features "private-net,ready-to-test,wip"
       
       # - name: Storing cache
       #   uses: actions/cache@v2
