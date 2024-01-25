@@ -29,7 +29,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Run tests, with coverage
         run: |
-          RUSTFLAGS="-Zproc-macro-backtrace" cargo test --features "private-net,ready-to-test,wip"
+          cargo test --features "private-net,ready-to-test,wip"
           grcov . --binary-path ./target/debug -s . -t lcov --branch -o coverage --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src" --log-level "ERROR" --llvm-path /usr/lib/llvm-14/bin
           find . -type f -name '*.profraw' -delete
 
