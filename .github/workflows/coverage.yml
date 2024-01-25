@@ -31,22 +31,22 @@ jobs:
       - name: Test
         run: cargo test --features private-net
       
-      - name: Storing cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      # - name: Storing cache
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: |
+      #       ~/.cargo/registry
+      #       ~/.cargo/git
+      #       target
+      #     key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Generate Cobertura report
+      - name: Generate coverage report
         run: |
-          grcov . --binary-path ./target/debug -s . -t cobertura --branch -o cobertura.xml --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src" --log-level "ERROR" --llvm-path /usr/lib/llvm-14/bin
+          grcov . --binary-path ./target/debug -s . -t lcov --branch -o coverage --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src" --log-level "ERROR" --llvm-path /usr/lib/llvm-14/bin
           find . -type f -name '*.profraw' -delete
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v3
         with:
-          files: ./cobertura.xml
+          files: ./coverage
           token: ${{ secrets.CODECOV_TOKEN }}
