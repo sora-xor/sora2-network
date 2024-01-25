@@ -6,6 +6,8 @@ on:
   #     - develop
   #     - master
   push:
+    # tags:
+    #   - '*'
     branches:
       - feature/dops-2942
 jobs:
@@ -19,15 +21,15 @@ jobs:
       LLVM_PROFILE_FILE: "sora2-%p-%m.profraw"
       RUST_BACKTRACE: short
       RUSTFLAGS: "-Cinstrument-coverage"
+    
     steps:
-
       - name: Checkout
         uses: actions/checkout@v2
 
       - uses: Swatinem/rust-cache@v2
       - name: Run tests, with coverage
         run: |
-          cargo test --features "private-net,ready-to-test,wip"
+          RUSTFLAGS="-Zproc-macro-backtrace" cargo test --features "private-net,ready-to-test,wip"
           grcov . --binary-path ./target/debug -s . -t lcov --branch -o coverage --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src" --log-level "ERROR" --llvm-path /usr/lib/llvm-14/bin
           find . -type f -name '*.profraw' -delete
 

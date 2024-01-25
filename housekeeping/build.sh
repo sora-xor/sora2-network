@@ -48,11 +48,9 @@ else
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
     else
         printf "⚡️ Running Tests for code coverage only %s\n"
+        rm -rf ~/.cargo/.package-cache
+        rm Cargo.lock
         cargo fmt -- --check > /dev/null
-        export RUSTFLAGS="-Cinstrument-coverage"
-        export CARGO_INCREMENTAL=0
-        export SKIP_WASM_BUILD=1
-        export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
-        cargo test --features "private-net,ready-to-test,wip"
+        cargo test --features "private-net wip ready-to-test runtime-benchmarks"
     fi
 fi
