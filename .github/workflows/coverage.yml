@@ -1,6 +1,10 @@
 name: Coverage
+
 on:
   # pull_request:
+  #   branches:
+  #     - develop
+  #     - master
   push:
     branches:
       - feature/dops-2942
@@ -16,32 +20,14 @@ jobs:
       RUST_BACKTRACE: short
       RUSTFLAGS: "-Cinstrument-coverage"
     steps:
-      - name: Checkout code
+
+      - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Getting cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Test
-        run: cargo test --features "private-net,ready-to-test,wip"
-      
-      # - name: Storing cache
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: |
-      #       ~/.cargo/registry
-      #       ~/.cargo/git
-      #       target
-      #     key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Generate coverage report
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests, with coverage
         run: |
+          run: cargo test --features "private-net,ready-to-test,wip"
           grcov . --binary-path ./target/debug -s . -t lcov --branch -o coverage --ignore-not-existing --ignore  "/opt/cargo/**" "target/debug" "node/src" --log-level "ERROR" --llvm-path /usr/lib/llvm-14/bin
           find . -type f -name '*.profraw' -delete
 
@@ -50,3 +36,4 @@ jobs:
         with:
           files: ./coverage
           token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
