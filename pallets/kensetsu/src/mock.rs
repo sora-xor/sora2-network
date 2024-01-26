@@ -41,8 +41,8 @@ use common::{
     KUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::parameter_types;
 use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild};
+use frame_support::{ensure, parameter_types};
 use frame_system::offchain::SendTransactionTypes;
 use hex_literal::hex;
 use permissions::Scope;
@@ -138,23 +138,35 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
                 "Wrong asset id for MockLiquidityProxy, KUSD only supported",
             ))
         } else {
-            let amount = amount.amount();
-            assets::Pallet::<TestRuntime>::transfer_from(
-                input_asset_id,
-                sender,
-                &Self::EXCHANGE_TECH_ACCOUNT,
-                amount,
-            )?;
-            let out_amount =
-                assets::Pallet::<TestRuntime>::free_balance(&KUSD, &Self::EXCHANGE_TECH_ACCOUNT)
-                    .expect("must succeed");
-            assets::Pallet::<TestRuntime>::transfer_from(
-                output_asset_id,
-                &Self::EXCHANGE_TECH_ACCOUNT,
-                receiver,
-                out_amount,
-            )?;
-            Ok(SwapOutcome::new(out_amount, 0))
+            match amount {
+                SwapAmount::WithDesiredInput { .. } => unimplemented!(),
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out,
+                    max_amount_in,
+                } => {
+                    assets::Pallet::<TestRuntime>::transfer_from(
+                        input_asset_id,
+                        sender,
+                        &Self::EXCHANGE_TECH_ACCOUNT,
+                        max_amount_in,
+                    )?;
+                    let out_amount = assets::Pallet::<TestRuntime>::free_balance(
+                        &KUSD,
+                        &Self::EXCHANGE_TECH_ACCOUNT,
+                    )?;
+                    ensure!(
+                        desired_amount_out <= out_amount,
+                        DispatchError::Other("Not enough liquidity")
+                    );
+                    assets::Pallet::<TestRuntime>::transfer_from(
+                        output_asset_id,
+                        &Self::EXCHANGE_TECH_ACCOUNT,
+                        receiver,
+                        out_amount,
+                    )?;
+                    Ok(SwapOutcome::new(out_amount, 0))
+                }
+            }
         }
     }
 }

@@ -1254,34 +1254,33 @@ pub mod pallet {
             let risk_parameters = Self::collateral_infos(cdp.collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?
                 .risk_parameters;
-            let desired_kusd_amount = cdp
+            let mut desired_kusd_amount = cdp
                 .debt
                 .checked_add(Self::liquidation_penalty() * cdp.debt)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            // TODO if desired amount < LP liquidity, returns error which fails extrinsic
-            // it must proceed with amount = cdp.collateral_amount
-            // see https://github.com/sora-xor/sora2-network/pull/879
+            let collateral_to_liquidate = cdp
+                .collateral_amount
+                .min(risk_parameters.max_liquidation_lot);
+            // With quote before exchange we are sure that it will not result in infinite amount in for exchange and
+            // there is enough liquidity for swap.
             let SwapOutcome { amount, .. } = T::LiquidityProxy::quote(
                 DEXId::Polkaswap.into(),
                 &cdp.collateral_asset_id,
                 &T::KusdAssetId::get(),
-                QuoteAmount::WithDesiredOutput {
-                    desired_amount_out: desired_kusd_amount,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: collateral_to_liquidate,
                 },
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 true,
             )?;
-            let collateral_to_liquidate = amount
-                .min(cdp.collateral_amount)
-                .min(risk_parameters.max_liquidation_lot);
+            desired_kusd_amount = desired_kusd_amount.min(amount);
             let swap_outcome = T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
                 technical_account_id,
                 technical_account_id,
                 &cdp.collateral_asset_id,
                 &T::KusdAssetId::get(),
-                // desired output
-                SwapAmount::with_desired_input(collateral_to_liquidate, balance!(0)),
+                SwapAmount::with_desired_output(desired_kusd_amount, collateral_to_liquidate),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
             // penalty is a protocol profit which stays on treasury tech account
