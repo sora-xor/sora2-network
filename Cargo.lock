@@ -160,9 +160,9 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.8.6"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91429305e9f0a25f6205c5b8e0d2db09e0708a7a6df0f42212bb56c32c8ac97a"
+checksum = "cd7d5a2cecb58716e47d67d5703a249964b14c7be1ec3cad3affc295b2d1c35d"
 dependencies = [
  "cfg-if 1.0.0",
  "getrandom 0.2.11",
@@ -895,7 +895,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "anyhow",
  "beefy-merkle-tree",
@@ -919,7 +919,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee",
@@ -935,7 +935,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -1166,7 +1166,7 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "bitvec 1.0.1",
  "bridge-types",
@@ -1184,7 +1184,7 @@ dependencies = [
 [[package]]
 name = "bridge-data-signer"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "bridge-common",
  "bridge-types",
@@ -1328,7 +1328,7 @@ dependencies = [
 [[package]]
 name = "bridge-types"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "derivative",
  "ethabi 17.2.0",
@@ -2905,7 +2905,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "bridge-types",
  "frame-benchmarking",
@@ -4475,6 +4475,7 @@ dependencies = [
 name = "framenode"
 version = "3.2.0"
 dependencies = [
+ "ahash 0.8.5",
  "ansi_term",
  "assert_cmd",
  "assets-rpc",
@@ -6068,7 +6069,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "leaf-provider"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
@@ -6088,7 +6089,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "jsonrpsee",
  "leaf-provider-runtime-api",
@@ -6105,7 +6106,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -7345,7 +7346,7 @@ checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 [[package]]
 name = "multisig-verifier"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "bridge-common",
  "bridge-types",
@@ -8494,7 +8495,7 @@ dependencies = [
 [[package]]
 name = "parachain-bridge-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
@@ -10934,7 +10935,7 @@ name = "sc-finality-grandpa"
 version = "0.10.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "array-bytes",
  "async-trait",
  "dyn-clone",
@@ -11117,7 +11118,7 @@ name = "sc-network-gossip"
 version = "0.10.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "futures 0.3.29",
  "futures-timer",
  "libp2p",
@@ -11710,7 +11711,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "772575a524feeb803e5b0fcbc6dd9f367e579488197c94c6e4023aad2305774d"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "cfg-if 1.0.0",
  "hashbrown 0.13.2",
 ]
@@ -12839,7 +12840,7 @@ name = "sp-trie"
 version = "7.0.0"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "hash-db",
  "hashbrown 0.12.3",
  "lazy_static",
@@ -13126,7 +13127,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.19#2afec11292bc2d6bb172daa918f3f957e36a2d06"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=outbound-channel-update-interval#a36bb3a5f5bf2a9d72b759749ae96e8b65540b39"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
