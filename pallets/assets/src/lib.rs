@@ -56,8 +56,7 @@ use codec::{Decode, Encode};
 use common::prelude::{Balance, SwapAmount};
 use common::{
     hash, Amount, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, IsValid, LiquidityProxyError, LiquidityProxyTrait, LiquiditySourceFilter,
-    DEFAULT_BALANCE_PRECISION,
+    Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
@@ -525,8 +524,6 @@ pub mod pallet {
         DeadAsset,
         /// Computation overflow.
         Overflow,
-        /// Not enough liquidity in LiquidityProxy for exchange
-        NotEnoughLiquidity,
     }
 
     /// Asset Id -> Owner Account Id
@@ -856,11 +853,7 @@ impl<T: Config> Pallet<T> {
             &buy_back_asset_id,
             SwapAmount::with_desired_input(amount, Balance::zero()),
             LiquiditySourceFilter::empty(dex_id),
-        )
-        .map_err(|error| match error {
-            LiquidityProxyError::NotEnoughLiquidity => Error::<T>::NotEnoughLiquidity.into(),
-            LiquidityProxyError::DispatchError(dispatch_error) => dispatch_error,
-        })?;
+        )?;
         Self::burn_from(
             &buy_back_asset_id,
             &technical_account,

@@ -44,11 +44,10 @@ use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
     balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
-    DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyError,
-    LiquidityProxyTrait, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceQuoteError, LiquiditySourceType,
-    LockedLiquiditySourcesManager, RewardReason, TradingPair, TradingPairSourceManager,
-    VestedRewardsPallet, XSTUSD,
+    DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
+    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
+    TradingPairSourceManager, VestedRewardsPallet, XSTUSD,
 };
 use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
@@ -401,12 +400,6 @@ impl<T: Config> Pallet<T> {
                     true,
                     true,
                 )
-                .map_err(|error| match error {
-                    LiquidityProxyError::NotEnoughLiquidity => {
-                        Error::<T>::InsufficientLiquidity.into()
-                    }
-                    LiquidityProxyError::DispatchError(error) => error,
-                })
                 .map(|(info, weight)| (info.path, weight))?;
                 Self::exchange_sequence_with_input_amount(
                     dex_info,
@@ -437,12 +430,6 @@ impl<T: Config> Pallet<T> {
                     true,
                     true,
                 )
-                .map_err(|error| match error {
-                    LiquidityProxyError::NotEnoughLiquidity => {
-                        Error::<T>::InsufficientLiquidity.into()
-                    }
-                    LiquidityProxyError::DispatchError(error) => error,
-                })
                 .map(|(info, weight)| (info.path, weight))?;
                 let (input_amount, weight) =
                     Self::calculate_input_amount(dex_info, &best_path, desired_amount_out, filter)?;
@@ -573,13 +560,7 @@ impl<T: Config> Pallet<T> {
                     filter.clone(),
                     true,
                     true,
-                )
-                .map_err(|error| match error {
-                    LiquidityProxyError::NotEnoughLiquidity => {
-                        Error::<T>::InsufficientLiquidity.into()
-                    }
-                    LiquidityProxyError::DispatchError(error) => error,
-                })?;
+                )?;
                 total_weight = total_weight.saturating_add(weight);
                 amount = quote.amount;
                 Ok(())
@@ -608,11 +589,7 @@ impl<T: Config> Pallet<T> {
                 filter,
                 true,
                 true,
-            )
-            .map_err(|error| match error {
-                LiquidityProxyError::NotEnoughLiquidity => Error::<T>::InsufficientLiquidity.into(),
-                LiquidityProxyError::DispatchError(error) => error,
-            })?;
+            )?;
             total_weight = total_weight.saturating_add(weight);
 
             let res = outcome
@@ -672,21 +649,16 @@ impl<T: Config> Pallet<T> {
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
-    ) -> Result<(QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>, Weight), LiquidityProxyError> {
+    ) -> Result<(QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         ensure!(
             input_asset_id != output_asset_id,
-            LiquidityProxyError::DispatchError(Error::<T>::UnavailableExchangePath.into())
+            Error::<T>::UnavailableExchangePath
         );
-        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)
-            .map_err(|error| LiquidityProxyError::DispatchError(error))?;
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let maybe_path =
             ExchangePath::<T>::new_trivial(&dex_info, *input_asset_id, *output_asset_id);
         maybe_path.map_or_else(
-            || {
-                Err(LiquidityProxyError::DispatchError(
-                    Error::<T>::UnavailableExchangePath.into(),
-                ))
-            },
+            || Err(Error::<T>::UnavailableExchangePath.into()),
             |paths| Self::quote_sequence(&dex_info, paths, amount, &filter, skip_info, deduce_fee),
         )
     }
@@ -700,7 +672,7 @@ impl<T: Config> Pallet<T> {
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
-    ) -> Result<(QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>, Weight), LiquidityProxyError> {
+    ) -> Result<(QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => Self::select_best_path(
                 dex_info,
@@ -738,7 +710,7 @@ impl<T: Config> Pallet<T> {
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
-    ) -> Result<(QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>, Weight), LiquidityProxyError> {
+    ) -> Result<(QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         let mut weight = Weight::zero();
         let mut path_quote_iter = asset_paths.into_iter().map(|ExchangePath(atomic_path)| {
             let quote = match ord {
@@ -779,9 +751,7 @@ impl<T: Config> Pallet<T> {
 
         let primary_path = path_quote_iter
             .next()
-            .ok_or(LiquidityProxyError::DispatchError(
-                Error::<T>::UnavailableExchangePath.into(),
-            ))?;
+            .ok_or(Error::<T>::UnavailableExchangePath)?;
 
         path_quote_iter
             .fold(primary_path, |acc, path| match (&acc, &path) {
@@ -819,7 +789,7 @@ impl<T: Config> Pallet<T> {
             Vec<LiquiditySourceIdOf<T>>,
             Weight,
         ),
-        LiquidityProxyError,
+        DispatchError,
     > {
         let mut current_amount = amount;
         let init_outcome_without_impact = (!skip_info).then(|| balance!(0));
@@ -875,12 +845,12 @@ impl<T: Config> Pallet<T> {
                             deduce_fee,
                         )
                     })
-                    .transpose()
-                    .map_err(|error| LiquidityProxyError::DispatchError(error))?;
+                    .transpose()?;
                 outcome.amount = quote.amount;
-                outcome.fee = outcome.fee.checked_add(quote.fee).ok_or(
-                    LiquidityProxyError::DispatchError(Error::<T>::CalculationError.into()),
-                )?;
+                outcome.fee = outcome
+                    .fee
+                    .checked_add(quote.fee)
+                    .ok_or(Error::<T>::CalculationError)?;
                 rewards.append(&mut quote_rewards);
                 weight = weight.saturating_add(quote_weight);
                 merge_two_vectors_unique(&mut liquidity_sources, quote_liquidity_sources);
@@ -1016,15 +986,11 @@ impl<T: Config> Pallet<T> {
             Vec<LiquiditySourceIdOf<T>>,
             Weight,
         ),
-        LiquidityProxyError,
+        DispatchError,
     > {
-        let sources = Self::list_quote_liquidity_sources(input_asset_id, output_asset_id, &filter)
-            .map_err(|error| LiquidityProxyError::DispatchError(error))?;
+        let sources = Self::list_quote_liquidity_sources(input_asset_id, output_asset_id, &filter)?;
         let mut total_weight = <T as Config>::WeightInfo::list_liquidity_sources();
-        ensure!(
-            !sources.is_empty(),
-            LiquidityProxyError::DispatchError(Error::<T>::UnavailableExchangePath.into())
-        );
+        ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
 
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {
@@ -1035,18 +1001,7 @@ impl<T: Config> Pallet<T> {
                 output_asset_id,
                 amount.into(),
                 deduce_fee,
-            )
-            .map_err(|error| match error {
-                LiquiditySourceQuoteError::NotEnoughAmountForFee => {
-                    LiquidityProxyError::DispatchError(Error::<T>::InsufficientBalance.into())
-                }
-                LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
-                    LiquidityProxyError::NotEnoughLiquidity
-                }
-                LiquiditySourceQuoteError::DispatchError(error) => {
-                    LiquidityProxyError::DispatchError(error)
-                }
-            })?;
+            )?;
             total_weight = total_weight.saturating_add(weight);
             let rewards = if skip_info {
                 Vec::new()
@@ -1107,16 +1062,13 @@ impl<T: Config> Pallet<T> {
                     amount.clone(),
                     skip_info,
                     deduce_fee,
-                )
-                .map_err(|error| LiquidityProxyError::DispatchError(error))?;
+                )?;
                 total_weight = total_weight.saturating_add(outcome.2);
                 return Ok((outcome.0, outcome.1, sources, total_weight));
             }
         }
 
-        fail!(LiquidityProxyError::DispatchError(
-            Error::<T>::UnavailableExchangePath.into()
-        ));
+        fail!(Error::<T>::UnavailableExchangePath);
     }
 
     /// Check if given two arbitrary tokens can be used to perform an exchange via any available sources.
@@ -1599,15 +1551,6 @@ impl<T: Config> Pallet<T> {
                 amount_primary.clone(),
                 deduce_fee,
             )
-            .map_err(|error| match error {
-                LiquiditySourceQuoteError::NotEnoughAmountForFee => {
-                    Error::<T>::InsufficientBalance.into()
-                }
-                LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
-                    Error::<T>::InsufficientLiquidity.into()
-                }
-                LiquiditySourceQuoteError::DispatchError(error) => error,
-            })
             .and_then(|(outcome_primary, weight)| {
                 total_weight = total_weight.saturating_add(weight);
                 if amount_primary.amount() < amount.amount() {
@@ -1621,15 +1564,6 @@ impl<T: Config> Pallet<T> {
                         amount_secondary.clone(),
                         deduce_fee,
                     )
-                    .map_err(|error| match error {
-                        LiquiditySourceQuoteError::NotEnoughAmountForFee => {
-                            Error::<T>::InsufficientBalance.into()
-                        }
-                        LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
-                            Error::<T>::InsufficientLiquidity.into()
-                        }
-                        LiquiditySourceQuoteError::DispatchError(error) => error,
-                    })
                     .and_then(|(outcome_secondary, weight)| {
                         total_weight = total_weight.saturating_add(weight);
                         if !skip_info {
@@ -1685,15 +1619,6 @@ impl<T: Config> Pallet<T> {
             amount.clone(),
             deduce_fee,
         )
-        .map_err(|error| match error {
-            LiquiditySourceQuoteError::NotEnoughAmountForFee => {
-                Error::<T>::InsufficientBalance.into()
-            }
-            LiquiditySourceQuoteError::NotEnoughLiquidityForSwap => {
-                Error::<T>::InsufficientLiquidity.into()
-            }
-            LiquiditySourceQuoteError::DispatchError(error) => error,
-        })
         .and_then(|(outcome, weight)| {
             total_weight = total_weight.saturating_add(weight);
             if is_better(outcome.amount, best) {
@@ -2195,7 +2120,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Pallet::<T>::inner_quote(
             dex_id,
             input_asset_id,
@@ -2220,7 +2145,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         let (outcome, _, _) = Pallet::<T>::inner_exchange(
             dex_id,
             sender,
@@ -2229,8 +2154,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
             output_asset_id,
             amount,
             filter,
-        )
-        .map_err(|error| LiquidityProxyError::DispatchError(error))?;
+        )?;
         Ok(outcome)
     }
 }
@@ -2306,11 +2230,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId
                 dex_id,
                 vec![LiquiditySourceType::MulticollateralBondingCurvePool],
             ),
-        )
-        .map_err(|error| match error {
-            LiquidityProxyError::NotEnoughLiquidity => Error::<T>::InsufficientLiquidity.into(),
-            LiquidityProxyError::DispatchError(dispatch_error) => dispatch_error,
-        })?;
+        )?;
         assets::Pallet::<T>::burn_from(buy_back_asset_id, account_id, account_id, outcome.amount)?;
         Ok(outcome.amount)
     }
@@ -2340,11 +2260,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<T::AssetId>>
                 vec![LiquiditySourceType::MulticollateralBondingCurvePool],
             ),
             false,
-        )
-        .map_err(|error| match error {
-            LiquidityProxyError::NotEnoughLiquidity => Error::<T>::InsufficientLiquidity.into(),
-            LiquidityProxyError::DispatchError(dispatch_error) => dispatch_error,
-        })?;
+        )?;
         Ok(outcome.amount)
     }
 }

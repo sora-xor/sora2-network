@@ -38,9 +38,9 @@ use common::prelude::{
 };
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
-    Fixed, LiquidityProxyError, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, ReferencePriceProvider, RewardReason,
-    TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, ReferencePriceProvider, RewardReason, TradingPairSourceManager, DAI, DOT,
+    ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
 use frame_support::weights::Weight;
@@ -681,10 +681,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path() {
             false,
             true,
         );
-        assert_noop!(
-            result,
-            LiquidityProxyError::DispatchError(<Error<Runtime>>::UnavailableExchangePath.into())
-        );
+        assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
     });
 }
 
@@ -711,10 +708,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path_2() {
             false,
             true,
         );
-        assert_noop!(
-            result,
-            LiquidityProxyError::DispatchError(<Error<Runtime>>::UnavailableExchangePath.into())
-        );
+        assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
     });
 }
 
@@ -731,10 +725,7 @@ fn test_quote_should_fail_with_aggregation_error() {
             false,
             true,
         );
-        assert_noop!(
-            result,
-            LiquidityProxyError::DispatchError(<Error<Runtime>>::UnavailableExchangePath.into())
-        );
+        assert_noop!(result, Error::<Runtime>::UnavailableExchangePath);
     });
 }
 
@@ -2681,10 +2672,7 @@ fn test_smart_split_selling_xor_should_fail() {
                 false,
                 true,
             );
-            assert_noop!(
-                result,
-                LiquidityProxyError::DispatchError(<Error<Runtime>>::InsufficientLiquidity.into())
-            );
+            assert_noop!(result, Error::<Runtime>::InsufficientLiquidity);
         });
     }
 
@@ -2763,7 +2751,7 @@ fn test_smart_split_error_handling_works() {
                 true,
             );
 
-            assert_noop!(result, LiquidityProxyError::DispatchError(expected_error));
+            assert_noop!(result, expected_error);
         });
     }
 
@@ -3564,7 +3552,7 @@ fn test_disable_enable_liquidity_source() {
                 false,
                 true,
             ),
-            LiquidityProxyError::DispatchError(Error::<Runtime>::UnavailableExchangePath.into())
+            Error::<Runtime>::UnavailableExchangePath
         );
 
         // Enable TBC
@@ -4225,64 +4213,4 @@ fn test_xorless_transfer_fails_on_transfer() {
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
-}
-
-/// @given XYK pool with some liquidity and `LiquidityProxyTrait` over it
-/// @when quote `WithDesiredOutput` called with an amount > liquidity amount in the pool
-/// @then specific trait error `NotEnoughLiquidity` is returned, so this case can be handled
-#[test]
-fn test_liquidity_proxy_trait_not_enough_liquidity() {
-    ExtBuilder::default()
-        .with_xyk_pool()
-        .build()
-        .execute_with(|| {
-            // Swap amount exceeds pool liquidity
-            let big_amount = balance!(999999);
-            assert_noop!(
-                <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
-                    DEX_C_ID,
-                    &GetBaseAssetId::get(),
-                    &USDT,
-                    QuoteAmount::WithDesiredOutput {
-                        desired_amount_out: big_amount,
-                    },
-                    LiquiditySourceFilter::with_allowed(
-                        DEX_C_ID,
-                        [LiquiditySourceType::XYKPool].into(),
-                    ),
-                    true,
-                ),
-                LiquidityProxyError::NotEnoughLiquidity
-            );
-        });
-}
-
-/// @given XYK pool with some liquidity and `LiquidityProxyTrait` over it
-/// @when quote `WithDesiredOutput` called with an amount `a slightly less` the liquidity amount in the pool
-/// @then Output amount overflow error happens and specific trait error `NotEnoughLiquidity` is returned, so this case can be handled
-#[test]
-fn test_liquidity_proxy_trait_not_enough_liquidity_overflow() {
-    ExtBuilder::default()
-        .with_xyk_pool()
-        .build()
-        .execute_with(|| {
-            // Swap amount slightly less than pool liquidity
-            let big_amount = balance!(10000) - 2;
-            assert_noop!(
-                <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
-                    DEX_C_ID,
-                    &GetBaseAssetId::get(),
-                    &USDT,
-                    QuoteAmount::WithDesiredOutput {
-                        desired_amount_out: big_amount,
-                    },
-                    LiquiditySourceFilter::with_allowed(
-                        DEX_C_ID,
-                        [LiquiditySourceType::XYKPool].into(),
-                    ),
-                    true,
-                ),
-                LiquidityProxyError::NotEnoughLiquidity
-            );
-        });
 }

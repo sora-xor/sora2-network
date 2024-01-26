@@ -37,12 +37,12 @@ use assets::AssetIdOf;
 use common::prelude::{
     EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
 };
+use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
-use common::{LiquiditySourceQuoteError, LiquiditySourceType};
 use core::fmt::Debug;
 use frame_support::dispatch::{DispatchResultWithPostInfo, PostDispatchInfo};
 use frame_support::ensure;
@@ -1245,24 +1245,18 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
-            return Err(LiquiditySourceQuoteError::DispatchError(Error::<T>::UnknownOrderBook.into()));
+            return Err(Error::<T>::UnknownOrderBook.into());
         };
 
-        let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(
-            LiquiditySourceQuoteError::DispatchError(Error::<T>::UnknownOrderBook.into()),
-        )?;
+        let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
         let mut data = CacheDataLayer::<T>::new();
 
-        let deal_info = order_book
-            .calculate_deal(input_asset_id, output_asset_id, amount, &mut data)
-            .map_err(LiquiditySourceQuoteError::DispatchError)?;
+        let deal_info =
+            order_book.calculate_deal(input_asset_id, output_asset_id, amount, &mut data)?;
 
-        ensure!(
-            deal_info.is_valid(),
-            LiquiditySourceQuoteError::DispatchError(Error::<T>::PriceCalculationFailed.into())
-        );
+        ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
 
         // order-book doesn't take fee
         let fee = Balance::zero();

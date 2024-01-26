@@ -34,9 +34,9 @@
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, BlockLength, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyError,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
-    ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
+    VAL, XOR,
 };
 
 use currencies::BasicCurrencyAdapter;
@@ -421,7 +421,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Self::exchange_inner(
             Some(sender),
             Some(receiver),
@@ -429,7 +429,6 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             output_asset_id,
             amount.into(),
         )
-        .map_err(|error| LiquidityProxyError::DispatchError(error))
     }
 
     fn quote(
@@ -439,9 +438,8 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Self::exchange_inner(None, None, input_asset_id, output_asset_id, amount)
-            .map_err(|error| LiquidityProxyError::DispatchError(error))
     }
 }
 

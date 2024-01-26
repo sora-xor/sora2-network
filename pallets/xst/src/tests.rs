@@ -32,7 +32,7 @@
 mod tests {
     use crate::{Error, Pallet, mock::*, test_utils::{relay_new_symbol, relay_symbol}};
     use band::FeeCalculationParameters;
-    use common::{self, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, AssetId32, LiquiditySourceQuoteError};
+    use common::{self, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, AssetId32};
     use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::Zero;
     use frame_support::traits::Hooks;
@@ -833,7 +833,7 @@ mod tests {
                     quote_amount.clone(),
                     true
                 ),
-                LiquiditySourceQuoteError::DispatchError(Error::<Runtime>::InvalidFeeRatio.into())
+                Error::<Runtime>::InvalidFeeRatio
             );
         });
     }
@@ -941,7 +941,7 @@ mod tests {
                     QuoteAmount::with_desired_input(amount_a.clone()),
                     true,
                 ),
-                LiquiditySourceQuoteError::DispatchError(Error::<Runtime>::SyntheticBaseBuySellLimitExceeded.into())
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
 
             assert_noop!(
@@ -966,7 +966,7 @@ mod tests {
                     QuoteAmount::with_desired_output(amount_b.clone()),
                     true,
                 ),
-                LiquiditySourceQuoteError::DispatchError(Error::<Runtime>::SyntheticBaseBuySellLimitExceeded.into())
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
             assert_noop!(
                 XSTPool::exchange(
@@ -990,7 +990,7 @@ mod tests {
                     QuoteAmount::with_desired_input(amount_c.clone()),
                     true,
                 ),
-                LiquiditySourceQuoteError::DispatchError(Error::<Runtime>::SyntheticBaseBuySellLimitExceeded.into())
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
             assert_noop!(
                 XSTPool::exchange(
@@ -1024,7 +1024,7 @@ mod tests {
                     QuoteAmount::with_desired_output(amount_d.clone()),
                     true,
                 ),
-                LiquiditySourceQuoteError::DispatchError(Error::<Runtime>::SyntheticBaseBuySellLimitExceeded.into())
+                Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
             assert_noop!(
                 XSTPool::exchange(
@@ -1179,7 +1179,7 @@ mod tests {
                     QuoteAmount::with_desired_input(0),
                     true,
                 ),
-                LiquiditySourceQuoteError::DispatchError(Error::<Runtime>::PriceCalculationFailed.into())
+                Error::<Runtime>::PriceCalculationFailed
             );
             assert_noop!(
                 XSTPool::exchange(
@@ -1202,7 +1202,7 @@ mod tests {
                     QuoteAmount::with_desired_output(0),
                     true,
                 ),
-                LiquiditySourceQuoteError::DispatchError(Error::<Runtime>::PriceCalculationFailed.into())
+                Error::<Runtime>::PriceCalculationFailed
             );
             assert_noop!(
                 XSTPool::exchange(
@@ -1225,7 +1225,7 @@ mod tests {
                     QuoteAmount::with_desired_input(0),
                     true,
                 ),
-                LiquiditySourceQuoteError::DispatchError(Error::<Runtime>::PriceCalculationFailed.into())
+                Error::<Runtime>::PriceCalculationFailed
             );
             assert_noop!(
                 XSTPool::exchange(
@@ -1248,7 +1248,7 @@ mod tests {
                     QuoteAmount::with_desired_output(0),
                     true,
                 ),
-                LiquiditySourceQuoteError::DispatchError(Error::<Runtime>::PriceCalculationFailed.into())
+                Error::<Runtime>::PriceCalculationFailed
             );
             assert_noop!(
                 XSTPool::exchange(

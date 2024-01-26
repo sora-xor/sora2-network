@@ -31,10 +31,7 @@
 use crate::{self as assets, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, SwapAmount, SwapOutcome};
-use common::{
-    AssetId32, DEXId, LiquidityProxyError, LiquidityProxyTrait, LiquiditySourceFilter, PSWAP, VAL,
-    XOR, XST,
-};
+use common::{AssetId32, DEXId, LiquidityProxyTrait, LiquiditySourceFilter, PSWAP, VAL, XOR, XST};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
@@ -42,6 +39,7 @@ use frame_support::{construct_runtime, parameter_types};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::DispatchError;
 use sp_runtime::Perbill;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -192,7 +190,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         _amount: common::prelude::QuoteAmount<Balance>,
         _filter: common::LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // Implement if needed
         unimplemented!()
     }
@@ -208,7 +206,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         let amount = amount.amount();
 
         <Currencies as traits::MultiCurrency<_>>::transfer(
@@ -216,16 +214,14 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             sender,
             &MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT,
             amount,
-        )
-        .map_err(LiquidityProxyError::DispatchError)?;
+        )?;
 
         <Currencies as traits::MultiCurrency<_>>::transfer(
             *output_asset_id,
             &MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT,
             receiver,
             amount,
-        )
-        .map_err(LiquidityProxyError::DispatchError)?;
+        )?;
 
         Ok(SwapOutcome::new(amount, 0))
     }

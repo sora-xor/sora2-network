@@ -34,8 +34,7 @@ use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceQuoteError,
-    PriceVariant, VAL, XOR, XSTUSD,
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
@@ -1231,7 +1230,7 @@ fn should_not_quote_with_non_existed_order_book() {
                 QuoteAmount::with_desired_output(balance!(200)),
                 true
             ),
-            LiquiditySourceQuoteError::DispatchError(E::UnknownOrderBook.into())
+            E::UnknownOrderBook
         );
 
         assert_err!(
@@ -1242,7 +1241,7 @@ fn should_not_quote_with_non_existed_order_book() {
                 QuoteAmount::with_desired_output(balance!(2500)),
                 true
             ),
-            LiquiditySourceQuoteError::DispatchError(E::UnknownOrderBook.into())
+            E::UnknownOrderBook
         );
     });
 }
@@ -1266,7 +1265,7 @@ fn should_not_quote_with_empty_side() {
                 QuoteAmount::with_desired_output(balance!(200)),
                 true
             ),
-            LiquiditySourceQuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
+            E::NotEnoughLiquidityInOrderBook
         );
 
         assert_err!(
@@ -1277,7 +1276,7 @@ fn should_not_quote_with_empty_side() {
                 QuoteAmount::with_desired_output(balance!(2500)),
                 true
             ),
-            LiquiditySourceQuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
+            E::NotEnoughLiquidityInOrderBook
         );
     });
 }
@@ -1301,7 +1300,7 @@ fn should_not_quote_with_small_amount() {
                 QuoteAmount::with_desired_output(balance!(0.000001)),
                 true
             ),
-            LiquiditySourceQuoteError::DispatchError(E::InvalidOrderAmount.into())
+            E::InvalidOrderAmount
         );
 
         assert_err!(
@@ -1312,7 +1311,7 @@ fn should_not_quote_with_small_amount() {
                 QuoteAmount::with_desired_output(balance!(0)),
                 true
             ),
-            LiquiditySourceQuoteError::DispatchError(E::InvalidOrderAmount.into())
+            E::InvalidOrderAmount
         );
 
         assert_err!(
@@ -1323,7 +1322,7 @@ fn should_not_quote_with_small_amount() {
                 QuoteAmount::with_desired_output(balance!(0.000001)),
                 true
             ),
-            LiquiditySourceQuoteError::DispatchError(E::InvalidOrderAmount.into())
+            E::InvalidOrderAmount
         );
 
         assert_err!(
@@ -1334,7 +1333,7 @@ fn should_not_quote_with_small_amount() {
                 QuoteAmount::with_desired_output(balance!(0)),
                 true
             ),
-            LiquiditySourceQuoteError::DispatchError(E::InvalidOrderAmount.into())
+            E::InvalidOrderAmount
         );
     });
 }
@@ -1358,7 +1357,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
                 QuoteAmount::with_desired_output(balance!(1000)),
                 true
             ),
-            LiquiditySourceQuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
+            E::NotEnoughLiquidityInOrderBook
         );
 
         assert_err!(
@@ -1369,7 +1368,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
                 QuoteAmount::with_desired_output(balance!(10000)),
                 true
             ),
-            LiquiditySourceQuoteError::DispatchError(E::NotEnoughLiquidityInOrderBook.into())
+            E::NotEnoughLiquidityInOrderBook
         );
     });
 }

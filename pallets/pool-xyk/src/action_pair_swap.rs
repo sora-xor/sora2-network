@@ -41,7 +41,6 @@ use crate::to_fixed_wrapper;
 use crate::bounds::*;
 
 use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
-use crate::math::QuoteError;
 use crate::operations::*;
 use crate::{Config, Error, Pallet};
 
@@ -160,16 +159,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                         &balance_tt,
                         &ta,
                         true,
-                    )
-                    .map_err(|error| match error {
-                        QuoteError::NotEnoughAmountForFee => {
-                            Error::<T>::NotEnoughAmountForFee.into()
-                        }
-                        QuoteError::NotEnoughLiquidityForSwap => {
-                            Error::<T>::NotEnoughLiquidityForSwap.into()
-                        }
-                        QuoteError::DispatchError(error) => error,
-                    })?;
+                    )?;
                     if y_out_pair.0 != ta || x_in_pair.0 != sa || y_out_pair.1 != x_in_pair.1 {
                         Err(Error::<T>::PoolPairRatioAndPairSwapRatioIsDifferent)?;
                     }
@@ -213,16 +203,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                                 &balance_tt,
                                 &ta,
                                 true,
-                            )
-                            .map_err(|error| match error {
-                                QuoteError::NotEnoughAmountForFee => {
-                                    Error::<T>::NotEnoughAmountForFee.into()
-                                }
-                                QuoteError::NotEnoughLiquidityForSwap => {
-                                    Error::<T>::NotEnoughLiquidityForSwap.into()
-                                }
-                                QuoteError::DispatchError(error) => error,
-                            })?;
+                            )?;
 
                             ensure!(
                                 calculated <= sa_max,

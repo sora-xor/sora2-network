@@ -51,13 +51,13 @@ use common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsPallet,
     QuoteAmount, SwapAmount, SwapOutcome,
 };
+use common::BuyBackHandler;
 use common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
-    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceQuoteError,
-    LiquiditySourceType, ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager,
-    VestedRewardsPallet, PSWAP, TBCD, VAL, XOR, XST,
+    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
+    ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager, VestedRewardsPallet,
+    PSWAP, TBCD, VAL, XOR, XST,
 };
-use common::{BuyBackHandler, LiquidityProxyError};
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
@@ -790,11 +790,7 @@ impl<T: Config> Pallet<T> {
                 &base_asset_id,
                 SwapAmount::with_desired_input(free_amount, Balance::zero()).into(),
                 Pallet::<T>::self_excluding_filter(),
-            )
-            .map_err(|error| match error {
-                LiquidityProxyError::NotEnoughLiquidity => Error::<T>::CantExchange.into(),
-                LiquidityProxyError::DispatchError(dispatch_error) => dispatch_error,
-            })?
+            )?
             .amount
             .into();
             Assets::<T>::burn_from(&base_asset_id, &holder, &holder, swapped_xor_amount)?;
@@ -1568,19 +1564,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), LiquiditySourceQuoteError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
-            fail!(LiquiditySourceQuoteError::DispatchError(
-                Error::<T>::CantExchange.into()
-            ));
+            fail!(Error::<T>::CantExchange);
         }
         let base_asset_id = &T::GetBaseAssetId::get();
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee)
-                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?
+            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee)?
         } else {
-            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)
-                .map_err(|error| LiquiditySourceQuoteError::DispatchError(error))?
+            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
         };
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((

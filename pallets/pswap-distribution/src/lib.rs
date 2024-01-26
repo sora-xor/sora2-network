@@ -36,8 +36,8 @@ use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
     fixed, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DexInfoProvider,
-    EnsureDEXManager, Fixed, LiquidityProxyError, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, OnPoolCreated, OnPswapBurned, PoolXykPallet, PswapRemintInfo,
+    EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    OnPoolCreated, OnPswapBurned, PoolXykPallet, PswapRemintInfo,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
@@ -187,11 +187,7 @@ impl<T: Config> Pallet<T> {
                 dex_id.clone(),
                 [LiquiditySourceType::XYKPool].into(),
             ),
-        )
-        .map_err(|error| match error {
-            LiquidityProxyError::NotEnoughLiquidity => Error::<T>::NotEnoughLiquidity.into(),
-            LiquidityProxyError::DispatchError(dispatch_error) => dispatch_error,
-        });
+        );
         match outcome {
             Ok(swap_outcome) => Self::deposit_event(Event::<T>::FeesExchanged(
                 dex_id.clone(),
@@ -569,8 +565,6 @@ pub mod pallet {
         ZeroClaimableIncentives,
         /// Increment account reference error.
         IncRefError,
-        /// Not enough liquidity in LiquidityProxy for exchange
-        NotEnoughLiquidity,
     }
 
     /// Store for information about accounts containing fees, that participate in incentive distribution mechanism.

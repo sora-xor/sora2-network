@@ -55,8 +55,8 @@ use common::prelude::{
     TradingPairSourceManager,
 };
 use common::{
-    balance, fixed_const, fixed_wrapper, DEXId, LiquidityProxyError, LiquidityProxyTrait,
-    LiquiditySourceFilter, OnPoolReservesChanged, PriceVariant, XOR,
+    balance, fixed_const, fixed_wrapper, DEXId, LiquidityProxyTrait, LiquiditySourceFilter,
+    OnPoolReservesChanged, PriceVariant, XOR,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::weights::Weight;
@@ -194,8 +194,6 @@ pub mod pallet {
         AssetAlreadyRegistered,
         /// Spot price for asset has not changed but info for last spot price is unavailable.
         CantDuplicateLastPrice,
-        /// Not enough liquidity to get price
-        NotEnoughLiquidity,
     }
 
     #[pallet::storage]
@@ -389,10 +387,6 @@ impl<T: Config> Pallet<T> {
             Self::secondary_market_filter(),
             false,
         )
-        .map_err(|error| match error {
-            LiquidityProxyError::NotEnoughLiquidity => Error::<T>::NotEnoughLiquidity.into(),
-            LiquidityProxyError::DispatchError(dispatch_error) => dispatch_error,
-        })
         .map(|so| so.amount)
     }
 

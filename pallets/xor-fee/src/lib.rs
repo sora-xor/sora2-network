@@ -32,8 +32,8 @@
 
 use common::prelude::SwapAmount;
 use common::{
-    Balance, BuyBackHandler, LiquidityProxyError, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, OnValBurned, ReferrerAccountProvider,
+    Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    OnValBurned, ReferrerAccountProvider,
 };
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
 use frame_support::log::error;
@@ -635,14 +635,7 @@ impl<T: Config> Pallet<T> {
                     val_to_burn,
                 )?;
             }
-            Err(LiquidityProxyError::NotEnoughLiquidity) => {
-                error!(
-                    "failed to exchange xor to val, burning {} XOR, not enough liquidity",
-                    xor_to_val
-                );
-                Assets::<T>::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
-            }
-            Err(LiquidityProxyError::DispatchError(e)) => {
+            Err(e) => {
                 error!(
                     "failed to exchange xor to val, burning {} XOR, e: {:?}",
                     xor_to_val, e

@@ -36,9 +36,9 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol,
-    BuyBackHandler, DEXInfo, Fixed, LiquidityProxyError, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, PriceVariant, TechPurpose, VestedRewardsPallet,
-    DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, PriceVariant, TechPurpose, VestedRewardsPallet, DAI,
+    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
@@ -629,7 +629,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Self::inner_exchange(
             sender,
             receiver,
@@ -638,7 +638,6 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
             output_asset_id,
             amount,
         )
-        .map_err(|error| LiquidityProxyError::DispatchError(error))
     }
 
     fn quote(
@@ -648,7 +647,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, LiquidityProxyError> {
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Self::inner_quote(
             &filter.dex_id,
             input_asset_id,
@@ -656,7 +655,6 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
             amount,
             deduce_fee,
         )
-        .map_err(|error| LiquidityProxyError::DispatchError(error))
     }
 }
 
