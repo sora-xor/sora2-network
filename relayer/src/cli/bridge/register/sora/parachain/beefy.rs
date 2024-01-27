@@ -79,7 +79,7 @@ impl Command {
         let GenericNetworkId::Sub(network_id) = para.constant_fetch_or_default(
             &parachain_runtime::constants()
                 .substrate_bridge_outbound_channel()
-                .this_network_id(),
+                .this_network_id().unvalidated(),
         )? else {
             return Err(anyhow!("Network id not found"));
         };

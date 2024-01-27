@@ -87,9 +87,12 @@ code_template_quote = """
 
 code_template_exchange = """
         #[extra]
-        exchange_single_order_{} {{
-            use periphery::exchange_single_order::{{init, Context}};
-            let Context {{ caller, order_book_id: id, expected_in, expected_out, .. }} = init::<T>(preset_{}());
+        exchange_{} {{
+            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
+            use periphery::exchange_scattered::{{init, Context}};
+            let mut settings = preset_1::<T>();
+            settings.executed_orders_limit = e;
+            let Context {{ caller, order_book_id: id, expected_in, expected_out, .. }} = init(settings);
         }} : {{
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,

@@ -46,7 +46,18 @@ where
     _phantom: PhantomData<Storage>,
 }
 
-impl<Key: Ord, Value, Storage> CacheStorageMap<Key, Value, Storage>
+impl<Key, Value, Storage> Default for CacheStorageMap<Key, Value, Storage>
+where
+    Key: Ord + FullEncode + Clone,
+    Value: FullCodec + Clone + PartialEq,
+    Storage: StorageMap<Key, Value>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Key, Value, Storage> CacheStorageMap<Key, Value, Storage>
 where
     Key: Ord + FullEncode + Clone,
     Value: FullCodec + Clone + PartialEq,
@@ -134,13 +145,8 @@ where
                 }
             }
         }
-        self.cache.retain(|_, v| {
-            if let Some(Item::Original(_)) = v {
-                true
-            } else {
-                false
-            }
-        });
+        self.cache
+            .retain(|_, v| matches!(v, Some(Item::Original(_))));
     }
 
     /// Resets the cache

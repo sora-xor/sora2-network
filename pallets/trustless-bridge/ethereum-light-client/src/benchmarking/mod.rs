@@ -69,8 +69,8 @@ fn validate_dispatch<T: crate::Config>(call: Call<T>) -> Result<(), &'static str
 benchmarks! {
     where_clause {
         where
-            <T as pallet::Config>::Submitter: From<Public>,
-            <T as pallet::Config>::ImportSignature: From<Signature>,
+            <T as Config>::Submitter: From<Public>,
+            <T as Config>::ImportSignature: From<Signature>,
     }
     // Benchmark `import_header` extrinsic under worst case conditions:
     // * Import will set a new best block.
@@ -85,7 +85,7 @@ benchmarks! {
     validate_unsigned_then_import_header {
         // We don't care about security but just about calculation time
         let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
-        let caller = <T as pallet::Config>::Submitter::from(caller_public).into_account();
+        let caller = <T as Config>::Submitter::from(caller_public).into_account();
 
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
@@ -114,7 +114,7 @@ benchmarks! {
             proof: header_proof,
             mix_nonce: header_mix_nonce,
             submitter: caller,
-            signature: <T as pallet::Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
+            signature: <T as Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
         };
     }: { validate_dispatch(call)? }
     verify {
@@ -152,7 +152,7 @@ benchmarks! {
     //   re-insert using <HeadersByNumber<T>>::insert.
     import_header_not_new_finalized_with_max_prune {
         let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
-        let caller = <T as pallet::Config>::Submitter::from(caller_public).into_account();
+        let caller = <T as Config>::Submitter::from(caller_public).into_account();
 
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
@@ -187,7 +187,7 @@ benchmarks! {
             proof: header_proof,
             mix_nonce: header_mix_nonce,
             submitter: caller,
-            signature: <T as pallet::Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
+            signature: <T as Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
         };
     }: { validate_dispatch(call)? }
     verify {
@@ -221,7 +221,7 @@ benchmarks! {
     // * Import will prune a single old header with no siblings.
     import_header_new_finalized_with_single_prune {
         let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
-        let caller = <T as pallet::Config>::Submitter::from(caller_public).into_account();
+        let caller = <T as Config>::Submitter::from(caller_public).into_account();
 
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
@@ -251,7 +251,7 @@ benchmarks! {
             proof: header_proof,
             mix_nonce: header_mix_nonce,
             submitter: caller,
-            signature: <T as pallet::Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
+            signature: <T as Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
         };
     }: { validate_dispatch(call)? }
     verify {
@@ -282,7 +282,7 @@ benchmarks! {
     // * Import will prune a single old header with no siblings.
     import_header_not_new_finalized_with_single_prune {
         let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
-        let caller = <T as pallet::Config>::Submitter::from(caller_public).into_account();
+        let caller = <T as Config>::Submitter::from(caller_public).into_account();
 
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
@@ -317,7 +317,7 @@ benchmarks! {
             proof: header_proof,
             mix_nonce: header_mix_nonce,
             submitter: caller,
-            signature: <T as pallet::Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
+            signature: <T as Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
         };
     }: { validate_dispatch(call)? }
     verify {
@@ -353,7 +353,7 @@ benchmarks! {
         let header_mix_nonce = data::header_mix_nonce(header.compute_hash()).unwrap();
 
         let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
-        let caller = <T as pallet::Config>::Submitter::from(caller_public).into_account();
+        let caller = <T as Config>::Submitter::from(caller_public).into_account();
 
         assert_ok!(EthereumLightClient::<T>::import_header(
             RawOrigin::None.into(),
@@ -362,7 +362,7 @@ benchmarks! {
             header_proof,
             header_mix_nonce,
             caller,
-            <T as pallet::Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
+            <T as Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
         ));
     }
 

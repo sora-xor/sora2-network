@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.1.1"
+version = "3.2.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -81,7 +81,7 @@ mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-fea
 multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bonding-curve-pool", default-features = false }
 oracle-proxy = { path = "../pallets/oracle-proxy", default-features = false }
 oracle-proxy-runtime-api = { path = "../pallets/oracle-proxy/runtime-api", default-features = false }
-order-book = { path = "../pallets/order-book", default-features = false, optional = true }
+order-book = { path = "../pallets/order-book", default-features = false }
 order-book-benchmarking = { path = "../pallets/order-book/benchmarking", default-features = false, optional = true }
 permissions = { path = "../pallets/permissions", default-features = false }
 pool-xyk = { path = "../pallets/pool-xyk", default-features = false }
@@ -321,13 +321,6 @@ wip = [
 
 ready-to-test = [
     "framenode-chain-spec/ready-to-test",
-    "order-book/ready-to-test",
-    "order-book-benchmarking/ready-to-test",
-    "common/ready-to-test",
-    "dex-api/ready-to-test",
-    'liquidity-proxy/ready-to-test',
-    "liquidity-proxy-runtime-api/ready-to-test",
-    "liquidity-proxy-benchmarking/ready-to-test",
 ]
 
 runtime-benchmarks = [
