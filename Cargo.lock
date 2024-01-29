@@ -268,12 +268,14 @@ dependencies = [
  "ceres-liquidity-locker",
  "common",
  "demeter-farming-platform",
+ "dex-api",
  "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal 0.4.1",
  "liquidity-proxy",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -292,6 +294,7 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]

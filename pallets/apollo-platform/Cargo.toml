@@ -54,10 +54,12 @@ technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
 liquidity-proxy = { path = "../liquidity-proxy" }
+dex-api = { path = "../dex-api" }
+vested-rewards = { path = "../vested-rewards", default-features = false }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
 
 [features]
 default = ['std']
-
 std = [
     "codec/std",
     "dex-manager/std",

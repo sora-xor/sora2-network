@@ -42,6 +42,12 @@ pub struct PoolInfo {
 
 pub use pallet::*;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod test;
+
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo};
