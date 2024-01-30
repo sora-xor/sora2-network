@@ -57,7 +57,8 @@ fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
     ));
 }
 
-// Checks that accounts that have more than 1 XOR are automatically added to farming each REFRESH_FREQUENCY blocks. Also, checks that accounts that no longer has 1 XOR are removed from farming.
+// Checks that accounts that have more than 1 XOR are automatically added to farming each
+// REFRESH_FREQUENCY blocks. Also, checks that accounts that no longer have 1 XOR are removed from farming.
 #[test]
 fn test() {
     let _ = env_logger::Builder::new()
