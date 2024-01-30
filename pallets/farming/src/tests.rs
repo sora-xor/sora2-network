@@ -181,12 +181,12 @@ fn test() {
                     PoolFarmer {
                         account: ALICE(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(1.099999999999999498),
+                        weight: balance!(2.199999999999998996),
                     },
                     PoolFarmer {
                         account: BOB(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(1.099999999999999998),
+                        weight: balance!(2.199999999999999996),
                     }
                 ]
             );
@@ -271,12 +271,12 @@ fn test() {
                     PoolFarmer {
                         account: ALICE(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(1.099999999999999498),
+                        weight: balance!(2.199999999999998996),
                     },
                     PoolFarmer {
                         account: BOB(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(1.099999999999999998),
+                        weight: balance!(2.199999999999999996),
                     }
                 ]
             );
@@ -365,7 +365,7 @@ fn test() {
             vec![PoolFarmer {
                 account: ALICE(),
                 block: REFRESH_FREQUENCY,
-                weight: balance!(1.599999999999999498),
+                weight: balance!(3.199999999999998996),
             }]
         );
 
