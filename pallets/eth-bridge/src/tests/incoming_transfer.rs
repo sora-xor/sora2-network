@@ -654,7 +654,7 @@ fn ocw_should_not_register_pending_incoming_request() {
 
 #[test]
 fn ocw_should_import_incoming_request() {
-    let _ = env_logger::try_init();
+    // let _ = env_logger::try_init();
     let mut builder = ExtBuilder::new();
     builder.add_network(
         vec![AssetConfig::Sidechain {

@@ -196,9 +196,9 @@ fn referrer_gets_bonus_from_tx_fee() {
 
 #[test]
 fn notify_val_burned_works() {
-    let _ = env_logger::Builder::new()
-        .filter_level(LevelFilter::Debug)
-        .try_init();
+    // let _ = env_logger::Builder::new()
+    //     .filter_level(LevelFilter::Debug)
+    //     .try_init();
 
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
