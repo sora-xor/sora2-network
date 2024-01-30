@@ -61,10 +61,6 @@ fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
 // REFRESH_FREQUENCY blocks. Also, checks that accounts that no longer have 1 XOR are removed from farming.
 #[test]
 fn test() {
-    // let _ = env_logger::Builder::new()
-    //     .filter_level(log::LevelFilter::Debug)
-    //     .try_init();
-
     let dex_id = DEX_A_ID;
     ExtBuilder::default().build().execute_with(|| {
         init_pool(DEX_A_ID, XOR, DOT);
