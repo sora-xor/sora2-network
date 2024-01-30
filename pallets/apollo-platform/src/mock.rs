@@ -1,27 +1,28 @@
 use {
     crate::{self as apollo_platform},
-    common::prelude::Balance,
     common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
-    frame_system,
-    frame_system::{EnsureRoot},
-    frame_support::{construct_runtime, parameter_types},
-    frame_support::traits::{Everything, GenesisBuild},
+    common::prelude::Balance,
     common::{
         balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        Description, Fixed, APOLLO_ASSET_ID, TBCD, PSWAP, VAL,
+        Description, Fixed, FromGenericPair, APOLLO_ASSET_ID, PSWAP, TBCD, VAL,
     },
-    frame_support::pallet_prelude::Weight,
-    sp_runtime::{Perbill, Percent, AccountId32},
-    sp_core::{ConstU32, H256},
-    sp_runtime::traits::{BlakeTwo256, Zero},
-    sp_runtime::traits::IdentityLookup,
-    sp_runtime::testing::Header,
     currencies::BasicCurrencyAdapter,
+    frame_support::pallet_prelude::Weight,
+    frame_support::traits::Everything,
+    frame_support::{construct_runtime, parameter_types},
+    frame_system,
     frame_system::pallet_prelude::BlockNumberFor,
+    frame_system::EnsureRoot,
+    sp_core::{ConstU32, H256},
+    sp_runtime::testing::Header,
+    sp_runtime::traits::IdentityLookup,
+    sp_runtime::traits::{BlakeTwo256, Zero},
+    sp_runtime::{Perbill, Percent},
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -45,6 +46,7 @@ construct_runtime! {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>},
@@ -55,6 +57,12 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+        DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
+        PriceTools: price_tools::{Pallet, Storage, Event<T>},
     }
 }
 
@@ -126,16 +134,23 @@ parameter_types! {
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+    pub GetLiquidityProxyTechAccountId: TechAccountId = {
+
+        TechAccountId::from_generic_pair(
+            liquidity_proxy::TECH_ACCOUNT_PREFIX.to_vec(),
+            liquidity_proxy::TECH_ACCOUNT_MAIN.to_vec(),
+        )
+    };
     pub GetLiquidityProxyAccountId: AccountId = {
         let tech_account_id = GetLiquidityProxyTechAccountId::get();
 
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.")
     };
-    pub GetADARAccountId: AccountId = AccountId32::from([14; 32]);
-    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
-    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
-    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
+    pub GetADARAccountId: AccountId = 14;
+    pub GetMarketMakerRewardsAccountId: AccountId = 9;
+    pub GetBondingCurveRewardsAccountId: AccountId = 10;
+    pub GetFarmingRewardsAccountId: AccountId = 12;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
@@ -191,6 +206,15 @@ impl liquidity_proxy::Config for Runtime {
     type GetADARAccountId = GetADARAccountId;
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
     type MaxAdditionalDataLength = ConstU32<128>;
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type RuntimeEvent = RuntimeEvent;
+    type XYKPool = PoolXYK;
+    type DemeterFarmingPlatform = DemeterFarmingPlatform;
+    type CeresAssetId = ();
+    type WeightInfo = ();
 }
 
 impl dex_api::Config for Runtime {
@@ -274,6 +298,24 @@ impl pswap_distribution::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
+impl pallet_timestamp::Config for Runtime {
+    type Moment = Moment;
+    type OnTimestampSet = ();
+    type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
+}
+
+impl dex_manager::Config for Runtime {}
+
+impl technical::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+}
+
 impl common::Config for Runtime {
     type DEXId = common::DEXId;
     type LstId = common::LiquiditySourceType;
@@ -281,6 +323,19 @@ impl common::Config for Runtime {
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+}
+
+impl price_tools::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type LiquidityProxy = LiquidityProxy;
+    type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+    type WeightInfo = ();
 }
 
 impl crate::Config for Runtime {

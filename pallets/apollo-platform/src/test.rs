@@ -16,17 +16,16 @@ mod test {
             let slope_rate_2 = balance!(1.1);
             let reserve_factor = balance!(1.1);
 
-            assert_ok!(
-                ApolloPlatform::add_pool(
-                    user,
-                    CERES_ASSET_ID,
-                    loan_to_value,
-                    liquidation_threshold,
-                    optimal_utilization_rate,
-                    base_rate,
-                    slope_rate_1,
-                    slope_rate_2,
-                    reserve_factor,
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                CERES_ASSET_ID,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
             ));
         });
     }

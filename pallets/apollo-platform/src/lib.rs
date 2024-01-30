@@ -75,11 +75,11 @@ pub mod pallet {
     }
 
     type Assets<T> = assets::Pallet<T>;
+    type PriceTools<T> = price_tools::Pallet<T>;
+    type LiquidityProxy<T> = liquidity_proxy::Pallet<T>;
+    type PoolXYK<T> = pool_xyk::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
-    pub type PriceTools<T> = price_tools::Pallet<T>;
-    pub type LiquidityProxy<T> = liquidity_proxy::Pallet<T>;
-    pub type PoolXYK<T> = pool_xyk::Pallet<T>;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
