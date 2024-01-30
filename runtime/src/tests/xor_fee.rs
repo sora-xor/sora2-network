@@ -50,7 +50,6 @@ use frame_support::weights::WeightToFee as WeightToFeeTrait;
 use frame_support::{assert_err, assert_ok};
 use frame_system::EventRecord;
 use framenode_chain_spec::ext;
-use log::LevelFilter;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
@@ -197,7 +196,7 @@ fn referrer_gets_bonus_from_tx_fee() {
 #[test]
 fn notify_val_burned_works() {
     // let _ = env_logger::Builder::new()
-    //     .filter_level(LevelFilter::Debug)
+    //     .filter_level(log::LevelFilter::Debug)
     //     .try_init();
 
     ext().execute_with(|| {
