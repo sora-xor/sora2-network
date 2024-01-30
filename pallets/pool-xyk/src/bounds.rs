@@ -34,7 +34,7 @@ use sp_runtime::RuntimeDebug;
 /// Values for resource amount
 #[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub enum Bounds<Balance> {
-    /// This is s consequence of computations (not set by user).
+    /// This is a consequence of computations (not set by user).
     Calculated(Balance),
     /// This value is set by user as fixed and determined value.
     Desired(Balance),
