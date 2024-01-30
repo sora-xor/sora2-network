@@ -306,35 +306,37 @@ fn test() {
 
         mock::run_to_block(VESTING_FREQUENCY);
 
+        // todo: fix magic numbers, use some formulae in comments or explicitly in code
+
         let alice_reward = *Rewards::<Runtime>::get(&ALICE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(alice_reward, balance!(147095.556665051128722662));
+        assert_eq!(alice_reward, balance!(157125.633737642261546569));
 
         let bob_reward = *Rewards::<Runtime>::get(&BOB())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(bob_reward, balance!(20230.033841899841271451));
+        assert_eq!(bob_reward, balance!(37993.673033658484304183));
 
         let charlie_reward = *Rewards::<Runtime>::get(&CHARLIE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(charlie_reward, balance!(188323.224128231249527342));
+        assert_eq!(charlie_reward, balance!(176843.278120301308642127));
 
         let dave_reward = *Rewards::<Runtime>::get(&DAVE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(dave_reward, balance!(41855.242431516907913566));
+        assert_eq!(dave_reward, balance!(39303.799689991530733799));
 
         let eve_reward = *Rewards::<Runtime>::get(&EVE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(eve_reward, balance!(225764.640994242700064977));
+        assert_eq!(eve_reward, balance!(212002.313479348242273320));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -373,50 +375,35 @@ fn test() {
 
         run_to_block(VESTING_FREQUENCY + VESTING_FREQUENCY);
 
-        let info = Rewards::<Runtime>::get(&ALICE());
-        assert_eq!(
-            *info
-                .rewards
-                .get(&RewardReason::LiquidityProvisionFarming)
-                .unwrap(),
-            balance!(362281.956723538535819602)
-        );
+        let alice_reward = *Rewards::<Runtime>::get(&ALICE())
+            .rewards
+            .get(&RewardReason::LiquidityProvisionFarming)
+            .unwrap();
+        assert_eq!(alice_reward, balance!(386271.068658756410678920));
 
-        let info = Rewards::<Runtime>::get(&BOB());
         // BOB's rewards didn't change
-        assert_eq!(
-            *info
-                .rewards
-                .get(&RewardReason::LiquidityProvisionFarming)
-                .unwrap(),
-            balance!(20230.033841899841271451)
-        );
+        let bob_reward = *Rewards::<Runtime>::get(&BOB())
+            .rewards
+            .get(&RewardReason::LiquidityProvisionFarming)
+            .unwrap();
+        assert_eq!(bob_reward, balance!(37993.673033658484304183));
 
-        let info = Rewards::<Runtime>::get(&CHARLIE());
-        assert_eq!(
-            *info
-                .rewards
-                .get(&RewardReason::LiquidityProvisionFarming)
-                .unwrap(),
-            balance!(395638.161949291391006768)
-        );
+        let charlie_reward = *Rewards::<Runtime>::get(&CHARLIE())
+            .rewards
+            .get(&RewardReason::LiquidityProvisionFarming)
+            .unwrap();
+        assert_eq!(charlie_reward, balance!(377066.713911616292463328));
 
-        let info = Rewards::<Runtime>::get(&DAVE());
-        assert_eq!(
-            *info
-                .rewards
-                .get(&RewardReason::LiquidityProvisionFarming)
-                .unwrap(),
-            balance!(73254.876962256299307236)
-        );
+        let dave_reward = *Rewards::<Runtime>::get(&DAVE())
+            .rewards
+            .get(&RewardReason::LiquidityProvisionFarming)
+            .unwrap();
+        assert_eq!(dave_reward, balance!(69629.365104687830670448));
 
-        let info = Rewards::<Runtime>::get(&EVE());
-        assert_eq!(
-            *info
-                .rewards
-                .get(&RewardReason::LiquidityProvisionFarming)
-                .unwrap(),
-            balance!(395132.366644897587594938)
-        );
+        let eve_reward = *Rewards::<Runtime>::get(&EVE())
+            .rewards
+            .get(&RewardReason::LiquidityProvisionFarming)
+            .unwrap();
+        assert_eq!(eve_reward, balance!(375576.575413164636883116));
     });
 }
