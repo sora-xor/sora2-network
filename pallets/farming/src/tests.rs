@@ -174,6 +174,7 @@ fn test() {
 
         // Check that after the first refresh both Alice and Bob are farmers
         {
+            // double reward for DOT
             let farmers = PoolFarmers::<Runtime>::get(&xor_dot_pool);
             assert_eq!(
                 farmers,
@@ -264,6 +265,7 @@ fn test() {
 
         // Check that after the second refresh Alice, Bob and Charlie are farmers
         {
+            // double reward for DOT
             let farmers = PoolFarmers::<Runtime>::get(&xor_dot_pool);
             assert_eq!(
                 farmers,
@@ -306,7 +308,7 @@ fn test() {
 
         mock::run_to_block(VESTING_FREQUENCY);
 
-        // todo: fix magic numbers, use some formulae in comments or explicitly in code
+        // TODO #886: fix magic numbers, use some formulae in comments or explicitly in code
 
         let alice_reward = *Rewards::<Runtime>::get(&ALICE())
             .rewards
@@ -361,6 +363,7 @@ fn test() {
 
         run_to_block(VESTING_FREQUENCY + REFRESH_FREQUENCY);
 
+        // double reward for DOT
         let farmers = PoolFarmers::<Runtime>::get(&xor_dot_pool);
         assert_eq!(
             farmers,
