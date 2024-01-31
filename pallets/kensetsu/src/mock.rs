@@ -42,7 +42,6 @@ use common::{
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
-use frame_support::parameter_types;
 use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild};
 use frame_support::{ensure, parameter_types};
 use frame_system::offchain::SendTransactionTypes;
