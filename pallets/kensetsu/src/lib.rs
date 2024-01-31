@@ -901,6 +901,8 @@ pub mod pallet {
         /// Ensures that `who` is a protocol owner
         /// Protocol owner can withdraw profit from the protocol.
         fn ensure_protocol_owner(who: &AccountIdOf<T>) -> DispatchResult {
+            // TODO ensure it is a risk management responsibility
+            // https://github.com/sora-xor/sora2-network#workspaces/kensetsu-6571e4321e07d3000e7a777b/issues/zh/5
             if !Self::risk_managers().map_or(false, |risk_managers| risk_managers.contains(who)) {
                 return Err(Error::<T>::OperationNotPermitted.into());
             }
