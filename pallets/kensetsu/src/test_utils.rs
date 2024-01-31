@@ -36,7 +36,6 @@ use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
 use sp_arithmetic::Perbill;
-use sp_core::U256;
 use sp_runtime::traits::One;
 use sp_runtime::AccountId32;
 
@@ -140,14 +139,18 @@ pub fn create_cdp_for_xor(
     owner: OriginFor<TestRuntime>,
     collateral: Balance,
     debt: Balance,
-) -> U256 {
+) -> CdpId {
     set_balance(alice_account_id(), collateral);
     assert_ok!(KensetsuPallet::create_cdp(owner, XOR, collateral, debt));
     NextCDPId::<TestRuntime>::get()
 }
 
 /// Deposits to CDP
-pub fn deposit_xor_to_cdp(owner: OriginFor<TestRuntime>, cdp_id: U256, collateral_amount: Balance) {
+pub fn deposit_xor_to_cdp(
+    owner: OriginFor<TestRuntime>,
+    cdp_id: CdpId,
+    collateral_amount: Balance,
+) {
     set_balance(alice_account_id(), collateral_amount);
     assert_ok!(KensetsuPallet::deposit_collateral(
         owner,

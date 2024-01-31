@@ -141,14 +141,15 @@ pub mod pallet {
     use sp_arithmetic::traits::{CheckedMul, Saturating};
     use sp_arithmetic::Percent;
     use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
-    use sp_core::U256;
     use sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One};
     use sp_std::collections::btree_set::BTreeSet;
     use sp_std::vec::Vec;
 
+    /// CDP id type
+    pub type CdpId = u128;
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
-    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -291,19 +292,19 @@ pub mod pallet {
 
     /// CDP counter used for CDP id
     #[pallet::storage]
-    pub type NextCDPId<T> = StorageValue<_, U256, ValueQuery>;
+    pub type NextCDPId<T> = StorageValue<_, CdpId, ValueQuery>;
 
     /// Storage of all CDPs, where key is an unique CDP identifier
     #[pallet::storage]
     #[pallet::getter(fn cdp)]
     pub type CDPDepository<T: Config> =
-        StorageMap<_, Identity, U256, CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>>;
+        StorageMap<_, Identity, CdpId, CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>>;
 
     /// Index links owner to CDP ids, not needed by protocol, but used by front-end
     #[pallet::storage]
     #[pallet::getter(fn cdp_owner_index)]
     pub type CdpOwnerIndex<T: Config> =
-        StorageMap<_, Identity, AccountIdOf<T>, BoundedVec<U256, T::MaxCdpsPerOwner>>;
+        StorageMap<_, Identity, AccountIdOf<T>, BoundedVec<CdpId, T::MaxCdpsPerOwner>>;
 
     /// Accounts of risk management team
     #[pallet::storage]
@@ -315,43 +316,43 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         CDPCreated {
-            cdp_id: U256,
+            cdp_id: CdpId,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
         },
         CDPClosed {
-            cdp_id: U256,
+            cdp_id: CdpId,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
         },
         CollateralDeposit {
-            cdp_id: U256,
+            cdp_id: CdpId,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
             amount: Balance,
         },
         CollateralWithdrawn {
-            cdp_id: U256,
+            cdp_id: CdpId,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
             amount: Balance,
         },
         DebtIncreased {
-            cdp_id: U256,
+            cdp_id: CdpId,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
             // KUSD amount borrowed
             amount: Balance,
         },
         DebtPayment {
-            cdp_id: U256,
+            cdp_id: CdpId,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
-            // KUSD amount payed off
+            // KUSD amount paid off
             amount: Balance,
         },
         Liquidated {
-            cdp_id: U256,
+            cdp_id: CdpId,
             // what was liquidated
             collateral_asset_id: AssetIdOf<T>,
             collateral_amount: Balance,
@@ -399,6 +400,8 @@ pub mod pallet {
         BalanceNotEnough,
         WrongCollateralAssetId,
         AccrueWrongTime,
+        /// Liquidation lot set in risk parameters is zero, cannot liquidate
+        ZeroLiquidationLot,
     }
 
     #[pallet::call]
@@ -457,7 +460,7 @@ pub mod pallet {
         /// - `cdp_id`: The ID of the CDP to be closed.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
-        pub fn close_cdp(origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
+        pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
@@ -482,7 +485,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::deposit_collateral())]
         pub fn deposit_collateral(
             origin: OriginFor<T>,
-            cdp_id: U256,
+            cdp_id: CdpId,
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -500,7 +503,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_collateral())]
         pub fn withdraw_collateral(
             origin: OriginFor<T>,
-            cdp_id: U256,
+            cdp_id: CdpId,
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -542,7 +545,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::borrow())]
         pub fn borrow(
             origin: OriginFor<T>,
-            cdp_id: U256,
+            cdp_id: CdpId,
             will_to_borrow_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -558,7 +561,7 @@ pub mod pallet {
         /// - `amount`: The amount to repay against the CDP's debt.
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
-        pub fn repay_debt(origin: OriginFor<T>, cdp_id: U256, amount: Balance) -> DispatchResult {
+        pub fn repay_debt(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let cdp = Self::accrue_internal(cdp_id)?;
             // if repaying amount exceeds debt, leftover is not burned
@@ -589,7 +592,7 @@ pub mod pallet {
         /// - `cdp_id`: The ID of the CDP to be liquidated.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
-        pub fn liquidate(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
+        pub fn liquidate(_origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(
                 !Self::check_cdp_is_safe(cdp.debt, cdp.collateral_amount, cdp.collateral_asset_id)?,
@@ -662,7 +665,7 @@ pub mod pallet {
         /// - `cdp_id`: The ID of the CDP to accrue interest on.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::accrue())]
-        pub fn accrue(_origin: OriginFor<T>, cdp_id: U256) -> DispatchResult {
+        pub fn accrue(_origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             ensure!(Self::is_accruable(&cdp_id)?, Error::<T>::NoDebt);
             Self::accrue_internal(cdp_id)?;
             Ok(())
@@ -926,11 +929,11 @@ pub mod pallet {
             let collateral_reference_price = FixedU128::from_inner(
                 T::ReferencePriceProvider::get_reference_price(&collateral_asset_id)?,
             );
-            let collateral_value = collateral_reference_price
+            let collateral_volume = collateral_reference_price
                 .checked_mul(&FixedU128::from_inner(collateral))
                 .ok_or(Error::<T>::ArithmeticError)?;
             let max_safe_debt = FixedU128::from_perbill(liquidation_ratio)
-                .checked_mul(&collateral_value)
+                .checked_mul(&collateral_volume)
                 .ok_or(Error::<T>::ArithmeticError)?;
             let debt = FixedU128::from_inner(debt);
             Ok(debt <= max_safe_debt)
@@ -978,7 +981,7 @@ pub mod pallet {
         /// - `collateral_amount`: The amount of collateral being deposited.
         fn deposit_internal(
             who: &AccountIdOf<T>,
-            cdp_id: U256,
+            cdp_id: CdpId,
             collateral_amount: Balance,
         ) -> DispatchResult {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
@@ -1013,7 +1016,7 @@ pub mod pallet {
         /// - `will_to_borrow_amount`: The amount to be borrowed.
         fn borrow_internal(
             who: &AccountIdOf<T>,
-            cdp_id: U256,
+            cdp_id: CdpId,
             will_to_borrow_amount: Balance,
         ) -> DispatchResult {
             let cdp = Self::accrue_internal(cdp_id)?;
@@ -1060,7 +1063,7 @@ pub mod pallet {
         /// - `kusd_amount`: The amount of stablecoin to cover bad debt.
         fn cover_bad_debt(from: &AccountIdOf<T>, kusd_amount: Balance) -> DispatchResult {
             let bad_debt = <BadDebt<T>>::get();
-            let to_cover_debt = if kusd_amount < bad_debt {
+            let to_cover_debt = if kusd_amount <= bad_debt {
                 kusd_amount
             } else {
                 technical::Pallet::<T>::transfer_in(
@@ -1085,7 +1088,7 @@ pub mod pallet {
         }
 
         /// Returns true if CDP has debt.
-        fn is_accruable(cdp_id: &U256) -> Result<bool, DispatchError> {
+        fn is_accruable(cdp_id: &CdpId) -> Result<bool, DispatchError> {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             Ok(cdp.debt > 0)
         }
@@ -1133,7 +1136,7 @@ pub mod pallet {
         ///
         /// - `cdp_id`: The ID of the CDP for interest accrual.
         fn accrue_internal(
-            cdp_id: U256,
+            cdp_id: CdpId,
         ) -> Result<CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>, DispatchError>
         {
             let mut cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
@@ -1261,6 +1264,7 @@ pub mod pallet {
             let collateral_to_liquidate = cdp
                 .collateral_amount
                 .min(risk_parameters.max_liquidation_lot);
+            ensure!(collateral_to_liquidate > 0, Error::<T>::ZeroLiquidationLot);
             // With quote before exchange we are sure that it will not result in infinite amount in for exchange and
             // there is enough liquidity for swap.
             let SwapOutcome { amount, .. } = T::LiquidityProxy::quote(
@@ -1318,10 +1322,10 @@ pub mod pallet {
         }
 
         /// Increments CDP Id counter, changes storage state.
-        fn increment_cdp_id() -> Result<U256, DispatchError> {
+        fn increment_cdp_id() -> Result<CdpId, DispatchError> {
             NextCDPId::<T>::try_mutate(|cdp_id| {
                 *cdp_id = cdp_id
-                    .checked_add(U256::from(1))
+                    .checked_add(1)
                     .ok_or(crate::pallet::Error::<T>::ArithmeticError)?;
                 Ok(*cdp_id)
             })
@@ -1331,7 +1335,7 @@ pub mod pallet {
         /// Updates CDP storage and updates index owner -> CDP
         fn insert_cdp(
             owner: &AccountIdOf<T>,
-            cdp_id: U256,
+            cdp_id: CdpId,
             cdp: CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>,
         ) -> DispatchResult {
             CDPDepository::<T>::insert(cdp_id, cdp);
@@ -1340,7 +1344,7 @@ pub mod pallet {
         }
 
         /// Updates CDP collateral balance
-        fn update_cdp_collateral(cdp_id: U256, collateral_amount: Balance) -> DispatchResult {
+        fn update_cdp_collateral(cdp_id: CdpId, collateral_amount: Balance) -> DispatchResult {
             CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                 cdp.collateral_amount = collateral_amount;
@@ -1349,7 +1353,7 @@ pub mod pallet {
         }
 
         /// Updates CDP debt balance
-        fn update_cdp_debt(cdp_id: U256, debt: Balance) -> DispatchResult {
+        fn update_cdp_debt(cdp_id: CdpId, debt: Balance) -> DispatchResult {
             crate::pallet::CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                 cdp.debt = debt;
@@ -1358,7 +1362,7 @@ pub mod pallet {
         }
 
         /// Removes CDP entry from the storage
-        fn delete_cdp(cdp_id: U256) -> DispatchResult {
+        fn delete_cdp(cdp_id: CdpId) -> DispatchResult {
             let cdp = <CDPDepository<T>>::take(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             if let Some(mut cdp_ids) = <CdpOwnerIndex<T>>::take(&cdp.owner) {
                 cdp_ids.retain(|&x| x != cdp_id);
@@ -1439,7 +1443,7 @@ pub mod pallet {
         /// Returns CDP ids where the account id is owner
         pub fn get_account_cdp_ids(
             account_id: &AccountIdOf<T>,
-        ) -> Result<Vec<U256>, DispatchError> {
+        ) -> Result<Vec<CdpId>, DispatchError> {
             Ok(<CDPDepository<T>>::iter()
                 .filter(|(_, cdp)| cdp.owner == *account_id)
                 .map(|(cdp_id, _)| cdp_id)

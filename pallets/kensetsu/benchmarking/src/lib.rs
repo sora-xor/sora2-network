@@ -37,8 +37,9 @@ use common::{balance, AssetId32, Balance, DEXId, PredefinedAssetId, DAI, KUSD, X
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
+use kensetsu::CdpId;
 use sp_arithmetic::{Perbill, Percent};
-use sp_core::{Get, U256};
+use sp_core::Get;
 use sp_runtime::traits::One;
 use sp_runtime::FixedU128;
 
@@ -79,7 +80,7 @@ fn set_xor_as_collateral_type<T: Config>() {
 }
 
 /// Creates CDP with XOR as collateral
-fn create_cdp_with_xor<T: Config>() -> U256 {
+fn create_cdp_with_xor<T: Config>() -> CdpId {
     kensetsu::Pallet::<T>::create_cdp(
         RawOrigin::Signed(caller::<T>()).into(),
         XOR.into(),
@@ -91,7 +92,7 @@ fn create_cdp_with_xor<T: Config>() -> U256 {
 }
 
 /// Mints XOR and deposited as collateral to CDP
-fn deposit_xor_collateral<T: Config>(cdp_id: U256, amount: Balance) {
+fn deposit_xor_collateral<T: Config>(cdp_id: CdpId, amount: Balance) {
     assets::Pallet::<T>::update_balance(
         RawOrigin::Root.into(),
         caller::<T>(),

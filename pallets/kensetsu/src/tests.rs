@@ -43,7 +43,6 @@ use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use sp_arithmetic::{ArithmeticError, Percent};
 use sp_core::bounded::BoundedVec;
-use sp_core::U256;
 use sp_runtime::traits::One;
 use sp_runtime::DispatchError::BadOrigin;
 
@@ -78,7 +77,7 @@ fn test_create_cdp_for_asset_not_listed_must_result_in_error() {
     });
 }
 
-/// If the number of cdp ids reached U256::MAX, next CDP will result in ArithmeticError.
+/// If the number of cdp ids reached u128::MAX, next CDP will result in ArithmeticError.
 #[test]
 fn test_create_cdp_overflow_error() {
     new_test_ext().execute_with(|| {
@@ -87,7 +86,7 @@ fn test_create_cdp_overflow_error() {
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
         );
-        NextCDPId::<TestRuntime>::set(U256::MAX);
+        NextCDPId::<TestRuntime>::set(CdpId::MAX);
 
         assert_noop!(
             KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0)),
@@ -110,7 +109,7 @@ fn test_create_cdp_sunny_day() {
         set_balance(alice_account_id(), collateral);
 
         assert_ok!(KensetsuPallet::create_cdp(alice(), XOR, collateral, debt),);
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         System::assert_has_event(
             Event::CDPCreated {
@@ -151,7 +150,7 @@ fn test_create_cdp_sunny_day() {
         assert_eq!(cdp.debt, debt);
         assert_eq!(
             KensetsuPallet::cdp_owner_index(alice_account_id()),
-            Some(BoundedVec::try_from(vec![U256::from(1)]).unwrap())
+            Some(BoundedVec::try_from(vec![1]).unwrap())
         );
     });
 }
@@ -160,7 +159,7 @@ fn test_create_cdp_sunny_day() {
 #[test]
 fn test_close_cdp_only_signed_origin() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::close_cdp(RuntimeOrigin::none(), cdp_id),
@@ -196,7 +195,7 @@ fn test_close_cdp_only_owner() {
 #[test]
 fn test_close_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::close_cdp(alice(), cdp_id),
@@ -285,7 +284,7 @@ fn test_multiple_cdp_close() {
 #[test]
 fn test_deposit_only_signed_origin() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::deposit_collateral(RuntimeOrigin::none(), cdp_id, balance!(0)),
@@ -302,7 +301,7 @@ fn test_deposit_only_signed_origin() {
 #[test]
 fn test_deposit_collateral_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::deposit_collateral(alice(), cdp_id, balance!(0)),
@@ -414,7 +413,7 @@ fn test_deposit_collateral_sunny_day() {
 #[test]
 fn test_withdraw_collateral_only_signed_origin() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::withdraw_collateral(RuntimeOrigin::none(), cdp_id, balance!(0)),
@@ -450,7 +449,7 @@ fn test_withdraw_collateral_only_owner() {
 #[test]
 fn test_withdraw_collateral_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::withdraw_collateral(alice(), cdp_id, balance!(0)),
@@ -558,7 +557,7 @@ fn test_withdraw_collateral_sunny_day() {
 #[test]
 fn test_borrow_only_signed_origin() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::borrow(RuntimeOrigin::none(), cdp_id, balance!(0)),
@@ -594,7 +593,7 @@ fn test_borrow_only_owner() {
 #[test]
 fn test_borrow_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::borrow(alice(), cdp_id, balance!(0)),
@@ -787,7 +786,7 @@ fn test_borrow_cdp_accrue() {
 #[test]
 fn test_repay_debt_only_signed_origin() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::repay_debt(RuntimeOrigin::none(), cdp_id, balance!(0)),
@@ -804,7 +803,7 @@ fn test_repay_debt_only_signed_origin() {
 #[test]
 fn test_repay_debt_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::repay_debt(alice(), cdp_id, balance!(1)),
@@ -999,7 +998,7 @@ fn test_repay_debt_accrue() {
 #[test]
 fn test_liquidate_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::liquidate(RuntimeOrigin::none(), cdp_id),
@@ -1383,11 +1382,45 @@ fn test_liquidate_kusd_bad_debt() {
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
     });
 }
+
+/// Given: CDP is unsafe and risk parameters liquidation lot is 0
+/// @When: Liquidation triggered
+/// @Then: Error ZeroLiquidationLot returned
+#[test]
+fn test_liquidate_zero_lot() {
+    new_test_ext().execute_with(|| {
+        set_up_risk_manager();
+        KusdHardCap::<TestRuntime>::set(Balance::MAX);
+        let new_parameters = CollateralRiskParameters {
+            hard_cap: Balance::MAX,
+            liquidation_ratio: Perbill::from_percent(100),
+            max_liquidation_lot: balance!(0),
+            stability_fee_rate: FixedU128::from_float(0.1),
+        };
+        assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+            risk_manager(),
+            XOR,
+            new_parameters
+        ));
+
+        let collateral = balance!(100);
+        let debt = balance!(100);
+        let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
+        // Make CDP unsafe in the next call
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+
+        assert_noop!(
+            KensetsuPallet::liquidate(alice(), cdp_id),
+            KensetsuError::ZeroLiquidationLot
+        );
+    });
+}
+
 /// If cdp doesn't exist, return error
 #[test]
 fn test_accrue_cdp_does_not_exist() {
     new_test_ext().execute_with(|| {
-        let cdp_id = U256::from(1);
+        let cdp_id = 1;
 
         assert_noop!(
             KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
@@ -1986,6 +2019,25 @@ fn test_donate_donation_gt_bad_debt() {
     });
 }
 
+/// Donation of zero amount must succeed
+#[test]
+fn test_donate_zero_amount() {
+    new_test_ext().execute_with(|| {
+        let donation = balance!(0);
+        // Alice has 10 KUSD
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+        );
+        create_cdp_for_xor(alice(), balance!(100), donation);
+
+        assert_ok!(KensetsuPallet::donate(alice(), donation));
+
+        System::assert_has_event(Event::Donation { amount: donation }.into());
+    });
+}
+
 /// Only Signed Origin account can withdraw protocol profit
 #[test]
 fn test_withdraw_profit_only_signed_origin() {
@@ -2065,6 +2117,27 @@ fn test_withdraw_profit_sunny_day() {
             initial_protocol_profit - to_withdraw,
         );
         assert_balance(&protocol_owner_account_id(), &KUSD, to_withdraw);
+    });
+}
+
+/// Withdraw 0 amount profit must succeed
+#[test]
+fn test_withdraw_profit_zero_amount() {
+    new_test_ext().execute_with(|| {
+        set_up_risk_manager();
+        let to_withdraw = balance!(0);
+
+        assert_ok!(KensetsuPallet::withdraw_profit(
+            protocol_owner(),
+            to_withdraw
+        ));
+
+        System::assert_has_event(
+            Event::ProfitWithdrawn {
+                amount: to_withdraw,
+            }
+            .into(),
+        );
     });
 }
 
