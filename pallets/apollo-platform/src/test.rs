@@ -2,7 +2,10 @@ mod test {
     use crate::mock::*;
     use crate::{pallet, Error};
     use common::prelude::FixedWrapper;
-    use common::{balance, AssetInfoProvider, Balance, CERES_ASSET_ID, HERMES_ASSET_ID, XOR};
+    use common::{
+        balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, CERES_ASSET_ID,
+        DEFAULT_BALANCE_PRECISION, HERMES_ASSET_ID, XOR,
+    };
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
     use sp_runtime::traits::{AccountIdConversion, UniqueSaturatedInto};
@@ -59,7 +62,7 @@ mod test {
             assert_err!(
                 ApolloPlatform::add_pool(
                     user,
-                    CERES_ASSET_ID,
+                    HERMES_ASSET_ID,
                     loan_to_value,
                     liquidation_threshold,
                     optimal_utilization_rate,
@@ -89,7 +92,7 @@ mod test {
             assert_err!(
                 ApolloPlatform::add_pool(
                     user,
-                    CERES_ASSET_ID,
+                    HERMES_ASSET_ID,
                     loan_to_value,
                     liquidation_threshold,
                     optimal_utilization_rate,
@@ -118,7 +121,7 @@ mod test {
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
-                CERES_ASSET_ID,
+                HERMES_ASSET_ID,
                 loan_to_value,
                 liquidation_threshold,
                 optimal_utilization_rate,
@@ -131,7 +134,7 @@ mod test {
             assert_err!(
                 ApolloPlatform::add_pool(
                     user,
-                    CERES_ASSET_ID,
+                    HERMES_ASSET_ID,
                     loan_to_value,
                     liquidation_threshold,
                     optimal_utilization_rate,
@@ -221,7 +224,7 @@ mod test {
 
             assert_ok!(ApolloPlatform::add_pool(
                 user,
-                CERES_ASSET_ID,
+                HERMES_ASSET_ID,
                 loan_to_value,
                 liquidation_threshold,
                 optimal_utilization_rate,
@@ -241,7 +244,7 @@ mod test {
             let lending_amount = balance!(100);
 
             assert_err!(
-                ApolloPlatform::lend(user, CERES_ASSET_ID, lending_amount,),
+                ApolloPlatform::lend(user, HERMES_ASSET_ID, lending_amount,),
                 Error::<Runtime>::PoolDoesNotExist
             );
         });
@@ -251,6 +254,25 @@ mod test {
     fn lend_new_user_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"Sora".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &ALICE,
+                &ALICE,
+                balance!(300000)
+            ));
+
             let pool_creator = RuntimeOrigin::signed(ApolloPlatform::authority_account());
             let loan_to_value = balance!(1);
             let liquidation_threshold = balance!(1);
@@ -262,7 +284,7 @@ mod test {
 
             assert_ok!(ApolloPlatform::add_pool(
                 pool_creator,
-                CERES_ASSET_ID,
+                XOR,
                 loan_to_value,
                 liquidation_threshold,
                 optimal_utilization_rate,
@@ -273,29 +295,35 @@ mod test {
             ));
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&CERES_ASSET_ID.into(), &ALICE).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &ALICE).unwrap(),
                 balance!(300000)
             );
 
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(ALICE),
-                CERES_ASSET_ID,
+                XOR,
                 balance!(100000),
             ));
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&CERES_ASSET_ID.into(), &ALICE).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &ALICE).unwrap(),
                 balance!(200000)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(
-                    &CERES_ASSET_ID.into(),
-                    &get_pallet_account()
-                )
-                .unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
                 balance!(100000)
             );
+
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(ALICE, XOR).unwrap();
+            let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+
+            assert_eq!(lending_user_info.last_lending_block, 0);
+            assert_eq!(lending_user_info.lending_amount, balance!(100000));
+            assert_eq!(lending_user_info.lending_interest, balance!(0));
+
+            assert_eq!(pool_info.total_liquidity, balance!(100000));
         });
     }
 
@@ -303,6 +331,25 @@ mod test {
     fn lend_old_user_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"Sora".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &ALICE,
+                &ALICE,
+                balance!(300000)
+            ));
+
             let pool_creator = RuntimeOrigin::signed(ApolloPlatform::authority_account());
             let loan_to_value = balance!(1);
             let liquidation_threshold = balance!(1);
@@ -314,7 +361,7 @@ mod test {
 
             assert_ok!(ApolloPlatform::add_pool(
                 pool_creator,
-                CERES_ASSET_ID,
+                XOR,
                 loan_to_value,
                 liquidation_threshold,
                 optimal_utilization_rate,
@@ -326,14 +373,13 @@ mod test {
 
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(ALICE),
-                CERES_ASSET_ID,
+                XOR,
                 balance!(100000)
             ));
 
             run_to_block(100);
 
-            let lending_user_info =
-                pallet::UserLendingInfo::<Runtime>::get(ALICE, CERES_ASSET_ID).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(ALICE, XOR).unwrap();
 
             assert_eq!(lending_user_info.last_lending_block, 0);
             assert_eq!(lending_user_info.lending_amount, balance!(100000));
@@ -341,15 +387,14 @@ mod test {
 
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(ALICE),
-                CERES_ASSET_ID,
+                XOR,
                 balance!(100000)
             ));
 
-            let lending_user_info =
-                pallet::UserLendingInfo::<Runtime>::get(ALICE, CERES_ASSET_ID).unwrap();
-            let pool_info = pallet::PoolData::<Runtime>::get(CERES_ASSET_ID).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(ALICE, XOR).unwrap();
+            let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
-            let lending_interest_gains = calculate_lending_earnings(ALICE, CERES_ASSET_ID, 100);
+            let lending_interest_gains = calculate_lending_earnings(ALICE, XOR, 100);
             let lending_interest_gain = lending_interest_gains.0 + lending_interest_gains.1;
 
             assert_eq!(lending_user_info.last_lending_block, 100);
@@ -357,16 +402,13 @@ mod test {
             assert_eq!(lending_user_info.lending_interest, lending_interest_gain);
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&CERES_ASSET_ID.into(), &ALICE).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &ALICE).unwrap(),
                 balance!(100000)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(
-                    &CERES_ASSET_ID.into(),
-                    &get_pallet_account()
-                )
-                .unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
                 balance!(200000)
             );
         });

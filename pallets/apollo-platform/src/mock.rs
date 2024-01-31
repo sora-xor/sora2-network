@@ -1,11 +1,12 @@
 use {
     crate::{self as apollo_platform},
     common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
-    common::prelude::Balance,
     common::{
         balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        Description, Fixed, FromGenericPair, APOLLO_ASSET_ID, PSWAP, TBCD, VAL,
+        Description, Fixed, FromGenericPair, APOLLO_ASSET_ID, DEFAULT_BALANCE_PRECISION,
+        HERMES_ASSET_ID, PSWAP, TBCD, VAL, XOR,
     },
+    common::{prelude::Balance, CERES_ASSET_ID},
     currencies::BasicCurrencyAdapter,
     frame_support::pallet_prelude::Weight,
     frame_support::traits::{Everything, GenesisBuild, Hooks},
@@ -360,17 +361,30 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_assets: vec![(
-                APOLLO_ASSET_ID,
-                ALICE,
-                AssetSymbol(b"APOLLO".to_vec()),
-                AssetName(b"Apollo".to_vec()),
-                18,
-                Balance::zero(),
-                true,
-                None,
-                None,
-            )],
+            endowed_assets: vec![
+                (
+                    APOLLO_ASSET_ID,
+                    ALICE,
+                    AssetSymbol(b"APOLLO".to_vec()),
+                    AssetName(b"Apollo".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    XOR,
+                    ALICE,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"Sora".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+            ],
             endowed_accounts: vec![
                 (ALICE, APOLLO_ASSET_ID, balance!(300000)),
                 (BOB, APOLLO_ASSET_ID, balance!(500)),
