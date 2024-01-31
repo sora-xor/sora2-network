@@ -411,6 +411,8 @@ mod test {
                     .unwrap(),
                 balance!(200000)
             );
+
+            assert_eq!(pool_info.total_liquidity, balance!(200000));
         });
     }
 }
