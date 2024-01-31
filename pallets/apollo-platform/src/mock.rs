@@ -8,7 +8,7 @@ use {
     },
     currencies::BasicCurrencyAdapter,
     frame_support::pallet_prelude::Weight,
-    frame_support::traits::Everything,
+    frame_support::traits::{Everything, GenesisBuild, Hooks},
     frame_support::{construct_runtime, parameter_types},
     frame_system,
     frame_system::pallet_prelude::BlockNumberFor,
@@ -395,5 +395,13 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_initialize(System::block_number());
     }
 }

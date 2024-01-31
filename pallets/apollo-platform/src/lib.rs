@@ -841,7 +841,7 @@ pub mod pallet {
                 .unwrap_or(0)
         }
 
-        fn calculate_lending_earnings(
+        pub fn calculate_lending_earnings(
             user: &AccountIdOf<T>,
             asset_id: AssetIdOf<T>,
             block_number: BlockNumberFor<T>,
