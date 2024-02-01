@@ -48,8 +48,8 @@ use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use qa_tools::source_initialization::{
-    XSTBaseInput, XSTBaseSideInput, XSTSyntheticExistence, XSTSyntheticInput, XSTSyntheticQuote,
-    XSTSyntheticQuoteDirection, XYKPair,
+    XSTBaseInput, XSTBaseSideInput, XSTSyntheticExistence, XSTSyntheticInput, XSTSyntheticOutput,
+    XSTSyntheticQuote, XSTSyntheticQuoteDirection, XYKPair,
 };
 use qa_tools::{pallet_tools::order_book::settings, Error};
 use sp_runtime::traits::BadOrigin;
@@ -1231,11 +1231,12 @@ fn euro_init_input<T: qa_tools::Config>(
     }
 }
 
+/// Returns results of initialization
 fn test_synthetic_price_set<T: qa_tools::Config>(
     synthetic_input: XSTSyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol>,
     base_input: Option<XSTBaseInput>,
     relayer: T::AccountId,
-) {
+) -> Vec<XSTSyntheticOutput<T::AssetId>> {
     let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
     let init_result = qa_tools::source_initialization::xst::<T>(
         base_input,
@@ -1268,6 +1269,7 @@ fn test_synthetic_price_set<T: qa_tools::Config>(
     .unwrap();
     assert_eq!(quote_result.amount, init_result[0].quote_achieved.result);
     assert_eq!(quote_result.fee, 0);
+    init_result
 }
 
 #[test]
@@ -1295,7 +1297,7 @@ fn should_init_xst_synthetic_price_unit_prices() {
             },
             result: balance!(1),
         });
-        test_synthetic_price_set::<Runtime>(euro_init, Some(prices), alice());
+        test_synthetic_price_set::<Runtime>(euro_init.clone(), Some(prices), alice());
         // additionally check other directions/variants
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
@@ -1385,6 +1387,7 @@ fn should_update_xst_synthetic_price() {
             },
             result: balance!(123),
         });
+        let euro_asset_id = euro_init.asset_id;
         test_synthetic_price_set::<Runtime>(euro_init, Some(prices), alice());
         // correctly updates prices
         let prices = XSTBaseInput {
@@ -1398,7 +1401,7 @@ fn should_update_xst_synthetic_price() {
             },
         };
         let euro_init = XSTSyntheticInput {
-            asset_id: euro_init.asset_id,
+            asset_id: euro_asset_id,
             expected_quote: XSTSyntheticQuote {
                 direction: XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
                 amount: QuoteAmount::WithDesiredInput {
@@ -1441,7 +1444,7 @@ fn should_update_xst_synthetic_price() {
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
             &synthetic_base_asset_id,
-            &euro_init.asset_id,
+            &euro_asset_id,
             euro_init.expected_quote.amount,
             false,
         )
