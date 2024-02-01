@@ -48,6 +48,7 @@ pub mod source_initialization {
     use order_book::{MomentOf, OrderBookId};
     use sp_arithmetic::traits::CheckedMul;
     use sp_std::fmt::Debug;
+    use sp_std::vec;
     use sp_std::vec::Vec;
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
