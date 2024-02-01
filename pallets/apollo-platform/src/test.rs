@@ -251,6 +251,50 @@ mod test {
     }
 
     #[test]
+    fn lend_can_not_transfer_lending_amount() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"Sora".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            ));
+
+            let pool_creator = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let loan_to_value = balance!(1);
+            let liquidation_threshold = balance!(1);
+            let optimal_utilization_rate = balance!(1);
+            let base_rate = balance!(1);
+            let slope_rate_1 = balance!(1);
+            let slope_rate_2 = balance!(1);
+            let reserve_factor = balance!(1);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                pool_creator,
+                XOR,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_err!(
+                ApolloPlatform::lend(RuntimeOrigin::signed(ALICE), XOR, balance!(100000),),
+                Error::<Runtime>::CanNotTransferLendingAmount
+            );
+        });
+    }
+
+    #[test]
     fn lend_new_user_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
