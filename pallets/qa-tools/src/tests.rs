@@ -1295,30 +1295,14 @@ fn should_init_xst_synthetic_price_unit_prices() {
             },
             result: balance!(1),
         });
-        assert_ok!(QAToolsPallet::initialize_xst(
-            RuntimeOrigin::root(),
-            Some(prices),
-            vec![euro_init.clone()],
-            alice(),
-        ));
+        test_synthetic_price_set::<Runtime>(euro_init, Some(prices), alice());
+        // additionally check other directions/variants
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
             &synthetic_base_asset_id,
             &euro_init.asset_id,
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: balance!(1),
-            },
-            false,
-        )
-        .unwrap();
-        assert_eq!(quote_result.amount, balance!(1));
-        assert_eq!(quote_result.fee, 0);
-        let (quote_result, _) = xst::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
-            &synthetic_base_asset_id,
-            &euro_init.asset_id,
-            QuoteAmount::WithDesiredOutput {
-                desired_amount_out: balance!(1),
             },
             false,
         )
@@ -1349,24 +1333,6 @@ fn should_init_xst_synthetic_price_unit_prices() {
         .unwrap();
         assert_eq!(quote_result.amount, balance!(1));
         assert_eq!(quote_result.fee, 0);
-
-        // todo: remove???
-        let prices = XSTBaseInput {
-            buy: XSTBaseSideInput {
-                reference_per_synthetic_base: balance!(3),
-                reference_per_xor: Some(balance!(5)),
-            },
-            sell: XSTBaseSideInput {
-                reference_per_synthetic_base: balance!(1),
-                reference_per_xor: Some(balance!(2)),
-            },
-        };
-        assert_ok!(QAToolsPallet::initialize_xst(
-            RuntimeOrigin::root(),
-            Some(prices),
-            vec![],
-            alice(),
-        ));
     })
 }
 
@@ -1419,31 +1385,7 @@ fn should_update_xst_synthetic_price() {
             },
             result: balance!(123),
         });
-        let init_result = qa_tools::source_initialization::xst::<Runtime>(
-            Some(prices),
-            vec![euro_init.clone()],
-            alice(),
-        )
-        .unwrap();
-        assert_approx_eq!(
-            euro_init.expected_quote.result,
-            init_result[0].quote_achieved.result,
-            10,
-            0.001f64
-        );
-
-        // SyntheticBaseToSynthetic
-        let (quote_result, _) = xst::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
-            &synthetic_base_asset_id,
-            &euro_init.asset_id,
-            euro_init.expected_quote.amount,
-            false,
-        )
-        .unwrap();
-        assert_eq!(quote_result.amount, init_result[0].quote_achieved.result);
-        assert_eq!(quote_result.fee, 0);
-
+        test_synthetic_price_set::<Runtime>(euro_init, Some(prices), alice());
         // correctly updates prices
         let prices = XSTBaseInput {
             buy: XSTBaseSideInput {
@@ -1455,7 +1397,6 @@ fn should_update_xst_synthetic_price() {
                 reference_per_xor: Some(balance!(1)),
             },
         };
-
         let euro_init = XSTSyntheticInput {
             asset_id: euro_init.asset_id,
             expected_quote: XSTSyntheticQuote {
@@ -1467,18 +1408,7 @@ fn should_update_xst_synthetic_price() {
             },
             existence: XSTSyntheticExistence::AlreadyExists,
         };
-        let init_result = qa_tools::source_initialization::xst::<Runtime>(
-            Some(prices),
-            vec![euro_init.clone()],
-            alice(),
-        )
-        .unwrap();
-        assert_approx_eq!(
-            euro_init.expected_quote.result,
-            init_result[0].quote_achieved.result,
-            10,
-            0.001f64
-        );
+        test_synthetic_price_set::<Runtime>(euro_init, Some(prices), alice());
 
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
@@ -1491,6 +1421,7 @@ fn should_update_xst_synthetic_price() {
         assert_eq!(quote_result.amount, init_result[0].quote_achieved.result);
         assert_eq!(quote_result.fee, 0);
 
+        // prices actually change
         let prices = XSTBaseInput {
             buy: XSTBaseSideInput {
                 reference_per_synthetic_base: balance!(321),
@@ -1507,7 +1438,6 @@ fn should_update_xst_synthetic_price() {
             vec![],
             alice(),
         ));
-        // prices actually changed
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
             &synthetic_base_asset_id,
@@ -1518,5 +1448,8 @@ fn should_update_xst_synthetic_price() {
         .unwrap();
         assert_ne!(quote_result.amount, init_result[0].quote_achieved.result);
         assert_eq!(quote_result.fee, 0);
+
+        // Synthetic prices are updated correctly after changes in base assets prices.
+        test_synthetic_price_set::<Runtime>(euro_init, None, alice());
     })
 }
