@@ -1413,16 +1413,43 @@ fn should_update_xst_synthetic_price() {
         };
         test_synthetic_price_set::<Runtime>(euro_init, Some(prices), alice());
 
-        let (quote_result, _) = xst::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
-            &synthetic_base_asset_id,
-            &euro_init.asset_id,
-            euro_init.expected_quote.amount,
-            false,
-        )
-        .unwrap();
-        assert_eq!(quote_result.amount, init_result[0].quote_achieved.result);
-        assert_eq!(quote_result.fee, 0);
+        // other variants
+        let euro_init = XSTSyntheticInput {
+            asset_id: euro_asset_id,
+            expected_quote: XSTSyntheticQuote {
+                direction: XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+                amount: QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(1),
+                },
+                result: balance!(33),
+            },
+            existence: XSTSyntheticExistence::AlreadyExists,
+        };
+        test_synthetic_price_set::<Runtime>(euro_init, None, alice());
+        let euro_init = XSTSyntheticInput {
+            asset_id: euro_asset_id,
+            expected_quote: XSTSyntheticQuote {
+                direction: XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
+                amount: QuoteAmount::WithDesiredInput {
+                    desired_amount_in: balance!(1),
+                },
+                result: balance!(33),
+            },
+            existence: XSTSyntheticExistence::AlreadyExists,
+        };
+        test_synthetic_price_set::<Runtime>(euro_init, None, alice());
+        let euro_init = XSTSyntheticInput {
+            asset_id: euro_asset_id,
+            expected_quote: XSTSyntheticQuote {
+                direction: XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
+                amount: QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(1),
+                },
+                result: balance!(33),
+            },
+            existence: XSTSyntheticExistence::AlreadyExists,
+        };
+        let init_result = test_synthetic_price_set::<Runtime>(euro_init.clone(), None, alice());
 
         // prices actually change
         let prices = XSTBaseInput {
