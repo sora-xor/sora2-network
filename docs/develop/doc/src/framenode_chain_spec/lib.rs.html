@@ -2471,6 +2471,68 @@
 <a href="#2456" id="2456">2456</a>
 <a href="#2457" id="2457">2457</a>
 <a href="#2458" id="2458">2458</a>
+<a href="#2459" id="2459">2459</a>
+<a href="#2460" id="2460">2460</a>
+<a href="#2461" id="2461">2461</a>
+<a href="#2462" id="2462">2462</a>
+<a href="#2463" id="2463">2463</a>
+<a href="#2464" id="2464">2464</a>
+<a href="#2465" id="2465">2465</a>
+<a href="#2466" id="2466">2466</a>
+<a href="#2467" id="2467">2467</a>
+<a href="#2468" id="2468">2468</a>
+<a href="#2469" id="2469">2469</a>
+<a href="#2470" id="2470">2470</a>
+<a href="#2471" id="2471">2471</a>
+<a href="#2472" id="2472">2472</a>
+<a href="#2473" id="2473">2473</a>
+<a href="#2474" id="2474">2474</a>
+<a href="#2475" id="2475">2475</a>
+<a href="#2476" id="2476">2476</a>
+<a href="#2477" id="2477">2477</a>
+<a href="#2478" id="2478">2478</a>
+<a href="#2479" id="2479">2479</a>
+<a href="#2480" id="2480">2480</a>
+<a href="#2481" id="2481">2481</a>
+<a href="#2482" id="2482">2482</a>
+<a href="#2483" id="2483">2483</a>
+<a href="#2484" id="2484">2484</a>
+<a href="#2485" id="2485">2485</a>
+<a href="#2486" id="2486">2486</a>
+<a href="#2487" id="2487">2487</a>
+<a href="#2488" id="2488">2488</a>
+<a href="#2489" id="2489">2489</a>
+<a href="#2490" id="2490">2490</a>
+<a href="#2491" id="2491">2491</a>
+<a href="#2492" id="2492">2492</a>
+<a href="#2493" id="2493">2493</a>
+<a href="#2494" id="2494">2494</a>
+<a href="#2495" id="2495">2495</a>
+<a href="#2496" id="2496">2496</a>
+<a href="#2497" id="2497">2497</a>
+<a href="#2498" id="2498">2498</a>
+<a href="#2499" id="2499">2499</a>
+<a href="#2500" id="2500">2500</a>
+<a href="#2501" id="2501">2501</a>
+<a href="#2502" id="2502">2502</a>
+<a href="#2503" id="2503">2503</a>
+<a href="#2504" id="2504">2504</a>
+<a href="#2505" id="2505">2505</a>
+<a href="#2506" id="2506">2506</a>
+<a href="#2507" id="2507">2507</a>
+<a href="#2508" id="2508">2508</a>
+<a href="#2509" id="2509">2509</a>
+<a href="#2510" id="2510">2510</a>
+<a href="#2511" id="2511">2511</a>
+<a href="#2512" id="2512">2512</a>
+<a href="#2513" id="2513">2513</a>
+<a href="#2514" id="2514">2514</a>
+<a href="#2515" id="2515">2515</a>
+<a href="#2516" id="2516">2516</a>
+<a href="#2517" id="2517">2517</a>
+<a href="#2518" id="2518">2518</a>
+<a href="#2519" id="2519">2519</a>
+<a href="#2520" id="2520">2520</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2513,8 +2575,8 @@
 </span><span class="kw">use </span>common::prelude::{Balance, DEXInfo, FixedWrapper};
 <span class="kw">use </span>common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, PSWAP, TBCD, USDT, VAL, XOR,
-    XST, XSTUSD,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KUSD, PSWAP, TBCD, USDT,
+    VAL, XOR, XST, XSTUSD,
 };
 <span class="kw">use </span>frame_support::sp_runtime::Percent;
 <span class="kw">use </span>framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -3487,6 +3549,11 @@
         technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>dex_root_tech_account_id)
             .unwrap();
 
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+    </span><span class="kw">let </span>kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+    </span><span class="kw">let </span>kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
+
     <span class="kw">let </span><span class="kw-2">mut </span>tech_accounts = <span class="macro">vec!</span>[
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -3542,6 +3609,11 @@
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
         ),
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+        </span>(
+            kensetsu_treasury_account_id.clone(),
+            kensetsu_treasury_tech_account_id.clone(),
+        ),
     ];
     <span class="kw">let </span>accounts = bonding_curve_distribution_accounts();
     <span class="kw">for </span>account <span class="kw">in </span><span class="kw-2">&amp;</span>accounts.accounts() {
@@ -3566,6 +3638,8 @@
         (mbc_pool_rewards_account_id.clone(), <span class="number">0</span>),
         (mbc_pool_free_reserves_account_id.clone(), <span class="number">0</span>),
         (xst_pool_permissioned_account_id.clone(), <span class="number">0</span>),
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+        </span>(kensetsu_treasury_account_id.clone(), <span class="number">0</span>),
     ]
     .into_iter()
     .chain(
@@ -3870,6 +3944,18 @@
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">None</span>,
                 ),
+                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+                </span>(
+                    KUSD.into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(<span class="string">b&quot;KUSD&quot;</span>.to_vec()),
+                    AssetName(<span class="string">b&quot;Kensetsu Stable Dollar&quot;</span>.to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    <span class="bool-val">true</span>,
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                ),
                 (
                     common::AssetId32::from_bytes(<span class="macro">hex!</span>(
                         <span class="string">&quot;008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440&quot;
@@ -3975,6 +4061,12 @@
                 ),
                 (
                     xst_pool_permissioned_account_id.clone(),
+                    Scope::Unlimited,
+                    <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
+                ),
+                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+                </span>(
+                    kensetsu_treasury_account_id.clone(),
                     Scope::Unlimited,
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
@@ -4341,6 +4433,11 @@
         technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>dex_root_tech_account_id)
             .unwrap();
 
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+    </span><span class="kw">let </span>kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+    </span><span class="kw">let </span>kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
+
     <span class="kw">let </span><span class="kw-2">mut </span>tech_accounts = <span class="macro">vec!</span>[
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -4395,6 +4492,11 @@
         (
             market_maker_rewards_account_id.clone(),
             market_maker_rewards_tech_account_id.clone(),
+        ),
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+        </span>(
+            kensetsu_treasury_account_id.clone(),
+            kensetsu_treasury_tech_account_id.clone(),
         ),
     ];
     <span class="kw">let </span>accounts = bonding_curve_distribution_accounts();
@@ -4498,6 +4600,18 @@
             assets_and_permissions_account_id.clone(),
             AssetSymbol(<span class="string">b&quot;TBCD&quot;</span>.to_vec()),
             AssetName(<span class="string">b&quot;SORA TBC Dollar&quot;</span>.to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            <span class="bool-val">true</span>,
+            <span class="prelude-val">None</span>,
+            <span class="prelude-val">None</span>,
+        ),
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+        </span>(
+            KUSD.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(<span class="string">b&quot;KUSD&quot;</span>.to_vec()),
+            AssetName(<span class="string">b&quot;Kensetsu Stable Dollar&quot;</span>.to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             <span class="bool-val">true</span>,
@@ -4704,6 +4818,12 @@
                     Scope::Unlimited,
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
+                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+                </span>(
+                    kensetsu_treasury_account_id.clone(),
+                    Scope::Unlimited,
+                    <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
+                ),
             ],
         },
         balances: BalancesConfig {
@@ -4721,6 +4841,8 @@
                 (mbc_pool_free_reserves_account_id.clone(), <span class="number">0</span>),
                 (market_maker_rewards_account_id.clone(), <span class="number">0</span>),
                 (xst_pool_permissioned_account_id.clone(), <span class="number">0</span>),
+                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+                </span>(kensetsu_treasury_account_id.clone(), <span class="number">0</span>),
             ]
             .into_iter()
             .chain(
@@ -4888,13 +5010,15 @@
     )
 }
 
-<span class="attr">#[cfg(all(feature = <span class="string">&quot;test&quot;</span>, not(feature = <span class="string">&quot;private-net&quot;</span>)))]
+<span class="doccomment">/// Creates TestExternalities
+</span><span class="attr">#[cfg(all(feature = <span class="string">&quot;test&quot;</span>, not(feature = <span class="string">&quot;private-net&quot;</span>)))]
 </span><span class="kw">pub fn </span>ext() -&gt; sp_io::TestExternalities {
     <span class="kw">let </span>storage = main_net_coded().build_storage().unwrap();
     sp_io::TestExternalities::new(storage)
 }
 
-<span class="attr">#[cfg(all(feature = <span class="string">&quot;test&quot;</span>, feature = <span class="string">&quot;private-net&quot;</span>))]
+<span class="doccomment">/// Creates TestExternalities for `private-net`
+</span><span class="attr">#[cfg(all(feature = <span class="string">&quot;test&quot;</span>, feature = <span class="string">&quot;private-net&quot;</span>))]
 </span><span class="kw">pub fn </span>ext() -&gt; sp_io::TestExternalities {
     <span class="kw">let </span>storage = dev_net_coded().build_storage().unwrap();
     sp_io::TestExternalities::new(storage)

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["Pallet"],"trait":["Config"],"type":["BadDebt","CDPDepository","CdpId","CdpOwnerIndex","CollateralInfos","KusdHardCap","LiquidationPenalty","Module","NextCDPId","RiskManagers","Timestamp"]};

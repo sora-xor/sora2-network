@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Accrue","AddRiskManager","Borrow","CloseCdp","CreateCdp","DepositCollateral","Donate","Liquidate","RemoveRiskManager","RepayDebt","TransactionApi","UpdateCollateralRiskParameters","UpdateHardCapTotalSupply","UpdateLiquidationPenalty","WithdrawCollateral","WithdrawProfit"]};

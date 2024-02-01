@@ -20,6 +20,7 @@
 "faucet":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"faucet/pallet/enum.Error.html\" title=\"enum faucet::pallet::Error\">Error</a>&lt;T&gt;"]],
 "hermes_governance_platform":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"hermes_governance_platform/pallet/enum.Error.html\" title=\"enum hermes_governance_platform::pallet::Error\">Error</a>&lt;T&gt;"]],
 "iroha_migration":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"iroha_migration/pallet/enum.Error.html\" title=\"enum iroha_migration::pallet::Error\">Error</a>&lt;T&gt;"]],
+"kensetsu":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"kensetsu/pallet/enum.Error.html\" title=\"enum kensetsu::pallet::Error\">Error</a>&lt;T&gt;"]],
 "liquidity_proxy":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"liquidity_proxy/pallet/enum.Error.html\" title=\"enum liquidity_proxy::pallet::Error\">Error</a>&lt;T&gt;"]],
 "migration_app":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"migration_app/pallet/enum.Error.html\" title=\"enum migration_app::pallet::Error\">Error</a>&lt;T&gt;"]],
 "mock_liquidity_source":[["impl&lt;T, I&gt; PalletError for <a class=\"enum\" href=\"mock_liquidity_source/pallet/enum.Error.html\" title=\"enum mock_liquidity_source::pallet::Error\">Error</a>&lt;T, I&gt;"]],
