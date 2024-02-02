@@ -2,7 +2,9 @@ mod test {
     use crate::mock::*;
     use crate::{pallet, Error};
     use common::prelude::FixedWrapper;
-    use common::{balance, AssetInfoProvider, Balance, DEXId::Polkaswap, DAI, DOT, KSM, XOR};
+    use common::{
+        balance, AssetInfoProvider, Balance, DEXId, DEXId::Polkaswap, DAI, DOT, KSM, XOR,
+    };
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
     use sp_runtime::traits::AccountIdConversion;
@@ -44,57 +46,76 @@ mod test {
     }
 
     fn static_set_dex() {
-        assert_ok!(trading_pair::Pallet::<Runtime>::register(
-            RuntimeOrigin::signed(CHARLES),
-            Polkaswap,
-            XOR,
-            DAI
-        ));
+        init_pool(Polkaswap, XOR, DAI);
+        init_pool(Polkaswap, XOR, DOT);
+        init_pool(Polkaswap, XOR, KSM);
+        // assert_ok!(trading_pair::Pallet::<Runtime>::register(
+        //     RuntimeOrigin::signed(CHARLES),
+        //     Polkaswap,
+        //     XOR,
+        //     DAI
+        // ));
 
-        assert_ok!(trading_pair::Pallet::<Runtime>::register(
-            RuntimeOrigin::signed(CHARLES),
-            Polkaswap,
-            XOR,
-            DOT
-        ));
+        // assert_ok!(trading_pair::Pallet::<Runtime>::register(
+        //     RuntimeOrigin::signed(CHARLES),
+        //     Polkaswap,
+        //     XOR,
+        //     DOT
+        // ));
 
+        // assert_ok!(trading_pair::Pallet::<Runtime>::register(
+        //     RuntimeOrigin::signed(CHARLES),
+        //     Polkaswap,
+        //     XOR,
+        //     KSM
+        // ));
+
+        // assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
+        //     RuntimeOrigin::signed(CHARLES),
+        //     Polkaswap,
+        //     XOR,
+        //     DAI,
+        // ));
+
+        // assert_ok!(assets::Pallet::<Runtime>::mint_to(
+        //     &DAI,
+        //     &ALICE,
+        //     &CHARLES,
+        //     balance!(360000)
+        // ));
+
+        // assert_ok!(assets::Pallet::<Runtime>::mint_to(
+        //     &XOR,
+        //     &ALICE,
+        //     &CHARLES,
+        //     balance!(144000)
+        // ));
+
+        // assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+        //     RuntimeOrigin::signed(CHARLES),
+        //     Polkaswap,
+        //     DAI,
+        //     XOR,
+        //     balance!(360000),
+        //     balance!(144000),
+        //     balance!(360000),
+        //     balance!(144000),
+        // ));
+    }
+
+    fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
-            RuntimeOrigin::signed(CHARLES),
-            Polkaswap,
-            XOR,
-            KSM
+            RuntimeOrigin::signed(ALICE),
+            dex_id,
+            base_asset,
+            other_asset
         ));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
-            RuntimeOrigin::signed(CHARLES),
-            Polkaswap,
-            XOR,
-            DAI,
-        ));
-
-        assert_ok!(assets::Pallet::<Runtime>::mint_to(
-            &DAI,
-            &ALICE,
-            &CHARLES,
-            balance!(360000)
-        ));
-
-        assert_ok!(assets::Pallet::<Runtime>::mint_to(
-            &XOR,
-            &ALICE,
-            &CHARLES,
-            balance!(144000)
-        ));
-
-        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            RuntimeOrigin::signed(CHARLES),
-            Polkaswap,
-            DAI,
-            XOR,
-            balance!(360000),
-            balance!(144000),
-            balance!(360000),
-            balance!(144000),
+            RuntimeOrigin::signed(ALICE),
+            dex_id,
+            base_asset,
+            other_asset,
         ));
     }
 

@@ -368,8 +368,8 @@ impl Default for ExtBuilder {
             initial_dex_list: vec![(
                 Polkaswap,
                 DEXInfo {
-                    base_asset_id: XOR.into(),
-                    synthetic_base_asset_id: XST.into(),
+                    base_asset_id: XOR,
+                    synthetic_base_asset_id: XST,
                     is_public: true,
                 },
             )],
