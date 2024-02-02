@@ -545,16 +545,16 @@ pub mod source_initialization {
             ) => {
                 // equivalent formulae for desired input/output:
                 //
-                // amount_out = amount_in * ref_per_synthetic_base (buy) / ref_per_synthetic
-                // amount_in = amount_out * ref_per_synthetic / ref_per_synthetic_base (buy)
+                // amount_out = amount_in * ref_per_synthetic / ref_per_synthetic_base (buy)
+                // amount_in = amount_out * ref_per_synthetic_base (buy) / ref_per_synthetic
 
                 // from this,
-                // ref_per_synthetic = ref_per_synthetic_base (buy) * amount_in / amount_out
+                // ref_per_synthetic = ref_per_synthetic_base (buy) * amount_out / amount_in
                 let ref_per_synthetic_base_buy = BalanceUnit::divisible(
                     xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Buy)?,
                 );
-                ref_per_synthetic_base_buy * BalanceUnit::divisible(amount_in)
-                    / BalanceUnit::divisible(amount_out)
+                ref_per_synthetic_base_buy * BalanceUnit::divisible(amount_out)
+                    / BalanceUnit::divisible(amount_in)
             }
         };
         // band price
@@ -612,10 +612,9 @@ pub mod source_initialization {
                     desired_amount_in: amount_in,
                 },
             ) => {
-                // amount_out = amount_in * ref_per_synthetic_base (buy) / ref_per_synthetic
-                BalanceUnit::divisible(*amount_in)
-                    * BalanceUnit::divisible(ref_per_synthetic_base_buy)
-                    / BalanceUnit::divisible(ref_per_synthetic)
+                // amount_out = amount_in * ref_per_synthetic / ref_per_synthetic_base (buy)
+                BalanceUnit::divisible(*amount_in) * BalanceUnit::divisible(ref_per_synthetic)
+                    / BalanceUnit::divisible(ref_per_synthetic_base_buy)
             }
             (
                 XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
@@ -623,9 +622,10 @@ pub mod source_initialization {
                     desired_amount_out: amount_out,
                 },
             ) => {
-                // amount_in = amount_out * ref_per_synthetic / ref_per_synthetic_base (buy)
-                BalanceUnit::divisible(*amount_out) * BalanceUnit::divisible(ref_per_synthetic)
-                    / BalanceUnit::divisible(ref_per_synthetic_base_buy)
+                // amount_in = amount_out * ref_per_synthetic_base (buy) / ref_per_synthetic
+                BalanceUnit::divisible(*amount_out)
+                    * BalanceUnit::divisible(ref_per_synthetic_base_buy)
+                    / BalanceUnit::divisible(ref_per_synthetic)
             }
         };
         let actual_quote = XSTSyntheticQuote {
