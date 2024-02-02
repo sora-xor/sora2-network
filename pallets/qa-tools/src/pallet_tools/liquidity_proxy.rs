@@ -274,7 +274,9 @@ pub mod source_initialization {
     /// Input for setting prices for xst base assets
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     pub struct XSTBaseSideInput {
+        /// Dictates price of synthetic base asset.
         pub reference_per_synthetic_base: Balance,
+        /// Dictates price of reference asset.
         /// `None` - get existing price
         pub reference_per_xor: Option<Balance>,
     }
