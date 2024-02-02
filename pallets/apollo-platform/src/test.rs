@@ -2,10 +2,7 @@ mod test {
     use crate::mock::*;
     use crate::{pallet, Error};
     use common::prelude::FixedWrapper;
-    use common::{
-        balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId::Polkaswap, DAI,
-        DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR,
-    };
+    use common::{balance, AssetInfoProvider, Balance, DEXId::Polkaswap, DAI, DOT, KSM, XOR};
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
     use sp_runtime::traits::AccountIdConversion;
@@ -47,54 +44,6 @@ mod test {
     }
 
     fn static_set_dex() {
-        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
-            CHARLES,
-            XOR,
-            AssetSymbol(b"XOR".to_vec()),
-            AssetName(b"Sora".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::from(0u32),
-            true,
-            None,
-            None,
-        ));
-
-        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
-            CHARLES,
-            DAI,
-            AssetSymbol(b"DAI".to_vec()),
-            AssetName(b"Dai".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::from(0u32),
-            true,
-            None,
-            None,
-        ));
-
-        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
-            CHARLES,
-            DOT,
-            AssetSymbol(b"DOT".to_vec()),
-            AssetName(b"Polkadot".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::from(0u32),
-            true,
-            None,
-            None,
-        ));
-
-        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
-            CHARLES,
-            KSM,
-            AssetSymbol(b"KSM".to_vec()),
-            AssetName(b"Kusama".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::from(0u32),
-            true,
-            None,
-            None,
-        ));
-
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
             RuntimeOrigin::signed(CHARLES),
             Polkaswap,
@@ -123,11 +72,18 @@ mod test {
             DAI,
         ));
 
-        assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
-            RuntimeOrigin::signed(CHARLES),
-            Polkaswap,
-            XOR,
-            KSM,
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &DAI,
+            &ALICE,
+            &CHARLES,
+            balance!(360000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &XOR,
+            &ALICE,
+            &CHARLES,
+            balance!(144000)
         ));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
@@ -350,18 +306,6 @@ mod test {
     fn lend_can_not_transfer_lending_amount() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
-                ALICE,
-                XOR,
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"Sora".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
-                Balance::from(0u32),
-                true,
-                None,
-                None,
-            ));
-
             let pool_creator = RuntimeOrigin::signed(ApolloPlatform::authority_account());
             let loan_to_value = balance!(1);
             let liquidation_threshold = balance!(1);
@@ -394,18 +338,6 @@ mod test {
     fn lend_new_user_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
-                ALICE,
-                XOR,
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"Sora".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
-                Balance::from(0u32),
-                true,
-                None,
-                None,
-            ));
-
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
                 &ALICE,
@@ -471,18 +403,6 @@ mod test {
     fn lend_old_user_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
-                ALICE,
-                XOR,
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"Sora".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
-                Balance::from(0u32),
-                true,
-                None,
-                None,
-            ));
-
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
                 &ALICE,
@@ -621,21 +541,9 @@ mod test {
     fn borrow_collateral_pool_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
-                BOB,
-                XOR,
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"Sora".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
-                Balance::from(0u32),
-                true,
-                None,
-                None,
-            ));
-
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
-                &BOB,
+                &ALICE,
                 &BOB,
                 balance!(300000)
             ));
@@ -687,21 +595,9 @@ mod test {
     fn borrow_nothing_lended() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
-                BOB,
-                XOR,
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"Sora".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
-                Balance::from(0u32),
-                true,
-                None,
-                None,
-            ));
-
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
-                &BOB,
+                &ALICE,
                 &BOB,
                 balance!(300000)
             ));
@@ -766,6 +662,20 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &ALICE,
+                &ALICE,
+                balance!(200)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &ALICE,
+                &BOB,
+                balance!(300000)
+            ));
 
             let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
             let loan_to_value = balance!(1);

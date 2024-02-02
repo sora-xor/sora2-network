@@ -3,13 +3,13 @@ use {
     common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
     common::{
         balance, fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXId::Polkaswap, DEXInfo, Description, Fixed, FromGenericPair, APOLLO_ASSET_ID, PSWAP,
-        TBCD, VAL, XOR,
+        DEXId::Polkaswap, DEXInfo, Description, Fixed, FromGenericPair, APOLLO_ASSET_ID, DAI, DOT,
+        KSM, PSWAP, TBCD, VAL, XOR,
     },
     common::{prelude::Balance, XST},
     currencies::BasicCurrencyAdapter,
     frame_support::pallet_prelude::Weight,
-    frame_support::traits::{Everything, Hooks},
+    frame_support::traits::{Everything, GenesisBuild, Hooks},
     frame_support::{construct_runtime, parameter_types},
     frame_system,
     frame_system::pallet_prelude::BlockNumberFor,
@@ -406,6 +406,39 @@ impl Default for ExtBuilder {
                     None,
                     None,
                 ),
+                (
+                    DAI,
+                    ALICE,
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"Dai".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    DOT,
+                    ALICE,
+                    AssetSymbol(b"DOT".to_vec()),
+                    AssetName(b"Polkadot".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    KSM,
+                    ALICE,
+                    AssetSymbol(b"KSM".to_vec()),
+                    AssetName(b"Kusama".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                    None,
+                    None,
+                ),
             ],
             endowed_accounts: vec![
                 (ALICE, APOLLO_ASSET_ID, balance!(300000)),
@@ -426,6 +459,31 @@ impl ExtBuilder {
                 .iter()
                 .map(|(acc, _, balance)| (*acc, *balance))
                 .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.initial_dex_list,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        TokensConfig {
+            balances: self.endowed_accounts,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        permissions::GenesisConfig::<Runtime> {
+            initial_permission_owners: self.initial_permission_owners,
+            initial_permissions: self.initial_permissions,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self.endowed_assets,
         }
         .assimilate_storage(&mut t)
         .unwrap();
