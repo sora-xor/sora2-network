@@ -2,18 +2,19 @@ use {
     crate::{self as apollo_platform},
     common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
     common::{
-        balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        Description, Fixed, FromGenericPair, APOLLO_ASSET_ID, DEFAULT_BALANCE_PRECISION,
-        HERMES_ASSET_ID, PSWAP, TBCD, VAL, XOR,
+        balance, fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+        DEXId::Polkaswap, DEXInfo, Description, Fixed, FromGenericPair, APOLLO_ASSET_ID, PSWAP,
+        TBCD, VAL, XOR,
     },
-    common::{prelude::Balance, CERES_ASSET_ID},
+    common::{prelude::Balance, XST},
     currencies::BasicCurrencyAdapter,
     frame_support::pallet_prelude::Weight,
-    frame_support::traits::{Everything, GenesisBuild, Hooks},
+    frame_support::traits::{Everything, Hooks},
     frame_support::{construct_runtime, parameter_types},
     frame_system,
     frame_system::pallet_prelude::BlockNumberFor,
     frame_system::EnsureRoot,
+    permissions::{Scope, MANAGE_DEX},
     sp_core::{ConstU32, H256},
     sp_runtime::testing::Header,
     sp_runtime::traits::IdentityLookup,
@@ -356,11 +357,32 @@ pub struct ExtBuilder {
         Option<Description>,
     )>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
+    initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
+            initial_dex_list: vec![(
+                Polkaswap,
+                DEXInfo {
+                    base_asset_id: XOR.into(),
+                    synthetic_base_asset_id: XST.into(),
+                    is_public: true,
+                },
+            )],
+            initial_permissions: vec![(
+                CHARLES,
+                Scope::Limited(hash(&Polkaswap)),
+                vec![MANAGE_DEX],
+            )],
+            initial_permission_owners: vec![(
+                MANAGE_DEX,
+                Scope::Limited(hash(&Polkaswap)),
+                vec![CHARLES],
+            )],
             endowed_assets: vec![
                 (
                     APOLLO_ASSET_ID,
