@@ -33,10 +33,11 @@ pub mod source_initialization {
     use crate::{Config, Error};
     use assets::AssetIdOf;
     use codec::{Decode, Encode};
+    use common::fixnum::ops::CheckedSub;
     use common::prelude::{BalanceUnit, QuoteAmount};
     use common::{
-        balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXInfo, DexIdOf,
-        DexInfoProvider, Oracle, PriceToolsPallet, PriceVariant, TradingPair,
+        balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXInfo, DexIdOf,
+        DexInfoProvider, Fixed, Oracle, PriceToolsPallet, PriceVariant, TradingPair,
         TradingPairSourceManager, XOR,
     };
     use frame_support::dispatch::{
@@ -44,6 +45,7 @@ pub mod source_initialization {
     };
     use frame_support::ensure;
     use frame_support::traits::Get;
+    use frame_support::weights::Weight;
     use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};
     use sp_arithmetic::traits::CheckedMul;
@@ -430,16 +432,49 @@ pub mod source_initialization {
         relayer: T::AccountId,
         price_band: u64,
     ) -> DispatchResultWithPostInfo {
-        let symbol = symbol.into();
+        let symbol: <T as band::Config>::Symbol = symbol.into();
         let latest_rate = band::Pallet::<T>::rates(&symbol);
-        let resolve_time = latest_rate.map_or(0, |rate| rate.last_updated + 1);
-        let request_id = latest_rate.map_or(0, |rate| rate.request_id + 1);
-        band::Pallet::<T>::relay(
-            RawOrigin::Signed(relayer).into(),
-            vec![(symbol, price_band)].try_into().unwrap(),
+        let mut resolve_time = latest_rate.map_or(0, |rate| rate.last_updated + 1);
+        let mut request_id = latest_rate.map_or(0, |rate| rate.request_id + 1);
+        let mut post_info = band::Pallet::<T>::relay(
+            RawOrigin::Signed(relayer.clone()).into(),
+            vec![(symbol.clone(), price_band)].try_into().unwrap(),
             resolve_time,
             request_id,
-        )
+        )?;
+        resolve_time += 1;
+        request_id += 1;
+        let mut previous_fee: Fixed = fixed!(2);
+        for _ in 0..30 {
+            if let Some(new_rate) = band::Pallet::<T>::rates(&symbol) {
+                if previous_fee.saturating_sub(new_rate.dynamic_fee) == fixed!(0) {
+                    break;
+                }
+                previous_fee = new_rate.dynamic_fee;
+                if new_rate.dynamic_fee > fixed!(0) {
+                    dbg!("relaying again to lessen the fee");
+                    let next_post_info = band::Pallet::<T>::relay(
+                        RawOrigin::Signed(relayer.clone()).into(),
+                        vec![(symbol.clone(), price_band)].try_into().unwrap(),
+                        resolve_time,
+                        request_id,
+                    )?;
+                    resolve_time += 1;
+                    request_id += 1;
+                    post_info.actual_weight = post_info
+                        .actual_weight
+                        .and_then(|w| {
+                            Some(w.saturating_add(
+                                next_post_info.actual_weight.unwrap_or(Weight::zero()),
+                            ))
+                        })
+                        .or(next_post_info.actual_weight);
+                } else {
+                    break;
+                }
+            }
+        }
+        Ok(post_info)
     }
 
     /// Calculate the band price needed to achieve the expected quote values (closely enough).

@@ -1350,29 +1350,29 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
 
 #[test]
 fn should_init_xst_synthetic_unit_prices_forward_out() {
-    test_init_xst_synthetic_price_unit_prices(false, SwapVariant::WithDesiredOutput);
-}
-
-#[test]
-fn should_init_xst_synthetic_unit_prices_forward_in() {
-    test_init_xst_synthetic_price_unit_prices(false, SwapVariant::WithDesiredInput);
-}
-
-#[test]
-fn should_init_xst_synthetic_unit_prices_reverse_out() {
     test_init_xst_synthetic_price_unit_prices(true, SwapVariant::WithDesiredOutput);
 }
 
 #[test]
-fn should_init_xst_synthetic_unit_prices_reverse_in() {
+fn should_init_xst_synthetic_unit_prices_forward_in() {
     test_init_xst_synthetic_price_unit_prices(true, SwapVariant::WithDesiredInput);
+}
+
+#[test]
+fn should_init_xst_synthetic_unit_prices_reverse_out() {
+    test_init_xst_synthetic_price_unit_prices(false, SwapVariant::WithDesiredOutput);
+}
+
+#[test]
+fn should_init_xst_synthetic_unit_prices_reverse_in() {
+    test_init_xst_synthetic_price_unit_prices(false, SwapVariant::WithDesiredInput);
 }
 
 fn test_init_xst_synthetic_price_various_prices(forward: bool, variant: SwapVariant) {
     ext().execute_with(|| {
         let prices = XSTBaseInput {
             buy: XSTBaseSideInput {
-                reference_per_synthetic_base: balance!(7),
+                reference_per_synthetic_base: balance!(53),
                 reference_per_xor: Some(balance!(13)),
             },
             sell: XSTBaseSideInput {
