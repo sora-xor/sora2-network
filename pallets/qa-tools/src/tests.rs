@@ -1404,22 +1404,22 @@ fn test_init_xst_synthetic_price_various_prices(forward: bool, variant: SwapVari
 
 #[test]
 fn should_init_xst_synthetic_price_various_prices_forward_out() {
-    test_init_xst_synthetic_price_various_prices(false, SwapVariant::WithDesiredOutput);
-}
-
-#[test]
-fn should_init_xst_synthetic_price_various_prices_forward_in() {
-    test_init_xst_synthetic_price_various_prices(false, SwapVariant::WithDesiredInput);
-}
-
-#[test]
-fn should_init_xst_synthetic_price_various_prices_reverse_out() {
     test_init_xst_synthetic_price_various_prices(true, SwapVariant::WithDesiredOutput);
 }
 
 #[test]
-fn should_init_xst_synthetic_price_various_prices_reverse_in() {
+fn should_init_xst_synthetic_price_various_prices_forward_in() {
     test_init_xst_synthetic_price_various_prices(true, SwapVariant::WithDesiredInput);
+}
+
+#[test]
+fn should_init_xst_synthetic_price_various_prices_reverse_out() {
+    test_init_xst_synthetic_price_various_prices(false, SwapVariant::WithDesiredOutput);
+}
+
+#[test]
+fn should_init_xst_synthetic_price_various_prices_reverse_in() {
+    test_init_xst_synthetic_price_various_prices(false, SwapVariant::WithDesiredInput);
 }
 
 #[test]
