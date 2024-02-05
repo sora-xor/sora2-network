@@ -1,12 +1,16 @@
 mod test {
+    use core::result;
+
     use crate::mock::*;
     use crate::{pallet, Error};
     use common::prelude::FixedWrapper;
+    use common::ToFeeAccount;
     use common::{
         balance, AssetInfoProvider, Balance, DEXId, DEXId::Polkaswap, DAI, DOT, KSM, XOR,
     };
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
+    use pool_xyk::Pallet;
     use sp_runtime::traits::AccountIdConversion;
 
     fn get_pallet_account() -> AccountId {
@@ -46,9 +50,32 @@ mod test {
     }
 
     fn static_set_dex() {
-        init_pool(Polkaswap, XOR, DAI);
-        init_pool(Polkaswap, XOR, DOT);
-        init_pool(Polkaswap, XOR, KSM);
+        register_pair(Polkaswap, XOR, DAI);
+        register_pair(Polkaswap, XOR, DOT);
+        register_pair(Polkaswap, XOR, KSM);
+
+        let xor_dai_pair = get_pair_tech_accs(Polkaswap, XOR, DAI);
+        let xor_dot_pair = get_pair_tech_accs(Polkaswap, XOR, DOT);
+        let xor_ksm_pair = get_pair_tech_accs(Polkaswap, XOR, KSM);
+
+        // Compare repr accounts
+        assert_eq!(xor_dai_pair.0, xor_dot_pair.0);
+        assert_eq!(xor_dai_pair.0, xor_ksm_pair.0);
+        assert_eq!(xor_dot_pair.0, xor_ksm_pair.0);
+
+        // Compare repr_fee accounts
+        assert_eq!(xor_dai_pair.1, xor_dot_pair.1);
+        assert_eq!(xor_dai_pair.1, xor_ksm_pair.1);
+        assert_eq!(xor_dot_pair.1, xor_ksm_pair.1);
+
+        // Compare all repr to repr_fee accounts
+        assert_eq!(xor_dai_pair.0, xor_dot_pair.1);
+        assert_eq!(xor_dai_pair.1, xor_dot_pair.0);
+        assert_eq!(xor_dai_pair.0, xor_ksm_pair.1);
+        assert_eq!(xor_dai_pair.1, xor_ksm_pair.0);
+        assert_eq!(xor_dot_pair.0, xor_ksm_pair.1);
+        assert_eq!(xor_dot_pair.1, xor_ksm_pair.0);
+
         // assert_ok!(trading_pair::Pallet::<Runtime>::register(
         //     RuntimeOrigin::signed(CHARLES),
         //     Polkaswap,
@@ -105,18 +132,49 @@ mod test {
 
     fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
-            RuntimeOrigin::signed(ALICE),
+            RuntimeOrigin::signed(CHARLES),
             dex_id,
             base_asset,
             other_asset
         ));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
-            RuntimeOrigin::signed(ALICE),
+            RuntimeOrigin::signed(CHARLES),
             dex_id,
             base_asset,
             other_asset,
         ));
+    }
+
+    fn register_pair(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
+        assert_ok!(trading_pair::Pallet::<Runtime>::register(
+            RuntimeOrigin::signed(CHARLES),
+            dex_id,
+            base_asset,
+            other_asset
+        ));
+    }
+
+    fn get_pair_tech_accs(
+        dex_id: DEXId,
+        base_asset: AssetId,
+        other_asset: AssetId,
+    ) -> (AccountId, AccountId) {
+        let (trading_pair, tech_acc_id) =
+            pool_xyk::Pallet::<Runtime>::tech_account_from_dex_and_asset_pair(
+                dex_id,
+                base_asset,
+                other_asset,
+            )
+            .unwrap();
+
+        let fee_acc = tech_acc_id.clone().to_fee_account().unwrap();
+        let repr: AccountId =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
+        let fee_repr: AccountId =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
+
+        return (repr, fee_repr);
     }
 
     #[test]
