@@ -1,32 +1,36 @@
 use {
-    crate::{self as apollo_platform},
-    common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
+    crate as apollo_platform,
     common::{
-        balance, fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXId::Polkaswap, DEXInfo, Description, Fixed, FromGenericPair, APOLLO_ASSET_ID, DAI, DOT,
-        KSM, PSWAP, TBCD, VAL, XOR,
+        balance, fixed, hash,
+        mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
+        prelude::Balance,
+        AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+        DEXId::Polkaswap,
+        DEXInfo, Description, Fixed, FromGenericPair, APOLLO_ASSET_ID, DAI, DOT, KSM, PSWAP, TBCD,
+        VAL, XOR, XST,
     },
-    common::{prelude::Balance, XST},
     currencies::BasicCurrencyAdapter,
-    frame_support::pallet_prelude::Weight,
-    frame_support::traits::{Everything, GenesisBuild, Hooks},
-    frame_support::{construct_runtime, parameter_types},
-    frame_system,
-    frame_system::pallet_prelude::BlockNumberFor,
-    frame_system::EnsureRoot,
+    frame_support::{
+        construct_runtime,
+        pallet_prelude::Weight,
+        parameter_types,
+        traits::{Everything, GenesisBuild, Hooks},
+    },
+    frame_system::{self, pallet_prelude::BlockNumberFor, EnsureRoot},
     permissions::{Scope, MANAGE_DEX},
     sp_core::{ConstU32, H256},
-    sp_runtime::testing::Header,
-    sp_runtime::traits::IdentityLookup,
-    sp_runtime::traits::{BlakeTwo256, Zero},
-    sp_runtime::{Perbill, Percent},
+    sp_runtime::{
+        testing::Header,
+        traits::{BlakeTwo256, IdentityLookup, Zero},
+        AccountId32, Perbill, Percent,
+    },
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type Moment = u64;
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -34,11 +38,17 @@ type DEXId = common::DEXId;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const CHARLES: AccountId = 3;
-pub const BUY_BACK_ACCOUNT: AccountId = 23;
+pub fn alice() -> AccountId32 {
+    AccountId32::from([1; 32])
+}
 
+pub fn bob() -> AccountId32 {
+    AccountId32::from([2; 32])
+}
+
+pub fn charles() -> AccountId32 {
+    AccountId32::from([3; 32])
+}
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -77,8 +87,8 @@ parameter_types! {
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetParliamentAccountId: AccountId = 100;
-    pub GetPswapDistributionAccountId: AccountId = 101;
+    pub GetParliamentAccountId: AccountId = AccountId32::from([100; 32]);
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([101; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
 
@@ -134,7 +144,7 @@ parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
+    pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
     pub GetLiquidityProxyTechAccountId: TechAccountId = {
 
@@ -149,18 +159,18 @@ parameter_types! {
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.")
     };
-    pub GetADARAccountId: AccountId = 14;
-    pub GetMarketMakerRewardsAccountId: AccountId = 9;
-    pub GetBondingCurveRewardsAccountId: AccountId = 10;
-    pub GetFarmingRewardsAccountId: AccountId = 12;
+    pub GetADARAccountId: AccountId = AccountId32::from([14; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
 impl assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = AccountId;
+    type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
@@ -374,19 +384,19 @@ impl Default for ExtBuilder {
                 },
             )],
             initial_permissions: vec![(
-                CHARLES,
+                charles(),
                 Scope::Limited(hash(&Polkaswap)),
                 vec![MANAGE_DEX],
             )],
             initial_permission_owners: vec![(
                 MANAGE_DEX,
                 Scope::Limited(hash(&Polkaswap)),
-                vec![CHARLES],
+                vec![charles()],
             )],
             endowed_assets: vec![
                 (
                     APOLLO_ASSET_ID,
-                    ALICE,
+                    alice(),
                     AssetSymbol(b"APOLLO".to_vec()),
                     AssetName(b"Apollo".to_vec()),
                     18,
@@ -397,7 +407,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     XOR,
-                    ALICE,
+                    alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"Sora".to_vec()),
                     18,
@@ -408,7 +418,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DAI,
-                    ALICE,
+                    alice(),
                     AssetSymbol(b"DAI".to_vec()),
                     AssetName(b"Dai".to_vec()),
                     18,
@@ -419,7 +429,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DOT,
-                    ALICE,
+                    alice(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"Polkadot".to_vec()),
                     18,
@@ -430,7 +440,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     KSM,
-                    ALICE,
+                    alice(),
                     AssetSymbol(b"KSM".to_vec()),
                     AssetName(b"Kusama".to_vec()),
                     18,
@@ -441,9 +451,9 @@ impl Default for ExtBuilder {
                 ),
             ],
             endowed_accounts: vec![
-                (ALICE, APOLLO_ASSET_ID, balance!(300000)),
-                (BOB, APOLLO_ASSET_ID, balance!(500)),
-                (CHARLES, APOLLO_ASSET_ID, balance!(300000)),
+                (alice(), APOLLO_ASSET_ID, balance!(300000)),
+                (bob(), APOLLO_ASSET_ID, balance!(500)),
+                (charles(), APOLLO_ASSET_ID, balance!(300000)),
             ],
         }
     }
@@ -454,11 +464,11 @@ impl ExtBuilder {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: self
-                .endowed_accounts
-                .iter()
-                .map(|(acc, _, balance)| (*acc, *balance))
-                .collect(),
+            balances: vec![
+                (alice(), balance!(300000)),
+                (bob(), balance!(500)),
+                (charles(), balance!(300000)),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();

@@ -1,6 +1,4 @@
 mod test {
-    use core::result;
-
     use crate::mock::*;
     use crate::{pallet, Error};
     use common::prelude::FixedWrapper;
@@ -10,7 +8,6 @@ mod test {
     };
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
-    use pool_xyk::Pallet;
     use sp_runtime::traits::AccountIdConversion;
 
     fn get_pallet_account() -> AccountId {
@@ -50,138 +47,57 @@ mod test {
     }
 
     fn static_set_dex() {
-        register_pair(Polkaswap, XOR, DAI);
-        register_pair(Polkaswap, XOR, DOT);
-        register_pair(Polkaswap, XOR, KSM);
+        init_pool(Polkaswap, XOR, DAI);
+        init_pool(Polkaswap, XOR, DOT);
+        init_pool(Polkaswap, XOR, KSM);
 
-        let xor_dai_pair = get_pair_tech_accs(Polkaswap, XOR, DAI);
-        let xor_dot_pair = get_pair_tech_accs(Polkaswap, XOR, DOT);
-        let xor_ksm_pair = get_pair_tech_accs(Polkaswap, XOR, KSM);
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &DAI,
+            &alice(),
+            &charles(),
+            balance!(360000)
+        ));
 
-        // Compare repr accounts
-        assert_eq!(xor_dai_pair.0, xor_dot_pair.0);
-        assert_eq!(xor_dai_pair.0, xor_ksm_pair.0);
-        assert_eq!(xor_dot_pair.0, xor_ksm_pair.0);
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &XOR,
+            &alice(),
+            &charles(),
+            balance!(144000)
+        ));
 
-        // Compare repr_fee accounts
-        assert_eq!(xor_dai_pair.1, xor_dot_pair.1);
-        assert_eq!(xor_dai_pair.1, xor_ksm_pair.1);
-        assert_eq!(xor_dot_pair.1, xor_ksm_pair.1);
-
-        // Compare all repr to repr_fee accounts
-        assert_eq!(xor_dai_pair.0, xor_dot_pair.1);
-        assert_eq!(xor_dai_pair.1, xor_dot_pair.0);
-        assert_eq!(xor_dai_pair.0, xor_ksm_pair.1);
-        assert_eq!(xor_dai_pair.1, xor_ksm_pair.0);
-        assert_eq!(xor_dot_pair.0, xor_ksm_pair.1);
-        assert_eq!(xor_dot_pair.1, xor_ksm_pair.0);
-
-        // assert_ok!(trading_pair::Pallet::<Runtime>::register(
-        //     RuntimeOrigin::signed(CHARLES),
-        //     Polkaswap,
-        //     XOR,
-        //     DAI
-        // ));
-
-        // assert_ok!(trading_pair::Pallet::<Runtime>::register(
-        //     RuntimeOrigin::signed(CHARLES),
-        //     Polkaswap,
-        //     XOR,
-        //     DOT
-        // ));
-
-        // assert_ok!(trading_pair::Pallet::<Runtime>::register(
-        //     RuntimeOrigin::signed(CHARLES),
-        //     Polkaswap,
-        //     XOR,
-        //     KSM
-        // ));
-
-        // assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
-        //     RuntimeOrigin::signed(CHARLES),
-        //     Polkaswap,
-        //     XOR,
-        //     DAI,
-        // ));
-
-        // assert_ok!(assets::Pallet::<Runtime>::mint_to(
-        //     &DAI,
-        //     &ALICE,
-        //     &CHARLES,
-        //     balance!(360000)
-        // ));
-
-        // assert_ok!(assets::Pallet::<Runtime>::mint_to(
-        //     &XOR,
-        //     &ALICE,
-        //     &CHARLES,
-        //     balance!(144000)
-        // ));
-
-        // assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-        //     RuntimeOrigin::signed(CHARLES),
-        //     Polkaswap,
-        //     DAI,
-        //     XOR,
-        //     balance!(360000),
-        //     balance!(144000),
-        //     balance!(360000),
-        //     balance!(144000),
-        // ));
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(charles()),
+            Polkaswap,
+            DAI,
+            XOR,
+            balance!(360000),
+            balance!(144000),
+            balance!(360000),
+            balance!(144000),
+        ));
     }
 
     fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
-            RuntimeOrigin::signed(CHARLES),
+            RuntimeOrigin::signed(charles()),
             dex_id,
             base_asset,
             other_asset
         ));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
-            RuntimeOrigin::signed(CHARLES),
+            RuntimeOrigin::signed(charles()),
             dex_id,
             base_asset,
             other_asset,
         ));
     }
 
-    fn register_pair(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
-        assert_ok!(trading_pair::Pallet::<Runtime>::register(
-            RuntimeOrigin::signed(CHARLES),
-            dex_id,
-            base_asset,
-            other_asset
-        ));
-    }
-
-    fn get_pair_tech_accs(
-        dex_id: DEXId,
-        base_asset: AssetId,
-        other_asset: AssetId,
-    ) -> (AccountId, AccountId) {
-        let (trading_pair, tech_acc_id) =
-            pool_xyk::Pallet::<Runtime>::tech_account_from_dex_and_asset_pair(
-                dex_id,
-                base_asset,
-                other_asset,
-            )
-            .unwrap();
-
-        let fee_acc = tech_acc_id.clone().to_fee_account().unwrap();
-        let repr: AccountId =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
-        let fee_repr: AccountId =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
-
-        return (repr, fee_repr);
-    }
-
     #[test]
     fn add_pool_unathorized_user() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let user = RuntimeOrigin::signed(ALICE);
+            let user = RuntimeOrigin::signed(alice());
             let loan_to_value = balance!(1);
             let liquidation_threshold = balance!(1);
             let optimal_utilization_rate = balance!(1);
@@ -371,7 +287,7 @@ mod test {
     fn lend_pool_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let user = RuntimeOrigin::signed(ALICE);
+            let user = RuntimeOrigin::signed(alice());
             let lending_amount = balance!(100);
 
             assert_err!(
@@ -407,7 +323,7 @@ mod test {
             ));
 
             assert_err!(
-                ApolloPlatform::lend(RuntimeOrigin::signed(ALICE), XOR, balance!(100000),),
+                ApolloPlatform::lend(RuntimeOrigin::signed(alice()), XOR, balance!(100000),),
                 Error::<Runtime>::CanNotTransferLendingAmount
             );
         });
@@ -419,8 +335,8 @@ mod test {
         ext.execute_with(|| {
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
-                &ALICE,
-                &ALICE,
+                &alice(),
+                &alice(),
                 balance!(300000)
             ));
 
@@ -446,18 +362,18 @@ mod test {
             ));
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR, &ALICE).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(300000)
             );
 
             assert_ok!(ApolloPlatform::lend(
-                RuntimeOrigin::signed(ALICE),
+                RuntimeOrigin::signed(alice()),
                 XOR,
                 balance!(100000),
             ));
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &ALICE).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
                 balance!(200000)
             );
 
@@ -467,7 +383,7 @@ mod test {
                 balance!(100000)
             );
 
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(ALICE, XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
             let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
             assert_eq!(lending_user_info.last_lending_block, 0);
@@ -484,8 +400,8 @@ mod test {
         ext.execute_with(|| {
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
-                &ALICE,
-                &ALICE,
+                &alice(),
+                &alice(),
                 balance!(300000)
             ));
 
@@ -511,29 +427,29 @@ mod test {
             ));
 
             assert_ok!(ApolloPlatform::lend(
-                RuntimeOrigin::signed(ALICE),
+                RuntimeOrigin::signed(alice()),
                 XOR,
                 balance!(100000)
             ));
 
             run_to_block(100);
 
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(ALICE, XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
 
             assert_eq!(lending_user_info.last_lending_block, 0);
             assert_eq!(lending_user_info.lending_amount, balance!(100000));
             assert_eq!(lending_user_info.lending_interest, balance!(0));
 
             assert_ok!(ApolloPlatform::lend(
-                RuntimeOrigin::signed(ALICE),
+                RuntimeOrigin::signed(alice()),
                 XOR,
                 balance!(100000)
             ));
 
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(ALICE, XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
             let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
-            let lending_interest_gains = calculate_lending_earnings(ALICE, XOR, 100);
+            let lending_interest_gains = calculate_lending_earnings(alice(), XOR, 100);
             let lending_interest_gain = lending_interest_gains.0 + lending_interest_gains.1;
 
             assert_eq!(lending_user_info.last_lending_block, 100);
@@ -541,7 +457,7 @@ mod test {
             assert_eq!(lending_user_info.lending_interest, lending_interest_gain);
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR, &ALICE).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(100000)
             );
 
@@ -565,7 +481,7 @@ mod test {
 
             assert_err!(
                 ApolloPlatform::borrow(
-                    RuntimeOrigin::signed(ALICE),
+                    RuntimeOrigin::signed(alice()),
                     collateral_asset,
                     borrowing_asset,
                     borrowing_amount
@@ -606,7 +522,7 @@ mod test {
 
             assert_err!(
                 ApolloPlatform::borrow(
-                    RuntimeOrigin::signed(ALICE),
+                    RuntimeOrigin::signed(alice()),
                     collateral_asset,
                     borrowing_asset,
                     borrowing_amount
@@ -622,8 +538,8 @@ mod test {
         ext.execute_with(|| {
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
-                &ALICE,
-                &BOB,
+                &alice(),
+                &bob(),
                 balance!(300000)
             ));
 
@@ -649,7 +565,7 @@ mod test {
             ));
 
             assert_ok!(ApolloPlatform::lend(
-                RuntimeOrigin::signed(BOB),
+                RuntimeOrigin::signed(bob()),
                 XOR,
                 balance!(300000),
             ));
@@ -660,7 +576,7 @@ mod test {
 
             assert_err!(
                 ApolloPlatform::borrow(
-                    RuntimeOrigin::signed(ALICE),
+                    RuntimeOrigin::signed(alice()),
                     collateral_asset,
                     borrowing_asset,
                     borrowing_amount
@@ -676,8 +592,8 @@ mod test {
         ext.execute_with(|| {
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
-                &ALICE,
-                &BOB,
+                &alice(),
+                &bob(),
                 balance!(300000)
             ));
 
@@ -715,7 +631,7 @@ mod test {
             ));
 
             assert_ok!(ApolloPlatform::lend(
-                RuntimeOrigin::signed(BOB),
+                RuntimeOrigin::signed(bob()),
                 XOR,
                 balance!(300000),
             ));
@@ -726,7 +642,7 @@ mod test {
 
             assert_err!(
                 ApolloPlatform::borrow(
-                    RuntimeOrigin::signed(ALICE),
+                    RuntimeOrigin::signed(alice()),
                     collateral_asset,
                     borrowing_asset,
                     borrowing_amount
@@ -744,15 +660,15 @@ mod test {
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &DOT,
-                &ALICE,
-                &ALICE,
+                &alice(),
+                &alice(),
                 balance!(200)
             ));
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
-                &ALICE,
-                &BOB,
+                &alice(),
+                &bob(),
                 balance!(300000)
             ));
 
@@ -790,19 +706,19 @@ mod test {
             ));
 
             assert_ok!(ApolloPlatform::lend(
-                RuntimeOrigin::signed(ALICE),
+                RuntimeOrigin::signed(alice()),
                 DOT,
                 balance!(99),
             ));
 
             assert_ok!(ApolloPlatform::lend(
-                RuntimeOrigin::signed(BOB),
+                RuntimeOrigin::signed(bob()),
                 XOR,
                 balance!(300000),
             ));
 
             assert_ok!(ApolloPlatform::borrow(
-                RuntimeOrigin::signed(ALICE),
+                RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
                 balance!(100)
