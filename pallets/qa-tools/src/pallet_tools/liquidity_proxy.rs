@@ -454,7 +454,6 @@ pub mod source_initialization {
                 }
                 previous_fee = new_rate.dynamic_fee;
                 if new_rate.dynamic_fee > fixed!(0) {
-                    dbg!("relaying again to lessen the fee");
                     let next_post_info = band::Pallet::<T>::relay(
                         RawOrigin::Signed(relayer.clone()).into(),
                         vec![(symbol.clone(), price_band)].try_into().unwrap(),
