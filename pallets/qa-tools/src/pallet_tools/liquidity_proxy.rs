@@ -638,6 +638,114 @@ pub mod source_initialization {
         }
     }
 
+    fn xst_base_assets<T: Config>(input: XSTBaseInput) -> DispatchResult {
+        let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
+        let reference_asset_id = xst::ReferenceAssetId::<T>::get();
+
+        let should_update_reference_buy = input.buy.should_update_reference();
+        let should_update_reference_sell = input.sell.should_update_reference();
+        let xor_prices = calculate_xor_prices::<T>(input)?;
+        ensure!(
+            xor_prices.buy.synthetic_base >= xor_prices.sell.synthetic_base
+                && xor_prices.buy.reference >= xor_prices.sell.reference,
+            Error::<T>::BuyLessThanSell
+        );
+        set_prices_in_price_tools::<T>(
+            &synthetic_base_asset_id,
+            xor_prices.buy.synthetic_base,
+            PriceVariant::Buy,
+        )?;
+        set_prices_in_price_tools::<T>(
+            &synthetic_base_asset_id,
+            xor_prices.sell.synthetic_base,
+            PriceVariant::Sell,
+        )?;
+        if should_update_reference_buy {
+            set_prices_in_price_tools::<T>(
+                &reference_asset_id,
+                xor_prices.buy.reference,
+                PriceVariant::Buy,
+            )?;
+        }
+        if should_update_reference_sell {
+            set_prices_in_price_tools::<T>(
+                &reference_asset_id,
+                xor_prices.sell.reference,
+                PriceVariant::Sell,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn xst_single_synthetic<T: Config>(
+        input: XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>,
+        relayer: T::AccountId,
+    ) -> Result<XSTSyntheticOutput<T::AssetId>, DispatchError> {
+        let band_price = calculate_band_price::<T>(&input.expected_quote)?;
+        let resulting_quote =
+            calculate_actual_quote::<T>(input.asset_id, input.expected_quote, band_price);
+        match (
+            xst::Pallet::<T>::enabled_synthetics(input.asset_id),
+            input.existence,
+        ) {
+            (Some(info), XSTSyntheticExistence::AlreadyExists) => {
+                relay_symbol::<T>(info.reference_symbol.into(), relayer.clone(), band_price)
+                    .map_err(|e| e.error)?;
+            }
+            (
+                None,
+                XSTSyntheticExistence::RegisterNewAsset {
+                    symbol,
+                    name,
+                    reference_symbol,
+                    fee_ratio,
+                },
+            ) => {
+                relay_symbol::<T>(reference_symbol.clone(), relayer, band_price)
+                    .map_err(|e| e.error)?;
+                xst::Pallet::<T>::register_synthetic_asset(
+                    RawOrigin::Root.into(),
+                    symbol,
+                    name,
+                    reference_symbol.into(),
+                    fee_ratio,
+                )
+                .map_err(|e| e.error)?;
+            }
+            (Some(_), XSTSyntheticExistence::RegisterNewAsset { .. }) => {
+                return Err(Error::<T>::AssetAlreadyExists.into())
+            }
+            (None, XSTSyntheticExistence::AlreadyExists) => {
+                return Err(Error::<T>::UnknownSynthetic.into())
+            }
+        }
+        Ok(resulting_quote)
+    }
+
+    fn xst_synthetics<T: Config>(
+        inputs: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+        relayer: T::AccountId,
+    ) -> Result<Vec<XSTSyntheticOutput<T::AssetId>>, DispatchError> {
+        if !inputs.is_empty() {
+            if !band::Pallet::<T>::trusted_relayers().is_some_and(|t| t.contains(&relayer)) {
+                band::Pallet::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])
+                    .map_err(|e| e.error)?;
+            };
+            if !oracle_proxy::Pallet::<T>::enabled_oracles().contains(&Oracle::BandChainFeed) {
+                oracle_proxy::Pallet::<T>::enable_oracle(
+                    RawOrigin::Root.into(),
+                    Oracle::BandChainFeed,
+                )
+                .map_err(|e| e.error)?;
+            }
+        }
+        let mut synthetic_init_results = vec![];
+        for synthetic in inputs {
+            synthetic_init_results.push(xst_single_synthetic::<T>(synthetic, relayer.clone())?)
+        }
+        Ok(synthetic_init_results)
+    }
+
     /// Initialize xst liquidity source. Can both update prices of base assets and synthetics.
     ///
     /// ## Return
@@ -646,102 +754,14 @@ pub mod source_initialization {
     /// obtainable. Therefore, actual resulting price of synthetics is returned.
     ///
     /// `quote` in `xst` pallet requires swap to involve synthetic base asset, as well as
-    pub fn xst<T: Config + price_tools::Config>(
+    pub fn xst<T: Config>(
         base: Option<XSTBaseInput>,
         synthetics: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
         relayer: T::AccountId,
     ) -> Result<Vec<XSTSyntheticOutput<T::AssetId>>, DispatchError> {
-        // todo: split into fns
         if let Some(base_prices) = base {
-            let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
-            let reference_asset_id = xst::ReferenceAssetId::<T>::get();
-
-            let should_update_reference_buy = base_prices.buy.should_update_reference();
-            let should_update_reference_sell = base_prices.sell.should_update_reference();
-            let xor_prices = calculate_xor_prices::<T>(base_prices)?;
-            ensure!(
-                xor_prices.buy.synthetic_base >= xor_prices.sell.synthetic_base
-                    && xor_prices.buy.reference >= xor_prices.sell.reference,
-                Error::<T>::BuyLessThanSell
-            );
-            set_prices_in_price_tools::<T>(
-                &synthetic_base_asset_id,
-                xor_prices.buy.synthetic_base,
-                PriceVariant::Buy,
-            )?;
-            set_prices_in_price_tools::<T>(
-                &synthetic_base_asset_id,
-                xor_prices.sell.synthetic_base,
-                PriceVariant::Sell,
-            )?;
-            if should_update_reference_buy {
-                set_prices_in_price_tools::<T>(
-                    &reference_asset_id,
-                    xor_prices.buy.reference,
-                    PriceVariant::Buy,
-                )?;
-            }
-            if should_update_reference_sell {
-                set_prices_in_price_tools::<T>(
-                    &reference_asset_id,
-                    xor_prices.sell.reference,
-                    PriceVariant::Sell,
-                )?;
-            }
+            xst_base_assets::<T>(base_prices)?;
         }
-
-        if !band::Pallet::<T>::trusted_relayers().is_some_and(|t| t.contains(&relayer)) {
-            band::Pallet::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])
-                .map_err(|e| e.error)?;
-        };
-        if !oracle_proxy::Pallet::<T>::enabled_oracles().contains(&Oracle::BandChainFeed) {
-            oracle_proxy::Pallet::<T>::enable_oracle(RawOrigin::Root.into(), Oracle::BandChainFeed)
-                .map_err(|e| e.error)?;
-        }
-        let mut synthetic_init_results = vec![];
-        for synthetic in synthetics {
-            let band_price = calculate_band_price::<T>(&synthetic.expected_quote)?;
-            synthetic_init_results.push(calculate_actual_quote::<T>(
-                synthetic.asset_id,
-                synthetic.expected_quote,
-                band_price,
-            ));
-            match (
-                xst::Pallet::<T>::enabled_synthetics(synthetic.asset_id),
-                synthetic.existence,
-            ) {
-                (Some(info), XSTSyntheticExistence::AlreadyExists) => {
-                    relay_symbol::<T>(info.reference_symbol.into(), relayer.clone(), band_price)
-                        .map_err(|e| e.error)?;
-                }
-                (
-                    None,
-                    XSTSyntheticExistence::RegisterNewAsset {
-                        symbol,
-                        name,
-                        reference_symbol,
-                        fee_ratio,
-                    },
-                ) => {
-                    relay_symbol::<T>(reference_symbol.clone(), relayer.clone(), band_price)
-                        .map_err(|e| e.error)?;
-                    xst::Pallet::<T>::register_synthetic_asset(
-                        RawOrigin::Root.into(),
-                        symbol,
-                        name,
-                        reference_symbol.into(),
-                        fee_ratio,
-                    )
-                    .map_err(|e| e.error)?;
-                }
-                (Some(_), XSTSyntheticExistence::RegisterNewAsset { .. }) => {
-                    return Err(Error::<T>::AssetAlreadyExists.into())
-                }
-                (None, XSTSyntheticExistence::AlreadyExists) => {
-                    return Err(Error::<T>::UnknownSynthetic.into())
-                }
-            }
-        }
-        Ok(synthetic_init_results)
+        xst_synthetics::<T>(synthetics, relayer)
     }
 }
