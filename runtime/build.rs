@@ -52,7 +52,18 @@ fn main() {
         "cargo:rerun-if-changed={}",
         pre_commit_hook_path.to_string_lossy()
     );
-    let enabled_hooks_dir = root_path.join(".git/hooks");
+    // Flexible path to support linked worktrees
+    let enabled_hooks_dir: String = String::from_utf8(
+        std::process::Command::new("git")
+            .args(["rev-parse", "--git-path", "hooks"])
+            .output()
+            .expect("Could not retrieve hooks directory path")
+            .stdout,
+    )
+    .expect("Could not convert hooks path to string");
+    let enabled_hooks_dir = PathBuf::new()
+        .join(&enabled_hooks_dir[..].trim())
+        .to_owned();
     fs::create_dir_all(&enabled_hooks_dir).expect("Failed to create '.git/hooks' dir");
     fs::copy(&pre_commit_hook_path, enabled_hooks_dir.join("pre-commit"))
         .expect("Failed to copy '.hooks/pre_commit' to '.git/hooks/pre_commit'");
