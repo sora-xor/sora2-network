@@ -376,19 +376,6 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    /// Get current spot price for
-    pub fn spot_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
-        <T as pallet::Config>::LiquidityProxy::quote(
-            DEXId::Polkaswap.into(),
-            &XOR.into(),
-            &asset_id,
-            QuoteAmount::with_desired_input(balance!(1)),
-            Self::secondary_market_filter(),
-            false,
-        )
-        .map(|so| so.amount)
-    }
-
     fn replace_in_average(
         average: Balance,
         old_value: Balance,
@@ -463,6 +450,19 @@ impl<T: Config> PriceToolsPallet<T::AssetId> for Pallet<T> {
         } else {
             fail!(Error::<T>::AssetAlreadyRegistered);
         }
+    }
+
+    /// Get current spot price for
+    fn spot_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+        <T as pallet::Config>::LiquidityProxy::quote(
+            DEXId::Polkaswap.into(),
+            &XOR.into(),
+            &asset_id,
+            QuoteAmount::with_desired_input(balance!(1)),
+            Self::secondary_market_filter(),
+            false,
+        )
+        .map(|so| so.amount)
     }
 }
 

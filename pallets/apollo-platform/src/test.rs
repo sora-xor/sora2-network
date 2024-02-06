@@ -2,7 +2,6 @@ mod test {
     use crate::mock::*;
     use crate::{pallet, Error};
     use common::prelude::FixedWrapper;
-    use common::ToFeeAccount;
     use common::{
         balance, AssetInfoProvider, Balance, DEXId, DEXId::Polkaswap, DAI, DOT, KSM, XOR,
     };
@@ -52,14 +51,14 @@ mod test {
         init_pool(Polkaswap, XOR, KSM);
 
         assert_ok!(assets::Pallet::<Runtime>::mint_to(
-            &DAI,
+            &XOR,
             &alice(),
             &charles(),
             balance!(360000)
         ));
 
         assert_ok!(assets::Pallet::<Runtime>::mint_to(
-            &XOR,
+            &DAI,
             &alice(),
             &charles(),
             balance!(144000)
@@ -68,8 +67,8 @@ mod test {
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(charles()),
             Polkaswap,
-            DAI,
             XOR,
+            DAI,
             balance!(360000),
             balance!(144000),
             balance!(360000),

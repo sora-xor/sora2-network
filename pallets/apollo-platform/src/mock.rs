@@ -6,8 +6,8 @@ use {
         prelude::Balance,
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
-        DEXInfo, Description, Fixed, FromGenericPair, APOLLO_ASSET_ID, DAI, DOT, KSM, PSWAP, TBCD,
-        VAL, XOR, XST,
+        DEXInfo, Description, Fixed, FromGenericPair, PriceToolsPallet, APOLLO_ASSET_ID, DAI, DOT,
+        KSM, PSWAP, TBCD, VAL, XOR, XST,
     },
     currencies::BasicCurrencyAdapter,
     frame_support::{
@@ -343,6 +343,26 @@ impl price_tools::Config for Runtime {
     type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
 }
 
+pub struct MockPriceTools;
+
+impl PriceToolsPallet<AssetId> for MockPriceTools {
+    fn get_average_price(
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        price_variant: common::prelude::PriceVariant,
+    ) -> Result<Balance, sp_runtime::DispatchError> {
+        todo!()
+    }
+
+    fn register_asset(asset_id: &AssetId) -> frame_support::pallet_prelude::DispatchResult {
+        todo!()
+    }
+
+    fn spot_price(asset_id: &AssetId) -> Result<Balance, sp_runtime::DispatchError> {
+        todo!()
+    }
+}
+
 impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type DemeterAssetId = ();
@@ -352,6 +372,7 @@ impl demeter_farming_platform::Config for Runtime {
 
 impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type PriceTools = MockPriceTools;
 }
 
 pub struct ExtBuilder {

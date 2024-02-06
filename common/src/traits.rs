@@ -754,6 +754,10 @@ pub trait PriceToolsPallet<AssetId> {
 
     /// Add asset to be tracked for average price.
     fn register_asset(asset_id: &AssetId) -> DispatchResult;
+
+    /// Apollo mock function
+    /// Function to return spot price of asset
+    fn spot_price(asset_id: &AssetId) -> Result<Balance, DispatchError>;
 }
 
 impl<AssetId> PriceToolsPallet<AssetId> for () {
@@ -766,6 +770,11 @@ impl<AssetId> PriceToolsPallet<AssetId> for () {
     }
 
     fn register_asset(_: &AssetId) -> DispatchResult {
+        unimplemented!()
+    }
+
+    /// Apollo mock function
+    fn spot_price(_: &AssetId) -> Result<Balance, DispatchError> {
         unimplemented!()
     }
 }

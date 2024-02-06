@@ -52,6 +52,7 @@ mod test;
 pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo};
     use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount};
+    use common::PriceToolsPallet;
     use common::{
         balance, AssetInfoProvider, DEXId, FilterMode, LiquiditySource, LiquiditySourceType,
         PriceVariant, CERES_ASSET_ID, DAI, HERMES_ASSET_ID, XOR,
@@ -72,10 +73,11 @@ pub mod pallet {
         frame_system::Config + assets::Config + price_tools::Config + liquidity_proxy::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        type PriceTools: PriceToolsPallet<Self::AssetId>;
     }
 
     type Assets<T> = assets::Pallet<T>;
-    type PriceTools<T> = price_tools::Pallet<T>;
+    // type PriceTools<T> = price_tools::Pallet<T>;
     type LiquidityProxy<T> = liquidity_proxy::Pallet<T>;
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -820,7 +822,7 @@ pub mod pallet {
 
         fn get_price(asset_id: AssetIdOf<T>) -> Balance {
             // Get XOR price from the spot price function in PriceTools pallet
-            let xor_price = PriceTools::<T>::spot_price(&DAI.into()).unwrap();
+            let xor_price = T::PriceTools::spot_price(&DAI.into()).unwrap();
 
             if asset_id == XOR.into() {
                 return xor_price;
@@ -828,11 +830,11 @@ pub mod pallet {
 
             // Get average price from PriceTools pallet
             let buy_price =
-                PriceTools::<T>::get_average_price(&XOR.into(), &asset_id, PriceVariant::Buy)
+                T::PriceTools::get_average_price(&XOR.into(), &asset_id, PriceVariant::Buy)
                     .unwrap();
 
             let sell_price =
-                PriceTools::<T>::get_average_price(&XOR.into(), &asset_id, PriceVariant::Sell)
+                T::PriceTools::get_average_price(&XOR.into(), &asset_id, PriceVariant::Sell)
                     .unwrap();
 
             // Average price in dollars
