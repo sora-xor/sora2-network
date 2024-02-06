@@ -1,10 +1,11 @@
 mod test {
-    use crate::mock::*;
+    use crate::{mock::*, Pallet};
     use crate::{pallet, Error};
     use common::prelude::FixedWrapper;
     use common::{
         balance, AssetInfoProvider, Balance, DEXId, DEXId::Polkaswap, DAI, DOT, KSM, XOR,
     };
+    use common::{PriceToolsPallet, PriceVariant};
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
     use sp_runtime::traits::AccountIdConversion;
@@ -716,12 +717,10 @@ mod test {
                 balance!(300000),
             ));
 
-            assert_ok!(ApolloPlatform::borrow(
-                RuntimeOrigin::signed(alice()),
-                DOT,
-                XOR,
-                balance!(100)
-            ));
+            assert_err!(
+                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), DOT, XOR, balance!(100)),
+                Error::<Runtime>::InvalidCollateralAmount
+            );
         });
     }
 }

@@ -6,8 +6,8 @@ use {
         prelude::Balance,
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
-        DEXInfo, Description, Fixed, FromGenericPair, PriceToolsPallet, APOLLO_ASSET_ID, DAI, DOT,
-        KSM, PSWAP, TBCD, VAL, XOR, XST,
+        DEXInfo, Description, Fixed, FromGenericPair, PriceToolsPallet, PriceVariant,
+        APOLLO_ASSET_ID, DAI, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
     },
     currencies::BasicCurrencyAdapter,
     frame_support::{
@@ -351,7 +351,38 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
         output_asset_id: &AssetId,
         price_variant: common::prelude::PriceVariant,
     ) -> Result<Balance, sp_runtime::DispatchError> {
-        todo!()
+        match price_variant {
+            PriceVariant::Buy => match (input_asset_id, output_asset_id) {
+                (&XOR, &DAI) => Ok(balance!(1)),
+                (&DAI, &XOR) => Ok(balance!(1)),
+                (&XOR, &DOT) => Ok(balance!(1)),
+                (&DOT, &XOR) => Ok(balance!(1)),
+                (&XOR, &KSM) => Ok(balance!(1)),
+                (&KSM, &XOR) => Ok(balance!(1)),
+                (&DAI, &DOT) => Ok(balance!(1)),
+                (&DOT, &DAI) => Ok(balance!(1)),
+                (&DAI, &KSM) => Ok(balance!(1)),
+                (&KSM, &DAI) => Ok(balance!(1)),
+                (&DOT, &KSM) => Ok(balance!(1)),
+                (&KSM, &DOT) => Ok(balance!(1)),
+                _ => Ok(balance!(0)),
+            },
+            PriceVariant::Sell => match (input_asset_id, output_asset_id) {
+                (&XOR, &DAI) => Ok(balance!(1)),
+                (&DAI, &XOR) => Ok(balance!(1)),
+                (&XOR, &DOT) => Ok(balance!(1)),
+                (&DOT, &XOR) => Ok(balance!(1)),
+                (&XOR, &KSM) => Ok(balance!(1)),
+                (&KSM, &XOR) => Ok(balance!(1)),
+                (&DAI, &DOT) => Ok(balance!(1)),
+                (&DOT, &DAI) => Ok(balance!(1)),
+                (&DAI, &KSM) => Ok(balance!(1)),
+                (&KSM, &DAI) => Ok(balance!(1)),
+                (&DOT, &KSM) => Ok(balance!(1)),
+                (&KSM, &DOT) => Ok(balance!(1)),
+                _ => Ok(balance!(0)),
+            },
+        }
     }
 
     fn register_asset(asset_id: &AssetId) -> frame_support::pallet_prelude::DispatchResult {
@@ -359,7 +390,11 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
     }
 
     fn spot_price(asset_id: &AssetId) -> Result<Balance, sp_runtime::DispatchError> {
-        todo!()
+        if asset_id == &DAI {
+            Ok(balance!(1))
+        } else {
+            Ok(balance!(0))
+        }
     }
 }
 

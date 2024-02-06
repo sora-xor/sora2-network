@@ -398,10 +398,10 @@ pub mod pallet {
             .unwrap_or(0);
 
             // Calculate collateral amount in tokens of chosen asset
-            let collateral_amount = coll_amount_in_dollars
-                / FixedWrapper::from(collateral_asset_price)
-                    .try_into_balance()
-                    .unwrap_or(0);
+            let collateral_amount = (FixedWrapper::from(coll_amount_in_dollars)
+                / FixedWrapper::from(collateral_asset_price))
+            .try_into_balance()
+            .unwrap_or(0);
 
             ensure!(
                 collateral_amount <= user_lending_info.lending_amount,
@@ -820,7 +820,7 @@ pub mod pallet {
             PALLET_ID.into_account_truncating()
         }
 
-        fn get_price(asset_id: AssetIdOf<T>) -> Balance {
+        pub fn get_price(asset_id: AssetIdOf<T>) -> Balance {
             // Get XOR price from the spot price function in PriceTools pallet
             let xor_price = T::PriceTools::spot_price(&DAI.into()).unwrap();
 
@@ -838,9 +838,10 @@ pub mod pallet {
                     .unwrap();
 
             // Average price in dollars
-            (FixedWrapper::from(xor_price * (buy_price + sell_price)) / FixedWrapper::from(2))
-                .try_into_balance()
-                .unwrap_or(0)
+            (FixedWrapper::from(xor_price * FixedWrapper::from(buy_price + sell_price))
+                / FixedWrapper::from(balance!(2)))
+            .try_into_balance()
+            .unwrap_or(0)
         }
 
         pub fn calculate_lending_earnings(
