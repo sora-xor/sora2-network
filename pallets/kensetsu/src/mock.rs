@@ -240,7 +240,7 @@ impl kensetsu::Config for TestRuntime {
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KusdAssetId = KusdAssetId;
-    type PriceToolsPallet = PriceToolsMock;
+    type PriceTools = PriceToolsMock;
     type LiquidityProxy = MockLiquidityProxy;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;

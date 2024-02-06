@@ -240,7 +240,7 @@ pub mod pallet {
         >;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
         type KusdAssetId: Get<Self::AssetId>;
-        type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
+        type PriceTools: PriceToolsPallet<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
 
         /// Maximum number of CDP that one user can create
@@ -932,7 +932,7 @@ pub mod pallet {
                 .liquidation_ratio;
             // DAI is assumed as $1
             let collateral_reference_price =
-                FixedU128::from_inner(T::PriceToolsPallet::get_average_price(
+                FixedU128::from_inner(T::PriceTools::get_average_price(
                     &collateral_asset_id,
                     &DAI.into(),
                     PriceVariant::Sell,
