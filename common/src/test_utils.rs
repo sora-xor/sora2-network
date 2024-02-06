@@ -76,8 +76,12 @@ fn are_approx_eq_abs_unchecked(left: Fixed, right: Fixed, tolerance: Fixed) -> b
     left <= right.saturating_add(tolerance) && right <= left.saturating_add(tolerance)
 }
 
-/// Calculate if two values are approximately equal
-/// up to some absolute tolerance (constant value)
+/// Calculate if two values are approximately equal up to some absolute tolerance (constant value).
+///
+/// **NOTE**: It is preferred to utilize to exact equalities even in tests. Fixed point arithmetic
+/// allows predictable behaviour of inner arithmetics, so it should be considered everywhere where
+/// possible. Use approximate equalities only when you know what you're doing and such inaccurate
+/// behavior is expected.
 pub fn are_approx_eq_abs(
     left: Fixed,
     right: Fixed,
@@ -113,6 +117,11 @@ fn calculate_relative_tolerance(
 
 /// Calculate if two values are approximately equal
 /// up to some relative tolerance (percentage of their magnitude `a.abs() + b.abs()`)
+///
+/// **NOTE**: It is preferred to utilize to exact equalities even in tests. Fixed point arithmetic
+/// allows predictable behaviour of inner arithmetics, so it should be considered everywhere where
+/// possible. Use approximate equalities only when you know what you're doing and such inaccurate
+/// behavior is expected.
 pub fn are_approx_eq_rel(
     left: Fixed,
     right: Fixed,
@@ -135,6 +144,11 @@ pub fn are_approx_eq_rel(
 /// `left + r = right` for some `-M*R <= r <= M*R`.
 ///
 /// Satisfying any of the tolerances is enough to consider the numbers approximately equal.
+///
+/// **NOTE**: It is preferred to utilize to exact equalities even in tests. Fixed point arithmetic
+/// allows predictable behaviour of inner arithmetics, so it should be considered everywhere where
+/// possible. Use approximate equalities only when you know what you're doing and such inaccurate
+/// behavior is expected.
 pub fn are_approx_eq(
     left: Fixed,
     right: Fixed,

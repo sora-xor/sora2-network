@@ -137,8 +137,12 @@ macro_rules! our_include_bytes {
     }};
 }
 
-/// Assertion that two values are approximately equal
-/// up to some absolute tolerance (constant value)
+/// Assertion that two values are approximately equal up to some absolute tolerance (constant value)
+///
+/// **NOTE**: It is preferred to utilize to exact equalities even in tests. Fixed point arithmetic
+/// allows predictable behaviour of inner arithmetics, so it should be considered everywhere where
+/// possible. Use approximate equalities only when you know what you're doing and such inaccurate
+/// behavior is expected.
 #[macro_export]
 macro_rules! assert_approx_eq_abs {
     ($left:expr, $right:expr, $tolerance:expr $(,)?) => {{
@@ -164,6 +168,11 @@ macro_rules! assert_approx_eq_abs {
 
 /// Assertion that two values are approximately equal
 /// up to some relative tolerance (percentage of their magnitude `a.abs() + b.abs()`)
+///
+/// **NOTE**: It is preferred to utilize to exact equalities even in tests. Fixed point arithmetic
+/// allows predictable behaviour of inner arithmetics, so it should be considered everywhere where
+/// possible. Use approximate equalities only when you know what you're doing and such inaccurate
+/// behavior is expected.
 #[macro_export]
 macro_rules! assert_approx_eq_rel {
     ($left:expr, $right:expr, $tolerance_percentage:expr $(,)?) => {{
@@ -190,6 +199,11 @@ macro_rules! assert_approx_eq_rel {
 /// Assertion if two numbers `left` and `right` are equal up to some tolerance.
 ///
 /// See details in [crate::test_utils::are_approx_eq].
+///
+/// **NOTE**: It is preferred to utilize to exact equalities even in tests. Fixed point arithmetic
+/// allows predictable behaviour of inner arithmetics, so it should be considered everywhere where
+/// possible. Use approximate equalities only when you know what you're doing and such inaccurate
+/// behavior is expected.
 #[macro_export]
 macro_rules! assert_approx_eq {
     ($left:expr, $right:expr, $abs_tolerance:expr, $rel_percentage:expr $(,)?) => {{
