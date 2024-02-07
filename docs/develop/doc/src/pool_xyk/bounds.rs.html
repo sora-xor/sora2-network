@@ -112,7 +112,6 @@
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -146,20 +145,19 @@
 </span><span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>sp_runtime::RuntimeDebug;
 
-<span class="doccomment">/// Bounds enum, used for cases than min max limits is used. Also used for cases than values is
-/// Desired by used or Calculated by forumula. Dummy is used to abstract checking.
+<span class="doccomment">/// Values for resource amount
 </span><span class="attr">#[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 </span><span class="kw">pub enum </span>Bounds&lt;Balance&gt; {
-    <span class="doccomment">/// This is consequence of computations, and not sed by used.
+    <span class="doccomment">/// This is a consequence of computations (not set by user).
     </span>Calculated(Balance),
-    <span class="doccomment">/// This values set by used as fixed and determed value.
+    <span class="doccomment">/// This value is set by user as fixed and determined value.
     </span>Desired(Balance),
-    <span class="doccomment">/// This is undetermined value, bounded by some logic or ranges.
+    <span class="doccomment">/// This is an unknown value, bounded by some logic or ranges.
     </span>Min(Balance),
     Max(Balance),
-    <span class="doccomment">/// This is determined value than pool is emply, then pool is not empty this works like range.
+    <span class="doccomment">/// This is an unknown value when pool is empty. When pool is not empty this works like a range.
     </span>RangeFromDesiredToMin(Balance, Balance),
-    <span class="doccomment">/// This is just unknown value that must be calulated and filled.
+    <span class="doccomment">/// This is just an unknown value that must be calculated.
     </span>Decide,
     <span class="doccomment">/// This is used in some checks tests and predicates, than value is not needed.
     </span>Dummy,

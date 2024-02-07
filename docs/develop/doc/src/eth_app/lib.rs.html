@@ -702,7 +702,7 @@
                 Error::&lt;T&gt;::InvalidAppAddress
             );
 
-            <span class="kw">let </span>thischain_amount = T::BalancePrecisionConverter::from_sidechain(
+            <span class="kw">let </span>(thischain_amount, <span class="kw">_</span>) = T::BalancePrecisionConverter::from_sidechain(
                 <span class="kw-2">&amp;</span>asset_id,
                 sidechain_precision,
                 amount,
@@ -798,7 +798,7 @@
             <span class="kw">let </span>(target, asset_id, sidechain_precision) =
                 Addresses::&lt;T&gt;::get(network_id).ok_or(Error::&lt;T&gt;::AppIsNotRegistered)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>sidechain_amount = T::BalancePrecisionConverter::to_sidechain(
+            <span class="kw">let </span>(amount, sidechain_amount) = T::BalancePrecisionConverter::to_sidechain(
                 <span class="kw-2">&amp;</span>asset_id,
                 sidechain_precision,
                 amount.clone(),
