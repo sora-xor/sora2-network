@@ -205,7 +205,7 @@ pub mod pallet {
                 Error::<T>::InvalidAppAddress
             );
 
-            let thischain_amount = T::BalancePrecisionConverter::from_sidechain(
+            let (thischain_amount, _) = T::BalancePrecisionConverter::from_sidechain(
                 &asset_id,
                 sidechain_precision,
                 amount,
@@ -301,7 +301,7 @@ pub mod pallet {
             let (target, asset_id, sidechain_precision) =
                 Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
 
-            let sidechain_amount = T::BalancePrecisionConverter::to_sidechain(
+            let (amount, sidechain_amount) = T::BalancePrecisionConverter::to_sidechain(
                 &asset_id,
                 sidechain_precision,
                 amount.clone(),

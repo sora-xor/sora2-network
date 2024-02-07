@@ -56,29 +56,3 @@ macro_rules! assert_noop_msg {
 pub fn init_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
-
-pub fn assert_last_event<T: frame_system::Config>(
-    generic_event: <T as frame_system::Config>::RuntimeEvent,
-) {
-    let events = frame_system::Pallet::<T>::events();
-    // compare to the last event record
-    let frame_system::EventRecord { event, .. } = &events[events.len() - 1];
-    assert_eq!(event, &generic_event);
-}
-
-pub fn assert_event<T: frame_system::Config>(
-    generic_event: <T as frame_system::Config>::RuntimeEvent,
-) {
-    let events = frame_system::Pallet::<T>::events();
-
-    assert!(
-        events.iter().any(|record| record.event == generic_event),
-        "Assert event failed\nExpected: {:?}\nEvents:\n{}",
-        generic_event,
-        events
-            .into_iter()
-            .map(|record| format!("{:?}", record.event))
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-}

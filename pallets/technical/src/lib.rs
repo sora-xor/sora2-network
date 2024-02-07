@@ -241,7 +241,7 @@ impl<T: Config> Pallet<T> {
         assets::Pallet::<T>::mint_to(asset, &account_id, &account_id, amount)
     }
 
-    /// Burn specific asset from the given `TechAccountId`.
+    /// Returns total balance for asset from the given `TechAccountId`.
     pub fn total_balance(
         asset_id: &T::AssetId,
         tech_id: &T::TechAccountId,
@@ -276,8 +276,8 @@ pub mod pallet {
             + From<AssetIdOf<Self>>;
 
         /// Like AccountId but controlled by consensus, not signing by user.
-        /// This extra traits exist here bacause no way to do it by constraints, problem exist with
-        /// constraints and substrate macroses, and place this traits here is solution.
+        /// This extra traits exist here because no way to do it by constraints, problem exist with
+        /// constraints and substrate macros, and place this traits here is solution.
         type TechAccountId: Ord
             + Member
             + Parameter
