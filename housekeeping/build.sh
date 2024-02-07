@@ -7,6 +7,7 @@ wasmReportFile='subwasm_report.json'
 PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
+allfeatures='private-net,wip,ready-to-test,runtime-benchmarks'
 
 # build
 # If TAG_NAME is defined, build for a specific tag
@@ -48,9 +49,12 @@ else
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
     else
         printf "⚡️ Running Tests for code coverage only %s\n"
+        export RUSTFLAGS="-Cinstrument-coverage"
+        export SKIP_WASM_BUILD=1
+        export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         rm -rf ~/.cargo/.package-cache
         rm Cargo.lock
         cargo fmt -- --check > /dev/null
-        cargo test --features "private-net wip ready-to-test runtime-benchmarks"
+        cargo test --features $allfeatures
     fi
 fi

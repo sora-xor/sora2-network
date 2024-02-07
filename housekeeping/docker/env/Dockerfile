@@ -9,6 +9,8 @@ ENV CC=clang-14
 ENV CXX=clang++-14
 ENV SUBWASM_VER=v0.14.0
 ENV GRCOV_VERSION=0.8.19
+ENV LLVM_TOOLS_VER=14
+ENV CCLANG_VER=14
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
@@ -24,11 +26,11 @@ RUN apt-get update && \
     rustup toolchain install ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_VERSION} && \
     curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-    echo "deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-14 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-14.list && \
-    echo "deb-src http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-14 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-14.list && \
+    echo "deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-${LLVM_TOOLS_VER} main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-${LLVM_TOOLS_VER}.list && \
+    echo "deb-src http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-${LLVM_TOOLS_VER} main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-${LLVM_TOOLS_VER}.list && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
-    clang-14 lldb-14 lld-14 libclang-14-dev llvm-14 protobuf-compiler && \
+    clang-${CCLANG_VER} lldb-${CCLANG_VER} lld-${CCLANG_VER} libclang-${CCLANG_VER}-dev llvm-${LLVM_TOOLS_VER} protobuf-compiler && \
     update-alternatives --install /usr/bin/cc cc /usr/bin/${CC} 100 && \
     curl https://github.com/chevdor/subwasm/releases/download/${SUBWASM_VER}/subwasm_linux_amd64_${SUBWASM_VER}.deb -sSL -o subw.deb && \
     dpkg -i subw.deb && rm subw.deb && \
@@ -38,5 +40,5 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git" && \
+    rm -rf "${CARGO_HOME}/git" && \
     ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
