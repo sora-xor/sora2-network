@@ -385,7 +385,7 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
         }
     }
 
-    fn register_asset(asset_id: &AssetId) -> frame_support::pallet_prelude::DispatchResult {
+    fn register_asset(_asset_id: &AssetId) -> frame_support::pallet_prelude::DispatchResult {
         todo!()
     }
 
@@ -563,5 +563,6 @@ pub fn run_to_block(n: u64) {
         System::on_finalize(System::block_number());
         System::set_block_number(System::block_number() + 1);
         System::on_initialize(System::block_number());
+        ApolloPlatform::on_initialize(System::block_number());
     }
 }
