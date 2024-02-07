@@ -155,11 +155,11 @@ fn should_list_registered_pairs() {
             vec![
                 TradingPair {
                     base_asset_id: XOR,
-                    target_asset_id: KSM
+                    target_asset_id: DOT
                 },
                 TradingPair {
                     base_asset_id: XOR,
-                    target_asset_id: DOT
+                    target_asset_id: KSM
                 },
             ]
         );
