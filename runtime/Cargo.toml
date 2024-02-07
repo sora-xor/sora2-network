@@ -11,6 +11,8 @@ version = "3.2.0"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [build-dependencies]
+rustc_version_runtime = "0.3.0"
+os-version = "0.2.0"
 substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 [dependencies]

@@ -35,6 +35,13 @@ use std::{env, fs};
 use substrate_wasm_builder::WasmBuilder;
 
 fn main() {
+    extern crate rustc_version_runtime;
+    use os_version;
+    use rustc_version_runtime::version;
+    dbg!(version());
+    dbg!(os_version::detect());
+    panic!("enough!");
+
     #[cfg(feature = "build-wasm-binary")]
     WasmBuilder::new()
         .with_current_project()
