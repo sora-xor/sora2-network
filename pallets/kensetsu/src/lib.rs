@@ -132,7 +132,7 @@ pub mod pallet {
     use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter, PriceToolsPallet,
+        DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter, PriceToolsProvider,
         PriceVariant, DAI,
     };
     use frame_support::pallet_prelude::*;
@@ -240,7 +240,7 @@ pub mod pallet {
         >;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
         type KusdAssetId: Get<Self::AssetId>;
-        type PriceTools: PriceToolsPallet<Self::AssetId>;
+        type PriceTools: PriceToolsProvider<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
 
         /// Maximum number of CDP that one user can create
