@@ -153,7 +153,7 @@ pub enum PredefinedAssetId {
     TBCD = 10,
     KUSD = 11,
 
-    #[cfg(test)]
+    #[cfg(any(feature = "private-net", test))]
     USDT = 3,
 }
 
@@ -188,8 +188,12 @@ pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
 pub const ROC: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "0x00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
 ));
-#[cfg(any(test, feature = "runtime-benchmarks"))]
+#[cfg(any(feature = "private-net", test))]
 pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::USDT);
+#[cfg(not(any(feature = "private-net", test)))]
+pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "0083a6b3fbc6edae06f115c8953ddd7cbfba0b74579d6ea190f96853073b76f4"
+));
 
 impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
