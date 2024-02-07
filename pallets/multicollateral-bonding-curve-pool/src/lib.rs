@@ -69,7 +69,7 @@ use sp_std::vec::Vec;
 pub use weights::WeightInfo;
 #[cfg(feature = "std")]
 use {
-    common::USDT,
+    common::DAI,
     serde::{Deserialize, Serialize},
 };
 
@@ -559,9 +559,9 @@ pub mod pallet {
             Self {
                 reserves_account_id: Default::default(),
                 distribution_accounts: Default::default(),
-                reference_asset_id: USDT.into(),
+                reference_asset_id: DAI.into(),
                 incentives_account_id: Default::default(),
-                initial_collateral_assets: [USDT.into(), VAL.into(), PSWAP.into()].into(),
+                initial_collateral_assets: [DAI.into(), VAL.into(), PSWAP.into()].into(),
                 free_reserves_account_id: Default::default(),
             }
         }

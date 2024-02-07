@@ -34,7 +34,7 @@ use common::prelude::{Balance, PriceToolsPallet};
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
     FromGenericPair, PredefinedAssetId, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD,
-    USDT, VAL, XOR, XST, XSTUSD,
+    VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -420,14 +420,6 @@ impl Default for ExtBuilder {
             endowed_accounts: vec![
                 (
                     alice(),
-                    USDT,
-                    0,
-                    AssetSymbol(b"USDT".to_vec()),
-                    AssetName(b"Tether USD".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                ),
-                (
-                    alice(),
                     XOR,
                     balance!(350000),
                     AssetSymbol(b"XOR".to_vec()),
@@ -504,7 +496,6 @@ impl Default for ExtBuilder {
             initial_prices: vec![
                 (XST, balance!(0.6), balance!(0.5)),
                 (DAI, balance!(110), balance!(90)),
-                (USDT, balance!(200), balance!(190)),
             ],
         }
     }

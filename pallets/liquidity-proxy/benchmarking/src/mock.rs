@@ -39,7 +39,7 @@ use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, AssetName, AssetSymbol,
     BalancePrecision, ContentSource, DEXInfo, Description, Fixed, FromGenericPair,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet,
-    PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, USDT, VAL, XOR, XST,
+    PriceVariant, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
@@ -629,10 +629,10 @@ impl Default for ExtBuilder {
                     None,
                 ),
                 (
-                    USDT,
+                    DAI,
                     alice(),
-                    AssetSymbol(b"USDT".to_vec()),
-                    AssetName(b"USDT".to_vec()),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"DAI".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     balance!(0),
                     true,
@@ -753,7 +753,7 @@ impl ExtBuilder {
         multicollateral_bonding_curve_pool::GenesisConfig::<Runtime> {
             distribution_accounts: accounts,
             reserves_account_id: GetMbcReservesTechAccountId::get(),
-            reference_asset_id: USDT,
+            reference_asset_id: DAI,
             incentives_account_id: Some(GetMbcRewardsAccountId::get()),
             initial_collateral_assets: vec![VAL],
             free_reserves_account_id: Some(GetMbcFreeReservesAccountId::get()),

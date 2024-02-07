@@ -45,7 +45,7 @@ use sp_std::prelude::*;
 use price_tools::AVG_BLOCK_SPAN;
 
 use common::prelude::SwapAmount;
-use common::{fixed, AssetName, AssetSymbol, DAI, DEFAULT_BALANCE_PRECISION, USDT, XOR};
+use common::{fixed, AssetName, AssetSymbol, DAI, DEFAULT_BALANCE_PRECISION, ETH, XOR};
 
 use crate::Pallet as MBCPool;
 use assets::Pallet as Assets;
@@ -96,7 +96,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     .unwrap();
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(5000)).unwrap();
     Assets::<T>::mint_to(
-        &DAI.into(),
+        &ETH.into(),
         &owner.clone(),
         &owner.clone(),
         balance!(50000000),
@@ -110,7 +110,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), ETH.into())
         .unwrap();
     XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())
         .unwrap();
@@ -119,7 +119,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
-        DAI.into(),
+        ETH.into(),
         balance!(1000),
         balance!(2000),
         balance!(1000),
@@ -144,7 +144,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 fn add_pending<T: Config>(n: u32) {
     let mut pending = Vec::new();
     for _i in 0..n {
-        pending.push((DAI.into(), balance!(1)))
+        pending.push((ETH.into(), balance!(1)))
     }
     PendingFreeReserves::<T>::set(pending);
 }
@@ -166,7 +166,7 @@ benchmarks! {
         ).unwrap();
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
+            DAI.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
             AssetName(b"USD".to_vec()),
             DEFAULT_BALANCE_PRECISION,
@@ -178,16 +178,16 @@ benchmarks! {
         <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
-            USDT.into()
+            DAI.into()
         ).unwrap();
     }: {
         Pallet::<T>::initialize_pool(
             RawOrigin::Signed(caller.clone()).into(),
-            USDT.into()
+            DAI.into()
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::<T>::PoolInitialized(common::DEXId::Polkaswap.into(), USDT.into()).into())
+        assert_last_event::<T>(Event::<T>::PoolInitialized(common::DEXId::Polkaswap.into(), DAI.into()).into())
     }
 
     set_reference_asset {
@@ -202,7 +202,7 @@ benchmarks! {
         ).unwrap();
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
+            DAI.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
             AssetName(b"USD".to_vec()),
             DEFAULT_BALANCE_PRECISION,
@@ -214,11 +214,11 @@ benchmarks! {
     }: {
         Pallet::<T>::set_reference_asset(
             RawOrigin::Signed(caller.clone()).into(),
-            USDT.into()
+            DAI.into()
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::<T>::ReferenceAssetChanged(USDT.into()).into())
+        assert_last_event::<T>(Event::<T>::ReferenceAssetChanged(DAI.into()).into())
     }
 
     set_optional_reward_multiplier {
@@ -233,7 +233,7 @@ benchmarks! {
         ).unwrap();
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
+            DAI.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
             AssetName(b"USD".to_vec()),
             DEFAULT_BALANCE_PRECISION,
@@ -242,17 +242,17 @@ benchmarks! {
             None,
             None
         ).unwrap();
-        <T as Config>::TradingPairSourceManager::register_pair( common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
-        MBCPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), USDT.into()).unwrap();
+        <T as Config>::TradingPairSourceManager::register_pair( common::DEXId::Polkaswap.into(), XOR.into(), DAI.into()).unwrap();
+        MBCPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), DAI.into()).unwrap();
     }: {
         Pallet::<T>::set_optional_reward_multiplier(
             RawOrigin::Signed(caller.clone()).into(),
-            USDT.into(),
+            DAI.into(),
             Some(fixed!(123))
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::<T>::OptionalRewardMultiplierUpdated(USDT.into(), Some(fixed!(123))).into())
+        assert_last_event::<T>(Event::<T>::OptionalRewardMultiplierUpdated(DAI.into(), Some(fixed!(123))).into())
     }
 
     on_initialize {
@@ -321,7 +321,7 @@ benchmarks! {
 
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
+            DAI.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
             AssetName(b"USD".to_vec()),
             DEFAULT_BALANCE_PRECISION,
@@ -334,27 +334,27 @@ benchmarks! {
     <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
-            USDT.into(),
+            DAI.into(),
         )
         .unwrap();
         Pallet::<T>::initialize_pool(
             RawOrigin::Signed(caller.clone()).into(),
-            USDT.into()
+            DAI.into()
         ).unwrap();
 
         #[cfg(not(test))]
         for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::<T>::incoming_spot_price(&ETH.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&ETH.into(), balance!(1), PriceVariant::Sell).unwrap();
             PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
             PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
         }
         let amount = SwapAmount::WithDesiredInput {
             desired_amount_in: balance!(1),
             min_amount_out: balance!(0),
         };
     }: {
-        Pallet::<T>::quote(&dex_id, &USDT.into(), &XOR.into(), amount.into(), true).unwrap();
+        Pallet::<T>::quote(&dex_id, &DAI.into(), &XOR.into(), amount.into(), true).unwrap();
     }
     verify {
         // can't check, nothing is changed
@@ -373,7 +373,7 @@ benchmarks! {
 
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
+            DAI.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
             AssetName(b"USD".to_vec()),
             DEFAULT_BALANCE_PRECISION,
@@ -384,7 +384,7 @@ benchmarks! {
         )
         .unwrap();
         Assets::<T>::mint_to(
-            &USDT.into(),
+            &DAI.into(),
             &caller.clone(),
             &caller.clone(),
             balance!(50000000),
@@ -393,36 +393,36 @@ benchmarks! {
     <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
-            USDT.into(),
+            DAI.into(),
         )
         .unwrap();
         Pallet::<T>::initialize_pool(
             RawOrigin::Signed(caller.clone()).into(),
-            USDT.into()
+            DAI.into()
         ).unwrap();
 
         #[cfg(not(test))]
         for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::<T>::incoming_spot_price(&ETH.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&ETH.into(), balance!(1), PriceVariant::Sell).unwrap();
             PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
             PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
         }
         let amount = SwapAmount::WithDesiredInput {
             desired_amount_in: balance!(100),
             min_amount_out: balance!(0),
         };
-        let initial_base_balance = Assets::<T>::free_balance(&USDT.into(), &caller).unwrap();
+        let initial_base_balance = Assets::<T>::free_balance(&DAI.into(), &caller).unwrap();
     }: {
         // run only for benchmarks, not for tests
         // TODO: remake when unit tests use chainspec
         #[cfg(not(test))]
-        Pallet::<T>::exchange(&caller, &caller, &dex_id, &USDT.into(), &XOR.into(), amount.into()).unwrap();
+        Pallet::<T>::exchange(&caller, &caller, &dex_id, &DAI.into(), &XOR.into(), amount.into()).unwrap();
     }
     verify {
         #[cfg(not(test))]
         assert_eq!(
-            Into::<u128>::into(Assets::<T>::free_balance(&USDT.into(), &caller).unwrap()),
+            Into::<u128>::into(Assets::<T>::free_balance(&DAI.into(), &caller).unwrap()),
             Into::<u128>::into(initial_base_balance) - balance!(100)
         );
     }
@@ -439,7 +439,7 @@ benchmarks! {
         ).unwrap();
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
+            DAI.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
             AssetName(b"USD".to_vec()),
             DEFAULT_BALANCE_PRECISION,
@@ -451,17 +451,17 @@ benchmarks! {
         <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
-            USDT.into()
+            DAI.into()
         ).unwrap();
         Pallet::<T>::initialize_pool(
             RawOrigin::Signed(caller.clone()).into(),
-            USDT.into()
+            DAI.into()
         ).unwrap();
     }: {
         assert!(MBCPool::<T>::can_exchange(
             &dex_id,
             &XOR.into(),
-            &USDT.into(),
+            &DAI.into(),
         ));
     }
     verify {
@@ -480,7 +480,7 @@ benchmarks! {
 
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
+            DAI.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
             AssetName(b"USD".to_vec()),
             DEFAULT_BALANCE_PRECISION,
@@ -491,7 +491,7 @@ benchmarks! {
         )
         .unwrap();
         Assets::<T>::mint_to(
-            &USDT.into(),
+            &DAI.into(),
             &caller.clone(),
             &caller.clone(),
             balance!(50000000),
@@ -500,23 +500,23 @@ benchmarks! {
     <T as Config>::TradingPairSourceManager::register_pair(
             common::DEXId::Polkaswap.into(),
             XOR.into(),
-            USDT.into(),
+            DAI.into(),
         )
         .unwrap();
         Pallet::<T>::initialize_pool(
             RawOrigin::Signed(caller.clone()).into(),
-            USDT.into()
+            DAI.into()
         ).unwrap();
 
         #[cfg(not(test))]
         for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::<T>::incoming_spot_price(&ETH.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&ETH.into(), balance!(1), PriceVariant::Sell).unwrap();
             PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
             PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
         }
     }: {
-        let (rewards, _) = MBCPool::<T>::check_rewards(&dex_id, &USDT.into(), &XOR.into(), balance!(1000), balance!(10)).unwrap();
+        let (rewards, _) = MBCPool::<T>::check_rewards(&dex_id, &DAI.into(), &XOR.into(), balance!(1000), balance!(10)).unwrap();
         assert!(!rewards.is_empty());
     }
     verify {

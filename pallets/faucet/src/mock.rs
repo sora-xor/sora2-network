@@ -32,8 +32,8 @@ use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper};
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, DAI,
+    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -75,7 +75,7 @@ pub fn account_id() -> AccountId {
     Technical::tech_account_id_to_account_id(&tech_account_id()).unwrap()
 }
 
-pub const NOT_SUPPORTED_ASSET_ID: AssetId = USDT;
+pub const NOT_SUPPORTED_ASSET_ID: AssetId = DAI;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;

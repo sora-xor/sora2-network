@@ -47,7 +47,7 @@ use crate::tests::{
 };
 use crate::{AssetConfig, EthAddress};
 use common::{
-    AssetInfoProvider, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM, USDT, VAL, XOR,
+    AssetInfoProvider, AssetName, AssetSymbol, DAI, DEFAULT_BALANCE_PRECISION, DOT, KSM, VAL, XOR,
 };
 use frame_support::assert_ok;
 use frame_support::sp_runtime::{DispatchResult, TransactionOutcome};
@@ -520,7 +520,7 @@ fn should_cancel_incoming_prepared_requests() {
     builder.add_currency(
         net_id,
         AssetConfig::Sidechain {
-            id: USDT.into(),
+            id: DAI.into(),
             sidechain_id: H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
             owned: false,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -574,7 +574,7 @@ fn should_cancel_incoming_prepared_requests() {
                 IncomingTransfer {
                     from: EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                     to: alice.clone(),
-                    asset_id: USDT.into(),
+                    asset_id: DAI.into(),
                     asset_kind: AssetKind::Sidechain,
                     amount: 1_u32.into(),
                     author: alice.clone(),

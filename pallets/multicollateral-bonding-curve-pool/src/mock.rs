@@ -38,7 +38,7 @@ use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol,
     BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
     LiquiditySourceType, PriceVariant, TechPurpose, VestedRewardsPallet, DAI,
-    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    DEFAULT_BALANCE_PRECISION, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
@@ -461,7 +461,7 @@ impl MockDEXApi {
             (XOR, balance!(100000)),
             (VAL, balance!(100000)),
             (TBCD, balance!(100000)),
-            (USDT, balance!(1000000)),
+            (ETH, balance!(1000000)),
         ])?;
         Ok(())
     }
@@ -596,18 +596,18 @@ impl MockDEXApi {
 pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
     let prices = vec![
         ((XOR, VAL), balance!(2.0)),
-        // USDT
-        ((XOR, USDT), balance!(100.0)),
-        ((VAL, USDT), balance!(50.0)),
+        // ETH
+        ((XOR, ETH), balance!(100.0)),
+        ((VAL, ETH), balance!(50.0)),
         // DAI
         ((XOR, DAI), balance!(102.0)),
         ((VAL, DAI), balance!(51.0)),
-        ((USDT, DAI), balance!(1.02)),
+        ((ETH, DAI), balance!(1.02)),
         ((XSTUSD, DAI), balance!(1)),
         // PSWAP
         ((XOR, PSWAP), balance!(10)),
         ((VAL, PSWAP), balance!(5)),
-        ((USDT, PSWAP), balance!(0.1)),
+        ((ETH, PSWAP), balance!(0.1)),
         ((DAI, PSWAP), balance!(0.098)),
         ((XSTUSD, PSWAP), balance!(1)),
         // XSTUSD
@@ -695,9 +695,9 @@ impl Default for ExtBuilder {
             endowed_accounts: vec![
                 (
                     alice(),
-                    USDT,
+                    ETH,
                     0,
-                    AssetSymbol(b"USDT".to_vec()),
+                    AssetSymbol(b"ETH".to_vec()),
                     AssetName(b"Tether USD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
@@ -775,7 +775,7 @@ impl Default for ExtBuilder {
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
-            reference_asset_id: USDT,
+            reference_asset_id: ETH,
         }
     }
 }
@@ -922,7 +922,7 @@ impl ExtBuilder {
                     },
                 ),
             ],
-            reference_asset_id: USDT,
+            reference_asset_id: ETH,
         }
     }
 

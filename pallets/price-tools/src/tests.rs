@@ -34,8 +34,8 @@ use crate::mock::*;
 use crate::{Error, AVG_BLOCK_SPAN};
 use common::prelude::Balance;
 use common::{
-    balance, fixed_wrapper, OnPoolReservesChanged, PriceToolsPallet, PriceVariant, DOT, ETH, PSWAP,
-    VAL, XOR,
+    balance, fixed_wrapper, OnPoolReservesChanged, PriceToolsPallet, PriceVariant, DAI, DOT, ETH,
+    PSWAP, VAL, XOR,
 };
 use frame_support::assert_noop;
 

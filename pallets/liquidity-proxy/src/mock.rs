@@ -34,7 +34,7 @@ use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
     LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, TBCD,
-    USDT, VAL, XOR, XST, XSTUSD,
+    VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -554,9 +554,9 @@ impl Default for ExtBuilder {
                 ),
                 (
                     alice(),
-                    USDT,
+                    DAI,
                     balance!(0),
-                    AssetSymbol(b"USDT".to_vec()),
+                    AssetSymbol(b"DAI".to_vec()),
                     AssetName(b"Tether".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
@@ -830,7 +830,7 @@ pub fn get_reference_prices() -> HashMap<AssetId, Balance> {
         (XOR, balance!(5.0)),
         (VAL, balance!(2.0)),
         (PSWAP, balance!(0.098)),
-        (USDT, balance!(1.01)),
+        (DAI, balance!(1.01)),
         (KSM, balance!(450.0)),
         (DOT, balance!(50.0)),
         (XST, balance!(182.9)),
@@ -902,10 +902,10 @@ impl ExtBuilder {
 
     pub fn with_xyk_pool(mut self) -> Self {
         self.xyk_reserves = vec![
-            (DEX_A_ID, USDT, (balance!(1000), balance!(1000))),
+            (DEX_A_ID, DAI, (balance!(1000), balance!(1000))),
             (DEX_A_ID, KSM, (balance!(1000), balance!(2000))),
-            (DEX_C_ID, USDT, (balance!(600), balance!(10000))),
-            (DEX_D_ID, USDT, (balance!(1000), balance!(1000))),
+            (DEX_C_ID, DAI, (balance!(600), balance!(10000))),
+            (DEX_D_ID, DAI, (balance!(1000), balance!(1000))),
         ];
         self.source_types.push(LiquiditySourceType::XYKPool);
         self

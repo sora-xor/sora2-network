@@ -40,7 +40,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{DEFAULT_BALANCE_PRECISION, USDT, XOR};
+use common::{DAI, DEFAULT_BALANCE_PRECISION, XOR};
 
 use crate::Pallet as Assets;
 
@@ -136,9 +136,9 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
-            AssetSymbol(b"USDT".to_vec()),
-            AssetName(b"USDT".to_vec()),
+            DAI.into(),
+            AssetSymbol(b"DAI".to_vec()),
+            AssetName(b"DAI".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
@@ -147,12 +147,12 @@ benchmarks! {
         ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
-        USDT.into(),
+        DAI.into(),
         caller.clone(),
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(Event::<T>::Mint(caller.clone(), caller, USDT.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::<T>::Mint(caller.clone(), caller, DAI.into(), 100_u32.into()).into())
     }
 
     force_mint {
@@ -161,9 +161,9 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
-            AssetSymbol(b"USDT".to_vec()),
-            AssetName(b"USDT".to_vec()),
+            DAI.into(),
+            AssetSymbol(b"DAI".to_vec()),
+            AssetName(b"DAI".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
@@ -172,13 +172,13 @@ benchmarks! {
         ).unwrap();
     }: _(
         RawOrigin::Root,
-        USDT.into(),
+        DAI.into(),
         caller,
         100_u32.into()
     )
     verify {
-        let usdt_issuance = Assets::<T>::total_issuance(&USDT.into())?;
-        assert_eq!(usdt_issuance, 100_u32.into());
+        let dai_issuance = Assets::<T>::total_issuance(&DAI.into())?;
+        assert_eq!(dai_issuance, 100_u32.into());
     }
 
     burn {
@@ -187,9 +187,9 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
-            AssetSymbol(b"USDT".to_vec()),
-            AssetName(b"USDT".to_vec()),
+            DAI.into(),
+            AssetSymbol(b"DAI".to_vec()),
+            AssetName(b"DAI".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
@@ -198,17 +198,17 @@ benchmarks! {
         ).unwrap();
         Assets::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
-            USDT.into(),
+            DAI.into(),
             caller.clone(),
             1000_u32.into()
         ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
-        USDT.into(),
+        DAI.into(),
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(Event::<T>::Burn(caller, USDT.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::<T>::Burn(caller, DAI.into(), 100_u32.into()).into())
     }
 
     update_balance {
@@ -217,9 +217,9 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
-            AssetSymbol(b"USDT".to_vec()),
-            AssetName(b"USDT".to_vec()),
+            DAI.into(),
+            AssetSymbol(b"DAI".to_vec()),
+            AssetName(b"DAI".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
@@ -229,12 +229,12 @@ benchmarks! {
     }: _(
         RawOrigin::Root,
         caller,
-        USDT.into(),
+        DAI.into(),
         100_i128
     )
     verify {
-        let usdt_issuance = Assets::<T>::total_issuance(&USDT.into())?;
-        assert_eq!(usdt_issuance, 100_u32.into());
+        let dai_issuance = Assets::<T>::total_issuance(&DAI.into())?;
+        assert_eq!(dai_issuance, 100_u32.into());
     }
 
     set_non_mintable {
@@ -243,9 +243,9 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
-            USDT.into(),
-            AssetSymbol(b"USDT".to_vec()),
-            AssetName(b"USDT".to_vec()),
+            DAI.into(),
+            AssetSymbol(b"DAI".to_vec()),
+            AssetName(b"DAI".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
@@ -254,10 +254,10 @@ benchmarks! {
         ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
-        USDT.into()
+        DAI.into()
     )
     verify {
-        assert_last_event::<T>(Event::<T>::AssetSetNonMintable(USDT.into()).into())
+        assert_last_event::<T>(Event::<T>::AssetSetNonMintable(DAI.into()).into())
     }
 
     update_info {
@@ -266,9 +266,9 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller,
-            USDT.into(),
-            AssetSymbol(b"USDT".to_vec()),
-            AssetName(b"USDT".to_vec()),
+            DAI.into(),
+            AssetSymbol(b"DAI".to_vec()),
+            AssetName(b"DAI".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
@@ -277,13 +277,13 @@ benchmarks! {
         ).unwrap();
     }: _(
         RawOrigin::Root,
-        USDT.into(),
+        DAI.into(),
         Some(AssetSymbol(b"DAI".to_vec())),
         Some(AssetName(b"DAI stablecoin".to_vec()))
     )
     verify {
         assert_eq!(
-            crate::AssetInfos::<T>::get(T::AssetId::from(USDT)),
+            crate::AssetInfos::<T>::get(T::AssetId::from(DAI)),
             (
                 AssetSymbol(b"DAI".to_vec()),
                 AssetName(b"DAI stablecoin".to_vec()),

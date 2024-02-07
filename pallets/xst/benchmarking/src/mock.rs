@@ -33,7 +33,7 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
-    FromGenericPair, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    FromGenericPair, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -394,14 +394,6 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (
-                    alice(),
-                    USDT,
-                    0,
-                    AssetSymbol(b"USDT".to_vec()),
-                    AssetName(b"Tether USD".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                ),
                 (
                     alice(),
                     XOR,

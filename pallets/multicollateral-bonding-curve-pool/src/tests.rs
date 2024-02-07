@@ -41,7 +41,7 @@ mod tests {
         prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome},
         AssetInfoProvider, AssetName, AssetSymbol, DEXId, Fixed, LiquidityProxyTrait,
         LiquiditySource, LiquiditySourceFilter, PriceVariant, TechPurpose, DAI,
-        DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XSTUSD,
+        DEFAULT_BALANCE_PRECISION, ETH, PSWAP, TBCD, VAL, XOR, XSTUSD,
     };
     use frame_support::assert_err;
     use frame_support::assert_noop;
@@ -487,9 +487,9 @@ mod tests {
         ExtBuilder::new(vec![
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(10000),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -677,7 +677,7 @@ mod tests {
             let pool_reference_amount = pool_reference_amount.into_balance();
             let pool_val_amount = MockDEXApi::quote(
                 DEXId::Polkaswap,
-                &USDT,
+                &ETH,
                 &VAL,
                 QuoteAmount::with_desired_input(pool_reference_amount),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap),
@@ -787,7 +787,7 @@ mod tests {
             let pool_reference_amount = pool_reference_amount.into_balance();
             let pool_val_amount = MockDEXApi::quote(
                 DEXId::Polkaswap,
-                &USDT,
+                &ETH,
                 &VAL,
                 QuoteAmount::with_desired_input(pool_reference_amount),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap),
@@ -848,9 +848,9 @@ mod tests {
         ExtBuilder::new(vec![
             (
                 alice(),
-                USDT,
+                ETH,
                 0,
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -927,9 +927,9 @@ mod tests {
         ExtBuilder::new(vec![
             (
                 alice(),
-                USDT,
+                ETH,
                 0,
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -1023,9 +1023,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -1105,9 +1105,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 18,
             ),
@@ -1191,9 +1191,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 18,
             ),
@@ -1282,9 +1282,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -1393,9 +1393,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -1697,9 +1697,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -1793,9 +1793,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -1880,9 +1880,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -1997,9 +1997,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -2182,9 +2182,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -2368,9 +2368,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -2491,9 +2491,9 @@ mod tests {
         ExtBuilder::new(vec![
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(10000),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -2540,7 +2540,7 @@ mod tests {
                 RuntimeOrigin::signed(alice.clone()),
                 DEXId::Polkaswap.into(),
                 XOR,
-                USDT,
+                ETH,
             )
             .expect("Failed to register trading pair.");
             TradingPair::register(
@@ -2550,11 +2550,11 @@ mod tests {
                 VAL,
             )
             .expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(ETH, false).expect("Failed to initialize pool.");
 
             // check pending list and reserves before trade
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
             assert_eq!(free_reserves_balance, balance!(0));
 
@@ -2569,7 +2569,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
@@ -2583,7 +2583,7 @@ mod tests {
 
             // check pending list and free reserves account
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
             assert_eq!(free_reserves_balance, balance!(0));
 
@@ -2603,9 +2603,9 @@ mod tests {
         ExtBuilder::new(vec![
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(10000),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -2652,7 +2652,7 @@ mod tests {
                 RuntimeOrigin::signed(alice.clone()),
                 DEXId::Polkaswap.into(),
                 XOR,
-                USDT,
+                ETH,
             )
             .expect("Failed to register trading pair.");
             TradingPair::register(
@@ -2662,11 +2662,11 @@ mod tests {
                 VAL,
             )
             .expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(ETH, false).expect("Failed to initialize pool.");
 
             // check pending list and reserves before trade
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
             assert_eq!(free_reserves_balance, balance!(0));
 
@@ -2676,7 +2676,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
@@ -2691,20 +2691,20 @@ mod tests {
 
             // check pending list and free reserves account
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance.clone())]
+                vec![(ETH, free_reserves_balance.clone())]
             );
             assert_eq!(free_reserves_balance, balance!(40.120436328358829805));
 
             // attempt for distribution, still not enough reserves
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance_2 =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance.clone())]
+                vec![(ETH, free_reserves_balance.clone())]
             );
             assert_eq!(free_reserves_balance_2, free_reserves_balance);
 
@@ -2712,7 +2712,7 @@ mod tests {
             MockDEXApi::add_reserves(vec![
                 (XOR, balance!(100000)),
                 (VAL, balance!(100000)),
-                (USDT, balance!(1000000)),
+                (ETH, balance!(1000000)),
                 (TBCD, balance!(1000000)),
             ])
             .unwrap();
@@ -2726,17 +2726,17 @@ mod tests {
             // attempt for distribution before retry period
             MBCPool::on_initialize((RETRY_DISTRIBUTION_FREQUENCY - 1).into());
             let free_reserves_balance_3 =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance.clone())]
+                vec![(ETH, free_reserves_balance.clone())]
             );
             assert_eq!(free_reserves_balance_3, free_reserves_balance);
 
             // successful attempt for distribution
             MBCPool::on_initialize((RETRY_DISTRIBUTION_FREQUENCY * 2).into());
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
             assert_eq!(free_reserves_balance, balance!(0));
 
@@ -2757,9 +2757,9 @@ mod tests {
         ExtBuilder::new(vec![
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(10000),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -2806,7 +2806,7 @@ mod tests {
                 RuntimeOrigin::signed(alice.clone()),
                 DEXId::Polkaswap.into(),
                 XOR,
-                USDT,
+                ETH,
             )
             .expect("Failed to register trading pair.");
             TradingPair::register(
@@ -2816,11 +2816,11 @@ mod tests {
                 VAL,
             )
             .expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(ETH, false).expect("Failed to initialize pool.");
 
             // check pending list and reserves before trade
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
             assert_eq!(free_reserves_balance, balance!(0));
 
@@ -2830,7 +2830,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
@@ -2847,7 +2847,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
@@ -2864,7 +2864,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
@@ -2879,7 +2879,7 @@ mod tests {
 
             // check pending list and reserves after trade
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             let expected_balances = [
                 balance!(40.120436328358829805),
                 balance!(40.120586367106336349),
@@ -2888,9 +2888,9 @@ mod tests {
             assert_eq!(
                 MBCPool::pending_free_reserves(),
                 vec![
-                    (USDT, expected_balances[0]),
-                    (USDT, expected_balances[1]),
-                    (USDT, expected_balances[2])
+                    (ETH, expected_balances[0]),
+                    (ETH, expected_balances[1]),
+                    (ETH, expected_balances[2])
                 ]
             );
             assert_eq!(
@@ -2902,13 +2902,13 @@ mod tests {
             MockDEXApi::add_reserves(vec![
                 (XOR, balance!(100000)),
                 (VAL, balance!(100000)),
-                (USDT, balance!(1000000)),
+                (ETH, balance!(1000000)),
                 (TBCD, balance!(1000000)),
             ])
             .unwrap();
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
             assert_eq!(free_reserves_balance, balance!(0));
         })
@@ -2919,9 +2919,9 @@ mod tests {
         ExtBuilder::new(vec![
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(999999999999999),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -2959,7 +2959,7 @@ mod tests {
                 RuntimeOrigin::signed(alice.clone()),
                 DEXId::Polkaswap.into(),
                 XOR,
-                USDT,
+                ETH,
             )
             .expect("Failed to register trading pair.");
             TradingPair::register(
@@ -2969,7 +2969,7 @@ mod tests {
                 VAL,
             )
             .expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(ETH, false).expect("Failed to initialize pool.");
 
             // perform large buy on tbc
             assert_swap_outcome(
@@ -2977,7 +2977,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
                 )
@@ -2992,10 +2992,10 @@ mod tests {
 
             // check that failed distribution was postponed
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance)]
+                vec![(ETH, free_reserves_balance)]
             );
             assert_eq!(
                 free_reserves_balance,
@@ -3005,10 +3005,10 @@ mod tests {
             // attempt for distribution
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance_2 =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance_2)]
+                vec![(ETH, free_reserves_balance_2)]
             );
             assert_eq!(free_reserves_balance_2, free_reserves_balance);
 
@@ -3018,7 +3018,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
                 )
@@ -3033,10 +3033,10 @@ mod tests {
 
             // second distribution was successful, pending list didn't change
             let free_reserves_balance_3 =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance_3)]
+                vec![(ETH, free_reserves_balance_3)]
             );
             assert_eq!(free_reserves_balance_3, free_reserves_balance_2);
         })
@@ -3048,9 +3048,9 @@ mod tests {
         ExtBuilder::new(vec![
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(999999999999999),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -3097,7 +3097,7 @@ mod tests {
                 RuntimeOrigin::signed(alice.clone()),
                 DEXId::Polkaswap.into(),
                 XOR,
-                USDT,
+                ETH,
             )
             .expect("Failed to register trading pair.");
             TradingPair::register(
@@ -3107,7 +3107,7 @@ mod tests {
                 VAL,
             )
             .expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(ETH, false).expect("Failed to initialize pool.");
 
             // perform large buy on tbc
             assert_swap_outcome(
@@ -3115,7 +3115,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
                 )
@@ -3134,7 +3134,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
                 )
@@ -3150,14 +3150,14 @@ mod tests {
             // attempt for distribution
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             let expected_balances = [
                 balance!(756463126913.458198980300901028),
                 balance!(1504400.263624851428814147),
             ];
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, expected_balances[0]), (USDT, expected_balances[1])]
+                vec![(ETH, expected_balances[0]), (ETH, expected_balances[1])]
             );
             assert_eq!(
                 free_reserves_balance,
@@ -3168,16 +3168,16 @@ mod tests {
             MockDEXApi::add_reserves(vec![
                 (XOR, balance!(100000)),
                 (VAL, balance!(100000)),
-                (USDT, balance!(1000000)),
+                (ETH, balance!(1000000)),
                 (TBCD, balance!(1000000)),
             ])
             .unwrap();
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, expected_balances[0])]
+                vec![(ETH, expected_balances[0])]
             );
             assert_eq!(free_reserves_balance, expected_balances[0]);
         })
@@ -3188,9 +3188,9 @@ mod tests {
         ExtBuilder::new(vec![
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(10000),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -3237,7 +3237,7 @@ mod tests {
                 RuntimeOrigin::signed(alice.clone()),
                 DEXId::Polkaswap.into(),
                 XOR,
-                USDT,
+                ETH,
             )
             .expect("Failed to register trading pair.");
             TradingPair::register(
@@ -3247,7 +3247,7 @@ mod tests {
                 VAL,
             )
             .expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(ETH, false).expect("Failed to initialize pool.");
 
             // perform buy on tbc
             assert_swap_outcome(
@@ -3255,7 +3255,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
@@ -3270,10 +3270,10 @@ mod tests {
 
             // check pending list and free reserves account
             let free_reserves_balance =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance.clone())]
+                vec![(ETH, free_reserves_balance.clone())]
             );
             assert_eq!(free_reserves_balance, balance!(40.120436328358829805));
 
@@ -3281,17 +3281,17 @@ mod tests {
             MockDEXApi::add_reserves(vec![
                 (XOR, balance!(100000)),
                 (VAL, balance!(0)),
-                (USDT, balance!(1000000)),
+                (ETH, balance!(1000000)),
             ])
             .unwrap();
 
             // check pending list
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance_2 =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance.clone())]
+                vec![(ETH, free_reserves_balance.clone())]
             );
 
             // val buy back and burn failed so exchanged xor is reverted
@@ -3307,7 +3307,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USDT,
+                    &ETH,
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
@@ -3322,14 +3322,11 @@ mod tests {
 
             // there are two pending distributions
             let free_reserves_balance_3 =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             let second_pending_balance = balance!(55.124461117760692833);
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![
-                    (USDT, free_reserves_balance),
-                    (USDT, second_pending_balance)
-                ]
+                vec![(ETH, free_reserves_balance), (ETH, second_pending_balance)]
             );
             assert_eq!(
                 free_reserves_balance_3,
@@ -3342,10 +3339,10 @@ mod tests {
             // val is not enough for one of distributions, it's still present
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance_4 =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
                 MBCPool::pending_free_reserves(),
-                vec![(USDT, second_pending_balance)]
+                vec![(ETH, second_pending_balance)]
             );
             assert_eq!(free_reserves_balance_4, second_pending_balance);
 
@@ -3365,7 +3362,7 @@ mod tests {
             // second pending distribution is performed
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance_5 =
-                Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
+                Assets::free_balance(&ETH, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
             assert_eq!(free_reserves_balance_5, balance!(0));
 
@@ -3386,9 +3383,9 @@ mod tests {
         ExtBuilder::new(vec![
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -3426,7 +3423,7 @@ mod tests {
                 RuntimeOrigin::signed(alice.clone()),
                 DEXId::Polkaswap.into(),
                 XOR,
-                USDT,
+                ETH,
             )
             .expect("Failed to register trading pair.");
             TradingPair::register(
@@ -3436,17 +3433,17 @@ mod tests {
                 VAL,
             )
             .expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(ETH, false).expect("Failed to initialize pool.");
             let reward = MBCPool::calculate_buy_reward(
                 alice,
-                &USDT,
+                &ETH,
                 balance!(0.000000002499999999),
                 balance!(0.000000000000001),
             );
             assert_eq!(reward.unwrap(), balance!(0.000000002499999999));
             let reward = MBCPool::calculate_buy_reward(
                 alice,
-                &USDT,
+                &ETH,
                 balance!(0.000000002499999999),
                 balance!(0.000000000000000001),
             );
@@ -3467,9 +3464,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
@@ -3662,9 +3659,9 @@ mod tests {
             ),
             (
                 alice(),
-                USDT,
+                ETH,
                 balance!(0),
-                AssetSymbol(b"USDT".to_vec()),
+                AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
