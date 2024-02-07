@@ -144,9 +144,6 @@ impl<T> TradingPair<T> {
 #[repr(u8)]
 pub enum PredefinedAssetId {
     XOR = 0,
-    DOT = 1,
-    KSM = 2,
-    USDT = 3,
     VAL = 4,
     PSWAP = 5,
     DAI = 6,
@@ -155,12 +152,12 @@ pub enum PredefinedAssetId {
     XST = 9,
     TBCD = 10,
     KUSD = 11,
+
+    #[cfg(test)]
+    USDT = 3,
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
-pub const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DOT);
-pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KSM);
-pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::USDT);
 pub const VAL: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::VAL);
 pub const PSWAP: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
 pub const DAI: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DAI);
@@ -179,6 +176,20 @@ pub const DEMETER_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes
 pub const HERMES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "002d4e9e03f192cc33b128319a049f353db98fbf4d98f717fd0b7f66a0462142"
 ));
+#[cfg(not(feature = "private-net"))]
+pub const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b"
+));
+#[cfg(not(feature = "private-net"))]
+pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "00117b0fa73c4672e03a7d9d774e3b3f91beb893e93d9a8d0430295f44225db8"
+));
+#[cfg(feature = "private-net")]
+pub const ROC: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "0x00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
+));
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::USDT);
 
 impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
