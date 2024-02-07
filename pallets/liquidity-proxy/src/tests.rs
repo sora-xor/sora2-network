@@ -40,7 +40,7 @@ use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
     Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, ReferencePriceProvider, RewardReason, TradingPairSourceManager, DAI, DOT,
-    ETH, KSM, PSWAP, VAL, XOR, XST, XSTUSD,
+    ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
 use frame_support::weights::Weight;
@@ -2802,11 +2802,11 @@ fn selecting_xyk_only_filter_is_forbidden() {
         // xyk only selection, indirect swaps
         assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![XYKPool], &AllowSelected), true);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &VAL, &vec![XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![XYKPool], &AllowSelected), true);
 
         // xyk only selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![XYKPool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &vec![XYKPool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![XYKPool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![XYKPool], &AllowSelected), false);
 
         let mut sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool, OrderBook];
         
@@ -2823,11 +2823,11 @@ fn selecting_xyk_only_filter_is_forbidden() {
         // xyk only selection, indirect swaps
         assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &sources_except_xyk, &ForbidSelected), true);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &VAL, &sources_except_xyk, &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &sources_except_xyk, &ForbidSelected), true);
 
         // xyk only selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &sources_except_xyk, &ForbidSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &sources_except_xyk, &ForbidSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &sources_except_xyk, &ForbidSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &sources_except_xyk, &ForbidSelected), false);
 
         // smart selection, base case
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![], &Disabled), false);
@@ -2842,11 +2842,11 @@ fn selecting_xyk_only_filter_is_forbidden() {
         // smart selection, indirect swaps
         assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![], &Disabled), false);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &VAL, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![], &Disabled), false);
 
         // smart selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![], &Disabled), false);
 
         // tbc only selection, base case
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
@@ -2861,21 +2861,21 @@ fn selecting_xyk_only_filter_is_forbidden() {
         // tbc only selection, indirect swaps
         assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![], &Disabled), false);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![], &Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &VAL, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![], &Disabled), false);
 
         // tbc only selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
 
         // hack cases with unavailable sources
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![MockPool, XYKPool], &AllowSelected), true);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, &vec![MockPool, XYKPool], &AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![MockPool, XYKPool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![MockPool, XYKPool], &AllowSelected), false);
 
         sources_except_xyk.push(MockPool);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &sources_except_xyk, &ForbidSelected), true);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, &sources_except_xyk, &ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &sources_except_xyk, &ForbidSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &sources_except_xyk, &ForbidSelected), false);
     });
 }
 
@@ -2887,17 +2887,17 @@ fn test_list_enabled_sources_for_path_with_xyk_forbidden_1() {
         use LiquiditySourceType::*;
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
-        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, DAI).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, USDT).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
-        TradingPair::enable_source_for_trading_pair(&0, &XOR, &DAI, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &USDT, XYKPool).expect("failed to enable source");
         let query_a = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, VAL);
         let query_b = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, VAL, XOR);
         let query_c = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, PSWAP);
         let query_d = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, XOR);
-        let query_e = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, DAI);
-        let query_f = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, DAI, XOR);
-        let query_g = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, DAI);
-        let query_h = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, DAI, VAL);
+        let query_e = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, USDT);
+        let query_f = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, USDT, XOR);
+        let query_g = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, USDT);
+        let query_h = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, USDT, VAL);
 
         assert_eq!(query_a.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
         assert_eq!(query_b.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
@@ -2969,7 +2969,7 @@ fn test_list_enabled_sources_for_path_with_xyk_forbidden_4() {
         use LiquiditySourceType::*;
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
-        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, DAI).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, USDT).expect("failed to register pair");
 
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
@@ -3583,13 +3583,13 @@ fn test_batch_swap_desired_input_successful() {
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
 
-        assert_eq!(Assets::free_balance(&DAI, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
 
         let swap_batches = Vec::from([
             SwapBatchInfo {
-                outcome_asset_id: DAI,
+                outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
                 outcome_asset_reuse: 0,
@@ -3671,13 +3671,13 @@ fn test_batch_swap_duplicate_receivers_successful() {
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
 
-        assert_eq!(Assets::free_balance(&DAI, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
 
         let swap_batches = Vec::from([
             SwapBatchInfo {
-                outcome_asset_id: DAI,
+                outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
                 outcome_asset_reuse: 0,
@@ -3718,13 +3718,13 @@ fn test_batch_swap_duplicate_receivers_successful() {
 fn test_batch_swap_desired_input_too_low() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
-        assert_eq!(Assets::free_balance(&DAI, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
 
         let swap_batches = Vec::from([
             SwapBatchInfo {
-                outcome_asset_id: DAI,
+                outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
                 outcome_asset_reuse: 0,
@@ -3763,19 +3763,19 @@ fn test_batch_swap_desired_input_too_low() {
 fn test_batch_swap_fail_with_duplicate_asset_ids() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
-        assert_eq!(Assets::free_balance(&DAI, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
 
         let swap_batches = Vec::from([
             SwapBatchInfo {
-                outcome_asset_id: DAI,
+                outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
                 outcome_asset_reuse: 0,
             },
             SwapBatchInfo {
-                outcome_asset_id: DAI,
+                outcome_asset_id: USDT,
                 dex_id: DEX_A_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
                 outcome_asset_reuse: 0,
@@ -3816,22 +3816,22 @@ fn test_mint_buy_back_and_burn() {
     ext.execute_with(|| {
         let transit = <Runtime as crate::Config>::GetTechnicalAccountId::get();
         assert_eq!(Assets::free_balance(&KSM, &transit).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&DAI, &transit).unwrap(), balance!(0));
-        assert_eq!(Assets::total_issuance(&DAI).unwrap(), balance!(24000));
+        assert_eq!(Assets::free_balance(&USDT, &transit).unwrap(), balance!(0));
+        assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24000));
         assert_eq!(Assets::total_issuance(&KSM).unwrap(), balance!(4000));
 
         assert_eq!(crate::LiquidityProxyBuyBackHandler::<
             Runtime,
             GetBuyBackDexId,
-        >::mint_buy_back_and_burn(&DAI, &KSM, balance!(1)).unwrap(), balance!(1.984061762988045965));
+        >::mint_buy_back_and_burn(&USDT, &KSM, balance!(1)).unwrap(), balance!(1.984061762988045965));
 
-        assert_eq!(Assets::total_issuance(&DAI).unwrap(), balance!(24001));
+        assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24001));
         assert_eq!(
             Assets::total_issuance(&KSM).unwrap(),
             balance!(3998.015938237011954035)
         );
         assert_eq!(Assets::free_balance(&KSM, &transit).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&DAI, &transit).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &transit).unwrap(), balance!(0));
     });
 }
 
@@ -3846,22 +3846,22 @@ fn test_buy_back_handler() {
     ext.execute_with(|| {
         let transit = <Runtime as crate::Config>::GetTechnicalAccountId::get();
         assert_eq!(Assets::free_balance(&KSM, &transit).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&DAI, &transit).unwrap(), balance!(0));
-        assert_eq!(Assets::total_issuance(&DAI).unwrap(), balance!(24000));
+        assert_eq!(Assets::free_balance(&USDT, &transit).unwrap(), balance!(0));
+        assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24000));
         assert_eq!(Assets::total_issuance(&KSM).unwrap(), balance!(4000));
         assert_eq!(
             Assets::free_balance(&KSM, &alice()).unwrap(),
             balance!(2000)
         );
         assert_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
+            Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
 
         assert_eq!(
             crate::LiquidityProxyBuyBackHandler::<Runtime, GetBuyBackDexId>::buy_back_and_burn(
                 &alice(),
-                &DAI,
+                &USDT,
                 &KSM,
                 balance!(1)
             )
@@ -3869,20 +3869,20 @@ fn test_buy_back_handler() {
             balance!(1.984061762988045965)
         );
 
-        assert_eq!(Assets::total_issuance(&DAI).unwrap(), balance!(24000));
+        assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24000));
         assert_eq!(
             Assets::total_issuance(&KSM).unwrap(),
             balance!(3998.015938237011954035)
         );
         assert_eq!(Assets::free_balance(&KSM, &transit).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&DAI, &transit).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &transit).unwrap(), balance!(0));
 
         assert_eq!(
             Assets::free_balance(&KSM, &alice()).unwrap(),
             balance!(2000)
         );
         assert_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
+            Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(11999)
         );
     });
@@ -3923,7 +3923,7 @@ fn test_reference_price_provider() {
     ext.execute_with(|| {
         frame_support::parameter_types! {
             pub const GetReferenceDexId: DEXId = DEX_A_ID;
-            pub const GetReferenceAssetId: AssetId = DAI;
+            pub const GetReferenceAssetId: AssetId = USDT;
         }
 
         assert_eq!(
@@ -3942,7 +3942,7 @@ fn test_batch_swap_asset_reuse_works() {
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
 
-        assert_eq!(Assets::free_balance(&DAI, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
         assert_eq!(
@@ -3950,7 +3950,7 @@ fn test_batch_swap_asset_reuse_works() {
             balance!(2000)
         );
         assert_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
+            Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
         assert_approx_eq!(
@@ -3961,7 +3961,7 @@ fn test_batch_swap_asset_reuse_works() {
 
         let swap_batches = Vec::from([
             SwapBatchInfo {
-                outcome_asset_id: DAI,
+                outcome_asset_id: USDT,
                 dex_id: DEX_C_ID,
                 receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
                 outcome_asset_reuse: balance!(20),
@@ -3998,7 +3998,7 @@ fn test_batch_swap_asset_reuse_works() {
             crate::Event::<Runtime>::ADARFeeWithdrawn(KSM, balance!(0.025)).into(),
         );
         frame_system::Pallet::<Runtime>::assert_has_event(
-            crate::Event::<Runtime>::ADARFeeWithdrawn(DAI, balance!(0.025)).into(),
+            crate::Event::<Runtime>::ADARFeeWithdrawn(USDT, balance!(0.025)).into(),
         );
         assert_approx_eq!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
@@ -4011,7 +4011,7 @@ fn test_batch_swap_asset_reuse_works() {
             balance!(0.00001)
         );
         assert_approx_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
+            Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(11989.975),
             balance!(0.00001)
         );
@@ -4024,14 +4024,14 @@ fn test_batch_swap_asset_reuse_fails() {
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
 
-        assert_eq!(Assets::free_balance(&DAI, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
+            Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
 
         let swap_batches = Vec::from([SwapBatchInfo {
-            outcome_asset_id: DAI,
+            outcome_asset_id: USDT,
             dex_id: DEX_C_ID,
             receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
             outcome_asset_reuse: balance!(1000000),
@@ -4061,9 +4061,9 @@ fn test_batch_swap_asset_reuse_fails() {
 fn test_xorless_transfer_works() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
-        assert_eq!(Assets::free_balance(&DAI, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
+            Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
         assert_eq!(
@@ -4077,7 +4077,7 @@ fn test_xorless_transfer_works() {
         assert_ok!(LiquidityProxy::xorless_transfer(
             RuntimeOrigin::signed(alice()),
             0,
-            DAI,
+            USDT,
             bob(),
             balance!(1),
             balance!(1),
@@ -4088,8 +4088,8 @@ fn test_xorless_transfer_works() {
         ));
 
         assert_approx_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
-            // 12000 DAI - 1 DAI for swap - 1 DAI for transfer
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            // 12000 USDT - 1 USDT for swap - 1 USDT for transfer
             balance!(11998),
             balance!(0.01)
         );
@@ -4099,7 +4099,7 @@ fn test_xorless_transfer_works() {
             balance!(0.01)
         );
         assert_approx_eq!(
-            Assets::free_balance(&DAI, &bob()).unwrap(),
+            Assets::free_balance(&USDT, &bob()).unwrap(),
             balance!(1),
             balance!(0.01)
         );
@@ -4110,9 +4110,9 @@ fn test_xorless_transfer_works() {
 fn test_xorless_transfer_without_swap_works() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
-        assert_eq!(Assets::free_balance(&DAI, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
+            Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
         assert_eq!(
@@ -4126,7 +4126,7 @@ fn test_xorless_transfer_without_swap_works() {
         assert_ok!(LiquidityProxy::xorless_transfer(
             RuntimeOrigin::signed(alice()),
             0,
-            DAI,
+            USDT,
             bob(),
             balance!(1),
             balance!(0),
@@ -4137,8 +4137,8 @@ fn test_xorless_transfer_without_swap_works() {
         ));
 
         assert_approx_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
-            // 12000 DAI - 1 DAI for swap - 1 DAI for transfer
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            // 12000 USDT - 1 USDT for swap - 1 USDT for transfer
             balance!(11999),
             balance!(0.01)
         );
@@ -4148,7 +4148,7 @@ fn test_xorless_transfer_without_swap_works() {
             balance!(0.01)
         );
         assert_approx_eq!(
-            Assets::free_balance(&DAI, &bob()).unwrap(),
+            Assets::free_balance(&USDT, &bob()).unwrap(),
             balance!(1),
             balance!(0.01)
         );
@@ -4160,7 +4160,7 @@ fn test_xorless_transfer_fails_on_swap() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         assert_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
+            Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
 
@@ -4171,7 +4171,7 @@ fn test_xorless_transfer_fails_on_swap() {
             LiquidityProxy::xorless_transfer(
                 RuntimeOrigin::signed(alice()),
                 0,
-                DAI,
+                USDT,
                 bob(),
                 balance!(1),
                 balance!(1),
@@ -4190,7 +4190,7 @@ fn test_xorless_transfer_fails_on_transfer() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         assert_eq!(
-            Assets::free_balance(&DAI, &alice()).unwrap(),
+            Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
 
@@ -4201,7 +4201,7 @@ fn test_xorless_transfer_fails_on_transfer() {
             LiquidityProxy::xorless_transfer(
                 RuntimeOrigin::signed(alice()),
                 0,
-                DAI,
+                USDT,
                 bob(),
                 balance!(12000),
                 balance!(1),

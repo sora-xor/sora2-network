@@ -35,7 +35,7 @@ use crate::tests::{
     approve_last_request, last_outgoing_request, last_request, Assets, ETH_NETWORK_ID,
 };
 use crate::{AssetConfig, EthAddress};
-use common::{AssetInfoProvider, DAI, DEFAULT_BALANCE_PRECISION, KSM, XOR};
+use common::{AssetInfoProvider, DEFAULT_BALANCE_PRECISION, KSM, USDT, XOR};
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
@@ -76,7 +76,7 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
     let mut builder = ExtBuilder::new();
     builder.add_network(
         vec![AssetConfig::Sidechain {
-            id: DAI.into(),
+            id: USDT.into(),
             sidechain_id: H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
             owned: false,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -90,26 +90,26 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
     ext.execute_with(|| {
         let bridge_acc = &state.networks[&net_id].config.bridge_account_id;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&DAI.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&USDT.into(), &alice, &alice, 100000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            DAI.into(),
+            USDT.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(Assets::free_balance(&DAI.into(), &bridge_acc).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&USDT.into(), &bridge_acc).unwrap(), 0);
         // Sidechain asset was reserved.
         assert_eq!(
-            Assets::total_balance(&DAI.into(), &bridge_acc).unwrap(),
+            Assets::total_balance(&USDT.into(), &bridge_acc).unwrap(),
             100u32.into()
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
         // Sidechain asset was burnt.
-        assert_eq!(Assets::total_balance(&DAI.into(), &bridge_acc).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&USDT.into(), &bridge_acc).unwrap(), 0);
         assert_eq!(
-            Assets::free_balance(&DAI.into(), &bridge_acc).unwrap(),
-            Assets::total_balance(&DAI.into(), &bridge_acc).unwrap()
+            Assets::free_balance(&USDT.into(), &bridge_acc).unwrap(),
+            Assets::total_balance(&USDT.into(), &bridge_acc).unwrap()
         );
     });
 }

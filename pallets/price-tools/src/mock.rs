@@ -33,8 +33,8 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DAI,
-    DEFAULT_BALANCE_PRECISION, ETH, PSWAP, TBCD, VAL, XOR, XST,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION,
+    ETH, PSWAP, TBCD, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -72,6 +72,9 @@ pub fn assets_owner() -> AccountId {
 }
 
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
+pub const DAI: AssetId = common::AssetId32::from_bytes(hex!(
+    "0200060000000000000000000000000000000000000000000000000000000111"
+));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -385,7 +388,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let assets = vec![ETH, DAI, VAL, PSWAP, XOR];
+        let assets = vec![ETH, DAI, VAL, PSWAP, XOR, USDT];
         if assets.contains(output_asset_id) {
             // return error if output asset is predefined asset
             // it is necessary for unit tests
@@ -411,9 +414,9 @@ impl Default for ExtBuilder {
             endowed_accounts: vec![
                 (
                     alice(),
-                    DAI,
+                    USDT,
                     0,
-                    AssetSymbol(b"DAI".to_vec()),
+                    AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether USD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),

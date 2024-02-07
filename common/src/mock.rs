@@ -102,8 +102,6 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::XST => BatteryForMusicPlayer,
             PredefinedAssetId::TBCD => MichaelJacksonCD,
             PredefinedAssetId::KUSD => CrackedBrassBell,
-            #[cfg(test)]
-            PredefinedAssetId::USDT => Teapot,
         }
     }
 }
