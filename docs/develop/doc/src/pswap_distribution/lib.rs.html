@@ -703,7 +703,7 @@
 <span class="kw">use </span>common::{
     fixed, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DexInfoProvider,
     EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnPoolCreated, OnPswapBurned, PoolXykPallet, PswapRemintInfo,
+    OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
 };
 <span class="kw">use </span>core::convert::TryInto;
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
@@ -1104,7 +1104,7 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>common::{AccountIdOf, DEXInfo, PoolXykPallet};
+    <span class="kw">use </span>common::{AccountIdOf, DEXInfo, XykPool};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::sp_runtime::Percent;
     <span class="kw">use </span>frame_support::traits::StorageVersion;
@@ -1132,7 +1132,7 @@
         <span class="kw">type </span>OnPswapBurnedAggregator: OnPswapBurned;
         <span class="kw">type </span>WeightInfo: WeightInfo;
         <span class="kw">type </span>GetParliamentAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;
-        <span class="kw">type </span>PoolXykPallet: PoolXykPallet&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>PoolXykPallet: XykPool&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
     }

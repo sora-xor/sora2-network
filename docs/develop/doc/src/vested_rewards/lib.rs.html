@@ -702,7 +702,6 @@
 <a href="#687" id="687">687</a>
 <a href="#688" id="688">688</a>
 <a href="#689" id="689">689</a>
-<a href="#690" id="690">690</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -746,8 +745,7 @@
 <span class="kw">use </span>common::CrowdloanTag;
 <span class="kw">use </span>common::FromGenericPair;
 <span class="kw">use </span>common::{
-    balance, AssetInfoProvider, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
-    PSWAP,
+    balance, AssetInfoProvider, OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP,
 };
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::ensure;
@@ -1167,7 +1165,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; VestedRewardsPallet&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; Vesting&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">fn </span>add_tbc_reward(account_id: <span class="kw-2">&amp;</span>T::AccountId, pswap_amount: Balance) -&gt; DispatchResult {
         Pallet::&lt;T&gt;::add_pending_reward(account_id, RewardReason::BuyOnBondingCurve, pswap_amount)
     }
