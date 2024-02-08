@@ -29,13 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
-
-#[cfg(feature = "wip")] // order-book
-use {
-    crate::order_book::OrderBookId,
-    common::{DEXId, PriceVariant},
-};
-
+use crate::order_book::OrderBookId;
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
     AccountId, AssetId, Assets, Balance, Balances, Currencies, GetXorFeeAccountId, PoolXYK,
@@ -45,7 +39,9 @@ use crate::{
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
-use common::{balance, fixed_wrapper, AssetInfoProvider, FilterMode, VAL, XOR};
+use common::{
+    balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode, PriceVariant, VAL, XOR,
+};
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
 use frame_support::traits::{OnFinalize, OnInitialize};
@@ -54,7 +50,6 @@ use frame_support::weights::WeightToFee as WeightToFeeTrait;
 use frame_support::{assert_err, assert_ok};
 use frame_system::EventRecord;
 use framenode_chain_spec::ext;
-use log::LevelFilter;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
@@ -200,10 +195,6 @@ fn referrer_gets_bonus_from_tx_fee() {
 
 #[test]
 fn notify_val_burned_works() {
-    let _ = env_logger::Builder::new()
-        .filter_level(LevelFilter::Debug)
-        .try_init();
-
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
         increase_balance(alice(), XOR.into(), INITIAL_RESERVES);
@@ -925,7 +916,6 @@ fn it_works_eth_bridge_pays_no() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
 #[test]
 fn fee_not_postponed_place_limit_order() {
     ext().execute_with(|| {
@@ -959,7 +949,6 @@ fn fee_not_postponed_place_limit_order() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_default_lifetime() {
     ext().execute_with(|| {
@@ -1005,7 +994,6 @@ fn withdraw_fee_place_limit_order_with_default_lifetime() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_some_lifetime() {
     ext().execute_with(|| {
@@ -1051,7 +1039,6 @@ fn withdraw_fee_place_limit_order_with_some_lifetime() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_error() {
     ext().execute_with(|| {
@@ -1097,7 +1084,6 @@ fn withdraw_fee_place_limit_order_with_error() {
     });
 }
 
-#[cfg(feature = "wip")] // order-book
 #[test]
 fn withdraw_fee_place_limit_order_with_crossing_spread() {
     ext().execute_with(|| {

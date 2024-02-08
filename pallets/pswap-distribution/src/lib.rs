@@ -37,7 +37,7 @@ use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
     fixed, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DexInfoProvider,
     EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnPoolCreated, OnPswapBurned, PoolXykPallet, PswapRemintInfo,
+    OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
@@ -438,7 +438,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, DEXInfo, PoolXykPallet};
+    use common::{AccountIdOf, DEXInfo, XykPool};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::Percent;
     use frame_support::traits::StorageVersion;
@@ -466,7 +466,7 @@ pub mod pallet {
         type OnPswapBurnedAggregator: OnPswapBurned;
         type WeightInfo: WeightInfo;
         type GetParliamentAccountId: Get<Self::AccountId>;
-        type PoolXykPallet: PoolXykPallet<Self::AccountId, Self::AssetId>;
+        type PoolXykPallet: XykPool<Self::AccountId, Self::AssetId>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
     }

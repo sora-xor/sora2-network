@@ -29,12 +29,18 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::Pallet;
+use crate::{EnabledSourceTypes, Error, Pallet};
+use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
 use common::{
-    balance, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, DOT, XOR,
+    balance, AccountIdOf, Balance, DexIdOf, LiquidityRegistry, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, DOT, XOR,
 };
+use frame_support::error::BadOrigin;
+use frame_support::weights::Weight;
+use frame_support::{assert_err, assert_ok};
+use sp_runtime::DispatchError;
+use strum::IntoEnumIterator;
 
 type DexApi = Pallet<Runtime>;
 
@@ -43,7 +49,7 @@ fn test_filter_empty_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let list =
-            DexApi::list_liquidity_sources(&XOR, &DOT, LiquiditySourceFilter::empty(DEX_A_ID))
+            DexApi::list_liquidity_sources(&XOR, &DOT, &LiquiditySourceFilter::empty(DEX_A_ID))
                 .expect("Failed to list available sources.");
         assert_eq!(
             &list,
@@ -64,7 +70,7 @@ fn test_filter_with_forbidden_existing_should_pass() {
         let list = DexApi::list_liquidity_sources(
             &XOR,
             &DOT,
-            LiquiditySourceFilter::with_forbidden(
+            &LiquiditySourceFilter::with_forbidden(
                 DEX_A_ID,
                 [
                     LiquiditySourceType::MockPool,
@@ -91,7 +97,7 @@ fn test_filter_with_allowed_existing_should_pass() {
         let list = DexApi::list_liquidity_sources(
             &XOR,
             &DOT,
-            LiquiditySourceFilter::with_allowed(
+            &LiquiditySourceFilter::with_allowed(
                 DEX_A_ID,
                 [
                     LiquiditySourceType::MockPool,
@@ -136,6 +142,306 @@ fn test_different_reserves_should_pass() {
         assert_eq!(
             res2.unwrap().0.amount,
             balance!(114.415463055560109513) // for reserves: 6000 XOR, 7000 DOT, 30bp fee
+        );
+    })
+}
+
+#[test]
+fn test_exchange_weight_correct() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let expected_weight = <<Runtime as crate::Config>::XSTPool as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight()
+        .max(<<Runtime as crate::Config>::XYKPool as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight())
+        .max(
+            <<Runtime as crate::Config>::MulticollateralBondingCurvePool as LiquiditySource<
+                DexIdOf<Runtime>,
+                AccountIdOf<Runtime>,
+                AssetIdOf<Runtime>,
+                Balance,
+                DispatchError,
+            >>::exchange_weight(),
+        )
+        .max(<<Runtime as crate::Config>::OrderBook as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight());
+        let got_weight = DexApi::exchange_weight();
+        assert_eq!(expected_weight, got_weight);
+    })
+}
+
+#[test]
+fn test_exchange_weight_filtered_calculates() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let xyk_weight = <<Runtime as crate::Config>::XYKPool as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight();
+        let multicollateral_weight =
+            <<Runtime as crate::Config>::MulticollateralBondingCurvePool as LiquiditySource<
+                DexIdOf<Runtime>,
+                AccountIdOf<Runtime>,
+                AssetIdOf<Runtime>,
+                Balance,
+                DispatchError,
+            >>::exchange_weight();
+        let xst_weight = <<Runtime as crate::Config>::XSTPool as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight();
+        let order_book_weight = <<Runtime as crate::Config>::OrderBook as LiquiditySource<
+            DexIdOf<Runtime>,
+            AccountIdOf<Runtime>,
+            AssetIdOf<Runtime>,
+            Balance,
+            DispatchError,
+        >>::exchange_weight();
+
+        assert_eq!(
+            DexApi::exchange_weight_filtered([].into_iter()),
+            Weight::zero()
+        );
+        assert_eq!(
+            DexApi::exchange_weight_filtered([LiquiditySourceType::XYKPool].into_iter()),
+            xyk_weight
+        );
+        assert_eq!(
+            DexApi::exchange_weight_filtered(
+                [LiquiditySourceType::MulticollateralBondingCurvePool].into_iter()
+            ),
+            multicollateral_weight
+        );
+        assert_eq!(
+            DexApi::exchange_weight_filtered([LiquiditySourceType::XSTPool].into_iter()),
+            xst_weight
+        );
+        assert_eq!(
+            DexApi::exchange_weight_filtered([LiquiditySourceType::OrderBook].into_iter()),
+            order_book_weight
+        );
+        assert_eq!(
+            DexApi::exchange_weight_filtered(
+                [LiquiditySourceType::XYKPool, LiquiditySourceType::XSTPool].into_iter()
+            ),
+            xyk_weight.max(xst_weight)
+        );
+        assert_eq!(
+            DexApi::exchange_weight_filtered(
+                [
+                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::MulticollateralBondingCurvePool
+                ]
+                .into_iter()
+            ),
+            xyk_weight.max(xst_weight).max(multicollateral_weight)
+        );
+        assert_eq!(
+            DexApi::exchange_weight_filtered(
+                [
+                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::MulticollateralBondingCurvePool,
+                    LiquiditySourceType::OrderBook
+                ]
+                .into_iter()
+            ),
+            xyk_weight
+                .max(xst_weight)
+                .max(multicollateral_weight)
+                .max(order_book_weight)
+        );
+    })
+}
+
+#[test]
+fn test_exchange_weight_filtered_matches_exchange_weight() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let all_sources: Vec<_> = LiquiditySourceType::iter().collect();
+        assert_eq!(
+            DexApi::exchange_weight_filtered(all_sources.into_iter()),
+            DexApi::exchange_weight(),
+        )
+    })
+}
+
+#[test]
+fn test_enable_disable_liquidity_source_unauthorized() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        assert_err!(
+            DexApi::enable_liquidity_source(
+                RuntimeOrigin::signed(alice()),
+                LiquiditySourceType::XYKPool
+            ),
+            BadOrigin
+        );
+
+        assert_err!(
+            DexApi::disable_liquidity_source(
+                RuntimeOrigin::signed(bob()),
+                LiquiditySourceType::XYKPool
+            ),
+            BadOrigin
+        );
+    })
+}
+
+#[test]
+fn test_liquidity_source_should_enable() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // check before
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4
+            ]
+        );
+
+        // enable source
+        assert_ok!(DexApi::enable_liquidity_source(
+            RuntimeOrigin::root(),
+            LiquiditySourceType::XYKPool
+        ));
+
+        // check after
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4,
+                LiquiditySourceType::XYKPool
+            ]
+        );
+    })
+}
+
+#[test]
+fn test_liquidity_source_should_not_enable_twice() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // check before
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4
+            ]
+        );
+
+        // try to enable already enabled source
+        assert_err!(
+            DexApi::enable_liquidity_source(RuntimeOrigin::root(), LiquiditySourceType::MockPool2),
+            Error::<Runtime>::LiquiditySourceAlreadyEnabled
+        );
+
+        // check after
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4,
+            ]
+        );
+    })
+}
+
+#[test]
+fn test_liquidity_source_should_disable() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // check before
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4
+            ]
+        );
+
+        // disable source
+        assert_ok!(DexApi::disable_liquidity_source(
+            RuntimeOrigin::root(),
+            LiquiditySourceType::MockPool3
+        ));
+
+        // check after
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool4,
+            ]
+        );
+    })
+}
+
+#[test]
+fn test_liquidity_source_should_not_disable_twice() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // check before
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4
+            ]
+        );
+
+        // try to disable already disabled source
+        assert_err!(
+            DexApi::disable_liquidity_source(RuntimeOrigin::root(), LiquiditySourceType::XYKPool),
+            Error::<Runtime>::LiquiditySourceAlreadyDisabled
+        );
+
+        // check after
+        assert_eq!(
+            EnabledSourceTypes::<Runtime>::get(),
+            [
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4,
+            ]
         );
     })
 }

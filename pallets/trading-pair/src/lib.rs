@@ -37,11 +37,13 @@
 extern crate alloc;
 
 use common::{
-    AssetInfoProvider, DexInfoProvider, EnsureDEXManager, EnsureTradingPairExists,
-    LiquiditySourceType, ManagementMode, TradingPairSourceManager,
+    AssetInfoProvider, DexInfoProvider, EnabledSourcesManager, EnsureDEXManager,
+    EnsureTradingPairExists, LiquiditySourceType, LockedLiquiditySourcesManager, ManagementMode,
+    TradingPairSourceManager,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
+use frame_support::pallet_prelude::DispatchResultWithPostInfo;
 use frame_support::traits::IsType;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
@@ -72,6 +74,36 @@ impl<T: Config> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for
             Error::<T>::TradingPairDoesntExist
         );
         Ok(())
+    }
+}
+
+impl<T: Config> LockedLiquiditySourcesManager<LiquiditySourceType> for Pallet<T> {
+    fn get() -> Vec<LiquiditySourceType> {
+        LockedLiquiditySources::<T>::get()
+    }
+    fn set(liquidity_source_types: Vec<LiquiditySourceType>) -> () {
+        LockedLiquiditySources::<T>::set(liquidity_source_types)
+    }
+    fn append(liquidity_source_type: LiquiditySourceType) -> () {
+        LockedLiquiditySources::<T>::append(liquidity_source_type)
+    }
+}
+
+impl<T: Config> EnabledSourcesManager<T::DEXId, T::AssetId> for Pallet<T> {
+    fn mutate_remove(
+        dex_id: &T::DEXId,
+        base_asset_id: &T::AssetId,
+        target_asset_id: &T::AssetId,
+    ) -> () {
+        let pair = TradingPair::<T> {
+            base_asset_id: base_asset_id.clone(),
+            target_asset_id: target_asset_id.clone(),
+        };
+        EnabledSources::<T>::mutate(&dex_id, &pair, |opt_set| {
+            if let Some(sources) = opt_set.as_mut() {
+                sources.remove(&LiquiditySourceType::XYKPool);
+            }
+        })
     }
 }
 
@@ -143,6 +175,22 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
             opt_set.as_mut().unwrap().remove(&source_type)
         });
         Ok(())
+    }
+
+    fn is_trading_pair_enabled(
+        dex_id: &T::DEXId,
+        base_asset_id: &T::AssetId,
+        target_asset_id: &T::AssetId,
+    ) -> Result<bool, DispatchError> {
+        Self::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)
+    }
+
+    fn register_pair(
+        dex_id: T::DEXId,
+        base_asset_id: T::AssetId,
+        target_asset_id: T::AssetId,
+    ) -> Result<(), DispatchError> {
+        Self::register_pair(dex_id, base_asset_id, target_asset_id)
     }
 }
 

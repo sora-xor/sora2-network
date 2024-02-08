@@ -12,7 +12,7 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::{Balance, DemeterFarmingPallet};
+use common::{Balance, DemeterFarming};
 pub use weights::WeightInfo;
 
 /// Storage version.
@@ -68,7 +68,7 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{migrations, PoolData, StorageVersion, TokenInfo, UserInfo, WeightInfo};
     use common::prelude::{AssetInfoProvider, Balance, FixedWrapper};
-    use common::{balance, PoolXykPallet};
+    use common::{balance, XykPool};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
     use frame_support::PalletId;
@@ -1240,7 +1240,7 @@ pub mod pallet {
     }
 }
 
-impl<T: Config> DemeterFarmingPallet<T::AccountId, T::AssetId> for Pallet<T> {
+impl<T: Config> DemeterFarming<T::AccountId, T::AssetId> for Pallet<T> {
     fn update_pool_tokens(
         user: T::AccountId,
         pool_tokens: Balance,

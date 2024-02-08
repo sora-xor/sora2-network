@@ -48,15 +48,15 @@ use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
-    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsPallet,
+    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsProvider,
     QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::BuyBackHandler;
 use common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
     LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
-    ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager, VestedRewardsPallet,
-    PSWAP, TBCD, VAL, XOR, XST,
+    ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager, Vesting, PSWAP, TBCD,
+    VAL, XOR, XST,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -180,21 +180,19 @@ impl<DistributionAccountData: Default> Default for DistributionAccounts<Distribu
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::VestedRewardsPallet;
+    use common::Vesting;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::ensure_root;
     use frame_system::pallet_prelude::*;
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
         + common::Config
         + assets::Config
         + technical::Config
-        + trading_pair::Config
         + pool_xyk::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -205,8 +203,9 @@ pub mod pallet {
             Self::AssetId,
             DispatchError,
         >;
-        type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
-        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
+        type PriceToolsPallet: PriceToolsProvider<Self::AssetId>;
+        type VestedRewardsPallet: Vesting<Self::AccountId, Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
         type BuyBackTBCDPercent: Get<Fixed>;
         /// Weight information for extrinsics in this pallet.
@@ -783,7 +782,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         common::with_transaction(|| {
             let base_asset_id = T::GetBaseAssetId::get();
-            let swapped_xor_amount = <T as pallet::Config>::LiquidityProxy::exchange(
+            let swapped_xor_amount = T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
                 holder,
                 holder,
@@ -873,14 +872,13 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::PoolAlreadyInitializedForPair
             );
             T::PriceToolsPallet::register_asset(&collateral_asset_id)?;
-            T::EnsureTradingPairExists::ensure_trading_pair_exists(
+            <T as Config>::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &collateral_asset_id,
             )?;
 
-            // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-            trading_pair::Pallet::<T>::enable_source_for_trading_pair(
+            <T as Config>::TradingPairSourceManager::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &collateral_asset_id,
@@ -1426,7 +1424,7 @@ impl<T: Config> Pallet<T> {
         let price = if asset_id == &reference_asset_id || asset_id == &common::TBCD.into() {
             balance!(1)
         } else {
-            <T as pallet::Config>::PriceToolsPallet::get_average_price(
+            <T as Config>::PriceToolsPallet::get_average_price(
                 asset_id,
                 &reference_asset_id,
                 price_variant,
