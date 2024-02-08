@@ -61,9 +61,7 @@ fn main() {
             .stdout,
     )
     .expect("Could not convert hooks path to string");
-    let enabled_hooks_dir = PathBuf::new()
-        .join(&enabled_hooks_dir[..].trim())
-        .to_owned();
+    let enabled_hooks_dir = PathBuf::new().join(enabled_hooks_dir[..].trim());
     fs::create_dir_all(&enabled_hooks_dir).expect("Failed to create '.git/hooks' dir");
     fs::copy(&pre_commit_hook_path, enabled_hooks_dir.join("pre-commit"))
         .expect("Failed to copy '.hooks/pre_commit' to '.git/hooks/pre_commit'");

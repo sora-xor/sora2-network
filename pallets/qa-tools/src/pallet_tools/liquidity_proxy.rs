@@ -464,10 +464,8 @@ pub mod source_initialization {
                     request_id += 1;
                     post_info.actual_weight = post_info
                         .actual_weight
-                        .and_then(|w| {
-                            Some(w.saturating_add(
-                                next_post_info.actual_weight.unwrap_or(Weight::zero()),
-                            ))
+                        .map(|w| {
+                            w.saturating_add(next_post_info.actual_weight.unwrap_or(Weight::zero()))
                         })
                         .or(next_post_info.actual_weight);
                 } else {
@@ -688,7 +686,7 @@ pub mod source_initialization {
             input.existence,
         ) {
             (Some(info), XSTSyntheticExistence::AlreadyExists) => {
-                relay_symbol::<T>(info.reference_symbol.into(), relayer.clone(), band_price)
+                relay_symbol::<T>(info.reference_symbol.into(), relayer, band_price)
                     .map_err(|e| e.error)?;
             }
             (
