@@ -291,24 +291,19 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidPoolParameters.into());
             }
 
-            // Recalculate basic lending rate
+            // Recalculate basic lending rate and borrowing rewards rate
             let mut num_of_pools = <PoolData<T>>::iter().count() as u32;
             num_of_pools += 1;
             let basic_lending_rate = (FixedWrapper::from(LendingRewardsPerBlock::<T>::get())
                 / FixedWrapper::from(num_of_pools))
             .try_into_balance()
             .unwrap_or(0);
-            for (asset_id, mut pool_info) in <PoolData<T>>::iter() {
-                pool_info.basic_lending_rate = basic_lending_rate;
-                <PoolData<T>>::insert(asset_id, pool_info);
-            }
-
-            // Calculate borrowing rewards rate
             let borrowing_rewards_rate = (FixedWrapper::from(BorrowingRewardsPerBlock::<T>::get())
                 / FixedWrapper::from(num_of_pools))
             .try_into_balance()
             .unwrap_or(0);
             for (asset_id, mut pool_info) in <PoolData<T>>::iter() {
+                pool_info.basic_lending_rate = basic_lending_rate;
                 pool_info.borrowing_rewards_rate = borrowing_rewards_rate;
                 <PoolData<T>>::insert(asset_id, pool_info);
             }

@@ -993,7 +993,7 @@ mod test {
 
             run_to_block(101);
 
-            // Get data before first borrow
+            // Get data before second borrow
             let borrowing_user_info =
                 pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
             let borrowing_user_debt = borrowing_user_info.get(&DOT).unwrap();
@@ -1036,18 +1036,20 @@ mod test {
             // The tests for the borrowing_interest and borrowing_rewards are commented out because there is a small miscalculation between
             // the pallet values and the values from the calculate_borrowing_interest() function. Also the closest value is at block 99 not 100.
             let calculater_borrowing_interest = calculate_borrowing_interest(alice(), XOR, DOT, 99);
+            let delta = balance!(0.0000000000000001);
 
             // Borrowing user tests (before borrow)
             assert_eq!(borrowing_user_debt.last_borrowing_block, 101);
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(50));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(50));
-            // assert_eq!(
-            //     borrowing_user_debt.borrowing_interest,
-            //     calculater_borrowing_interest.0
-            // );
+            assert_eq!(
+                (calculater_borrowing_interest.0 - borrowing_user_debt.borrowing_interest) <= delta,
+                true
+            );
+            // 99 + 1 block
             assert_eq!(
                 borrowing_user_debt.borrowing_rewards,
-                calculater_borrowing_interest.1
+                calculater_borrowing_interest.1 + balance!(0.009512935)
             );
 
             assert_ok!(ApolloPlatform::borrow(
@@ -1100,8 +1102,15 @@ mod test {
             assert_eq!(borrowing_user_debt.last_borrowing_block, 101);
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(100));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(100));
-            // assert_eq!(borrowing_user_debt.borrowing_interest, calculater_borrowing_interest.0);
-            // assert_eq!(borrowing_user_debt.borrowing_rewards, calculater_borrowing_interest.1);
+            assert_eq!(
+                (calculater_borrowing_interest.0 - borrowing_user_debt.borrowing_interest) <= delta,
+                true
+            );
+            // 99 + 1 block
+            assert_eq!(
+                borrowing_user_debt.borrowing_rewards,
+                calculater_borrowing_interest.1 + balance!(0.009512935)
+            );
         });
     }
 }
