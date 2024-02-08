@@ -37,8 +37,8 @@ use common::{
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
     AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, PriceToolsPallet, PriceVariant,
-    DAI, DEFAULT_BALANCE_PRECISION, KUSD, XOR, XST,
+    LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, PriceToolsProvider,
+    PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, KUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
@@ -67,7 +67,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRunt
 
 pub struct PriceToolsMock;
 
-impl PriceToolsPallet<AssetId> for PriceToolsMock {
+impl PriceToolsProvider<AssetId> for PriceToolsMock {
     /// Returns `asset_id` price is $1
     fn get_average_price(
         _input_asset_id: &AssetId,

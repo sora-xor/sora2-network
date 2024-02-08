@@ -82,7 +82,7 @@ pub mod pallet {
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
     use common::Fixed;
-    use common::{balance, AssetInfoProvider, DEXId, PoolXykPallet, PSWAP, XSTUSD};
+    use common::{balance, AssetInfoProvider, DEXId, XykPool, PSWAP, XSTUSD};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
     use frame_support::PalletId;
