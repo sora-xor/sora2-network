@@ -30,6 +30,7 @@ pub struct PoolInfo {
     pub basic_lending_rate: Balance,
     pub profit_lending_rate: Balance,
     pub borrowing_rate: Balance,
+    pub borrowing_rewards_rate: Balance,
     pub loan_to_value: Balance,
     pub liquidation_threshold: Balance,
     pub optimal_utilization_rate: Balance,
@@ -210,6 +211,8 @@ pub mod pallet {
         CollateralTokenDoesNotExist,
         /// No lending amount to borrow
         NoLendingAmountToBorrow,
+        /// Same borrowing and collateral assets
+        SameCollateralAndBorrowingAssets,
         /// No liquidity for borrowing asset
         NoLiquidityForBorrowingAsset,
         /// Nothing lended
@@ -300,6 +303,16 @@ pub mod pallet {
                 <PoolData<T>>::insert(asset_id, pool_info);
             }
 
+            // Calculate borrowing rewards rate
+            let borrowing_rewards_rate = (FixedWrapper::from(BorrowingRewardsPerBlock::<T>::get())
+                / FixedWrapper::from(num_of_pools))
+            .try_into_balance()
+            .unwrap_or(0);
+            for (asset_id, mut pool_info) in <PoolData<T>>::iter() {
+                pool_info.borrowing_rewards_rate = borrowing_rewards_rate;
+                <PoolData<T>>::insert(asset_id, pool_info);
+            }
+
             // Create a new pool
             let pool_info = PoolInfo {
                 total_liquidity: 0,
@@ -308,6 +321,7 @@ pub mod pallet {
                 basic_lending_rate,
                 profit_lending_rate: 0,
                 borrowing_rate: 0,
+                borrowing_rewards_rate,
                 loan_to_value,
                 liquidation_threshold,
                 optimal_utilization_rate,
@@ -375,6 +389,11 @@ pub mod pallet {
             borrowing_amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+
+            ensure!(
+                collateral_asset != borrowing_asset,
+                Error::<T>::SameCollateralAndBorrowingAssets
+            );
 
             let mut borrow_pool_info =
                 <PoolData<T>>::get(borrowing_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
@@ -447,12 +466,10 @@ pub mod pallet {
             // Update collateral and borrowing assets pools
             borrow_pool_info.total_liquidity -= borrowing_amount;
             borrow_pool_info.total_borrowed += borrowing_amount;
-            if borrowing_asset == collateral_asset {
-                borrow_pool_info.total_collateral += collateral_amount;
-            } else {
-                collateral_pool_info.total_collateral += collateral_amount;
-                <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
-            }
+            collateral_pool_info.total_liquidity -= collateral_amount;
+            collateral_pool_info.total_collateral += collateral_amount;
+
+            <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
             <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
 
             // Transfer borrowing amount to user
@@ -463,15 +480,6 @@ pub mod pallet {
                 borrowing_amount,
             )
             .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
-
-            // Transfer collateral amount to pallet
-            Assets::<T>::transfer_from(
-                &collateral_asset,
-                &user,
-                &Self::account_id(),
-                collateral_amount,
-            )
-            .map_err(|_| Error::<T>::CanNotTransferCollateralAmount)?;
 
             Self::deposit_event(Event::Borrowed(
                 user,
@@ -898,7 +906,7 @@ pub mod pallet {
                 / FixedWrapper::from(pool_info.total_borrowed);
 
             let borrowing_reward_per_block =
-                FixedWrapper::from(pool_info.borrowing_rate) * share_in_pool;
+                FixedWrapper::from(pool_info.borrowing_rewards_rate) * share_in_pool;
 
             // Return (borrowing_interest, borrowing_reward)
             (

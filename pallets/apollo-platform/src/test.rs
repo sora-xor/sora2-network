@@ -68,7 +68,7 @@ mod test {
             / FixedWrapper::from(borrowing_asset_pool_info.total_borrowed);
 
         let borrowing_reward_per_block =
-            FixedWrapper::from(borrowing_asset_pool_info.borrowing_rate) * share_in_pool;
+            FixedWrapper::from(borrowing_asset_pool_info.borrowing_rewards_rate) * share_in_pool;
 
         // Return (borrowing_interest, borrowing_reward)
         (
@@ -433,6 +433,8 @@ mod test {
     fn lend_old_user_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
+            run_to_block(1);
+
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
                 &alice(),
@@ -467,7 +469,7 @@ mod test {
                 balance!(100000)
             ));
 
-            run_to_block(100);
+            run_to_block(101);
 
             let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
             let lending_interest_gains = calculate_lending_earnings(alice(), XOR, 100);
@@ -485,7 +487,7 @@ mod test {
             let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
             let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
-            assert_eq!(lending_user_info.last_lending_block, 100);
+            assert_eq!(lending_user_info.last_lending_block, 101);
             assert_eq!(lending_user_info.lending_amount, balance!(200000));
             assert_eq!(lending_user_info.lending_interest, lending_interest_gain);
 
@@ -501,6 +503,26 @@ mod test {
             );
 
             assert_eq!(pool_info.total_liquidity, balance!(200000));
+        });
+    }
+
+    #[test]
+    fn borrow_same_collateral_and_borrowing_assets() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let collateral_asset = XOR;
+            let borrowing_asset = XOR;
+            let borrowing_amount = balance!(100);
+
+            assert_err!(
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    collateral_asset,
+                    borrowing_asset,
+                    borrowing_amount
+                ),
+                Error::<Runtime>::SameCollateralAndBorrowingAssets
+            );
         });
     }
 
@@ -841,6 +863,30 @@ mod test {
                 balance!(100)
             ));
 
+            // Check user and pallet balances of the borrowed asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                balance!(100)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(299900)
+            );
+
+            // Check user and pallet balances of the collateral asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &alice()).unwrap(),
+                balance!(100)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(100)
+            );
+
             // Get data after borrow
             let borrowing_user_info =
                 pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
@@ -849,7 +895,7 @@ mod test {
             let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
 
             // Collateral asset pool tests (after borrow)
-            assert_eq!(collateral_asset_pool_info.total_liquidity, balance!(100));
+            assert_eq!(collateral_asset_pool_info.total_liquidity, balance!(0));
             assert_eq!(collateral_asset_pool_info.total_collateral, balance!(100));
 
             // Borrowing asset pool tests (after borrow)
@@ -869,6 +915,7 @@ mod test {
     fn borrow_old_user_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
+            run_to_block(1);
             static_set_dex();
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
@@ -937,7 +984,7 @@ mod test {
                 balance!(50)
             ));
 
-            run_to_block(100);
+            run_to_block(101);
 
             // Get data before first borrow
             let borrowing_user_info =
@@ -947,12 +994,36 @@ mod test {
             let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
 
             // Collateral asset pool tests (before borrow)
-            assert_eq!(collateral_asset_pool_info.total_liquidity, balance!(100));
+            assert_eq!(collateral_asset_pool_info.total_liquidity, balance!(50));
             assert_eq!(collateral_asset_pool_info.total_collateral, balance!(50));
 
             // Borrowing asset pool tests (before borrow)
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(299950));
             assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(50));
+
+            // Check user and pallet balances of the borrowed asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                balance!(50)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(299950)
+            );
+
+            // Check user and pallet balances of the collateral asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &alice()).unwrap(),
+                balance!(100)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(100)
+            );
 
             // NOTE:
             // The tests for the borrowing_interest and borrowing_rewards are commented out because there is a small miscalculation between
@@ -960,17 +1031,17 @@ mod test {
             let calculater_borrowing_interest = calculate_borrowing_interest(alice(), XOR, DOT, 99);
 
             // Borrowing user tests (before borrow)
-            assert_eq!(borrowing_user_debt.last_borrowing_block, 100);
+            assert_eq!(borrowing_user_debt.last_borrowing_block, 101);
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(50));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(50));
             // assert_eq!(
             //     borrowing_user_debt.borrowing_interest,
             //     calculater_borrowing_interest.0
             // );
-            // assert_eq!(
-            //     borrowing_user_debt.borrowing_rewards,
-            //     calculater_borrowing_interest.1
-            // );
+            assert_eq!(
+                borrowing_user_debt.borrowing_rewards,
+                calculater_borrowing_interest.1
+            );
 
             assert_ok!(ApolloPlatform::borrow(
                 RuntimeOrigin::signed(alice()),
@@ -978,6 +1049,30 @@ mod test {
                 XOR,
                 balance!(50)
             ));
+
+            // Check user and pallet balances of the borrowed asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                balance!(100)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(299900)
+            );
+
+            // Check user and pallet balances of the collateral asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &alice()).unwrap(),
+                balance!(100)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(100)
+            );
 
             // Get data after first borrow
             let borrowing_user_info =
@@ -987,17 +1082,15 @@ mod test {
             let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
 
             // Collateral asset pool tests (after borrow)
-            assert_eq!(collateral_asset_pool_info.total_liquidity, balance!(100));
+            assert_eq!(collateral_asset_pool_info.total_liquidity, balance!(0));
             assert_eq!(collateral_asset_pool_info.total_collateral, balance!(100));
 
             // Borrowing asset pool tests (after borrow)
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(299900));
             assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(100));
 
-            let (balance_1, balance_2) = calculate_borrowing_interest(alice(), XOR, DOT, 100);
-
             // Borrowing user tests (after borrow)
-            assert_eq!(borrowing_user_debt.last_borrowing_block, 100);
+            assert_eq!(borrowing_user_debt.last_borrowing_block, 101);
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(100));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(100));
             // assert_eq!(borrowing_user_debt.borrowing_interest, calculater_borrowing_interest.0);
