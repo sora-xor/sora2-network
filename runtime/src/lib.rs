@@ -2419,7 +2419,7 @@ construct_runtime! {
         #[cfg(feature = "wip")] // EVM bridge
         BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event<T>} = 96,
         #[cfg(feature = "wip")] // EVM bridge
-        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Call, Config<T>, Storage, Event<T>} = 97,
         #[cfg(feature = "wip")] // EVM bridge
         Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         #[cfg(feature = "wip")] // EVM bridge
