@@ -1554,37 +1554,22 @@ mod test {
 
             run_to_block(101);
 
-            let mut user_infos = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
-            let block_number: u64 = 101;
-
-            let mut borrowing_rewards = 0;
-            for (collateral_asset, mut user_info) in user_infos.iter_mut() {
-                let interest_and_reward =
-                    calculate_borrowing_interest(alice(), XOR, *collateral_asset, block_number);
-                user_info.borrowing_interest += interest_and_reward.0;
-                user_info.borrowing_rewards += interest_and_reward.1;
-                user_info.last_borrowing_block = block_number;
-                borrowing_rewards += user_info.borrowing_rewards;
-                user_info.borrowing_rewards = 0;
-            }
-
             assert_ok!(ApolloPlatform::get_rewards(
                 RuntimeOrigin::signed(alice()),
                 XOR,
                 false
             ));
 
-            let borrowing_earnings = calculate_borrowing_interest(alice(), XOR, DOT, 100);
-            let borrowing_rewards = borrowing_earnings.0 + borrowing_earnings.1;
+            let (_, borrowing_rewards) = calculate_borrowing_interest(alice(), XOR, DOT, 101);
 
             let new_pallet_balance = balance!(10000) - borrowing_rewards;
             let new_user_balance = balance!(300000) + borrowing_rewards;
 
-            // assert_eq!(
-            //     assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_pallet_account())
-            //         .unwrap(),
-            //     new_pallet_balance
-            // );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_pallet_account())
+                    .unwrap(),
+                new_pallet_balance
+            );
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &alice()).unwrap(),
