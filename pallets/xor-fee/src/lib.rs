@@ -741,7 +741,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultForFeeMultiplier<T: Config>() -> FixedU128 {
-        FixedU128::from(1000)
+        FixedU128::from(600000)
     }
 
     // Multiplier used in WeightToFee conversion
