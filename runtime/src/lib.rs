@@ -1700,7 +1700,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 
 parameter_types! {
     pub const GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
-    pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000);
+    pub const GetSyntheticBaseBuySellLimit: Balance = Balance::MAX;
 }
 
 impl xst::Config for Runtime {
