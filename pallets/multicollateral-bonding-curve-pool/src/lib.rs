@@ -48,15 +48,15 @@ use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
-    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsPallet,
+    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsProvider,
     QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::BuyBackHandler;
 use common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
     LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
-    ManagementMode, PriceVariant, RewardReason, SwapChunk, TradingPairSourceManager,
-    VestedRewardsPallet, PSWAP, TBCD, VAL, XOR, XST,
+    ManagementMode, PriceVariant, RewardReason, SwapChunk, TradingPairSourceManager, Vesting,
+    PSWAP, TBCD, VAL, XOR, XST,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -181,7 +181,7 @@ impl<DistributionAccountData: Default> Default for DistributionAccounts<Distribu
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::VestedRewardsPallet;
+    use common::Vesting;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::ensure_root;
@@ -204,8 +204,8 @@ pub mod pallet {
             Self::AssetId,
             DispatchError,
         >;
-        type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
-        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
+        type PriceToolsPallet: PriceToolsProvider<Self::AssetId>;
+        type VestedRewardsPallet: Vesting<Self::AccountId, Self::AssetId>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
         type BuyBackTBCDPercent: Get<Fixed>;

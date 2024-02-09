@@ -754,7 +754,7 @@ impl OnPswapBurned for () {
 }
 
 /// Trait to abstract interface of VestedRewards pallet, in order for pallets with rewards sources avoid having dependency issues.
-pub trait VestedRewardsPallet<AccountId, AssetId> {
+pub trait Vesting<AccountId, AssetId> {
     /// Report that account has received pswap reward for buying from tbc.
     fn add_tbc_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 
@@ -762,7 +762,7 @@ pub trait VestedRewardsPallet<AccountId, AssetId> {
     fn add_farming_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 }
 
-pub trait PoolXykPallet<AccountId, AssetId> {
+pub trait XykPool<AccountId, AssetId> {
     type PoolProvidersOutput: IntoIterator<Item = (AccountId, Balance)>;
     type PoolPropertiesOutput: IntoIterator<Item = (AssetId, AssetId, (AccountId, AccountId))>;
 
@@ -798,7 +798,7 @@ pub trait PoolXykPallet<AccountId, AssetId> {
     }
 }
 
-pub trait DemeterFarmingPallet<AccountId, AssetId> {
+pub trait DemeterFarming<AccountId, AssetId> {
     fn update_pool_tokens(
         _user: AccountId,
         _pool_tokens: Balance,
@@ -820,7 +820,7 @@ pub trait OnPoolCreated {
     ) -> DispatchResult;
 }
 
-pub trait PriceToolsPallet<AssetId> {
+pub trait PriceToolsProvider<AssetId> {
     /// Get amount of `output_asset_id` corresponding to a unit (1) of `input_asset_id`.
     /// `price_variant` specifies the correction for price, either for buy or sell.
     fn get_average_price(
@@ -833,7 +833,7 @@ pub trait PriceToolsPallet<AssetId> {
     fn register_asset(asset_id: &AssetId) -> DispatchResult;
 }
 
-impl<AssetId> PriceToolsPallet<AssetId> for () {
+impl<AssetId> PriceToolsProvider<AssetId> for () {
     fn get_average_price(
         _: &AssetId,
         _: &AssetId,

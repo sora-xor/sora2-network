@@ -47,8 +47,8 @@ use common::prelude::{
 use common::{
     fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
     GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
-    PoolXykPallet, RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
-    TradingPairSourceManager,
+    RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    TradingPairSourceManager, XykPool,
 };
 
 mod aliases;
@@ -88,7 +88,7 @@ const MIN_LIQUIDITY: u128 = 1000;
 
 pub use weights::WeightInfo;
 
-impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
+impl<T: Config> XykPool<T::AccountId, T::AssetId> for Pallet<T> {
     type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;
     type PoolPropertiesOutput =
         PrefixIterator<(AssetIdOf<T>, AssetIdOf<T>, (AccountIdOf<T>, AccountIdOf<T>))>;

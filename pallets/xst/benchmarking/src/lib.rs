@@ -40,7 +40,7 @@ use band::Pallet as Band;
 use codec::{Decode as _, Encode as _};
 use common::prelude::{QuoteAmount, SwapAmount};
 use common::{
-    balance, fixed, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle, PriceToolsPallet,
+    balance, fixed, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle, PriceToolsProvider,
     PriceVariant, DAI, XST, XSTUSD,
 };
 use frame_benchmarking::benchmarks;

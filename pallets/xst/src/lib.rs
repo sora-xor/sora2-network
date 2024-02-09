@@ -51,7 +51,7 @@ use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
-    Balance, EnsureDEXManager, Fixed, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount,
+    Balance, EnsureDEXManager, Fixed, FixedWrapper, PriceToolsProvider, QuoteAmount, SwapAmount,
     SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
@@ -142,7 +142,7 @@ pub mod pallet {
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
         type GetXSTPoolPermissionedTechAccountId: Get<Self::TechAccountId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
-        type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
+        type PriceToolsPallet: PriceToolsProvider<Self::AssetId>;
         type Oracle: DataFeed<Self::Symbol, Rate, u64>;
         /// Type of symbol received from oracles
         type Symbol: Parameter + From<common::SymbolName> + MaybeSerializeDeserialize;
