@@ -53,11 +53,11 @@ mod test;
 pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo};
     use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount};
-    use common::PriceToolsPallet;
     use common::{
         balance, AssetInfoProvider, DEXId, FilterMode, LiquiditySource, LiquiditySourceType,
         PriceVariant, CERES_ASSET_ID, DAI, HERMES_ASSET_ID, XOR,
     };
+    use common::{PriceToolsPallet, APOLLO_ASSET_ID};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::PalletId;
@@ -511,7 +511,7 @@ pub mod pallet {
                 );
 
                 Assets::<T>::transfer_from(
-                    &HERMES_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID.into(),
                     &Self::account_id(),
                     &user,
                     lend_user_info.lending_interest,
@@ -550,7 +550,7 @@ pub mod pallet {
                 ensure!(borrowing_rewards > 0, Error::<T>::NoRewardsToClaim);
 
                 Assets::<T>::transfer_from(
-                    &HERMES_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID.into(),
                     &Self::account_id(),
                     &user,
                     borrowing_rewards,
