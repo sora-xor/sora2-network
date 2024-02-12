@@ -1672,7 +1672,7 @@ mod test {
             ));
 
             assert_err!(
-                ApolloPlatform::withdraw(RuntimeOrigin::signed(alice()), XOR, balance!(200),),
+                ApolloPlatform::withdraw(RuntimeOrigin::signed(alice()), XOR, balance!(200)),
                 Error::<Runtime>::CanNotTransferLendingAmount
             );
         });

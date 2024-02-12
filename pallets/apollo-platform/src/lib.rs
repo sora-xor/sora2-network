@@ -605,15 +605,17 @@ pub mod pallet {
             )
             .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
 
-            // Check if lending amount is less than user's lending amount
-            if withdrawn_amount < user_info.lending_amount {
-                let block_number = <frame_system::Pallet<T>>::block_number();
-                let interests: (u128, u128) =
-                    Self::calculate_lending_earnings(&user, withdrawn_asset, block_number);
-                user_info.lending_amount -= withdrawn_amount;
-                user_info.lending_interest += interests.0 + interests.1;
-                user_info.last_lending_block = block_number;
+            let previous_lending_amount = user_info.lending_amount;
 
+            let block_number = <frame_system::Pallet<T>>::block_number();
+            let interests: (u128, u128) =
+                Self::calculate_lending_earnings(&user, withdrawn_asset, block_number);
+            user_info.lending_amount -= withdrawn_amount;
+            user_info.lending_interest += interests.0 + interests.1;
+            user_info.last_lending_block = block_number;
+
+            // Check if lending amount is less than user's lending amount
+            if withdrawn_amount < previous_lending_amount {
                 <UserLendingInfo<T>>::insert(user.clone(), withdrawn_asset, user_info);
             } else {
                 // Transfer lending interest when user withdraws whole lending amount
