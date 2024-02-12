@@ -1881,4 +1881,190 @@ mod test {
             assert_eq!(lending_user_info, None);
         });
     }
+
+    #[test]
+    fn change_rewards_amount_unauthorized() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                ApolloPlatform::change_rewards_amount(
+                    RuntimeOrigin::signed(alice()),
+                    true,
+                    balance!(1)
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn change_lending_rewards_amount_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            // Check lending rewards value before change
+            assert_eq!(pallet::LendingRewards::<Runtime>::get(), balance!(200000));
+
+            assert_ok!(ApolloPlatform::change_rewards_amount(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                true,
+                balance!(1)
+            ));
+
+            // Check lending rewards value after change
+            assert_eq!(pallet::LendingRewards::<Runtime>::get(), balance!(1));
+        });
+    }
+
+    #[test]
+    fn change_borrowing_rewards_amount_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            // Check lending rewards value before change
+            assert_eq!(pallet::BorrowingRewards::<Runtime>::get(), balance!(100000));
+
+            assert_ok!(ApolloPlatform::change_rewards_amount(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                false,
+                balance!(1)
+            ));
+
+            // Check lending rewards value after change
+            assert_eq!(pallet::BorrowingRewards::<Runtime>::get(), balance!(1));
+        });
+    }
+
+    #[test]
+    fn change_rewards_per_block_unauthorized() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                ApolloPlatform::change_rewards_per_block(
+                    RuntimeOrigin::signed(alice()),
+                    false,
+                    balance!(1)
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn change_lending_rewards_per_block_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                DOT,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                KSM,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            // Check pool basic lending rates before change
+            let new_basic_lending_rate =
+                (FixedWrapper::from(ApolloPlatform::lending_rewards_per_block())
+                    / FixedWrapper::from(3))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            let new_borrowing_rewards_rate =
+                (FixedWrapper::from(ApolloPlatform::borrowing_rewards_per_block())
+                    / FixedWrapper::from(3))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            for (_asset_id, pool_info) in pallet::PoolData::<Runtime>::iter() {
+                assert_eq!(pool_info.basic_lending_rate, new_basic_lending_rate);
+                assert_eq!(pool_info.borrowing_rewards_rate, new_borrowing_rewards_rate);
+            }
+
+            // Check lending rewards value before change
+            assert_eq!(
+                pallet::LendingRewardsPerBlock::<Runtime>::get(),
+                balance!(0.03805175)
+            );
+
+            assert_ok!(ApolloPlatform::change_rewards_per_block(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                true,
+                balance!(1)
+            ));
+
+            // Check lending rewards value after change
+            assert_eq!(
+                pallet::LendingRewardsPerBlock::<Runtime>::get(),
+                balance!(1)
+            );
+
+            // Check pool basic lending rates after change
+            let new_basic_lending_rate =
+                (FixedWrapper::from(ApolloPlatform::lending_rewards_per_block())
+                    / FixedWrapper::from(3))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            let new_borrowing_rewards_rate =
+                (FixedWrapper::from(ApolloPlatform::borrowing_rewards_per_block())
+                    / FixedWrapper::from(3))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            for (_asset_id, pool_info) in pallet::PoolData::<Runtime>::iter() {
+                assert_eq!(pool_info.basic_lending_rate, new_basic_lending_rate);
+                assert_eq!(pool_info.borrowing_rewards_rate, new_borrowing_rewards_rate);
+            }
+        });
+    }
+
+    #[test]
+    fn change_borrowing_rewards_per_block_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            // Check borrwing rewards value before change
+            assert_eq!(
+                pallet::BorrowingRewardsPerBlock::<Runtime>::get(),
+                balance!(0.01902587)
+            );
+
+            assert_ok!(ApolloPlatform::change_rewards_per_block(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                false,
+                balance!(1)
+            ));
+
+            // Check borrowing rewards value after change
+            assert_eq!(
+                pallet::BorrowingRewardsPerBlock::<Runtime>::get(),
+                balance!(1)
+            );
+        });
+    }
 }
