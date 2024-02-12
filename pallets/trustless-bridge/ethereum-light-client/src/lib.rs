@@ -430,7 +430,7 @@ pub mod pallet {
     #[pallet::validate_unsigned]
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;
-        // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
+        // mb add prefetch with validate_ancestors=true to not include unnecessary stuff
         fn validate_unsigned(source: TransactionSource, call: &Self::Call) -> TransactionValidity {
             if let Call::import_header {
                 network_id,

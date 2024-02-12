@@ -165,6 +165,9 @@ pub use {
     trading_pair, xst,
 };
 
+#[cfg(feature = "wip")] // kensetsu
+pub use kensetsu;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -353,7 +356,10 @@ parameter_types! {
     pub const ElectionsMaxVoters: u32 = 10000;
     pub const ElectionsMaxCandidates: u32 = 1000;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
-    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get(), GetTbcdAssetId::get()];
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![
+        GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(),
+        GetXstAssetId::get(), GetTbcdAssetId::get(), GetDotAssetId::get()
+    ];
     pub const MaxAuthorities: u32 = 100_000;
     pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
@@ -1914,6 +1920,51 @@ impl hermes_governance_platform::Config for Runtime {
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 
+#[cfg(feature = "wip")] // kensetsu
+parameter_types! {
+    pub KensetsuTreasuryTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
+            kensetsu::TECH_ACCOUNT_TREASURY_MAIN.to_vec(),
+        )
+    };
+    pub KensetsuTreasuryAccountId: AccountId = {
+        let tech_account_id = KensetsuTreasuryTechAccountId::get();
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.")
+    };
+
+    pub const KusdAssetId: AssetId = common::KUSD;
+
+    // 1 day = 86_400_000
+    // TODO set 86_400_000
+    pub const AccrueInterestPeriod: Moment = 30_000;
+
+    // Not as important as some essential transactions (e.g. im_online or similar ones)
+    pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
+        Perbill::from_percent(10) * TransactionPriority::max_value();
+    // 100 blocks, if tx spoils, worker will resend it
+    // pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 100;
+    // TODO set 100 for release
+    pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 5;
+}
+
+#[cfg(feature = "wip")] // kensetsu
+impl kensetsu::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type AssetInfoProvider = Assets;
+    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KusdAssetId = KusdAssetId;
+    type PriceTools = PriceTools;
+    type LiquidityProxy = LiquidityProxy;
+    type MaxCdpsPerOwner = ConstU32<100>;
+    type MaxRiskManagementTeamSize = ConstU32<100>;
+    type AccrueInterestPeriod = AccrueInterestPeriod;
+    type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
+    type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
+    type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;
+}
+
 parameter_types! {
     // small value for test environment in order to check postponing expirations
     pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block;
@@ -1993,7 +2044,7 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
     type WeightInfo = dispatch::weights::SubstrateWeight<Runtime>;
 }
 
-#[cfg(feature = "wip")]
+#[cfg(feature = "wip")] // EVM bridge
 use bridge_types::EVMChainId;
 
 parameter_types! {
@@ -2356,6 +2407,9 @@ construct_runtime! {
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
+        #[cfg(feature = "wip")] // kensetsu
+        Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
+
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
 
@@ -2368,7 +2422,7 @@ construct_runtime! {
         #[cfg(feature = "wip")] // EVM bridge
         BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event<T>} = 96,
         #[cfg(feature = "wip")] // EVM bridge
-        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Call, Config<T>, Storage, Event<T>} = 97,
         #[cfg(feature = "wip")] // EVM bridge
         Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         #[cfg(feature = "wip")] // EVM bridge
@@ -2384,7 +2438,7 @@ construct_runtime! {
 
         // Federated substrate bridge
         SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 106,
-        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
+        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 107,
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
         ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
@@ -3110,6 +3164,8 @@ impl_runtime_apis! {
             use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
             use frame_support::traits::StorageInfoTrait;
 
+            #[cfg(feature = "wip")] // kensetsu
+            use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
@@ -3126,6 +3182,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, farming, Farming);
             list_benchmark!(list, extra, iroha_migration, IrohaMigration);
             list_benchmark!(list, extra, dex_api, DEXAPI);
+            #[cfg(feature = "wip")] // kensetsu
+            list_benchmark!(list, extra, kensetsu, KensetsuBench::<Runtime>);
             list_benchmark!(list, extra, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             list_benchmark!(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             list_benchmark!(list, extra, pswap_distribution, PswapDistributionBench::<Runtime>);
@@ -3184,6 +3242,8 @@ impl_runtime_apis! {
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 
+            #[cfg(feature = "wip")] // kensetsu
+            use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
@@ -3191,7 +3251,8 @@ impl_runtime_apis! {
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
             use order_book_benchmarking::Pallet as OrderBookBench;
-
+            #[cfg(feature = "wip")] // kensetsu
+            impl kensetsu_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
@@ -3223,6 +3284,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, dex_api, DEXAPI);
+            #[cfg(feature = "wip")] // kensetsu
+            add_benchmark!(params, batches, kensetsu, KensetsuBench::<Runtime>);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             add_benchmark!(params, batches, pswap_distribution, PswapDistributionBench::<Runtime>);
