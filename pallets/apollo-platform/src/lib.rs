@@ -207,6 +207,8 @@ pub mod pallet {
         InvalidPoolParameters,
         /// Pool does not exist
         PoolDoesNotExist,
+        /// The amount that is being lended is invalid
+        InvalidLendingAmount,
         /// Collateral token does not exists
         CollateralTokenDoesNotExist,
         /// No lending amount to borrow
@@ -342,6 +344,8 @@ pub mod pallet {
             lending_amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+
+            ensure!(lending_amount > 0, Error::<T>::InvalidLendingAmount);
 
             let mut pool_info =
                 <PoolData<T>>::get(lending_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
@@ -573,58 +577,60 @@ pub mod pallet {
         #[pallet::weight(10_000)]
         pub fn withdraw(
             origin: OriginFor<T>,
-            lending_asset: AssetIdOf<T>,
-            lending_amount: Balance,
+            withdrawn_asset: AssetIdOf<T>,
+            withdrawn_amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
             let mut pool_info =
-                <PoolData<T>>::get(lending_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
-            let mut user_info = <UserLendingInfo<T>>::get(user.clone(), lending_asset)
+                <PoolData<T>>::get(withdrawn_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
+            let mut user_info = <UserLendingInfo<T>>::get(user.clone(), withdrawn_asset)
                 .ok_or(Error::<T>::NothingLended)?;
 
             ensure!(
-                user_info.lending_amount > 0,
-                Error::<T>::InsufficientLendingAmount
-            );
-            ensure!(
-                lending_amount <= user_info.lending_amount,
+                withdrawn_amount <= user_info.lending_amount,
                 Error::<T>::LendingAmountExceeded
             );
             ensure!(
-                lending_amount < pool_info.total_liquidity,
+                withdrawn_amount < pool_info.total_liquidity,
                 Error::<T>::CanNotTransferLendingAmount
             );
 
-            let block_number = <frame_system::Pallet<T>>::block_number();
-            let interests = Self::calculate_lending_earnings(&user, lending_asset, block_number);
-            user_info.lending_amount -= lending_amount;
-            user_info.lending_interest += interests.0 + interests.1;
-            user_info.last_lending_block = block_number;
-
             // Transfer lending amount
-            Assets::<T>::transfer_from(&lending_asset, &Self::account_id(), &user, lending_amount)
-                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
+            Assets::<T>::transfer_from(
+                &withdrawn_asset,
+                &Self::account_id(),
+                &user,
+                withdrawn_amount,
+            )
+            .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
 
             // Check if lending amount is less than user's lending amount
-            if lending_amount < user_info.lending_amount {
-                <UserLendingInfo<T>>::insert(user.clone(), lending_asset, user_info);
+            if withdrawn_amount < user_info.lending_amount {
+                let block_number = <frame_system::Pallet<T>>::block_number();
+                let interests: (u128, u128) =
+                    Self::calculate_lending_earnings(&user, withdrawn_asset, block_number);
+                user_info.lending_amount -= withdrawn_amount;
+                user_info.lending_interest += interests.0 + interests.1;
+                user_info.last_lending_block = block_number;
+
+                <UserLendingInfo<T>>::insert(user.clone(), withdrawn_asset, user_info);
             } else {
                 // Transfer lending interest when user withdraws whole lending amount
                 Assets::<T>::transfer_from(
-                    &HERMES_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID.into(),
                     &Self::account_id(),
                     &user,
                     user_info.lending_interest,
                 )
                 .map_err(|_| Error::<T>::CanNotTransferLendingInterest)?;
-                <UserLendingInfo<T>>::remove(user.clone(), lending_asset);
+                <UserLendingInfo<T>>::remove(user.clone(), withdrawn_asset);
             }
 
-            pool_info.total_liquidity -= lending_amount;
-            <PoolData<T>>::insert(lending_asset, pool_info);
+            pool_info.total_liquidity -= withdrawn_amount;
+            <PoolData<T>>::insert(withdrawn_asset, pool_info);
 
-            Self::deposit_event(Event::Withdrawn(user, lending_asset, lending_amount));
+            Self::deposit_event(Event::Withdrawn(user, withdrawn_asset, withdrawn_amount));
             Ok(().into())
         }
 

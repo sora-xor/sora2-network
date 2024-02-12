@@ -133,26 +133,17 @@ mod test {
     fn add_pool_unathorized_user() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let user = RuntimeOrigin::signed(alice());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_err!(
                 ApolloPlatform::add_pool(
-                    user,
+                    RuntimeOrigin::signed(alice()),
                     XOR,
-                    loan_to_value,
-                    liquidation_threshold,
-                    optimal_utilization_rate,
-                    base_rate,
-                    slope_rate_1,
-                    slope_rate_2,
-                    reserve_factor
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1)
                 ),
                 Error::<Runtime>::Unauthorized
             );
@@ -163,26 +154,17 @@ mod test {
     fn add_pool_invalid_pool_parameters() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1.1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_err!(
                 ApolloPlatform::add_pool(
-                    user,
+                    RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                     XOR,
-                    loan_to_value,
-                    liquidation_threshold,
-                    optimal_utilization_rate,
-                    base_rate,
-                    slope_rate_1,
-                    slope_rate_2,
-                    reserve_factor
+                    balance!(1.1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1)
                 ),
                 Error::<Runtime>::InvalidPoolParameters
             );
@@ -194,37 +176,30 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_err!(
                 ApolloPlatform::add_pool(
                     user,
                     XOR,
-                    loan_to_value,
-                    liquidation_threshold,
-                    optimal_utilization_rate,
-                    base_rate,
-                    slope_rate_1,
-                    slope_rate_2,
-                    reserve_factor
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1),
+                    balance!(1)
                 ),
                 Error::<Runtime>::AssetAlreadyListed
             );
@@ -236,48 +211,41 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 DOT,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 KSM,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             let new_basic_lending_rate =
@@ -303,26 +271,28 @@ mod test {
     fn add_pool_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_ok!(ApolloPlatform::add_pool(
-                user,
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
+        });
+    }
+
+    #[test]
+    fn lend_invalid_lending_amount() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                ApolloPlatform::lend(RuntimeOrigin::signed(alice()), XOR, balance!(0)),
+                Error::<Runtime>::InvalidLendingAmount
+            );
         });
     }
 
@@ -330,11 +300,8 @@ mod test {
     fn lend_pool_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let user = RuntimeOrigin::signed(alice());
-            let lending_amount = balance!(100);
-
             assert_err!(
-                ApolloPlatform::lend(user, XOR, lending_amount),
+                ApolloPlatform::lend(RuntimeOrigin::signed(alice()), XOR, balance!(100)),
                 Error::<Runtime>::PoolDoesNotExist
             );
         });
@@ -344,25 +311,16 @@ mod test {
     fn lend_can_not_transfer_lending_amount() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let pool_creator = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_ok!(ApolloPlatform::add_pool(
-                pool_creator,
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_err!(
@@ -383,25 +341,16 @@ mod test {
                 balance!(300000)
             ));
 
-            let pool_creator = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_ok!(ApolloPlatform::add_pool(
-                pool_creator,
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_eq!(
@@ -450,25 +399,16 @@ mod test {
                 balance!(300000)
             ));
 
-            let pool_creator = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_ok!(ApolloPlatform::add_pool(
-                pool_creator,
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -518,17 +458,8 @@ mod test {
     fn borrow_same_collateral_and_borrowing_assets() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let collateral_asset = XOR;
-            let borrowing_asset = XOR;
-            let borrowing_amount = balance!(100);
-
             assert_err!(
-                ApolloPlatform::borrow(
-                    RuntimeOrigin::signed(alice()),
-                    collateral_asset,
-                    borrowing_asset,
-                    borrowing_amount
-                ),
+                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), XOR, XOR, balance!(100)),
                 Error::<Runtime>::SameCollateralAndBorrowingAssets
             );
         });
@@ -538,17 +469,8 @@ mod test {
     fn borrow_borrow_pool_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let collateral_asset = XOR;
-            let borrowing_asset = DOT;
-            let borrowing_amount = balance!(100);
-
             assert_err!(
-                ApolloPlatform::borrow(
-                    RuntimeOrigin::signed(alice()),
-                    collateral_asset,
-                    borrowing_asset,
-                    borrowing_amount
-                ),
+                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), XOR, DOT, balance!(100)),
                 Error::<Runtime>::PoolDoesNotExist
             );
         });
@@ -558,38 +480,20 @@ mod test {
     fn borrow_no_liquidity_for_borrowing_asset() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_ok!(ApolloPlatform::add_pool(
-                user,
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
-            let collateral_asset = DOT;
-            let borrowing_asset = XOR;
-            let borrowing_amount = balance!(100);
-
             assert_err!(
-                ApolloPlatform::borrow(
-                    RuntimeOrigin::signed(alice()),
-                    collateral_asset,
-                    borrowing_asset,
-                    borrowing_amount
-                ),
+                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), DOT, XOR, balance!(100)),
                 Error::<Runtime>::NoLiquidityForBorrowingAsset
             );
         });
@@ -606,25 +510,16 @@ mod test {
                 balance!(300000)
             ));
 
-            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_ok!(ApolloPlatform::add_pool(
-                user,
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -633,17 +528,8 @@ mod test {
                 balance!(300000),
             ));
 
-            let collateral_asset = DOT;
-            let borrowing_asset = XOR;
-            let borrowing_amount = balance!(100);
-
             assert_err!(
-                ApolloPlatform::borrow(
-                    RuntimeOrigin::signed(alice()),
-                    collateral_asset,
-                    borrowing_asset,
-                    borrowing_amount
-                ),
+                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), DOT, XOR, balance!(100)),
                 Error::<Runtime>::PoolDoesNotExist
             );
         });
@@ -661,36 +547,29 @@ mod test {
             ));
 
             let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
                 user,
                 DOT,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -699,17 +578,8 @@ mod test {
                 balance!(300000),
             ));
 
-            let collateral_asset = DOT;
-            let borrowing_asset = XOR;
-            let borrowing_amount = balance!(100);
-
             assert_err!(
-                ApolloPlatform::borrow(
-                    RuntimeOrigin::signed(alice()),
-                    collateral_asset,
-                    borrowing_asset,
-                    borrowing_amount
-                ),
+                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), DOT, XOR, balance!(100)),
                 Error::<Runtime>::NothingLended
             );
         });
@@ -736,36 +606,29 @@ mod test {
             ));
 
             let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
                 user,
                 DOT,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -808,36 +671,29 @@ mod test {
             ));
 
             let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
                 user,
                 DOT,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1119,12 +975,8 @@ mod test {
     fn get_lending_rewards_nothing_lended() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let user = RuntimeOrigin::signed(alice());
-            let asset_id = XOR;
-            let is_lending = true;
-
             assert_err!(
-                ApolloPlatform::get_rewards(user, asset_id, is_lending),
+                ApolloPlatform::get_rewards(RuntimeOrigin::signed(alice()), XOR, true),
                 Error::<Runtime>::NothingLended
             );
         });
@@ -1141,25 +993,16 @@ mod test {
                 balance!(300000)
             ));
 
-            let pool_creator = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_ok!(ApolloPlatform::add_pool(
-                pool_creator,
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1188,25 +1031,16 @@ mod test {
                 balance!(300000)
             ));
 
-            let pool_creator = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_ok!(ApolloPlatform::add_pool(
-                pool_creator,
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1244,25 +1078,16 @@ mod test {
                 balance!(10000)
             ));
 
-            let pool_creator = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
-
             assert_ok!(ApolloPlatform::add_pool(
-                pool_creator,
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1306,12 +1131,8 @@ mod test {
     fn get_borrowing_rewards_nothing_borrowed() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let user = RuntimeOrigin::signed(alice());
-            let asset_id = XOR;
-            let is_lending = false;
-
             assert_err!(
-                ApolloPlatform::get_rewards(user, asset_id, is_lending),
+                ApolloPlatform::get_rewards(RuntimeOrigin::signed(alice()), XOR, false),
                 Error::<Runtime>::NothingBorrowed
             );
         });
@@ -1338,36 +1159,29 @@ mod test {
             ));
 
             let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
                 user,
                 DOT,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1417,36 +1231,29 @@ mod test {
             ));
 
             let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
                 user,
                 DOT,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1505,36 +1312,29 @@ mod test {
             ));
 
             let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
                 user,
                 DOT,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1622,48 +1422,41 @@ mod test {
             ));
 
             let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
-            let loan_to_value = balance!(1);
-            let liquidation_threshold = balance!(1);
-            let optimal_utilization_rate = balance!(1);
-            let base_rate = balance!(1);
-            let slope_rate_1 = balance!(1);
-            let slope_rate_2 = balance!(1);
-            let reserve_factor = balance!(1);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 XOR,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 DOT,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
                 KSM,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1731,6 +1524,361 @@ mod test {
                 assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &alice()).unwrap(),
                 new_user_balance - balance!(0.000000000000000066)
             );
+        });
+    }
+
+    #[test]
+    fn withdraw_pool_does_not_exist() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                ApolloPlatform::withdraw(RuntimeOrigin::signed(alice()), XOR, balance!(100)),
+                Error::<Runtime>::PoolDoesNotExist
+            );
+        });
+    }
+
+    #[test]
+    fn withdraw_nothing_lended() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_err!(
+                ApolloPlatform::withdraw(RuntimeOrigin::signed(alice()), XOR, balance!(100)),
+                Error::<Runtime>::NothingLended
+            );
+        });
+    }
+
+    #[test]
+    fn withdraw_lending_amount_exceeded() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &alice(),
+                balance!(300000)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                XOR,
+                balance!(100),
+            ));
+
+            assert_err!(
+                ApolloPlatform::withdraw(RuntimeOrigin::signed(alice()), XOR, balance!(200),),
+                Error::<Runtime>::LendingAmountExceeded
+            );
+        });
+    }
+
+    #[test]
+    fn withdraw_can_not_transfer_lending_amount() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &alice(),
+                balance!(300)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &bob(),
+                balance!(300)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                DOT,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                XOR,
+                balance!(200),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                DOT,
+                balance!(300),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(bob()),
+                DOT,
+                XOR,
+                balance!(300)
+            ));
+
+            assert_err!(
+                ApolloPlatform::withdraw(RuntimeOrigin::signed(alice()), XOR, balance!(200),),
+                Error::<Runtime>::CanNotTransferLendingAmount
+            );
+        });
+    }
+
+    #[test]
+    fn withdraw_without_interest_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            run_to_block(1);
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &alice(),
+                balance!(300)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                XOR,
+                balance!(100)
+            ));
+
+            run_to_block(101);
+
+            // Check balances before withdrawal
+            // Pallet balance
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(100)
+            );
+            // Alice balance
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                balance!(200)
+            );
+
+            // Check pool info and user lending info values before withdrawal
+            // Pool info
+            let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            assert_eq!(pool_info.total_liquidity, balance!(100));
+
+            // User lending info
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            assert_eq!(lending_user_info.lending_amount, balance!(100));
+
+            assert_ok!(ApolloPlatform::withdraw(
+                RuntimeOrigin::signed(alice()),
+                XOR,
+                balance!(50)
+            ));
+
+            // Check balances after withdrawal
+            // Pallet balance
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(50)
+            );
+            // Alice balance
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                balance!(250)
+            );
+
+            // Check pool info and user lending info values after withdrawal
+            // Pool info
+            let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            assert_eq!(pool_info.total_liquidity, balance!(50));
+
+            // User lending info
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            assert_eq!(lending_user_info.lending_amount, balance!(50));
+        });
+    }
+
+    #[test]
+    fn withdraw_with_interest_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            run_to_block(1);
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &alice(),
+                balance!(300)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &APOLLO_ASSET_ID,
+                &alice(),
+                &get_pallet_account(),
+                balance!(10000)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                XOR,
+                balance!(100)
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(100)
+            ));
+
+            run_to_block(101);
+
+            // Check balances before withdrawal
+            // Pallet balance
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(200)
+            );
+            // Alice balance
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                balance!(200)
+            );
+            // Alice balanec (APOLLO)
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID.into(), &alice()).unwrap(),
+                balance!(300000)
+            );
+
+            // Check pool info and user lending info values before withdrawal
+            // Pool info
+            let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            assert_eq!(pool_info.total_liquidity, balance!(200));
+
+            // User lending info
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            assert_eq!(lending_user_info.lending_amount, balance!(100));
+
+            // Calculate lending interest
+            let lending_interests = calculate_lending_earnings(alice(), XOR, 100);
+            let total_interest = lending_interests.0 + lending_interests.1 + balance!(300000);
+
+            assert_ok!(ApolloPlatform::withdraw(
+                RuntimeOrigin::signed(alice()),
+                XOR,
+                balance!(100)
+            ));
+
+            // Check balances after withdrawal
+            // Pallet balance
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(100)
+            );
+            // Alice balance (XOR)
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                balance!(300)
+            );
+            // Alice balance (APOLLO)
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID.into(), &alice()).unwrap(),
+                total_interest
+            );
+
+            // Check pool info and user lending info values after withdrawal
+            // Pool info
+            let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            assert_eq!(pool_info.total_liquidity, balance!(100));
+
+            // User lending info
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR);
+            assert_eq!(lending_user_info, None);
         });
     }
 }
