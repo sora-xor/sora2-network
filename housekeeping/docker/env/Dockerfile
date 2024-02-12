@@ -1,23 +1,24 @@
-FROM debian:bullseye-slim
+FROM debian:bullseye-20240130-slim
 
 ENV RUSTUP_HOME="/opt/rust"
 ENV CARGO_HOME="/opt/rust"
 ENV PATH="$PATH:$RUSTUP_HOME/bin"
 ENV RUST_VERSION=nightly-2024-01-15
 ENV TZ=Europe/Moscow
-ENV CC=clang-14
-ENV CXX=clang++-14
+ENV CC=clang-13
+ENV CXX=clang++-13
 ENV SUBWASM_VER=v0.14.0
 ENV GRCOV_VERSION=0.8.19
-ENV LLVM_TOOLS_VER=14
-ENV CCLANG_VER=14
+ENV LLVM_TOOLS_VER=13
+ENV CCLANG_VER=13
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y \
+    apt-get install -y \
     ca-certificates apt-transport-https gnupg \
     libssl-dev pkg-config \
     curl \
+    wget \
     git binaryen \
     docker.io \
     make cmake libssl-dev \
@@ -25,9 +26,9 @@ RUN apt-get update && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup toolchain install ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_VERSION} && \
-    curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-    echo "deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-${LLVM_TOOLS_VER} main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-${LLVM_TOOLS_VER}.list && \
-    echo "deb-src http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-${LLVM_TOOLS_VER} main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-${LLVM_TOOLS_VER}.list && \
+    wget https://apt.llvm.org/llvm.sh && \
+    chmod +x llvm.sh && \
+    ./llvm.sh ${LLVM_TOOLS_VER} && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
     clang-${CCLANG_VER} lldb-${CCLANG_VER} lld-${CCLANG_VER} libclang-${CCLANG_VER}-dev llvm-${LLVM_TOOLS_VER} protobuf-compiler && \
