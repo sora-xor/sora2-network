@@ -74,7 +74,8 @@ pub mod pallet {
         + band::Config
         + oracle_proxy::Config
     {
-        type WeightInfo: WeightInfo;
+        /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
@@ -95,6 +96,19 @@ pub mod pallet {
             + From<common::SymbolName>
             + Parameter
             + Ord;
+        type WeightInfo: WeightInfo;
+    }
+
+    #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        // event example
+        // /// New order book is created by user
+        // OrderBookCreated {
+        //     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        //     /// `creator` contains an address if the order book is created for an indivisible asset by the asset holder, or `None` if it is created by root / tech committee
+        //     creator: Option<T::AccountId>,
+        // },
     }
 
     #[pallet::error]

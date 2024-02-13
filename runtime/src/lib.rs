@@ -1468,6 +1468,7 @@ parameter_types! {
 
 #[cfg(feature = "private-net")]
 impl qa_tools::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type SyntheticInfoProvider = XSTPool;
@@ -2465,7 +2466,7 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
         #[cfg(feature = "private-net")]
-        QATools: qa_tools::{Pallet, Call} = 112,
+        QATools: qa_tools::{Pallet, Call, Event<T>} = 112,
     }
 }
 
