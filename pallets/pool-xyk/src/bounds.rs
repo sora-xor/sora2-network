@@ -31,6 +31,7 @@
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
 
+/// Values for resource amount
 #[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub enum Bounds<Balance> {
     /// A consequence of computations instead of a value set by a user.
