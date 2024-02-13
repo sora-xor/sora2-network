@@ -33,12 +33,12 @@ pub mod source_initialization {
     use crate::{Config, Error};
     use assets::AssetIdOf;
     use codec::{Decode, Encode};
-    use common::fixnum::ops::CheckedSub;
-    use common::prelude::{BalanceUnit, QuoteAmount};
+    use common::fixnum::ops::{CheckedSub, Zero};
+    use common::prelude::{BalanceUnit, FixedWrapper, QuoteAmount};
     use common::{
-        balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXInfo, DexIdOf,
-        DexInfoProvider, Fixed, Oracle, PriceToolsPallet, PriceVariant, TradingPair,
-        TradingPairSourceManager, XOR,
+        balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId, DEXInfo,
+        DexIdOf, DexInfoProvider, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, Oracle,
+        PriceToolsPallet, PriceVariant, TradingPair, TradingPairSourceManager, XOR,
     };
     use frame_support::dispatch::{
         DispatchError, DispatchResult, DispatchResultWithPostInfo, RawOrigin,
@@ -52,6 +52,8 @@ pub mod source_initialization {
     use sp_std::fmt::Debug;
     use sp_std::vec;
     use sp_std::vec::Vec;
+
+    // todo: group by source or domain or smth
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     pub struct XYKPair<DEXId, AssetId> {
@@ -760,5 +762,153 @@ pub mod source_initialization {
             xst_base_assets::<T>(base_prices)?;
         }
         xst_synthetics::<T>(synthetics, relayer)
+    }
+
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    pub struct MCBCPriceToolsPrice {
+        buy: Option<Balance>,
+        sell: Option<Balance>,
+    }
+
+    /// Input for initializing collateral assets except TBCD.
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    pub struct MCBCPoolCollateralInput<AssetId> {
+        /// Collateral asset id
+        pub asset: AssetId,
+        /// Price of collateral in terms of reference asset. Linearly affects the exchange amounts.
+        /// (if collateral costs 10x more sell output should be 10x smaller)
+        pub ref_prices: MCBCPriceToolsPrice,
+        /// Desired amount of collateral asset in the MCBC reserve account. Affects actual sell
+        /// price according to formulae.
+        pub reserves: Balance,
+    }
+
+    /// Input for initializing TBCD collateral.
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    pub struct MCBCPoolTBCDInput<AssetId> {
+        /// Collateral asset id
+        pub asset: AssetId,
+        /// Price of collateral in terms of reference asset. Linearly affects the exchange amounts.
+        /// (if collateral costs 10x more sell output should be 10x smaller)
+        pub ref_prices: MCBCPriceToolsPrice,
+        /// Desired amount of collateral asset in the MCBC reserve account. Affects actual sell
+        /// price according to formulae.
+        pub reserves: Balance,
+        pub xor_ref_prices: MCBCPriceToolsPrice,
+    }
+
+    fn init_single_mcbc_collateral<T: Config>(
+        input: MCBCPoolCollateralInput<T::AssetId>,
+    ) -> DispatchResult {
+        // initialize price???
+
+        // initialize reserves
+        let ratio = FixedWrapper::from(input.reserves_ratio);
+        ensure!(
+            ratio >= FixedWrapper::from(0) && ratio <= FixedWrapper::from(balance!(1)),
+            Error::<T>::ArithmeticError
+        );
+
+        let base_asset = T::GetBaseAssetId::get();
+        let reference_asset = multicollateral_bonding_curve_pool::Pallet::<T>::reference_asset_id();
+        let total_issuance = assets::Pallet::<T>::total_issuance(&base_asset)?;
+        // todo: register TP if not exist
+        // TradingPair::register(
+        //     RuntimeOrigin::signed(alice()),
+        //     DEXId::Polkaswap.into(),
+        //     XOR,
+        //     VAL,
+        // )
+        // .expect("Failed to register trading pair.");
+        // TradingPair::register(
+        //     RuntimeOrigin::signed(alice()),
+        //     DEXId::Polkaswap.into(),
+        //     XOR,
+        //     XSTUSD,
+        // )
+        // .expect("Failed to register trading pair.");
+
+        // todo: initialize pool if not already
+        // MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+        // todo: register account if not present???
+        // let bonding_curve_tech_account_id = TechAccountId::Pure(
+        //     DEXId::Polkaswap,
+        //     TechPurpose::Identifier(b"bonding_curve_tech_account_id".to_vec()),
+        // );
+        // Technical::register_tech_account_id(bonding_curve_tech_account_id.clone())?;
+        // MBCPool::set_reserves_account_id(bonding_curve_tech_account_id.clone())?;
+
+        // set price_tools prices if needed
+        if let Some(price) = input.collateral_prices.buy {
+            set_prices_in_price_tools::<T>(&input.asset, price, PriceVariant::Buy)?;
+        }
+        if let Some(price) = input.collateral_prices.sell {
+            set_prices_in_price_tools::<T>(&input.asset, price, PriceVariant::Sell)?;
+        }
+        if let Some(price) = input.reference_prices.buy {
+            set_prices_in_price_tools::<T>(&reference_asset, price, PriceVariant::Buy)?;
+        }
+        if let Some(price) = input.reference_prices.sell {
+            set_prices_in_price_tools::<T>(&reference_asset, price, PriceVariant::Sell)?;
+        }
+
+        // todo: use traits where possible (not only here, in whole pallet)
+        let reserve_amount_expected = FixedWrapper::from(total_issuance)
+            * multicollateral_bonding_curve_pool::Pallet::<T>::sell_function(
+                &base_asset,
+                &input.asset,
+                Fixed::ZERO,
+            )?;
+
+        let pool_reference_amount = reserve_amount_expected * ratio;
+        let pool_reference_amount = pool_reference_amount
+            .try_into_balance()
+            .map_err(|_| Error::<T>::ArithmeticError)?;
+        let pool_val_amount = <T as Config>::LiquidityProxy::quote(
+            DEXId::Polkaswap.into(),
+            &reference_asset,
+            &input.asset,
+            QuoteAmount::with_desired_input(pool_reference_amount),
+            LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+            true,
+        )?;
+
+        let reserves_account =
+            multicollateral_bonding_curve_pool::Pallet::<T>::reserves_account_id();
+        technical::Pallet::<T>::mint(&input.asset, &reserves_account, pool_val_amount.amount)?;
+
+        Ok(())
+    }
+
+    fn init_tbcd_mcbc_collateral<T: Config>(
+        input: MCBCPoolTBCDInput<T::AssetId>,
+    ) -> DispatchResult {
+        // handle xor ref price
+        // input.xor_ref_prices
+
+        init_single_mcbc_collateral(MCBCPoolCollateralInput {
+            asset: input.asset,
+            ref_prices: input.ref_prices,
+            reserves: input.reserves,
+        })
+    }
+
+    pub fn mcbc<T: Config>(
+        xor_supply_collector: T::AccountId,
+        new_xor_supply: T::Balance,
+        other_collaterals: Vec<MCBCPoolCollateralInput<T::AssetId>>,
+        tbcd_collateral: Option<MCBCPoolTBCDInput<T::AssetInfoProvider>>,
+    ) -> DispatchResult {
+        // todo: handle xor supply
+
+        other_collaterals
+            .into_iter()
+            .map(init_single_mcbc_collateral::<T>)
+            .collect()?;
+        if let Some(tbcd_collateral) = tbcd_collateral {
+            init_tbcd_mcbc_collateral(tbcd_collateral)?;
+        }
+        Ok(())
     }
 }

@@ -1467,6 +1467,7 @@ parameter_types! {
 impl qa_tools::Config for Runtime {
     type AssetInfoProvider = Assets;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type LiquidityProxy = liquidity_proxy::Pallet<Runtime>;
     type SyntheticInfoProvider = XSTPool;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;

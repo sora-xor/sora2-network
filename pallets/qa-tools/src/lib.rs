@@ -49,7 +49,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
+        DEXInfo, Description, DexIdOf, DexInfoProvider, LiquidityProxyTrait, SyntheticInfoProvider,
         TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
@@ -73,6 +73,7 @@ pub mod pallet {
         + price_tools::Config
         + band::Config
         + oracle_proxy::Config
+        + multicollateral_bonding_curve_pool::Config
     {
         type WeightInfo: WeightInfo;
         type AssetInfoProvider: AssetInfoProvider<
@@ -86,6 +87,7 @@ pub mod pallet {
         >;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type QaToolsWhitelistCapacity: Get<u32>;
         type Symbol: From<<Self as band::Config>::Symbol>
