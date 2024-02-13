@@ -219,8 +219,6 @@ pub mod pallet {
         NoLiquidityForBorrowingAsset,
         /// Nothing lended
         NothingLended,
-        /// Borrowing amount exceeds
-        BorrowingAmountExceeds,
         /// Invalid collateral amount
         InvalidCollateralAmount,
         /// Can not transfer borrowing amount
@@ -239,6 +237,8 @@ pub mod pallet {
         CanNotTransferLendingAmount,
         /// Nothing borrowed
         NothingBorrowed,
+        /// Nonexistent borrowing position
+        NonexistentBorrowingPosition,
         /// Nothing to repay
         NothingToRepay,
         /// Can not transfer lending interest
@@ -655,7 +655,7 @@ pub mod pallet {
             let mut user_info = borrow_user_info
                 .get(&collateral_asset)
                 .cloned()
-                .ok_or(Error::<T>::NothingBorrowed)?;
+                .ok_or(Error::<T>::NonexistentBorrowingPosition)?;
 
             let block_number = <frame_system::Pallet<T>>::block_number();
             let interest_and_reward = Self::calculate_borrowing_interest_and_reward(
@@ -677,6 +677,7 @@ pub mod pallet {
                     amount_to_repay,
                 )
                 .map_err(|_| Error::<T>::CanNotTransferAmountToRepay)?;
+
                 Self::distribute_protocol_interest(borrowing_asset, amount_to_repay)?;
             } else if amount_to_repay > user_info.borrowing_interest
                 && amount_to_repay < user_info.borrowing_interest + user_info.borrowing_amount
@@ -700,10 +701,12 @@ pub mod pallet {
 
                 borrow_user_info.insert(collateral_asset, user_info);
                 <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_asset, &borrow_user_info);
+
                 Self::distribute_protocol_interest(borrowing_asset, repaid_amount)?;
-            } else if amount_to_repay == user_info.borrowing_interest + user_info.borrowing_amount {
+            } else if amount_to_repay >= user_info.borrowing_interest + user_info.borrowing_amount {
                 // If user is repaying the whole position
-                let repaid_amount = user_info.borrowing_interest;
+                let total_borrowed_amount =
+                    user_info.borrowing_interest + user_info.borrowing_amount;
 
                 // Update pools
                 borrow_pool_info.total_borrowed -= user_info.borrowing_amount;
@@ -721,7 +724,7 @@ pub mod pallet {
                     &borrowing_asset,
                     &user,
                     &Self::account_id(),
-                    amount_to_repay,
+                    total_borrowed_amount,
                 )
                 .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
 
@@ -744,9 +747,7 @@ pub mod pallet {
                 .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
 
                 <UserBorrowingInfo<T>>::remove(user.clone(), borrowing_asset);
-                Self::distribute_protocol_interest(borrowing_asset, repaid_amount)?;
-            } else {
-                return Err(Error::<T>::BorrowingAmountExceeds.into());
+                Self::distribute_protocol_interest(borrowing_asset, total_borrowed_amount)?;
             }
 
             Self::deposit_event(Event::Repaid(user, borrowing_asset, amount_to_repay));
@@ -789,9 +790,10 @@ pub mod pallet {
                 return Err(Error::<T>::Unauthorized.into());
             }
 
+            let num_of_pools = <PoolData<T>>::iter().count() as u32;
+
             if is_lending {
                 // Recalculate basic lending rate
-                let num_of_pools = <PoolData<T>>::iter().count() as u32;
                 let basic_lending_rate = (FixedWrapper::from(amount)
                     / FixedWrapper::from(num_of_pools))
                 .try_into_balance()
@@ -802,6 +804,16 @@ pub mod pallet {
                 }
                 <LendingRewardsPerBlock<T>>::put(amount);
             } else {
+                // Recalculate borrowing rewards rate
+                let borrowing_rewards_rate = (FixedWrapper::from(amount)
+                    / FixedWrapper::from(num_of_pools))
+                .try_into_balance()
+                .unwrap_or(0);
+                for (asset_id, mut pool_info) in <PoolData<T>>::iter() {
+                    pool_info.borrowing_rewards_rate = borrowing_rewards_rate;
+                    <PoolData<T>>::insert(asset_id, pool_info);
+                }
+
                 <BorrowingRewardsPerBlock<T>>::put(amount);
             }
 
@@ -940,20 +952,22 @@ pub mod pallet {
             let (outcome, _) = PoolXYK::<T>::quote(
                 &DEXId::Polkaswap.into(),
                 &asset_id,
-                &HERMES_ASSET_ID.into(),
+                &APOLLO_ASSET_ID.into(),
                 QuoteAmount::with_desired_output(rewards_amount),
                 false,
             )?;
+
             let buyback_amount = outcome.amount;
             LiquidityProxy::<T>::swap(
                 RawOrigin::Signed(caller.clone()).into(),
                 DEXId::Polkaswap.into(),
                 asset_id,
-                HERMES_ASSET_ID.into(),
+                APOLLO_ASSET_ID.into(),
                 SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
                 [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::Disabled,
             )?;
+
             pool_info.rewards += buyback_amount;
             pool_info.basic_lending_rate += (FixedWrapper::from(buyback_amount)
                 / FixedWrapper::from(5256000))
@@ -985,7 +999,7 @@ pub mod pallet {
                 AuthorityAccount::<T>::get(), // APOLLO Treasury
                 DEXId::Polkaswap.into(),
                 asset_id,
-                HERMES_ASSET_ID.into(),
+                APOLLO_ASSET_ID.into(),
                 SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
                 [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::Disabled,
