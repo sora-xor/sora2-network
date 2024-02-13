@@ -453,7 +453,6 @@ pub mod pallet {
     }
 }
 
-#[allow(non_snake_case)]
 impl<T: Config> Pallet<T> {
     fn enable_synthetic_asset_unchecked(
         synthetic_asset_id: T::AssetId,
