@@ -37,7 +37,7 @@ pub mod source_initialization {
     use common::prelude::{BalanceUnit, QuoteAmount};
     use common::{
         balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXInfo, DexIdOf,
-        DexInfoProvider, Fixed, Oracle, PriceToolsPallet, PriceVariant, TradingPair,
+        DexInfoProvider, Fixed, Oracle, PriceToolsProvider, PriceVariant, TradingPair,
         TradingPairSourceManager, XOR,
     };
     use frame_support::dispatch::{
