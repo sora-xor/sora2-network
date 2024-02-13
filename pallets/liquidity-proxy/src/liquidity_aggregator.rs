@@ -43,8 +43,8 @@ use {
     sp_std::collections::vec_deque::VecDeque,
 };
 
-#[cfg(feature = "wip")] // ALT
 /// Info with input & output amounts for liquidity source
+#[cfg(feature = "wip")] // ALT
 type SwapInfo<LiquiditySourceType, AmountType> =
     BTreeMap<LiquiditySourceType, (AmountType, AmountType)>;
 
@@ -75,9 +75,9 @@ impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdT
     }
 }
 
-#[cfg(feature = "wip")] // ALT
 /// Aggregates the liquidity from the provided liquidity sources.
 /// Liquidity sources provide discretized liquidity curve by chunks and then Liquidity Aggregator selects the best chunks from different sources to gain the best swap amount.
+#[cfg(feature = "wip")] // ALT
 #[derive(Clone)]
 pub struct LiquidityAggregator<LiquiditySourceType> {
     liquidity_chunks: BTreeMap<LiquiditySourceType, VecDeque<SwapChunk<Balance>>>,

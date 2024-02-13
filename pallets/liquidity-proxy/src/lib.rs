@@ -1754,7 +1754,6 @@ impl<T: Config> Pallet<T> {
         ))
     }
 
-    #[cfg(not(feature = "wip"))] // ALT
     /// Determines the share of a swap that should be exchanged in the primary market
     /// (i.e., the multi-collateral bonding curve pool) based on the current reserves of
     /// the base asset and the collateral asset in the secondary market (e.g., an XYK pool)
@@ -1765,6 +1764,7 @@ impl<T: Config> Pallet<T> {
     /// - `amount` - the swap amount with "direction" (fixed input vs fixed output),
     /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
     ///
+    #[cfg(not(feature = "wip"))] // ALT
     fn decide_primary_market_amount_buying_base_asset(
         base_asset_id: &T::AssetId,
         collateral_asset_id: &T::AssetId,
@@ -1855,7 +1855,6 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[cfg(not(feature = "wip"))] // ALT
     /// Determines the share of a swap that should be exchanged in the primary market
     /// (i.e. the multi-collateral bonding curve pool) based on the current reserves of
     /// the base asset and the collateral asset in the secondary market (e.g. an XYK pool)
@@ -1866,6 +1865,7 @@ impl<T: Config> Pallet<T> {
     /// - `amount` - the swap amount with "direction" (fixed input vs fixed output),
     /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
     ///
+    #[cfg(not(feature = "wip"))] // ALT
     fn decide_primary_market_amount_selling_base_asset(
         base_asset_id: &T::AssetId,
         collateral_asset_id: &T::AssetId,
