@@ -192,22 +192,22 @@ impl<T: Config> Pallet<T> {
                 fxw_y_out.clone()
             };
             let nominator = fxw_x * y_out_with_fee.clone();
-            ensure!(fxw_y > y_out_with_fee, Error::<T>::NotEnoughAmountForFee);
+            ensure!(
+                to_balance!(fxw_y.clone()) > to_balance!(y_out_with_fee.clone()),
+                Error::<T>::NotEnoughAmountForFee
+            );
             let denominator = fxw_y - y_out_with_fee.clone();
             let x_in = nominator / denominator;
-            Ok((
-                x_in.try_into_balance()
-                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?,
-                (y_out_with_fee - fxw_y_out)
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?,
-            ))
+            Ok((to_balance!(x_in), to_balance!(y_out_with_fee - fxw_y_out)))
         } else {
             // input token is xor, user indicates desired output amount:
             // x_in * (1 - fee) = (x * y_out) / (y - y_out)
             let fxw_y_out = fxw_y_out.clone() + Fixed::from_bits(1); // by 1 correction to overestimate required input
             let nominator = fxw_x * fxw_y_out.clone();
-            ensure!(fxw_y > fxw_y_out, Error::<T>::NotEnoughLiquidityForSwap);
+            ensure!(
+                to_balance!(fxw_y.clone()) > to_balance!(fxw_y_out.clone()),
+                Error::<T>::NotEnoughLiquidityForSwap
+            );
             let denominator = fxw_y - fxw_y_out;
             let x_in_without_fee = nominator / denominator;
             let x_in = if deduce_fee {
@@ -224,12 +224,8 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::NotEnoughLiquidityForSwap
             );
             Ok((
-                x_in.clone()
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?,
-                (x_in - x_in_without_fee)
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?,
+                to_balance!(x_in.clone()),
+                to_balance!(x_in - x_in_without_fee),
             ))
         }
     }
