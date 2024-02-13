@@ -58,7 +58,7 @@ pub mod pallet {
     use order_book::{MomentOf, OrderBookId};
     pub use pallet_tools::liquidity_proxy::source_initialization;
     use pallet_tools::order_book::settings;
-    use source_initialization::{XSTBaseInput, XSTSyntheticInput, XYKPair};
+    use source_initialization::{XSTBaseInput, XSTSyntheticInput, XSTSyntheticOutput, XYKPair};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -102,13 +102,18 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        // event example
-        // /// New order book is created by user
-        // OrderBookCreated {
-        //     order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        //     /// `creator` contains an address if the order book is created for an indivisible asset by the asset holder, or `None` if it is created by root / tech committee
-        //     creator: Option<T::AccountId>,
-        // },
+        /// Xyk liquidity source has been initialized successfully.
+        XykInitialized {
+            /// Exact prices for token pairs achievable after the initialization.
+            /// Should correspond 1-to-1 to the initialization input
+            prices_achieved: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
+        },
+        /// XST liquidity source has been initialized successfully.
+        XstInitialized {
+            /// Exact `quote`/`exchange` calls achievable after the initialization.
+            /// Should correspond 1-to-1 to the initialization input
+            quotes_achieved: Vec<XSTSyntheticOutput<T::AssetId>>,
+        },
     }
 
     #[pallet::error]
@@ -254,7 +259,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            let _result = source_initialization::xyk::<T>(account, pairs).map_err(|e| {
+            let prices_achieved = source_initialization::xyk::<T>(account, pairs).map_err(|e| {
                 DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
@@ -263,7 +268,8 @@ pub mod pallet {
                     error: e,
                 }
             })?;
-            // TODO: event
+
+            Self::deposit_event(Event::<T>::XykInitialized { prices_achieved });
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -291,15 +297,18 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            source_initialization::xst::<T>(base_prices, synthetics_prices, relayer).map_err(
-                |e| DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: None,
-                        pays_fee: Pays::No,
+            let quotes_achieved =
+                source_initialization::xst::<T>(base_prices, synthetics_prices, relayer).map_err(
+                    |e| DispatchErrorWithPostInfo {
+                        post_info: PostDispatchInfo {
+                            actual_weight: None,
+                            pays_fee: Pays::No,
+                        },
+                        error: e,
                     },
-                    error: e,
-                },
-            )?;
+                )?;
+
+            Self::deposit_event(Event::<T>::XstInitialized { quotes_achieved });
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
