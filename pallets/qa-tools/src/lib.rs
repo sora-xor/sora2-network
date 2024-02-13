@@ -102,6 +102,10 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
+        /// Requested order books have been created.
+        OrderBooksCreated,
+        /// Requested order book have been filled.
+        OrderBooksFilled,
         /// Xyk liquidity source has been initialized successfully.
         XykInitialized {
             /// Exact prices for token pairs achievable after the initialization.
@@ -195,6 +199,11 @@ pub mod pallet {
                 error: e,
             })?;
 
+            // Even though these facts can be deduced from the extrinsic execution success,
+            // it would be strange not to emit anything, while other initialization extrinsics do.
+            Self::deposit_event(Event::<T>::OrderBooksCreated);
+            Self::deposit_event(Event::<T>::OrderBooksFilled);
+
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
             Ok(PostDispatchInfo {
@@ -235,6 +244,8 @@ pub mod pallet {
                     },
                     error: e,
                 })?;
+
+            Self::deposit_event(Event::<T>::OrderBooksFilled);
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
