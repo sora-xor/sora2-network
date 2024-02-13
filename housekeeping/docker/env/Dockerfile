@@ -1,4 +1,4 @@
-FROM debian:bullseye-20240130-slim
+FROM debian:bullseye-slim
 
 ENV RUSTUP_HOME="/opt/rust"
 ENV CARGO_HOME="/opt/rust"
@@ -6,12 +6,12 @@ ENV PATH="$PATH:$RUSTUP_HOME/bin"
 ENV CARGO_BUILD_DEP_INFO_BASEDIR="."
 ENV RUST_VERSION=nightly-2024-01-15
 ENV TZ=Europe/Moscow
-ENV CC=clang-13
-ENV CXX=clang++-13
+ENV CC=clang-14
+ENV CXX=clang++-14
 ENV SUBWASM_VER=v0.14.0
 ENV GRCOV_VERSION=0.8.19
-ENV LLVM_TOOLS_VER=13
-ENV CCLANG_VER=13
+ENV LLVM_TOOLS_VER=14
+ENV CCLANG_VER=14
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
