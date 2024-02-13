@@ -933,6 +933,13 @@ impl<T: Config> Pallet<T> {
             T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
         let locked = T::LockedLiquiditySourcesManager::get();
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
+
+        // the old mechanism cannot combine Order Book source with others
+        #[cfg(not(feature = "wip"))] // ALT
+        if sources.len() > 1 {
+            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
+        }
+
         Ok(sources)
     }
 
@@ -1528,7 +1535,6 @@ impl<T: Config> Pallet<T> {
         Ok((aggregate_swap_outcome, rewards, total_weight))
     }
 
-    #[cfg(not(feature = "wip"))] // ALT
     /// Implements the "smart" split algorithm.
     ///
     /// - `primary_source_id` - ID of the primary market liquidity source,
@@ -1538,6 +1544,7 @@ impl<T: Config> Pallet<T> {
     /// - `amount` - the amount with "direction" (sell or buy) together with the maximum price impact (slippage).
     /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
     ///
+    #[cfg(not(feature = "wip"))] // ALT
     fn smart_split(
         primary_source_id: &LiquiditySourceIdOf<T>,
         secondary_source_id: &LiquiditySourceIdOf<T>,
