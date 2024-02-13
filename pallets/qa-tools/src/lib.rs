@@ -109,13 +109,13 @@ pub mod pallet {
         /// Xyk liquidity source has been initialized successfully.
         XykInitialized {
             /// Exact prices for token pairs achievable after the initialization.
-            /// Should correspond 1-to-1 to the initialization input
+            /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
             prices_achieved: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
         },
         /// XST liquidity source has been initialized successfully.
         XstInitialized {
             /// Exact `quote`/`exchange` calls achievable after the initialization.
-            /// Should correspond 1-to-1 to the initialization input
+            /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
             quotes_achieved: Vec<XSTSyntheticOutput<T::AssetId>>,
         },
     }
