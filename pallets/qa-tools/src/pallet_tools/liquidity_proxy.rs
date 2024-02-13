@@ -797,6 +797,11 @@ pub mod source_initialization {
         pub xor_ref_prices: MCBCPriceToolsPrice,
     }
 
+    pub struct MCBCBaseSupply<AccountId> {
+        base_supply_collector: AccountId,
+        new_base_supply: Balance,
+    }
+
     fn init_single_mcbc_collateral<T: Config>(
         input: MCBCPoolCollateralInput<T::AssetId>,
     ) -> DispatchResult {
@@ -894,13 +899,52 @@ pub mod source_initialization {
         })
     }
 
+    fn init_mcbc_base_supply<T: Config>(input: MCBCBaseSupply<T::AccountId>) -> DispatchResult {
+        let base_asset_id = &T::GetBaseAssetId::get();
+        let current_base_supply: FixedWrapper =
+            assets::Pallet::<T>::total_issuance(base_asset_id)?.into();
+        let supply_delta = input.new_base_supply - current_base_supply;
+        let supply_delta = supply_delta
+            .get()
+            .map_err(|_| Error::<T>::ArithmeticError)?
+            .into_bits();
+
+        // realistically the error should never be triggered
+        let owner =
+            assets::Pallet::<T>::asset_owner(&base_asset_id).ok_or(Error::<T>::UnknownMCBCAsset)?;
+        if supply_delta > 0 {
+            let mint_amount = supply_delta
+                .try_into()
+                .map_err(|_| Error::<T>::ArithmeticError)?;
+            assets::Pallet::<T>::mint_to(
+                base_asset_id,
+                &owner,
+                &input.base_supply_collector,
+                mint_amount,
+            )?;
+        } else if supply_delta < 0 {
+            let burn_amount = supply_delta
+                .abs()
+                .try_into()
+                .map_err(|_| Error::<T>::ArithmeticError)?;
+            assets::Pallet::<T>::burn_from(
+                base_asset_id,
+                &owner,
+                &input.base_supply_collector,
+                burn_amount,
+            )?;
+        }
+        Ok(())
+    }
+
     pub fn mcbc<T: Config>(
-        xor_supply_collector: T::AccountId,
-        new_xor_supply: T::Balance,
+        base_supply: Option<MCBCBaseSupply<T::AccountId>>,
         other_collaterals: Vec<MCBCPoolCollateralInput<T::AssetId>>,
         tbcd_collateral: Option<MCBCPoolTBCDInput<T::AssetInfoProvider>>,
     ) -> DispatchResult {
-        // todo: handle xor supply
+        if let Some(base_supply) = base_supply {
+            init_mcbc_base_supply(base_supply)?;
+        }
 
         other_collaterals
             .into_iter()

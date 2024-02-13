@@ -135,6 +135,10 @@ pub mod pallet {
         AssetAlreadyExists,
         /// Could not find already existing synthetic.
         UnknownSynthetic,
+
+        // mcbc errors
+        /// Cannot initialize MCBC for unknown asset.
+        UnknownMCBCAsset,
     }
 
     #[pallet::call]
