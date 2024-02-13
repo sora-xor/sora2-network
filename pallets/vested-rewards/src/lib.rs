@@ -41,8 +41,7 @@ use common::prelude::{Balance, FixedWrapper};
 use common::CrowdloanTag;
 use common::FromGenericPair;
 use common::{
-    balance, AssetInfoProvider, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
-    PSWAP,
+    balance, AssetInfoProvider, OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -462,7 +461,7 @@ impl<T: Config> OnPswapBurned for Pallet<T> {
     }
 }
 
-impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Pallet<T> {
+impl<T: Config> Vesting<T::AccountId, T::AssetId> for Pallet<T> {
     fn add_tbc_reward(account_id: &T::AccountId, pswap_amount: Balance) -> DispatchResult {
         Pallet::<T>::add_pending_reward(account_id, RewardReason::BuyOnBondingCurve, pswap_amount)
     }

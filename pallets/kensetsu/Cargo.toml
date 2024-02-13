@@ -1,0 +1,55 @@
+[package]
+name = "kensetsu"
+version = "0.0.1"
+description = "Kensetsu pallet"
+edition = "2021"
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
+publish = false
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+assets = { path = "../assets", default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+	"derive",
+] }
+common = { path = "../../common", default-features = false }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+hex-literal = { version = "0.4", optional = true }
+pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", optional = true }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+technical = { path = "../technical", default-features = false }
+
+[dev-dependencies]
+common = { path = "../../common", features = ["test"] }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+permissions = { path = "../permissions" }
+hex-literal = "0.4"
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"assets/std",
+	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"sp-std/std",
+	"sp-core/std",
+	"sp-runtime/std",
+	"sp-arithmetic/std",
+	"scale-info/std",
+	"technical/std",
+]
+try-runtime = ["frame-support/try-runtime"]

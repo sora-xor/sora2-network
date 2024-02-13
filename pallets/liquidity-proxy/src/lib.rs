@@ -47,7 +47,7 @@ use common::{
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
-    TradingPairSourceManager, VestedRewardsPallet, XSTUSD,
+    TradingPairSourceManager, Vesting, XSTUSD,
 };
 use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
@@ -2290,7 +2290,7 @@ pub mod pallet {
         type PrimaryMarketTBC: GetMarketInfo<Self::AssetId>;
         type PrimaryMarketXST: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
-        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
+        type VestedRewardsPallet: Vesting<Self::AccountId, Self::AssetId>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type LockedLiquiditySourcesManager: LockedLiquiditySourcesManager<LiquiditySourceType>;
         type GetADARAccountId: Get<Self::AccountId>;

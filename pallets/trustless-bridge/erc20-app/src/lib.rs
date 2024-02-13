@@ -255,7 +255,7 @@ pub mod pallet {
                 return Err(DispatchError::BadOrigin.into());
             }
 
-            let amount = T::BalancePrecisionConverter::from_sidechain(
+            let (amount, _) = T::BalancePrecisionConverter::from_sidechain(
                 &asset_id,
                 sidechain_precision,
                 amount,
@@ -520,7 +520,7 @@ pub mod pallet {
             let sidechain_precision = SidechainPrecision::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
-            let sidechain_amount = T::BalancePrecisionConverter::to_sidechain(
+            let (amount, sidechain_amount) = T::BalancePrecisionConverter::to_sidechain(
                 &asset_id,
                 sidechain_precision,
                 amount.clone(),
