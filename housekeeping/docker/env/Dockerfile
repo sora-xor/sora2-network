@@ -3,6 +3,7 @@ FROM debian:bullseye-20240130-slim
 ENV RUSTUP_HOME="/opt/rust"
 ENV CARGO_HOME="/opt/rust"
 ENV PATH="$PATH:$RUSTUP_HOME/bin"
+ENV CARGO_BUILD_DEP_INFO_BASEDIR="."
 ENV RUST_VERSION=nightly-2024-01-15
 ENV TZ=Europe/Moscow
 ENV CC=clang-13
