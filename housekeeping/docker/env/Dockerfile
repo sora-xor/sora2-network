@@ -21,6 +21,7 @@ RUN apt-get update && \
     curl \
     wget \
     git binaryen \
+    python3-pip \
     docker.io \
     make cmake libssl-dev \
     software-properties-common && \
@@ -41,6 +42,7 @@ RUN apt-get update && \
     rustup component add llvm-tools-preview && \
     apt-get autoremove -y && \
     apt-get clean && \
+    pip install lcov_cobertura && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf "${CARGO_HOME}/git" && \
     ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
