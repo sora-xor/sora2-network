@@ -144,6 +144,8 @@ impl<T> TradingPair<T> {
 #[repr(u8)]
 pub enum PredefinedAssetId {
     XOR = 0,
+    #[cfg(any(feature = "private-net", test))]
+    USDT = 3,
     VAL = 4,
     PSWAP = 5,
     DAI = 6,
@@ -152,9 +154,6 @@ pub enum PredefinedAssetId {
     XST = 9,
     TBCD = 10,
     KUSD = 11,
-
-    #[cfg(any(feature = "private-net", test))]
-    USDT = 3,
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
