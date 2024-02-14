@@ -56,5 +56,8 @@ else
         rm Cargo.lock
         cargo fmt -- --check > /dev/null
         cargo test --features 'private-net,wip,ready-to-test'
+        if [ $? -ne 1 ]; then
+            ./coverage.sh
+        fi
     fi
 fi
