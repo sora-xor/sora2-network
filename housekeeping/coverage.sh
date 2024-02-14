@@ -8,4 +8,4 @@ grcov . --binary-path ./target/debug -s . -t lcov --branch -o ./lcov_report --ig
 # delete generated *.profraw
 find . -type f -name '*.profraw' -delete
 
-lcov_cobertura lcov_report --output coverage
+lcov_cobertura lcov_report --output coverage.xml
