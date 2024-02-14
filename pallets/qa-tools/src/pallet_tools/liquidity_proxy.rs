@@ -766,8 +766,8 @@ pub mod source_initialization {
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     pub struct MCBCPriceToolsPrice {
-        buy: Option<Balance>,
-        sell: Option<Balance>,
+        pub buy: Option<Balance>,
+        pub sell: Option<Balance>,
     }
 
     /// Input for initializing collateral assets except TBCD.
@@ -798,8 +798,8 @@ pub mod source_initialization {
     }
 
     pub struct MCBCBaseSupply<AccountId> {
-        base_supply_collector: AccountId,
-        new_base_supply: Balance,
+        pub base_supply_collector: AccountId,
+        pub new_base_supply: Balance,
     }
 
     fn init_single_mcbc_collateral<T: Config>(
@@ -892,7 +892,7 @@ pub mod source_initialization {
         // handle xor ref price
         // input.xor_ref_prices
 
-        init_single_mcbc_collateral(MCBCPoolCollateralInput {
+        init_single_mcbc_collateral::<T>(MCBCPoolCollateralInput {
             asset: input.asset,
             ref_prices: input.ref_prices,
             reserves: input.reserves,
@@ -940,18 +940,17 @@ pub mod source_initialization {
     pub fn mcbc<T: Config>(
         base_supply: Option<MCBCBaseSupply<T::AccountId>>,
         other_collaterals: Vec<MCBCPoolCollateralInput<T::AssetId>>,
-        tbcd_collateral: Option<MCBCPoolTBCDInput<T::AssetInfoProvider>>,
+        tbcd_collateral: Option<MCBCPoolTBCDInput<T::AssetId>>,
     ) -> DispatchResult {
         if let Some(base_supply) = base_supply {
-            init_mcbc_base_supply(base_supply)?;
+            init_mcbc_base_supply::<T>(base_supply)?;
         }
 
-        other_collaterals
-            .into_iter()
-            .map(init_single_mcbc_collateral::<T>)
-            .collect()?;
+        for collateral_input in other_collaterals {
+            init_single_mcbc_collateral::<T>(collateral_input)?;
+        }
         if let Some(tbcd_collateral) = tbcd_collateral {
-            init_tbcd_mcbc_collateral(tbcd_collateral)?;
+            init_tbcd_mcbc_collateral::<T>(tbcd_collateral)?;
         }
         Ok(())
     }

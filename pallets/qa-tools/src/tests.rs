@@ -48,8 +48,8 @@ use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use qa_tools::source_initialization::{
-    XSTBaseInput, XSTBaseSideInput, XSTSyntheticExistence, XSTSyntheticInput, XSTSyntheticOutput,
-    XSTSyntheticQuote, XSTSyntheticQuoteDirection, XYKPair,
+    MCBCBaseSupply, XSTBaseInput, XSTBaseSideInput, XSTSyntheticExistence, XSTSyntheticInput,
+    XSTSyntheticOutput, XSTSyntheticQuote, XSTSyntheticQuoteDirection, XYKPair,
 };
 use qa_tools::{pallet_tools::order_book::settings, Error};
 use sp_runtime::traits::BadOrigin;
@@ -1541,5 +1541,91 @@ fn should_update_xst_synthetic_price() {
 
         // Synthetic prices are updated correctly after changes in base assets prices.
         test_synthetic_price_set::<Runtime>(euro_init, None, alice());
+    })
+}
+
+#[test]
+fn should_init_mcbc() {
+    ext().execute_with(|| {
+        // let collateral = VAL.into();
+        // let quote_result_before_mint_sell =
+        //     multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
+        //         &DEXId::Polkaswap.into(),
+        //         &XOR.into(),
+        //         &VAL.into(),
+        //         QuoteAmount::WithDesiredInput {
+        //             desired_amount_in: balance!(1),
+        //         },
+        //         true,
+        //     )
+        //         .unwrap();
+    })
+}
+
+#[test]
+fn should_init_mcbc_xor() {
+    ext().execute_with(|| {
+        use common::AssetInfoProvider;
+
+        let collateral = VAL.into();
+        let xor_collector = alice();
+
+        let xor_holder = alice();
+        let current_base_supply = assets::Pallet::<Runtime>::total_issuance(&XOR.into()).unwrap();
+        let xor_holder_initial_balance =
+            assets::Pallet::<Runtime>::total_balance(&XOR.into(), &xor_holder).unwrap();
+        assert!(
+            multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
+                &DEXId::Polkaswap.into(),
+                &collateral,
+                &XOR.into(),
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(1),
+                },
+                true,
+            )
+            .is_err()
+        );
+
+        let added_supply = balance!(1000000);
+        assert_ok!(qa_tools::source_initialization::mcbc::<Runtime>(
+            Some(MCBCBaseSupply {
+                base_supply_collector: xor_collector.clone(),
+                new_base_supply: current_base_supply + added_supply,
+            }),
+            vec![],
+            None,
+        ));
+        assert_eq!(
+            xor_holder_initial_balance + added_supply,
+            assets::Pallet::<Runtime>::total_balance(&XOR.into(), &xor_holder).unwrap()
+        );
+
+        // bring supply back to original
+        assert_ok!(qa_tools::source_initialization::mcbc::<Runtime>(
+            Some(MCBCBaseSupply {
+                base_supply_collector: xor_collector.clone(),
+                new_base_supply: current_base_supply,
+            }),
+            vec![],
+            None,
+        ));
+        assert_eq!(
+            xor_holder_initial_balance,
+            assets::Pallet::<Runtime>::total_balance(&XOR.into(), &xor_holder).unwrap()
+        );
+
+        // cannot burn assets not owned by the holder
+        assert_err!(
+            qa_tools::source_initialization::mcbc::<Runtime>(
+                Some(MCBCBaseSupply {
+                    base_supply_collector: xor_collector,
+                    new_base_supply: 0,
+                }),
+                vec![],
+                None,
+            ),
+            pallet_balances::Error::<Runtime>::InsufficientBalance
+        );
     })
 }
