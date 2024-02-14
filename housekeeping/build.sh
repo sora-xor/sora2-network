@@ -55,7 +55,9 @@ else
         rm -rf ~/.cargo/.package-cache
         rm Cargo.lock
         cargo fmt -- --check > /dev/null
-        # cargo test --features $allfeatures
-        cargo test --features private-net
+        cargo test --features $allfeatures
+        if [ $? -ne 1 ]; then
+            ./coverage.sh
+        fi
     fi
 fi
