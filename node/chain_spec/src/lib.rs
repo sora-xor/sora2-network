@@ -910,7 +910,7 @@ fn testnet_genesis(
     use framenode_runtime::EthAppConfig;
 
     // Initial balances
-    let initial_staking = balance!(100);
+    let initial_staking = balance!(1000000000);
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
     let initial_pswap_tbc_rewards = balance!(2500000000);
