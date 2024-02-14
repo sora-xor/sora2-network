@@ -57,7 +57,7 @@ else
         rm Cargo.lock
         cargo fmt -- --check > /dev/null
         # cargo test --features $allfeatures
-        for buildfeature in in "${buildfeatures[@]}"; do
+        for buildfeature in "${buildfeatures[@]}"; do
             echo '📝 $buildfeature'
             cargo test --features $buildfeature
         done
