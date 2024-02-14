@@ -8,6 +8,7 @@ PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 allfeatures='private-net,wip,ready-to-test,runtime-benchmarks'
+buildfeatures=("private-net wip ready-to-test runtime-benchmarks")
 
 # build
 # If TAG_NAME is defined, build for a specific tag
@@ -56,6 +57,9 @@ else
         rm Cargo.lock
         cargo fmt -- --check > /dev/null
         # cargo test --features $allfeatures
-        cargo test --features "private-net wip ready-to-test runtime-benchmarks"
+        for buildfeature in in "${buildfeatures[@]}"; do
+            echo '📝 $buildfeature'
+            cargo test --features $buildfeature
+        done
     fi
 fi
