@@ -58,7 +58,7 @@ else
         cargo fmt -- --check > /dev/null
         # cargo test --features $allfeatures
         for buildfeature in "${buildfeatures[@]}"; do
-            echo '📝 $buildfeature'
+            printf "📝 Running tests for "$buildfeature"... \n"
             cargo test --features $buildfeature
         done
     fi
