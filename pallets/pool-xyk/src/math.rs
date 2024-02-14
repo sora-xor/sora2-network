@@ -192,10 +192,6 @@ impl<T: Config> Pallet<T> {
                 fxw_y_out.clone()
             };
             let nominator = fxw_x * y_out_with_fee.clone();
-            ensure!(
-                to_balance!(fxw_y.clone()) > to_balance!(y_out_with_fee.clone()),
-                Error::<T>::NotEnoughAmountForFee
-            );
             let denominator = fxw_y - y_out_with_fee.clone();
             let x_in = nominator / denominator;
             Ok((to_balance!(x_in), to_balance!(y_out_with_fee - fxw_y_out)))
@@ -204,10 +200,6 @@ impl<T: Config> Pallet<T> {
             // x_in * (1 - fee) = (x * y_out) / (y - y_out)
             let fxw_y_out = fxw_y_out.clone() + Fixed::from_bits(1); // by 1 correction to overestimate required input
             let nominator = fxw_x * fxw_y_out.clone();
-            ensure!(
-                to_balance!(fxw_y.clone()) > to_balance!(fxw_y_out.clone()),
-                Error::<T>::NotEnoughLiquidityForSwap
-            );
             let denominator = fxw_y - fxw_y_out;
             let x_in_without_fee = nominator / denominator;
             let x_in = if deduce_fee {
@@ -215,14 +207,6 @@ impl<T: Config> Pallet<T> {
             } else {
                 x_in_without_fee.clone()
             };
-            ensure!(
-                x_in.clone().get().is_ok(),
-                Error::<T>::NotEnoughLiquidityForSwap
-            );
-            ensure!(
-                x_in >= x_in_without_fee,
-                Error::<T>::NotEnoughLiquidityForSwap
-            );
             Ok((
                 to_balance!(x_in.clone()),
                 to_balance!(x_in - x_in_without_fee),

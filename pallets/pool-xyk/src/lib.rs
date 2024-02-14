@@ -984,10 +984,6 @@ pub mod pallet {
         NotEnoughLiquidityOutOfFarming,
         /// Cannot create a pool with restricted target asset
         TargetAssetIsRestricted,
-        /// Swapped amount is not enough to pay fees
-        NotEnoughAmountForFee,
-        /// Not enough liquidity to perform swap
-        NotEnoughLiquidityForSwap,
     }
 
     /// Updated after last liquidity change operation.
