@@ -57,7 +57,7 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    Rate, RewardReason, SwapChunk, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
@@ -65,8 +65,11 @@ use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
+use sp_std::collections::vec_deque::VecDeque;
+use sp_std::vec;
 use sp_std::vec::Vec;
 
 pub use weights::WeightInfo;
@@ -1083,6 +1086,98 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         )
     }
 
+    fn step_quote(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            fail!(Error::<T>::CantExchange);
+        }
+        if amount.amount().is_zero() {
+            return Ok((VecDeque::new(), Weight::zero()));
+        }
+
+        let samples_count = if recommended_samples_count < 1 {
+            1
+        } else {
+            recommended_samples_count
+        };
+
+        let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
+
+        // Get the price without checking the limit, because even if it exceeds the limit it will be rounded below.
+        // It is necessary to use as much liquidity from the source as we can.
+        let (input_amount, output_amount, fee_amount) = if input_asset_id == synthetic_base_asset_id
+        {
+            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee, false)?
+        } else {
+            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee, false)?
+        };
+
+        let fee_amount = if deduce_fee {
+            Self::convert_fee(fee_amount)?
+        } else {
+            fee_amount
+        };
+
+        let mut monolith = SwapChunk::new(input_amount, output_amount, fee_amount);
+
+        let limit = T::GetSyntheticBaseBuySellLimit::get();
+
+        // If amount exceeds the limit, it is necessary to round the amount to the limit.
+        if input_asset_id == synthetic_base_asset_id {
+            if input_amount > limit {
+                monolith = monolith
+                    .rescale_by_input(limit)
+                    .ok_or(Error::<T>::PriceCalculationFailed)?;
+            }
+        } else {
+            if output_amount > limit {
+                monolith = monolith
+                    .rescale_by_output(limit)
+                    .ok_or(Error::<T>::PriceCalculationFailed)?;
+            }
+        }
+
+        let ratio = (FixedWrapper::from(1) / FixedWrapper::from(samples_count))
+            .get()
+            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+
+        let chunk = monolith
+            .rescale_by_ratio(ratio)
+            .ok_or(Error::<T>::PriceCalculationFailed)?;
+
+        let mut chunks: VecDeque<SwapChunk<Balance>> = vec![chunk; samples_count - 1].into();
+
+        // add remaining values as the last chunk to not loss the liquidity on the rounding
+        chunks.push_back(SwapChunk::new(
+            monolith.input.saturating_sub(
+                chunk
+                    .input
+                    .checked_mul(samples_count as Balance - 1)
+                    .ok_or(Error::<T>::PriceCalculationFailed)?,
+            ),
+            monolith.output.saturating_sub(
+                chunk
+                    .output
+                    .checked_mul(samples_count as Balance - 1)
+                    .ok_or(Error::<T>::PriceCalculationFailed)?,
+            ),
+            monolith.fee.saturating_sub(
+                chunk
+                    .fee
+                    .checked_mul(samples_count as Balance - 1)
+                    .ok_or(Error::<T>::PriceCalculationFailed)?,
+            ),
+        ));
+
+        Ok((chunks, Self::step_quote_weight(samples_count)))
+    }
+
     fn exchange(
         sender: &T::AccountId,
         receiver: &T::AccountId,
@@ -1142,6 +1237,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn quote_weight() -> Weight {
         <T as Config>::WeightInfo::quote()
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
+        <T as Config>::WeightInfo::step_quote()
     }
 
     fn exchange_weight() -> Weight {
