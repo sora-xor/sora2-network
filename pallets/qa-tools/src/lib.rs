@@ -49,7 +49,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
+        DEXInfo, Description, DexIdOf, DexInfoProvider, PriceVariant, SyntheticInfoProvider,
         TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
@@ -156,6 +156,23 @@ pub mod pallet {
         AssetAlreadyExists,
         /// Could not find already existing synthetic.
         UnknownSynthetic,
+    }
+
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    pub enum InputAssetId<AssetId> {
+        // McbcReference,
+        XstReference,
+        Other(AssetId),
+    }
+
+    impl<T: Config> Pallet<T> {
+        fn retrieve_asset_id(input: InputAssetId<T::AssetId>) -> T::AssetId {
+            match input {
+                // InputAssetId::McbcReference => multicollateral_bonding_curve::ReferenceAssetId::<T>::get(),
+                InputAssetId::XstReference => xst::ReferenceAssetId::<T>::get(),
+                InputAssetId::Other(id) => id,
+            }
+        }
     }
 
     #[pallet::call]
@@ -331,12 +348,31 @@ pub mod pallet {
 
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::price_tools_set_reference_asset_price())]
-        pub fn price_tools_set_reference_asset_price(
+        pub fn price_tools_set_asset_price(
             origin: OriginFor<T>,
-            base_prices: Option<XSTBaseInput>,
-            synthetics_prices: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
-            relayer: T::AccountId,
+            asset_per_xor: pallet_tools::price_tools::AssetPrices,
+            asset_id: InputAssetId<T::AssetId>,
         ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let asset_id = Self::retrieve_asset_id(asset_id);
+            pallet_tools::price_tools::set_price::<T>(
+                &asset_id,
+                asset_per_xor.buy,
+                PriceVariant::Buy,
+            )?;
+            pallet_tools::price_tools::set_price::<T>(
+                &asset_id,
+                asset_per_xor.sell,
+                PriceVariant::Sell,
+            )?;
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
         }
     }
 }
