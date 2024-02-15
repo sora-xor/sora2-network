@@ -1,6 +1,7 @@
 use crate::{Config, Error};
+use codec::{Decode, Encode};
 use common::prelude::BalanceUnit;
-use common::{balance, fixed_wrapper, Balance, PriceToolsProvider, PriceVariant, XOR};
+use common::{balance, Balance, PriceToolsProvider, PriceVariant, XOR};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use sp_arithmetic::traits::{CheckedDiv, One};
 
@@ -23,7 +24,7 @@ pub(crate) fn set_price<T: Config>(
     Ok(())
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
 pub struct AssetPrices {
     pub buy: Balance,
     pub sell: Balance,
@@ -86,7 +87,7 @@ pub fn calculate_xor_prices<T: Config>(
                 },
             })
         }
-        (input, output) => {
+        (_a, _b) => {
             // To obtain XOR prices, these formulae should be followed:
             //
             // Buy:
