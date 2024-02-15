@@ -30,10 +30,9 @@ pub struct AssetPrices {
     pub sell: Balance,
 }
 
-/// Prices with 10^18 precision. Amount of the asset per 1 XOR. The same format as used
-/// in price tools.
+/// Amount of the asset per 1 XOR. The same format as used in price tools.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct XorPrices {
+pub struct CalculatedXorPrices {
     /// Amount of asset A per XOR
     pub asset_a: AssetPrices,
     /// Amount of asset B per XOR
@@ -43,15 +42,17 @@ pub struct XorPrices {
 /// Calculate prices of XOR in the assets A and B given the expected relative price A in terms of B.
 /// The resulting prices can be directly used for [`set_price`]/`price_tools::incoming_spot_price`,
 /// as they require prices of XOR in terms of an asset.
+///
+/// Note that if both A and B != XOR, then B must already have some price in the `price_tools`.
 pub fn calculate_xor_prices<T: Config>(
     asset_a: &T::AssetId,
     asset_b: &T::AssetId,
     b_per_a_buy: Balance,
     b_per_a_sell: Balance,
-) -> Result<XorPrices, DispatchError> {
+) -> Result<CalculatedXorPrices, DispatchError> {
     match (asset_a, asset_b) {
         (xor, _b) if xor == &XOR.into() => {
-            Ok(XorPrices {
+            Ok(CalculatedXorPrices {
                 // xor
                 asset_a: AssetPrices {
                     buy: balance!(1),
@@ -74,7 +75,7 @@ pub fn calculate_xor_prices<T: Config>(
                 .checked_div(&BalanceUnit::divisible(b_per_a_sell))
                 .ok_or::<Error<T>>(Error::<T>::ArithmeticError.into())?
                 .balance();
-            Ok(XorPrices {
+            Ok(CalculatedXorPrices {
                 // price of xor in a
                 asset_a: AssetPrices {
                     buy: a_per_xor_buy,
@@ -138,7 +139,7 @@ pub fn calculate_xor_prices<T: Config>(
             // solving for unknown:
             // (XOR -buy-> A) = (XOR -sell-> B) / (A -sell-> B)
             let xor_buy_a = xor_sell_b / a_sell_b;
-            Ok(XorPrices {
+            Ok(CalculatedXorPrices {
                 // xor
                 asset_a: AssetPrices {
                     buy: *xor_buy_a.balance(),

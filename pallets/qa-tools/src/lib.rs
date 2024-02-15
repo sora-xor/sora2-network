@@ -125,6 +125,8 @@ pub mod pallet {
         // common errors
         /// Error in calculations.
         ArithmeticError,
+        /// Buy price cannot be lower than sell price of an asset
+        BuyLessThanSell,
 
         // order book errors
         /// Did not find an order book with given id to fill. Likely an error with order book creation.
@@ -148,8 +150,6 @@ pub mod pallet {
         AssetsMustBeDivisible,
 
         // xst errors
-        /// Buy price cannot be lower than sell price of the base assets (synthetic base and reference).
-        BuyLessThanSell,
         /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
         ReferenceAssetPriceNotFound,
         /// Cannot register new asset because it already exists.
@@ -165,12 +165,16 @@ pub mod pallet {
         Other(AssetId),
     }
 
-    impl<T: Config> Pallet<T> {
-        fn retrieve_asset_id(input: InputAssetId<T::AssetId>) -> T::AssetId {
-            match input {
+    impl<AssetId> InputAssetId<AssetId> {
+        pub fn resolve<T>(self) -> T::AssetId
+        where
+            T: Config,
+            T::AssetId: From<AssetId>,
+        {
+            match self {
                 // InputAssetId::McbcReference => multicollateral_bonding_curve::ReferenceAssetId::<T>::get(),
                 InputAssetId::XstReference => xst::ReferenceAssetId::<T>::get(),
-                InputAssetId::Other(id) => id,
+                InputAssetId::Other(id) => id.into(),
             }
         }
     }
@@ -355,7 +359,11 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            let asset_id = Self::retrieve_asset_id(asset_id);
+            let asset_id = asset_id.resolve::<T>();
+            ensure!(
+                asset_per_xor.sell >= asset_per_xor.buy,
+                Error::<T>::BuyLessThanSell
+            );
             pallet_tools::price_tools::set_price::<T>(
                 &asset_id,
                 asset_per_xor.buy,
