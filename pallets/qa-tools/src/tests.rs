@@ -1117,14 +1117,14 @@ fn test_init_xst_synthetic_base_price(prices: XSTBaseInput, reference_prices: As
         let reference_asset_id = xst::ReferenceAssetId::<Runtime>::get();
         let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
 
-        assert_err!(
+        assert_eq!(
             QAToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
                 Some(prices.clone()),
                 vec![],
                 alice(),
             ),
-            Error::<Runtime>::ReferenceAssetPriceNotFound
+            Err(err_pays_no(Error::<Runtime>::ReferenceAssetPriceNotFound))
         );
 
         assert_ok!(QAToolsPallet::price_tools_set_asset_price(
