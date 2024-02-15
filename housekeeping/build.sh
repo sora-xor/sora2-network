@@ -9,41 +9,45 @@ RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 allfeatures='private-net,wip,ready-to-test'
 
+# build func
+build() {
+    featureList=$1
+    sudoCheckStatus=$2
+    printf "⚡️ Testing with features: private-net runtime-benchmarks %s\n"
+    cargo test --release --features "private-net runtime-benchmarks"
+    printf "⚡️ Building with features: %s\n" "$featureList"
+    printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
+    rm -rf target
+    cargo build --release --features "$featureList"
+    mv ./target/release/framenode .
+    mv ./target/release/relayer ./relayer.bin
+    mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
+    subwasm --json info framenode_runtime.compact.compressed.wasm > $wasmReportFile
+    subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
+    set +e
+    subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
+    if [[ $(echo $?) -eq $sudoCheckStatus ]]; then 
+        echo "✅ sudo check is successful!"
+    else 
+        echo "❌ sudo check is failed!"
+        exit 1
+    fi
+}
+
 # build
 # If TAG_NAME is defined, build for a specific tag
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
     printf "⚡️ Tag is %s\n" $buildTag ${TAG_NAME}
-    build=true
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
-        featureList='private-net runtime-benchmarks'
-        sudoCheckStatus=0
+        build 'private-net runtime-benchmarks' 0
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
-        featureList='private-net include-real-files ready-to-test'
-        sudoCheckStatus=0
+        build 'private-net include-real-files ready-to-test' 0
     elif [[ ${TAG_NAME} =~ 'test'* ]]; then
-        featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
-        sudoCheckStatus=0
+        build 'private-net include-real-files reduced-pswap-reward-periods ready-to-test' 0
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
-        featureList='include-real-files'
-        sudoCheckStatus=101
+        build 'include-real-files' 101
     fi
-        printf "⚡️ Testing with features: private-net runtime-benchmarks %s\n"
-        # we should always run these tests for these features
-        cargo test --release --features "private-net runtime-benchmarks"
-        printf "⚡️ Building with features: %s\n" "$featureList"
-        printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
-        rm -rf target
-        cargo build --release --features "$featureList"
-        mv ./target/release/framenode .
-        mv ./target/release/relayer ./relayer.bin
-        mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
-        subwasm --json info framenode_runtime.compact.compressed.wasm > $wasmReportFile
-        subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
-        set +e
-        subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
-        if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else
-    # If TAG_NAME is not defined, run tests and checks
     if [[ $prBranch == 'master' ]]; then
         printf "⚡️ Running tests and migrations %s\n"
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
