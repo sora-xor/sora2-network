@@ -342,22 +342,6 @@ pub mod source_initialization {
         pub quote_achieved: XSTSyntheticQuote,
     }
 
-    fn set_prices_in_price_tools<T: Config>(
-        asset_id: &T::AssetId,
-        price: Balance,
-        variant: PriceVariant,
-    ) -> DispatchResult {
-        let _ = price_tools::Pallet::<T>::register_asset(asset_id);
-
-        for _ in 0..price_tools::AVG_BLOCK_SPAN {
-            price_tools::Pallet::<T>::incoming_spot_price_failure(asset_id, variant);
-        }
-        for _ in 0..31 {
-            price_tools::Pallet::<T>::incoming_spot_price(asset_id, price, variant)?;
-        }
-        Ok(())
-    }
-
     /// Returns prices for setting in `price_tools`
     fn calculate_xor_prices<T: Config>(
         input_prices: XSTBaseInput,
@@ -647,25 +631,25 @@ pub mod source_initialization {
                 && xor_prices.buy.reference >= xor_prices.sell.reference,
             Error::<T>::BuyLessThanSell
         );
-        set_prices_in_price_tools::<T>(
+        pallet_tools::price_tools::set_price::<T>(
             &synthetic_base_asset_id,
             xor_prices.buy.synthetic_base,
             PriceVariant::Buy,
         )?;
-        set_prices_in_price_tools::<T>(
+        pallet_tools::price_tools::set_price::<T>(
             &synthetic_base_asset_id,
             xor_prices.sell.synthetic_base,
             PriceVariant::Sell,
         )?;
         if should_update_reference_buy {
-            set_prices_in_price_tools::<T>(
+            pallet_tools::price_tools::set_price::<T>(
                 &reference_asset_id,
                 xor_prices.buy.reference,
                 PriceVariant::Buy,
             )?;
         }
         if should_update_reference_sell {
-            set_prices_in_price_tools::<T>(
+            pallet_tools::price_tools::set_price::<T>(
                 &reference_asset_id,
                 xor_prices.sell.reference,
                 PriceVariant::Sell,
