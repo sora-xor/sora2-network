@@ -1298,7 +1298,7 @@
 </span><span class="kw">mod </span>tests;
 
 <span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::{Balance, DemeterFarmingPallet};
+<span class="kw">use </span>common::{Balance, DemeterFarming};
 <span class="kw">pub use </span>weights::WeightInfo;
 
 <span class="doccomment">/// Storage version.
@@ -1354,7 +1354,7 @@
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use crate</span>::{migrations, PoolData, StorageVersion, TokenInfo, UserInfo, WeightInfo};
     <span class="kw">use </span>common::prelude::{AssetInfoProvider, Balance, FixedWrapper};
-    <span class="kw">use </span>common::{balance, PoolXykPallet};
+    <span class="kw">use </span>common::{balance, XykPool};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::transactional;
     <span class="kw">use </span>frame_support::PalletId;
@@ -2526,7 +2526,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; DemeterFarmingPallet&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; DemeterFarming&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">fn </span>update_pool_tokens(
         user: T::AccountId,
         pool_tokens: Balance,

@@ -1552,7 +1552,7 @@
     <span class="attr">#[pallet::validate_unsigned]
     </span><span class="kw">impl</span>&lt;T: Config&gt; ValidateUnsigned <span class="kw">for </span>Pallet&lt;T&gt; {
         <span class="kw">type </span>Call = Call&lt;T&gt;;
-        <span class="comment">// mb add prefetch with validate_ancestors=true to not include unneccessary stuff
+        <span class="comment">// mb add prefetch with validate_ancestors=true to not include unnecessary stuff
         </span><span class="kw">fn </span>validate_unsigned(source: TransactionSource, call: <span class="kw-2">&amp;</span><span class="self">Self</span>::Call) -&gt; TransactionValidity {
             <span class="kw">if let </span>Call::import_header {
                 network_id,

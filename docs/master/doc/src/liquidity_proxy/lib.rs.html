@@ -2730,7 +2730,7 @@
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
-    TradingPairSourceManager, VestedRewardsPallet, XSTUSD,
+    TradingPairSourceManager, Vesting, XSTUSD,
 };
 <span class="kw">use </span>fallible_iterator::FallibleIterator <span class="kw">as _</span>;
 <span class="kw">use </span>frame_support::dispatch::PostDispatchInfo;
@@ -4973,7 +4973,7 @@
         <span class="kw">type </span>PrimaryMarketTBC: GetMarketInfo&lt;<span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>PrimaryMarketXST: GetMarketInfo&lt;<span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>SecondaryMarket: GetPoolReserves&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>VestedRewardsPallet: VestedRewardsPallet&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>VestedRewardsPallet: Vesting&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>LockedLiquiditySourcesManager: LockedLiquiditySourcesManager&lt;LiquiditySourceType&gt;;
         <span class="kw">type </span>GetADARAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;

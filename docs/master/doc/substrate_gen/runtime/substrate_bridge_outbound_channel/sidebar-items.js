@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["constants","events","storage"],"type":["Event"]};
+window.SIDEBAR_ITEMS = {"mod":["calls","constants","events","storage"],"type":["Event"]};

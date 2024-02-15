@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["MessageAccepted"]};
+window.SIDEBAR_ITEMS = {"struct":["IntervalUpdated","MessageAccepted"]};

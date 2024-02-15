@@ -1875,15 +1875,15 @@
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::fixnum::ops::Zero <span class="kw">as _</span>;
 <span class="kw">use </span>common::prelude::{
-    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsPallet,
+    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsProvider,
     QuoteAmount, SwapAmount, SwapOutcome,
 };
 <span class="kw">use </span>common::BuyBackHandler;
 <span class="kw">use </span>common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
     LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
-    ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager, VestedRewardsPallet,
-    PSWAP, TBCD, VAL, XOR, XST,
+    ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager, Vesting, PSWAP, TBCD,
+    VAL, XOR, XST,
 };
 <span class="kw">use </span>frame_support::traits::Get;
 <span class="kw">use </span>frame_support::weights::Weight;
@@ -2007,7 +2007,7 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>common::VestedRewardsPallet;
+    <span class="kw">use </span>common::Vesting;
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::traits::StorageVersion;
     <span class="kw">use </span>frame_system::ensure_root;
@@ -2030,8 +2030,8 @@
             <span class="self">Self</span>::AssetId,
             DispatchError,
         &gt;;
-        <span class="kw">type </span>PriceToolsPallet: PriceToolsPallet&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>VestedRewardsPallet: VestedRewardsPallet&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>PriceToolsPallet: PriceToolsProvider&lt;<span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>VestedRewardsPallet: Vesting&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>BuyBackTBCDPercent: Get&lt;Fixed&gt;;

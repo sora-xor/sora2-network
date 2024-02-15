@@ -1839,7 +1839,7 @@
 }
 
 <span class="doccomment">/// Trait to abstract interface of VestedRewards pallet, in order for pallets with rewards sources avoid having dependency issues.
-</span><span class="kw">pub trait </span>VestedRewardsPallet&lt;AccountId, AssetId&gt; {
+</span><span class="kw">pub trait </span>Vesting&lt;AccountId, AssetId&gt; {
     <span class="doccomment">/// Report that account has received pswap reward for buying from tbc.
     </span><span class="kw">fn </span>add_tbc_reward(account_id: <span class="kw-2">&amp;</span>AccountId, pswap_amount: Balance) -&gt; DispatchResult;
 
@@ -1847,7 +1847,7 @@
     </span><span class="kw">fn </span>add_farming_reward(account_id: <span class="kw-2">&amp;</span>AccountId, pswap_amount: Balance) -&gt; DispatchResult;
 }
 
-<span class="kw">pub trait </span>PoolXykPallet&lt;AccountId, AssetId&gt; {
+<span class="kw">pub trait </span>XykPool&lt;AccountId, AssetId&gt; {
     <span class="kw">type </span>PoolProvidersOutput: IntoIterator&lt;Item = (AccountId, Balance)&gt;;
     <span class="kw">type </span>PoolPropertiesOutput: IntoIterator&lt;Item = (AssetId, AssetId, (AccountId, AccountId))&gt;;
 
@@ -1883,7 +1883,7 @@
     }
 }
 
-<span class="kw">pub trait </span>DemeterFarmingPallet&lt;AccountId, AssetId&gt; {
+<span class="kw">pub trait </span>DemeterFarming&lt;AccountId, AssetId&gt; {
     <span class="kw">fn </span>update_pool_tokens(
         _user: AccountId,
         _pool_tokens: Balance,
@@ -1905,7 +1905,7 @@
     ) -&gt; DispatchResult;
 }
 
-<span class="kw">pub trait </span>PriceToolsPallet&lt;AssetId&gt; {
+<span class="kw">pub trait </span>PriceToolsProvider&lt;AssetId&gt; {
     <span class="doccomment">/// Get amount of `output_asset_id` corresponding to a unit (1) of `input_asset_id`.
     /// `price_variant` specifies the correction for price, either for buy or sell.
     </span><span class="kw">fn </span>get_average_price(
@@ -1918,7 +1918,7 @@
     </span><span class="kw">fn </span>register_asset(asset_id: <span class="kw-2">&amp;</span>AssetId) -&gt; DispatchResult;
 }
 
-<span class="kw">impl</span>&lt;AssetId&gt; PriceToolsPallet&lt;AssetId&gt; <span class="kw">for </span>() {
+<span class="kw">impl</span>&lt;AssetId&gt; PriceToolsProvider&lt;AssetId&gt; <span class="kw">for </span>() {
     <span class="kw">fn </span>get_average_price(
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>AssetId,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>AssetId,

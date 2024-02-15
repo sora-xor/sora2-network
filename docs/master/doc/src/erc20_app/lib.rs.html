@@ -958,7 +958,7 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(DispatchError::BadOrigin.into());
             }
 
-            <span class="kw">let </span>amount = T::BalancePrecisionConverter::from_sidechain(
+            <span class="kw">let </span>(amount, <span class="kw">_</span>) = T::BalancePrecisionConverter::from_sidechain(
                 <span class="kw-2">&amp;</span>asset_id,
                 sidechain_precision,
                 amount,
@@ -1223,7 +1223,7 @@
             <span class="kw">let </span>sidechain_precision = SidechainPrecision::&lt;T&gt;::get(network_id, <span class="kw-2">&amp;</span>asset_id)
                 .ok_or(Error::&lt;T&gt;::TokenIsNotRegistered)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>sidechain_amount = T::BalancePrecisionConverter::to_sidechain(
+            <span class="kw">let </span>(amount, sidechain_amount) = T::BalancePrecisionConverter::to_sidechain(
                 <span class="kw-2">&amp;</span>asset_id,
                 sidechain_precision,
                 amount.clone(),

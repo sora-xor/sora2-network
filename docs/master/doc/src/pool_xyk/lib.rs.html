@@ -1105,8 +1105,8 @@
 <span class="kw">use </span>common::{
     fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
     GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
-    PoolXykPallet, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
-    TradingPairSourceManager,
+    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
+    XykPool,
 };
 
 <span class="kw">mod </span>aliases;
@@ -1146,7 +1146,7 @@
 
 <span class="kw">pub use </span>weights::WeightInfo;
 
-<span class="kw">impl</span>&lt;T: Config&gt; PoolXykPallet&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; XykPool&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">type </span>PoolProvidersOutput = PrefixIterator&lt;(AccountIdOf&lt;T&gt;, Balance)&gt;;
     <span class="kw">type </span>PoolPropertiesOutput =
         PrefixIterator&lt;(AssetIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, (AccountIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;))&gt;;
