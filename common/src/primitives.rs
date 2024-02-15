@@ -40,6 +40,7 @@ use frame_support::{ensure, BoundedVec, RuntimeDebug};
 use hex_literal::hex;
 use sp_core::H256;
 use sp_runtime::traits::{Get, Zero};
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
@@ -1287,4 +1288,11 @@ impl SwapLimits<Balance> {
 
         (amount, Balance::zero())
     }
+}
+
+/// Discrete result of quotation
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct DiscreteQuotation<AmountType> {
+    pub chunks: VecDeque<SwapChunk<AmountType>>,
+    pub limits: SwapLimits<AmountType>,
 }
