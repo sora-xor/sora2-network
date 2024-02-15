@@ -160,6 +160,7 @@ pub mod pallet {
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     pub enum InputAssetId<AssetId> {
+        // todo: uncomment
         // McbcReference,
         XstReference,
         Other(AssetId),

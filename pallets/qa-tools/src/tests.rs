@@ -1001,13 +1001,13 @@ fn should_not_initialize_existing_xyk_pool() {
 // todo: make tests for it
 // todo: make tests with incorrect prices:
 // let reference_prices = AssetPrices{ buy: balance!(1), sell: balance!(1.1) };
-fn test_price_tools_set_price(asset_id: InputAssetId<AssetIdOf<Runtime>>, prices: AssetPrices) {
+fn check_price_tools_set_price(asset_id: &InputAssetId<AssetIdOf<Runtime>>, prices: AssetPrices) {
     assert_ok!(QAToolsPallet::price_tools_set_asset_price(
         RuntimeOrigin::root(),
         prices.clone(),
         asset_id.clone()
     ));
-    let asset_id = asset_id.resolve::<Runtime>();
+    let asset_id = asset_id.clone().resolve::<Runtime>();
     assert_eq!(
         price_tools::Pallet::<Runtime>::get_average_price(
             &XOR.into(),
@@ -1024,6 +1024,95 @@ fn test_price_tools_set_price(asset_id: InputAssetId<AssetIdOf<Runtime>>, prices
         ),
         Ok(prices.sell)
     );
+}
+
+fn test_price_tools_set_asset_prices(asset_id: InputAssetId<AssetIdOf<Runtime>>) {
+    ext().execute_with(|| {
+        check_price_tools_set_price(
+            &asset_id,
+            AssetPrices {
+                buy: balance!(1),
+                sell: balance!(1),
+            },
+        );
+        check_price_tools_set_price(
+            &asset_id,
+            AssetPrices {
+                buy: balance!(1),
+                sell: balance!(2),
+            },
+        );
+        check_price_tools_set_price(
+            &asset_id,
+            AssetPrices {
+                buy: balance!(256),
+                sell: balance!(365),
+            },
+        );
+        check_price_tools_set_price(
+            &asset_id,
+            AssetPrices {
+                buy: balance!(1),
+                sell: balance!(1),
+            },
+        );
+    })
+}
+
+// todo: uncomment
+// #[test]
+// fn should_set_price_tools_mcbc_base_prices() {
+//     test_price_tools_set_asset_prices(InputAssetId::<AssetIdOf<Runtime>>::McbcReference);
+// }
+
+#[test]
+fn should_set_price_tools_xst_base_prices() {
+    test_price_tools_set_asset_prices(InputAssetId::<AssetIdOf<Runtime>>::XstReference);
+}
+
+#[test]
+fn should_set_price_tools_other_base_prices() {
+    test_price_tools_set_asset_prices(InputAssetId::<AssetIdOf<Runtime>>::Other(ETH.into()));
+}
+
+#[test]
+fn should_price_tools_reject_incorrect_prices() {
+    ext().execute_with(|| {
+        // todo: uncomment
+        // assert_err!(
+        //     QAToolsPallet::price_tools_set_asset_price(
+        //         RuntimeOrigin::root(),
+        //         AssetPrices {
+        //             buy: balance!(1),
+        //             sell: balance!(1) + 1,
+        //         },
+        //         InputAssetId::<AssetIdOf<Runtime>>::McbcReference
+        //     ),
+        //     Error::<Runtime>::BuyLessThanSell
+        // );
+        assert_err!(
+            QAToolsPallet::price_tools_set_asset_price(
+                RuntimeOrigin::root(),
+                AssetPrices {
+                    buy: balance!(1),
+                    sell: balance!(1) + 1,
+                },
+                InputAssetId::<AssetIdOf<Runtime>>::XstReference
+            ),
+            Error::<Runtime>::BuyLessThanSell
+        );
+        assert_err!(
+            QAToolsPallet::price_tools_set_asset_price(
+                RuntimeOrigin::root(),
+                AssetPrices {
+                    buy: balance!(1),
+                    sell: balance!(1) + 1,
+                },
+                InputAssetId::<AssetIdOf<Runtime>>::Other(ETH.into())
+            ),
+            Error::<Runtime>::BuyLessThanSell
+        );
+    })
 }
 
 fn test_init_xst_synthetic_base_price(prices: XSTBaseInput, reference_prices: AssetPrices) {
