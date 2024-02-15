@@ -7,7 +7,7 @@ wasmReportFile='subwasm_report.json'
 PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
-allfeatures='private-net,wip,ready-to-test'
+allfeatures='private-net,wip,ready-to-test,runtime-benchmarks'
 
 # build
 # If TAG_NAME is defined, build for a specific tag
@@ -27,7 +27,7 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
-        printf "⚡️ Testing with features: private-net runtime-benchmark %s\n"
+        printf "⚡️ Testing with features: private-net runtime-benchmarks %s\n"
         # we should always run these tests for these features
         cargo test --release --features "private-net runtime-benchmarks"
         printf "⚡️ Building with features: %s\n" "$featureList"
@@ -56,8 +56,5 @@ else
         rm Cargo.lock
         cargo fmt -- --check > /dev/null
         cargo test --features $allfeatures
-        if [ $? -ne 1 ]; then
-            ./housekeeping/coverage.sh
-        fi
     fi
 fi

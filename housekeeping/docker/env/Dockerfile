@@ -21,7 +21,6 @@ RUN apt-get update && \
     curl \
     wget \
     git binaryen \
-    python3-pip \
     make cmake libssl-dev \
     software-properties-common && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
@@ -42,7 +41,6 @@ RUN apt-get update && \
     rustup component add llvm-tools-preview && \
     apt-get autoremove -y && \
     apt-get clean && \
-    pip3 install lcov_cobertura && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf "${CARGO_HOME}/git" && \
     ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone
