@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:bullseye-20240211-slim
 
 ENV RUSTUP_HOME="/opt/rust"
 ENV CARGO_HOME="/opt/rust"
@@ -15,14 +15,13 @@ ENV CCLANG_VER=14
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install --no-install-recommends -y \
     ca-certificates apt-transport-https gnupg \
     libssl-dev pkg-config \
     curl \
     wget \
     git binaryen \
     python3-pip \
-    docker.io \
     make cmake libssl-dev \
     software-properties-common && \
     curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
@@ -31,6 +30,7 @@ RUN apt-get update && \
     wget https://apt.llvm.org/llvm.sh && \
     chmod +x llvm.sh && \
     ./llvm.sh ${LLVM_TOOLS_VER} && \
+    rm llvm.sh && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
     clang-${CCLANG_VER} lldb-${CCLANG_VER} lld-${CCLANG_VER} libclang-${CCLANG_VER}-dev llvm-${LLVM_TOOLS_VER} protobuf-compiler && \
