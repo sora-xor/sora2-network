@@ -362,7 +362,7 @@ pub mod pallet {
 
             let asset_id = asset_id.resolve::<T>();
             ensure!(
-                asset_per_xor.sell >= asset_per_xor.buy,
+                asset_per_xor.sell <= asset_per_xor.buy,
                 Error::<T>::BuyLessThanSell
             );
             pallet_tools::price_tools::set_price::<T>(
