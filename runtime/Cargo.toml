@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.2.0"
+version = "3.2.1"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -325,9 +325,7 @@ wip = [
     "pallet-beefy-mmr",
 ]
 
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-]
+ready-to-test = ["framenode-chain-spec/ready-to-test"]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
