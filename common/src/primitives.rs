@@ -1233,3 +1233,58 @@ impl SwapChunk<Balance> {
         Some(Self::new(input, output, fee))
     }
 }
+
+/// Limitations that could have a liquidity source for the amount of swap
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
+pub struct SwapLimits<AmountType> {
+    /// The amount of swap cannot be less than `min_amount` if it's defined
+    pub min_amount: Option<AmountType>,
+
+    /// The amount of swap cannot be more than `max_amount` if it's defined
+    pub max_amount: Option<AmountType>,
+
+    /// The amount of swap must be a multiplier of `amount_alignment` if it's defined
+    pub amount_alignment: Option<AmountType>,
+}
+
+impl<AmountType> SwapLimits<AmountType> {
+    pub fn new(
+        min_amount: Option<AmountType>,
+        max_amount: Option<AmountType>,
+        amount_alignment: Option<AmountType>,
+    ) -> Self {
+        Self {
+            min_amount,
+            max_amount,
+            amount_alignment,
+        }
+    }
+}
+
+impl SwapLimits<Balance> {
+    /// Aligns the `amount` regarding to limits.
+    /// Returns the aligned amount and the remainder
+    pub fn align(&self, amount: Balance) -> (Balance, Balance) {
+        if let Some(min) = self.min_amount {
+            if amount < min {
+                return (Balance::zero(), amount);
+            }
+        }
+
+        if let Some(max) = self.max_amount {
+            if amount > max {
+                return (max, amount.saturating_sub(max));
+            }
+        }
+
+        if let Some(alignment) = self.amount_alignment {
+            if amount % alignment != Balance::zero() {
+                let count = amount.saturating_div(alignment);
+                let aligned = count.saturating_mul(alignment);
+                return (aligned, amount.saturating_sub(aligned));
+            }
+        }
+
+        (amount, Balance::zero())
+    }
+}
