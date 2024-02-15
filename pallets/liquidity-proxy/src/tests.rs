@@ -36,7 +36,6 @@ use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{
     AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapVariant,
 };
-use common::test_utils::assert_event;
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
     Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
@@ -3660,7 +3659,7 @@ fn test_batch_swap_emits_event() {
             filter_mode,
         ));
 
-        common::test_utils::assert_last_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_last_event(
             crate::Event::BatchSwapExecuted(adar_fee, amount_in).into(),
         );
     });
@@ -3995,10 +3994,10 @@ fn test_batch_swap_asset_reuse_works() {
 
         test_utils::check_adar_commission(&swap_batches, sources);
         test_utils::check_swap_batch_executed_amount(swap_batches);
-        assert_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_has_event(
             crate::Event::<Runtime>::ADARFeeWithdrawn(KSM, balance!(0.025)).into(),
         );
-        assert_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_has_event(
             crate::Event::<Runtime>::ADARFeeWithdrawn(USDT, balance!(0.025)).into(),
         );
         assert_approx_eq!(

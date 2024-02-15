@@ -3,7 +3,7 @@ use crate::{pallet, Error, FeePercentOnRaisedFunds, Pallet as CeresLaunchpadPall
 use common::fixnum::ops::CheckedAdd;
 use common::prelude::FixedWrapper;
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, PoolXykPallet, CERES_ASSET_ID,
+    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, XykPool, CERES_ASSET_ID,
     DEFAULT_BALANCE_PRECISION, PSWAP, XOR, XSTUSD,
 };
 use frame_support::{assert_err, assert_ok, PalletId};
