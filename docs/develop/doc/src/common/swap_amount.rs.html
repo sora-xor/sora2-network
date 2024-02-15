@@ -692,6 +692,14 @@
 <a href="#677" id="677">677</a>
 <a href="#678" id="678">678</a>
 <a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -779,6 +787,14 @@
                 desired_amount_out: amount,
                 ..
             } =&gt; amount,
+        }
+    }
+
+    <span class="doccomment">/// Returns desired input/output variant of the value
+    </span><span class="kw">pub fn </span>variant(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SwapVariant {
+        <span class="kw">match </span><span class="self">self </span>{
+            QuoteAmount::WithDesiredInput { .. } =&gt; SwapVariant::WithDesiredInput,
+            QuoteAmount::WithDesiredOutput { .. } =&gt; SwapVariant::WithDesiredOutput,
         }
     }
 

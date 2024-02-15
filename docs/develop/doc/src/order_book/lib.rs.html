@@ -1478,6 +1478,75 @@
 <a href="#1463" id="1463">1463</a>
 <a href="#1464" id="1464">1464</a>
 <a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
+<a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1520,7 +1589,7 @@
 <span class="kw">use </span>common::LiquiditySourceType;
 <span class="kw">use </span>common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
+    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason, SwapChunk,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 <span class="kw">use </span>core::fmt::Debug;
@@ -1533,6 +1602,7 @@
 <span class="kw">use </span>sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, CheckedMul, MaybeDisplay, Zero};
 <span class="kw">use </span>sp_runtime::BoundedVec;
 <span class="kw">use </span>sp_std::collections::btree_map::BTreeMap;
+<span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
 <span class="kw">use </span>sp_std::vec::Vec;
 
 <span class="kw">pub mod </span>weights;
@@ -2753,6 +2823,70 @@
         }
     }
 
+    <span class="kw">fn </span>step_quote(
+        dex_id: <span class="kw-2">&amp;</span>T::DEXId,
+        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        amount: QuoteAmount&lt;Balance&gt;,
+        recommended_samples_count: usize,
+        _deduce_fee: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Balance&gt;&gt;, Weight), DispatchError&gt; {
+        <span class="kw">let </span><span class="prelude-val">Some</span>(order_book_id) = <span class="self">Self</span>::assemble_order_book_id(<span class="kw-2">*</span>dex_id, input_asset_id, output_asset_id) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownOrderBook.into());
+        };
+
+        <span class="kw">let </span>order_book = &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>data = CacheDataLayer::&lt;T&gt;::new();
+
+        <span class="kw">let </span>direction = order_book.get_direction(input_asset_id, output_asset_id)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>limit = <span class="kw">match </span>amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; <span class="kw">match </span>direction {
+                PriceVariant::Buy =&gt; {
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_in))
+                }
+                PriceVariant::Sell =&gt; OrderAmount::Base(
+                    order_book
+                        .step_lot_size
+                        .copy_divisibility(desired_amount_in),
+                ),
+            },
+            QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; <span class="kw">match </span>direction {
+                PriceVariant::Buy =&gt; OrderAmount::Base(
+                    order_book
+                        .step_lot_size
+                        .copy_divisibility(desired_amount_out),
+                ),
+                PriceVariant::Sell =&gt; {
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_out))
+                }
+            },
+        };
+
+        <span class="kw">let </span>market_depth = order_book.market_depth(direction.switched(), <span class="prelude-val">Some</span>(limit), <span class="kw-2">&amp;mut </span>data);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>chunks = VecDeque::new();
+        <span class="kw">for </span>(price, base_volume) <span class="kw">in </span>market_depth.iter() {
+            <span class="kw">let </span>quote_volume = price
+                .checked_mul(base_volume)
+                .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
+            <span class="kw">match </span>direction {
+                PriceVariant::Buy =&gt; chunks.push_back(SwapChunk::new(
+                    <span class="kw-2">*</span>quote_volume.balance(),
+                    <span class="kw-2">*</span>base_volume.balance(),
+                    Balance::zero(),
+                )),
+                PriceVariant::Sell =&gt; chunks.push_back(SwapChunk::new(
+                    <span class="kw-2">*</span>base_volume.balance(),
+                    <span class="kw-2">*</span>quote_volume.balance(),
+                    Balance::zero(),
+                )),
+            }
+        }
+
+        <span class="prelude-val">Ok</span>((chunks, <span class="self">Self</span>::step_quote_weight(recommended_samples_count)))
+    }
+
     <span class="kw">fn </span>exchange(
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
@@ -2931,6 +3065,10 @@
 
     <span class="kw">fn </span>quote_weight() -&gt; Weight {
         &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::quote()
+    }
+
+    <span class="kw">fn </span>step_quote_weight(_samples_count: usize) -&gt; Weight {
+        &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::step_quote()
     }
 
     <span class="kw">fn </span>exchange_weight() -&gt; Weight {

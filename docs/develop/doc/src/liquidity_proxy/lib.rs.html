@@ -2681,6 +2681,99 @@
 <a href="#2666" id="2666">2666</a>
 <a href="#2667" id="2667">2667</a>
 <a href="#2668" id="2668">2668</a>
+<a href="#2669" id="2669">2669</a>
+<a href="#2670" id="2670">2670</a>
+<a href="#2671" id="2671">2671</a>
+<a href="#2672" id="2672">2672</a>
+<a href="#2673" id="2673">2673</a>
+<a href="#2674" id="2674">2674</a>
+<a href="#2675" id="2675">2675</a>
+<a href="#2676" id="2676">2676</a>
+<a href="#2677" id="2677">2677</a>
+<a href="#2678" id="2678">2678</a>
+<a href="#2679" id="2679">2679</a>
+<a href="#2680" id="2680">2680</a>
+<a href="#2681" id="2681">2681</a>
+<a href="#2682" id="2682">2682</a>
+<a href="#2683" id="2683">2683</a>
+<a href="#2684" id="2684">2684</a>
+<a href="#2685" id="2685">2685</a>
+<a href="#2686" id="2686">2686</a>
+<a href="#2687" id="2687">2687</a>
+<a href="#2688" id="2688">2688</a>
+<a href="#2689" id="2689">2689</a>
+<a href="#2690" id="2690">2690</a>
+<a href="#2691" id="2691">2691</a>
+<a href="#2692" id="2692">2692</a>
+<a href="#2693" id="2693">2693</a>
+<a href="#2694" id="2694">2694</a>
+<a href="#2695" id="2695">2695</a>
+<a href="#2696" id="2696">2696</a>
+<a href="#2697" id="2697">2697</a>
+<a href="#2698" id="2698">2698</a>
+<a href="#2699" id="2699">2699</a>
+<a href="#2700" id="2700">2700</a>
+<a href="#2701" id="2701">2701</a>
+<a href="#2702" id="2702">2702</a>
+<a href="#2703" id="2703">2703</a>
+<a href="#2704" id="2704">2704</a>
+<a href="#2705" id="2705">2705</a>
+<a href="#2706" id="2706">2706</a>
+<a href="#2707" id="2707">2707</a>
+<a href="#2708" id="2708">2708</a>
+<a href="#2709" id="2709">2709</a>
+<a href="#2710" id="2710">2710</a>
+<a href="#2711" id="2711">2711</a>
+<a href="#2712" id="2712">2712</a>
+<a href="#2713" id="2713">2713</a>
+<a href="#2714" id="2714">2714</a>
+<a href="#2715" id="2715">2715</a>
+<a href="#2716" id="2716">2716</a>
+<a href="#2717" id="2717">2717</a>
+<a href="#2718" id="2718">2718</a>
+<a href="#2719" id="2719">2719</a>
+<a href="#2720" id="2720">2720</a>
+<a href="#2721" id="2721">2721</a>
+<a href="#2722" id="2722">2722</a>
+<a href="#2723" id="2723">2723</a>
+<a href="#2724" id="2724">2724</a>
+<a href="#2725" id="2725">2725</a>
+<a href="#2726" id="2726">2726</a>
+<a href="#2727" id="2727">2727</a>
+<a href="#2728" id="2728">2728</a>
+<a href="#2729" id="2729">2729</a>
+<a href="#2730" id="2730">2730</a>
+<a href="#2731" id="2731">2731</a>
+<a href="#2732" id="2732">2732</a>
+<a href="#2733" id="2733">2733</a>
+<a href="#2734" id="2734">2734</a>
+<a href="#2735" id="2735">2735</a>
+<a href="#2736" id="2736">2736</a>
+<a href="#2737" id="2737">2737</a>
+<a href="#2738" id="2738">2738</a>
+<a href="#2739" id="2739">2739</a>
+<a href="#2740" id="2740">2740</a>
+<a href="#2741" id="2741">2741</a>
+<a href="#2742" id="2742">2742</a>
+<a href="#2743" id="2743">2743</a>
+<a href="#2744" id="2744">2744</a>
+<a href="#2745" id="2745">2745</a>
+<a href="#2746" id="2746">2746</a>
+<a href="#2747" id="2747">2747</a>
+<a href="#2748" id="2748">2748</a>
+<a href="#2749" id="2749">2749</a>
+<a href="#2750" id="2750">2750</a>
+<a href="#2751" id="2751">2751</a>
+<a href="#2752" id="2752">2752</a>
+<a href="#2753" id="2753">2753</a>
+<a href="#2754" id="2754">2754</a>
+<a href="#2755" id="2755">2755</a>
+<a href="#2756" id="2756">2756</a>
+<a href="#2757" id="2757">2757</a>
+<a href="#2758" id="2758">2758</a>
+<a href="#2759" id="2759">2759</a>
+<a href="#2760" id="2760">2760</a>
+<a href="#2761" id="2761">2761</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2717,21 +2810,27 @@
 
 </span><span class="kw">extern crate </span>core;
 
-<span class="kw">use </span>core::marker::PhantomData;
-
-<span class="kw">use </span>codec::{Decode, Encode};
+<span class="kw">mod </span>liquidity_aggregator;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>mock;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>test_utils;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
+<span class="kw">pub mod </span>weights;
 
 <span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>assets::WeightInfo <span class="kw">as _</span>;
-<span class="kw">use </span>common::prelude::fixnum::ops::{Bounded, Zero <span class="kw">as _</span>};
+<span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 <span class="kw">use </span>common::{
     balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
-    TradingPairSourceManager, Vesting, XSTUSD,
+    TradingPairSourceManager, Vesting,
 };
+<span class="kw">use </span>core::marker::PhantomData;
 <span class="kw">use </span>fallible_iterator::FallibleIterator <span class="kw">as _</span>;
 <span class="kw">use </span>frame_support::dispatch::PostDispatchInfo;
 <span class="kw">use </span>frame_support::traits::Get;
@@ -2739,27 +2838,27 @@
 <span class="kw">use </span>frame_support::{ensure, fail, RuntimeDebug};
 <span class="kw">use </span>frame_system::ensure_signed;
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
+<span class="kw">use </span>liquidity_aggregator::AggregatedSwapOutcome;
 <span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
-<span class="kw">use </span>sp_runtime::traits::{CheckedSub, Zero};
+<span class="kw">use </span>sp_runtime::traits::Zero;
 <span class="kw">use </span>sp_runtime::DispatchError;
 <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>sp_std::{cmp::Ord, cmp::Ordering, vec};
+<span class="kw">pub use </span>weights::WeightInfo;
+
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+</span><span class="kw">use </span>{
+    common::prelude::fixnum::ops::{Bounded, Zero <span class="kw">as _</span>},
+    common::XSTUSD,
+    sp_runtime::traits::CheckedSub,
+};
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+</span><span class="kw">use </span>liquidity_aggregator::LiquidityAggregator;
 
 <span class="kw">type </span>LiquiditySourceIdOf&lt;T&gt; = LiquiditySourceId&lt;&lt;T <span class="kw">as </span>common::Config&gt;::DEXId, LiquiditySourceType&gt;;
 <span class="kw">type </span>Rewards&lt;AssetId&gt; = Vec&lt;(Balance, AssetId, RewardReason)&gt;;
-
-<span class="kw">pub mod </span>weights;
-<span class="kw">pub use </span>weights::WeightInfo;
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>mock;
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests;
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test_utils;
 
 <span class="kw">pub const </span>TECH_ACCOUNT_PREFIX: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;liquidity-proxy&quot;</span>;
 <span class="kw">pub const </span>TECH_ACCOUNT_MAIN: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;main&quot;</span>;
@@ -2877,33 +2976,6 @@
                 ]),
             ]),
             (Base, Base) | (SyntheticBase, SyntheticBase) =&gt; <span class="prelude-val">None</span>,
-        }
-    }
-}
-
-<span class="doccomment">/// Output of the aggregated LiquidityProxy::quote() price.
-</span><span class="attr">#[derive(
-    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
-)]
-</span><span class="kw">pub struct </span>AggregatedSwapOutcome&lt;LiquiditySourceType, AmountType&gt; {
-    <span class="doccomment">/// A distribution of amounts each liquidity sources gets to swap in the entire trade
-    </span><span class="kw">pub </span>distribution: Vec&lt;(LiquiditySourceType, QuoteAmount&lt;AmountType&gt;)&gt;,
-    <span class="doccomment">/// The best possible output/input amount for a given trade and a set of liquidity sources
-    </span><span class="kw">pub </span>amount: AmountType,
-    <span class="doccomment">/// Total fee amount, nominated in XOR
-    </span><span class="kw">pub </span>fee: AmountType,
-}
-
-<span class="kw">impl</span>&lt;LiquiditySourceIdType, AmountType&gt; AggregatedSwapOutcome&lt;LiquiditySourceIdType, AmountType&gt; {
-    <span class="kw">pub fn </span>new(
-        distribution: Vec&lt;(LiquiditySourceIdType, QuoteAmount&lt;AmountType&gt;)&gt;,
-        amount: AmountType,
-        fee: AmountType,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            distribution,
-            amount,
-            fee,
         }
     }
 }
@@ -3637,11 +3709,13 @@
             T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)<span class="question-mark">?</span>;
         <span class="kw">let </span>locked = T::LockedLiquiditySourcesManager::get();
         sources.retain(|x| !locked.contains(<span class="kw-2">&amp;</span>x.liquidity_source_index));
-        <span class="comment">// The temp solution is to exclude OrderBook source if there are multiple sources.
-        // Will be redesigned in #447
+
+        <span class="comment">// the old mechanism cannot combine Order Book source with others
+        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
         </span><span class="kw">if </span>sources.len() &gt; <span class="number">1 </span>{
             sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
         }
+
         <span class="prelude-val">Ok</span>(sources)
     }
 
@@ -3713,45 +3787,65 @@
             ));
         }
 
-        <span class="comment">// Check if we have exactly two sources: the primary market and the secondary market
-        // Do the &quot;smart&quot; swap split (with fallback)
-        // NOTE: we assume here that XST tokens are not added to TBC reserves. If they are in the future, this
-        // logic should be redone!
-        </span><span class="kw">if </span>sources.len() == <span class="number">2 </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>primary_market: <span class="prelude-ty">Option</span>&lt;LiquiditySourceIdOf&lt;T&gt;&gt; = <span class="prelude-val">None</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>secondary_market: <span class="prelude-ty">Option</span>&lt;LiquiditySourceIdOf&lt;T&gt;&gt; = <span class="prelude-val">None</span>;
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+        </span>{
+            <span class="comment">// Check if we have exactly two sources: the primary market and the secondary market
+            // Do the &quot;smart&quot; swap split (with fallback)
+            // NOTE: we assume here that XST tokens are not added to TBC reserves. If they are in the future, this
+            // logic should be redone!
+            </span><span class="kw">if </span>sources.len() == <span class="number">2 </span>{
+                <span class="kw">let </span><span class="kw-2">mut </span>primary_market: <span class="prelude-ty">Option</span>&lt;LiquiditySourceIdOf&lt;T&gt;&gt; = <span class="prelude-val">None</span>;
+                <span class="kw">let </span><span class="kw-2">mut </span>secondary_market: <span class="prelude-ty">Option</span>&lt;LiquiditySourceIdOf&lt;T&gt;&gt; = <span class="prelude-val">None</span>;
 
-            <span class="kw">for </span>src <span class="kw">in </span><span class="kw-2">&amp;</span>sources {
-                <span class="kw">match </span>src.liquidity_source_index {
-                    <span class="comment">// We can&#39;t use XST as primary market for smart split, because it use XST asset as base
-                    // and does not support DEXes except Polkaswap
-                    </span>LiquiditySourceType::MulticollateralBondingCurvePool =&gt; {
-                        primary_market = <span class="prelude-val">Some</span>(src.clone())
+                <span class="kw">for </span>src <span class="kw">in </span><span class="kw-2">&amp;</span>sources {
+                    <span class="kw">match </span>src.liquidity_source_index {
+                        <span class="comment">// We can&#39;t use XST as primary market for smart split, because it use XST asset as base
+                        // and does not support DEXes except Polkaswap
+                        </span>LiquiditySourceType::MulticollateralBondingCurvePool =&gt; {
+                            primary_market = <span class="prelude-val">Some</span>(src.clone())
+                        }
+                        LiquiditySourceType::XYKPool | LiquiditySourceType::MockPool =&gt; {
+                            secondary_market = <span class="prelude-val">Some</span>(src.clone())
+                        }
+                        <span class="kw">_ </span>=&gt; (),
                     }
-                    LiquiditySourceType::XYKPool | LiquiditySourceType::MockPool =&gt; {
-                        secondary_market = <span class="prelude-val">Some</span>(src.clone())
-                    }
-                    <span class="kw">_ </span>=&gt; (),
                 }
-            }
 
-            <span class="kw">if let </span>(<span class="prelude-val">Some</span>(primary_mkt), <span class="prelude-val">Some</span>(xyk)) = (primary_market, secondary_market) {
-                <span class="kw">let </span>outcome = <span class="self">Self</span>::smart_split(
-                    <span class="kw-2">&amp;</span>primary_mkt,
-                    <span class="kw-2">&amp;</span>xyk,
-                    base_asset_id,
-                    input_asset_id,
-                    output_asset_id,
-                    amount.clone(),
-                    skip_info,
-                    deduce_fee,
-                )<span class="question-mark">?</span>;
-                total_weight = total_weight.saturating_add(outcome.<span class="number">2</span>);
-                <span class="kw">return </span><span class="prelude-val">Ok</span>((outcome.<span class="number">0</span>, outcome.<span class="number">1</span>, sources, total_weight));
+                <span class="kw">if let </span>(<span class="prelude-val">Some</span>(primary_mkt), <span class="prelude-val">Some</span>(xyk)) = (primary_market, secondary_market) {
+                    <span class="kw">let </span>outcome = <span class="self">Self</span>::smart_split(
+                        <span class="kw-2">&amp;</span>primary_mkt,
+                        <span class="kw-2">&amp;</span>xyk,
+                        base_asset_id,
+                        input_asset_id,
+                        output_asset_id,
+                        amount.clone(),
+                        skip_info,
+                        deduce_fee,
+                    )<span class="question-mark">?</span>;
+                    total_weight = total_weight.saturating_add(outcome.<span class="number">2</span>);
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>((outcome.<span class="number">0</span>, outcome.<span class="number">1</span>, sources, total_weight));
+                }
             }
         }
 
-        <span class="macro">fail!</span>(Error::&lt;T&gt;::UnavailableExchangePath);
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+        </span>{
+            <span class="kw">let </span>(outcome, rewards, weight) = <span class="self">Self</span>::new_smart_split(
+                <span class="kw-2">&amp;</span>sources,
+                base_asset_id,
+                input_asset_id,
+                output_asset_id,
+                amount.clone(),
+                skip_info,
+                deduce_fee,
+            )<span class="question-mark">?</span>;
+
+            total_weight = total_weight.saturating_add(weight);
+            <span class="prelude-val">Ok</span>((outcome, rewards, sources, total_weight))
+        }
+
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+        </span><span class="macro">fail!</span>(Error::&lt;T&gt;::UnavailableExchangePath);
     }
 
     <span class="doccomment">/// Check if given two arbitrary tokens can be used to perform an exchange via any available sources.
@@ -3823,6 +3917,35 @@
         <span class="prelude-val">Ok</span>(sources_set)
     }
 
+    <span class="doccomment">/// Calculates the max potential weight of smart_split / new_smart_split
+    ///
+    /// This function should cover the current code map and all possible calls of some functions that can take a weight.
+    /// The current code map:
+    ///
+    /// smart_split()
+    ///     quote()
+    ///     quote()
+    ///     check_rewards()
+    ///     quote()
+    ///     check_rewards()
+    ///
+    /// The new approach code map:
+    ///
+    /// new_smart_split()
+    ///     step_quote() - max 4 times, because there are 4 liquidity sources
+    ///     check_rewards() - max 4 times, because there are 4 liquidity sources
+    ///
+    /// Dev NOTE: if you change the logic of liquidity proxy, please sustain inner_exchange_weight() and code map above.
+    </span><span class="kw">pub fn </span>smart_split_weight() -&gt; Weight {
+        <span class="comment">// Only TBC has rewards weight, all others are zero.
+        // In this case the max value of the sum of rewards weights is TBC weight,
+        // because it could be only one TBC source in the list.
+        // The rewards weight is added once, no matter how many times it was called in the code.
+        </span>T::LiquidityRegistry::check_rewards_weight().saturating_add(
+            T::LiquidityRegistry::step_quote_weight(T::GetNumSamples::get()).saturating_mul(<span class="number">4</span>),
+        )
+    }
+
     <span class="doccomment">/// Calculates the max potential weight of inner_exchange
     ///
     /// This function should cover the current code map and all possible calls of some functions that can take a weight.
@@ -3837,32 +3960,17 @@
     ///                     list_liquidity_sources()
     ///                     quote()
     ///                     smart_split()
-    ///                         quote()
-    ///                         quote()
-    ///                         check_rewards()
-    ///                         quote()
-    ///                         check_rewards()
     ///         calculate_input_amount() - call only for SwapAmount::WithDesiredOutput
     ///             quote_single()
     ///                 list_liquidity_sources()
     ///                 quote()
     ///                 smart_split()
-    ///                     quote()
-    ///                     quote()
-    ///                     check_rewards()
-    ///                     quote()
-    ///                     check_rewards()
     ///         exchange_sequence_with_input_amount()
     ///             exchange_single()
     ///                 quote_single()
     ///                     list_liquidity_sources()
     ///                     quote()
     ///                     smart_split()
-    ///                         quote()
-    ///                         quote()
-    ///                         check_rewards()
-    ///                         quote()
-    ///                         check_rewards()
     ///                 exchange() - call N times, where N is a count of assets in the path
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain inner_exchange_weight() and code map above.
@@ -3883,12 +3991,14 @@
             <span class="kw">return </span>REJECTION_WEIGHT;
         };
 
-        <span class="kw">let </span>quote_weight = T::LiquidityRegistry::quote_weight();
-        <span class="kw">let </span>check_rewards_weight = T::LiquidityRegistry::check_rewards_weight();
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+        </span><span class="kw">let </span>quote_single_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::list_liquidity_sources()
+            .saturating_add(T::LiquidityRegistry::quote_weight().saturating_mul(<span class="number">4</span>))
+            .saturating_add(T::LiquidityRegistry::check_rewards_weight().saturating_mul(<span class="number">2</span>));
 
-        <span class="kw">let </span>quote_single_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::list_liquidity_sources()
-            .saturating_add(quote_weight.saturating_mul(<span class="number">4</span>))
-            .saturating_add(check_rewards_weight.saturating_mul(<span class="number">2</span>));
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+        </span><span class="kw">let </span>quote_single_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::list_liquidity_sources()
+            .saturating_add(<span class="self">Self</span>::smart_split_weight());
 
         <span class="kw">let </span><span class="kw-2">mut </span>weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::new_trivial();
 
@@ -4128,6 +4238,79 @@
         }
     }
 
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+    </span><span class="kw">fn </span>new_smart_split(
+        sources: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
+        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        amount: QuoteAmount&lt;Balance&gt;,
+        skip_info: bool,
+        deduce_fee: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (
+            AggregatedSwapOutcome&lt;LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
+            Rewards&lt;T::AssetId&gt;,
+            Weight,
+        ),
+        DispatchError,
+    &gt; {
+        <span class="macro">ensure!</span>(
+            input_asset_id != output_asset_id,
+            Error::&lt;T&gt;::UnavailableExchangePath
+        );
+
+        <span class="macro">ensure!</span>(
+            input_asset_id == base_asset_id || output_asset_id == base_asset_id,
+            Error::&lt;T&gt;::UnavailableExchangePath
+        );
+
+        <span class="kw">let </span><span class="kw-2">mut </span>aggregator = LiquidityAggregator::new(amount.variant());
+
+        <span class="kw">let </span><span class="kw-2">mut </span>total_weight = Weight::zero();
+
+        <span class="kw">for </span>source <span class="kw">in </span>sources {
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>((chunks, weight)) = T::LiquidityRegistry::step_quote(
+                source,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                T::GetNumSamples::get(),
+                deduce_fee,
+            ) {
+                aggregator.add_source(source.clone(), chunks);
+                total_weight = total_weight.saturating_add(weight);
+            } <span class="kw">else </span>{
+                <span class="comment">// skip the source if it returns an error
+                </span><span class="kw">continue</span>;
+            }
+        }
+
+        <span class="kw">let </span>(swap_info, aggregate_swap_outcome) = aggregator
+            .aggregate_swap_outcome(amount.amount())
+            .ok_or(Error::&lt;T&gt;::UnavailableExchangePath)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>rewards = Rewards::new();
+
+        <span class="kw">if </span>!skip_info {
+            <span class="kw">for </span>(source, (input, output)) <span class="kw">in </span>swap_info {
+                <span class="kw">let </span>(<span class="kw-2">mut </span>reward, weight) = T::LiquidityRegistry::check_rewards(
+                    <span class="kw-2">&amp;</span>source,
+                    input_asset_id,
+                    output_asset_id,
+                    input,
+                    output,
+                )
+                .unwrap_or((Vec::new(), Weight::zero()));
+
+                rewards.append(<span class="kw-2">&amp;mut </span>reward);
+                total_weight = total_weight.saturating_add(weight);
+            }
+        }
+
+        <span class="prelude-val">Ok</span>((aggregate_swap_outcome, rewards, total_weight))
+    }
+
     <span class="doccomment">/// Implements the &quot;smart&quot; split algorithm.
     ///
     /// - `primary_source_id` - ID of the primary market liquidity source,
@@ -4137,6 +4320,7 @@
     /// - `amount` - the amount with &quot;direction&quot; (sell or buy) together with the maximum price impact (slippage).
     /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
     ///
+    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
     </span><span class="kw">fn </span>smart_split(
         primary_source_id: <span class="kw-2">&amp;</span>LiquiditySourceIdOf&lt;T&gt;,
         secondary_source_id: <span class="kw-2">&amp;</span>LiquiditySourceIdOf&lt;T&gt;,
@@ -4356,6 +4540,7 @@
     /// - `amount` - the swap amount with &quot;direction&quot; (fixed input vs fixed output),
     /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
     ///
+    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
     </span><span class="kw">fn </span>decide_primary_market_amount_buying_base_asset(
         base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         collateral_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
@@ -4456,6 +4641,7 @@
     /// - `amount` - the swap amount with &quot;direction&quot; (fixed input vs fixed output),
     /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
     ///
+    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
     </span><span class="kw">fn </span>decide_primary_market_amount_selling_base_asset(
         base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         collateral_asset_id: <span class="kw-2">&amp;</span>T::AssetId,

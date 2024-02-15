@@ -583,6 +583,16 @@
 <a href="#568" id="568">568</a>
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -652,6 +662,7 @@
 	<span class="kw">fn </span>set_price_change_config() -&gt; Weight;
 	<span class="kw">fn </span>set_price_bias() -&gt; Weight;
 	<span class="kw">fn </span>quote() -&gt; Weight;
+	<span class="kw">fn </span>step_quote(a: u32, ) -&gt; Weight;
 	<span class="kw">fn </span>exchange() -&gt; Weight;
 	<span class="kw">fn </span>can_exchange() -&gt; Weight;
 	<span class="kw">fn </span>check_rewards() -&gt; Weight;
@@ -794,6 +805,10 @@
 		// Minimum execution time: 47_152_000 picoseconds.
 		</span>Weight::from_parts(<span class="number">47_799_000</span>, <span class="number">28066</span>)
 			.saturating_add(T::DbWeight::get().reads(<span class="number">8_u64</span>))
+	}
+
+	<span class="kw">fn </span>step_quote(_a: u32, ) -&gt; Weight {
+		Weight::zero()
 	}
 	<span class="doccomment">/// Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
 	/// Proof Skipped: MulticollateralBondingCurvePool EnabledTargets (max_values: Some(1), max_size: None, mode: Measured)
@@ -1043,6 +1058,11 @@
 		</span>Weight::from_parts(<span class="number">47_799_000</span>, <span class="number">28066</span>)
 			.saturating_add(RocksDbWeight::get().reads(<span class="number">8_u64</span>))
 	}
+
+	<span class="kw">fn </span>step_quote(_a: u32, ) -&gt; Weight {
+		Weight::zero()
+	}
+
 	<span class="doccomment">/// Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
 	/// Proof Skipped: MulticollateralBondingCurvePool EnabledTargets (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: MulticollateralBondingCurvePool ReservesAcc (r:1 w:0)
