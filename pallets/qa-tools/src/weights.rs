@@ -45,7 +45,13 @@ pub trait WeightInfo {
     fn order_book_fill_batch() -> Weight {
         Weight::zero()
     }
-    fn initialize_xyk() -> Weight {
+    fn xyk_initialize() -> Weight {
+        Weight::zero()
+    }
+    fn xst_initialize() -> Weight {
+        Weight::zero()
+    }
+    fn price_tools_set_reference_asset_price() -> Weight {
         Weight::zero()
     }
 }

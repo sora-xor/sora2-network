@@ -925,7 +925,7 @@ fn should_fill_orderbook_max_orders_count() {
 }
 
 #[test]
-fn should_initialize_xyk_pool() {
+fn should_xyk_initialize_pool() {
     ext().execute_with(|| {
         let pairs = vec![
             XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
@@ -970,7 +970,7 @@ fn should_initialize_xyk_pool() {
 #[test]
 fn should_not_initialize_existing_xyk_pool() {
     ext().execute_with(|| {
-        assert_ok!(QAToolsPallet::initialize_xyk(
+        assert_ok!(QAToolsPallet::xyk_initialize(
             RuntimeOrigin::root(),
             alice(),
             vec![
@@ -979,7 +979,7 @@ fn should_not_initialize_existing_xyk_pool() {
             ],
         ));
         assert_eq!(
-            QAToolsPallet::initialize_xyk(
+            QAToolsPallet::xyk_initialize(
                 RuntimeOrigin::root(),
                 alice(),
                 vec![XYKPair::new(
@@ -1003,7 +1003,7 @@ fn test_init_xst_synthetic_base_price(prices: XSTBaseInput) {
         // XST
         let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
 
-        assert_ok!(QAToolsPallet::initialize_xst(
+        assert_ok!(QAToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
             Some(prices.clone()),
             vec![],
@@ -1058,7 +1058,7 @@ fn should_init_xst_synthetic_base_price() {
 fn should_reject_incorrect_xst_synthetic_base_price() {
     ext().execute_with(|| {
         assert_eq!(
-            QAToolsPallet::initialize_xst(
+            QAToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
                 Some(XSTBaseInput {
                     buy: XSTBaseSideInput {
@@ -1076,7 +1076,7 @@ fn should_reject_incorrect_xst_synthetic_base_price() {
             Err(err_pays_no(Error::<Runtime>::BuyLessThanSell))
         );
         assert_eq!(
-            QAToolsPallet::initialize_xst(
+            QAToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
                 Some(XSTBaseInput {
                     buy: XSTBaseSideInput {
@@ -1101,7 +1101,7 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
     ext().execute_with(|| {
         // Reject when not initialized
         assert_eq!(
-            QAToolsPallet::initialize_xst(
+            QAToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
                 Some(XSTBaseInput {
                     buy: XSTBaseSideInput {
@@ -1119,7 +1119,7 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
             Err(err_pays_no(Error::<Runtime>::ReferenceAssetPriceNotFound))
         );
         assert_eq!(
-            QAToolsPallet::initialize_xst(
+            QAToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
                 Some(XSTBaseInput {
                     buy: XSTBaseSideInput {
@@ -1138,7 +1138,7 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
         );
 
         // Initialize the reference asset
-        assert_ok!(QAToolsPallet::initialize_xst(
+        assert_ok!(QAToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
             Some(XSTBaseInput {
                 buy: XSTBaseSideInput {
@@ -1157,7 +1157,7 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
         // Now it should work fine
         let (reference_per_synthetic_base_buy, reference_per_synthetic_base_sell) =
             (balance!(21), balance!(7));
-        assert_ok!(QAToolsPallet::initialize_xst(
+        assert_ok!(QAToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
             Some(XSTBaseInput {
                 buy: XSTBaseSideInput {
@@ -1522,7 +1522,7 @@ fn should_update_xst_synthetic_price() {
                 reference_per_xor: Some(balance!(2)),
             },
         };
-        assert_ok!(QAToolsPallet::initialize_xst(
+        assert_ok!(QAToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
             Some(prices),
             vec![],

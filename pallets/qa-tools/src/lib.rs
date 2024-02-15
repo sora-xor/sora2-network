@@ -262,8 +262,8 @@ pub mod pallet {
         /// - `account`: Some account to use during the initialization
         /// - `pairs`: Asset pairs to initialize.
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
-        pub fn initialize_xyk(
+        #[pallet::weight(<T as Config>::WeightInfo::xyk_initialize())]
+        pub fn xyk_initialize(
             origin: OriginFor<T>,
             account: AccountIdOf<T>,
             pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
@@ -299,8 +299,8 @@ pub mod pallet {
         /// - `synthetics_prices`: Prices to set for synthetics;
         /// can only set either buy or sell price because the other one is determined by synthetic base asset price
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
-        pub fn initialize_xst(
+        #[pallet::weight(<T as Config>::WeightInfo::xst_initialize())]
+        pub fn xst_initialize(
             origin: OriginFor<T>,
             base_prices: Option<XSTBaseInput>,
             synthetics_prices: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
@@ -327,6 +327,16 @@ pub mod pallet {
                 actual_weight: None,
                 pays_fee: Pays::No,
             })
+        }
+
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::price_tools_set_reference_asset_price())]
+        pub fn price_tools_set_reference_asset_price(
+            origin: OriginFor<T>,
+            base_prices: Option<XSTBaseInput>,
+            synthetics_prices: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+            relayer: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
         }
     }
 }
