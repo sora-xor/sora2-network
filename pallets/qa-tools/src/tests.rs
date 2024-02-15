@@ -1035,15 +1035,15 @@ fn test_price_tools_set_asset_prices(asset_id: InputAssetId<AssetIdOf<Runtime>>)
         check_price_tools_set_price(
             &asset_id,
             AssetPrices {
-                buy: balance!(1),
-                sell: balance!(2),
+                buy: balance!(2),
+                sell: balance!(1),
             },
         );
         check_price_tools_set_price(
             &asset_id,
             AssetPrices {
-                buy: balance!(256),
-                sell: balance!(365),
+                buy: balance!(365),
+                sell: balance!(256),
             },
         );
         check_price_tools_set_price(
