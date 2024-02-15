@@ -7,7 +7,7 @@ wasmReportFile='subwasm_report.json'
 PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
-allfeatures='private-net,wip,ready-to-test,runtime-benchmarks'
+allfeatures='private-net,wip,ready-to-test'
 
 # build
 # If TAG_NAME is defined, build for a specific tag
