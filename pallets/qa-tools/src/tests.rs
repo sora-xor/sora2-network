@@ -998,9 +998,6 @@ fn should_not_initialize_existing_xyk_pool() {
     })
 }
 
-// todo: make tests for it
-// todo: make tests with incorrect prices:
-// let reference_prices = AssetPrices{ buy: balance!(1), sell: balance!(1.1) };
 fn check_price_tools_set_price(asset_id: &InputAssetId<AssetIdOf<Runtime>>, prices: AssetPrices) {
     assert_ok!(QAToolsPallet::price_tools_set_asset_price(
         RuntimeOrigin::root(),
