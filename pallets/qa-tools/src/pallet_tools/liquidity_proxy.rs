@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod source_initialization {
-    use crate::pallet_tools::order_book::settings;
+    use crate::pallet_tools;
     use crate::{Config, Error};
     use assets::AssetIdOf;
     use codec::{Decode, Encode};
@@ -198,8 +198,8 @@ pub mod source_initialization {
         asks_owner: T::AccountId,
         settings: Vec<(
             OrderBookId<T::AssetId, T::DEXId>,
-            settings::OrderBookAttributes,
-            settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
+            pallet_tools::order_book::settings::OrderBookAttributes,
+            pallet_tools::order_book::settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
         )>,
     ) -> DispatchResult {
         let creation_settings: Vec<_> = settings
@@ -212,13 +212,13 @@ pub mod source_initialization {
                 crate::Error::<T>::OrderBookAlreadyExists
             );
         }
-        crate::pallet_tools::order_book::create_multiple_empty_unchecked::<T>(creation_settings)?;
+        pallet_tools::order_book::create_multiple_empty_unchecked::<T>(creation_settings)?;
 
         let orders_settings: Vec<_> = settings
             .into_iter()
             .map(|(id, _, fill_settings)| (id, fill_settings))
             .collect();
-        crate::pallet_tools::order_book::fill_multiple_empty_unchecked::<T>(
+        pallet_tools::order_book::fill_multiple_empty_unchecked::<T>(
             bids_owner,
             asks_owner,
             orders_settings,
@@ -239,7 +239,7 @@ pub mod source_initialization {
         asks_owner: T::AccountId,
         settings: Vec<(
             OrderBookId<T::AssetId, T::DEXId>,
-            settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
+            pallet_tools::order_book::settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
         )>,
     ) -> DispatchResult {
         for (order_book_id, _) in settings.iter() {
@@ -248,7 +248,7 @@ pub mod source_initialization {
                 crate::Error::<T>::CannotFillUnknownOrderBook
             );
         }
-        crate::pallet_tools::order_book::fill_multiple_empty_unchecked::<T>(
+        pallet_tools::order_book::fill_multiple_empty_unchecked::<T>(
             bids_owner, asks_owner, settings,
         )?;
         Ok(())
