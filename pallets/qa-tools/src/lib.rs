@@ -28,6 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! # Qa tools pallet
+//!
+//! As mentioned in the name, it's a pallet containing extrinsics or other tools that can help
+//! QAs in their work. Additionally, it is intended to be used for simplifying unit testing.
+//!
+//! Because of its nature, the pallet should never be released in production. Therefore, it is
+//! expected to be guarded by `private-net` feature.
+//! It is not as thoroughly designed and tested as other pallets, so issues with it can be expected.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
