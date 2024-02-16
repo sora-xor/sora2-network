@@ -28,6 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! # Qa tools pallet
+//!
+//! As mentioned in the name, it's a pallet containing extrinsics or other tools that can help
+//! QAs in their work. Additionally, it is intended to be used for simplifying unit testing.
+//!
+//! Because of its nature, the pallet should never be released in production. Therefore, it is
+//! expected to be guarded by `private-net` feature.
+//! It is not as thoroughly designed and tested as other pallets, so issues with it can be expected.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
@@ -35,13 +44,14 @@
 #![feature(is_some_and)]
 
 pub use pallet::*;
+pub use weights::WeightInfo;
 
 // private-net to make circular dependencies work
 #[cfg(all(test, feature = "private-net"))]
 mod tests;
-pub mod weights;
-pub use weights::*;
+
 pub mod pallet_tools;
+pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -49,16 +59,17 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider, LiquidityProxyTrait, SyntheticInfoProvider,
-        TradingPairSourceManager,
+        DEXInfo, Description, DexIdOf, DexInfoProvider, LiquidityProxyTrait, PriceVariant,
+        SyntheticInfoProvider, TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
-    pub use pallet_tools::liquidity_proxy::source_initialization;
+    use pallet_tools::liquidity_proxy::liquidity_sources;
     use pallet_tools::order_book::settings;
-    use source_initialization::{XSTBaseInput, XSTSyntheticInput, XYKPair};
+    use pallet_tools::pool_xyk::XYKPair;
+    use pallet_tools::xst::{XSTBaseInput, XSTSyntheticInput, XSTSyntheticOutput};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -75,7 +86,8 @@ pub mod pallet {
         + oracle_proxy::Config
         + multicollateral_bonding_curve_pool::Config
     {
-        type WeightInfo: WeightInfo;
+        /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
@@ -97,6 +109,28 @@ pub mod pallet {
             + From<common::SymbolName>
             + Parameter
             + Ord;
+        type WeightInfo: WeightInfo;
+    }
+
+    #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// Requested order books have been created.
+        OrderBooksCreated,
+        /// Requested order book have been filled.
+        OrderBooksFilled,
+        /// Xyk liquidity source has been initialized successfully.
+        XykInitialized {
+            /// Exact prices for token pairs achievable after the initialization.
+            /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
+            prices_achieved: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
+        },
+        /// XST liquidity source has been initialized successfully.
+        XstInitialized {
+            /// Exact `quote`/`exchange` calls achievable after the initialization.
+            /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
+            quotes_achieved: Vec<XSTSyntheticOutput<T::AssetId>>,
+        },
     }
 
     #[pallet::error]
@@ -104,6 +138,8 @@ pub mod pallet {
         // common errors
         /// Error in calculations.
         ArithmeticError,
+        /// Buy price cannot be lower than sell price of an asset
+        BuyLessThanSell,
 
         // order book errors
         /// Did not find an order book with given id to fill. Likely an error with order book creation.
@@ -127,8 +163,6 @@ pub mod pallet {
         AssetsMustBeDivisible,
 
         // xst errors
-        /// Buy price cannot be lower than sell price of the base assets (synthetic base and reference).
-        BuyLessThanSell,
         /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
         ReferenceAssetPriceNotFound,
         /// Cannot register new asset because it already exists.
@@ -139,6 +173,28 @@ pub mod pallet {
         // mcbc errors
         /// Cannot initialize MCBC for unknown asset.
         UnknownMCBCAsset,
+    }
+
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    pub enum InputAssetId<AssetId> {
+        // todo: uncomment
+        // McbcReference,
+        XstReference,
+        Other(AssetId),
+    }
+
+    impl<AssetId> InputAssetId<AssetId> {
+        pub fn resolve<T>(self) -> T::AssetId
+        where
+            T: Config,
+            T::AssetId: From<AssetId>,
+        {
+            match self {
+                // InputAssetId::McbcReference => multicollateral_bonding_curve::ReferenceAssetId::<T>::get(),
+                InputAssetId::XstReference => xst::ReferenceAssetId::<T>::get(),
+                InputAssetId::Other(id) => id.into(),
+            }
+        }
     }
 
     #[pallet::call]
@@ -171,16 +227,19 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            source_initialization::order_book_create_and_fill::<T>(
-                bids_owner, asks_owner, settings,
-            )
-            .map_err(|e| DispatchErrorWithPostInfo {
-                post_info: PostDispatchInfo {
-                    actual_weight: None,
-                    pays_fee: Pays::No,
-                },
-                error: e,
-            })?;
+            liquidity_sources::create_and_fill_order_book::<T>(bids_owner, asks_owner, settings)
+                .map_err(|e| DispatchErrorWithPostInfo {
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                })?;
+
+            // Even though these facts can be deduced from the extrinsic execution success,
+            // it would be strange not to emit anything, while other initialization extrinsics do.
+            Self::deposit_event(Event::<T>::OrderBooksCreated);
+            Self::deposit_event(Event::<T>::OrderBooksFilled);
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -214,14 +273,17 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            source_initialization::order_book_only_fill::<T>(bids_owner, asks_owner, settings)
-                .map_err(|e| DispatchErrorWithPostInfo {
+            liquidity_sources::fill_order_book::<T>(bids_owner, asks_owner, settings).map_err(
+                |e| DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
                         pays_fee: Pays::No,
                     },
                     error: e,
-                })?;
+                },
+            )?;
+
+            Self::deposit_event(Event::<T>::OrderBooksFilled);
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -238,24 +300,26 @@ pub mod pallet {
         /// - `account`: Some account to use during the initialization
         /// - `pairs`: Asset pairs to initialize.
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
-        pub fn initialize_xyk(
+        #[pallet::weight(<T as Config>::WeightInfo::xyk_initialize())]
+        pub fn xyk_initialize(
             origin: OriginFor<T>,
             account: AccountIdOf<T>,
             pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            let _result = source_initialization::xyk::<T>(account, pairs).map_err(|e| {
-                DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: None,
-                        pays_fee: Pays::No,
-                    },
-                    error: e,
-                }
-            })?;
-            // TODO: event
+            let prices_achieved =
+                liquidity_sources::initialize_xyk::<T>(account, pairs).map_err(|e| {
+                    DispatchErrorWithPostInfo {
+                        post_info: PostDispatchInfo {
+                            actual_weight: None,
+                            pays_fee: Pays::No,
+                        },
+                        error: e,
+                    }
+                })?;
+
+            Self::deposit_event(Event::<T>::XykInitialized { prices_achieved });
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -274,8 +338,8 @@ pub mod pallet {
         /// - `synthetics_prices`: Prices to set for synthetics;
         /// can only set either buy or sell price because the other one is determined by synthetic base asset price
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::initialize_xyk())]
-        pub fn initialize_xst(
+        #[pallet::weight(<T as Config>::WeightInfo::xst_initialize())]
+        pub fn xst_initialize(
             origin: OriginFor<T>,
             base_prices: Option<XSTBaseInput>,
             synthetics_prices: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
@@ -283,14 +347,49 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            source_initialization::xst::<T>(base_prices, synthetics_prices, relayer).map_err(
-                |e| DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: None,
-                        pays_fee: Pays::No,
-                    },
-                    error: e,
-                },
+            let quotes_achieved =
+                liquidity_sources::initialize_xst::<T>(base_prices, synthetics_prices, relayer)
+                    .map_err(|e| DispatchErrorWithPostInfo {
+                        post_info: PostDispatchInfo {
+                            actual_weight: None,
+                            pays_fee: Pays::No,
+                        },
+                        error: e,
+                    })?;
+
+            Self::deposit_event(Event::<T>::XstInitialized { quotes_achieved });
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::price_tools_set_reference_asset_price())]
+        pub fn price_tools_set_asset_price(
+            origin: OriginFor<T>,
+            asset_per_xor: pallet_tools::price_tools::AssetPrices,
+            asset_id: InputAssetId<T::AssetId>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let asset_id = asset_id.resolve::<T>();
+            ensure!(
+                asset_per_xor.sell <= asset_per_xor.buy,
+                Error::<T>::BuyLessThanSell
+            );
+            pallet_tools::price_tools::set_price::<T>(
+                &asset_id,
+                asset_per_xor.buy,
+                PriceVariant::Buy,
+            )?;
+            pallet_tools::price_tools::set_price::<T>(
+                &asset_id,
+                asset_per_xor.sell,
+                PriceVariant::Sell,
             )?;
 
             // Extrinsic is only for testing, so we return all fees

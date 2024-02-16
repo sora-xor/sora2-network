@@ -259,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 71,
+    spec_version: 72,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 71,
+    transaction_version: 72,
     state_version: 0,
 };
 
@@ -356,7 +356,10 @@ parameter_types! {
     pub const ElectionsMaxVoters: u32 = 10000;
     pub const ElectionsMaxCandidates: u32 = 1000;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
-    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get(), GetTbcdAssetId::get()];
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![
+        GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(),
+        GetXstAssetId::get(), GetTbcdAssetId::get(), GetDotAssetId::get()
+    ];
     pub const MaxAuthorities: u32 = 100_000;
     pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
@@ -1031,7 +1034,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub const GetNumSamples: usize = 5;
+    pub const GetNumSamples: usize = 10;
     pub const BasicDeposit: Balance = balance!(0.01);
     pub const FieldDeposit: Balance = balance!(0.01);
     pub const SubAccountDeposit: Balance = balance!(0.01);
@@ -1465,6 +1468,7 @@ parameter_types! {
 
 #[cfg(feature = "private-net")]
 impl qa_tools::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type LiquidityProxy = liquidity_proxy::Pallet<Runtime>;
@@ -1957,8 +1961,7 @@ impl kensetsu::Config for Runtime {
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KusdAssetId = KusdAssetId;
-    type ReferencePriceProvider =
-        liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
+    type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
@@ -2425,7 +2428,7 @@ construct_runtime! {
         #[cfg(feature = "wip")] // EVM bridge
         BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event<T>} = 96,
         #[cfg(feature = "wip")] // EVM bridge
-        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Call, Config<T>, Storage, Event<T>} = 97,
         #[cfg(feature = "wip")] // EVM bridge
         Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         #[cfg(feature = "wip")] // EVM bridge
@@ -2441,7 +2444,7 @@ construct_runtime! {
 
         // Federated substrate bridge
         SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 106,
-        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
+        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 107,
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
         ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
@@ -2464,7 +2467,7 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
         #[cfg(feature = "private-net")]
-        QATools: qa_tools::{Pallet, Call} = 112,
+        QATools: qa_tools::{Pallet, Call, Event<T>} = 112,
     }
 }
 

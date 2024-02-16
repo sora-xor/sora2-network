@@ -51,7 +51,7 @@ pub mod migration;
 
 use codec::{Decode, Encode};
 use common::prelude::{
-    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, QuoteAmount,
+    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsProvider, QuoteAmount,
     TradingPairSourceManager,
 };
 use common::{
@@ -448,7 +448,7 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> PriceToolsPallet<T::AssetId> for Pallet<T> {
+impl<T: Config> PriceToolsProvider<T::AssetId> for Pallet<T> {
     fn get_average_price(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,

@@ -173,7 +173,7 @@ pub fn create_multiple_empty_unchecked<T: Config>(
 }
 
 /// Place orders into the order books.
-pub fn fill_multiple_empty_unchecked<T: Config>(
+pub fn fill_multiple_unchecked<T: Config>(
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
     settings: Vec<(

@@ -840,15 +840,77 @@ mod test {
     }
 
     #[test]
+    fn should_approx_eq_abs_not_match() {
+        for ApproxEqTestCase {
+            left,
+            right,
+            absolute_tolerance,
+            relative_percentage: _,
+        } in APPROX_EQ_NOT_MATCH_CASES
+        {
+            let left = Fixed::from_bits(*left);
+            let right = Fixed::from_bits(*right);
+            let absolute_tolerance = Fixed::from_bits(*absolute_tolerance);
+            assert!(
+                !are_approx_eq_abs(left, right, absolute_tolerance).unwrap(),
+                "Expected {} != {} with absolute tolerance {}, but got '=='",
+                left,
+                right,
+                absolute_tolerance
+            );
+            assert!(
+                !are_approx_eq_abs(right, left, absolute_tolerance).unwrap(),
+                "Expected approx eq abs to be symmetrical; {} != {}, but {} = {} for abs tolerance {}",
+                left, right, right, left, absolute_tolerance
+            );
+        }
+    }
+
+    #[test]
+    fn should_approx_eq_rel_not_match() {
+        for ApproxEqTestCase {
+            left,
+            right,
+            absolute_tolerance: _,
+            relative_percentage,
+        } in APPROX_EQ_NOT_MATCH_CASES
+        {
+            let left = Fixed::from_bits(*left);
+            let right = Fixed::from_bits(*right);
+            let relative_percentage = Fixed::from_bits(*relative_percentage);
+            assert!(
+                !are_approx_eq_rel(left, right, relative_percentage).unwrap(),
+                "Expected {} != {} with relative tolerance (%) {}, but got '=='",
+                left,
+                right,
+                relative_percentage
+            );
+            assert!(
+                !are_approx_eq_rel(right, left, relative_percentage).unwrap(),
+                "Expected approx eq to be symmetrical; {} != {}, but {} = {} for rel tolerance (%) {}",
+                left, right, right, left, relative_percentage
+            );
+        }
+    }
+
+    #[test]
     fn should_fail_incorrect_relative_percentage() {
         let percentage = Fixed::from_bits(-1234);
         assert_eq!(
-            are_approx_eq(Fixed::ZERO, Fixed::ZERO, Fixed::ZERO, percentage,),
+            are_approx_eq(Fixed::ZERO, Fixed::ZERO, Fixed::ZERO, percentage),
+            Err(ApproxEqError::IncorrectRelativePercentage(percentage))
+        );
+        assert_eq!(
+            are_approx_eq_rel(Fixed::ZERO, Fixed::ZERO, percentage),
             Err(ApproxEqError::IncorrectRelativePercentage(percentage))
         );
         let percentage = Fixed::from_bits(balance!(1) as FixedInner + 1);
         assert_eq!(
-            are_approx_eq(Fixed::ZERO, Fixed::ZERO, Fixed::ZERO, percentage,),
+            are_approx_eq(Fixed::ZERO, Fixed::ZERO, Fixed::ZERO, percentage),
+            Err(ApproxEqError::IncorrectRelativePercentage(percentage))
+        );
+        assert_eq!(
+            are_approx_eq_rel(Fixed::ZERO, Fixed::ZERO, percentage),
             Err(ApproxEqError::IncorrectRelativePercentage(percentage))
         );
     }
@@ -857,12 +919,20 @@ mod test {
     fn should_fail_incorrect_absolute_percentage() {
         let abs_tolerance = Fixed::from_bits(-1);
         assert_eq!(
-            are_approx_eq(Fixed::ZERO, Fixed::ZERO, abs_tolerance, Fixed::ZERO,),
+            are_approx_eq(Fixed::ZERO, Fixed::ZERO, abs_tolerance, Fixed::ZERO),
+            Err(ApproxEqError::NegativeAbsoluteTolerance(abs_tolerance))
+        );
+        assert_eq!(
+            are_approx_eq_abs(Fixed::ZERO, Fixed::ZERO, abs_tolerance),
             Err(ApproxEqError::NegativeAbsoluteTolerance(abs_tolerance))
         );
         let abs_tolerance = Fixed::from_bits(i128::MIN);
         assert_eq!(
-            are_approx_eq(Fixed::ZERO, Fixed::ZERO, abs_tolerance, Fixed::ZERO,),
+            are_approx_eq(Fixed::ZERO, Fixed::ZERO, abs_tolerance, Fixed::ZERO),
+            Err(ApproxEqError::NegativeAbsoluteTolerance(abs_tolerance))
+        );
+        assert_eq!(
+            are_approx_eq_abs(Fixed::ZERO, Fixed::ZERO, abs_tolerance),
             Err(ApproxEqError::NegativeAbsoluteTolerance(abs_tolerance))
         );
     }
