@@ -18,20 +18,20 @@ use sp_std::vec::Vec;
 /// Prices with 10^18 precision. Amount of the asset per 1 XOR. The same format as used
 /// in price tools.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct XstBaseXorPrices {
+pub struct BaseXorPrices {
     pub synthetic_base: AssetPrices,
     pub reference: AssetPrices,
 }
 
 /// Price initialization parameters of `xst`'s synthetic base asset (in terms of reference asset)
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub struct XstBaseInput {
+pub struct BaseInput {
     pub reference_per_synthetic_base_buy: Balance,
     pub reference_per_synthetic_base_sell: Balance,
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub enum XstSyntheticExistence<Symbol> {
+pub enum SyntheticExistence<Symbol> {
     AlreadyExists,
     RegisterNewAsset {
         symbol: AssetSymbol,
@@ -42,14 +42,14 @@ pub enum XstSyntheticExistence<Symbol> {
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub enum XstSyntheticQuoteDirection {
+pub enum SyntheticQuoteDirection {
     SyntheticBaseToSynthetic,
     SyntheticToSyntheticBase,
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub struct XstSyntheticQuote {
-    pub direction: XstSyntheticQuoteDirection,
+pub struct SyntheticQuote {
+    pub direction: SyntheticQuoteDirection,
     pub amount: QuoteAmount<Balance>,
     pub result: Balance,
 }
@@ -60,31 +60,31 @@ pub struct XstSyntheticQuote {
 /// We can't control it granularly for each asset, so we just deduce it from the existing
 /// pricing and price provided for the given variant
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub struct XstSyntheticInput<AssetId, Symbol> {
+pub struct SyntheticInput<AssetId, Symbol> {
     pub asset_id: AssetId,
     /// Quote call with expected output.
     /// The initialization tries to set up pallets to achieve these values
-    pub expected_quote: XstSyntheticQuote,
-    pub existence: XstSyntheticExistence<Symbol>,
+    pub expected_quote: SyntheticQuote,
+    pub existence: SyntheticExistence<Symbol>,
 }
 
 /// Resulting of initialization for `asset_id`.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub struct XstSyntheticOutput<AssetId> {
+pub struct SyntheticOutput<AssetId> {
     pub asset_id: AssetId,
     /// Quote call with output.
     /// Sometimes, due to fixed-point precision limitations the exact value cannot be
     /// reproduced exactly. This provides a way to get the actual result for further usage.
-    pub quote_achieved: XstSyntheticQuote,
+    pub quote_achieved: SyntheticQuote,
 }
 
 /// Adapter for [`pallet_tools::price_tools::calculate_xor_prices`] to avoid confusion with
 /// assets.
 fn calculate_xor_prices<T: Config>(
-    input_prices: XstBaseInput,
+    input_prices: BaseInput,
     synthetic_base_asset_id: &T::AssetId,
     reference_asset_id: &T::AssetId,
-) -> Result<XstBaseXorPrices, DispatchError> {
+) -> Result<BaseXorPrices, DispatchError> {
     // B = reference
     // A = synthetic base
     let xor_prices = pallet_tools::price_tools::calculate_xor_prices::<T>(
@@ -93,7 +93,7 @@ fn calculate_xor_prices<T: Config>(
         input_prices.reference_per_synthetic_base_buy,
         input_prices.reference_per_synthetic_base_sell,
     )?;
-    Ok(XstBaseXorPrices {
+    Ok(BaseXorPrices {
         synthetic_base: xor_prices.asset_a,
         reference: xor_prices.asset_b,
     })
@@ -102,7 +102,7 @@ fn calculate_xor_prices<T: Config>(
 /// Feed `band` pallet the price for the symbol.
 ///
 /// Tries to remove (decay) the dynamic fee occurring from the price change.
-fn relay_symbol<T: Config>(
+fn relay_symbol_band<T: Config>(
     symbol: <T as Config>::Symbol,
     relayer: T::AccountId,
     price_band: u64,
@@ -151,7 +151,7 @@ fn relay_symbol<T: Config>(
 
 /// Calculate the band price needed to achieve the expected quote values (closely enough).
 fn calculate_band_price<T: Config>(
-    target_quote: &XstSyntheticQuote,
+    target_quote: &SyntheticQuote,
     ref_per_synthetic_base: &AssetPrices,
 ) -> Result<u64, DispatchError> {
     // band price is `ref_per_synthetic`.
@@ -166,14 +166,14 @@ fn calculate_band_price<T: Config>(
         // synthetic base (also called main) - sell price, synthetic - no diff between buy/sell
         // (all prices in reference assets per this asset)
         (
-            XstSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+            SyntheticQuoteDirection::SyntheticBaseToSynthetic,
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: amount_in,
             },
             amount_out,
         )
         | (
-            XstSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+            SyntheticQuoteDirection::SyntheticBaseToSynthetic,
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: amount_out,
             },
@@ -195,14 +195,14 @@ fn calculate_band_price<T: Config>(
         // synthetic base (also called main) - buy price, synthetic - no diff between buy/sell
         // (all prices in reference assets per this asset)
         (
-            XstSyntheticQuoteDirection::SyntheticToSyntheticBase,
+            SyntheticQuoteDirection::SyntheticToSyntheticBase,
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: amount_in,
             },
             amount_out,
         )
         | (
-            XstSyntheticQuoteDirection::SyntheticToSyntheticBase,
+            SyntheticQuoteDirection::SyntheticToSyntheticBase,
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: amount_out,
             },
@@ -228,10 +228,10 @@ fn calculate_band_price<T: Config>(
 
 fn calculate_actual_quote<T: Config>(
     asset_id: T::AssetId,
-    expected_quote: XstSyntheticQuote,
+    expected_quote: SyntheticQuote,
     synthetic_band_price: u64,
     ref_per_synthetic_base: &AssetPrices,
-) -> XstSyntheticOutput<T::AssetId> {
+) -> SyntheticOutput<T::AssetId> {
     let ref_per_synthetic = synthetic_band_price as Balance * 10_u128.pow(9);
     let actual_quote_result = match (&expected_quote.direction, &expected_quote.amount) {
         // sell:
@@ -239,7 +239,7 @@ fn calculate_actual_quote<T: Config>(
         // synthetic base (also called main) - sell price, synthetic - no diff between buy/sell
         // (all prices in reference assets per this asset)
         (
-            XstSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+            SyntheticQuoteDirection::SyntheticBaseToSynthetic,
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: amount_in,
             },
@@ -249,7 +249,7 @@ fn calculate_actual_quote<T: Config>(
                 / BalanceUnit::divisible(ref_per_synthetic)
         }
         (
-            XstSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+            SyntheticQuoteDirection::SyntheticBaseToSynthetic,
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: amount_out,
             },
@@ -263,7 +263,7 @@ fn calculate_actual_quote<T: Config>(
         // synthetic base (also called main) - buy price, synthetic - no diff between buy/sell
         // (all prices in reference assets per this asset)
         (
-            XstSyntheticQuoteDirection::SyntheticToSyntheticBase,
+            SyntheticQuoteDirection::SyntheticToSyntheticBase,
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: amount_in,
             },
@@ -273,7 +273,7 @@ fn calculate_actual_quote<T: Config>(
                 / BalanceUnit::divisible(ref_per_synthetic_base.buy)
         }
         (
-            XstSyntheticQuoteDirection::SyntheticToSyntheticBase,
+            SyntheticQuoteDirection::SyntheticToSyntheticBase,
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: amount_out,
             },
@@ -283,17 +283,17 @@ fn calculate_actual_quote<T: Config>(
                 / BalanceUnit::divisible(ref_per_synthetic)
         }
     };
-    let actual_quote = XstSyntheticQuote {
+    let actual_quote = SyntheticQuote {
         result: *actual_quote_result.balance(),
         ..expected_quote
     };
-    XstSyntheticOutput {
+    SyntheticOutput {
         asset_id,
         quote_achieved: actual_quote,
     }
 }
 
-pub(crate) fn xst_base_assets<T: Config>(input: XstBaseInput) -> DispatchResult {
+pub(crate) fn initialize_base_assets<T: Config>(input: BaseInput) -> DispatchResult {
     let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
     let reference_asset_id = xst::ReferenceAssetId::<T>::get();
 
@@ -317,10 +317,10 @@ pub(crate) fn xst_base_assets<T: Config>(input: XstBaseInput) -> DispatchResult 
     Ok(())
 }
 
-fn xst_single_synthetic<T: Config>(
-    input: XstSyntheticInput<T::AssetId, <T as Config>::Symbol>,
+fn initialize_single_synthetic<T: Config>(
+    input: SyntheticInput<T::AssetId, <T as Config>::Symbol>,
     relayer: T::AccountId,
-) -> Result<XstSyntheticOutput<T::AssetId>, DispatchError> {
+) -> Result<SyntheticOutput<T::AssetId>, DispatchError> {
     let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
     let ref_per_synthetic_base = AssetPrices {
         buy: xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Buy)
@@ -339,20 +339,20 @@ fn xst_single_synthetic<T: Config>(
         xst::Pallet::<T>::enabled_synthetics(input.asset_id),
         input.existence,
     ) {
-        (Some(info), XstSyntheticExistence::AlreadyExists) => {
-            relay_symbol::<T>(info.reference_symbol.into(), relayer, band_price)
+        (Some(info), SyntheticExistence::AlreadyExists) => {
+            relay_symbol_band::<T>(info.reference_symbol.into(), relayer, band_price)
                 .map_err(|e| e.error)?;
         }
         (
             None,
-            XstSyntheticExistence::RegisterNewAsset {
+            SyntheticExistence::RegisterNewAsset {
                 symbol,
                 name,
                 reference_symbol,
                 fee_ratio,
             },
         ) => {
-            relay_symbol::<T>(reference_symbol.clone(), relayer, band_price)
+            relay_symbol_band::<T>(reference_symbol.clone(), relayer, band_price)
                 .map_err(|e| e.error)?;
             xst::Pallet::<T>::register_synthetic_asset(
                 RawOrigin::Root.into(),
@@ -363,20 +363,20 @@ fn xst_single_synthetic<T: Config>(
             )
             .map_err(|e| e.error)?;
         }
-        (Some(_), XstSyntheticExistence::RegisterNewAsset { .. }) => {
+        (Some(_), SyntheticExistence::RegisterNewAsset { .. }) => {
             return Err(Error::<T>::AssetAlreadyExists.into())
         }
-        (None, XstSyntheticExistence::AlreadyExists) => {
+        (None, SyntheticExistence::AlreadyExists) => {
             return Err(Error::<T>::UnknownSynthetic.into())
         }
     }
     Ok(resulting_quote)
 }
 
-pub(crate) fn xst_synthetics<T: Config>(
-    inputs: Vec<XstSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+pub(crate) fn initialize_synthetics<T: Config>(
+    inputs: Vec<SyntheticInput<T::AssetId, <T as Config>::Symbol>>,
     relayer: T::AccountId,
-) -> Result<Vec<XstSyntheticOutput<T::AssetId>>, DispatchError> {
+) -> Result<Vec<SyntheticOutput<T::AssetId>>, DispatchError> {
     if !inputs.is_empty() {
         if !band::Pallet::<T>::trusted_relayers().is_some_and(|t| t.contains(&relayer)) {
             band::Pallet::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])
@@ -389,7 +389,10 @@ pub(crate) fn xst_synthetics<T: Config>(
     }
     let mut synthetic_init_results = vec![];
     for synthetic in inputs {
-        synthetic_init_results.push(xst_single_synthetic::<T>(synthetic, relayer.clone())?)
+        synthetic_init_results.push(initialize_single_synthetic::<T>(
+            synthetic,
+            relayer.clone(),
+        )?)
     }
     Ok(synthetic_init_results)
 }
