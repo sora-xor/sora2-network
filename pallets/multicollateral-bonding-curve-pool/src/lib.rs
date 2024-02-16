@@ -55,8 +55,8 @@ use common::BuyBackHandler;
 use common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
     LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
-    ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager, Vesting, PSWAP, TBCD,
-    VAL, XOR, XST,
+    ManagementMode, PriceVariant, RewardReason, SwapChunk, TradingPairSourceManager, Vesting,
+    PSWAP, TBCD, VAL, XOR, XST,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -65,6 +65,7 @@ use permissions::{Scope, BURN, MINT};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
 #[cfg(feature = "std")]
@@ -1586,6 +1587,70 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
     }
 
+    fn step_quote(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            fail!(Error::<T>::CantExchange);
+        }
+        if amount.amount().is_zero() {
+            return Ok((VecDeque::new(), Weight::zero()));
+        }
+
+        let samples_count = if recommended_samples_count < 1 {
+            1
+        } else {
+            recommended_samples_count
+        };
+
+        let base_asset_id = &T::GetBaseAssetId::get();
+
+        let step = amount
+            .amount()
+            .checked_div(samples_count as Balance)
+            .ok_or(Error::<T>::ArithmeticError)?;
+
+        let mut volumes = Vec::new();
+        for i in 1..=samples_count - 1 {
+            let volume = amount.copy_direction(
+                step.checked_mul(i as Balance)
+                    .ok_or(Error::<T>::ArithmeticError)?,
+            );
+            volumes.push(volume);
+        }
+        volumes.push(amount);
+
+        let mut chunks = VecDeque::new();
+        let mut sub_in = Balance::zero();
+        let mut sub_out = Balance::zero();
+        let mut sub_fee = Balance::zero();
+
+        for volume in volumes {
+            let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
+                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, volume, deduce_fee)?
+            } else {
+                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, volume, deduce_fee)?
+            };
+
+            let input_chunk = input_amount.saturating_sub(sub_in);
+            let output_chunk = output_amount.saturating_sub(sub_out);
+            let fee_chunk = fee_amount.saturating_sub(sub_fee);
+
+            sub_in = input_amount;
+            sub_out = output_amount;
+            sub_fee = fee_amount;
+
+            chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
+        }
+
+        Ok((chunks, Self::step_quote_weight(samples_count)))
+    }
+
     fn exchange(
         sender: &T::AccountId,
         receiver: &T::AccountId,
@@ -1766,6 +1831,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn quote_weight() -> Weight {
         <T as Config>::WeightInfo::quote()
+    }
+
+    fn step_quote_weight(samples_count: usize) -> Weight {
+        <T as Config>::WeightInfo::step_quote(samples_count as u32)
     }
 
     fn exchange_weight() -> Weight {

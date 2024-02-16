@@ -259,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 71,
+    spec_version: 72,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 71,
+    transaction_version: 72,
     state_version: 0,
 };
 
@@ -1034,7 +1034,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub const GetNumSamples: usize = 5;
+    pub const GetNumSamples: usize = 10;
     pub const BasicDeposit: Balance = balance!(0.01);
     pub const FieldDeposit: Balance = balance!(0.01);
     pub const SubAccountDeposit: Balance = balance!(0.01);
