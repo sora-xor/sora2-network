@@ -44,6 +44,7 @@
 #![feature(is_some_and)]
 
 pub use pallet::*;
+pub use weights::WeightInfo;
 
 // private-net to make circular dependencies work
 #[cfg(all(test, feature = "private-net"))]
