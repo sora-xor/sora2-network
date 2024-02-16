@@ -39,12 +39,14 @@ pub use pallet::*;
 // private-net to make circular dependencies work
 #[cfg(all(test, feature = "private-net"))]
 mod tests;
-pub mod weights;
-pub use weights::*;
+
 pub mod pallet_tools;
+pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
+    pub use pallet_tools::liquidity_proxy::source_initialization;
+
     use super::*;
     use assets::AssetIdOf;
     use common::{
@@ -56,7 +58,6 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
-    pub use pallet_tools::liquidity_proxy::source_initialization;
     use pallet_tools::order_book::settings;
     use source_initialization::{XSTBaseInput, XSTSyntheticInput, XSTSyntheticOutput, XYKPair};
     use sp_std::prelude::*;
