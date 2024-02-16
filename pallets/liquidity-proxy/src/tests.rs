@@ -804,6 +804,7 @@ fn test_swap_weight_considers_available_sources() {
         let swap_base_weight = <Runtime as crate::Config>::WeightInfo::check_indivisible_assets()
             .saturating_add(<Runtime as crate::Config>::WeightInfo::is_forbidden_filter());
 
+        #[cfg(not(feature = "wip"))] // ALT
         let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
             .saturating_add(
                 <Runtime as crate::Config>::LiquidityRegistry::quote_weight().saturating_mul(4),
@@ -812,6 +813,17 @@ fn test_swap_weight_considers_available_sources() {
                 <Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight()
                     .saturating_mul(2),
             );
+
+        #[cfg(feature = "wip")] // ALT
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(<Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight())
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::step_quote_weight(
+                    <Runtime as crate::Config>::GetNumSamples::get(),
+                )
+                .saturating_mul(4),
+            );
+
         let exchange_base_weight = <Runtime as crate::Config>::WeightInfo::new_trivial()
             .saturating_add(quote_single_weight); // once within a path
         let multicollateral_weight =
@@ -914,6 +926,7 @@ fn test_swap_weight_filters_sources() {
         let swap_base_weight = <Runtime as crate::Config>::WeightInfo::check_indivisible_assets()
             .saturating_add(<Runtime as crate::Config>::WeightInfo::is_forbidden_filter());
 
+        #[cfg(not(feature = "wip"))] // ALT
         let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
             .saturating_add(
                 <Runtime as crate::Config>::LiquidityRegistry::quote_weight().saturating_mul(4),
@@ -922,6 +935,17 @@ fn test_swap_weight_filters_sources() {
                 <Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight()
                     .saturating_mul(2),
             );
+
+        #[cfg(feature = "wip")] // ALT
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(<Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight())
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::step_quote_weight(
+                    <Runtime as crate::Config>::GetNumSamples::get(),
+                )
+                .saturating_mul(4),
+            );
+
         let exchange_base_weight = <Runtime as crate::Config>::WeightInfo::new_trivial()
             .saturating_add(quote_single_weight); // once within a path
         let multicollateral_weight =
@@ -1242,6 +1266,7 @@ fn test_quote_single_source_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_input_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1353,6 +1378,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_output_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1455,6 +1481,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_output_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1581,6 +1608,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_input_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -2151,6 +2179,7 @@ fn test_is_path_available_should_pass_5() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_smart_split_with_extreme_total_supply_works() {
     fn run_test(
@@ -2634,6 +2663,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
     }
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_smart_split_selling_xor_should_fail() {
     fn run_test(
@@ -2724,6 +2754,7 @@ fn test_smart_split_selling_xor_should_fail() {
     }
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_smart_split_error_handling_works() {
     fn run_test(
@@ -3294,6 +3325,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_does_not_overflow_with_desired_input() {
     let collateral_asset_id = VAL;
@@ -3320,6 +3352,7 @@ fn test_quote_does_not_overflow_with_desired_input() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_inner_exchange_returns_correct_sources() {
     use LiquiditySourceType::*;
