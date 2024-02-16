@@ -391,11 +391,10 @@ pub mod source_initialization {
     /// Calculate the band price needed to achieve the expected quote values (closely enough).
     fn calculate_band_price<T: Config>(
         target_quote: &XSTSyntheticQuote,
+        ref_per_synthetic_base: &AssetPrices,
     ) -> Result<u64, DispatchError> {
         // band price is `ref_per_synthetic`.
         // we need to get it from formulae in xst pallet.
-        let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
-
         let ref_per_synthetic: BalanceUnit = match (
             &target_quote.direction,
             target_quote.amount,
@@ -427,10 +426,7 @@ pub mod source_initialization {
                 // from this,
                 // ref_per_synthetic = ref_per_synthetic_base (sell) * amount_in / amount_out
                 let ref_per_synthetic_base_sell =
-                    BalanceUnit::divisible(xst::Pallet::<T>::reference_price(
-                        &synthetic_base_asset_id,
-                        PriceVariant::Sell,
-                    )?);
+                    BalanceUnit::divisible(ref_per_synthetic_base.sell);
                 ref_per_synthetic_base_sell * BalanceUnit::divisible(amount_in)
                     / BalanceUnit::divisible(amount_out)
             }
@@ -459,9 +455,7 @@ pub mod source_initialization {
 
                 // from this,
                 // ref_per_synthetic = ref_per_synthetic_base (buy) * amount_out / amount_in
-                let ref_per_synthetic_base_buy = BalanceUnit::divisible(
-                    xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Buy)?,
-                );
+                let ref_per_synthetic_base_buy = BalanceUnit::divisible(ref_per_synthetic_base.buy);
                 ref_per_synthetic_base_buy * BalanceUnit::divisible(amount_out)
                     / BalanceUnit::divisible(amount_in)
             }
@@ -476,15 +470,9 @@ pub mod source_initialization {
         asset_id: T::AssetId,
         expected_quote: XSTSyntheticQuote,
         synthetic_band_price: u64,
+        ref_per_synthetic_base: &AssetPrices,
     ) -> XSTSyntheticOutput<T::AssetId> {
         let ref_per_synthetic = synthetic_band_price as Balance * 10_u128.pow(9);
-        let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
-        // todo: pass as args
-        let ref_per_synthetic_base_sell =
-            xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Sell)
-                .unwrap();
-        let ref_per_synthetic_base_buy =
-            xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Buy).unwrap();
         let actual_quote_result = match (&expected_quote.direction, &expected_quote.amount) {
             // sell:
             // synthetic base (xst) -> synthetic (xst***)
@@ -498,7 +486,7 @@ pub mod source_initialization {
             ) => {
                 // amount_out = amount_in * ref_per_synthetic_base (sell) / ref_per_synthetic
                 BalanceUnit::divisible(*amount_in)
-                    * BalanceUnit::divisible(ref_per_synthetic_base_sell)
+                    * BalanceUnit::divisible(ref_per_synthetic_base.sell)
                     / BalanceUnit::divisible(ref_per_synthetic)
             }
             (
@@ -509,7 +497,7 @@ pub mod source_initialization {
             ) => {
                 // amount_in = amount_out * ref_per_synthetic / ref_per_synthetic_base (sell)
                 BalanceUnit::divisible(*amount_out) * BalanceUnit::divisible(ref_per_synthetic)
-                    / BalanceUnit::divisible(ref_per_synthetic_base_sell)
+                    / BalanceUnit::divisible(ref_per_synthetic_base.sell)
             }
             // buy
             // synthetic (xst***) -> synthetic base (xst)
@@ -523,7 +511,7 @@ pub mod source_initialization {
             ) => {
                 // amount_out = amount_in * ref_per_synthetic / ref_per_synthetic_base (buy)
                 BalanceUnit::divisible(*amount_in) * BalanceUnit::divisible(ref_per_synthetic)
-                    / BalanceUnit::divisible(ref_per_synthetic_base_buy)
+                    / BalanceUnit::divisible(ref_per_synthetic_base.buy)
             }
             (
                 XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
@@ -533,7 +521,7 @@ pub mod source_initialization {
             ) => {
                 // amount_in = amount_out * ref_per_synthetic_base (buy) / ref_per_synthetic
                 BalanceUnit::divisible(*amount_out)
-                    * BalanceUnit::divisible(ref_per_synthetic_base_buy)
+                    * BalanceUnit::divisible(ref_per_synthetic_base.buy)
                     / BalanceUnit::divisible(ref_per_synthetic)
             }
         };
@@ -575,9 +563,20 @@ pub mod source_initialization {
         input: XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>,
         relayer: T::AccountId,
     ) -> Result<XSTSyntheticOutput<T::AssetId>, DispatchError> {
-        let band_price = calculate_band_price::<T>(&input.expected_quote)?;
-        let resulting_quote =
-            calculate_actual_quote::<T>(input.asset_id, input.expected_quote, band_price);
+        let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
+        let ref_per_synthetic_base = AssetPrices {
+            buy: xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Buy)
+                .unwrap(),
+            sell: xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Sell)
+                .unwrap(),
+        };
+        let band_price = calculate_band_price::<T>(&input.expected_quote, &ref_per_synthetic_base)?;
+        let resulting_quote = calculate_actual_quote::<T>(
+            input.asset_id,
+            input.expected_quote,
+            band_price,
+            &ref_per_synthetic_base,
+        );
         match (
             xst::Pallet::<T>::enabled_synthetics(input.asset_id),
             input.existence,
