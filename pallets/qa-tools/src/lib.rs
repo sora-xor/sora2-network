@@ -55,8 +55,6 @@ pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
-    pub use pallet_tools::liquidity_proxy::source_initialization;
-
     use super::*;
     use assets::AssetIdOf;
     use common::{
@@ -68,8 +66,10 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
+    use pallet_tools::liquidity_proxy::liquidity_sources;
     use pallet_tools::order_book::settings;
-    use source_initialization::{XSTBaseInput, XSTSyntheticInput, XSTSyntheticOutput, XYKPair};
+    use pallet_tools::pool_xyk::XYKPair;
+    use pallet_tools::xst::{XSTBaseInput, XSTSyntheticInput, XSTSyntheticOutput};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -221,16 +221,14 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            source_initialization::create_and_fill_order_book::<T>(
-                bids_owner, asks_owner, settings,
-            )
-            .map_err(|e| DispatchErrorWithPostInfo {
-                post_info: PostDispatchInfo {
-                    actual_weight: None,
-                    pays_fee: Pays::No,
-                },
-                error: e,
-            })?;
+            liquidity_sources::create_and_fill_order_book::<T>(bids_owner, asks_owner, settings)
+                .map_err(|e| DispatchErrorWithPostInfo {
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
+                })?;
 
             // Even though these facts can be deduced from the extrinsic execution success,
             // it would be strange not to emit anything, while other initialization extrinsics do.
@@ -269,7 +267,7 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            source_initialization::fill_order_book::<T>(bids_owner, asks_owner, settings).map_err(
+            liquidity_sources::fill_order_book::<T>(bids_owner, asks_owner, settings).map_err(
                 |e| DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
@@ -304,15 +302,16 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            let prices_achieved = source_initialization::xyk::<T>(account, pairs).map_err(|e| {
-                DispatchErrorWithPostInfo {
-                    post_info: PostDispatchInfo {
-                        actual_weight: None,
-                        pays_fee: Pays::No,
-                    },
-                    error: e,
-                }
-            })?;
+            let prices_achieved =
+                liquidity_sources::initialize_xyk::<T>(account, pairs).map_err(|e| {
+                    DispatchErrorWithPostInfo {
+                        post_info: PostDispatchInfo {
+                            actual_weight: None,
+                            pays_fee: Pays::No,
+                        },
+                        error: e,
+                    }
+                })?;
 
             Self::deposit_event(Event::<T>::XykInitialized { prices_achieved });
 
@@ -343,15 +342,14 @@ pub mod pallet {
             ensure_root(origin)?;
 
             let quotes_achieved =
-                source_initialization::xst::<T>(base_prices, synthetics_prices, relayer).map_err(
-                    |e| DispatchErrorWithPostInfo {
+                liquidity_sources::initialize_xst::<T>(base_prices, synthetics_prices, relayer)
+                    .map_err(|e| DispatchErrorWithPostInfo {
                         post_info: PostDispatchInfo {
                             actual_weight: None,
                             pays_fee: Pays::No,
                         },
                         error: e,
-                    },
-                )?;
+                    })?;
 
             Self::deposit_event(Event::<T>::XstInitialized { quotes_achieved });
 

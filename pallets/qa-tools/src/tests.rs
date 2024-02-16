@@ -48,10 +48,11 @@ use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use qa_tools::pallet_tools::order_book::settings;
+use qa_tools::pallet_tools::pool_xyk::XYKPair;
 use qa_tools::pallet_tools::price_tools::AssetPrices;
-use qa_tools::source_initialization::{
+use qa_tools::pallet_tools::xst::{
     XSTBaseInput, XSTSyntheticExistence, XSTSyntheticInput, XSTSyntheticOutput, XSTSyntheticQuote,
-    XSTSyntheticQuoteDirection, XYKPair,
+    XSTSyntheticQuoteDirection,
 };
 use qa_tools::{Error, InputAssetId};
 use sp_runtime::traits::BadOrigin;
@@ -946,8 +947,10 @@ fn should_xyk_initialize_pool() {
             ),
             XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, DAI, balance!(0.5)),
         ];
-        let prices =
-            qa_tools::source_initialization::xyk::<Runtime>(alice(), pairs.clone()).unwrap();
+        let prices = qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::initialize_xyk::<
+            Runtime,
+        >(alice(), pairs.clone())
+        .unwrap();
 
         for (expected_pair, actual_pair) in pairs.into_iter().zip(prices.into_iter()) {
             let result = pool_xyk::Pallet::<Runtime>::quote_without_impact(
@@ -1318,12 +1321,13 @@ fn test_synthetic_price_set<T: qa_tools::Config>(
     relayer: T::AccountId,
 ) -> Vec<XSTSyntheticOutput<T::AssetId>> {
     let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
-    let init_result = qa_tools::source_initialization::xst::<T>(
-        base_input,
-        vec![synthetic_input.clone()],
-        relayer,
-    )
-    .unwrap();
+    let init_result =
+        qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::initialize_xst::<T>(
+            base_input,
+            vec![synthetic_input.clone()],
+            relayer,
+        )
+        .unwrap();
     assert_approx_eq!(
         synthetic_input.expected_quote.result,
         init_result[0].quote_achieved.result,
