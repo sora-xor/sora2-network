@@ -69,11 +69,11 @@ pub fn calculate_xor_prices<T: Config>(
             // Variant is inverted, just like in `price_tools`
             let a_per_xor_sell = *BalanceUnit::one()
                 .checked_div(&BalanceUnit::divisible(b_per_a_buy))
-                .ok_or::<Error<T>>(Error::<T>::ArithmeticError.into())?
+                .ok_or::<Error<T>>(Error::<T>::ArithmeticError)?
                 .balance();
             let a_per_xor_buy = *BalanceUnit::one()
                 .checked_div(&BalanceUnit::divisible(b_per_a_sell))
-                .ok_or::<Error<T>>(Error::<T>::ArithmeticError.into())?
+                .ok_or::<Error<T>>(Error::<T>::ArithmeticError)?
                 .balance();
             Ok(CalculatedXorPrices {
                 // price of xor in a
@@ -106,7 +106,7 @@ pub fn calculate_xor_prices<T: Config>(
             let a_buy_b = BalanceUnit::divisible(b_per_a_buy);
             let xor_buy_b = price_tools::Pallet::<T>::get_average_price(
                 &XOR.into(),
-                &asset_b,
+                asset_b,
                 PriceVariant::Buy,
             )
             .map_err(|_| Error::<T>::ReferenceAssetPriceNotFound)?;
@@ -114,7 +114,7 @@ pub fn calculate_xor_prices<T: Config>(
             let a_sell_b = BalanceUnit::divisible(b_per_a_sell);
             let xor_sell_b = price_tools::Pallet::<T>::get_average_price(
                 &XOR.into(),
-                &asset_b,
+                asset_b,
                 PriceVariant::Sell,
             )
             .map_err(|_| Error::<T>::ReferenceAssetPriceNotFound)?;

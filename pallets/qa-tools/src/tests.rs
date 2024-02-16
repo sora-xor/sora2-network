@@ -1006,19 +1006,11 @@ fn check_price_tools_set_price(asset_id: &InputAssetId<AssetIdOf<Runtime>>, pric
     ));
     let asset_id = asset_id.clone().resolve::<Runtime>();
     assert_eq!(
-        price_tools::Pallet::<Runtime>::get_average_price(
-            &XOR.into(),
-            &asset_id,
-            PriceVariant::Buy
-        ),
+        price_tools::Pallet::<Runtime>::get_average_price(&XOR, &asset_id, PriceVariant::Buy),
         Ok(prices.buy)
     );
     assert_eq!(
-        price_tools::Pallet::<Runtime>::get_average_price(
-            &XOR.into(),
-            &asset_id,
-            PriceVariant::Sell
-        ),
+        price_tools::Pallet::<Runtime>::get_average_price(&XOR, &asset_id, PriceVariant::Sell),
         Ok(prices.sell)
     );
 }
@@ -1069,7 +1061,7 @@ fn should_set_price_tools_xst_base_prices() {
 
 #[test]
 fn should_set_price_tools_other_base_prices() {
-    test_price_tools_set_asset_prices(InputAssetId::<AssetIdOf<Runtime>>::Other(ETH.into()));
+    test_price_tools_set_asset_prices(InputAssetId::<AssetIdOf<Runtime>>::Other(ETH));
 }
 
 #[test]
@@ -1105,7 +1097,7 @@ fn should_price_tools_reject_incorrect_prices() {
                     buy: balance!(1),
                     sell: balance!(1) + 1,
                 },
-                InputAssetId::<AssetIdOf<Runtime>>::Other(ETH.into())
+                InputAssetId::<AssetIdOf<Runtime>>::Other(ETH)
             ),
             Error::<Runtime>::BuyLessThanSell
         );
@@ -1254,8 +1246,8 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
         assert_ok!(QAToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
             Some(XSTBaseInput {
-                reference_per_synthetic_base_buy: reference_per_synthetic_base_buy,
-                reference_per_synthetic_base_sell: reference_per_synthetic_base_sell,
+                reference_per_synthetic_base_buy,
+                reference_per_synthetic_base_sell,
             }),
             vec![],
             alice(),
