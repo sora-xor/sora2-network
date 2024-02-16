@@ -4486,7 +4486,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "3.2.0"
+version = "3.2.1"
 dependencies = [
  "ahash 0.8.5",
  "ansi_term",
@@ -4586,7 +4586,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "3.2.0"
+version = "3.2.1"
 dependencies = [
  "common",
  "faucet",
@@ -4616,7 +4616,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "3.2.0"
+version = "3.2.1"
 dependencies = [
  "assets",
  "assets-runtime-api",
