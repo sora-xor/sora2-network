@@ -32,6 +32,7 @@
 //! to distinguish logic related to different pallets.
 
 pub mod liquidity_proxy;
+pub mod mcbc;
 pub mod order_book;
 pub mod pool_xyk;
 pub mod price_tools;

@@ -47,7 +47,9 @@ use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
-use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::{initialize_xst, initialize_xyk};
+use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::{
+    initialize_mcbc, initialize_xst, initialize_xyk,
+};
 use qa_tools::pallet_tools::order_book::settings;
 use qa_tools::pallet_tools::pool_xyk::XYKPair;
 use qa_tools::pallet_tools::price_tools::AssetPrices;
@@ -1675,8 +1677,8 @@ fn should_init_mcbc_xor() {
         );
 
         let added_supply = balance!(1000000);
-        assert_ok!(qa_tools::source_initialization::mcbc::<Runtime>(
-            Some(MCBCBaseSupply {
+        assert_ok!(initialize_mcbc::<Runtime>(
+            Some(qa_tools::pallet_tools::mcbc::BaseSupply {
                 base_supply_collector: xor_collector.clone(),
                 new_base_supply: current_base_supply + added_supply,
             }),
@@ -1689,8 +1691,8 @@ fn should_init_mcbc_xor() {
         );
 
         // bring supply back to original
-        assert_ok!(qa_tools::source_initialization::mcbc::<Runtime>(
-            Some(MCBCBaseSupply {
+        assert_ok!(initialize_mcbc::<Runtime>(
+            Some(qa_tools::pallet_tools::mcbc::BaseSupply {
                 base_supply_collector: xor_collector.clone(),
                 new_base_supply: current_base_supply,
             }),
@@ -1704,8 +1706,8 @@ fn should_init_mcbc_xor() {
 
         // cannot burn assets not owned by the holder
         assert_err!(
-            qa_tools::source_initialization::mcbc::<Runtime>(
-                Some(MCBCBaseSupply {
+            initialize_mcbc::<Runtime>(
+                Some(qa_tools::pallet_tools::mcbc::BaseSupply {
                     base_supply_collector: xor_collector,
                     new_base_supply: 0,
                 }),
