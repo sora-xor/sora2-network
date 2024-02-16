@@ -221,7 +221,7 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            source_initialization::order_book_create_and_fill::<T>(
+            source_initialization::create_and_fill_order_book::<T>(
                 bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
@@ -269,14 +269,15 @@ pub mod pallet {
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            source_initialization::order_book_only_fill::<T>(bids_owner, asks_owner, settings)
-                .map_err(|e| DispatchErrorWithPostInfo {
+            source_initialization::fill_order_book::<T>(bids_owner, asks_owner, settings).map_err(
+                |e| DispatchErrorWithPostInfo {
                     post_info: PostDispatchInfo {
                         actual_weight: None,
                         pays_fee: Pays::No,
                     },
                     error: e,
-                })?;
+                },
+            )?;
 
             Self::deposit_event(Event::<T>::OrderBooksFilled);
 

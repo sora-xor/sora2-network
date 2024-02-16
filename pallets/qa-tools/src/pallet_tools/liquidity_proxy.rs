@@ -193,7 +193,7 @@ pub mod source_initialization {
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
     /// - `settings`: Parameters for creation of the order book and placing the orders in each
     /// order book.
-    pub fn order_book_create_and_fill<T: Config>(
+    pub fn create_and_fill_order_book<T: Config>(
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec<(
@@ -234,7 +234,7 @@ pub mod source_initialization {
     /// - `bids_owner`: Creator of the buy orders placed on the order books,
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
     /// - `settings`: Parameters for placing the orders in each order book.
-    pub fn order_book_only_fill<T: Config>(
+    pub fn fill_order_book<T: Config>(
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec<(
@@ -338,6 +338,9 @@ pub mod source_initialization {
         })
     }
 
+    /// Feed `band` pallet the price for the symbol.
+    ///
+    /// Tries to remove (decay) the dynamic fee occurring from the price change.
     fn relay_symbol<T: Config>(
         symbol: <T as Config>::Symbol,
         relayer: T::AccountId,
