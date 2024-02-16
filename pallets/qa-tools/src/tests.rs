@@ -47,22 +47,18 @@ use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
-use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::{
+use pallet_tools::liquidity_proxy::liquidity_sources::{
     initialize_mcbc, initialize_xst, initialize_xyk,
 };
-use qa_tools::pallet_tools::order_book::settings;
-use qa_tools::pallet_tools::pool_xyk::XYKPair;
-use qa_tools::pallet_tools::price_tools::AssetPrices;
-use qa_tools::pallet_tools::xst::{
-    XSTBaseInput, XSTSyntheticExistence, XSTSyntheticInput, XSTSyntheticOutput, XSTSyntheticQuote,
-    XSTSyntheticQuoteDirection,
-};
+use pallet_tools::pool_xyk::AssetPairInput;
+use pallet_tools::price_tools::AssetPrices;
+use qa_tools::pallet_tools;
 use qa_tools::{Error, InputAssetId};
 use sp_runtime::traits::BadOrigin;
 use sp_runtime::DispatchErrorWithPostInfo;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
-pub type QAToolsPallet = qa_tools::Pallet<Runtime>;
+pub type QaToolsPallet = qa_tools::Pallet<Runtime>;
 
 pub fn alice() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
@@ -81,7 +77,7 @@ pub fn dave() -> <Runtime as frame_system::Config>::AccountId {
 }
 
 fn default_price_step() -> Balance {
-    settings::OrderBookAttributes::default().tick_size
+    pallet_tools::order_book::OrderBookAttributes::default().tick_size
 }
 
 pub fn run_to_block(n: u32) {
@@ -98,7 +94,7 @@ pub fn run_to_block(n: u32) {
 fn test_creates_orderbook(
     base: AssetId32<PredefinedAssetId>,
     quote: AssetId32<PredefinedAssetId>,
-    attributes: settings::OrderBookAttributes,
+    attributes: pallet_tools::order_book::OrderBookAttributes,
     best_bid_price: Balance,
     best_ask_price: Balance,
     steps: usize,
@@ -111,7 +107,7 @@ fn test_creates_orderbook(
     };
 
     assert_err!(
-        QAToolsPallet::order_book_create_and_fill_batch(
+        QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::signed(alice()),
             alice(),
             alice(),
@@ -122,16 +118,16 @@ fn test_creates_orderbook(
 
     let price_step = default_price_step();
     let orders_per_price = 3;
-    let amount_range = settings::RandomAmount::new(amount_range.0, amount_range.1);
-    assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+    let amount_range = pallet_tools::order_book::RandomAmount::new(amount_range.0, amount_range.1);
+    assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
         RuntimeOrigin::root(),
         alice(),
         alice(),
         vec![(
             order_book_id,
             attributes,
-            settings::OrderBookFill {
-                bids: Some(settings::SideFill {
+            pallet_tools::order_book::FillInput {
+                bids: Some(pallet_tools::order_book::SideFillInput {
                     highest_price: best_bid_price,
                     lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
                     price_step,
@@ -139,7 +135,7 @@ fn test_creates_orderbook(
                     lifespan: None,
                     amount_range_inclusive: Some(amount_range)
                 }),
-                asks: Some(settings::SideFill {
+                asks: Some(pallet_tools::order_book::SideFillInput {
                     highest_price: best_ask_price + (steps - 1) as u128 * price_step,
                     lowest_price: best_ask_price,
                     price_step,
@@ -184,7 +180,7 @@ fn should_create_and_fill_orderbook_fixed_amount() {
         test_creates_orderbook(
             VAL,
             XOR,
-            settings::OrderBookAttributes::default(),
+            pallet_tools::order_book::OrderBookAttributes::default(),
             balance!(10),
             balance!(11),
             4,
@@ -206,7 +202,7 @@ fn should_create_and_fill_orderbook_fixed_amount() {
         test_creates_orderbook(
             nft,
             XOR,
-            settings::OrderBookAttributes {
+            pallet_tools::order_book::OrderBookAttributes {
                 tick_size: balance!(0.00001),
                 step_lot_size: 1,
                 min_lot_size: 1,
@@ -226,7 +222,7 @@ fn should_create_and_fill_orderbook_random_amount() {
         test_creates_orderbook(
             VAL,
             XOR,
-            settings::OrderBookAttributes::default(),
+            pallet_tools::order_book::OrderBookAttributes::default(),
             balance!(10),
             balance!(11),
             4,
@@ -248,7 +244,7 @@ fn should_create_and_fill_orderbook_random_amount() {
         test_creates_orderbook(
             nft,
             XOR,
-            settings::OrderBookAttributes {
+            pallet_tools::order_book::OrderBookAttributes {
                 tick_size: balance!(0.00001),
                 step_lot_size: 1,
                 min_lot_size: 1,
@@ -280,9 +276,9 @@ fn should_respect_orderbook_seed() {
         let best_bid_price = balance!(10);
         let best_ask_price = balance!(11);
         let steps = 4;
-        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
-        let fill_settings = settings::OrderBookFill {
-            bids: Some(settings::SideFill {
+        let amount_range = pallet_tools::order_book::RandomAmount::new(balance!(1), balance!(10));
+        let fill_settings = pallet_tools::order_book::FillInput {
+            bids: Some(pallet_tools::order_book::SideFillInput {
                 highest_price: best_bid_price,
                 lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
                 price_step,
@@ -290,7 +286,7 @@ fn should_respect_orderbook_seed() {
                 lifespan: None,
                 amount_range_inclusive: Some(amount_range),
             }),
-            asks: Some(settings::SideFill {
+            asks: Some(pallet_tools::order_book::SideFillInput {
                 highest_price: best_ask_price + (steps - 1) as u128 * price_step,
                 lowest_price: best_ask_price,
                 price_step,
@@ -300,19 +296,19 @@ fn should_respect_orderbook_seed() {
             }),
             random_seed: None,
         };
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             alice(),
             vec![
                 (
                     order_book_id_1,
-                    settings::OrderBookAttributes::default(),
+                    pallet_tools::order_book::OrderBookAttributes::default(),
                     fill_settings.clone()
                 ),
                 (
                     order_book_id_2,
-                    settings::OrderBookAttributes::default(),
+                    pallet_tools::order_book::OrderBookAttributes::default(),
                     fill_settings
                 )
             ]
@@ -349,9 +345,9 @@ fn should_keep_orderbook_randomness_independent() {
         let best_bid_price = balance!(10);
         let best_ask_price = balance!(11);
         let steps = 4;
-        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
-        let fill_settings_1 = settings::OrderBookFill {
-            bids: Some(settings::SideFill {
+        let amount_range = pallet_tools::order_book::RandomAmount::new(balance!(1), balance!(10));
+        let fill_settings_1 = pallet_tools::order_book::FillInput {
+            bids: Some(pallet_tools::order_book::SideFillInput {
                 highest_price: best_bid_price,
                 lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
                 price_step,
@@ -359,7 +355,7 @@ fn should_keep_orderbook_randomness_independent() {
                 lifespan: None,
                 amount_range_inclusive: Some(amount_range),
             }),
-            asks: Some(settings::SideFill {
+            asks: Some(pallet_tools::order_book::SideFillInput {
                 highest_price: best_ask_price + (steps - 1) as u128 * price_step,
                 lowest_price: best_ask_price,
                 price_step,
@@ -369,23 +365,23 @@ fn should_keep_orderbook_randomness_independent() {
             }),
             random_seed: None,
         };
-        let fill_settings_2 = settings::OrderBookFill {
+        let fill_settings_2 = pallet_tools::order_book::FillInput {
             bids: None,
             ..fill_settings_1.clone()
         };
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             alice(),
             vec![
                 (
                     order_book_id_1,
-                    settings::OrderBookAttributes::default(),
+                    pallet_tools::order_book::OrderBookAttributes::default(),
                     fill_settings_1
                 ),
                 (
                     order_book_id_2,
-                    settings::OrderBookAttributes::default(),
+                    pallet_tools::order_book::OrderBookAttributes::default(),
                     fill_settings_2
                 )
             ]
@@ -449,8 +445,8 @@ fn should_reject_incorrect_orderbook_fill_settings() {
         let orders_per_price = 3;
         let best_bid_price = balance!(10);
         let steps = 4;
-        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
-        let correct_bids_settings = settings::SideFill {
+        let amount_range = pallet_tools::order_book::RandomAmount::new(balance!(1), balance!(10));
+        let correct_bids_settings = pallet_tools::order_book::SideFillInput {
             highest_price: best_bid_price,
             lowest_price: best_bid_price - (steps - 1) as u128 * price_step,
             price_step,
@@ -460,7 +456,7 @@ fn should_reject_incorrect_orderbook_fill_settings() {
         };
         let mut bids_settings = correct_bids_settings.clone();
         bids_settings.price_step = 1;
-        let fill_settings = settings::OrderBookFill {
+        let fill_settings = pallet_tools::order_book::FillInput {
             bids: Some(bids_settings),
             asks: None,
             random_seed: None,
@@ -469,13 +465,13 @@ fn should_reject_incorrect_orderbook_fill_settings() {
             Error::<Runtime>::IncorrectPrice.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 alice(),
                 vec![(
                     order_book_id,
-                    settings::OrderBookAttributes::default(),
+                    pallet_tools::order_book::OrderBookAttributes::default(),
                     fill_settings
                 )]
             ),
@@ -483,19 +479,19 @@ fn should_reject_incorrect_orderbook_fill_settings() {
         );
         let mut bids_settings = correct_bids_settings;
         bids_settings.price_step = 0;
-        let fill_settings = settings::OrderBookFill {
+        let fill_settings = pallet_tools::order_book::FillInput {
             bids: Some(bids_settings),
             asks: None,
             random_seed: None,
         };
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 alice(),
                 vec![(
                     order_book_id,
-                    settings::OrderBookAttributes::default(),
+                    pallet_tools::order_book::OrderBookAttributes::default(),
                     fill_settings
                 )]
             ),
@@ -513,10 +509,10 @@ fn should_reject_too_many_orders() {
             quote: XOR,
         };
         let price_step = default_price_step();
-        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+        let amount_range = pallet_tools::order_book::RandomAmount::new(balance!(1), balance!(10));
 
         // 100 001 prices by 10 orders = 1 000 010 orders
-        let wrong_settings1 = settings::SideFill {
+        let wrong_settings1 = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(10),
             lowest_price: balance!(9),
             price_step,
@@ -524,7 +520,7 @@ fn should_reject_too_many_orders() {
             lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
-        let fill_settings = settings::OrderBookFill {
+        let fill_settings = pallet_tools::order_book::FillInput {
             bids: Some(wrong_settings1),
             asks: None,
             random_seed: None,
@@ -534,13 +530,13 @@ fn should_reject_too_many_orders() {
             Error::<Runtime>::TooManyPrices.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 alice(),
                 vec![(
                     order_book_id,
-                    settings::OrderBookAttributes::default(),
+                    pallet_tools::order_book::OrderBookAttributes::default(),
                     fill_settings
                 )]
             ),
@@ -548,7 +544,7 @@ fn should_reject_too_many_orders() {
         );
 
         // 1 price by 10 000 orders = 10 000 orders
-        let wrong_settings2 = settings::SideFill {
+        let wrong_settings2 = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(10),
             lowest_price: balance!(10),
             price_step,
@@ -556,7 +552,7 @@ fn should_reject_too_many_orders() {
             lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
-        let fill_settings = settings::OrderBookFill {
+        let fill_settings = pallet_tools::order_book::FillInput {
             bids: Some(wrong_settings2),
             asks: None,
             random_seed: None,
@@ -566,13 +562,13 @@ fn should_reject_too_many_orders() {
             Error::<Runtime>::TooManyOrders.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 alice(),
                 vec![(
                     order_book_id,
-                    settings::OrderBookAttributes::default(),
+                    pallet_tools::order_book::OrderBookAttributes::default(),
                     fill_settings
                 )]
             ),
@@ -580,7 +576,7 @@ fn should_reject_too_many_orders() {
         );
 
         // 11 prices by 100 orders = 1100 orders
-        let wrong_settings3 = settings::SideFill {
+        let wrong_settings3 = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(10),
             lowest_price: balance!(10) - 10 * price_step,
             price_step,
@@ -588,7 +584,7 @@ fn should_reject_too_many_orders() {
             lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
-        let fill_settings = settings::OrderBookFill {
+        let fill_settings = pallet_tools::order_book::FillInput {
             bids: Some(wrong_settings3),
             asks: None,
             random_seed: None,
@@ -598,13 +594,13 @@ fn should_reject_too_many_orders() {
             Error::<Runtime>::TooManyOrders.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 alice(),
                 vec![(
                     order_book_id,
-                    settings::OrderBookAttributes::default(),
+                    pallet_tools::order_book::OrderBookAttributes::default(),
                     fill_settings
                 )]
             ),
@@ -622,10 +618,10 @@ fn should_create_and_fill_orderbook_max_orders_count() {
             quote: XOR,
         };
         let price_step = default_price_step();
-        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+        let amount_range = pallet_tools::order_book::RandomAmount::new(balance!(1), balance!(10));
 
         // 10 prices by 100 orders = 1000 orders
-        let bids_settings = settings::SideFill {
+        let bids_settings = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(10),
             lowest_price: balance!(10) - 9 * price_step,
             price_step,
@@ -634,7 +630,7 @@ fn should_create_and_fill_orderbook_max_orders_count() {
             amount_range_inclusive: Some(amount_range),
         };
         // 100 prices by 10 orders = 1000 orders
-        let asks_settings = settings::SideFill {
+        let asks_settings = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(11) + 99 * price_step,
             lowest_price: balance!(11),
             price_step,
@@ -642,19 +638,19 @@ fn should_create_and_fill_orderbook_max_orders_count() {
             lifespan: Some(2_590_000_000),
             amount_range_inclusive: Some(amount_range),
         };
-        let fill_settings = settings::OrderBookFill {
+        let fill_settings = pallet_tools::order_book::FillInput {
             bids: Some(bids_settings),
             asks: Some(asks_settings),
             random_seed: None,
         };
 
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             bob(),
             vec![(
                 order_book_id,
-                settings::OrderBookAttributes::default(),
+                pallet_tools::order_book::OrderBookAttributes::default(),
                 fill_settings
             )]
         ));
@@ -685,9 +681,9 @@ fn should_not_create_existing_order_book() {
             quote: XOR,
         };
         let price_step = default_price_step();
-        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+        let amount_range = pallet_tools::order_book::RandomAmount::new(balance!(1), balance!(10));
 
-        let bids_settings = settings::SideFill {
+        let bids_settings = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(10),
             lowest_price: balance!(10) - 9 * price_step,
             price_step,
@@ -695,7 +691,7 @@ fn should_not_create_existing_order_book() {
             lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
-        let asks_settings = settings::SideFill {
+        let asks_settings = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(11) + 9 * price_step,
             lowest_price: balance!(11),
             price_step,
@@ -703,19 +699,19 @@ fn should_not_create_existing_order_book() {
             lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
-        let fill_settings = settings::OrderBookFill {
+        let fill_settings = pallet_tools::order_book::FillInput {
             bids: Some(bids_settings),
             asks: Some(asks_settings),
             random_seed: None,
         };
 
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             bob(),
             vec![(
                 order_book_id,
-                settings::OrderBookAttributes::default(),
+                pallet_tools::order_book::OrderBookAttributes::default(),
                 fill_settings.clone()
             )]
         ));
@@ -726,13 +722,13 @@ fn should_not_create_existing_order_book() {
             Error::<Runtime>::OrderBookAlreadyExists.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 bob(),
                 vec![(
                     order_book_id,
-                    settings::OrderBookAttributes::default(),
+                    pallet_tools::order_book::OrderBookAttributes::default(),
                     fill_settings
                 )]
             ),
@@ -750,9 +746,9 @@ fn should_not_fill_non_existing_order_book() {
             quote: XOR,
         };
         let price_step = default_price_step();
-        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+        let amount_range = pallet_tools::order_book::RandomAmount::new(balance!(1), balance!(10));
 
-        let bids_settings = settings::SideFill {
+        let bids_settings = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(10),
             lowest_price: balance!(10) - 9 * price_step,
             price_step,
@@ -760,7 +756,7 @@ fn should_not_fill_non_existing_order_book() {
             lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
-        let asks_settings = settings::SideFill {
+        let asks_settings = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(11) + 9 * price_step,
             lowest_price: balance!(11),
             price_step,
@@ -768,7 +764,7 @@ fn should_not_fill_non_existing_order_book() {
             lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
-        let fill_settings = settings::OrderBookFill {
+        let fill_settings = pallet_tools::order_book::FillInput {
             bids: Some(bids_settings),
             asks: Some(asks_settings),
             random_seed: None,
@@ -778,7 +774,7 @@ fn should_not_fill_non_existing_order_book() {
             Error::<Runtime>::CannotFillUnknownOrderBook.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_fill_batch(
+            QaToolsPallet::order_book_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 bob(),
@@ -798,9 +794,9 @@ fn should_fill_order_book() {
             quote: XOR,
         };
         let price_step = default_price_step();
-        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+        let amount_range = pallet_tools::order_book::RandomAmount::new(balance!(1), balance!(10));
 
-        let bids_settings = settings::SideFill {
+        let bids_settings = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(10),
             lowest_price: balance!(10) - 9 * price_step,
             price_step,
@@ -808,7 +804,7 @@ fn should_fill_order_book() {
             lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
-        let asks_settings = settings::SideFill {
+        let asks_settings = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(11) + 9 * price_step,
             lowest_price: balance!(11),
             price_step,
@@ -816,26 +812,26 @@ fn should_fill_order_book() {
             lifespan: None,
             amount_range_inclusive: Some(amount_range),
         };
-        let fill_settings = settings::OrderBookFill {
+        let fill_settings = pallet_tools::order_book::FillInput {
             bids: Some(bids_settings),
             asks: Some(asks_settings),
             random_seed: None,
         };
 
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             bob(),
             vec![(
                 order_book_id,
-                settings::OrderBookAttributes::default(),
+                pallet_tools::order_book::OrderBookAttributes::default(),
                 fill_settings.clone()
             )]
         ));
 
         assert!(order_book::Pallet::<Runtime>::order_books(order_book_id).is_some());
 
-        assert_ok!(QAToolsPallet::order_book_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             bob(),
@@ -853,10 +849,10 @@ fn should_fill_orderbook_max_orders_count() {
             quote: XOR,
         };
         let price_step = default_price_step();
-        let amount_range = settings::RandomAmount::new(balance!(1), balance!(10));
+        let amount_range = pallet_tools::order_book::RandomAmount::new(balance!(1), balance!(10));
 
         // 10 prices by 100 orders = 1000 orders
-        let bids_settings = settings::SideFill {
+        let bids_settings = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(10),
             lowest_price: balance!(10) - 9 * price_step,
             price_step,
@@ -865,7 +861,7 @@ fn should_fill_orderbook_max_orders_count() {
             amount_range_inclusive: Some(amount_range),
         };
         // 100 prices by 10 orders = 1000 orders
-        let asks_settings = settings::SideFill {
+        let asks_settings = pallet_tools::order_book::SideFillInput {
             highest_price: balance!(11) + 99 * price_step,
             lowest_price: balance!(11),
             price_step,
@@ -873,19 +869,19 @@ fn should_fill_orderbook_max_orders_count() {
             lifespan: Some(2_590_000_000),
             amount_range_inclusive: Some(amount_range),
         };
-        let fill_settings = settings::OrderBookFill {
+        let fill_settings = pallet_tools::order_book::FillInput {
             bids: Some(bids_settings),
             asks: Some(asks_settings),
             random_seed: None,
         };
 
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             bob(),
             vec![(
                 order_book_id,
-                settings::OrderBookAttributes::default(),
+                pallet_tools::order_book::OrderBookAttributes::default(),
                 fill_settings.clone()
             )]
         ));
@@ -908,7 +904,7 @@ fn should_fill_orderbook_max_orders_count() {
         let current_block = FrameSystem::block_number();
         run_to_block(current_block + 1);
 
-        assert_ok!(QAToolsPallet::order_book_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_fill_batch(
             RuntimeOrigin::root(),
             charlie(),
             dave(),
@@ -934,21 +930,21 @@ fn should_fill_orderbook_max_orders_count() {
 fn should_xyk_initialize_pool() {
     ext().execute_with(|| {
         let pairs = vec![
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.1)),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(1)),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, DAI, balance!(10)),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5)),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5)),
-            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5)),
-            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, PSWAP, balance!(0.5)),
-            XYKPair::new(
+            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
+            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.1)),
+            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(1)),
+            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, DAI, balance!(10)),
+            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5)),
+            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5)),
+            AssetPairInput::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5)),
+            AssetPairInput::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, PSWAP, balance!(0.5)),
+            AssetPairInput::new(
                 DEXId::PolkaswapXSTUSD.into(),
                 XSTUSD,
                 ETH,
                 balance!(0.000000000000000001),
             ),
-            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, DAI, balance!(0.5)),
+            AssetPairInput::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, DAI, balance!(0.5)),
         ];
         let prices = initialize_xyk::<Runtime>(alice(), pairs.clone()).unwrap();
 
@@ -975,19 +971,19 @@ fn should_xyk_initialize_pool() {
 #[test]
 fn should_not_initialize_existing_xyk_pool() {
     ext().execute_with(|| {
-        assert_ok!(QAToolsPallet::xyk_initialize(
+        assert_ok!(QaToolsPallet::xyk_initialize(
             RuntimeOrigin::root(),
             alice(),
             vec![
-                XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
-                XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5))
+                AssetPairInput::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
+                AssetPairInput::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5))
             ],
         ));
         assert_eq!(
-            QAToolsPallet::xyk_initialize(
+            QaToolsPallet::xyk_initialize(
                 RuntimeOrigin::root(),
                 alice(),
-                vec![XYKPair::new(
+                vec![AssetPairInput::new(
                     DEXId::Polkaswap.into(),
                     XOR,
                     VAL,
@@ -1002,7 +998,7 @@ fn should_not_initialize_existing_xyk_pool() {
 }
 
 fn check_price_tools_set_price(asset_id: &InputAssetId<AssetIdOf<Runtime>>, prices: AssetPrices) {
-    assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+    assert_ok!(QaToolsPallet::price_tools_set_asset_price(
         RuntimeOrigin::root(),
         prices.clone(),
         asset_id.clone()
@@ -1072,7 +1068,7 @@ fn should_price_tools_reject_incorrect_prices() {
     ext().execute_with(|| {
         // todo: uncomment
         // assert_err!(
-        //     QAToolsPallet::price_tools_set_asset_price(
+        //     QaToolsPallet::price_tools_set_asset_price(
         //         RuntimeOrigin::root(),
         //         AssetPrices {
         //             buy: balance!(1),
@@ -1083,7 +1079,7 @@ fn should_price_tools_reject_incorrect_prices() {
         //     Error::<Runtime>::BuyLessThanSell
         // );
         assert_err!(
-            QAToolsPallet::price_tools_set_asset_price(
+            QaToolsPallet::price_tools_set_asset_price(
                 RuntimeOrigin::root(),
                 AssetPrices {
                     buy: balance!(1),
@@ -1094,7 +1090,7 @@ fn should_price_tools_reject_incorrect_prices() {
             Error::<Runtime>::BuyLessThanSell
         );
         assert_err!(
-            QAToolsPallet::price_tools_set_asset_price(
+            QaToolsPallet::price_tools_set_asset_price(
                 RuntimeOrigin::root(),
                 AssetPrices {
                     buy: balance!(1),
@@ -1107,13 +1103,16 @@ fn should_price_tools_reject_incorrect_prices() {
     })
 }
 
-fn test_init_xst_synthetic_base_price(prices: XSTBaseInput, reference_prices: AssetPrices) {
+fn test_init_xst_synthetic_base_price(
+    prices: pallet_tools::xst::BaseInput,
+    reference_prices: AssetPrices,
+) {
     ext().execute_with(|| {
         let reference_asset_id = xst::ReferenceAssetId::<Runtime>::get();
         let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
 
         assert_eq!(
-            QAToolsPallet::xst_initialize(
+            QaToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
                 Some(prices.clone()),
                 vec![],
@@ -1122,13 +1121,13 @@ fn test_init_xst_synthetic_base_price(prices: XSTBaseInput, reference_prices: As
             Err(err_pays_no(Error::<Runtime>::ReferenceAssetPriceNotFound))
         );
 
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
-        assert_ok!(QAToolsPallet::xst_initialize(
+        assert_ok!(QaToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
             Some(prices.clone()),
             vec![],
@@ -1159,7 +1158,7 @@ fn should_init_xst_synthetic_base_price() {
         buy: balance!(1),
         sell: balance!(1),
     };
-    let prices = XSTBaseInput {
+    let prices = pallet_tools::xst::BaseInput {
         reference_per_synthetic_base_buy: balance!(1),
         reference_per_synthetic_base_sell: balance!(1),
     };
@@ -1168,7 +1167,7 @@ fn should_init_xst_synthetic_base_price() {
         buy: balance!(5),
         sell: balance!(2),
     };
-    let prices = XSTBaseInput {
+    let prices = pallet_tools::xst::BaseInput {
         reference_per_synthetic_base_buy: balance!(3),
         reference_per_synthetic_base_sell: balance!(1),
     };
@@ -1183,16 +1182,16 @@ fn should_reject_incorrect_xst_base_price() {
             buy: balance!(1),
             sell: balance!(1),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
         assert_eq!(
-            QAToolsPallet::xst_initialize(
+            QaToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
-                Some(XSTBaseInput {
+                Some(pallet_tools::xst::BaseInput {
                     reference_per_synthetic_base_buy: balance!(1),
                     reference_per_synthetic_base_sell: balance!(1.1),
                 }),
@@ -1209,9 +1208,9 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
     ext().execute_with(|| {
         // Reject when not initialized
         assert_eq!(
-            QAToolsPallet::xst_initialize(
+            QaToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
-                Some(XSTBaseInput {
+                Some(pallet_tools::xst::BaseInput {
                     reference_per_synthetic_base_buy: balance!(1),
                     reference_per_synthetic_base_sell: balance!(1),
                 }),
@@ -1227,16 +1226,16 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
             buy: balance!(5),
             sell: balance!(2),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
         // Now it should work fine
-        assert_ok!(QAToolsPallet::xst_initialize(
+        assert_ok!(QaToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
-            Some(XSTBaseInput {
+            Some(pallet_tools::xst::BaseInput {
                 reference_per_synthetic_base_buy: balance!(3),
                 reference_per_synthetic_base_sell: balance!(1),
             }),
@@ -1246,9 +1245,9 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
 
         let (reference_per_synthetic_base_buy, reference_per_synthetic_base_sell) =
             (balance!(21), balance!(7));
-        assert_ok!(QAToolsPallet::xst_initialize(
+        assert_ok!(QaToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
-            Some(XSTBaseInput {
+            Some(pallet_tools::xst::BaseInput {
                 reference_per_synthetic_base_buy,
                 reference_per_synthetic_base_sell,
             }),
@@ -1294,18 +1293,18 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
 }
 
 fn euro_init_input<T: qa_tools::Config>(
-    expected_quote: XSTSyntheticQuote,
-) -> XSTSyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol> {
+    expected_quote: pallet_tools::xst::SyntheticQuote,
+) -> pallet_tools::xst::SyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol> {
     let symbol_name =
         SymbolName::from_str("EURO").expect("Failed to parse `symbol_name` as a symbol name");
     let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&symbol_name);
     let symbol = AssetSymbol("XSTEUR".into());
     let name = AssetName("XST Euro".into());
     let fee_ratio = fixed!(0);
-    XSTSyntheticInput {
+    pallet_tools::xst::SyntheticInput {
         asset_id: asset_id.into(),
         expected_quote,
-        existence: XSTSyntheticExistence::RegisterNewAsset {
+        existence: pallet_tools::xst::SyntheticExistence::RegisterNewAsset {
             symbol,
             name,
             reference_symbol: symbol_name.into(),
@@ -1316,10 +1315,10 @@ fn euro_init_input<T: qa_tools::Config>(
 
 /// Returns results of initialization
 fn test_synthetic_price_set<T: qa_tools::Config>(
-    synthetic_input: XSTSyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol>,
-    base_input: Option<XSTBaseInput>,
+    synthetic_input: pallet_tools::xst::SyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol>,
+    base_input: Option<pallet_tools::xst::BaseInput>,
     relayer: T::AccountId,
-) -> Vec<XSTSyntheticOutput<T::AssetId>> {
+) -> Vec<pallet_tools::xst::SyntheticOutput<T::AssetId>> {
     let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
     let init_result =
         initialize_xst::<T>(base_input, vec![synthetic_input.clone()], relayer).unwrap();
@@ -1331,10 +1330,10 @@ fn test_synthetic_price_set<T: qa_tools::Config>(
     );
 
     let (input_asset_id, output_asset_id) = match synthetic_input.expected_quote.direction {
-        XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic => {
+        pallet_tools::xst::SyntheticQuoteDirection::SyntheticBaseToSynthetic => {
             (synthetic_base_asset_id, synthetic_input.asset_id)
         }
-        XSTSyntheticQuoteDirection::SyntheticToSyntheticBase => {
+        pallet_tools::xst::SyntheticQuoteDirection::SyntheticToSyntheticBase => {
             (synthetic_input.asset_id, synthetic_base_asset_id)
         }
     };
@@ -1361,20 +1360,20 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
             buy: balance!(1),
             sell: balance!(1),
         };
-        let prices = XSTBaseInput {
+        let prices = pallet_tools::xst::BaseInput {
             reference_per_synthetic_base_buy: balance!(1),
             reference_per_synthetic_base_sell: balance!(1),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
         let direction = if forward {
-            XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic
+            pallet_tools::xst::SyntheticQuoteDirection::SyntheticBaseToSynthetic
         } else {
-            XSTSyntheticQuoteDirection::SyntheticToSyntheticBase
+            pallet_tools::xst::SyntheticQuoteDirection::SyntheticToSyntheticBase
         };
         let amount = match variant {
             SwapVariant::WithDesiredOutput => QuoteAmount::WithDesiredOutput {
@@ -1384,7 +1383,7 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
                 desired_amount_out: balance!(1),
             },
         };
-        let euro_init = euro_init_input::<Runtime>(XSTSyntheticQuote {
+        let euro_init = euro_init_input::<Runtime>(pallet_tools::xst::SyntheticQuote {
             direction,
             amount,
             result: balance!(1),
@@ -1458,20 +1457,20 @@ fn test_init_xst_synthetic_price_various_prices(forward: bool, variant: SwapVari
             buy: balance!(13),
             sell: balance!(5),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
-        let prices = XSTBaseInput {
+        let prices = pallet_tools::xst::BaseInput {
             reference_per_synthetic_base_buy: balance!(53),
             reference_per_synthetic_base_sell: balance!(3),
         };
         let direction = if forward {
-            XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic
+            pallet_tools::xst::SyntheticQuoteDirection::SyntheticBaseToSynthetic
         } else {
-            XSTSyntheticQuoteDirection::SyntheticToSyntheticBase
+            pallet_tools::xst::SyntheticQuoteDirection::SyntheticToSyntheticBase
         };
         let amount = match variant {
             SwapVariant::WithDesiredOutput => QuoteAmount::WithDesiredOutput {
@@ -1481,7 +1480,7 @@ fn test_init_xst_synthetic_price_various_prices(forward: bool, variant: SwapVari
                 desired_amount_out: balance!(137),
             },
         };
-        let euro_init = euro_init_input::<Runtime>(XSTSyntheticQuote {
+        let euro_init = euro_init_input::<Runtime>(pallet_tools::xst::SyntheticQuote {
             direction,
             amount,
             result: balance!(37),
@@ -1520,20 +1519,20 @@ fn should_update_xst_synthetic_price() {
             buy: balance!(5),
             sell: balance!(2),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
         // Some initial values
-        let prices = XSTBaseInput {
+        let prices = pallet_tools::xst::BaseInput {
             reference_per_synthetic_base_buy: balance!(3),
             reference_per_synthetic_base_sell: balance!(1),
         };
 
-        let euro_init = euro_init_input::<Runtime>(XSTSyntheticQuote {
-            direction: XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+        let euro_init = euro_init_input::<Runtime>(pallet_tools::xst::SyntheticQuote {
+            direction: pallet_tools::xst::SyntheticQuoteDirection::SyntheticBaseToSynthetic,
             amount: QuoteAmount::WithDesiredOutput {
                 desired_amount_out: balance!(1),
             },
@@ -1546,72 +1545,72 @@ fn should_update_xst_synthetic_price() {
             buy: balance!(1),
             sell: balance!(1),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
-        let prices = XSTBaseInput {
+        let prices = pallet_tools::xst::BaseInput {
             reference_per_synthetic_base_buy: balance!(1),
             reference_per_synthetic_base_sell: balance!(1),
         };
-        let euro_init = XSTSyntheticInput {
+        let euro_init = pallet_tools::xst::SyntheticInput {
             asset_id: euro_asset_id,
-            expected_quote: XSTSyntheticQuote {
-                direction: XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+            expected_quote: pallet_tools::xst::SyntheticQuote {
+                direction: pallet_tools::xst::SyntheticQuoteDirection::SyntheticBaseToSynthetic,
                 amount: QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(1),
                 },
                 result: balance!(33),
             },
-            existence: XSTSyntheticExistence::AlreadyExists,
+            existence: pallet_tools::xst::SyntheticExistence::AlreadyExists,
         };
         test_synthetic_price_set::<Runtime>(euro_init, Some(prices), alice());
 
         // other variants
-        let euro_init = XSTSyntheticInput {
+        let euro_init = pallet_tools::xst::SyntheticInput {
             asset_id: euro_asset_id,
-            expected_quote: XSTSyntheticQuote {
-                direction: XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+            expected_quote: pallet_tools::xst::SyntheticQuote {
+                direction: pallet_tools::xst::SyntheticQuoteDirection::SyntheticBaseToSynthetic,
                 amount: QuoteAmount::WithDesiredOutput {
                     desired_amount_out: balance!(1),
                 },
                 result: balance!(33),
             },
-            existence: XSTSyntheticExistence::AlreadyExists,
+            existence: pallet_tools::xst::SyntheticExistence::AlreadyExists,
         };
         test_synthetic_price_set::<Runtime>(euro_init, None, alice());
-        let euro_init = XSTSyntheticInput {
+        let euro_init = pallet_tools::xst::SyntheticInput {
             asset_id: euro_asset_id,
-            expected_quote: XSTSyntheticQuote {
-                direction: XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
+            expected_quote: pallet_tools::xst::SyntheticQuote {
+                direction: pallet_tools::xst::SyntheticQuoteDirection::SyntheticToSyntheticBase,
                 amount: QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(1),
                 },
                 result: balance!(33),
             },
-            existence: XSTSyntheticExistence::AlreadyExists,
+            existence: pallet_tools::xst::SyntheticExistence::AlreadyExists,
         };
         test_synthetic_price_set::<Runtime>(euro_init, None, alice());
-        let euro_init = XSTSyntheticInput {
+        let euro_init = pallet_tools::xst::SyntheticInput {
             asset_id: euro_asset_id,
-            expected_quote: XSTSyntheticQuote {
-                direction: XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
+            expected_quote: pallet_tools::xst::SyntheticQuote {
+                direction: pallet_tools::xst::SyntheticQuoteDirection::SyntheticToSyntheticBase,
                 amount: QuoteAmount::WithDesiredOutput {
                     desired_amount_out: balance!(1),
                 },
                 result: balance!(33),
             },
-            existence: XSTSyntheticExistence::AlreadyExists,
+            existence: pallet_tools::xst::SyntheticExistence::AlreadyExists,
         };
         let init_result = test_synthetic_price_set::<Runtime>(euro_init.clone(), None, alice());
 
         // prices actually change
-        let prices = XSTBaseInput {
+        let prices = pallet_tools::xst::BaseInput {
             reference_per_synthetic_base_buy: balance!(321),
             reference_per_synthetic_base_sell: balance!(123),
         };
-        assert_ok!(QAToolsPallet::xst_initialize(
+        assert_ok!(QaToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
             Some(prices),
             vec![],

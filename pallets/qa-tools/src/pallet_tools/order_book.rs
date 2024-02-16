@@ -29,111 +29,102 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::Config;
-use common::{Balance, PriceVariant, TradingPairSourceManager};
+use codec::{Decode, Encode};
+use common::{balance, Balance, PriceVariant, TradingPairSourceManager};
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use order_book::DataLayer;
-use order_book::{MomentOf, OrderBook, OrderBookId};
-use order_book::{OrderPrice, OrderVolume};
+use order_book::{MomentOf, OrderBook, OrderBookId, OrderPrice, OrderVolume};
 use rand::{Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use sp_std::iter::repeat;
-use sp_std::ops::RangeInclusive;
+use sp_std::ops::{Range, RangeInclusive};
 use sp_std::prelude::*;
 
-pub mod settings {
-    use codec::{Decode, Encode};
-    use common::{balance, Balance};
-    use sp_std::ops::{Range, RangeInclusive};
+/// Parameters for filling one order book side
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
+pub struct SideFillInput<Moment> {
+    /// the best price for bids; the worst for asks
+    pub highest_price: Balance,
+    /// the worst price for bids; the best for asks
+    pub lowest_price: Balance,
+    pub price_step: Balance,
+    pub orders_per_price: u32,
+    /// Lifespan of inserted orders, max by default.
+    pub lifespan: Option<Moment>,
+    /// Default: `min_lot_size..=max_lot_size`
+    pub amount_range_inclusive: Option<RandomAmount>,
+}
 
-    /// Parameters for filling one order book side
-    #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
-    pub struct SideFill<Moment> {
-        /// the best price for bids; the worst for asks
-        pub highest_price: Balance,
-        /// the worst price for bids; the best for asks
-        pub lowest_price: Balance,
-        pub price_step: Balance,
-        pub orders_per_price: u32,
-        /// Lifespan of inserted orders, max by default.
-        pub lifespan: Option<Moment>,
-        /// Default: `min_lot_size..=max_lot_size`
-        pub amount_range_inclusive: Option<RandomAmount>,
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct OrderBookAttributes {
+    pub tick_size: Balance,
+    pub step_lot_size: Balance,
+    pub min_lot_size: Balance,
+    pub max_lot_size: Balance,
+}
+
+// default attributes for regular assets (not NFT)
+impl Default for OrderBookAttributes {
+    fn default() -> Self {
+        Self {
+            tick_size: balance!(0.00001),
+            step_lot_size: balance!(0.00001),
+            min_lot_size: balance!(1),
+            max_lot_size: balance!(1000),
+        }
+    }
+}
+
+/// Parameters for orders amount generation
+#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Eq, scale_info::TypeInfo)]
+pub struct RandomAmount {
+    min: Balance,
+    max: Balance,
+}
+
+impl RandomAmount {
+    pub fn new(min: Balance, max: Balance) -> Self {
+        Self { max, min }
     }
 
-    #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, scale_info::TypeInfo)]
-    #[cfg_attr(feature = "std", derive(Debug))]
-    pub struct OrderBookAttributes {
-        pub tick_size: Balance,
-        pub step_lot_size: Balance,
-        pub min_lot_size: Balance,
-        pub max_lot_size: Balance,
-    }
-
-    // default attributes for regular assets (not NFT)
-    impl Default for OrderBookAttributes {
-        fn default() -> Self {
-            Self {
-                tick_size: balance!(0.00001),
-                step_lot_size: balance!(0.00001),
-                min_lot_size: balance!(1),
-                max_lot_size: balance!(1000),
-            }
+    pub fn as_non_empty_range(&self) -> Option<Range<Balance>> {
+        if self.min < self.max {
+            Some(self.min..self.max)
+        } else {
+            None
         }
     }
 
-    /// Parameters for orders amount generation
-    #[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Eq, scale_info::TypeInfo)]
-    pub struct RandomAmount {
-        min: Balance,
-        max: Balance,
-    }
-
-    impl RandomAmount {
-        pub fn new(min: Balance, max: Balance) -> Self {
-            Self { max, min }
-        }
-
-        pub fn as_non_empty_range(&self) -> Option<Range<Balance>> {
-            if self.min < self.max {
-                Some(self.min..self.max)
-            } else {
-                None
-            }
-        }
-
-        pub fn as_non_empty_inclusive_range(&self) -> Option<RangeInclusive<Balance>> {
-            if self.min <= self.max {
-                Some(self.min..=self.max)
-            } else {
-                None
-            }
+    pub fn as_non_empty_inclusive_range(&self) -> Option<RangeInclusive<Balance>> {
+        if self.min <= self.max {
+            Some(self.min..=self.max)
+        } else {
+            None
         }
     }
+}
 
-    #[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
-    #[cfg_attr(feature = "std", derive(Debug))]
-    pub struct OrderBookFill<Moment, BlockNumber> {
-        /// Best price = lowest, worst = highest.
-        pub asks: Option<SideFill<Moment>>,
-        /// Best price = highest, worst = lowest.
-        pub bids: Option<SideFill<Moment>>,
-        /// Seed for producing random values during the fill process. If `None`,
-        /// current block is chosen
-        pub random_seed: Option<BlockNumber>,
-    }
+#[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct FillInput<Moment, BlockNumber> {
+    /// Best price = lowest, worst = highest.
+    pub asks: Option<SideFillInput<Moment>>,
+    /// Best price = highest, worst = lowest.
+    pub bids: Option<SideFillInput<Moment>>,
+    /// Seed for producing random values during the fill process. If `None`,
+    /// current block is chosen
+    pub random_seed: Option<BlockNumber>,
 }
 
 /// Does not create order books that already exist
 ///
 /// `who` is just some account. Used to mint non-divisible assets for creating corresponding
 /// order book(-s).
-pub fn create_multiple_empty_unchecked<T: Config>(
-    order_book_settings: Vec<(
-        OrderBookId<T::AssetId, T::DEXId>,
-        settings::OrderBookAttributes,
-    )>,
+pub fn create_empty_batch_unchecked<T: Config>(
+    order_book_settings: Vec<(OrderBookId<T::AssetId, T::DEXId>, OrderBookAttributes)>,
 ) -> Result<(), DispatchError> {
     let to_create_ids: Vec<_> = order_book_settings
         .into_iter()
@@ -173,12 +164,12 @@ pub fn create_multiple_empty_unchecked<T: Config>(
 }
 
 /// Place orders into the order books.
-pub fn fill_multiple_unchecked<T: Config>(
+pub fn fill_batch_unchecked<T: Config>(
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
     settings: Vec<(
         OrderBookId<T::AssetId, T::DEXId>,
-        settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
+        FillInput<MomentOf<T>, BlockNumberFor<T>>,
     )>,
 ) -> Result<(), DispatchError> {
     let now = <T as order_book::Config>::Time::now();
@@ -201,7 +192,7 @@ pub fn fill_multiple_unchecked<T: Config>(
 }
 
 fn verify_fill_side_price_params<T: Config>(
-    params: &settings::SideFill<MomentOf<T>>,
+    params: &SideFillInput<MomentOf<T>>,
     tick_size: OrderPrice,
 ) -> Result<(), DispatchError> {
     let tick = tick_size.balance();
@@ -251,8 +242,8 @@ fn verify_amount_range_within_bounds<T: Config>(
     Ok(())
 }
 
-fn max_amount_range<T: Config>(order_book: &OrderBook<T>) -> settings::RandomAmount {
-    settings::RandomAmount::new(
+fn max_amount_range<T: Config>(order_book: &OrderBook<T>) -> RandomAmount {
+    RandomAmount::new(
         *order_book.min_lot_size.balance(),
         *order_book.max_lot_size.balance(),
     )
@@ -264,7 +255,7 @@ fn fill_order_book<T: Config>(
     book_id: OrderBookId<T::AssetId, T::DEXId>,
     asks_owner: T::AccountId,
     bids_owner: T::AccountId,
-    settings: settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
+    settings: FillInput<MomentOf<T>, BlockNumberFor<T>>,
     now: MomentOf<T>,
     current_block: BlockNumberFor<T>,
 ) -> Result<(), DispatchError> {

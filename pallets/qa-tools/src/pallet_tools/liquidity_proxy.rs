@@ -38,15 +38,15 @@ pub mod liquidity_sources {
     use frame_support::ensure;
     use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};
-    use pallet_tools::pool_xyk::XYKPair;
-    use pallet_tools::xst::{XSTBaseInput, XSTSyntheticInput, XSTSyntheticOutput};
+    use pallet_tools::pool_xyk::AssetPairInput;
+    use pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};
     use sp_std::vec::Vec;
 
     // todo: rename 'CAPS' to 'Caps'
     pub fn initialize_xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
-        pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
-    ) -> Result<Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>, DispatchError> {
+        pairs: Vec<AssetPairInput<DexIdOf<T>, AssetIdOf<T>>>,
+    ) -> Result<Vec<AssetPairInput<DexIdOf<T>, AssetIdOf<T>>>, DispatchError> {
         pallet_tools::pool_xyk::initialize::<T>(caller, pairs)
     }
 
@@ -59,13 +59,13 @@ pub mod liquidity_sources {
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
     /// - `settings`: Parameters for creation of the order book and placing the orders in each
     /// order book.
-    pub fn create_and_fill_order_book<T: Config>(
+    pub fn create_and_fill_order_book_batch<T: Config>(
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec<(
             OrderBookId<T::AssetId, T::DEXId>,
-            pallet_tools::order_book::settings::OrderBookAttributes,
-            pallet_tools::order_book::settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
+            pallet_tools::order_book::OrderBookAttributes,
+            pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
         )>,
     ) -> DispatchResult {
         let creation_settings: Vec<_> = settings
@@ -78,13 +78,13 @@ pub mod liquidity_sources {
                 crate::Error::<T>::OrderBookAlreadyExists
             );
         }
-        pallet_tools::order_book::create_multiple_empty_unchecked::<T>(creation_settings)?;
+        pallet_tools::order_book::create_empty_batch_unchecked::<T>(creation_settings)?;
 
         let orders_settings: Vec<_> = settings
             .into_iter()
             .map(|(id, _, fill_settings)| (id, fill_settings))
             .collect();
-        pallet_tools::order_book::fill_multiple_unchecked::<T>(
+        pallet_tools::order_book::fill_batch_unchecked::<T>(
             bids_owner,
             asks_owner,
             orders_settings,
@@ -105,7 +105,7 @@ pub mod liquidity_sources {
         asks_owner: T::AccountId,
         settings: Vec<(
             OrderBookId<T::AssetId, T::DEXId>,
-            pallet_tools::order_book::settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
+            pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
         )>,
     ) -> DispatchResult {
         for (order_book_id, _) in settings.iter() {
@@ -114,7 +114,7 @@ pub mod liquidity_sources {
                 crate::Error::<T>::CannotFillUnknownOrderBook
             );
         }
-        pallet_tools::order_book::fill_multiple_unchecked::<T>(bids_owner, asks_owner, settings)?;
+        pallet_tools::order_book::fill_batch_unchecked::<T>(bids_owner, asks_owner, settings)?;
         Ok(())
     }
 
@@ -127,14 +127,14 @@ pub mod liquidity_sources {
     ///
     /// `quote` in `xst` pallet requires swap to involve synthetic base asset, as well as
     pub fn initialize_xst<T: Config>(
-        base: Option<XSTBaseInput>,
-        synthetics: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+        base: Option<BaseInput>,
+        synthetics: Vec<SyntheticInput<T::AssetId, <T as Config>::Symbol>>,
         relayer: T::AccountId,
-    ) -> Result<Vec<XSTSyntheticOutput<T::AssetId>>, DispatchError> {
+    ) -> Result<Vec<SyntheticOutput<T::AssetId>>, DispatchError> {
         if let Some(base_prices) = base {
-            pallet_tools::xst::xst_base_assets::<T>(base_prices)?;
+            pallet_tools::xst::initialize_base_assets::<T>(base_prices)?;
         }
-        pallet_tools::xst::xst_synthetics::<T>(synthetics, relayer)
+        pallet_tools::xst::initialize_synthetics::<T>(synthetics, relayer)
     }
 
     pub fn initialize_mcbc<T: Config>(
