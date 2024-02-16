@@ -845,13 +845,12 @@ mod test {
             left,
             right,
             absolute_tolerance,
-            relative_percentage,
+            relative_percentage: _,
         } in APPROX_EQ_NOT_MATCH_CASES
         {
             let left = Fixed::from_bits(*left);
             let right = Fixed::from_bits(*right);
             let absolute_tolerance = Fixed::from_bits(*absolute_tolerance);
-            let relative_percentage = Fixed::from_bits(*relative_percentage);
             assert!(
                 !are_approx_eq_abs(left, right, absolute_tolerance).unwrap(),
                 "Expected {} != {} with absolute tolerance {}, but got '=='",
@@ -872,13 +871,12 @@ mod test {
         for ApproxEqTestCase {
             left,
             right,
-            absolute_tolerance,
+            absolute_tolerance: _,
             relative_percentage,
         } in APPROX_EQ_NOT_MATCH_CASES
         {
             let left = Fixed::from_bits(*left);
             let right = Fixed::from_bits(*right);
-            let absolute_tolerance = Fixed::from_bits(*absolute_tolerance);
             let relative_percentage = Fixed::from_bits(*relative_percentage);
             assert!(
                 !are_approx_eq_rel(left, right, relative_percentage).unwrap(),
