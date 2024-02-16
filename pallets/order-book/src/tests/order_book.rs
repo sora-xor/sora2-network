@@ -46,6 +46,7 @@ use sp_core::Get;
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::iter::repeat;
+use sp_std::vec::Vec;
 
 #[test]
 fn should_create_new() {
@@ -4721,7 +4722,7 @@ fn should_apply_market_change() {
 }
 
 #[test]
-fn should_calculate_market_depth_to_price() {
+fn should_calculate_market_depth_volume_to_price() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -4750,7 +4751,7 @@ fn should_calculate_market_depth_to_price() {
         let big_amount = balance!(1000).into();
 
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Buy,
                 bid_price1,
                 regular_amount,
@@ -4759,7 +4760,7 @@ fn should_calculate_market_depth_to_price() {
             (OrderVolume::zero(), regular_amount)
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Buy,
                 bid_price2,
                 regular_amount,
@@ -4768,7 +4769,7 @@ fn should_calculate_market_depth_to_price() {
             (balance!(168.5).into(), balance!(31.5).into())
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Buy,
                 bid_price3,
                 regular_amount,
@@ -4777,7 +4778,7 @@ fn should_calculate_market_depth_to_price() {
             (regular_amount, OrderVolume::zero())
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Buy,
                 bid_price4,
                 regular_amount,
@@ -4787,7 +4788,7 @@ fn should_calculate_market_depth_to_price() {
         );
 
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Buy,
                 bid_price1,
                 big_amount,
@@ -4796,7 +4797,7 @@ fn should_calculate_market_depth_to_price() {
             (OrderVolume::zero(), big_amount)
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Buy,
                 bid_price2,
                 big_amount,
@@ -4805,7 +4806,7 @@ fn should_calculate_market_depth_to_price() {
             (balance!(168.5).into(), balance!(831.5).into())
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Buy,
                 bid_price3,
                 big_amount,
@@ -4814,7 +4815,7 @@ fn should_calculate_market_depth_to_price() {
             (balance!(308.4).into(), balance!(691.6).into())
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Buy,
                 bid_price4,
                 big_amount,
@@ -4824,7 +4825,7 @@ fn should_calculate_market_depth_to_price() {
         );
 
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Sell,
                 ask_price1,
                 regular_amount,
@@ -4833,7 +4834,7 @@ fn should_calculate_market_depth_to_price() {
             (OrderVolume::zero(), regular_amount)
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Sell,
                 ask_price2,
                 regular_amount,
@@ -4842,7 +4843,7 @@ fn should_calculate_market_depth_to_price() {
             (balance!(176.3).into(), balance!(23.7).into())
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Sell,
                 ask_price3,
                 regular_amount,
@@ -4851,7 +4852,7 @@ fn should_calculate_market_depth_to_price() {
             (regular_amount, OrderVolume::zero())
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Sell,
                 ask_price4,
                 regular_amount,
@@ -4861,7 +4862,7 @@ fn should_calculate_market_depth_to_price() {
         );
 
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Sell,
                 ask_price1,
                 big_amount,
@@ -4870,7 +4871,7 @@ fn should_calculate_market_depth_to_price() {
             (OrderVolume::zero(), big_amount)
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Sell,
                 ask_price2,
                 big_amount,
@@ -4879,7 +4880,7 @@ fn should_calculate_market_depth_to_price() {
             (balance!(176.3).into(), balance!(823.7).into())
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Sell,
                 ask_price3,
                 big_amount,
@@ -4888,7 +4889,7 @@ fn should_calculate_market_depth_to_price() {
             (balance!(354.9).into(), balance!(645.1).into())
         );
         assert_eq!(
-            OrderBook::<Runtime>::calculate_market_depth_to_price(
+            OrderBook::<Runtime>::calculate_market_depth_volume_to_price(
                 PriceVariant::Sell,
                 ask_price4,
                 big_amount,
@@ -5395,6 +5396,298 @@ fn should_cross_spread_with_small_remaining_amount() {
                 },
                 ignore_unschedule_error: false
             }
+        );
+    });
+}
+
+#[test]
+fn should_return_empty_market_depth() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+
+        let order_book = create_empty_order_book(order_book_id);
+
+        assert_eq!(
+            order_book.market_depth(PriceVariant::Buy, None, &mut data),
+            Vec::new()
+        );
+
+        assert_eq!(
+            order_book.market_depth(PriceVariant::Sell, None, &mut data),
+            Vec::new()
+        );
+    });
+}
+
+#[test]
+fn should_return_market_depth() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
+        // bids without limit
+        assert_eq!(
+            order_book.market_depth(PriceVariant::Buy, None, &mut data),
+            Vec::from([
+                (balance!(10).into(), balance!(168.5).into()),
+                (balance!(9.8).into(), balance!(139.9).into()),
+                (balance!(9.5).into(), balance!(261.3).into())
+            ])
+        );
+
+        // bids, limit is a base asset
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Buy,
+                Some(OrderAmount::Base(balance!(0).into())),
+                &mut data
+            ),
+            Vec::new()
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Buy,
+                Some(OrderAmount::Base(balance!(100).into())),
+                &mut data
+            ),
+            Vec::from([(balance!(10).into(), balance!(168.5).into())])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Buy,
+                Some(OrderAmount::Base(balance!(200).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(10).into(), balance!(168.5).into()),
+                (balance!(9.8).into(), balance!(139.9).into())
+            ])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Buy,
+                Some(OrderAmount::Base(balance!(400).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(10).into(), balance!(168.5).into()),
+                (balance!(9.8).into(), balance!(139.9).into()),
+                (balance!(9.5).into(), balance!(261.3).into())
+            ])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Buy,
+                Some(OrderAmount::Base(balance!(1000).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(10).into(), balance!(168.5).into()),
+                (balance!(9.8).into(), balance!(139.9).into()),
+                (balance!(9.5).into(), balance!(261.3).into())
+            ])
+        );
+
+        // bids, limit is a quote asset
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Buy,
+                Some(OrderAmount::Quote(balance!(0).into())),
+                &mut data
+            ),
+            Vec::new()
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Buy,
+                Some(OrderAmount::Quote(balance!(1000).into())),
+                &mut data
+            ),
+            Vec::from([(balance!(10).into(), balance!(168.5).into())])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Buy,
+                Some(OrderAmount::Quote(balance!(2000).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(10).into(), balance!(168.5).into()),
+                (balance!(9.8).into(), balance!(139.9).into())
+            ])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Buy,
+                Some(OrderAmount::Quote(balance!(4000).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(10).into(), balance!(168.5).into()),
+                (balance!(9.8).into(), balance!(139.9).into()),
+                (balance!(9.5).into(), balance!(261.3).into())
+            ])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Buy,
+                Some(OrderAmount::Quote(balance!(10000).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(10).into(), balance!(168.5).into()),
+                (balance!(9.8).into(), balance!(139.9).into()),
+                (balance!(9.5).into(), balance!(261.3).into())
+            ])
+        );
+
+        // asks without limit
+        assert_eq!(
+            order_book.market_depth(PriceVariant::Sell, None, &mut data),
+            Vec::from([
+                (balance!(11).into(), balance!(176.3).into()),
+                (balance!(11.2).into(), balance!(178.6).into()),
+                (balance!(11.5).into(), balance!(255.8).into())
+            ])
+        );
+
+        // asks, limit is a base asset
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Sell,
+                Some(OrderAmount::Base(balance!(0).into())),
+                &mut data
+            ),
+            Vec::new()
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Sell,
+                Some(OrderAmount::Base(balance!(100).into())),
+                &mut data
+            ),
+            Vec::from([(balance!(11).into(), balance!(176.3).into()),])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Sell,
+                Some(OrderAmount::Base(balance!(200).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(11).into(), balance!(176.3).into()),
+                (balance!(11.2).into(), balance!(178.6).into())
+            ])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Sell,
+                Some(OrderAmount::Base(balance!(400).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(11).into(), balance!(176.3).into()),
+                (balance!(11.2).into(), balance!(178.6).into()),
+                (balance!(11.5).into(), balance!(255.8).into())
+            ])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Sell,
+                Some(OrderAmount::Base(balance!(1000).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(11).into(), balance!(176.3).into()),
+                (balance!(11.2).into(), balance!(178.6).into()),
+                (balance!(11.5).into(), balance!(255.8).into())
+            ])
+        );
+
+        // asks, limit is a quote asset
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Sell,
+                Some(OrderAmount::Quote(balance!(0).into())),
+                &mut data
+            ),
+            Vec::new()
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Sell,
+                Some(OrderAmount::Quote(balance!(1000).into())),
+                &mut data
+            ),
+            Vec::from([(balance!(11).into(), balance!(176.3).into()),])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Sell,
+                Some(OrderAmount::Quote(balance!(2000).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(11).into(), balance!(176.3).into()),
+                (balance!(11.2).into(), balance!(178.6).into())
+            ])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Sell,
+                Some(OrderAmount::Quote(balance!(4000).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(11).into(), balance!(176.3).into()),
+                (balance!(11.2).into(), balance!(178.6).into()),
+                (balance!(11.5).into(), balance!(255.8).into())
+            ])
+        );
+
+        assert_eq!(
+            order_book.market_depth(
+                PriceVariant::Sell,
+                Some(OrderAmount::Quote(balance!(10000).into())),
+                &mut data
+            ),
+            Vec::from([
+                (balance!(11).into(), balance!(176.3).into()),
+                (balance!(11.2).into(), balance!(178.6).into()),
+                (balance!(11.5).into(), balance!(255.8).into())
+            ])
         );
     });
 }

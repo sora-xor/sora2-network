@@ -88,6 +88,14 @@ impl<T> QuoteAmount<T> {
         }
     }
 
+    /// Returns desired input/output variant of the value
+    pub fn variant(&self) -> SwapVariant {
+        match self {
+            QuoteAmount::WithDesiredInput { .. } => SwapVariant::WithDesiredInput,
+            QuoteAmount::WithDesiredOutput { .. } => SwapVariant::WithDesiredOutput,
+        }
+    }
+
     /// Position desired amount with outcome such that input and output values are aligned.
     pub fn place_input_and_output(self, outcome: SwapOutcome<T>) -> (T, T) {
         match self {
