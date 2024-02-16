@@ -49,18 +49,18 @@ use framenode_runtime::{Runtime, RuntimeOrigin};
 use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::{initialize_xst, initialize_xyk};
 use qa_tools::pallet_tools::order_book::settings;
-use qa_tools::pallet_tools::pool_xyk::XYKPair;
+use qa_tools::pallet_tools::pool_xyk::XykPair;
 use qa_tools::pallet_tools::price_tools::AssetPrices;
 use qa_tools::pallet_tools::xst::{
-    XSTBaseInput, XSTSyntheticExistence, XSTSyntheticInput, XSTSyntheticOutput, XSTSyntheticQuote,
-    XSTSyntheticQuoteDirection,
+    XstBaseInput, XstSyntheticExistence, XstSyntheticInput, XstSyntheticOutput, XstSyntheticQuote,
+    XstSyntheticQuoteDirection,
 };
 use qa_tools::{Error, InputAssetId};
 use sp_runtime::traits::BadOrigin;
 use sp_runtime::DispatchErrorWithPostInfo;
 
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
-pub type QAToolsPallet = qa_tools::Pallet<Runtime>;
+pub type QaToolsPallet = qa_tools::Pallet<Runtime>;
 
 pub fn alice() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
@@ -109,7 +109,7 @@ fn test_creates_orderbook(
     };
 
     assert_err!(
-        QAToolsPallet::order_book_create_and_fill_batch(
+        QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::signed(alice()),
             alice(),
             alice(),
@@ -121,7 +121,7 @@ fn test_creates_orderbook(
     let price_step = default_price_step();
     let orders_per_price = 3;
     let amount_range = settings::RandomAmount::new(amount_range.0, amount_range.1);
-    assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+    assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
         RuntimeOrigin::root(),
         alice(),
         alice(),
@@ -298,7 +298,7 @@ fn should_respect_orderbook_seed() {
             }),
             random_seed: None,
         };
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             alice(),
@@ -371,7 +371,7 @@ fn should_keep_orderbook_randomness_independent() {
             bids: None,
             ..fill_settings_1.clone()
         };
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             alice(),
@@ -467,7 +467,7 @@ fn should_reject_incorrect_orderbook_fill_settings() {
             Error::<Runtime>::IncorrectPrice.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 alice(),
@@ -487,7 +487,7 @@ fn should_reject_incorrect_orderbook_fill_settings() {
             random_seed: None,
         };
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 alice(),
@@ -532,7 +532,7 @@ fn should_reject_too_many_orders() {
             Error::<Runtime>::TooManyPrices.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 alice(),
@@ -564,7 +564,7 @@ fn should_reject_too_many_orders() {
             Error::<Runtime>::TooManyOrders.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 alice(),
@@ -596,7 +596,7 @@ fn should_reject_too_many_orders() {
             Error::<Runtime>::TooManyOrders.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 alice(),
@@ -646,7 +646,7 @@ fn should_create_and_fill_orderbook_max_orders_count() {
             random_seed: None,
         };
 
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             bob(),
@@ -707,7 +707,7 @@ fn should_not_create_existing_order_book() {
             random_seed: None,
         };
 
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             bob(),
@@ -724,7 +724,7 @@ fn should_not_create_existing_order_book() {
             Error::<Runtime>::OrderBookAlreadyExists.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_create_and_fill_batch(
+            QaToolsPallet::order_book_create_and_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 bob(),
@@ -776,7 +776,7 @@ fn should_not_fill_non_existing_order_book() {
             Error::<Runtime>::CannotFillUnknownOrderBook.into();
         err.post_info.pays_fee = Pays::No;
         assert_err!(
-            QAToolsPallet::order_book_fill_batch(
+            QaToolsPallet::order_book_fill_batch(
                 RuntimeOrigin::root(),
                 alice(),
                 bob(),
@@ -820,7 +820,7 @@ fn should_fill_order_book() {
             random_seed: None,
         };
 
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             bob(),
@@ -833,7 +833,7 @@ fn should_fill_order_book() {
 
         assert!(order_book::Pallet::<Runtime>::order_books(order_book_id).is_some());
 
-        assert_ok!(QAToolsPallet::order_book_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             bob(),
@@ -877,7 +877,7 @@ fn should_fill_orderbook_max_orders_count() {
             random_seed: None,
         };
 
-        assert_ok!(QAToolsPallet::order_book_create_and_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_create_and_fill_batch(
             RuntimeOrigin::root(),
             alice(),
             bob(),
@@ -906,7 +906,7 @@ fn should_fill_orderbook_max_orders_count() {
         let current_block = FrameSystem::block_number();
         run_to_block(current_block + 1);
 
-        assert_ok!(QAToolsPallet::order_book_fill_batch(
+        assert_ok!(QaToolsPallet::order_book_fill_batch(
             RuntimeOrigin::root(),
             charlie(),
             dave(),
@@ -932,21 +932,21 @@ fn should_fill_orderbook_max_orders_count() {
 fn should_xyk_initialize_pool() {
     ext().execute_with(|| {
         let pairs = vec![
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.1)),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(1)),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, DAI, balance!(10)),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5)),
-            XYKPair::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5)),
-            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5)),
-            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, PSWAP, balance!(0.5)),
-            XYKPair::new(
+            XykPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
+            XykPair::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.1)),
+            XykPair::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(1)),
+            XykPair::new(DEXId::Polkaswap.into(), XOR, DAI, balance!(10)),
+            XykPair::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5)),
+            XykPair::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5)),
+            XykPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5)),
+            XykPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, PSWAP, balance!(0.5)),
+            XykPair::new(
                 DEXId::PolkaswapXSTUSD.into(),
                 XSTUSD,
                 ETH,
                 balance!(0.000000000000000001),
             ),
-            XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, DAI, balance!(0.5)),
+            XykPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, DAI, balance!(0.5)),
         ];
         let prices = initialize_xyk::<Runtime>(alice(), pairs.clone()).unwrap();
 
@@ -973,19 +973,19 @@ fn should_xyk_initialize_pool() {
 #[test]
 fn should_not_initialize_existing_xyk_pool() {
     ext().execute_with(|| {
-        assert_ok!(QAToolsPallet::xyk_initialize(
+        assert_ok!(QaToolsPallet::xyk_initialize(
             RuntimeOrigin::root(),
             alice(),
             vec![
-                XYKPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
-                XYKPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5))
+                XykPair::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
+                XykPair::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5))
             ],
         ));
         assert_eq!(
-            QAToolsPallet::xyk_initialize(
+            QaToolsPallet::xyk_initialize(
                 RuntimeOrigin::root(),
                 alice(),
-                vec![XYKPair::new(
+                vec![XykPair::new(
                     DEXId::Polkaswap.into(),
                     XOR,
                     VAL,
@@ -1000,7 +1000,7 @@ fn should_not_initialize_existing_xyk_pool() {
 }
 
 fn check_price_tools_set_price(asset_id: &InputAssetId<AssetIdOf<Runtime>>, prices: AssetPrices) {
-    assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+    assert_ok!(QaToolsPallet::price_tools_set_asset_price(
         RuntimeOrigin::root(),
         prices.clone(),
         asset_id.clone()
@@ -1070,7 +1070,7 @@ fn should_price_tools_reject_incorrect_prices() {
     ext().execute_with(|| {
         // todo: uncomment
         // assert_err!(
-        //     QAToolsPallet::price_tools_set_asset_price(
+        //     QaToolsPallet::price_tools_set_asset_price(
         //         RuntimeOrigin::root(),
         //         AssetPrices {
         //             buy: balance!(1),
@@ -1081,7 +1081,7 @@ fn should_price_tools_reject_incorrect_prices() {
         //     Error::<Runtime>::BuyLessThanSell
         // );
         assert_err!(
-            QAToolsPallet::price_tools_set_asset_price(
+            QaToolsPallet::price_tools_set_asset_price(
                 RuntimeOrigin::root(),
                 AssetPrices {
                     buy: balance!(1),
@@ -1092,7 +1092,7 @@ fn should_price_tools_reject_incorrect_prices() {
             Error::<Runtime>::BuyLessThanSell
         );
         assert_err!(
-            QAToolsPallet::price_tools_set_asset_price(
+            QaToolsPallet::price_tools_set_asset_price(
                 RuntimeOrigin::root(),
                 AssetPrices {
                     buy: balance!(1),
@@ -1105,13 +1105,13 @@ fn should_price_tools_reject_incorrect_prices() {
     })
 }
 
-fn test_init_xst_synthetic_base_price(prices: XSTBaseInput, reference_prices: AssetPrices) {
+fn test_init_xst_synthetic_base_price(prices: XstBaseInput, reference_prices: AssetPrices) {
     ext().execute_with(|| {
         let reference_asset_id = xst::ReferenceAssetId::<Runtime>::get();
         let synthetic_base_asset_id = <Runtime as xst::Config>::GetSyntheticBaseAssetId::get();
 
         assert_eq!(
-            QAToolsPallet::xst_initialize(
+            QaToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
                 Some(prices.clone()),
                 vec![],
@@ -1120,13 +1120,13 @@ fn test_init_xst_synthetic_base_price(prices: XSTBaseInput, reference_prices: As
             Err(err_pays_no(Error::<Runtime>::ReferenceAssetPriceNotFound))
         );
 
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
-        assert_ok!(QAToolsPallet::xst_initialize(
+        assert_ok!(QaToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
             Some(prices.clone()),
             vec![],
@@ -1157,7 +1157,7 @@ fn should_init_xst_synthetic_base_price() {
         buy: balance!(1),
         sell: balance!(1),
     };
-    let prices = XSTBaseInput {
+    let prices = XstBaseInput {
         reference_per_synthetic_base_buy: balance!(1),
         reference_per_synthetic_base_sell: balance!(1),
     };
@@ -1166,7 +1166,7 @@ fn should_init_xst_synthetic_base_price() {
         buy: balance!(5),
         sell: balance!(2),
     };
-    let prices = XSTBaseInput {
+    let prices = XstBaseInput {
         reference_per_synthetic_base_buy: balance!(3),
         reference_per_synthetic_base_sell: balance!(1),
     };
@@ -1181,16 +1181,16 @@ fn should_reject_incorrect_xst_base_price() {
             buy: balance!(1),
             sell: balance!(1),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
         assert_eq!(
-            QAToolsPallet::xst_initialize(
+            QaToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
-                Some(XSTBaseInput {
+                Some(XstBaseInput {
                     reference_per_synthetic_base_buy: balance!(1),
                     reference_per_synthetic_base_sell: balance!(1.1),
                 }),
@@ -1207,9 +1207,9 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
     ext().execute_with(|| {
         // Reject when not initialized
         assert_eq!(
-            QAToolsPallet::xst_initialize(
+            QaToolsPallet::xst_initialize(
                 RuntimeOrigin::root(),
-                Some(XSTBaseInput {
+                Some(XstBaseInput {
                     reference_per_synthetic_base_buy: balance!(1),
                     reference_per_synthetic_base_sell: balance!(1),
                 }),
@@ -1225,16 +1225,16 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
             buy: balance!(5),
             sell: balance!(2),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
         // Now it should work fine
-        assert_ok!(QAToolsPallet::xst_initialize(
+        assert_ok!(QaToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
-            Some(XSTBaseInput {
+            Some(XstBaseInput {
                 reference_per_synthetic_base_buy: balance!(3),
                 reference_per_synthetic_base_sell: balance!(1),
             }),
@@ -1244,9 +1244,9 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
 
         let (reference_per_synthetic_base_buy, reference_per_synthetic_base_sell) =
             (balance!(21), balance!(7));
-        assert_ok!(QAToolsPallet::xst_initialize(
+        assert_ok!(QaToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
-            Some(XSTBaseInput {
+            Some(XstBaseInput {
                 reference_per_synthetic_base_buy,
                 reference_per_synthetic_base_sell,
             }),
@@ -1292,18 +1292,18 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
 }
 
 fn euro_init_input<T: qa_tools::Config>(
-    expected_quote: XSTSyntheticQuote,
-) -> XSTSyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol> {
+    expected_quote: XstSyntheticQuote,
+) -> XstSyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol> {
     let symbol_name =
         SymbolName::from_str("EURO").expect("Failed to parse `symbol_name` as a symbol name");
     let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&symbol_name);
     let symbol = AssetSymbol("XSTEUR".into());
     let name = AssetName("XST Euro".into());
     let fee_ratio = fixed!(0);
-    XSTSyntheticInput {
+    XstSyntheticInput {
         asset_id: asset_id.into(),
         expected_quote,
-        existence: XSTSyntheticExistence::RegisterNewAsset {
+        existence: XstSyntheticExistence::RegisterNewAsset {
             symbol,
             name,
             reference_symbol: symbol_name.into(),
@@ -1314,10 +1314,10 @@ fn euro_init_input<T: qa_tools::Config>(
 
 /// Returns results of initialization
 fn test_synthetic_price_set<T: qa_tools::Config>(
-    synthetic_input: XSTSyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol>,
-    base_input: Option<XSTBaseInput>,
+    synthetic_input: XstSyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol>,
+    base_input: Option<XstBaseInput>,
     relayer: T::AccountId,
-) -> Vec<XSTSyntheticOutput<T::AssetId>> {
+) -> Vec<XstSyntheticOutput<T::AssetId>> {
     let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
     let init_result =
         initialize_xst::<T>(base_input, vec![synthetic_input.clone()], relayer).unwrap();
@@ -1329,10 +1329,10 @@ fn test_synthetic_price_set<T: qa_tools::Config>(
     );
 
     let (input_asset_id, output_asset_id) = match synthetic_input.expected_quote.direction {
-        XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic => {
+        XstSyntheticQuoteDirection::SyntheticBaseToSynthetic => {
             (synthetic_base_asset_id, synthetic_input.asset_id)
         }
-        XSTSyntheticQuoteDirection::SyntheticToSyntheticBase => {
+        XstSyntheticQuoteDirection::SyntheticToSyntheticBase => {
             (synthetic_input.asset_id, synthetic_base_asset_id)
         }
     };
@@ -1359,20 +1359,20 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
             buy: balance!(1),
             sell: balance!(1),
         };
-        let prices = XSTBaseInput {
+        let prices = XstBaseInput {
             reference_per_synthetic_base_buy: balance!(1),
             reference_per_synthetic_base_sell: balance!(1),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
         let direction = if forward {
-            XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic
+            XstSyntheticQuoteDirection::SyntheticBaseToSynthetic
         } else {
-            XSTSyntheticQuoteDirection::SyntheticToSyntheticBase
+            XstSyntheticQuoteDirection::SyntheticToSyntheticBase
         };
         let amount = match variant {
             SwapVariant::WithDesiredOutput => QuoteAmount::WithDesiredOutput {
@@ -1382,7 +1382,7 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
                 desired_amount_out: balance!(1),
             },
         };
-        let euro_init = euro_init_input::<Runtime>(XSTSyntheticQuote {
+        let euro_init = euro_init_input::<Runtime>(XstSyntheticQuote {
             direction,
             amount,
             result: balance!(1),
@@ -1456,20 +1456,20 @@ fn test_init_xst_synthetic_price_various_prices(forward: bool, variant: SwapVari
             buy: balance!(13),
             sell: balance!(5),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
-        let prices = XSTBaseInput {
+        let prices = XstBaseInput {
             reference_per_synthetic_base_buy: balance!(53),
             reference_per_synthetic_base_sell: balance!(3),
         };
         let direction = if forward {
-            XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic
+            XstSyntheticQuoteDirection::SyntheticBaseToSynthetic
         } else {
-            XSTSyntheticQuoteDirection::SyntheticToSyntheticBase
+            XstSyntheticQuoteDirection::SyntheticToSyntheticBase
         };
         let amount = match variant {
             SwapVariant::WithDesiredOutput => QuoteAmount::WithDesiredOutput {
@@ -1479,7 +1479,7 @@ fn test_init_xst_synthetic_price_various_prices(forward: bool, variant: SwapVari
                 desired_amount_out: balance!(137),
             },
         };
-        let euro_init = euro_init_input::<Runtime>(XSTSyntheticQuote {
+        let euro_init = euro_init_input::<Runtime>(XstSyntheticQuote {
             direction,
             amount,
             result: balance!(37),
@@ -1518,20 +1518,20 @@ fn should_update_xst_synthetic_price() {
             buy: balance!(5),
             sell: balance!(2),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
 
         // Some initial values
-        let prices = XSTBaseInput {
+        let prices = XstBaseInput {
             reference_per_synthetic_base_buy: balance!(3),
             reference_per_synthetic_base_sell: balance!(1),
         };
 
-        let euro_init = euro_init_input::<Runtime>(XSTSyntheticQuote {
-            direction: XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+        let euro_init = euro_init_input::<Runtime>(XstSyntheticQuote {
+            direction: XstSyntheticQuoteDirection::SyntheticBaseToSynthetic,
             amount: QuoteAmount::WithDesiredOutput {
                 desired_amount_out: balance!(1),
             },
@@ -1544,72 +1544,72 @@ fn should_update_xst_synthetic_price() {
             buy: balance!(1),
             sell: balance!(1),
         };
-        assert_ok!(QAToolsPallet::price_tools_set_asset_price(
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
             RuntimeOrigin::root(),
             reference_prices,
             InputAssetId::Other(reference_asset_id)
         ));
-        let prices = XSTBaseInput {
+        let prices = XstBaseInput {
             reference_per_synthetic_base_buy: balance!(1),
             reference_per_synthetic_base_sell: balance!(1),
         };
-        let euro_init = XSTSyntheticInput {
+        let euro_init = XstSyntheticInput {
             asset_id: euro_asset_id,
-            expected_quote: XSTSyntheticQuote {
-                direction: XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+            expected_quote: XstSyntheticQuote {
+                direction: XstSyntheticQuoteDirection::SyntheticBaseToSynthetic,
                 amount: QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(1),
                 },
                 result: balance!(33),
             },
-            existence: XSTSyntheticExistence::AlreadyExists,
+            existence: XstSyntheticExistence::AlreadyExists,
         };
         test_synthetic_price_set::<Runtime>(euro_init, Some(prices), alice());
 
         // other variants
-        let euro_init = XSTSyntheticInput {
+        let euro_init = XstSyntheticInput {
             asset_id: euro_asset_id,
-            expected_quote: XSTSyntheticQuote {
-                direction: XSTSyntheticQuoteDirection::SyntheticBaseToSynthetic,
+            expected_quote: XstSyntheticQuote {
+                direction: XstSyntheticQuoteDirection::SyntheticBaseToSynthetic,
                 amount: QuoteAmount::WithDesiredOutput {
                     desired_amount_out: balance!(1),
                 },
                 result: balance!(33),
             },
-            existence: XSTSyntheticExistence::AlreadyExists,
+            existence: XstSyntheticExistence::AlreadyExists,
         };
         test_synthetic_price_set::<Runtime>(euro_init, None, alice());
-        let euro_init = XSTSyntheticInput {
+        let euro_init = XstSyntheticInput {
             asset_id: euro_asset_id,
-            expected_quote: XSTSyntheticQuote {
-                direction: XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
+            expected_quote: XstSyntheticQuote {
+                direction: XstSyntheticQuoteDirection::SyntheticToSyntheticBase,
                 amount: QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(1),
                 },
                 result: balance!(33),
             },
-            existence: XSTSyntheticExistence::AlreadyExists,
+            existence: XstSyntheticExistence::AlreadyExists,
         };
         test_synthetic_price_set::<Runtime>(euro_init, None, alice());
-        let euro_init = XSTSyntheticInput {
+        let euro_init = XstSyntheticInput {
             asset_id: euro_asset_id,
-            expected_quote: XSTSyntheticQuote {
-                direction: XSTSyntheticQuoteDirection::SyntheticToSyntheticBase,
+            expected_quote: XstSyntheticQuote {
+                direction: XstSyntheticQuoteDirection::SyntheticToSyntheticBase,
                 amount: QuoteAmount::WithDesiredOutput {
                     desired_amount_out: balance!(1),
                 },
                 result: balance!(33),
             },
-            existence: XSTSyntheticExistence::AlreadyExists,
+            existence: XstSyntheticExistence::AlreadyExists,
         };
         let init_result = test_synthetic_price_set::<Runtime>(euro_init.clone(), None, alice());
 
         // prices actually change
-        let prices = XSTBaseInput {
+        let prices = XstBaseInput {
             reference_per_synthetic_base_buy: balance!(321),
             reference_per_synthetic_base_sell: balance!(123),
         };
-        assert_ok!(QAToolsPallet::xst_initialize(
+        assert_ok!(QaToolsPallet::xst_initialize(
             RuntimeOrigin::root(),
             Some(prices),
             vec![],

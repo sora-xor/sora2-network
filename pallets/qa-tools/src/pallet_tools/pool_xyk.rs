@@ -12,7 +12,7 @@ use sp_std::fmt::Debug;
 use sp_std::vec::Vec;
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub struct XYKPair<DEXId, AssetId> {
+pub struct XykPair<DEXId, AssetId> {
     pub dex_id: DEXId,
     pub asset_a: AssetId,
     pub asset_b: AssetId,
@@ -20,7 +20,7 @@ pub struct XYKPair<DEXId, AssetId> {
     pub price: Balance,
 }
 
-impl<DEXId, AssetId> XYKPair<DEXId, AssetId> {
+impl<DEXId, AssetId> XykPair<DEXId, AssetId> {
     // `price` - Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1
     // `asset_a`)
     pub fn new(dex_id: DEXId, asset_a: AssetId, asset_b: AssetId, price: Balance) -> Self {
@@ -64,17 +64,17 @@ fn trading_pair_from_asset_ids<T: Config>(
 /// Note: with current implementation the prices should always be equal
 pub fn initialize<T: Config + pool_xyk::Config>(
     caller: T::AccountId,
-    pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
-) -> Result<Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>, DispatchError> {
+    pairs: Vec<XykPair<DexIdOf<T>, AssetIdOf<T>>>,
+) -> Result<Vec<XykPair<DexIdOf<T>, AssetIdOf<T>>>, DispatchError> {
     let mut actual_prices = pairs.clone();
     for (
-        XYKPair {
+        XykPair {
             dex_id,
             asset_a,
             asset_b,
             price: expected_price,
         },
-        XYKPair {
+        XykPair {
             price: actual_price,
             ..
         },

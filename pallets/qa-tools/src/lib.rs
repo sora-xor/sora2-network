@@ -68,8 +68,8 @@ pub mod pallet {
     use order_book::{MomentOf, OrderBookId};
     use pallet_tools::liquidity_proxy::liquidity_sources;
     use pallet_tools::order_book::settings;
-    use pallet_tools::pool_xyk::XYKPair;
-    use pallet_tools::xst::{XSTBaseInput, XSTSyntheticInput, XSTSyntheticOutput};
+    use pallet_tools::pool_xyk::XykPair;
+    use pallet_tools::xst::{XstBaseInput, XstSyntheticInput, XstSyntheticOutput};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
@@ -121,13 +121,13 @@ pub mod pallet {
         XykInitialized {
             /// Exact prices for token pairs achievable after the initialization.
             /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
-            prices_achieved: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
+            prices_achieved: Vec<XykPair<DexIdOf<T>, AssetIdOf<T>>>,
         },
         /// XST liquidity source has been initialized successfully.
         XstInitialized {
             /// Exact `quote`/`exchange` calls achievable after the initialization.
             /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
-            quotes_achieved: Vec<XSTSyntheticOutput<T::AssetId>>,
+            quotes_achieved: Vec<XstSyntheticOutput<T::AssetId>>,
         },
     }
 
@@ -298,7 +298,7 @@ pub mod pallet {
         pub fn xyk_initialize(
             origin: OriginFor<T>,
             account: AccountIdOf<T>,
-            pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
+            pairs: Vec<XykPair<DexIdOf<T>, AssetIdOf<T>>>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
@@ -335,8 +335,8 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::xst_initialize())]
         pub fn xst_initialize(
             origin: OriginFor<T>,
-            base_prices: Option<XSTBaseInput>,
-            synthetics_prices: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+            base_prices: Option<XstBaseInput>,
+            synthetics_prices: Vec<XstSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
             relayer: T::AccountId,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;

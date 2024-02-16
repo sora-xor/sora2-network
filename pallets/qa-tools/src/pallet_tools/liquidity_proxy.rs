@@ -38,14 +38,14 @@ pub mod liquidity_sources {
     use frame_support::ensure;
     use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};
-    use pallet_tools::pool_xyk::XYKPair;
-    use pallet_tools::xst::{XSTBaseInput, XSTSyntheticInput, XSTSyntheticOutput};
+    use pallet_tools::pool_xyk::XykPair;
+    use pallet_tools::xst::{XstBaseInput, XstSyntheticInput, XstSyntheticOutput};
     use sp_std::vec::Vec;
 
     pub fn initialize_xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
-        pairs: Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>,
-    ) -> Result<Vec<XYKPair<DexIdOf<T>, AssetIdOf<T>>>, DispatchError> {
+        pairs: Vec<XykPair<DexIdOf<T>, AssetIdOf<T>>>,
+    ) -> Result<Vec<XykPair<DexIdOf<T>, AssetIdOf<T>>>, DispatchError> {
         pallet_tools::pool_xyk::initialize::<T>(caller, pairs)
     }
 
@@ -126,10 +126,10 @@ pub mod liquidity_sources {
     ///
     /// `quote` in `xst` pallet requires swap to involve synthetic base asset, as well as
     pub fn initialize_xst<T: Config>(
-        base: Option<XSTBaseInput>,
-        synthetics: Vec<XSTSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+        base: Option<XstBaseInput>,
+        synthetics: Vec<XstSyntheticInput<T::AssetId, <T as Config>::Symbol>>,
         relayer: T::AccountId,
-    ) -> Result<Vec<XSTSyntheticOutput<T::AssetId>>, DispatchError> {
+    ) -> Result<Vec<XstSyntheticOutput<T::AssetId>>, DispatchError> {
         if let Some(base_prices) = base {
             pallet_tools::xst::xst_base_assets::<T>(base_prices)?;
         }
