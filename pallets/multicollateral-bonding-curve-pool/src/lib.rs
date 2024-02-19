@@ -1103,7 +1103,7 @@ impl<T: Config> Pallet<T> {
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 ensure!(
-                    output_collateral_unwrapped <= collateral_supply_unwrapped,
+                    output_collateral_unwrapped < collateral_supply_unwrapped,
                     Error::<T>::NotEnoughReserves
                 );
                 Ok(output_collateral_unwrapped)
@@ -1116,7 +1116,7 @@ impl<T: Config> Pallet<T> {
                     .try_into()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 ensure!(
-                    quantity_collateral <= collateral_supply_unwrapped,
+                    quantity_collateral < collateral_supply_unwrapped,
                     Error::<T>::NotEnoughReserves
                 );
                 let output_main =
