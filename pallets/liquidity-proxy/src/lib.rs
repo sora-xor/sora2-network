@@ -1494,7 +1494,7 @@ impl<T: Config> Pallet<T> {
         let mut total_weight = Weight::zero();
 
         for source in sources {
-            if let Ok((chunks, weight)) = T::LiquidityRegistry::step_quote(
+            if let Ok((discrete_quotation, weight)) = T::LiquidityRegistry::step_quote(
                 source,
                 input_asset_id,
                 output_asset_id,
@@ -1502,7 +1502,7 @@ impl<T: Config> Pallet<T> {
                 T::GetNumSamples::get(),
                 deduce_fee,
             ) {
-                aggregator.add_source(source.clone(), chunks);
+                aggregator.add_source(source.clone(), discrete_quotation);
                 total_weight = total_weight.saturating_add(weight);
             } else {
                 // skip the source if it returns an error

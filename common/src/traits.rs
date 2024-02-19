@@ -42,10 +42,9 @@ use frame_support::Parameter;
 use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
-use crate::primitives::{Balance, SwapChunk};
+use crate::primitives::{Balance, DiscreteQuotation};
 use codec::{Decode, Encode, MaxEncodedLen};
 use sp_std::collections::btree_set::BTreeSet;
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
@@ -215,7 +214,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         amount: QuoteAmount<Amount>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Amount>>, Weight), Error>;
+    ) -> Result<(DiscreteQuotation<Amount>, Weight), Error>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
@@ -363,7 +362,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _amount: QuoteAmount<Fixed>,
         _recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Fixed>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<Fixed>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -443,7 +442,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _amount: QuoteAmount<Balance>,
         _recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 

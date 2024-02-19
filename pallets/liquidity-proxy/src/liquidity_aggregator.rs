@@ -36,11 +36,10 @@ use sp_std::vec::Vec;
 #[cfg(feature = "wip")] // ALT
 use {
     common::prelude::SwapVariant,
-    common::{fixed, Balance, SwapChunk},
+    common::{fixed, Balance, DiscreteQuotation},
     itertools::Itertools,
     sp_runtime::traits::Zero,
     sp_std::collections::btree_map::BTreeMap,
-    sp_std::collections::vec_deque::VecDeque,
 };
 
 /// Info with input & output amounts for liquidity source
@@ -80,7 +79,7 @@ impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdT
 #[cfg(feature = "wip")] // ALT
 #[derive(Clone)]
 pub struct LiquidityAggregator<LiquiditySourceType> {
-    liquidity_chunks: BTreeMap<LiquiditySourceType, VecDeque<SwapChunk<Balance>>>,
+    liquidity_quotations: BTreeMap<LiquiditySourceType, DiscreteQuotation<Balance>>,
     variant: SwapVariant,
 }
 
@@ -91,7 +90,7 @@ where
 {
     pub fn new(variant: SwapVariant) -> Self {
         Self {
-            liquidity_chunks: BTreeMap::new(),
+            liquidity_quotations: BTreeMap::new(),
             variant,
         }
     }
@@ -99,9 +98,9 @@ where
     pub fn add_source(
         &mut self,
         source: LiquiditySourceType,
-        sorted_chunks: VecDeque<SwapChunk<Balance>>,
+        discrete_quotation: DiscreteQuotation<Balance>,
     ) {
-        self.liquidity_chunks.insert(source, sorted_chunks);
+        self.liquidity_quotations.insert(source, discrete_quotation);
     }
 
     pub fn aggregate_swap_outcome(
@@ -111,7 +110,7 @@ where
         SwapInfo<LiquiditySourceType, Balance>,
         AggregatedSwapOutcome<LiquiditySourceType, Balance>,
     )> {
-        if self.liquidity_chunks.is_empty() {
+        if self.liquidity_quotations.is_empty() {
             return None;
         }
 
@@ -136,7 +135,9 @@ where
                 }
             }
 
-            let mut chunk = self.liquidity_chunks.get_mut(source)?.pop_front()?;
+            // todo limits
+            let discrete_quotation = self.liquidity_quotations.get_mut(source)?;
+            let mut chunk = discrete_quotation.chunks.pop_front()?;
 
             let (remaining_delta, result_delta, fee_delta) = match self.variant {
                 SwapVariant::WithDesiredInput => {
@@ -189,8 +190,8 @@ where
     fn find_best_price_candidates(&self) -> Vec<LiquiditySourceType> {
         let mut candidates = Vec::new();
         let mut max = fixed!(0);
-        for (source, chunks) in self.liquidity_chunks.iter() {
-            let Some(front) = chunks.front() else {
+        for (source, discrete_quotation) in self.liquidity_quotations.iter() {
+            let Some(front) = discrete_quotation.chunks.front() else {
                 continue;
             };
             let Some(price) = front.price() else {

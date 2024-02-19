@@ -35,8 +35,8 @@
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource,
-    RewardReason, SwapChunk,
+    balance, fixed, Balance, DexInfoProvider, DiscreteQuotation, Fixed, GetPoolReserves,
+    LiquiditySource, RewardReason, SwapChunk,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::DispatchError;
@@ -45,7 +45,6 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT};
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -419,18 +418,19 @@ impl<T: Config<I>, I: 'static>
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
 
+        let mut quotation = DiscreteQuotation::new();
+
         if amount.amount() == 0 {
-            return Ok((VecDeque::new(), Weight::zero()));
+            return Ok((quotation, Weight::zero()));
         }
 
         let step = amount.amount() / recommended_samples_count as Balance;
 
-        let mut chunks = VecDeque::new();
         let mut sub_in = 0;
         let mut sub_out = 0;
         let mut sub_fee = 0;
@@ -458,10 +458,15 @@ impl<T: Config<I>, I: 'static>
             sub_out = output;
             sub_fee = fee;
 
-            chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
+            quotation
+                .chunks
+                .push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
         }
 
-        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
+        Ok((
+            quotation,
+            Self::step_quote_weight(recommended_samples_count),
+        ))
     }
 
     fn exchange(

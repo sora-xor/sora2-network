@@ -38,17 +38,16 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
-    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
-    RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
-    TradingPairSourceManager, XykPool,
+    fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, DiscreteQuotation,
+    EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
+    OnPoolReservesChanged, RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount,
+    TradingPair, TradingPairSourceManager, XykPool,
 };
 
 mod aliases;
@@ -442,9 +441,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
+        let mut quotation = DiscreteQuotation::new();
+
         if amount.amount().is_zero() {
-            return Ok((VecDeque::new(), Weight::zero()));
+            return Ok((quotation, Weight::zero()));
         }
 
         let samples_count = if recommended_samples_count < 1 {
@@ -498,7 +499,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
         volumes.push((amount.amount(), remaining));
 
-        let mut chunks = VecDeque::new();
         let mut sub_sum = Balance::zero();
         let mut sub_fee = Balance::zero();
 
@@ -518,7 +518,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     let fee_chunk = fee.saturating_sub(sub_fee);
                     sub_sum = calculated;
                     sub_fee = fee;
-                    chunks.push_back(SwapChunk::new(step, output, fee_chunk));
+                    quotation
+                        .chunks
+                        .push_back(SwapChunk::new(step, output, fee_chunk));
                 }
             }
             QuoteAmount::WithDesiredOutput { .. } => {
@@ -536,12 +538,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     let fee_chunk = fee.saturating_sub(sub_fee);
                     sub_sum = calculated;
                     sub_fee = fee;
-                    chunks.push_back(SwapChunk::new(input, step, fee_chunk));
+                    quotation
+                        .chunks
+                        .push_back(SwapChunk::new(input, step, fee_chunk));
                 }
             }
         }
 
-        Ok((chunks, Self::step_quote_weight(samples_count)))
+        Ok((quotation, Self::step_quote_weight(samples_count)))
     }
 
     fn exchange(

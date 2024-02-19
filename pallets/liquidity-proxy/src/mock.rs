@@ -32,9 +32,9 @@ use crate::{self as liquidity_proxy, Config, LiquidityProxyBuyBackHandler};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
-    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, RewardReason, SwapChunk, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM,
-    PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    AssetName, AssetSymbol, DEXInfo, DiscreteQuotation, Fixed, FromGenericPair, GetMarketInfo,
+    LiquiditySource, LiquiditySourceType, RewardReason, SwapChunk, DAI, DEFAULT_BALANCE_PRECISION,
+    DOT, ETH, KSM, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -52,7 +52,6 @@ use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, DispatchError, Perbill, Percent};
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::str::FromStr;
 use std::collections::{BTreeSet, HashMap};
 
@@ -749,18 +748,19 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
 
+        let mut quotation = DiscreteQuotation::new();
+
         if amount.amount() == 0 {
-            return Ok((VecDeque::new(), Weight::zero()));
+            return Ok((quotation, Weight::zero()));
         }
 
         let step = amount.amount() / recommended_samples_count as Balance;
 
-        let mut chunks = VecDeque::new();
         let mut sub_in = 0;
         let mut sub_out = 0;
         let mut sub_fee = 0;
@@ -788,10 +788,15 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             sub_out = output;
             sub_fee = fee;
 
-            chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
+            quotation
+                .chunks
+                .push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
         }
 
-        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
+        Ok((
+            quotation,
+            Self::step_quote_weight(recommended_samples_count),
+        ))
     }
 
     fn exchange(
@@ -1167,13 +1172,15 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
 
+        let mut quotation = DiscreteQuotation::new();
+
         if amount.amount() == 0 {
-            return Ok((VecDeque::new(), Weight::zero()));
+            return Ok((quotation, Weight::zero()));
         }
 
         let (outcome, _weight) =
@@ -1194,8 +1201,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             fee / recommended_samples_count as Balance,
         );
 
+        quotation.chunks = vec![chunk; recommended_samples_count].into();
+
         Ok((
-            vec![chunk; recommended_samples_count].into(),
+            quotation,
             Self::step_quote_weight(recommended_samples_count),
         ))
     }

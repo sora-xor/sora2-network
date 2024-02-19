@@ -32,8 +32,8 @@ use crate::{self as dex_api, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed,
-    LiquiditySource, LiquiditySourceType, RewardReason, SwapChunk, DOT, KSM, PSWAP, TBCD, VAL, XOR,
+    balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, DiscreteQuotation,
+    Fixed, LiquiditySource, LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, TBCD, VAL, XOR,
     XST,
 };
 use currencies::BasicCurrencyAdapter;
@@ -49,7 +49,6 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
-use sp_std::collections::vec_deque::VecDeque;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -190,7 +189,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
         <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::step_quote(
             target_id,
             input_asset_id,

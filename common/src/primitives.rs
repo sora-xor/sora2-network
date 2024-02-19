@@ -1296,3 +1296,12 @@ pub struct DiscreteQuotation<AmountType> {
     pub chunks: VecDeque<SwapChunk<AmountType>>,
     pub limits: SwapLimits<AmountType>,
 }
+
+impl<AmountType> DiscreteQuotation<AmountType> {
+    pub fn new() -> Self {
+        Self {
+            chunks: VecDeque::new(),
+            limits: SwapLimits::new(None, None, None),
+        }
+    }
+}

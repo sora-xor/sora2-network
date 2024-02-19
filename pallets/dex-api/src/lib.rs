@@ -34,12 +34,11 @@
 
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, RewardReason, SwapChunk,
+    DEXInfo, DexInfoProvider, DiscreteQuotation, LiquidityRegistry, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason,
 };
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 mod benchmarking;
@@ -129,7 +128,7 @@ impl<T: Config>
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! step_quote {
             ($source_type:ident) => {

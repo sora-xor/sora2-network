@@ -35,13 +35,15 @@
 
 use assets::AssetIdOf;
 use common::prelude::{
-    EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
+    BalanceUnit, EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
+    TradingPair,
 };
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason, SwapChunk,
-    SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
+    Description, DexInfoProvider, DiscreteQuotation, LiquiditySource, PriceVariant, RewardReason,
+    SwapChunk, SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair,
+    TradingPairSourceManager,
 };
 use core::fmt::Debug;
 use frame_support::dispatch::{DispatchResultWithPostInfo, PostDispatchInfo};
@@ -50,10 +52,11 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, CheckedMul, MaybeDisplay, Zero};
+use sp_runtime::traits::{
+    AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedMul, MaybeDisplay, Zero,
+};
 use sp_runtime::BoundedVec;
 use sp_std::collections::btree_map::BTreeMap;
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -1281,7 +1284,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1291,7 +1294,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let direction = order_book.get_direction(input_asset_id, output_asset_id)?;
 
-        let limit = match amount {
+        let target = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
                 PriceVariant::Buy => {
                     OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_in))
@@ -1314,28 +1317,93 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             },
         };
 
-        let market_depth = order_book.market_depth(direction.switched(), Some(limit), &mut data);
+        let market_depth = order_book.market_depth(
+            direction.switched(),
+            Some(OrderAmount::Base(order_book.max_lot_size)),
+            &mut data,
+        );
 
-        let mut chunks = VecDeque::new();
+        let (base_min_amount, quote_min_amount) = order_book.sum_market(
+            market_depth
+                .iter()
+                .map(|(ref price, ref volume)| (price, volume)),
+            Some(OrderAmount::Base(order_book.min_lot_size)),
+            false,
+        )?;
+
+        if *base_min_amount.value() < order_book.min_lot_size {
+            // order-book has not ehough liquidity even for min amount
+            return Ok((
+                DiscreteQuotation::new(),
+                Self::step_quote_weight(recommended_samples_count),
+            ));
+        }
+
+        let (base_max_amount, quote_max_amount) = order_book.sum_market(
+            market_depth
+                .iter()
+                .map(|(ref price, ref volume)| (price, volume)),
+            Some(OrderAmount::Base(order_book.max_lot_size)),
+            false,
+        )?;
+
+        let mut target_sum = BalanceUnit::zero();
+
+        let mut quotation = DiscreteQuotation::new();
         for (price, base_volume) in market_depth.iter() {
             let quote_volume = price
                 .checked_mul(base_volume)
                 .ok_or(Error::<T>::AmountCalculationFailed)?;
+
             match direction {
-                PriceVariant::Buy => chunks.push_back(SwapChunk::new(
+                PriceVariant::Buy => quotation.chunks.push_back(SwapChunk::new(
                     *quote_volume.balance(),
                     *base_volume.balance(),
                     Balance::zero(),
                 )),
-                PriceVariant::Sell => chunks.push_back(SwapChunk::new(
+                PriceVariant::Sell => quotation.chunks.push_back(SwapChunk::new(
                     *base_volume.balance(),
                     *quote_volume.balance(),
                     Balance::zero(),
                 )),
             }
+
+            target_sum = match target {
+                OrderAmount::Base(..) => target_sum
+                    .checked_add(base_volume)
+                    .ok_or(Error::<T>::AmountCalculationFailed)?,
+                OrderAmount::Quote(..) => target_sum
+                    .checked_add(&quote_volume)
+                    .ok_or(Error::<T>::AmountCalculationFailed)?,
+            };
+            if target_sum >= *target.value() {
+                break;
+            }
         }
 
-        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
+        match target {
+            OrderAmount::Base(..) => {
+                quotation.limits.min_amount = Some(*base_min_amount.value().balance());
+                quotation.limits.max_amount = Some(*base_max_amount.value().balance());
+                quotation.limits.amount_alignment = Some(*order_book.step_lot_size.balance());
+            }
+            OrderAmount::Quote(..) => {
+                quotation.limits.min_amount = Some(*quote_min_amount.value().balance());
+                quotation.limits.max_amount = Some(*quote_max_amount.value().balance());
+                quotation.limits.amount_alignment = Some(
+                    *order_book
+                        .step_lot_size
+                        .checked_mul(&order_book.tick_size)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?
+                        .balance(),
+                );
+            }
+        }
+
+        Ok((
+            quotation,
+            Self::step_quote_weight(recommended_samples_count),
+        ))
     }
 
     fn exchange(

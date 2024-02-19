@@ -56,8 +56,9 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SwapChunk, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    DataFeed, DiscreteQuotation, GetMarketInfo, LiquiditySource, LiquiditySourceType,
+    OnSymbolDisabled, PriceVariant, Rate, RewardReason, SwapChunk, SyntheticInfoProvider,
+    TradingPairSourceManager, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
@@ -68,7 +69,6 @@ use serde::{Deserialize, Serialize};
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec;
 use sp_std::vec::Vec;
 
@@ -1093,12 +1093,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
+
+        let mut quotation = DiscreteQuotation::new();
+
         if amount.amount().is_zero() {
-            return Ok((VecDeque::new(), Weight::zero()));
+            return Ok((quotation, Weight::zero()));
         }
 
         let samples_count = if recommended_samples_count < 1 {
@@ -1126,7 +1129,31 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let mut monolith = SwapChunk::new(input_amount, output_amount, fee_amount);
 
+        // Get max amount for the limit
         let limit = T::GetSyntheticBaseBuySellLimit::get();
+        let (max_input_amount, max_output_amount, _) = if input_asset_id == synthetic_base_asset_id
+        {
+            Self::decide_sell_amounts(
+                &input_asset_id,
+                &output_asset_id,
+                QuoteAmount::with_desired_input(limit),
+                deduce_fee,
+                false,
+            )?
+        } else {
+            Self::decide_buy_amounts(
+                &output_asset_id,
+                &input_asset_id,
+                QuoteAmount::with_desired_output(limit),
+                deduce_fee,
+                false,
+            )?
+        };
+
+        quotation.limits.max_amount = match amount {
+            QuoteAmount::WithDesiredInput { .. } => Some(max_input_amount),
+            QuoteAmount::WithDesiredOutput { .. } => Some(max_output_amount),
+        };
 
         // If amount exceeds the limit, it is necessary to round the amount to the limit.
         if input_asset_id == synthetic_base_asset_id {
@@ -1151,10 +1178,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             .rescale_by_ratio(ratio)
             .ok_or(Error::<T>::PriceCalculationFailed)?;
 
-        let mut chunks: VecDeque<SwapChunk<Balance>> = vec![chunk; samples_count - 1].into();
+        quotation.chunks = vec![chunk; samples_count - 1].into();
 
         // add remaining values as the last chunk to not loss the liquidity on the rounding
-        chunks.push_back(SwapChunk::new(
+        quotation.chunks.push_back(SwapChunk::new(
             monolith.input.saturating_sub(
                 chunk
                     .input
@@ -1175,7 +1202,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             ),
         ));
 
-        Ok((chunks, Self::step_quote_weight(samples_count)))
+        Ok((quotation, Self::step_quote_weight(samples_count)))
     }
 
     fn exchange(
