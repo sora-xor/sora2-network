@@ -59,11 +59,10 @@ fn test_price_tools_set_asset_prices(asset_id: InputAssetId<AssetIdOf<Runtime>>)
     })
 }
 
-// todo: uncomment
-// #[test]
-// fn should_set_price_tools_mcbc_base_prices() {
-//     test_price_tools_set_asset_prices(InputAssetId::<AssetIdOf<Runtime>>::McbcReference);
-// }
+#[test]
+fn should_set_price_tools_mcbc_base_prices() {
+    test_price_tools_set_asset_prices(InputAssetId::<AssetIdOf<Runtime>>::McbcReference);
+}
 
 #[test]
 fn should_set_price_tools_xst_base_prices() {
@@ -78,18 +77,17 @@ fn should_set_price_tools_other_base_prices() {
 #[test]
 fn should_price_tools_reject_incorrect_prices() {
     ext().execute_with(|| {
-        // todo: uncomment
-        // assert_err!(
-        //     QaToolsPallet::price_tools_set_asset_price(
-        //         RuntimeOrigin::root(),
-        //         AssetPrices {
-        //             buy: balance!(1),
-        //             sell: balance!(1) + 1,
-        //         },
-        //         InputAssetId::<AssetIdOf<Runtime>>::McbcReference
-        //     ),
-        //     Error::<Runtime>::BuyLessThanSell
-        // );
+        assert_err!(
+            QaToolsPallet::price_tools_set_asset_price(
+                RuntimeOrigin::root(),
+                AssetPrices {
+                    buy: balance!(1),
+                    sell: balance!(1) + 1,
+                },
+                InputAssetId::<AssetIdOf<Runtime>>::McbcReference
+            ),
+            Error::<Runtime>::BuyLessThanSell
+        );
         assert_err!(
             QaToolsPallet::price_tools_set_asset_price(
                 RuntimeOrigin::root(),
