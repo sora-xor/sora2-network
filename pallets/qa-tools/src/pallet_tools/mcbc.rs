@@ -24,7 +24,7 @@ pub struct OtherCollateralInput<AssetId> {
     pub ref_prices: Option<ReferencePriceInput>,
     /// Desired amount of collateral asset in the MCBC reserve account. Affects actual sell
     /// price according to formulae.
-    pub reserves: Balance,
+    pub reserves: Option<Balance>,
 }
 
 /// Input for initializing TBCD collateral.

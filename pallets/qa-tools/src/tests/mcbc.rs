@@ -1,13 +1,15 @@
 use super::alice;
+use super::QaToolsPallet;
+use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
-use common::{balance, DEXId, LiquiditySource, VAL, XOR};
+use common::{balance, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
-use framenode_runtime::Runtime;
-use qa_tools::pallet_tools;
-
-use pallet_tools::liquidity_proxy::liquidity_sources::initialize_mcbc;
+use framenode_runtime::{Runtime, RuntimeOrigin};
+use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::initialize_mcbc;
+use qa_tools::pallet_tools::mcbc as mcbc_tools;
+use qa_tools::pallet_tools::price_tools::AssetPrices;
 
 #[test]
 fn should_init_mcbc() {
@@ -54,7 +56,7 @@ fn should_init_mcbc_xor() {
 
         let added_supply = balance!(1000000);
         assert_ok!(initialize_mcbc::<Runtime>(
-            Some(qa_tools::pallet_tools::mcbc::BaseSupply {
+            Some(mcbc_tools::BaseSupply {
                 base_supply_collector: xor_collector.clone(),
                 new_base_supply: current_base_supply + added_supply,
             }),
@@ -68,7 +70,7 @@ fn should_init_mcbc_xor() {
 
         // bring supply back to original
         assert_ok!(initialize_mcbc::<Runtime>(
-            Some(qa_tools::pallet_tools::mcbc::BaseSupply {
+            Some(mcbc_tools::BaseSupply {
                 base_supply_collector: xor_collector.clone(),
                 new_base_supply: current_base_supply,
             }),
@@ -83,7 +85,7 @@ fn should_init_mcbc_xor() {
         // cannot burn assets not owned by the holder
         assert_err!(
             initialize_mcbc::<Runtime>(
-                Some(qa_tools::pallet_tools::mcbc::BaseSupply {
+                Some(mcbc_tools::BaseSupply {
                     base_supply_collector: xor_collector,
                     new_base_supply: 0,
                 }),
@@ -91,6 +93,56 @@ fn should_init_mcbc_xor() {
                 None,
             ),
             pallet_balances::Error::<Runtime>::InsufficientBalance
+        );
+    })
+}
+
+#[test]
+fn should_init_collateral_reference_price() {
+    ext().execute_with(|| {
+        let collateral = VAL.into();
+        let reference_asset = qa_tools::InputAssetId::<AssetIdOf<Runtime>>::McbcReference;
+        let reference_asset_id = reference_asset.clone().resolve::<Runtime>();
+
+        let refence_prices = mcbc_tools::ReferencePriceInput {
+            buy: balance!(1),
+            sell: balance!(1),
+        };
+        let input = mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
+            asset: collateral,
+            ref_prices: Some(refence_prices.clone()),
+            reserves: None,
+        };
+        assert_err!(
+            initialize_mcbc::<Runtime>(None, vec![input.clone()], None),
+            qa_tools::Error::<Runtime>::ReferenceAssetPriceNotFound
+        );
+
+        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
+            RuntimeOrigin::root(),
+            AssetPrices {
+                buy: balance!(1),
+                sell: balance!(1),
+            },
+            reference_asset.clone()
+        ));
+
+        assert_ok!(initialize_mcbc::<Runtime>(None, vec![input], None));
+        assert_eq!(
+            price_tools::Pallet::<Runtime>::get_average_price(
+                &collateral,
+                &reference_asset_id,
+                PriceVariant::Buy
+            ),
+            Ok(refence_prices.buy)
+        );
+        assert_eq!(
+            price_tools::Pallet::<Runtime>::get_average_price(
+                &collateral,
+                &reference_asset_id,
+                PriceVariant::Sell
+            ),
+            Ok(refence_prices.sell)
         );
     })
 }
