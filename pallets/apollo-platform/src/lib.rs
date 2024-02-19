@@ -54,8 +54,8 @@ pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo};
     use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount};
     use common::{
-        balance, AssetInfoProvider, DEXId, FilterMode, LiquiditySource, LiquiditySourceType,
-        PriceVariant, CERES_ASSET_ID, DAI, HERMES_ASSET_ID, XOR,
+        balance, AssetInfoProvider, DEXId, LiquiditySource, LiquiditySourceFilter, PriceVariant,
+        CERES_ASSET_ID, DAI, HERMES_ASSET_ID, XOR,
     };
     use common::{LiquidityProxyTrait, PriceToolsPallet, APOLLO_ASSET_ID};
     use frame_support::pallet_prelude::*;
@@ -75,7 +75,7 @@ pub mod pallet {
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type PriceTools: PriceToolsPallet<Self::AssetId>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type LiquidityProxyPallet: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -959,14 +959,14 @@ pub mod pallet {
             )?;
 
             let buyback_amount = outcome.amount;
-            T::LiquidityProxy::swap(
-                RawOrigin::Signed(caller.clone()).into(),
+            T::LiquidityProxyPallet::exchange(
                 DEXId::Polkaswap.into(),
-                asset_id,
-                APOLLO_ASSET_ID.into(),
+                &caller,
+                &caller,
+                &asset_id,
+                &APOLLO_ASSET_ID.into(),
                 SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
-                [LiquiditySourceType::XYKPool].to_vec(),
-                FilterMode::Disabled,
+                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
 
             pool_info.rewards += buyback_amount;
@@ -995,27 +995,27 @@ pub mod pallet {
             .unwrap_or(0);
 
             // Transfer APOLLO to treasury
-            T::LiquidityProxy::swap_transfer(
-                RawOrigin::Signed(caller.clone()).into(),
-                AuthorityAccount::<T>::get(), // APOLLO Treasury
+            T::LiquidityProxyPallet::exchange(
                 DEXId::Polkaswap.into(),
-                asset_id,
-                APOLLO_ASSET_ID.into(),
+                &caller,
+                &AuthorityAccount::<T>::get(), // APOLLO Treasury
+                &asset_id,
+                &APOLLO_ASSET_ID.into(),
                 SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
-                [LiquiditySourceType::XYKPool].to_vec(),
-                FilterMode::Disabled,
+                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
 
             // Buyback and burn CERES
-            T::LiquidityProxy::swap(
-                RawOrigin::Signed(caller.clone()).into(),
+            T::LiquidityProxyPallet::exchange(
                 DEXId::Polkaswap.into(),
-                asset_id,
-                CERES_ASSET_ID.into(),
+                &caller,
+                &caller,
+                &asset_id,
+                &CERES_ASSET_ID.into(),
                 SwapAmount::with_desired_input(ceres_amount, Balance::zero()),
-                [LiquiditySourceType::XYKPool].to_vec(),
-                FilterMode::Disabled,
+                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
+
             let ceres_balance =
                 Assets::<T>::free_balance(&CERES_ASSET_ID.into(), &caller).unwrap_or(0);
             Assets::<T>::burn(
