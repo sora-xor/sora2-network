@@ -1,15 +1,17 @@
+use crate::pallet_tools::price_tools::CalculatedXorPrices;
 use crate::Config;
 use crate::{pallet_tools, Error};
 use codec::{Decode, Encode};
 use common::prelude::FixedWrapper;
 use common::{AssetInfoProvider, Balance, PriceVariant};
 use frame_support::dispatch::DispatchResult;
+use frame_support::ensure;
 use frame_support::traits::Get;
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
 pub struct ReferencePriceInput {
-    pub buy: Option<Balance>,
-    pub sell: Option<Balance>,
+    pub buy: Balance,
+    pub sell: Balance,
 }
 
 /// Input for initializing collateral assets except TBCD.
@@ -19,7 +21,7 @@ pub struct OtherCollateralInput<AssetId> {
     pub asset: AssetId,
     /// Price of collateral in terms of reference asset. Linearly affects the exchange amounts.
     /// (if collateral costs 10x more sell output should be 10x smaller)
-    pub ref_prices: ReferencePriceInput,
+    pub ref_prices: Option<ReferencePriceInput>,
     /// Desired amount of collateral asset in the MCBC reserve account. Affects actual sell
     /// price according to formulae.
     pub reserves: Balance,
@@ -40,7 +42,34 @@ pub struct BaseSupply<AccountId> {
 pub(crate) fn initialize_single_collateral<T: Config>(
     input: OtherCollateralInput<T::AssetId>,
 ) -> DispatchResult {
-    // initialize price???
+    let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
+    if let Some(ref_prices) = input.ref_prices {
+        let CalculatedXorPrices {
+            asset_a: collateral_xor_prices,
+            asset_b: _,
+        } = pallet_tools::price_tools::calculate_xor_prices(
+            input.asset,
+            reference_asset,
+            ref_prices.buy,
+            ref_prices.sell,
+        )?;
+
+        ensure!(
+            xor_prices.synthetic_base.buy >= xor_prices.synthetic_base.sell
+                && xor_prices.reference.buy >= xor_prices.reference.sell,
+            Error::<T>::BuyLessThanSell
+        );
+        pallet_tools::price_tools::set_price::<T>(
+            &input.asset,
+            collateral_xor_prices.buy,
+            PriceVariant::Buy,
+        )?;
+        pallet_tools::price_tools::set_price::<T>(
+            &input.asset,
+            collateral_xor_prices.sell,
+            PriceVariant::Sell,
+        )?;
+    }
 
     // initialize reserves
 
