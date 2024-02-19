@@ -32,7 +32,13 @@
 mod tests {
     use crate::{Error, Pallet, mock::*, test_utils::{relay_new_symbol, relay_symbol}};
     use band::FeeCalculationParameters;
-    use common::{self, AssetId32, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, SwapChunk};
+    use common::{
+        self, assert_approx_eq, balance, fixed,
+        prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount},
+        AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, DiscreteQuotation,
+        GetMarketInfo, LiquiditySource, PredefinedAssetId, PriceVariant, SwapChunk, SwapLimits,
+        DAI, USDT, VAL, XOR, XST, XSTUSD,
+    };
     use frame_support::{assert_ok, assert_noop};
     use frame_support::traits::Hooks;
     use frame_system::pallet_prelude::BlockNumberFor;
@@ -1381,7 +1387,7 @@ mod tests {
             )
             .unwrap()
             .0,
-            VecDeque::new()
+            DiscreteQuotation::new()
         );
 
         assert_eq!(
@@ -1395,7 +1401,7 @@ mod tests {
             )
             .unwrap()
             .0,
-            VecDeque::new()
+            DiscreteQuotation::new()
         );
 
         assert_eq!(
@@ -1409,7 +1415,7 @@ mod tests {
             )
             .unwrap()
             .0,
-            VecDeque::new()
+            DiscreteQuotation::new()
         );
 
         assert_eq!(
@@ -1423,7 +1429,7 @@ mod tests {
             )
             .unwrap()
             .0,
-            VecDeque::new()
+            DiscreteQuotation::new()
         );
     });
     }
@@ -1453,7 +1459,10 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([SwapChunk::new(balance!(100), balance!(0.454545454545454545), 0)])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([SwapChunk::new(balance!(100), balance!(0.454545454545454545), 0)]),
+                    limits: SwapLimits::new(None, Some(balance!(2200000000)), None)
+                }
             );
             
             assert_eq!(
@@ -1467,7 +1476,10 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([SwapChunk::new(balance!(22000), balance!(100), 0)])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([SwapChunk::new(balance!(22000), balance!(100), 0)]),
+                    limits: SwapLimits::new(None, Some(balance!(10000000)), None)
+                }
             );
             
             assert_eq!(
@@ -1481,7 +1493,10 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([SwapChunk::new(balance!(100), balance!(14999.999999999999994), 0)])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([SwapChunk::new(balance!(100), balance!(14999.999999999999994), 0)]),
+                    limits: SwapLimits::new(None, Some(balance!(10000000)), None)
+                }
             );
 
             assert_eq!(
@@ -1495,7 +1510,10 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([SwapChunk::new(balance!(0.666666666666666666), balance!(100), 0)])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([SwapChunk::new(balance!(0.666666666666666666), balance!(100), 0)]),
+                    limits: SwapLimits::new(None, Some(balance!(1499999999.9999999994)), None)
+                }
             );
         });
     }
@@ -1525,18 +1543,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
-                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
-                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
-                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
-                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
-                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
-                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
-                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
-                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
-                    SwapChunk::new(balance!(10), balance!(0.045454545454545459), 0),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                        SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                        SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                        SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                        SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                        SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                        SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                        SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                        SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                        SwapChunk::new(balance!(10), balance!(0.045454545454545459), 0),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(2200000000)), None)
+                }
             );
             
             assert_eq!(
@@ -1550,18 +1571,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(2200), balance!(10), 0),
-                    SwapChunk::new(balance!(2200), balance!(10), 0),
-                    SwapChunk::new(balance!(2200), balance!(10), 0),
-                    SwapChunk::new(balance!(2200), balance!(10), 0),
-                    SwapChunk::new(balance!(2200), balance!(10), 0),
-                    SwapChunk::new(balance!(2200), balance!(10), 0),
-                    SwapChunk::new(balance!(2200), balance!(10), 0),
-                    SwapChunk::new(balance!(2200), balance!(10), 0),
-                    SwapChunk::new(balance!(2200), balance!(10), 0),
-                    SwapChunk::new(balance!(2200), balance!(10), 0),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(2200), balance!(10), 0),
+                        SwapChunk::new(balance!(2200), balance!(10), 0),
+                        SwapChunk::new(balance!(2200), balance!(10), 0),
+                        SwapChunk::new(balance!(2200), balance!(10), 0),
+                        SwapChunk::new(balance!(2200), balance!(10), 0),
+                        SwapChunk::new(balance!(2200), balance!(10), 0),
+                        SwapChunk::new(balance!(2200), balance!(10), 0),
+                        SwapChunk::new(balance!(2200), balance!(10), 0),
+                        SwapChunk::new(balance!(2200), balance!(10), 0),
+                        SwapChunk::new(balance!(2200), balance!(10), 0),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(10000000)), None)
+                }
             );
             
             assert_eq!(
@@ -1575,18 +1599,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
-                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
-                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
-                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
-                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
-                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
-                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
-                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
-                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
-                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                        SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                        SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                        SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                        SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                        SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                        SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                        SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                        SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                        SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(10000000)), None)
+                }
             );
 
             assert_eq!(
@@ -1600,18 +1627,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
-                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
-                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
-                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
-                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
-                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
-                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
-                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
-                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
-                    SwapChunk::new(balance!(0.066666666666666672), balance!(10), 0),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                        SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                        SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                        SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                        SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                        SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                        SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                        SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                        SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                        SwapChunk::new(balance!(0.066666666666666672), balance!(10), 0),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(1499999999.9999999994)), None)
+                }
             );
         });
     }
@@ -1641,18 +1671,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
-                    SwapChunk::new(balance!(10), balance!(0.045151818181818189), balance!(0.000605454545454549)),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                        SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                        SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                        SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                        SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                        SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                        SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                        SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                        SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                        SwapChunk::new(balance!(10), balance!(0.045151818181818189), balance!(0.000605454545454549)),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(2214750236.57559345239293684)), None)
+                }
             );
             
             assert_eq!(
@@ -1666,18 +1699,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
-                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122298)),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                        SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                        SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                        SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                        SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                        SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                        SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                        SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                        SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                        SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122298)),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(10000000)), None)
+                }
             );
             
             assert_eq!(
@@ -1691,18 +1727,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
-                    SwapChunk::new(balance!(10), balance!(1490.009999999999999412), balance!(0.1332)),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                        SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                        SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                        SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                        SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                        SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                        SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                        SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                        SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                        SwapChunk::new(balance!(10), balance!(1490.009999999999999412), balance!(0.1332)),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(10000000)), None)
+                }
             );
 
             assert_eq!(
@@ -1716,18 +1755,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
-                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
-                    SwapChunk::new(balance!(0.067113643532593749), balance!(10), balance!(0.000893953731854154)),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                        SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                        SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                        SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                        SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                        SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                        SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                        SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                        SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                        SwapChunk::new(balance!(0.067113643532593749), balance!(10), balance!(0.000893953731854154)),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(1490009999.999999999403996)), None)
+                }
             );
         });
     }
@@ -1749,6 +1791,7 @@ mod tests {
         )
         .unwrap()
         .0
+        .chunks
         .iter()
         .fold((balance!(0), balance!(0), balance!(0)), |acc, item| {
             (acc.0 + item.input, acc.1 + item.output, acc.2 + item.fee)
@@ -1826,18 +1869,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
-                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
-                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
-                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
-                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
-                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
-                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
-                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
-                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
-                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                        SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                        SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                        SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                        SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                        SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                        SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                        SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                        SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                        SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(10000000)), None)
+                }
             );
 
             assert_eq!(
@@ -1851,18 +1897,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
-                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
-                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
-                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
-                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
-                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
-                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
-                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
-                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
-                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                        SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                        SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                        SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                        SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                        SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                        SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                        SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                        SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                        SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(1499999999.9999999994)), None)
+                }
             );
         });
     }
@@ -1892,18 +1941,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
-                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
-                    SwapChunk::new(balance!(221475023.657559354157691173), balance!(1000000), balance!(13409.305869196850905827)),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                        SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                        SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                        SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                        SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                        SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                        SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                        SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                        SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                        SwapChunk::new(balance!(221475023.657559354157691173), balance!(1000000), balance!(13409.305869196850905827)),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(10000000)), None)
+                }
             );
 
             assert_eq!(
@@ -1917,18 +1969,21 @@ mod tests {
                 )
                 .unwrap()
                 .0,
-                VecDeque::from([
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
-                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522976)),
-                ])
+                DiscreteQuotation {
+                    chunks: VecDeque::from([
+                        SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                        SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                        SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                        SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                        SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                        SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                        SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                        SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                        SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                        SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522976)),
+                    ]),
+                    limits: SwapLimits::new(None, Some(balance!(1490009999.999999999403996)), None)
+                }
             );
         });
     }
