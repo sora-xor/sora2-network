@@ -180,8 +180,7 @@ pub mod pallet {
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     pub enum InputAssetId<AssetId> {
-        // todo: uncomment
-        // McbcReference,
+        McbcReference,
         XstReference,
         Other(AssetId),
     }
@@ -193,7 +192,9 @@ pub mod pallet {
             T::AssetId: From<AssetId>,
         {
             match self {
-                // InputAssetId::McbcReference => multicollateral_bonding_curve::ReferenceAssetId::<T>::get(),
+                InputAssetId::McbcReference => {
+                    multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get()
+                }
                 InputAssetId::XstReference => xst::ReferenceAssetId::<T>::get(),
                 InputAssetId::Other(id) => id.into(),
             }
