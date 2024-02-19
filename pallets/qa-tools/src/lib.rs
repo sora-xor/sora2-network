@@ -130,6 +130,7 @@ pub mod pallet {
             /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
             quotes_achieved: Vec<SyntheticOutput<T::AssetId>>,
         },
+        // todo: mcbc event
     }
 
     #[pallet::error]
@@ -162,12 +163,15 @@ pub mod pallet {
         AssetsMustBeDivisible,
 
         // xst errors
-        /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
-        ReferenceAssetPriceNotFound,
         /// Cannot register new asset because it already exists.
         AssetAlreadyExists,
         /// Could not find already existing synthetic.
         UnknownSynthetic,
+
+        // price-tools errors
+        /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
+        /// You can use `price_tools_set_asset_price` extrinsic to set its price.
+        ReferenceAssetPriceNotFound,
 
         // mcbc errors
         /// Cannot initialize MCBC for unknown asset.
