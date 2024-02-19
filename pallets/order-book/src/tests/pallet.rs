@@ -34,8 +34,8 @@ use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant, SwapChunk, VAL, XOR,
-    XSTUSD,
+    balance, AssetName, AssetSymbol, Balance, DiscreteQuotation, LiquiditySource, PriceVariant,
+    SwapChunk, SwapLimits, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
@@ -1629,7 +1629,7 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::new()
+            DiscreteQuotation::new()
         );
 
         assert_eq!(
@@ -1643,7 +1643,14 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)])
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(11)),
+                    Some(balance!(6881.32)),
+                    Some(balance!(0.0000000001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1657,10 +1664,17 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(11)),
+                    Some(balance!(6881.32)),
+                    Some(balance!(0.0000000001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1674,11 +1688,18 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
-                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                    SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(11)),
+                    Some(balance!(6881.32)),
+                    Some(balance!(0.0000000001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1692,11 +1713,18 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
-                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                    SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(11)),
+                    Some(balance!(6881.32)),
+                    Some(balance!(0.0000000001))
+                )
+            }
         );
 
         // XOR -> VAL with desired output
@@ -1712,7 +1740,7 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::new()
+            DiscreteQuotation::new()
         );
 
         assert_eq!(
@@ -1726,7 +1754,14 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)])
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(610.7)),
+                    Some(balance!(0.00001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1740,10 +1775,17 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(610.7)),
+                    Some(balance!(0.00001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1757,11 +1799,18 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
-                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                    SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(610.7)),
+                    Some(balance!(0.00001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1775,11 +1824,18 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
-                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                    SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(610.7)),
+                    Some(balance!(0.00001))
+                )
+            }
         );
 
         // VAL -> XOR with desired input
@@ -1795,7 +1851,7 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::new()
+            DiscreteQuotation::new()
         );
 
         assert_eq!(
@@ -1809,7 +1865,14 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)])
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(569.7)),
+                    Some(balance!(0.00001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1823,10 +1886,17 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(569.7)),
+                    Some(balance!(0.00001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1840,11 +1910,18 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
-                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                    SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(569.7)),
+                    Some(balance!(0.00001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1858,11 +1935,18 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
-                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                    SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(569.7)),
+                    Some(balance!(0.00001))
+                )
+            }
         );
 
         // VAL -> XOR with desired output
@@ -1878,7 +1962,7 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::new()
+            DiscreteQuotation::new()
         );
 
         assert_eq!(
@@ -1892,7 +1976,14 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)])
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(10)),
+                    Some(balance!(5538.37)),
+                    Some(balance!(0.0000000001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1906,10 +1997,17 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(10)),
+                    Some(balance!(5538.37)),
+                    Some(balance!(0.0000000001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1923,11 +2021,18 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
-                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                    SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(10)),
+                    Some(balance!(5538.37)),
+                    Some(balance!(0.0000000001))
+                )
+            }
         );
 
         assert_eq!(
@@ -1941,11 +2046,18 @@ fn should_step_quote() {
             )
             .unwrap()
             .0,
-            VecDeque::from([
-                SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
-                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
-            ])
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                    SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(10)),
+                    Some(balance!(5538.37)),
+                    Some(balance!(0.0000000001))
+                )
+            }
         );
     });
 }

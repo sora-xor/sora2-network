@@ -1289,6 +1289,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
+        if amount.amount().is_zero() {
+            return Ok((DiscreteQuotation::new(), Weight::zero()));
+        }
+
         let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
         let mut data = CacheDataLayer::<T>::new();
 
