@@ -6,8 +6,8 @@ use {
         prelude::Balance,
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
-        DEXInfo, Description, Fixed, FromGenericPair, PriceToolsPallet, PriceVariant,
-        APOLLO_ASSET_ID, DAI, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+        DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait, PriceToolsPallet,
+        PriceVariant, APOLLO_ASSET_ID, DAI, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
     },
     currencies::BasicCurrencyAdapter,
     frame_support::{
@@ -405,9 +405,37 @@ impl demeter_farming_platform::Config for Runtime {
     type WeightInfo = ();
 }
 
+pub struct MockLiquidityProxy;
+
+impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+    fn quote(
+        dex_id: DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: common::prelude::QuoteAmount<Balance>,
+        filter: common::LiquiditySourceFilter<DEXId, common::prelude::LiquiditySourceType>,
+        deduce_fee: bool,
+    ) -> Result<common::prelude::SwapOutcome<Balance>, sp_runtime::DispatchError> {
+        todo!()
+    }
+
+    fn exchange(
+        dex_id: DEXId,
+        sender: &AccountId,
+        receiver: &AccountId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: common::prelude::SwapAmount<Balance>,
+        filter: common::LiquiditySourceFilter<DEXId, common::prelude::LiquiditySourceType>,
+    ) -> Result<common::prelude::SwapOutcome<Balance>, sp_runtime::DispatchError> {
+        todo!()
+    }
+}
+
 impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type PriceTools = MockPriceTools;
+    type LiquidityProxy = MockLiquidityProxy;
 }
 
 pub struct ExtBuilder {

@@ -57,7 +57,7 @@ pub mod pallet {
         balance, AssetInfoProvider, DEXId, FilterMode, LiquiditySource, LiquiditySourceType,
         PriceVariant, CERES_ASSET_ID, DAI, HERMES_ASSET_ID, XOR,
     };
-    use common::{PriceToolsPallet, APOLLO_ASSET_ID};
+    use common::{LiquidityProxyTrait, PriceToolsPallet, APOLLO_ASSET_ID};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::PalletId;
@@ -75,11 +75,12 @@ pub mod pallet {
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type PriceTools: PriceToolsPallet<Self::AssetId>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
     }
 
     type Assets<T> = assets::Pallet<T>;
     // type PriceTools<T> = price_tools::Pallet<T>;
-    type LiquidityProxy<T> = liquidity_proxy::Pallet<T>;
+    // type LiquidityProxy<T> = liquidity_proxy::Pallet<T>;
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
@@ -958,7 +959,7 @@ pub mod pallet {
             )?;
 
             let buyback_amount = outcome.amount;
-            LiquidityProxy::<T>::swap(
+            T::LiquidityProxy::swap(
                 RawOrigin::Signed(caller.clone()).into(),
                 DEXId::Polkaswap.into(),
                 asset_id,
@@ -994,7 +995,7 @@ pub mod pallet {
             .unwrap_or(0);
 
             // Transfer APOLLO to treasury
-            LiquidityProxy::<T>::swap_transfer(
+            T::LiquidityProxy::swap_transfer(
                 RawOrigin::Signed(caller.clone()).into(),
                 AuthorityAccount::<T>::get(), // APOLLO Treasury
                 DEXId::Polkaswap.into(),
@@ -1006,7 +1007,7 @@ pub mod pallet {
             )?;
 
             // Buyback and burn CERES
-            LiquidityProxy::<T>::swap(
+            T::LiquidityProxy::swap(
                 RawOrigin::Signed(caller.clone()).into(),
                 DEXId::Polkaswap.into(),
                 asset_id,
