@@ -139,7 +139,7 @@ pub mod liquidity_sources {
 
     pub fn initialize_mcbc<T: Config>(
         base_supply: Option<pallet_tools::mcbc::BaseSupply<T::AccountId>>,
-        other_collaterals: Vec<pallet_tools::mcbc::CollateralInput<T::AssetId>>,
+        other_collaterals: Vec<pallet_tools::mcbc::OtherCollateralInput<T::AssetId>>,
         tbcd_collateral: Option<pallet_tools::mcbc::TbcdCollateralInput<T::AssetId>>,
     ) -> DispatchResult {
         if let Some(base_supply) = base_supply {

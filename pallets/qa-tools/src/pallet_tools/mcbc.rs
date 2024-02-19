@@ -7,19 +7,19 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub struct PriceToolsPrice {
+pub struct ReferencePriceInput {
     pub buy: Option<Balance>,
     pub sell: Option<Balance>,
 }
 
 /// Input for initializing collateral assets except TBCD.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub struct CollateralInput<AssetId> {
+pub struct OtherCollateralInput<AssetId> {
     /// Collateral asset id
     pub asset: AssetId,
     /// Price of collateral in terms of reference asset. Linearly affects the exchange amounts.
     /// (if collateral costs 10x more sell output should be 10x smaller)
-    pub ref_prices: PriceToolsPrice,
+    pub ref_prices: ReferencePriceInput,
     /// Desired amount of collateral asset in the MCBC reserve account. Affects actual sell
     /// price according to formulae.
     pub reserves: Balance,
@@ -28,15 +28,8 @@ pub struct CollateralInput<AssetId> {
 /// Input for initializing TBCD collateral.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
 pub struct TbcdCollateralInput<AssetId> {
-    /// Collateral asset id
-    pub asset: AssetId,
-    /// Price of collateral in terms of reference asset. Linearly affects the exchange amounts.
-    /// (if collateral costs 10x more sell output should be 10x smaller)
-    pub ref_prices: PriceToolsPrice,
-    /// Desired amount of collateral asset in the MCBC reserve account. Affects actual sell
-    /// price according to formulae.
-    pub reserves: Balance,
-    pub xor_ref_prices: PriceToolsPrice,
+    pub regular_collateral_input: OtherCollateralInput<AssetId>,
+    pub xor_ref_prices: ReferencePriceInput,
 }
 
 pub struct BaseSupply<AccountId> {
@@ -45,7 +38,7 @@ pub struct BaseSupply<AccountId> {
 }
 
 pub(crate) fn initialize_single_collateral<T: Config>(
-    input: CollateralInput<T::AssetId>,
+    input: OtherCollateralInput<T::AssetId>,
 ) -> DispatchResult {
     // initialize price???
 
@@ -123,11 +116,7 @@ pub(crate) fn initialize_tbcd_collateral<T: Config>(
     // handle xor ref price
     // input.xor_ref_prices
 
-    initialize_single_collateral::<T>(CollateralInput {
-        asset: input.asset,
-        ref_prices: input.ref_prices,
-        reserves: input.reserves,
-    })
+    initialize_single_collateral::<T>(input.regular_collateral_input)
 }
 
 pub(crate) fn initialize_base_supply<T: Config>(input: BaseSupply<T::AccountId>) -> DispatchResult {
