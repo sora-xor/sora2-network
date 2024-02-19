@@ -51,12 +51,10 @@ use common::{
 };
 use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
-use frame_support::pallet_prelude::DispatchResultWithPostInfo;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
 use frame_system::ensure_signed;
-use frame_system::pallet_prelude::OriginFor;
 use itertools::Itertools as _;
 pub use pallet::*;
 use sp_runtime::traits::{CheckedSub, Zero};
@@ -2131,26 +2129,6 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
             filter,
         )?;
         Ok(outcome)
-    }
-
-    fn swap(
-        origin: OriginFor<T>,
-        dex_id: T::DEXId,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
-        swap_amount: SwapAmount<Balance>,
-        selected_source_types: Vec<LiquiditySourceType>,
-        filter_mode: FilterMode,
-    ) -> DispatchResultWithPostInfo {
-        Pallet::<T>::swap(
-            origin,
-            dex_id,
-            input_asset_id,
-            output_asset_id,
-            swap_amount,
-            selected_source_types,
-            filter_mode,
-        )
     }
 }
 

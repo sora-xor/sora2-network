@@ -435,7 +435,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
 impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type PriceTools = MockPriceTools;
-    type LiquidityProxyPallet = MockLiquidityProxy;
+    type LiquidityProxy = MockLiquidityProxy;
 }
 
 pub struct ExtBuilder {
