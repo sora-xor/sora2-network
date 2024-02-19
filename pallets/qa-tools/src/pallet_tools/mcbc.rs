@@ -47,16 +47,15 @@ pub(crate) fn initialize_single_collateral<T: Config>(
         let CalculatedXorPrices {
             asset_a: collateral_xor_prices,
             asset_b: _,
-        } = pallet_tools::price_tools::calculate_xor_prices(
-            input.asset,
-            reference_asset,
+        } = pallet_tools::price_tools::calculate_xor_prices::<T>(
+            &input.asset,
+            &reference_asset,
             ref_prices.buy,
             ref_prices.sell,
         )?;
 
         ensure!(
-            xor_prices.synthetic_base.buy >= xor_prices.synthetic_base.sell
-                && xor_prices.reference.buy >= xor_prices.reference.sell,
+            collateral_xor_prices.buy >= collateral_xor_prices.sell,
             Error::<T>::BuyLessThanSell
         );
         pallet_tools::price_tools::set_price::<T>(
@@ -102,14 +101,6 @@ pub(crate) fn initialize_single_collateral<T: Config>(
     // );
     // Technical::register_tech_account_id(bonding_curve_tech_account_id.clone())?;
     // MBCPool::set_reserves_account_id(bonding_curve_tech_account_id.clone())?;
-
-    // set price_tools prices if needed
-    if let Some(price) = input.ref_prices.buy {
-        pallet_tools::price_tools::set_price::<T>(&input.asset, price, PriceVariant::Buy)?;
-    }
-    if let Some(price) = input.ref_prices.sell {
-        pallet_tools::price_tools::set_price::<T>(&input.asset, price, PriceVariant::Sell)?;
-    }
 
     // todo: use traits where possible (not only here, in whole pallet)
     // let reserve_amount_expected = FixedWrapper::from(total_issuance)
