@@ -75,7 +75,7 @@ pub mod pallet {
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type PriceTools: PriceToolsPallet<Self::AssetId>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type LiquidityProxyPallet: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -959,7 +959,7 @@ pub mod pallet {
             )?;
 
             let buyback_amount = outcome.amount;
-            T::LiquidityProxy::swap(
+            T::LiquidityProxyPallet::swap(
                 RawOrigin::Signed(caller.clone()).into(),
                 DEXId::Polkaswap.into(),
                 asset_id,
@@ -995,7 +995,7 @@ pub mod pallet {
             .unwrap_or(0);
 
             // Transfer APOLLO to treasury
-            T::LiquidityProxy::swap_transfer(
+            T::LiquidityProxyPallet::swap_transfer(
                 RawOrigin::Signed(caller.clone()).into(),
                 AuthorityAccount::<T>::get(), // APOLLO Treasury
                 DEXId::Polkaswap.into(),
@@ -1007,7 +1007,7 @@ pub mod pallet {
             )?;
 
             // Buyback and burn CERES
-            T::LiquidityProxy::swap(
+            T::LiquidityProxyPallet::swap(
                 RawOrigin::Signed(caller.clone()).into(),
                 DEXId::Polkaswap.into(),
                 asset_id,

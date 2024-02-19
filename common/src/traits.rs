@@ -43,7 +43,9 @@ use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
 use crate::primitives::Balance;
+use crate::FilterMode;
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::pallet_prelude::DispatchResultWithPostInfo;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
@@ -845,6 +847,18 @@ pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError>;
+
+    fn swap<OuterOrigin>(
+        origin: OuterOrigin,
+        dex_id: DEXId,
+        input_asset_id: AssetId,
+        output_asset_id: AssetId,
+        swap_amount: SwapAmount<Balance>,
+        selected_source_types: Vec<LiquiditySourceType>,
+        filter_mode: FilterMode,
+    ) -> DispatchResultWithPostInfo
+    where
+        OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>>;
 }
 
 impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, AccountId, AssetId>
@@ -870,6 +884,21 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
         _amount: SwapAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        unimplemented!()
+    }
+
+    fn swap(
+        _origin: A,
+        _dex_id: DEXId,
+        _input_asset_id: AssetId,
+        _output_asset_id: AssetId,
+        _swap_amount: SwapAmount<Balance>,
+        _selected_source_types: Vec<LiquiditySourceType>,
+        _filter_mode: FilterMode,
+    ) -> DispatchResultWithPostInfo
+    where
+        OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>>,
+    {
         unimplemented!()
     }
 }
