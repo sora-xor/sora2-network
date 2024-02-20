@@ -2,7 +2,7 @@ use super::alice;
 use super::QaToolsPallet;
 use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
-use common::{balance, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
+use common::{assert_approx_eq, balance, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
@@ -100,21 +100,38 @@ fn should_init_mcbc_xor() {
 fn set_and_verify_reference_prices(
     reference_asset_id: &AssetIdOf<Runtime>,
     collateral_asset_id: &AssetIdOf<Runtime>,
-    reference_prices: mcbc_tools::ReferencePriceInput,
+    reference_prices: AssetPrices,
 ) {
     let input = mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
         asset: collateral_asset_id.clone(),
         ref_prices: Some(reference_prices.clone()),
         reserves: None,
     };
-    assert_ok!(initialize_mcbc::<Runtime>(None, vec![input], None));
+
+    // todo: replace single entry point for init with separate fns to avoid this weird interface.
+    let collateral_init_result = {
+        let result = initialize_mcbc::<Runtime>(None, vec![input], None).unwrap();
+        assert_eq!(result.len(), 1);
+        result.into_iter().next().unwrap()
+    };
+    let actual_ref_prices = {
+        let (asset_id, prices) = collateral_init_result;
+        assert_eq!(
+            &asset_id, collateral_asset_id,
+            "unexpected asset id in result"
+        );
+        prices
+    };
+    assert_approx_eq!(reference_prices.buy, actual_ref_prices.buy, 10, 0.0001f64);
+    assert_approx_eq!(reference_prices.sell, actual_ref_prices.sell, 10, 0.0001f64);
+
     assert_eq!(
         price_tools::Pallet::<Runtime>::get_average_price(
             &collateral_asset_id,
             &reference_asset_id,
             PriceVariant::Buy
         ),
-        Ok(reference_prices.buy)
+        Ok(actual_ref_prices.buy)
     );
     assert_eq!(
         price_tools::Pallet::<Runtime>::get_average_price(
@@ -122,7 +139,7 @@ fn set_and_verify_reference_prices(
             &reference_asset_id,
             PriceVariant::Sell
         ),
-        Ok(reference_prices.sell)
+        Ok(actual_ref_prices.sell)
     );
 }
 
@@ -137,7 +154,7 @@ fn should_init_collateral_reference_price() {
                 None,
                 vec![mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
                     asset: collateral_asset_id,
-                    ref_prices: Some(mcbc_tools::ReferencePriceInput {
+                    ref_prices: Some(AssetPrices {
                         buy: balance!(1),
                         sell: balance!(1),
                     }),
@@ -158,7 +175,7 @@ fn should_init_collateral_reference_price() {
         set_and_verify_reference_prices(
             &reference_asset_id,
             &collateral_asset_id,
-            mcbc_tools::ReferencePriceInput {
+            AssetPrices {
                 buy: balance!(1),
                 sell: balance!(1),
             },
@@ -166,7 +183,7 @@ fn should_init_collateral_reference_price() {
         set_and_verify_reference_prices(
             &reference_asset_id,
             &collateral_asset_id,
-            mcbc_tools::ReferencePriceInput {
+            AssetPrices {
                 buy: balance!(124),
                 sell: balance!(123),
             },
@@ -174,7 +191,7 @@ fn should_init_collateral_reference_price() {
         set_and_verify_reference_prices(
             &reference_asset_id,
             &collateral_asset_id,
-            mcbc_tools::ReferencePriceInput {
+            AssetPrices {
                 buy: balance!(0.1),
                 sell: balance!(0.01),
             },
