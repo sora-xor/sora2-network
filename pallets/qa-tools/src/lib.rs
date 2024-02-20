@@ -130,7 +130,11 @@ pub mod pallet {
             /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
             quotes_achieved: Vec<SyntheticOutput<T::AssetId>>,
         },
-        // todo: mcbc event
+        /// Multicollateral bonding curve liquidity source has been initialized successfully.
+        McbcInitialized {
+            /// Exact reference prices achieved for the collateral assets.
+            collateral_ref_prices: Vec<(T::AssetId, pallet_tools::price_tools::AssetPrices)>,
+        },
     }
 
     #[pallet::error]
@@ -364,6 +368,48 @@ pub mod pallet {
                     })?;
 
             Self::deposit_event(Event::<T>::XstInitialized { quotes_achieved });
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::price_tools_set_reference_asset_price())]
+        pub fn mcbc_initialize(
+            origin: OriginFor<T>,
+            base_supply: Option<pallet_tools::mcbc::BaseSupply<T::AccountId>>,
+            other_collaterals: Vec<pallet_tools::mcbc::OtherCollateralInput<T::AssetId>>,
+            tbcd_collateral: Option<pallet_tools::mcbc::TbcdCollateralInput>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            if let Some(base_supply) = base_supply {
+                pallet_tools::mcbc::initialize_base_supply::<T>(base_supply)?;
+            }
+
+            let mut collateral_ref_prices = vec![];
+            for collateral_input in other_collaterals {
+                let collateral_asset_id = collateral_input.asset.clone();
+                let actual_ref_prices =
+                    pallet_tools::mcbc::initialize_single_collateral::<T>(collateral_input)?;
+                if let Some(actual_ref_prices) = actual_ref_prices {
+                    Self::deposit_event(Event::<T>::OrderBooksFilled);
+                    collateral_ref_prices.push((collateral_asset_id, actual_ref_prices))
+                }
+            }
+            if let Some(tbcd_collateral) = tbcd_collateral {
+                let actual_ref_prices =
+                    pallet_tools::mcbc::initialize_tbcd_collateral::<T>(tbcd_collateral)?;
+                if let Some(actual_ref_prices) = actual_ref_prices {
+                    collateral_ref_prices.push((common::TBCD.into(), actual_ref_prices));
+                }
+            }
+            Self::deposit_event(Event::<T>::McbcInitialized {
+                collateral_ref_prices,
+            });
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
