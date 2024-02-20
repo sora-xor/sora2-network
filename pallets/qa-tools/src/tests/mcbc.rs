@@ -378,13 +378,13 @@ fn set_and_verify_tbcd_reserves(
     collateral_asset_id: &AssetIdOf<Runtime>,
     target_reserves: Balance,
 ) {
-    let input = mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
-        asset: collateral_asset_id.clone(),
+    let input = mcbc_tools::TbcdCollateralInput {
         ref_prices: None,
         reserves: Some(target_reserves),
+        xor_ref_prices: None,
     };
 
-    assert_ok!(initialize_mcbc_collateral::<Runtime>(input));
+    assert_ok!(initialize_mcbc_tbcd_collateral::<Runtime>(input));
 
     let reserves_tech_account_id =
         multicollateral_bonding_curve_pool::Pallet::<Runtime>::reserves_account_id();
@@ -414,3 +414,5 @@ fn should_init_tbcd_reserves() {
         set_and_verify_tbcd_reserves(&collateral_asset_id, balance!(0));
     })
 }
+
+// todo: test quotes (should fail with trading pairs etc.)
