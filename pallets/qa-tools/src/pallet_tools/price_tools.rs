@@ -69,6 +69,25 @@ pub struct CalculatedXorPrices {
     pub asset_b: AssetPrices,
 }
 
+/// calculates prices of A in terms of B (B per A) given XOR prices of both
+pub fn relative_prices<T: Config>(
+    xor_prices: &CalculatedXorPrices,
+) -> Result<AssetPrices, DispatchError> {
+    // formulae from `price_tools::get_average_price`
+    let quote_a_buy = BalanceUnit::one()
+        .checked_div(&BalanceUnit::divisible(xor_prices.asset_a.sell))
+        .ok_or(Error::<T>::ArithmeticError)?;
+    let quote_b_buy = BalanceUnit::divisible(xor_prices.asset_b.buy);
+    let quote_a_sell = BalanceUnit::one()
+        .checked_div(&BalanceUnit::divisible(xor_prices.asset_a.buy))
+        .ok_or(Error::<T>::ArithmeticError)?;
+    let quote_b_sell = BalanceUnit::divisible(xor_prices.asset_b.sell);
+
+    Ok(AssetPrices {
+        buy: *(quote_a_buy * quote_b_buy).balance(),
+        sell: *(quote_a_sell * quote_b_sell).balance(),
+    })
+}
 /// Calculate prices of XOR in the assets A and B given the expected relative price A in terms of B.
 /// The resulting prices can be directly used for [`set_price`]/`price_tools::incoming_spot_price`,
 /// as they require prices of XOR in terms of an asset.

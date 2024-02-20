@@ -28,16 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::pallet_tools::price_tools::{AssetPrices, CalculatedXorPrices};
 use crate::Config;
 use crate::{pallet_tools, Error};
 use codec::{Decode, Encode};
-use common::prelude::{BalanceUnit, FixedWrapper};
+use common::prelude::FixedWrapper;
 use common::{AssetInfoProvider, Balance, PriceVariant, TBCD};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::Get;
-use sp_arithmetic::traits::{CheckedDiv, One};
+use pallet_tools::price_tools::{AssetPrices, CalculatedXorPrices};
 
 /// Input for initializing collateral assets except TBCD.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
@@ -70,26 +69,6 @@ pub struct BaseSupply<AccountId> {
     pub new_base_supply: Balance,
 }
 
-/// calculates prices of A in terms of B given XOR prices of both
-pub(crate) fn actual_prices<T: Config>(
-    xor_prices: &CalculatedXorPrices,
-) -> Result<AssetPrices, DispatchError> {
-    // formulae from `price_tools::get_average_price`
-    let quote_a_buy = BalanceUnit::one()
-        .checked_div(&BalanceUnit::divisible(xor_prices.asset_a.sell))
-        .ok_or(Error::<T>::ArithmeticError)?;
-    let quote_b_buy = BalanceUnit::divisible(xor_prices.asset_b.buy);
-    let quote_a_sell = BalanceUnit::one()
-        .checked_div(&BalanceUnit::divisible(xor_prices.asset_a.buy))
-        .ok_or(Error::<T>::ArithmeticError)?;
-    let quote_b_sell = BalanceUnit::divisible(xor_prices.asset_b.sell);
-
-    Ok(AssetPrices {
-        buy: *(quote_a_buy * quote_b_buy).balance(),
-        sell: *(quote_a_sell * quote_b_sell).balance(),
-    })
-}
-
 /// Initialize collateral-specific variables in MCBC pricing. Reserves affect the actual sell
 /// price, whereas the reference prices (seems like linearly) scale the output.
 ///
@@ -108,7 +87,9 @@ pub fn initialize_single_collateral<T: Config>(
             ref_prices.buy,
             ref_prices.sell,
         )?;
-        actual_ref_prices = Some(actual_prices::<T>(&xor_prices)?);
+        actual_ref_prices = Some(pallet_tools::price_tools::relative_prices::<T>(
+            &xor_prices,
+        )?);
         let CalculatedXorPrices {
             asset_a: collateral_xor_prices,
             asset_b: _,
