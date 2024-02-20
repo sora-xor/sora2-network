@@ -216,6 +216,7 @@ fn should_init_collateral_reference_price() {
         test_init_single_collateral_reference_price(VAL.into());
         test_init_single_collateral_reference_price(ETH.into());
         test_init_single_collateral_reference_price(CERES_ASSET_ID.into());
+        // todo: test with newly created assets
     })
 }
 
@@ -354,5 +355,49 @@ fn test_init_single_collateral_reserves(collateral_asset_id: AssetIdOf<Runtime>)
 fn should_init_collateral_reserves() {
     ext().execute_with(|| {
         test_init_single_collateral_reserves(VAL.into());
+        test_init_single_collateral_reserves(ETH.into());
+        test_init_single_collateral_reserves(CERES_ASSET_ID.into());
+        // todo: test with newly created assets
+    })
+}
+
+fn set_and_verify_tbcd_reserves(
+    collateral_asset_id: &AssetIdOf<Runtime>,
+    target_reserves: Balance,
+) {
+    let input = mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
+        asset: collateral_asset_id.clone(),
+        ref_prices: None,
+        reserves: Some(target_reserves),
+    };
+
+    assert_ok!(initialize_mcbc_collateral::<Runtime>(input));
+
+    let reserves_tech_account_id =
+        multicollateral_bonding_curve_pool::Pallet::<Runtime>::reserves_account_id();
+    let reserves_account_id =
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&reserves_tech_account_id)
+            .unwrap();
+    assert_eq!(
+        assets::Pallet::<Runtime>::total_balance(&collateral_asset_id, &reserves_account_id),
+        Ok(target_reserves)
+    );
+}
+
+#[test]
+fn should_init_tbcd_reserves() {
+    ext().execute_with(|| {
+        let collateral_asset_id = TBCD.into();
+        let input = mcbc_tools::TbcdCollateralInput {
+            ref_prices: None,
+            reserves: Some(balance!(0)),
+            xor_ref_prices: None,
+        };
+        assert_err!(
+            initialize_mcbc_tbcd_collateral::<Runtime>(input),
+            qa_tools::Error::<Runtime>::IncorrectCollateralAsset
+        );
+        set_and_verify_tbcd_reserves(&collateral_asset_id, balance!(1000000));
+        set_and_verify_tbcd_reserves(&collateral_asset_id, balance!(0));
     })
 }
