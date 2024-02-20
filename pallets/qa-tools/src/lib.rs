@@ -180,6 +180,8 @@ pub mod pallet {
         // assets errors
         /// Cannot initialize MCBC for unknown asset.
         UnknownMCBCAsset,
+        /// TBCD must be initialized using different field/function (see `tbcd_collateral` and `TbcdCollateralInput`).
+        IncorrectCollateralAsset,
     }
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]

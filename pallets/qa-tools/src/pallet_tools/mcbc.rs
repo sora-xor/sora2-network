@@ -125,13 +125,7 @@ fn set_reserves<T: Config>(asset: &AssetIdOf<T>, target_reserves: Balance) -> Di
     Ok(())
 }
 
-/// Initialize collateral-specific variables in MCBC pricing. Reserves affect the actual sell
-/// price, whereas the reference prices (seems like linearly) scale the output.
-///
-/// ## Return
-/// Due to limited precision of fixed-point numbers, the requested reference prices might not
-/// be precisely obtainable. Therefore, actual price of collaterals are returned.
-pub fn initialize_single_collateral<T: Config>(
+fn initialize_single_collateral_unchecked<T: Config>(
     input: OtherCollateralInput<T::AssetId>,
 ) -> Result<Option<AssetPrices>, DispatchError> {
     let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
@@ -190,6 +184,24 @@ pub fn initialize_single_collateral<T: Config>(
     Ok(actual_ref_prices)
 }
 
+/// Initialize collateral-specific variables in MCBC pricing. Reserves affect the actual sell
+/// price, whereas the reference prices (seems like linearly) scale the output.
+///
+/// Note that TBCD must be initialized via [`initialize_tbcd_collateral`]
+///
+/// ## Return
+/// Due to limited precision of fixed-point numbers, the requested reference prices might not
+/// be precisely obtainable. Therefore, actual price of collaterals are returned.
+pub fn initialize_single_collateral<T: Config>(
+    input: OtherCollateralInput<T::AssetId>,
+) -> Result<Option<AssetPrices>, DispatchError> {
+    ensure!(
+        input.asset != TBCD.into(),
+        Error::<T>::IncorrectCollateralAsset
+    );
+    initialize_single_collateral_unchecked::<T>(input)
+}
+
 /// Initialize TBCD collateral asset - a special case in MCBC pallet.
 /// In addition, it sets up XOR reference price, since it also affects the results.
 ///
@@ -203,7 +215,7 @@ pub fn initialize_tbcd_collateral<T: Config>(
     // handle xor ref price
     // input.xor_ref_prices
 
-    initialize_single_collateral::<T>(OtherCollateralInput {
+    initialize_single_collateral_unchecked::<T>(OtherCollateralInput {
         asset: TBCD.into(),
         ref_prices: input.ref_prices,
         reserves: input.reserves,
