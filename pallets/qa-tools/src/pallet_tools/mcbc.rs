@@ -1,18 +1,13 @@
-use crate::pallet_tools::price_tools::CalculatedXorPrices;
+use crate::pallet_tools::price_tools::{AssetPrices, CalculatedXorPrices};
 use crate::Config;
 use crate::{pallet_tools, Error};
 use codec::{Decode, Encode};
-use common::prelude::FixedWrapper;
+use common::prelude::{BalanceUnit, FixedWrapper};
 use common::{AssetInfoProvider, Balance, PriceVariant};
-use frame_support::dispatch::DispatchResult;
+use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::Get;
-
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub struct ReferencePriceInput {
-    pub buy: Balance,
-    pub sell: Balance,
-}
+use sp_arithmetic::traits::{CheckedDiv, One};
 
 /// Input for initializing collateral assets except TBCD.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
@@ -21,7 +16,7 @@ pub struct OtherCollateralInput<AssetId> {
     pub asset: AssetId,
     /// Price of collateral in terms of reference asset. Linearly affects the exchange amounts.
     /// (if collateral costs 10x more sell output should be 10x smaller)
-    pub ref_prices: Option<ReferencePriceInput>,
+    pub ref_prices: Option<AssetPrices>,
     /// Desired amount of collateral asset in the MCBC reserve account. Affects actual sell
     /// price according to formulae.
     pub reserves: Option<Balance>,
@@ -31,7 +26,7 @@ pub struct OtherCollateralInput<AssetId> {
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
 pub struct TbcdCollateralInput<AssetId> {
     pub regular_collateral_input: OtherCollateralInput<AssetId>,
-    pub xor_ref_prices: ReferencePriceInput,
+    pub xor_ref_prices: AssetPrices,
 }
 
 pub struct BaseSupply<AccountId> {
@@ -39,20 +34,43 @@ pub struct BaseSupply<AccountId> {
     pub new_base_supply: Balance,
 }
 
+/// calculates prices of A in terms of B given XOR prices of both
+pub(crate) fn actual_prices<T: Config>(
+    xor_prices: &CalculatedXorPrices,
+) -> Result<AssetPrices, DispatchError> {
+    // formulae from `price_tools::get_average_price`
+    let quote_a_buy = BalanceUnit::one()
+        .checked_div(&BalanceUnit::divisible(xor_prices.asset_a.sell))
+        .ok_or(Error::<T>::ArithmeticError)?;
+    let quote_b_buy = BalanceUnit::divisible(xor_prices.asset_b.buy);
+    let quote_a_sell = BalanceUnit::one()
+        .checked_div(&BalanceUnit::divisible(xor_prices.asset_a.buy))
+        .ok_or(Error::<T>::ArithmeticError)?;
+    let quote_b_sell = BalanceUnit::divisible(xor_prices.asset_b.sell);
+
+    Ok(AssetPrices {
+        buy: *(quote_a_buy * quote_b_buy).balance(),
+        sell: *(quote_a_sell * quote_b_sell).balance(),
+    })
+}
+
 pub(crate) fn initialize_single_collateral<T: Config>(
     input: OtherCollateralInput<T::AssetId>,
-) -> DispatchResult {
+) -> Result<Option<AssetPrices>, DispatchError> {
     let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
+    let mut actual_ref_prices = None;
     if let Some(ref_prices) = input.ref_prices {
-        let CalculatedXorPrices {
-            asset_a: collateral_xor_prices,
-            asset_b: _,
-        } = pallet_tools::price_tools::calculate_xor_prices::<T>(
+        let xor_prices = pallet_tools::price_tools::calculate_xor_prices::<T>(
             &input.asset,
             &reference_asset,
             ref_prices.buy,
             ref_prices.sell,
         )?;
+        actual_ref_prices = Some(actual_prices(&xor_prices)?);
+        let CalculatedXorPrices {
+            asset_a: collateral_xor_prices,
+            asset_b: _,
+        } = xor_prices;
 
         ensure!(
             collateral_xor_prices.buy >= collateral_xor_prices.sell,
@@ -127,12 +145,12 @@ pub(crate) fn initialize_single_collateral<T: Config>(
     //     multicollateral_bonding_curve_pool::Pallet::<T>::reserves_account_id();
     // technical::Pallet::<T>::mint(&input.asset, &reserves_account, pool_val_amount.amount)?;
 
-    Ok(())
+    Ok(actual_ref_prices)
 }
 
 pub(crate) fn initialize_tbcd_collateral<T: Config>(
     input: TbcdCollateralInput<T::AssetId>,
-) -> DispatchResult {
+) -> Result<Option<AssetPrices>, DispatchError> {
     // handle xor ref price
     // input.xor_ref_prices
 

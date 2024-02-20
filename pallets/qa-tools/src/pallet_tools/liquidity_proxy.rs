@@ -31,6 +31,7 @@
 /// Working with different liquidity sources
 pub mod liquidity_sources {
     use crate::pallet_tools;
+    use crate::pallet_tools::price_tools::AssetPrices;
     use crate::Config;
     use assets::AssetIdOf;
     use common::DexIdOf;
@@ -124,8 +125,6 @@ pub mod liquidity_sources {
     ///
     /// Due to limited precision of fixed-point numbers, the requested price might not be precisely
     /// obtainable. Therefore, actual resulting price of synthetics is returned.
-    ///
-    /// `quote` in `xst` pallet requires swap to involve synthetic base asset, as well as
     pub fn initialize_xst<T: Config>(
         base: Option<BaseInput>,
         synthetics: Vec<SyntheticInput<T::AssetId, <T as Config>::Symbol>>,
@@ -137,21 +136,37 @@ pub mod liquidity_sources {
         pallet_tools::xst::initialize_synthetics::<T>(synthetics, relayer)
     }
 
+    /// Initialize multicollateral-bonding-curve liquidity source. Can update all variables
+    /// that affect the resulting price.
+    ///
+    /// ## Return
+    ///
+    /// Due to limited precision of fixed-point numbers, the requested reference prices might not
+    /// be precisely obtainable. Therefore, actual price of collaterals are returned.
     pub fn initialize_mcbc<T: Config>(
         base_supply: Option<pallet_tools::mcbc::BaseSupply<T::AccountId>>,
         other_collaterals: Vec<pallet_tools::mcbc::OtherCollateralInput<T::AssetId>>,
         tbcd_collateral: Option<pallet_tools::mcbc::TbcdCollateralInput<T::AssetId>>,
-    ) -> DispatchResult {
+    ) -> Result<Vec<(AssetIdOf<T>, AssetPrices)>, DispatchError> {
         if let Some(base_supply) = base_supply {
             pallet_tools::mcbc::initialize_base_supply::<T>(base_supply)?;
         }
 
+        let mut collateral_ref_prices = vec![];
         for collateral_input in other_collaterals {
-            pallet_tools::mcbc::initialize_single_collateral::<T>(collateral_input)?;
+            let actual_ref_prices =
+                pallet_tools::mcbc::initialize_single_collateral::<T>(collateral_input)?;
+            if let Some(actual_ref_prices) = actual_ref_prices {
+                collateral_ref_prices.push(actual_ref_prices)
+            }
         }
         if let Some(tbcd_collateral) = tbcd_collateral {
-            pallet_tools::mcbc::initialize_tbcd_collateral::<T>(tbcd_collateral)?;
+            let actual_ref_prices =
+                pallet_tools::mcbc::initialize_tbcd_collateral::<T>(tbcd_collateral)?;
+            if let Some(actual_ref_prices) = actual_ref_prices {
+                collateral_ref_prices.push(actual_ref_prices)
+            }
         }
-        Ok(())
+        Ok(collateral_ref_prices)
     }
 }
