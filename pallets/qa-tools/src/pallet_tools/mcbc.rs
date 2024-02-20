@@ -30,6 +30,7 @@
 
 use crate::Config;
 use crate::{pallet_tools, Error};
+use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::FixedWrapper;
 use common::{AssetInfoProvider, Balance, PriceVariant, TBCD};
@@ -69,6 +70,40 @@ pub struct BaseSupply<AccountId> {
     pub new_base_supply: Balance,
 }
 
+fn set_reference_prices<T: Config>(
+    asset_id: AssetIdOf<T>,
+    reference_asset_id: AssetIdOf<T>,
+    ref_prices: AssetPrices,
+) -> AssetPrices {
+    let xor_prices = pallet_tools::price_tools::calculate_xor_prices::<T>(
+        &asset_id,
+        &reference_asset_id,
+        ref_prices.buy,
+        ref_prices.sell,
+    )?;
+    let actual_prices = pallet_tools::price_tools::relative_prices::<T>(&xor_prices)?;
+    let CalculatedXorPrices {
+        asset_a: collateral_xor_prices,
+        asset_b: _,
+    } = xor_prices;
+
+    ensure!(
+        collateral_xor_prices.buy >= collateral_xor_prices.sell,
+        Error::<T>::BuyLessThanSell
+    );
+    pallet_tools::price_tools::set_price::<T>(
+        &asset_id,
+        collateral_xor_prices.buy,
+        PriceVariant::Buy,
+    )?;
+    pallet_tools::price_tools::set_price::<T>(
+        &asset_id,
+        collateral_xor_prices.sell,
+        PriceVariant::Sell,
+    )?;
+    actual_prices
+}
+
 /// Initialize collateral-specific variables in MCBC pricing. Reserves affect the actual sell
 /// price, whereas the reference prices (seems like linearly) scale the output.
 ///
@@ -79,43 +114,7 @@ pub fn initialize_single_collateral<T: Config>(
     input: OtherCollateralInput<T::AssetId>,
 ) -> Result<Option<AssetPrices>, DispatchError> {
     let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
-    let mut actual_ref_prices = None;
-    if let Some(ref_prices) = input.ref_prices {
-        let xor_prices = pallet_tools::price_tools::calculate_xor_prices::<T>(
-            &input.asset,
-            &reference_asset,
-            ref_prices.buy,
-            ref_prices.sell,
-        )?;
-        actual_ref_prices = Some(pallet_tools::price_tools::relative_prices::<T>(
-            &xor_prices,
-        )?);
-        let CalculatedXorPrices {
-            asset_a: collateral_xor_prices,
-            asset_b: _,
-        } = xor_prices;
 
-        ensure!(
-            collateral_xor_prices.buy >= collateral_xor_prices.sell,
-            Error::<T>::BuyLessThanSell
-        );
-        pallet_tools::price_tools::set_price::<T>(
-            &input.asset,
-            collateral_xor_prices.buy,
-            PriceVariant::Buy,
-        )?;
-        pallet_tools::price_tools::set_price::<T>(
-            &input.asset,
-            collateral_xor_prices.sell,
-            PriceVariant::Sell,
-        )?;
-    }
-
-    // initialize reserves
-
-    // let base_asset = T::GetBaseAssetId::get();
-    // let reference_asset = multicollateral_bonding_curve_pool::Pallet::<T>::reference_asset_id();
-    // let total_issuance = assets::Pallet::<T>::total_issuance(&base_asset)?;
     // todo: register TP if not exist
     // TradingPair::register(
     //     RuntimeOrigin::signed(alice()),
@@ -135,6 +134,11 @@ pub fn initialize_single_collateral<T: Config>(
     // todo: initialize pool if not already
     // MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
+    let actual_ref_prices = input
+        .ref_prices
+        .map(|p| set_reference_prices(input.asset, reference_asset, p));
+    // initialize reserves
+
     // todo: register account if not present???
     // let bonding_curve_tech_account_id = TechAccountId::Pure(
     //     DEXId::Polkaswap,
@@ -144,12 +148,6 @@ pub fn initialize_single_collateral<T: Config>(
     // MBCPool::set_reserves_account_id(bonding_curve_tech_account_id.clone())?;
 
     // todo: use traits where possible (not only here, in whole pallet)
-    // let reserve_amount_expected = FixedWrapper::from(total_issuance)
-    //     * multicollateral_bonding_curve_pool::Pallet::<T>::sell_function(
-    //         &base_asset,
-    //         &input.asset,
-    //         Fixed::ZERO,
-    //     )?;
 
     // let pool_reference_amount = reserve_amount_expected * ratio;
     // let pool_reference_amount = pool_reference_amount
