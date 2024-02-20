@@ -217,7 +217,7 @@ where
 mod tests {
     use crate::liquidity_aggregator::*;
     use common::prelude::{QuoteAmount, SwapVariant};
-    use common::{balance, LiquiditySourceType, SwapChunk};
+    use common::{balance, DiscreteQuotation, LiquiditySourceType, SwapChunk, SwapLimits};
     use sp_std::collections::vec_deque::VecDeque;
 
     fn get_liquidity_aggregator_with_desired_input_and_equal_chunks(
@@ -225,33 +225,46 @@ mod tests {
         let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
         aggregator.add_source(
             LiquiditySourceType::XYKPool,
-            VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                SwapChunk::new(balance!(10), balance!(90), balance!(0.9)),
-                SwapChunk::new(balance!(10), balance!(80), balance!(0.8)),
-                SwapChunk::new(balance!(10), balance!(70), balance!(0.7)),
-                SwapChunk::new(balance!(10), balance!(60), balance!(0.6)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(10), balance!(90), balance!(0.9)),
+                    SwapChunk::new(balance!(10), balance!(80), balance!(0.8)),
+                    SwapChunk::new(balance!(10), balance!(70), balance!(0.7)),
+                    SwapChunk::new(balance!(10), balance!(60), balance!(0.6)),
+                ]),
+                limits: Default::default(),
+            },
         );
 
         aggregator.add_source(
             LiquiditySourceType::XSTPool,
-            VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                ]),
+                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+            },
         );
 
         aggregator.add_source(
             LiquiditySourceType::OrderBook,
-            VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(120), balance!(0)),
-                SwapChunk::new(balance!(10), balance!(100), balance!(0)),
-                SwapChunk::new(balance!(10), balance!(80), balance!(0)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(120), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(80), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.00001)),
+                ),
+            },
         );
 
         aggregator
@@ -263,33 +276,46 @@ mod tests {
 
         aggregator.add_source(
             LiquiditySourceType::XYKPool,
-            VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                SwapChunk::new(balance!(11), balance!(100), balance!(1)),
-                SwapChunk::new(balance!(12), balance!(100), balance!(1)),
-                SwapChunk::new(balance!(13), balance!(100), balance!(1)),
-                SwapChunk::new(balance!(14), balance!(100), balance!(1)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(11), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(13), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(14), balance!(100), balance!(1)),
+                ]),
+                limits: Default::default(),
+            },
         );
 
         aggregator.add_source(
             LiquiditySourceType::XSTPool,
-            VecDeque::from([
-                SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                ]),
+                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+            },
         );
 
         aggregator.add_source(
             LiquiditySourceType::OrderBook,
-            VecDeque::from([
-                SwapChunk::new(balance!(8), balance!(100), balance!(0)),
-                SwapChunk::new(balance!(10), balance!(100), balance!(0)),
-                SwapChunk::new(balance!(13), balance!(100), balance!(0)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(8), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(13), balance!(100), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.00001)),
+                ),
+            },
         );
 
         aggregator
@@ -300,33 +326,46 @@ mod tests {
         let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
         aggregator.add_source(
             LiquiditySourceType::XYKPool,
-            VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                SwapChunk::new(balance!(12), balance!(108), balance!(1.08)),
-                SwapChunk::new(balance!(14), balance!(112), balance!(1.12)),
-                SwapChunk::new(balance!(16), balance!(112), balance!(1.12)),
-                SwapChunk::new(balance!(18), balance!(108), balance!(1.08)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12), balance!(108), balance!(1.08)),
+                    SwapChunk::new(balance!(14), balance!(112), balance!(1.12)),
+                    SwapChunk::new(balance!(16), balance!(112), balance!(1.12)),
+                    SwapChunk::new(balance!(18), balance!(108), balance!(1.08)),
+                ]),
+                limits: Default::default(),
+            },
         );
 
         aggregator.add_source(
             LiquiditySourceType::XSTPool,
-            VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                SwapChunk::new(balance!(11), balance!(93.5), balance!(0.935)),
-                SwapChunk::new(balance!(12), balance!(102), balance!(1.02)),
-                SwapChunk::new(balance!(13), balance!(110.5), balance!(1.105)),
-                SwapChunk::new(balance!(14), balance!(119), balance!(1.19)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(11), balance!(93.5), balance!(0.935)),
+                    SwapChunk::new(balance!(12), balance!(102), balance!(1.02)),
+                    SwapChunk::new(balance!(13), balance!(110.5), balance!(1.105)),
+                    SwapChunk::new(balance!(14), balance!(119), balance!(1.19)),
+                ]),
+                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+            },
         );
 
         aggregator.add_source(
             LiquiditySourceType::OrderBook,
-            VecDeque::from([
-                SwapChunk::new(balance!(12), balance!(144), balance!(0)),
-                SwapChunk::new(balance!(10), balance!(100), balance!(0)),
-                SwapChunk::new(balance!(14), balance!(112), balance!(0)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(12), balance!(144), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(14), balance!(112), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.00001)),
+                ),
+            },
         );
 
         aggregator
@@ -338,33 +377,46 @@ mod tests {
 
         aggregator.add_source(
             LiquiditySourceType::XYKPool,
-            VecDeque::from([
-                SwapChunk::new(balance!(10), balance!(100), balance!(0)),
-                SwapChunk::new(balance!(5.5), balance!(50), balance!(0)),
-                SwapChunk::new(balance!(3), balance!(25), balance!(0)),
-                SwapChunk::new(balance!(26), balance!(200), balance!(0)),
-                SwapChunk::new(balance!(7), balance!(50), balance!(0)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(5.5), balance!(50), balance!(0)),
+                    SwapChunk::new(balance!(3), balance!(25), balance!(0)),
+                    SwapChunk::new(balance!(26), balance!(200), balance!(0)),
+                    SwapChunk::new(balance!(7), balance!(50), balance!(0)),
+                ]),
+                limits: Default::default(),
+            },
         );
 
         aggregator.add_source(
             LiquiditySourceType::XSTPool,
-            VecDeque::from([
-                SwapChunk::new(balance!(12.5), balance!(100), balance!(0)),
-                SwapChunk::new(balance!(10), balance!(80), balance!(0)),
-                SwapChunk::new(balance!(9), balance!(72), balance!(0)),
-                SwapChunk::new(balance!(8), balance!(64), balance!(0)),
-                SwapChunk::new(balance!(7), balance!(56), balance!(0)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(80), balance!(0)),
+                    SwapChunk::new(balance!(9), balance!(72), balance!(0)),
+                    SwapChunk::new(balance!(8), balance!(64), balance!(0)),
+                    SwapChunk::new(balance!(7), balance!(56), balance!(0)),
+                ]),
+                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+            },
         );
 
         aggregator.add_source(
             LiquiditySourceType::OrderBook,
-            VecDeque::from([
-                SwapChunk::new(balance!(8), balance!(100), balance!(0)),
-                SwapChunk::new(balance!(9), balance!(90), balance!(0)),
-                SwapChunk::new(balance!(13), balance!(100), balance!(0)),
-            ]),
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(8), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(9), balance!(90), balance!(0)),
+                    SwapChunk::new(balance!(13), balance!(100), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.00001)),
+                ),
+            },
         );
 
         aggregator
@@ -379,9 +431,10 @@ mod tests {
 
         // remove order book chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::OrderBook)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -392,9 +445,10 @@ mod tests {
 
         // remove order book chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::OrderBook)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -402,9 +456,10 @@ mod tests {
 
         // remove xyk pool chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XYKPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -412,9 +467,10 @@ mod tests {
 
         // remove xyk pool chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XYKPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -422,9 +478,10 @@ mod tests {
 
         // remove xst pool chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XSTPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -432,9 +489,10 @@ mod tests {
 
         // remove xst pool chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XSTPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -450,9 +508,10 @@ mod tests {
 
         // remove order book chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::OrderBook)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -463,9 +522,10 @@ mod tests {
 
         // remove order book chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::OrderBook)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -473,9 +533,10 @@ mod tests {
 
         // remove xyk pool chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XYKPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -483,9 +544,10 @@ mod tests {
 
         // remove xyk pool chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XYKPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -493,9 +555,10 @@ mod tests {
 
         // remove xyk pool chunk 3
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XYKPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -503,9 +566,10 @@ mod tests {
 
         // remove xst pool chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XSTPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -513,9 +577,10 @@ mod tests {
 
         // remove xst pool chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XSTPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -885,9 +950,10 @@ mod tests {
 
         // remove order book chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::OrderBook)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -898,9 +964,10 @@ mod tests {
 
         // remove order book chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::OrderBook)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -908,9 +975,10 @@ mod tests {
 
         // remove xyk pool chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XYKPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -918,9 +986,10 @@ mod tests {
 
         // remove xyk pool chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XYKPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -928,9 +997,10 @@ mod tests {
 
         // remove xst pool chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XSTPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -938,9 +1008,10 @@ mod tests {
 
         // remove xst pool chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XSTPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -956,9 +1027,10 @@ mod tests {
 
         // remove order book chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::OrderBook)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -969,9 +1041,10 @@ mod tests {
 
         // remove order book chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::OrderBook)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -979,9 +1052,10 @@ mod tests {
 
         // remove xyk pool chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XYKPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -989,9 +1063,10 @@ mod tests {
 
         // remove xyk pool chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XYKPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -999,9 +1074,10 @@ mod tests {
 
         // remove xyk pool chunk 3
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XYKPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -1009,9 +1085,10 @@ mod tests {
 
         // remove xst pool chunk 1
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XSTPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
@@ -1019,9 +1096,10 @@ mod tests {
 
         // remove xst pool chunk 2
         aggregator
-            .liquidity_chunks
+            .liquidity_quotations
             .get_mut(&LiquiditySourceType::XSTPool)
             .unwrap()
+            .chunks
             .pop_front();
 
         let candidates = aggregator.find_best_price_candidates();
