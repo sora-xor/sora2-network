@@ -34,6 +34,7 @@ pub struct TbcdCollateralInput {
     pub xor_ref_prices: AssetPrices,
 }
 
+#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
 pub struct BaseSupply<AccountId> {
     pub base_supply_collector: AccountId,
     pub new_base_supply: Balance,
@@ -59,7 +60,13 @@ pub(crate) fn actual_prices<T: Config>(
     })
 }
 
-pub(crate) fn initialize_single_collateral<T: Config>(
+/// Initialize collateral-specific variables in MCBC pricing. Reserves affect the actual sell
+/// price, whereas the reference prices (seems like linearly) scale the output.
+///
+/// ## Return
+/// Due to limited precision of fixed-point numbers, the requested reference prices might not
+/// be precisely obtainable. Therefore, actual price of collaterals are returned.
+pub fn initialize_single_collateral<T: Config>(
     input: OtherCollateralInput<T::AssetId>,
 ) -> Result<Option<AssetPrices>, DispatchError> {
     let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
@@ -153,7 +160,14 @@ pub(crate) fn initialize_single_collateral<T: Config>(
     Ok(actual_ref_prices)
 }
 
-pub(crate) fn initialize_tbcd_collateral<T: Config>(
+/// Initialize TBCD collateral asset - a special case in MCBC pallet.
+/// In addition, it sets up XOR reference price, since it also affects the results.
+///
+/// For other parameters see [`initialize_single_collateral`].
+///
+/// ## Return
+/// See [`initialize_single_collateral`].
+pub fn initialize_tbcd_collateral<T: Config>(
     input: TbcdCollateralInput,
 ) -> Result<Option<AssetPrices>, DispatchError> {
     // handle xor ref price
@@ -166,7 +180,10 @@ pub(crate) fn initialize_tbcd_collateral<T: Config>(
     })
 }
 
-pub(crate) fn initialize_base_supply<T: Config>(input: BaseSupply<T::AccountId>) -> DispatchResult {
+/// Initialize supply of base asset. It is the main variable in the bonding curve pricing formulae.
+///
+/// For TBCD use [`initialize_tbcd_collateral`]
+pub fn initialize_base_supply<T: Config>(input: BaseSupply<T::AccountId>) -> DispatchResult {
     let base_asset_id = &T::GetBaseAssetId::get();
     let current_base_supply: FixedWrapper =
         assets::Pallet::<T>::total_issuance(base_asset_id)?.into();
