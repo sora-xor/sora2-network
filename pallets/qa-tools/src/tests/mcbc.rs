@@ -32,7 +32,10 @@ use super::alice;
 use super::QaToolsPallet;
 use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
-use common::{assert_approx_eq, balance, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
+use common::{
+    assert_approx_eq, balance, AssetInfoProvider, Balance, DEXId, LiquiditySource, PriceVariant,
+    VAL, XOR,
+};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
@@ -207,5 +210,34 @@ fn should_init_collateral_reference_price() {
                 sell: balance!(0.01),
             },
         );
+    })
+}
+
+fn set_and_verify_reserves(collateral_asset_id: &AssetIdOf<Runtime>, target_reserves: Balance) {
+    let input = mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
+        asset: collateral_asset_id.clone(),
+        ref_prices: None,
+        reserves: Some(target_reserves),
+    };
+
+    assert_ok!(initialize_mcbc_collateral::<Runtime>(input));
+
+    let reserves_tech_account_id =
+        multicollateral_bonding_curve_pool::Pallet::<Runtime>::reserves_account_id();
+    let reserves_account_id =
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&reserves_tech_account_id)
+            .unwrap();
+    assert_eq!(
+        assets::Pallet::<Runtime>::total_balance(&collateral_asset_id, &reserves_account_id),
+        Ok(target_reserves)
+    );
+}
+
+#[test]
+fn should_init_collateral_reserves() {
+    ext().execute_with(|| {
+        let collateral_asset_id = VAL.into();
+        set_and_verify_reserves(&collateral_asset_id, balance!(1000000));
+        set_and_verify_reserves(&collateral_asset_id, balance!(0));
     })
 }
