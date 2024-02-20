@@ -387,14 +387,14 @@ fn set_and_verify_tbcd_reserves(
 #[test]
 fn should_init_tbcd_reserves() {
     ext().execute_with(|| {
-        let collateral_asset_id = TBCD.into();
-        let input = mcbc_tools::TbcdCollateralInput {
+        let collateral_asset_id: AssetIdOf<Runtime> = TBCD.into();
+        let input = mcbc_tools::OtherCollateralInput {
+            asset: collateral_asset_id.clone(),
             ref_prices: None,
             reserves: Some(balance!(0)),
-            xor_ref_prices: None,
         };
         assert_err!(
-            initialize_mcbc_tbcd_collateral::<Runtime>(input),
+            initialize_mcbc_collateral::<Runtime>(input),
             qa_tools::Error::<Runtime>::IncorrectCollateralAsset
         );
         set_and_verify_tbcd_reserves(&collateral_asset_id, balance!(1000000));
