@@ -61,7 +61,7 @@ pub struct TbcdCollateralInput {
     /// Desired amount of collateral asset in the MCBC reserve account. Affects actual sell
     /// price according to formulae.
     pub reserves: Option<Balance>,
-    pub xor_ref_prices: AssetPrices,
+    pub xor_ref_prices: Option<AssetPrices>,
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
