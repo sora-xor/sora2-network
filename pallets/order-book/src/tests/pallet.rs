@@ -1606,7 +1606,7 @@ fn should_not_quote_without_impact_with_small_amount() {
 }
 
 #[test]
-fn should_step_quote() {
+fn should_step_quote_when_liquidity_is_less_than_max_amount() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
@@ -1615,6 +1615,10 @@ fn should_step_quote() {
         };
 
         let _ = create_and_fill_order_book::<Runtime>(order_book_id);
+
+        // The volume of the order-book liquidity is less than max order amount.
+        // In this case DiscreteQuotation::limits.max_amount should contain
+        // the whole volume of the order-book side, not the max order amount.
 
         // XOR -> VAL with desired input
 
@@ -2058,6 +2062,541 @@ fn should_step_quote() {
                     Some(balance!(0.0000000001))
                 )
             }
+        );
+    });
+}
+
+#[test]
+fn should_step_quote_when_liquidity_is_more_than_max_amount() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+        let _ = update_orderbook_unchecked::<Runtime>(
+            order_book_id,
+            *order_book.tick_size.balance(),
+            *order_book.step_lot_size.balance(),
+            *order_book.min_lot_size.balance(),
+            balance!(100),
+        );
+
+        // The volume of the order-book liquidity is more than max order amount.
+        // In this case DiscreteQuotation::limits.max_amount should contain the max order amount.
+        // And `step_quote()` returns chunks that are enough for the max order amount
+
+        // XOR -> VAL with desired input
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(0)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(1000)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(11)),
+                    Some(balance!(1100)),
+                    Some(balance!(0.0000000001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(2000)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(11)),
+                    Some(balance!(1100)),
+                    Some(balance!(0.0000000001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(5000)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(11)),
+                    Some(balance!(1100)),
+                    Some(balance!(0.0000000001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(10000)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(11)),
+                    Some(balance!(1100)),
+                    Some(balance!(0.0000000001))
+                )
+            }
+        );
+
+        // XOR -> VAL with desired output
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(0)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(100)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(100)),
+                    Some(balance!(0.00001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(100)),
+                    Some(balance!(0.00001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(500)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(100)),
+                    Some(balance!(0.00001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(1000)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(100)),
+                    Some(balance!(0.00001))
+                )
+            }
+        );
+
+        // VAL -> XOR with desired input
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(0)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(100)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(100)),
+                    Some(balance!(0.00001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(200)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(100)),
+                    Some(balance!(0.00001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(500)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(100)),
+                    Some(balance!(0.00001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(1000)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(100)),
+                    Some(balance!(0.00001))
+                )
+            }
+        );
+
+        // VAL -> XOR with desired output
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(0)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(1000)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(10)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.0000000001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2000)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(10)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.0000000001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(5000)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(10)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.0000000001))
+                )
+            }
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(10000)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                limits: SwapLimits::new(
+                    Some(balance!(10)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.0000000001))
+                )
+            }
+        );
+    });
+}
+
+#[test]
+fn should_step_quote_and_return_empty_for_small_liquidity() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+
+        let order_book = create_empty_order_book::<Runtime>(order_book_id);
+        fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
+        fill_balance::<Runtime>(accounts::bob::<Runtime>(), order_book_id);
+
+        let min = *order_book.min_lot_size.balance();
+
+        // preparation
+        // order-book should contain the volume of liquidity that is less than min order amount.
+        // place 1.5 of min volume in each side and then exchange 1 min volume
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(accounts::alice::<Runtime>()).into(),
+            order_book_id,
+            balance!(10),
+            min * 3 / 2,
+            PriceVariant::Buy,
+            None
+        ));
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(accounts::alice::<Runtime>()).into(),
+            order_book_id,
+            balance!(11),
+            min * 3 / 2,
+            PriceVariant::Sell,
+            None
+        ));
+        assert_ok!(OrderBookPallet::exchange(
+            &accounts::bob::<Runtime>(),
+            &accounts::bob::<Runtime>(),
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            SwapAmount::with_desired_output(min, balance!(1000)),
+        ));
+        assert_ok!(OrderBookPallet::exchange(
+            &accounts::bob::<Runtime>(),
+            &accounts::bob::<Runtime>(),
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            SwapAmount::with_desired_input(min, balance!(1)),
+        ));
+
+        // check
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation::new()
         );
     });
 }

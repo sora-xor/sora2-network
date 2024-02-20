@@ -1460,7 +1460,7 @@ fn should_align_amount() {
 }
 
 #[test]
-fn should_not_sum_market_if_limit_is_greater_than_liquidity() {
+fn should_not_sum_market_with_filled_target_if_limit_is_greater_than_liquidity() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -1475,11 +1475,13 @@ fn should_not_sum_market_if_limit_is_greater_than_liquidity() {
         let asks = data.get_aggregated_asks(&order_book_id);
         let bids = data.get_aggregated_bids(&order_book_id);
 
+        let filled_target = true;
+
         assert_err!(
             order_book.sum_market(
                 asks.iter(),
                 Some(OrderAmount::Base(balance!(1000).into())),
-                true
+                filled_target
             ),
             E::NotEnoughLiquidityInOrderBook
         );
@@ -1487,7 +1489,7 @@ fn should_not_sum_market_if_limit_is_greater_than_liquidity() {
             order_book.sum_market(
                 asks.iter(),
                 Some(OrderAmount::Quote(balance!(10000).into())),
-                true
+                filled_target
             ),
             E::NotEnoughLiquidityInOrderBook
         );
@@ -1495,7 +1497,7 @@ fn should_not_sum_market_if_limit_is_greater_than_liquidity() {
             order_book.sum_market(
                 bids.iter().rev(),
                 Some(OrderAmount::Base(balance!(1000).into())),
-                true
+                filled_target
             ),
             E::NotEnoughLiquidityInOrderBook
         );
@@ -1503,9 +1505,82 @@ fn should_not_sum_market_if_limit_is_greater_than_liquidity() {
             order_book.sum_market(
                 bids.iter().rev(),
                 Some(OrderAmount::Quote(balance!(10000).into())),
-                true
+                filled_target
             ),
             E::NotEnoughLiquidityInOrderBook
+        );
+    });
+}
+
+#[test]
+fn should_sum_market_without_filled_target_if_limit_is_greater_than_liquidity() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+
+        let asks = data.get_aggregated_asks(&order_book_id);
+        let bids = data.get_aggregated_bids(&order_book_id);
+
+        let filled_target = false;
+
+        assert_eq!(
+            order_book
+                .sum_market(
+                    asks.iter(),
+                    Some(OrderAmount::Base(balance!(1000).into())),
+                    filled_target
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(610.7).into()),
+                OrderAmount::Quote(balance!(6881.32).into())
+            )
+        );
+        assert_eq!(
+            order_book
+                .sum_market(
+                    asks.iter(),
+                    Some(OrderAmount::Quote(balance!(10000).into())),
+                    filled_target
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(610.7).into()),
+                OrderAmount::Quote(balance!(6881.32).into())
+            )
+        );
+        assert_eq!(
+            order_book
+                .sum_market(
+                    bids.iter().rev(),
+                    Some(OrderAmount::Base(balance!(1000).into())),
+                    filled_target
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(569.7).into()),
+                OrderAmount::Quote(balance!(5538.37).into())
+            )
+        );
+        assert_eq!(
+            order_book
+                .sum_market(
+                    bids.iter().rev(),
+                    Some(OrderAmount::Quote(balance!(10000).into())),
+                    filled_target
+                )
+                .unwrap(),
+            (
+                OrderAmount::Base(balance!(569.7).into()),
+                OrderAmount::Quote(balance!(5538.37).into())
+            )
         );
     });
 }
@@ -1544,7 +1619,7 @@ fn should_sum_market_with_zero_limit() {
                 .sum_market(
                     asks.iter(),
                     Some(OrderAmount::Quote(balance!(0).into())),
-                    true
+                    false
                 )
                 .unwrap(),
             (
@@ -1570,7 +1645,7 @@ fn should_sum_market_with_zero_limit() {
                 .sum_market(
                     bids.iter().rev(),
                     Some(OrderAmount::Quote(balance!(0).into())),
-                    true
+                    false
                 )
                 .unwrap(),
             (
