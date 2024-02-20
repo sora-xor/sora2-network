@@ -74,7 +74,7 @@ fn set_reference_prices<T: Config>(
     asset_id: AssetIdOf<T>,
     reference_asset_id: AssetIdOf<T>,
     ref_prices: AssetPrices,
-) -> AssetPrices {
+) -> Result<AssetPrices, DispatchError> {
     let xor_prices = pallet_tools::price_tools::calculate_xor_prices::<T>(
         &asset_id,
         &reference_asset_id,
@@ -101,7 +101,28 @@ fn set_reference_prices<T: Config>(
         collateral_xor_prices.sell,
         PriceVariant::Sell,
     )?;
-    actual_prices
+    Ok(actual_prices)
+}
+
+fn set_reserves<T: Config>(asset: &AssetIdOf<T>, target_reserves: Balance) -> DispatchResult {
+    let reserves_tech_account_id =
+        multicollateral_bonding_curve_pool::Pallet::<T>::reserves_account_id();
+    let reserves_account_id =
+        technical::Pallet::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+    let current_reserves_amount: FixedWrapper =
+        assets::Pallet::<T>::free_balance(asset, &reserves_account_id)?.into();
+    let reserves_delta = target_reserves - current_reserves_amount;
+    let reserves_delta = reserves_delta
+        .get()
+        .map_err(|_| Error::<T>::ArithmeticError)?
+        .into_bits();
+    pallet_tools::assets::change_balance_by::<T>(&reserves_account_id, asset, reserves_delta)
+        .map_err(|e| match e {
+            // realistically the error should never be triggered
+            pallet_tools::assets::Error::UnknownAsset => Error::<T>::UnknownMCBCAsset.into(),
+            pallet_tools::assets::Error::Other(e) => e,
+        })?;
+    Ok(())
 }
 
 /// Initialize collateral-specific variables in MCBC pricing. Reserves affect the actual sell
@@ -134,11 +155,6 @@ pub fn initialize_single_collateral<T: Config>(
     // todo: initialize pool if not already
     // MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
-    let actual_ref_prices = input
-        .ref_prices
-        .map(|p| set_reference_prices(input.asset, reference_asset, p));
-    // initialize reserves
-
     // todo: register account if not present???
     // let bonding_curve_tech_account_id = TechAccountId::Pure(
     //     DEXId::Polkaswap,
@@ -147,7 +163,12 @@ pub fn initialize_single_collateral<T: Config>(
     // Technical::register_tech_account_id(bonding_curve_tech_account_id.clone())?;
     // MBCPool::set_reserves_account_id(bonding_curve_tech_account_id.clone())?;
 
-    // todo: use traits where possible (not only here, in whole pallet)
+    let actual_ref_prices = if let Some(p) = input.ref_prices {
+        Some(set_reference_prices::<T>(input.asset, reference_asset, p)?)
+    } else {
+        None
+    };
+    // initialize reserves
 
     // let pool_reference_amount = reserve_amount_expected * ratio;
     // let pool_reference_amount = pool_reference_amount
@@ -162,9 +183,9 @@ pub fn initialize_single_collateral<T: Config>(
     //     true,
     // )?;
 
-    // let reserves_account =
-    //     multicollateral_bonding_curve_pool::Pallet::<T>::reserves_account_id();
-    // technical::Pallet::<T>::mint(&input.asset, &reserves_account, pool_val_amount.amount)?;
+    if let Some(target_reserves) = input.reserves {
+        set_reserves::<T>(&input.asset, target_reserves)?;
+    }
 
     Ok(actual_ref_prices)
 }
@@ -202,30 +223,14 @@ pub fn initialize_base_supply<T: Config>(input: BaseSupply<T::AccountId>) -> Dis
         .map_err(|_| Error::<T>::ArithmeticError)?
         .into_bits();
 
-    // realistically the error should never be triggered
-    let owner =
-        assets::Pallet::<T>::asset_owner(&base_asset_id).ok_or(Error::<T>::UnknownMCBCAsset)?;
-    if supply_delta > 0 {
-        let mint_amount = supply_delta
-            .try_into()
-            .map_err(|_| Error::<T>::ArithmeticError)?;
-        assets::Pallet::<T>::mint_to(
-            base_asset_id,
-            &owner,
-            &input.base_supply_collector,
-            mint_amount,
-        )?;
-    } else if supply_delta < 0 {
-        let burn_amount = supply_delta
-            .abs()
-            .try_into()
-            .map_err(|_| Error::<T>::ArithmeticError)?;
-        assets::Pallet::<T>::burn_from(
-            base_asset_id,
-            &owner,
-            &input.base_supply_collector,
-            burn_amount,
-        )?;
-    }
-    Ok(())
+    pallet_tools::assets::change_balance_by::<T>(
+        &input.base_supply_collector,
+        &base_asset_id,
+        supply_delta,
+    )
+    .map_err(|e| match e {
+        // realistically the error should never be triggered
+        pallet_tools::assets::Error::UnknownAsset => Error::<T>::UnknownMCBCAsset.into(),
+        pallet_tools::assets::Error::Other(e) => e,
+    })
 }

@@ -177,7 +177,7 @@ pub mod pallet {
         /// You can use `price_tools_set_asset_price` extrinsic to set its price.
         ReferenceAssetPriceNotFound,
 
-        // mcbc errors
+        // assets errors
         /// Cannot initialize MCBC for unknown asset.
         UnknownMCBCAsset,
     }
