@@ -33,7 +33,8 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed,
-    LiquiditySource, LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+    LiquiditySource, LiquiditySourceType, RewardReason, SwapChunk, DOT, KSM, PSWAP, TBCD, VAL, XOR,
+    XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::DispatchError;
@@ -48,6 +49,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
+use sp_std::collections::vec_deque::VecDeque;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -181,6 +183,24 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         )
     }
 
+    fn step_quote(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::step_quote(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            recommended_samples_count,
+            deduce_fee,
+        )
+    }
+
     fn exchange(
         sender: &AccountId,
         receiver: &AccountId,
@@ -235,6 +255,10 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         Weight::from_all(1)
     }
 
+    fn step_quote_weight(_samples_count: usize) -> Weight {
+        Weight::from_all(1)
+    }
+
     fn exchange_weight() -> Weight {
         Weight::from_all(10)
     }
@@ -258,8 +282,6 @@ impl Config for Runtime {
     type XSTPool = WeightedEmptyLiquiditySource;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-
-    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = WeightedEmptyLiquiditySource;
 
     type WeightInfo = ();

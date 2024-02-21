@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "ready-to-test")] // order-book
-
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::{
@@ -1566,7 +1564,7 @@ fn should_align_a_lot_of_limit_orders() {
 
         // run to the next block to perform alignment
         let current_block = FrameSystem::block_number();
-        run_to_block(current_block + 8);
+        run_to_block(current_block + 10);
 
         check_limit_orders_aligned(order_book_id1, updated_amount);
         check_limit_orders_aligned(order_book_id2, updated_amount);

@@ -38,7 +38,7 @@ use common::prelude::{Balance, QuoteAmount};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, AssetName, AssetSymbol,
     BalancePrecision, ContentSource, DEXInfo, Description, Fixed, FromGenericPair,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceToolsProvider,
     PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
@@ -298,10 +298,7 @@ impl dex_api::Config for Runtime {
     type XSTPool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-
-    #[cfg(feature = "ready-to-test")] // order-book
     type OrderBook = ();
-
     type WeightInfo = ();
 }
 
@@ -471,7 +468,7 @@ parameter_types! {
 
 pub struct MockPriceTools;
 
-impl PriceToolsPallet<AssetId> for MockPriceTools {
+impl PriceToolsProvider<AssetId> for MockPriceTools {
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,

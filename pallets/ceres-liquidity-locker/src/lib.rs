@@ -43,7 +43,7 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{migrations, LockInfo, StorageVersion, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, DemeterFarmingPallet, PoolXykPallet};
+    use common::{balance, DemeterFarming, XykPool};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::Zero;
     use frame_system::ensure_signed;
@@ -61,10 +61,10 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Reference to pool_xyk pallet
-        type XYKPool: PoolXykPallet<Self::AccountId, Self::AssetId>;
+        type XYKPool: XykPool<Self::AccountId, Self::AssetId>;
 
         /// Reference to demeter_farming_platform pallet
-        type DemeterFarmingPlatform: DemeterFarmingPallet<Self::AccountId, Self::AssetId>;
+        type DemeterFarmingPlatform: DemeterFarming<Self::AccountId, Self::AssetId>;
 
         /// Ceres asset id
         type CeresAssetId: Get<Self::AssetId>;

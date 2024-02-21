@@ -40,8 +40,8 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, PSWAP, TBCD, USDT, VAL, XOR,
-    XST, XSTUSD,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KUSD, PSWAP, TBCD, USDT,
+    VAL, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -1000,7 +1000,7 @@ fn testnet_genesis(
     use framenode_runtime::EthAppConfig;
 
     // Initial balances
-    let initial_staking = balance!(100);
+    let initial_staking = balance!(1000000000);
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
     let initial_pswap_tbc_rewards = balance!(2500000000);
@@ -1104,6 +1104,11 @@ fn testnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
+    #[cfg(feature = "wip")] // kensetsu
+    let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
+    #[cfg(feature = "wip")] // kensetsu
+    let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -1159,6 +1164,11 @@ fn testnet_genesis(
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
         ),
+        #[cfg(feature = "wip")] // kensetsu
+        (
+            kensetsu_treasury_account_id.clone(),
+            kensetsu_treasury_tech_account_id.clone(),
+        ),
     ];
     let accounts = bonding_curve_distribution_accounts();
     for account in &accounts.accounts() {
@@ -1183,6 +1193,8 @@ fn testnet_genesis(
         (mbc_pool_rewards_account_id.clone(), 0),
         (mbc_pool_free_reserves_account_id.clone(), 0),
         (xst_pool_permissioned_account_id.clone(), 0),
+        #[cfg(feature = "wip")] // kensetsu
+        (kensetsu_treasury_account_id.clone(), 0),
     ]
     .into_iter()
     .chain(
@@ -1487,6 +1499,18 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
+                #[cfg(feature = "wip")] // kensetsu
+                (
+                    KUSD.into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"KUSD".to_vec()),
+                    AssetName(b"Kensetsu Stable Dollar".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
                 (
                     common::AssetId32::from_bytes(hex!(
                         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
@@ -1595,6 +1619,12 @@ fn testnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                #[cfg(feature = "wip")] // kensetsu
+                (
+                    kensetsu_treasury_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         },
         balances: BalancesConfig { balances },
@@ -1634,8 +1664,6 @@ fn testnet_genesis(
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
                 LiquiditySourceType::XSTPool,
-
-                #[cfg(feature = "ready-to-test")] // order-book
                 LiquiditySourceType::OrderBook,
             ]
             .into(),
@@ -1960,6 +1988,11 @@ fn mainnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
+    #[cfg(feature = "wip")] // kensetsu
+    let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
+    #[cfg(feature = "wip")] // kensetsu
+    let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -2014,6 +2047,11 @@ fn mainnet_genesis(
         (
             market_maker_rewards_account_id.clone(),
             market_maker_rewards_tech_account_id.clone(),
+        ),
+        #[cfg(feature = "wip")] // kensetsu
+        (
+            kensetsu_treasury_account_id.clone(),
+            kensetsu_treasury_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -2117,6 +2155,18 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"TBCD".to_vec()),
             AssetName(b"SORA TBC Dollar".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        #[cfg(feature = "wip")] // kensetsu
+        (
+            KUSD.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"KUSD".to_vec()),
+            AssetName(b"Kensetsu Stable Dollar".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
@@ -2323,6 +2373,12 @@ fn mainnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                #[cfg(feature = "wip")] // kensetsu
+                (
+                    kensetsu_treasury_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         },
         balances: BalancesConfig {
@@ -2340,6 +2396,8 @@ fn mainnet_genesis(
                 (mbc_pool_free_reserves_account_id.clone(), 0),
                 (market_maker_rewards_account_id.clone(), 0),
                 (xst_pool_permissioned_account_id.clone(), 0),
+                #[cfg(feature = "wip")] // kensetsu
+                (kensetsu_treasury_account_id.clone(), 0),
             ]
             .into_iter()
             .chain(
@@ -2425,8 +2483,6 @@ fn mainnet_genesis(
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
-
-                #[cfg(feature = "ready-to-test")] // order-book
                 LiquiditySourceType::OrderBook,
             ]
             .into(),
@@ -2509,12 +2565,14 @@ fn create_trading_pair(
     )
 }
 
+/// Creates TestExternalities
 #[cfg(all(feature = "test", not(feature = "private-net")))]
 pub fn ext() -> sp_io::TestExternalities {
     let storage = main_net_coded().build_storage().unwrap();
     sp_io::TestExternalities::new(storage)
 }
 
+/// Creates TestExternalities for `private-net`
 #[cfg(all(feature = "test", feature = "private-net"))]
 pub fn ext() -> sp_io::TestExternalities {
     let storage = dev_net_coded().build_storage().unwrap();

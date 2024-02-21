@@ -176,7 +176,7 @@ benchmarks! {
             None
         ).unwrap();
         <T as Config>::TradingPairSourceManager::register_pair(
-            common::DEXId::Polkaswap.into(),
+            dex_id,
             XOR.into(),
             USDT.into()
         ).unwrap();
@@ -187,7 +187,7 @@ benchmarks! {
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::<T>::PoolInitialized(common::DEXId::Polkaswap.into(), USDT.into()).into())
+        assert_last_event::<T>(Event::<T>::PoolInitialized(dex_id, USDT.into()).into())
     }
 
     set_reference_asset {
@@ -242,7 +242,7 @@ benchmarks! {
             None,
             None
         ).unwrap();
-        <T as Config>::TradingPairSourceManager::register_pair( common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
+        <T as Config>::TradingPairSourceManager::register_pair(dex_id, XOR.into(), USDT.into()).unwrap();
         MBCPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), USDT.into()).unwrap();
     }: {
         Pallet::<T>::set_optional_reward_multiplier(
@@ -331,8 +331,8 @@ benchmarks! {
             None,
         )
         .unwrap();
-    <T as Config>::TradingPairSourceManager::register_pair(
-            common::DEXId::Polkaswap.into(),
+        <T as Config>::TradingPairSourceManager::register_pair(
+            dex_id,
             XOR.into(),
             USDT.into(),
         )
@@ -355,6 +355,60 @@ benchmarks! {
         };
     }: {
         Pallet::<T>::quote(&dex_id, &USDT.into(), &XOR.into(), amount.into(), true).unwrap();
+    }
+    verify {
+        // can't check, nothing is changed
+    }
+
+    step_quote {
+        let a in 10..1000;
+
+        let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        Permissions::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MANAGE_DEX,
+            permissions::Scope::Limited(common::hash(&dex_id)),
+        ).unwrap();
+
+        Assets::<T>::register_asset_id(
+            caller.clone(),
+            USDT.into(),
+            AssetSymbol(b"TESTUSD".to_vec()),
+            AssetName(b"USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            balance!(50000000),
+            true,
+            None,
+            None,
+        )
+        .unwrap();
+        <T as Config>::TradingPairSourceManager::register_pair(
+            dex_id,
+            XOR.into(),
+            USDT.into(),
+        )
+        .unwrap();
+        Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            USDT.into()
+        ).unwrap();
+
+        #[cfg(not(test))]
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
+            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
+        }
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(1000),
+            min_amount_out: balance!(0),
+        };
+    }: {
+        Pallet::<T>::step_quote(&dex_id, &USDT.into(), &XOR.into(), amount.into(), a as usize, true).unwrap();
     }
     verify {
         // can't check, nothing is changed
@@ -390,8 +444,8 @@ benchmarks! {
             balance!(50000000),
         )
         .unwrap();
-    <T as Config>::TradingPairSourceManager::register_pair(
-            common::DEXId::Polkaswap.into(),
+        <T as Config>::TradingPairSourceManager::register_pair(
+            dex_id,
             XOR.into(),
             USDT.into(),
         )
@@ -449,7 +503,7 @@ benchmarks! {
             None
         ).unwrap();
         <T as Config>::TradingPairSourceManager::register_pair(
-            common::DEXId::Polkaswap.into(),
+            dex_id,
             XOR.into(),
             USDT.into()
         ).unwrap();
@@ -497,8 +551,8 @@ benchmarks! {
             balance!(50000000),
         )
         .unwrap();
-    <T as Config>::TradingPairSourceManager::register_pair(
-            common::DEXId::Polkaswap.into(),
+        <T as Config>::TradingPairSourceManager::register_pair(
+            dex_id,
             XOR.into(),
             USDT.into(),
         )

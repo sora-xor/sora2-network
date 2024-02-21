@@ -414,54 +414,22 @@ impl BalancePrecisionConverter {
         precision_from: u8,
         precision_to: u8,
         amount: crate::Balance,
-    ) -> Option<crate::Balance> {
+    ) -> Option<(crate::Balance, crate::Balance)> {
         if precision_from == precision_to {
-            return Some(amount);
+            return Some((amount, amount));
         }
         if precision_from < precision_to {
             let exp = (precision_to - precision_from) as u32;
             let coeff = 10_u128.checked_pow(exp)?;
-            let coerced_amount = amount.saturating_mul(coeff);
-            if coerced_amount / coeff != amount {
-                return None;
-            }
-            Some(coerced_amount)
+            let coerced_amount = amount.checked_mul(coeff)?;
+            // No rounding in this case
+            Some((amount, coerced_amount))
         } else {
             let exp = (precision_from - precision_to) as u32;
             let coeff = 10_u128.checked_pow(exp)?;
-            let coerced_amount = amount / coeff;
-            if coerced_amount * coeff != amount {
-                return None;
-            }
-            Some(coerced_amount)
+            let coerced_amount = amount.checked_div(coeff)?;
+            Some((coerced_amount * coeff, coerced_amount))
         }
-    }
-}
-
-impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, U256>
-    for BalancePrecisionConverter
-{
-    fn from_sidechain(
-        asset_id: &crate::AssetId,
-        sidechain_precision: u8,
-        amount: U256,
-    ) -> Option<crate::Balance> {
-        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
-        let res = Self::convert_precision(
-            sidechain_precision,
-            thischain_precision,
-            amount.try_into().ok()?,
-        )?;
-        Some(res)
-    }
-
-    fn to_sidechain(
-        asset_id: &crate::AssetId,
-        sidechain_precision: u8,
-        amount: crate::Balance,
-    ) -> Option<U256> {
-        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
-        Self::convert_precision(thischain_precision, sidechain_precision, amount).map(Into::into)
     }
 }
 
@@ -472,18 +440,47 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         asset_id: &crate::AssetId,
         sidechain_precision: u8,
         amount: crate::Balance,
-    ) -> Option<crate::Balance> {
+    ) -> Option<(crate::Balance, crate::Balance)> {
         let thischain_precision = crate::Assets::asset_infos(asset_id).2;
         Self::convert_precision(sidechain_precision, thischain_precision, amount)
+            .map(|(a, b)| (b, a))
     }
 
     fn to_sidechain(
         asset_id: &crate::AssetId,
         sidechain_precision: u8,
         amount: crate::Balance,
-    ) -> Option<crate::Balance> {
+    ) -> Option<(crate::Balance, crate::Balance)> {
         let thischain_precision = crate::Assets::asset_infos(asset_id).2;
         Self::convert_precision(thischain_precision, sidechain_precision, amount)
+    }
+}
+
+impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, U256>
+    for BalancePrecisionConverter
+{
+    fn from_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: U256,
+    ) -> Option<(crate::Balance, U256)> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        Self::convert_precision(
+            sidechain_precision,
+            thischain_precision,
+            amount.try_into().ok()?,
+        )
+        .map(|(a, b)| (b, a.into()))
+    }
+
+    fn to_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<(crate::Balance, U256)> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        Self::convert_precision(thischain_precision, sidechain_precision, amount)
+            .map(|(a, b)| (a, b.into()))
     }
 }
 
@@ -495,14 +492,15 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         asset_id: &crate::AssetId,
         sidechain_precision: u8,
         amount: GenericBalance,
-    ) -> Option<crate::Balance> {
+    ) -> Option<(crate::Balance, GenericBalance)> {
         let thischain_precision = crate::Assets::asset_infos(asset_id).2;
         match amount {
             GenericBalance::Substrate(val) => BalancePrecisionConverter::convert_precision(
                 sidechain_precision,
                 thischain_precision,
                 val,
-            ),
+            )
+            .map(|(a, b)| (b, GenericBalance::Substrate(a))),
             GenericBalance::EVM(_) => None,
         }
     }
@@ -511,14 +509,14 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         asset_id: &crate::AssetId,
         sidechain_precision: u8,
         amount: crate::Balance,
-    ) -> Option<bridge_types::GenericBalance> {
+    ) -> Option<(crate::Balance, GenericBalance)> {
         let thischain_precision = crate::Assets::asset_infos(asset_id).2;
-        let amount = BalancePrecisionConverter::convert_precision(
+        BalancePrecisionConverter::convert_precision(
             thischain_precision,
             sidechain_precision,
             amount,
-        )?;
-        Some(GenericBalance::Substrate(amount))
+        )
+        .map(|(a, b)| (a, GenericBalance::Substrate(b)))
     }
 }
 
@@ -595,5 +593,33 @@ mod test {
 
         t(5 * MEBIBYTE + 1);
         t(u32::MAX);
+    }
+
+    #[test]
+    fn test_balance_precision_converter() {
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(12, 18, 123_u128),
+            Some((123_u128, 123_000_000_u128))
+        );
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(6, 60, 123_u128),
+            None
+        );
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(6, 6, u128::MAX),
+            Some((u128::MAX, u128::MAX))
+        );
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(18, 12, 123_456_789_123_456_789_u128),
+            Some((123_456_789_123_000_000_u128, 123_456_789_123_u128))
+        );
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(18, 12, 123_456_789_123_000_000_u128),
+            Some((123_456_789_123_000_000_u128, 123_456_789_123_u128))
+        );
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(18, 9, 123_456_789_123_000_000_u128),
+            Some((123_456_789_000_000_000_u128, 123_456_789_u128))
+        );
     }
 }

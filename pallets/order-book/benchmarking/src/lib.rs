@@ -40,8 +40,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "runtime-benchmarks")]
-// order-book
-#![cfg(feature = "ready-to-test")]
 #![allow(clippy::type_complexity)]
 // too many benchmarks, doesn't compile otherwise
 #![recursion_limit = "512"]
@@ -138,7 +136,7 @@ pub use benchmarks_inner::*;
 // runtime)
 #[cfg(not(test))]
 mod benchmarks_inner {
-    use common::prelude::SwapAmount;
+    use common::prelude::{QuoteAmount, SwapAmount};
     use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, LiquiditySource, VAL, XOR};
     use frame_benchmarking::benchmarks;
     use frame_support::weights::WeightMeter;
@@ -373,6 +371,29 @@ mod benchmarks_inner {
                 &context.output_asset_id,
                 context.amount,
                 context.deduce_fee,
+            )
+            .unwrap();
+        }
+        verify {
+            // nothing changed
+        }
+
+        step_quote {
+            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+                dex_id: DEX.into(),
+                base: VAL.into(),
+                quote: XOR.into(),
+            };
+
+            create_and_fill_order_book::<T>(order_book_id);
+        }: {
+            OrderBookPallet::<T>::step_quote(
+                &DEX.into(),
+                &VAL.into(),
+                &XOR.into(),
+                QuoteAmount::with_desired_output(balance!(2500)),
+                10,
+                true
             )
             .unwrap();
         }

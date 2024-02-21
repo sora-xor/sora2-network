@@ -36,7 +36,6 @@ use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{
     AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapVariant,
 };
-use common::test_utils::assert_event;
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
     Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
@@ -805,6 +804,7 @@ fn test_swap_weight_considers_available_sources() {
         let swap_base_weight = <Runtime as crate::Config>::WeightInfo::check_indivisible_assets()
             .saturating_add(<Runtime as crate::Config>::WeightInfo::is_forbidden_filter());
 
+        #[cfg(not(feature = "wip"))] // ALT
         let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
             .saturating_add(
                 <Runtime as crate::Config>::LiquidityRegistry::quote_weight().saturating_mul(4),
@@ -813,6 +813,17 @@ fn test_swap_weight_considers_available_sources() {
                 <Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight()
                     .saturating_mul(2),
             );
+
+        #[cfg(feature = "wip")] // ALT
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(<Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight())
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::step_quote_weight(
+                    <Runtime as crate::Config>::GetNumSamples::get(),
+                )
+                .saturating_mul(4),
+            );
+
         let exchange_base_weight = <Runtime as crate::Config>::WeightInfo::new_trivial()
             .saturating_add(quote_single_weight); // once within a path
         let multicollateral_weight =
@@ -915,6 +926,7 @@ fn test_swap_weight_filters_sources() {
         let swap_base_weight = <Runtime as crate::Config>::WeightInfo::check_indivisible_assets()
             .saturating_add(<Runtime as crate::Config>::WeightInfo::is_forbidden_filter());
 
+        #[cfg(not(feature = "wip"))] // ALT
         let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
             .saturating_add(
                 <Runtime as crate::Config>::LiquidityRegistry::quote_weight().saturating_mul(4),
@@ -923,6 +935,17 @@ fn test_swap_weight_filters_sources() {
                 <Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight()
                     .saturating_mul(2),
             );
+
+        #[cfg(feature = "wip")] // ALT
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(<Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight())
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::step_quote_weight(
+                    <Runtime as crate::Config>::GetNumSamples::get(),
+                )
+                .saturating_mul(4),
+            );
+
         let exchange_base_weight = <Runtime as crate::Config>::WeightInfo::new_trivial()
             .saturating_add(quote_single_weight); // once within a path
         let multicollateral_weight =
@@ -1243,6 +1266,7 @@ fn test_quote_single_source_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_input_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1354,6 +1378,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_output_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1456,6 +1481,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_output_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1582,6 +1608,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_input_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -2152,6 +2179,7 @@ fn test_is_path_available_should_pass_5() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_smart_split_with_extreme_total_supply_works() {
     fn run_test(
@@ -2635,6 +2663,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
     }
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_smart_split_selling_xor_should_fail() {
     fn run_test(
@@ -2725,6 +2754,7 @@ fn test_smart_split_selling_xor_should_fail() {
     }
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_smart_split_error_handling_works() {
     fn run_test(
@@ -2809,17 +2839,7 @@ fn selecting_xyk_only_filter_is_forbidden() {
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![XYKPool], &AllowSelected), false);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![XYKPool], &AllowSelected), false);
 
-        #[allow(unused_assignments)] // order-book
-        let mut sources_except_xyk = Vec::new();
-        
-        #[cfg(feature = "ready-to-test")] // order-book
-        {
-            sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool, OrderBook];
-        }
-        #[cfg(not(feature = "ready-to-test"))] // order-book
-        {
-            sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool];
-        }
+        let mut sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool, OrderBook];
         
         // xyk only selection, base case
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &sources_except_xyk, &ForbidSelected), true);
@@ -3305,6 +3325,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_does_not_overflow_with_desired_input() {
     let collateral_asset_id = VAL;
@@ -3331,6 +3352,7 @@ fn test_quote_does_not_overflow_with_desired_input() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_inner_exchange_returns_correct_sources() {
     use LiquiditySourceType::*;
@@ -3670,7 +3692,7 @@ fn test_batch_swap_emits_event() {
             filter_mode,
         ));
 
-        common::test_utils::assert_last_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_last_event(
             crate::Event::BatchSwapExecuted(adar_fee, amount_in).into(),
         );
     });
@@ -4005,10 +4027,10 @@ fn test_batch_swap_asset_reuse_works() {
 
         test_utils::check_adar_commission(&swap_batches, sources);
         test_utils::check_swap_batch_executed_amount(swap_batches);
-        assert_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_has_event(
             crate::Event::<Runtime>::ADARFeeWithdrawn(KSM, balance!(0.025)).into(),
         );
-        assert_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_has_event(
             crate::Event::<Runtime>::ADARFeeWithdrawn(USDT, balance!(0.025)).into(),
         );
         assert_approx_eq!(
