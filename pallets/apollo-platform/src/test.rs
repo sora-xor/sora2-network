@@ -1,6 +1,7 @@
 mod test {
     use crate::mock::*;
     use crate::{pallet, Error};
+    use codec::Decode;
     use common::prelude::FixedWrapper;
     use common::APOLLO_ASSET_ID;
     use common::{
@@ -8,10 +9,21 @@ mod test {
     };
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
+    use hex_literal::hex;
     use sp_runtime::traits::AccountIdConversion;
 
     fn get_pallet_account() -> AccountId {
         PalletId(*b"apollolb").into_account_truncating()
+    }
+
+    fn get_authority_account() -> AccountId {
+        let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
+        AccountId::decode(&mut &bytes[..]).unwrap()
+    }
+
+    fn get_treasury_account() -> AccountId {
+        let bytes = hex!("04621d8671f5ccc9c4dd86898e346f8ca163bc290ceee6bd2a8376a6d6dd8547");
+        AccountId::decode(&mut &bytes[..]).unwrap()
     }
 
     fn calculate_lending_earnings(
@@ -82,6 +94,41 @@ mod test {
         )
     }
 
+    fn calculate_reserve_amounts(
+        asset_id: AssetId,
+        amount: Balance,
+    ) -> (Balance, Balance, Balance) {
+        let pool_info = pallet::PoolData::<Runtime>::get(asset_id).unwrap();
+
+        // Calculate rewards and reserves amounts based on Reserve Factor
+        let reserves_amount = (FixedWrapper::from(pool_info.reserve_factor)
+            * FixedWrapper::from(amount))
+        .try_into_balance()
+        .unwrap_or(0);
+
+        // Calculate reserve amounts (treasury, burn, developer)
+        // Treasury reserve -> Apollo tokens
+        // Burn (reserve) amount -> Ceres tokens
+        // Developer (reserve) amount -> XOR tokens
+
+        let treasury_reserve = (FixedWrapper::from(reserves_amount)
+            * FixedWrapper::from(balance!(0.6)))
+        .try_into_balance()
+        .unwrap_or(0);
+
+        let burn_reserve = (FixedWrapper::from(reserves_amount)
+            * FixedWrapper::from(balance!(0.2)))
+        .try_into_balance()
+        .unwrap_or(0);
+
+        let developer_reserve = (FixedWrapper::from(reserves_amount)
+            * FixedWrapper::from(balance!(0.2)))
+        .try_into_balance()
+        .unwrap_or(0);
+
+        (treasury_reserve, burn_reserve, developer_reserve)
+    }
+
     fn static_set_dex() {
         init_pool(Polkaswap, XOR, DAI);
         init_pool(Polkaswap, XOR, DOT);
@@ -127,6 +174,43 @@ mod test {
             dex_id,
             base_asset,
             other_asset,
+        ));
+    }
+
+    fn init_exchage() {
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &APOLLO_ASSET_ID,
+            &alice(),
+            &exchange_account(),
+            balance!(100000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &XOR,
+            &alice(),
+            &exchange_account(),
+            balance!(100000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &KSM,
+            &alice(),
+            &exchange_account(),
+            balance!(100000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &DOT,
+            &alice(),
+            &exchange_account(),
+            balance!(100000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &DAI,
+            &alice(),
+            &exchange_account(),
+            balance!(100000)
         ));
     }
 
@@ -2033,10 +2117,13 @@ mod test {
     }
 
     #[test]
-    fn repay_nothing_ok() {
+    fn repay_only_interest_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             static_set_dex();
+            init_exchage();
+
+            run_to_block(1);
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &DOT,
@@ -2095,12 +2182,80 @@ mod test {
                 balance!(200)
             ));
 
+            run_to_block(101);
+
+            // Check balances after repay
+            // Pool
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(800)
+            );
+            // Alice
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                balance!(200)
+            );
+            // Treasury
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(
+                    &APOLLO_ASSET_ID.into(),
+                    &get_treasury_account()
+                )
+                .unwrap(),
+                balance!(0)
+            );
+            // Developer
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                    .unwrap(),
+                balance!(0)
+            );
+
+            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
+            let borrowing_interest = borrowing_user_debt.borrowing_interest;
+
+            // Reserve amounts (treasury, burn, developer)
+            let (trasury_reserve, burn_reserve, developer_reserve) =
+                calculate_reserve_amounts(XOR, borrowing_interest);
+
             assert_ok!(ApolloPlatform::repay(
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100)
+                borrowing_interest
             ));
+
+            let new_alice_balance = balance!(200) - borrowing_interest;
+
+            // Check balances after repay
+            // Pool
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(800)
+            );
+            // Alice
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                new_alice_balance
+            );
+            // Treasury
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(
+                    &APOLLO_ASSET_ID.into(),
+                    &get_treasury_account()
+                )
+                .unwrap(),
+                trasury_reserve
+            );
+            // Developer
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                    .unwrap(),
+                developer_reserve
+            );
         });
     }
 

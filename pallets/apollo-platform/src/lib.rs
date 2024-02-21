@@ -52,13 +52,13 @@ mod test;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo};
-    use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount};
+    use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{
-        balance, AssetInfoProvider, DEXId, LiquiditySource, LiquiditySourceFilter, PriceVariant,
-        CERES_ASSET_ID, DAI, HERMES_ASSET_ID, XOR,
+        balance, AssetInfoProvider, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID,
+        DAI, HERMES_ASSET_ID, XOR,
     };
     use common::{LiquidityProxyTrait, PriceToolsPallet, APOLLO_ASSET_ID};
-    use frame_support::pallet_prelude::*;
+    use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::PalletId;
     use frame_system::pallet_prelude::*;
@@ -81,7 +81,6 @@ pub mod pallet {
     type Assets<T> = assets::Pallet<T>;
     // type PriceTools<T> = price_tools::Pallet<T>;
     // type LiquidityProxy<T> = liquidity_proxy::Pallet<T>;
-    type PoolXYK<T> = pool_xyk::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
@@ -126,10 +125,21 @@ pub mod pallet {
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
+    #[pallet::type_value]
+    pub fn DefaultForTreasuryAccount<T: Config>() -> AccountIdOf<T> {
+        let bytes = hex!("04621d8671f5ccc9c4dd86898e346f8ca163bc290ceee6bd2a8376a6d6dd8547");
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
+    }
+
     #[pallet::storage]
     #[pallet::getter(fn authority_account)]
     pub type AuthorityAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn treasury_account)]
+    pub type TreasuryAccount<T: Config> =
+        StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForTreasuryAccount<T>>;
 
     #[pallet::type_value]
     pub fn FixedLendingRewards<T: Config>() -> Balance {
@@ -949,17 +959,7 @@ pub mod pallet {
             .unwrap_or(0);
             let rewards_amount = amount - reserves_amount;
 
-            // Buyback APOLLO for the lending rewards
-            let (outcome, _) = PoolXYK::<T>::quote(
-                &DEXId::Polkaswap.into(),
-                &asset_id,
-                &APOLLO_ASSET_ID.into(),
-                QuoteAmount::with_desired_output(rewards_amount),
-                false,
-            )?;
-
-            let buyback_amount = outcome.amount;
-            T::LiquidityProxyPallet::exchange(
+            let outcome = T::LiquidityProxyPallet::exchange(
                 DEXId::Polkaswap.into(),
                 &caller,
                 &caller,
@@ -967,7 +967,10 @@ pub mod pallet {
                 &APOLLO_ASSET_ID.into(),
                 SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )?;
+            )
+            .unwrap();
+
+            let buyback_amount = outcome.amount;
 
             pool_info.rewards += buyback_amount;
             pool_info.basic_lending_rate += (FixedWrapper::from(buyback_amount)
@@ -998,7 +1001,7 @@ pub mod pallet {
             T::LiquidityProxyPallet::exchange(
                 DEXId::Polkaswap.into(),
                 &caller,
-                &AuthorityAccount::<T>::get(), // APOLLO Treasury
+                &TreasuryAccount::<T>::get(), // APOLLO Treasury
                 &asset_id,
                 &APOLLO_ASSET_ID.into(),
                 SwapAmount::with_desired_input(apollo_amount, Balance::zero()),

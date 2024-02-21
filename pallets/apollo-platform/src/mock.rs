@@ -3,7 +3,7 @@ use {
     common::{
         balance, fixed, hash,
         mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
-        prelude::Balance,
+        prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
         DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait, PriceToolsPallet,
@@ -16,7 +16,7 @@ use {
         parameter_types,
         traits::{Everything, GenesisBuild, Hooks},
     },
-    frame_system::{self, pallet_prelude::BlockNumberFor, EnsureRoot},
+    frame_system::{self, pallet_prelude::BlockNumberFor, EnsureRoot, RawOrigin},
     permissions::{Scope, MANAGE_DEX},
     sp_core::{ConstU32, H256},
     sp_runtime::{
@@ -49,6 +49,11 @@ pub fn bob() -> AccountId32 {
 pub fn charles() -> AccountId32 {
     AccountId32::from([3; 32])
 }
+
+pub fn exchange_account() -> AccountId32 {
+    AccountId32::from([4; 32])
+}
+
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -409,26 +414,42 @@ pub struct MockLiquidityProxy;
 
 impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     fn quote(
-        dex_id: DEXId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
+        _dex_id: DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
         amount: common::prelude::QuoteAmount<Balance>,
-        filter: common::LiquiditySourceFilter<DEXId, common::prelude::LiquiditySourceType>,
-        deduce_fee: bool,
+        _filter: common::LiquiditySourceFilter<DEXId, common::prelude::LiquiditySourceType>,
+        _deduce_fee: bool,
     ) -> Result<common::prelude::SwapOutcome<Balance>, sp_runtime::DispatchError> {
-        todo!()
+        Ok(SwapOutcome::new(amount.amount(), 0))
     }
 
     fn exchange(
-        dex_id: DEXId,
+        _dex_id: DEXId,
         sender: &AccountId,
         receiver: &AccountId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: common::prelude::SwapAmount<Balance>,
-        filter: common::LiquiditySourceFilter<DEXId, common::prelude::LiquiditySourceType>,
+        _filter: common::LiquiditySourceFilter<DEXId, common::prelude::LiquiditySourceType>,
     ) -> Result<common::prelude::SwapOutcome<Balance>, sp_runtime::DispatchError> {
-        todo!()
+        // Transfer to exchange account (input asset)
+        let _ = Assets::transfer(
+            RawOrigin::Signed(sender.clone()).into(),
+            *input_asset_id,
+            exchange_account(),
+            amount.amount(),
+        );
+
+        // Transfer to exchange account (output asset)
+        let _ = Assets::transfer(
+            RawOrigin::Signed(exchange_account().clone()).into(),
+            *output_asset_id,
+            receiver.clone(),
+            amount.amount(),
+        );
+
+        Ok(SwapOutcome::new(amount.amount(), 0))
     }
 }
 
