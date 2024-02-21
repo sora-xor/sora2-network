@@ -435,12 +435,12 @@ pub mod pallet {
                 asset_per_xor.sell <= asset_per_xor.buy,
                 Error::<T>::BuyLessThanSell
             );
-            pallet_tools::price_tools::set_price::<T>(
+            pallet_tools::price_tools::set_price_unchecked::<T>(
                 &asset_id,
                 asset_per_xor.buy,
                 PriceVariant::Buy,
             )?;
-            pallet_tools::price_tools::set_price::<T>(
+            pallet_tools::price_tools::set_price_unchecked::<T>(
                 &asset_id,
                 asset_per_xor.sell,
                 PriceVariant::Sell,

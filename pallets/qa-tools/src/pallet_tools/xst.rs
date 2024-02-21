@@ -334,12 +334,12 @@ pub(crate) fn initialize_base_assets<T: Config>(input: BaseInput) -> DispatchRes
             && xor_prices.reference.buy >= xor_prices.reference.sell,
         Error::<T>::BuyLessThanSell
     );
-    pallet_tools::price_tools::set_price::<T>(
+    pallet_tools::price_tools::set_price_unchecked::<T>(
         &synthetic_base_asset_id,
         xor_prices.synthetic_base.buy,
         PriceVariant::Buy,
     )?;
-    pallet_tools::price_tools::set_price::<T>(
+    pallet_tools::price_tools::set_price_unchecked::<T>(
         &synthetic_base_asset_id,
         xor_prices.synthetic_base.sell,
         PriceVariant::Sell,
