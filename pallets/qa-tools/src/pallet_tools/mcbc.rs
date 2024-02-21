@@ -61,6 +61,8 @@ pub struct TbcdCollateralInput {
     /// Desired amount of collateral asset in the MCBC reserve account. Affects actual sell
     /// price according to formulae.
     pub reserves: Option<Balance>,
+    /// Price of XOR in terms of reference asset.
+    /// For TBCD, the buy function is `(XOR price in reference asset) + 1`
     pub xor_ref_prices: Option<AssetPrices>,
 }
 
@@ -70,14 +72,29 @@ pub struct BaseSupply<AccountId> {
     pub new_base_supply: Balance,
 }
 
+// todo: move to `price_tools` tools
+/// Directly set buy & sell XOR prices of `asset_id` (prices of XOR in terms of `asset_id`);
+/// verifying the values beforehand.
+fn set_xor_prices<T: Config>(asset_id: &AssetIdOf<T>, xor_prices: AssetPrices) -> DispatchResult {
+    ensure!(
+        xor_prices.buy >= xor_prices.sell,
+        Error::<T>::BuyLessThanSell
+    );
+    pallet_tools::price_tools::set_price::<T>(asset_id, xor_prices.buy, PriceVariant::Buy)?;
+    pallet_tools::price_tools::set_price::<T>(asset_id, xor_prices.sell, PriceVariant::Sell)?;
+    Ok(())
+}
+
+/// Set XOR prices of `asset_id` in `price_tools` given prices of `asset_id` in terms of
+/// `reference_asset_id`
 fn set_reference_prices<T: Config>(
-    asset_id: AssetIdOf<T>,
-    reference_asset_id: AssetIdOf<T>,
+    asset_id: &AssetIdOf<T>,
+    reference_asset_id: &AssetIdOf<T>,
     ref_prices: AssetPrices,
 ) -> Result<AssetPrices, DispatchError> {
     let xor_prices = pallet_tools::price_tools::calculate_xor_prices::<T>(
-        &asset_id,
-        &reference_asset_id,
+        asset_id,
+        reference_asset_id,
         ref_prices.buy,
         ref_prices.sell,
     )?;
@@ -86,21 +103,7 @@ fn set_reference_prices<T: Config>(
         asset_a: collateral_xor_prices,
         asset_b: _,
     } = xor_prices;
-
-    ensure!(
-        collateral_xor_prices.buy >= collateral_xor_prices.sell,
-        Error::<T>::BuyLessThanSell
-    );
-    pallet_tools::price_tools::set_price::<T>(
-        &asset_id,
-        collateral_xor_prices.buy,
-        PriceVariant::Buy,
-    )?;
-    pallet_tools::price_tools::set_price::<T>(
-        &asset_id,
-        collateral_xor_prices.sell,
-        PriceVariant::Sell,
-    )?;
+    set_xor_prices::<T>(asset_id, collateral_xor_prices)?;
     Ok(actual_prices)
 }
 
@@ -158,7 +161,11 @@ fn initialize_single_collateral_unchecked<T: Config>(
     // MBCPool::set_reserves_account_id(bonding_curve_tech_account_id.clone())?;
 
     let actual_ref_prices = if let Some(p) = input.ref_prices {
-        Some(set_reference_prices::<T>(input.asset, reference_asset, p)?)
+        Some(set_reference_prices::<T>(
+            &input.asset,
+            &reference_asset,
+            p,
+        )?)
     } else {
         None
     };
@@ -212,8 +219,10 @@ pub fn initialize_single_collateral<T: Config>(
 pub fn initialize_tbcd_collateral<T: Config>(
     input: TbcdCollateralInput,
 ) -> Result<Option<AssetPrices>, DispatchError> {
-    // handle xor ref price
-    // input.xor_ref_prices
+    if let Some(xor_ref_prices) = input.xor_ref_prices {
+        let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
+        set_xor_prices::<T>(&reference_asset, xor_ref_prices)?;
+    }
 
     initialize_single_collateral_unchecked::<T>(OtherCollateralInput {
         asset: TBCD.into(),
