@@ -111,6 +111,8 @@ enum-as-inner = "=0.5.1"
 # TODO remove after toolchain is updated
 # newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
 ahash = "=0.8.5"
+assert_cmd = "=2.0.13"
+bumpalo = "=3.14.0"
 
 [build-dependencies]
 substrate-build-script-utils = "3"
