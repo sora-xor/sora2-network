@@ -177,7 +177,7 @@ mod test {
         ));
     }
 
-    fn init_exchage() {
+    fn init_exchange() {
         assert_ok!(assets::Pallet::<Runtime>::mint_to(
             &APOLLO_ASSET_ID,
             &alice(),
@@ -2121,7 +2121,7 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             static_set_dex();
-            init_exchage();
+            init_exchange();
 
             run_to_block(1);
 
@@ -2198,7 +2198,7 @@ mod test {
 
             assert_eq!(borrowing_interest, calculated_borrowing_interest);
 
-            // Check balances after repay
+            // Check balances before repay
             // Pool
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
@@ -2227,7 +2227,7 @@ mod test {
             );
 
             // Reserve amounts (treasury, burn, developer)
-            let (trasury_reserve, _, developer_reserve) =
+            let (treasury_reserve, _, developer_reserve) =
                 calculate_reserve_amounts(XOR, borrowing_interest);
 
             assert_ok!(ApolloPlatform::repay(
@@ -2266,7 +2266,7 @@ mod test {
                     &get_treasury_account()
                 )
                 .unwrap(),
-                trasury_reserve
+                treasury_reserve
             );
             // Developer
             assert_eq!(
@@ -2278,11 +2278,11 @@ mod test {
     }
 
     #[test]
-    fn repay_full_interest_and_part_of_lone_ok() {
+    fn repay_full_interest_and_part_of_loan_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             static_set_dex();
-            init_exchage();
+            init_exchange();
 
             run_to_block(1);
 
@@ -2359,7 +2359,7 @@ mod test {
 
             assert_eq!(borrowing_interest, calculated_borrowing_interest);
 
-            // Check balances after repay
+            // Check balances before repay
             // Pool
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
@@ -2388,7 +2388,7 @@ mod test {
             );
 
             // Reserve amounts (treasury, burn, developer)
-            let (trasury_reserve, _, developer_reserve) =
+            let (treasury_reserve, _, developer_reserve) =
                 calculate_reserve_amounts(XOR, borrowing_interest);
 
             assert_ok!(ApolloPlatform::repay(
@@ -2427,7 +2427,7 @@ mod test {
                     &get_treasury_account()
                 )
                 .unwrap(),
-                trasury_reserve
+                treasury_reserve
             );
             // Developer
             assert_eq!(
@@ -2439,11 +2439,11 @@ mod test {
     }
 
     #[test]
-    fn repay_full_lone_ok() {
+    fn repay_full_loan_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             static_set_dex();
-            init_exchage();
+            init_exchange();
 
             run_to_block(1);
 
@@ -2534,7 +2534,7 @@ mod test {
 
             assert_eq!(borrowing_interest, calculated_borrowing_interest);
 
-            // Check balances after repay
+            // Check balances before repay
             // Pool
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
@@ -2563,7 +2563,7 @@ mod test {
             );
 
             // Reserve amounts (treasury, burn, developer)
-            let (trasury_reserve, _, developer_reserve) =
+            let (treasury_reserve, _, developer_reserve) =
                 calculate_reserve_amounts(XOR, borrowing_interest);
 
             assert_ok!(ApolloPlatform::repay(
@@ -2600,7 +2600,7 @@ mod test {
                     &get_treasury_account()
                 )
                 .unwrap(),
-                trasury_reserve + balance!(120)
+                treasury_reserve + balance!(120)
             );
             // Developer
             assert_eq!(

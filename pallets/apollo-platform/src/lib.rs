@@ -759,7 +759,7 @@ pub mod pallet {
                 .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
 
                 <UserBorrowingInfo<T>>::remove(user.clone(), borrowing_asset);
-                Self::distribute_protocol_interest(borrowing_asset, total_borrowed_amount)?;
+                Self::distribute_protocol_interest(borrowing_asset, user_info.borrowing_interest)?;
             }
 
             Self::deposit_event(Event::Repaid(user, borrowing_asset, amount_to_repay));
@@ -1010,7 +1010,7 @@ pub mod pallet {
             )?;
 
             // Buyback and burn CERES
-            T::LiquidityProxyPallet::exchange(
+            let outcome = T::LiquidityProxyPallet::exchange(
                 DEXId::Polkaswap.into(),
                 &caller,
                 &caller,
@@ -1018,14 +1018,13 @@ pub mod pallet {
                 &CERES_ASSET_ID.into(),
                 SwapAmount::with_desired_input(ceres_amount, Balance::zero()),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )?;
+            )
+            .unwrap();
 
-            let ceres_balance =
-                Assets::<T>::free_balance(&CERES_ASSET_ID.into(), &caller).unwrap_or(0);
             Assets::<T>::burn(
                 RawOrigin::Signed(caller.clone()).into(),
                 CERES_ASSET_ID.into(),
-                ceres_balance,
+                outcome.amount,
             )?;
 
             // Transfer amount to developer fund
