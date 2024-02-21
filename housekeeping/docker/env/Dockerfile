@@ -18,12 +18,11 @@ RUN apt-get update && \
     apt-get install --no-install-recommends -y \
     ca-certificates apt-transport-https gnupg \
     libssl-dev pkg-config \
-    curl \
     wget \
     git binaryen \
     make cmake libssl-dev \
     software-properties-common && \
-    curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
+    wget -O - https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup toolchain install ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_VERSION} && \
     wget https://apt.llvm.org/llvm.sh && \
@@ -34,7 +33,7 @@ RUN apt-get update && \
     apt-get install --no-install-recommends -y \
     clang-${CCLANG_VER} lldb-${CCLANG_VER} lld-${CCLANG_VER} libclang-${CCLANG_VER}-dev llvm-${LLVM_TOOLS_VER} protobuf-compiler && \
     update-alternatives --install /usr/bin/cc cc /usr/bin/${CC} 100 && \
-    curl https://github.com/chevdor/subwasm/releases/download/${SUBWASM_VER}/subwasm_linux_amd64_${SUBWASM_VER}.deb -sSL -o subw.deb && \
+    wget https://github.com/chevdor/subwasm/releases/download/${SUBWASM_VER}/subwasm_linux_amd64_${SUBWASM_VER}.deb -O subw.deb && \
     dpkg -i subw.deb && rm subw.deb && \
     rustup update && \
     cargo install grcov --version ${GRCOV_VERSION} && \
