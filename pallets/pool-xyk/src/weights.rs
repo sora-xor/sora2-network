@@ -63,6 +63,7 @@ pub trait WeightInfo {
 	fn swap_pair() -> Weight;
 	fn can_exchange() -> Weight;
 	fn quote() -> Weight;
+	fn step_quote(a: u32, ) -> Weight;
 	fn deposit_liquidity() -> Weight;
 	fn withdraw_liquidity() -> Weight;
 	fn initialize_pool() -> Weight;
@@ -118,6 +119,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(32_076_000, 8718)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 	}
+
+	fn step_quote(_a: u32, ) -> Weight {
+		Weight::zero()
+	}
+
 	/// Storage: Assets AssetInfos (r:2 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: DEXManager DEXInfos (r:1 w:0)
@@ -256,6 +262,11 @@ impl WeightInfo for () {
 		Weight::from_parts(32_076_000, 8718)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 	}
+
+	fn step_quote(_a: u32, ) -> Weight {
+		Weight::zero()
+	}
+
 	/// Storage: Assets AssetInfos (r:2 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: DEXManager DEXInfos (r:1 w:0)

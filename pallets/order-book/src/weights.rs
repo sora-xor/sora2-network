@@ -69,6 +69,7 @@ pub trait WeightInfo {
 	fn cancel_limit_order_last_expiration() -> Weight;
 	fn execute_market_order() -> Weight;
 	fn quote() -> Weight;
+	fn step_quote() -> Weight;
 	fn exchange(e: u32, ) -> Weight;
 	fn align_single_order() -> Weight;
 	fn service_expiration_base() -> Weight;
@@ -281,6 +282,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(882_782_000, 78362)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 	}
+
+	fn step_quote() -> Weight {
+		Weight::zero()
+	}
+
 	/// Storage: DEXManager DEXInfos (r:1 w:0)
 	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: OrderBook OrderBooks (r:1 w:0)
@@ -586,6 +592,11 @@ impl WeightInfo for () {
 		Weight::from_parts(882_782_000, 78362)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 	}
+
+	fn step_quote() -> Weight {
+		Weight::zero()
+	}
+	
 	/// Storage: DEXManager DEXInfos (r:1 w:0)
 	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: OrderBook OrderBooks (r:1 w:0)
