@@ -116,7 +116,7 @@ ahash = "=0.8.5"
 substrate-build-script-utils = "3"
 
 [dev-dependencies]
-assert_cmd = ">=2.0.4, <2.0.14"
+assert_cmd = "=2.0.13"
 tokio = { version = "1.10.1", features = ["macros"] }
 
 # Substrate dependencies
