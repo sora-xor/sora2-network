@@ -374,10 +374,7 @@ fn should_init_collateral_reserves() {
     })
 }
 
-fn set_and_verify_tbcd_reserves(
-    collateral_asset_id: &AssetIdOf<Runtime>,
-    target_reserves: Balance,
-) {
+fn set_and_verify_tbcd_reserves(target_reserves: Balance) {
     let input = mcbc_tools::TbcdCollateralInput {
         ref_prices: None,
         reserves: Some(target_reserves),
@@ -392,7 +389,7 @@ fn set_and_verify_tbcd_reserves(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&reserves_tech_account_id)
             .unwrap();
     assert_eq!(
-        assets::Pallet::<Runtime>::total_balance(&collateral_asset_id, &reserves_account_id),
+        assets::Pallet::<Runtime>::total_balance(&TBCD.into(), &reserves_account_id),
         Ok(target_reserves)
     );
 }
@@ -400,18 +397,75 @@ fn set_and_verify_tbcd_reserves(
 #[test]
 fn should_init_tbcd_reserves() {
     ext().execute_with(|| {
-        let collateral_asset_id: AssetIdOf<Runtime> = TBCD.into();
         let input = mcbc_tools::OtherCollateralInput {
-            asset: collateral_asset_id.clone(),
+            asset: TBCD.into(),
             ref_prices: None,
-            reserves: Some(balance!(0)),
+            reserves: None,
         };
         assert_err!(
             initialize_mcbc_collateral::<Runtime>(input),
             qa_tools::Error::<Runtime>::IncorrectCollateralAsset
         );
-        set_and_verify_tbcd_reserves(&collateral_asset_id, balance!(1000000));
-        set_and_verify_tbcd_reserves(&collateral_asset_id, balance!(0));
+        set_and_verify_tbcd_reserves(balance!(1000000));
+        set_and_verify_tbcd_reserves(balance!(0));
+    })
+}
+
+fn set_and_verify_tbcd_xor_ref_prices(prices: AssetPrices) {
+    let input = mcbc_tools::TbcdCollateralInput {
+        ref_prices: None,
+        reserves: None,
+        xor_ref_prices: Some(prices.clone()),
+    };
+    let reference_asset = qa_tools::InputAssetId::<AssetIdOf<Runtime>>::McbcReference;
+    let reference_asset_id = reference_asset.clone().resolve::<Runtime>();
+    assert_ok!(initialize_mcbc_tbcd_collateral::<Runtime>(input));
+    assert_eq!(
+        price_tools::Pallet::<Runtime>::get_average_price(
+            &XOR.into(),
+            &reference_asset_id,
+            PriceVariant::Buy
+        ),
+        Ok(prices.buy)
+    );
+    assert_eq!(
+        price_tools::Pallet::<Runtime>::get_average_price(
+            &XOR.into(),
+            &reference_asset_id,
+            PriceVariant::Sell
+        ),
+        Ok(prices.sell)
+    );
+}
+
+#[test]
+fn should_init_tbcd_ref_prices() {
+    ext().execute_with(|| {
+        let collateral_asset_id: AssetIdOf<Runtime> = TBCD.into();
+        let input = mcbc_tools::OtherCollateralInput {
+            asset: collateral_asset_id.clone(),
+            ref_prices: Some(AssetPrices {
+                buy: balance!(1),
+                sell: balance!(1),
+            }),
+            reserves: None,
+        };
+        assert_err!(
+            initialize_mcbc_collateral::<Runtime>(input),
+            qa_tools::Error::<Runtime>::IncorrectCollateralAsset
+        );
+        set_and_verify_tbcd_xor_ref_prices(AssetPrices {
+            buy: balance!(1),
+            sell: balance!(1),
+        });
+        set_and_verify_tbcd_xor_ref_prices(AssetPrices {
+            buy: balance!(124),
+            sell: balance!(123),
+        });
+        set_and_verify_tbcd_xor_ref_prices(AssetPrices {
+            buy: balance!(0.1),
+            sell: balance!(0.01),
+        });
     })
 }
 
