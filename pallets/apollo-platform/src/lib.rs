@@ -55,7 +55,7 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{
         balance, AssetInfoProvider, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID,
-        DAI, HERMES_ASSET_ID, XOR,
+        DAI, XOR,
     };
     use common::{LiquidityProxyTrait, PriceToolsPallet, APOLLO_ASSET_ID};
     use frame_support::pallet_prelude::{ValueQuery, *};
@@ -681,6 +681,8 @@ pub mod pallet {
             if amount_to_repay <= user_info.borrowing_interest {
                 // If user is repaying only part or whole interest
                 user_info.borrowing_interest -= amount_to_repay;
+                borrow_user_info.insert(collateral_asset, user_info);
+
                 Assets::<T>::transfer_from(
                     &borrowing_asset,
                     &user,
@@ -688,6 +690,8 @@ pub mod pallet {
                     amount_to_repay,
                 )
                 .map_err(|_| Error::<T>::CanNotTransferAmountToRepay)?;
+
+                <UserBorrowingInfo<T>>::insert(user.clone(), borrowing_asset, &borrow_user_info);
 
                 Self::distribute_protocol_interest(borrowing_asset, amount_to_repay)?;
             } else if amount_to_repay > user_info.borrowing_interest
@@ -722,12 +726,9 @@ pub mod pallet {
                 // Update pools
                 borrow_pool_info.total_borrowed -= user_info.borrowing_amount;
                 borrow_pool_info.total_liquidity += user_info.borrowing_amount;
-                if borrowing_asset == collateral_asset {
-                    borrow_pool_info.total_collateral -= user_info.collateral_amount;
-                } else {
-                    collateral_pool_info.total_collateral -= user_info.collateral_amount;
-                    <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
-                }
+                collateral_pool_info.total_collateral -= user_info.collateral_amount;
+
+                <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
                 <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
 
                 // Transfer borrowing amount and borrowing interest to pallet
@@ -750,7 +751,7 @@ pub mod pallet {
 
                 // Transfer borrowing rewards to user
                 Assets::<T>::transfer_from(
-                    &HERMES_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID.into(),
                     &Self::account_id(),
                     &user,
                     user_info.borrowing_rewards,
