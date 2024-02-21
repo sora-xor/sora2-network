@@ -1389,12 +1389,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             OrderAmount::Base(..) => {
                 quotation.limits.min_amount = Some(*base_min_amount.value().balance());
                 quotation.limits.max_amount = Some(*base_max_amount.value().balance());
-                quotation.limits.amount_alignment = Some(*order_book.step_lot_size.balance());
+                quotation.limits.amount_precision = Some(*order_book.step_lot_size.balance());
             }
             OrderAmount::Quote(..) => {
                 quotation.limits.min_amount = Some(*quote_min_amount.value().balance());
                 quotation.limits.max_amount = Some(*quote_max_amount.value().balance());
-                quotation.limits.amount_alignment = Some(
+                quotation.limits.amount_precision = Some(
                     *order_book
                         .step_lot_size
                         .checked_mul(&order_book.tick_size)

@@ -1233,6 +1233,14 @@ impl SwapChunk<Balance> {
             .ok()?;
         Some(Self::new(input, output, fee))
     }
+
+    pub fn saturating_add(self, rhs: Self) -> Self {
+        Self::new(
+            self.input.saturating_add(rhs.input),
+            self.output.saturating_add(rhs.output),
+            self.fee.saturating_add(rhs.fee),
+        )
+    }
 }
 
 /// Limitations that could have a liquidity source for the amount of swap
@@ -1244,25 +1252,50 @@ pub struct SwapLimits<AmountType> {
     /// The amount of swap cannot be more than `max_amount` if it's defined
     pub max_amount: Option<AmountType>,
 
-    /// The amount of swap must be a multiplier of `amount_alignment` if it's defined
-    pub amount_alignment: Option<AmountType>,
+    /// The amount of swap must be a multiplier of `amount_precision` if it's defined
+    pub amount_precision: Option<AmountType>,
 }
 
 impl<AmountType> SwapLimits<AmountType> {
     pub fn new(
         min_amount: Option<AmountType>,
         max_amount: Option<AmountType>,
-        amount_alignment: Option<AmountType>,
+        amount_precision: Option<AmountType>,
     ) -> Self {
         Self {
             min_amount,
             max_amount,
-            amount_alignment,
+            amount_precision,
         }
     }
 }
 
 impl SwapLimits<Balance> {
+    /// Aligns the `amount` regarding to the `max_amount` limit.
+    /// Returns the aligned amount and the remainder
+    pub fn align_max(&self, amount: Balance) -> (Balance, Balance) {
+        if let Some(max) = self.max_amount {
+            if amount > max {
+                return (max, amount.saturating_sub(max));
+            }
+        }
+        (amount, Balance::zero())
+    }
+
+    /// Aligns the `amount` regarding to the `amount_precision` limit.
+    /// Returns the aligned amount and the remainder
+    pub fn align_precision(&self, amount: Balance) -> (Balance, Balance) {
+        if let Some(precision) = self.amount_precision {
+            if amount % precision != Balance::zero() {
+                let count = amount.saturating_div(precision);
+                let aligned = count.saturating_mul(precision);
+                return (aligned, amount.saturating_sub(aligned));
+            }
+        }
+
+        (amount, Balance::zero())
+    }
+
     /// Aligns the `amount` regarding to limits.
     /// Returns the aligned amount and the remainder
     pub fn align(&self, amount: Balance) -> (Balance, Balance) {
@@ -1278,10 +1311,10 @@ impl SwapLimits<Balance> {
             }
         }
 
-        if let Some(alignment) = self.amount_alignment {
-            if amount % alignment != Balance::zero() {
-                let count = amount.saturating_div(alignment);
-                let aligned = count.saturating_mul(alignment);
+        if let Some(precision) = self.amount_precision {
+            if amount % precision != Balance::zero() {
+                let count = amount.saturating_div(precision);
+                let aligned = count.saturating_mul(precision);
                 return (aligned, amount.saturating_sub(aligned));
             }
         }
