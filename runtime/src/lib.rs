@@ -1934,6 +1934,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.")
     };
 
+    pub const KenAssetId: AssetId = common::KEN;
     pub const KusdAssetId: AssetId = common::KUSD;
 
     // 1 day = 86_400_000
@@ -1954,6 +1955,7 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
     type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;

@@ -33,7 +33,7 @@
 
 use assets::AssetIdOf;
 use codec::Decode;
-use common::{balance, AssetId32, Balance, DEXId, PredefinedAssetId, DAI, KUSD, XOR};
+use common::{balance, AssetId32, Balance, DEXId, PredefinedAssetId, DAI, KEN, KUSD, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -172,9 +172,17 @@ fn initialize_liquidity_sources<T: Config>() {
         RawOrigin::Signed(caller::<T>()).into(),
         DEXId::Polkaswap.into(),
         XOR.into(),
+        KEN.into(),
+    )
+    .expect("Must register trading pair KEN/XOR");
+    intialize_xyk_pool::<T>(KEN.into());
+    trading_pair::Pallet::<T>::register(
+        RawOrigin::Signed(caller::<T>()).into(),
+        DEXId::Polkaswap.into(),
+        XOR.into(),
         KUSD.into(),
     )
-    .expect("Must register trading pair");
+    .expect("Must register trading pair KUSD/XOR");
     intialize_xyk_pool::<T>(KUSD.into());
 }
 
