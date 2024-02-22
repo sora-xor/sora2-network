@@ -16,7 +16,7 @@ test() {
         printf "BuildTag is %s\n" ${buildTag}
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks"
-    elif [ $prBranch = 'master' ]; then
+    elif [ ${prBranch} = 'master' ]; then
         printf "⚡️ This is $prbranch Running tests and migrations %s\n"
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
     else
@@ -39,7 +39,7 @@ build() {
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
         featureList='private-net include-real-files ready-to-test'
-    elif [[ ${TAG_NAME} =~ 'test'* ]]; then
+    elif [[ ${TAG_NAME} =~ 'test'* || -n ${buildTag} ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
         featureList='include-real-files'
