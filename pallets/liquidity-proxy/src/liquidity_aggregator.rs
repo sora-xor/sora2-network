@@ -527,6 +527,13 @@ mod tests {
             vec![LiquiditySourceType::XYKPool, LiquiditySourceType::OrderBook]
         );
 
+        // check with locked sources
+        let candidates = aggregator.find_best_price_candidates(&vec![LiquiditySourceType::XYKPool]);
+        assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
+        let candidates =
+            aggregator.find_best_price_candidates(&vec![LiquiditySourceType::OrderBook]);
+        assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
+
         // remove order book chunk 2
         aggregator
             .liquidity_quotations
@@ -603,6 +610,13 @@ mod tests {
             candidates,
             vec![LiquiditySourceType::XYKPool, LiquiditySourceType::OrderBook]
         );
+
+        // check with locked sources
+        let candidates = aggregator.find_best_price_candidates(&vec![LiquiditySourceType::XYKPool]);
+        assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
+        let candidates =
+            aggregator.find_best_price_candidates(&vec![LiquiditySourceType::OrderBook]);
+        assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove order book chunk 2
         aggregator
@@ -1046,6 +1060,13 @@ mod tests {
             vec![LiquiditySourceType::XYKPool, LiquiditySourceType::OrderBook]
         );
 
+        // check with locked sources
+        let candidates = aggregator.find_best_price_candidates(&vec![LiquiditySourceType::XYKPool]);
+        assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
+        let candidates =
+            aggregator.find_best_price_candidates(&vec![LiquiditySourceType::OrderBook]);
+        assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
+
         // remove order book chunk 2
         aggregator
             .liquidity_quotations
@@ -1122,6 +1143,13 @@ mod tests {
             candidates,
             vec![LiquiditySourceType::XYKPool, LiquiditySourceType::OrderBook]
         );
+
+        // check with locked sources
+        let candidates = aggregator.find_best_price_candidates(&vec![LiquiditySourceType::XYKPool]);
+        assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
+        let candidates =
+            aggregator.find_best_price_candidates(&vec![LiquiditySourceType::OrderBook]);
+        assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove order book chunk 2
         aggregator
