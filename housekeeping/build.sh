@@ -12,7 +12,8 @@ allfeatures='private-net,wip,ready-to-test'
 # build func
 test() {
     if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
-        printf "⚡️ Tag is %s\n" $buildTag ${TAG_NAME}
+        printf "Tag is %s\n" ${TAG_NAME}
+        printf "BuildTag is %s\n" $buildTag
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks"
     elif [ $prBranch = 'master' ]; then
@@ -30,8 +31,10 @@ test() {
 }
 
 build() {
+    printf "Tag is %s\n" ${TAG_NAME}
+    printf "BuildTag is %s\n" $buildTag
     featureList=""
-    sudoCheckStatus="0"
+    sudoCheckStatus="101"
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
