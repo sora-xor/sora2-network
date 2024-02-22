@@ -20,7 +20,6 @@ test(){
     export SKIP_WASM_BUILD=1
     export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
     rm -rf ~/.cargo/.package-cache
-    rm Cargo.lock
     cargo fmt -- --check > /dev/null
     cargo test --features $allfeatures
 }
@@ -33,7 +32,6 @@ build() {
     rm -rf target
     cargo build --release --features "$featureList"
     mv ./target/release/framenode .
-    mv ./target/release/relayer ./relayer.bin
     mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
     subwasm --json info framenode_runtime.compact.compressed.wasm > $wasmReportFile
     subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
@@ -65,8 +63,7 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
 else
     if [ $prBranch = 'master' ]; then
         printf "⚡️ Running tests and migrations %s\n"
-        RUST_LOG="debug" cargo test --features try-runtime -- run_migrations
-    else
-        test
+        RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
     fi
+    test
 fi
