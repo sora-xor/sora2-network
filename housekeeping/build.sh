@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 set -e
 
 # environment
@@ -32,33 +32,31 @@ test() {
 build() {
     featureList=""
     sudoCheckStatus="0"
-    if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
-        if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
-            featureList='private-net runtime-benchmarks'
-        elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
-            featureList='private-net include-real-files ready-to-test'
-        elif [[ ${TAG_NAME} =~ 'test'* ]]; then
-            featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
-        elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
-            featureList='include-real-files'
-            sudoCheckStatus="101"
-        fi
-        printf "⚡️ Building with features: %s\n" "$featureList"
-        printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
-        rm -rf target
-        cargo build --release --features "$featureList"
-        mv ./target/release/framenode .
-        mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
-        subwasm --json info framenode_runtime.compact.compressed.wasm > $wasmReportFile
-        subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
-        set +e
-        subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
-        if [[ $? -eq $sudoCheckStatus ]]; then 
-            echo "✅ sudo check is successful!"
-        else 
-            echo "❌ sudo check is failed!"
-            exit 1
-        fi
+    if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
+        featureList='private-net runtime-benchmarks'
+    elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
+        featureList='private-net include-real-files ready-to-test'
+    elif [[ ${TAG_NAME} =~ 'test'* ]]; then
+        featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
+    elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
+        featureList='include-real-files'
+        sudoCheckStatus="101"
+    fi
+    printf "⚡️ Building with features: %s\n" "$featureList"
+    printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
+    rm -rf target
+    cargo build --release --features "$featureList"
+    mv ./target/release/framenode .
+    mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
+    subwasm --json info framenode_runtime.compact.compressed.wasm > $wasmReportFile
+    subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
+    set +e
+    subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
+    if [[ $? -eq $sudoCheckStatus ]]; then 
+        echo "✅ sudo check is successful!"
+    else 
+        echo "❌ sudo check is failed!"
+        exit 1
     fi
 }
 
