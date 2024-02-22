@@ -11,7 +11,6 @@ allfeatures='private-net,wip,ready-to-test'
 
 # build func
 releasetest(){
-    printf "⚡️ Testing with features: private-net runtime-benchmarks %s\n"
     cargo test --release --features "private-net runtime-benchmarks"
 }
 
@@ -52,6 +51,7 @@ build() {
 # If TAG_NAME is defined, build for a specific tag
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
     printf "⚡️ Tag is %s\n" $buildTag ${TAG_NAME}
+        printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         releasetest
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         build 'private-net runtime-benchmarks' 0
