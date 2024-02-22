@@ -51,8 +51,8 @@ build() {
 # If TAG_NAME is defined, build for a specific tag
 if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
     printf "⚡️ Tag is %s\n" $buildTag ${TAG_NAME}
-        printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
-        releasetest
+    printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
+    releasetest
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         build 'private-net runtime-benchmarks' 0
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
@@ -63,9 +63,9 @@ if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; th
         build 'include-real-files' 101
     fi
 else
-    if [[ $prBranch == 'master' ]]; then
+    if [ $prBranch = 'master' ]; then
         printf "⚡️ Running tests and migrations %s\n"
-        RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
+        RUST_LOG="debug" cargo test --features try-runtime -- run_migrations
     else
         test
     fi
