@@ -53,10 +53,7 @@ mod test;
 pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo};
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
-    use common::{
-        balance, AssetInfoProvider, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID,
-        DAI, XOR,
-    };
+    use common::{balance, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID, DAI, XOR};
     use common::{LiquidityProxyTrait, PriceToolsPallet, APOLLO_ASSET_ID};
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::sp_runtime::traits::AccountIdConversion;
@@ -307,14 +304,16 @@ pub mod pallet {
             // Recalculate basic lending rate and borrowing rewards rate
             let mut num_of_pools = <PoolData<T>>::iter().count() as u32;
             num_of_pools += 1;
+
             let basic_lending_rate = (FixedWrapper::from(LendingRewardsPerBlock::<T>::get())
-                / FixedWrapper::from(num_of_pools))
+                / FixedWrapper::from(balance!(num_of_pools)))
             .try_into_balance()
             .unwrap_or(0);
             let borrowing_rewards_rate = (FixedWrapper::from(BorrowingRewardsPerBlock::<T>::get())
-                / FixedWrapper::from(num_of_pools))
+                / FixedWrapper::from(balance!(num_of_pools)))
             .try_into_balance()
             .unwrap_or(0);
+
             for (asset_id, mut pool_info) in <PoolData<T>>::iter() {
                 pool_info.basic_lending_rate = basic_lending_rate;
                 pool_info.borrowing_rewards_rate = borrowing_rewards_rate;
@@ -807,7 +806,7 @@ pub mod pallet {
             if is_lending {
                 // Recalculate basic lending rate
                 let basic_lending_rate = (FixedWrapper::from(amount)
-                    / FixedWrapper::from(num_of_pools))
+                    / FixedWrapper::from(balance!(num_of_pools)))
                 .try_into_balance()
                 .unwrap_or(0);
                 for (asset_id, mut pool_info) in <PoolData<T>>::iter() {
@@ -818,7 +817,7 @@ pub mod pallet {
             } else {
                 // Recalculate borrowing rewards rate
                 let borrowing_rewards_rate = (FixedWrapper::from(amount)
-                    / FixedWrapper::from(num_of_pools))
+                    / FixedWrapper::from(balance!(num_of_pools)))
                 .try_into_balance()
                 .unwrap_or(0);
                 for (asset_id, mut pool_info) in <PoolData<T>>::iter() {
@@ -903,10 +902,10 @@ pub mod pallet {
 
             // Return (basic_lending_interest, profit_lending_interest)
             (
-                (basic_reward_per_block * FixedWrapper::from(total_lending_blocks))
+                (basic_reward_per_block * FixedWrapper::from(balance!(total_lending_blocks)))
                     .try_into_balance()
                     .unwrap_or(0),
-                (profit_reward_per_block * FixedWrapper::from(total_lending_blocks))
+                (profit_reward_per_block * FixedWrapper::from(balance!(total_lending_blocks)))
                     .try_into_balance()
                     .unwrap_or(0),
             )
@@ -937,10 +936,11 @@ pub mod pallet {
 
             // Return (borrowing_interest, borrowing_reward)
             (
-                (borrowing_interest_per_block * FixedWrapper::from(total_borrowing_blocks))
-                    .try_into_balance()
-                    .unwrap_or(0),
-                (borrowing_reward_per_block * FixedWrapper::from(total_borrowing_blocks))
+                (borrowing_interest_per_block
+                    * FixedWrapper::from(balance!(total_borrowing_blocks)))
+                .try_into_balance()
+                .unwrap_or(0),
+                (borrowing_reward_per_block * FixedWrapper::from(balance!(total_borrowing_blocks)))
                     .try_into_balance()
                     .unwrap_or(0),
             )
@@ -974,10 +974,7 @@ pub mod pallet {
             let buyback_amount = outcome.amount;
 
             pool_info.rewards += buyback_amount;
-            pool_info.basic_lending_rate += (FixedWrapper::from(buyback_amount)
-                / FixedWrapper::from(5256000))
-            .try_into_balance()
-            .unwrap_or(0);
+
             <PoolData<T>>::insert(asset_id, pool_info);
 
             // Calculate 60% of reserves to transfer APOLLO to treasury
@@ -1112,7 +1109,7 @@ pub mod pallet {
                 if utilization_rate < pool_info.optimal_utilization_rate {
                     // Update lending rate
                     pool_info.profit_lending_rate = (FixedWrapper::from(pool_info.rewards)
-                        / FixedWrapper::from(5256000))
+                        / FixedWrapper::from(balance!(5256000)))
                     .try_into_balance()
                     .unwrap_or(0);
 
@@ -1121,13 +1118,13 @@ pub mod pallet {
                         + (FixedWrapper::from(utilization_rate)
                             / FixedWrapper::from(pool_info.optimal_utilization_rate))
                             * FixedWrapper::from(pool_info.slope_rate_1))
-                        / FixedWrapper::from(5256000))
+                        / FixedWrapper::from(balance!(5256000)))
                     .try_into_balance()
                     .unwrap_or(0);
                 } else {
                     // Update lending rate
                     pool_info.profit_lending_rate = ((FixedWrapper::from(pool_info.rewards)
-                        / FixedWrapper::from(5256000))
+                        / FixedWrapper::from(balance!(5256000)))
                         * (FixedWrapper::from(balance!(1)) + FixedWrapper::from(utilization_rate)))
                     .try_into_balance()
                     .unwrap_or(0);

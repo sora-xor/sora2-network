@@ -34,7 +34,7 @@ mod test {
         let user_info = pallet::UserLendingInfo::<Runtime>::get(user, asset_id).unwrap();
         let pool_info = pallet::PoolData::<Runtime>::get(asset_id).unwrap();
 
-        let total_lending_blocks: u128 = block_number.into();
+        let total_lending_blocks = balance!(block_number);
 
         let share_in_pool = FixedWrapper::from(user_info.lending_amount)
             / FixedWrapper::from(pool_info.total_liquidity);
@@ -47,15 +47,18 @@ mod test {
         let profit_reward_per_block =
             FixedWrapper::from(pool_info.profit_lending_rate) * share_in_pool.clone();
 
+        let basic_lending_interest = (basic_reward_per_block
+            * FixedWrapper::from(total_lending_blocks))
+        .try_into_balance()
+        .unwrap_or(0);
+
+        let profit_lending_interest = (profit_reward_per_block
+            * FixedWrapper::from(total_lending_blocks))
+        .try_into_balance()
+        .unwrap_or(0);
+
         // Return (basic_lending_interest, profit_lending_interest)
-        (
-            (basic_reward_per_block * FixedWrapper::from(total_lending_blocks))
-                .try_into_balance()
-                .unwrap_or(0),
-            (profit_reward_per_block * FixedWrapper::from(total_lending_blocks))
-                .try_into_balance()
-                .unwrap_or(0),
-        )
+        (basic_lending_interest, profit_lending_interest)
     }
 
     fn calculate_borrowing_interest(
@@ -70,7 +73,7 @@ mod test {
         let borrowing_asset_pool_info =
             pallet::PoolData::<Runtime>::get(borrowing_asset_id).unwrap();
 
-        let total_borrowing_blocks: u128 = block_number.into();
+        let total_borrowing_blocks = balance!(block_number);
 
         // Calculate borrowing interest
         let borrowing_interest_per_block = FixedWrapper::from(borrowing_user_debt.borrowing_amount)
@@ -335,13 +338,13 @@ mod test {
 
             let new_basic_lending_rate =
                 (FixedWrapper::from(ApolloPlatform::lending_rewards_per_block())
-                    / FixedWrapper::from(3))
+                    / FixedWrapper::from(balance!(3)))
                 .try_into_balance()
                 .unwrap_or(0);
 
             let new_borrowing_rewards_rate =
                 (FixedWrapper::from(ApolloPlatform::borrowing_rewards_per_block())
-                    / FixedWrapper::from(3))
+                    / FixedWrapper::from(balance!(3)))
                 .try_into_balance()
                 .unwrap_or(0);
 
@@ -977,21 +980,21 @@ mod test {
             // NOTE:
             // The tests for the borrowing_interest and borrowing_rewards are commented out because there is a small miscalculation between
             // the pallet values and the values from the calculate_borrowing_interest() function. Also the closest value is at block 99 not 100.
-            let calculater_borrowing_interest = calculate_borrowing_interest(alice(), XOR, DOT, 99);
-            let delta = balance!(0.0000000000000001);
+            let calculated_borrowing_interest = calculate_borrowing_interest(alice(), XOR, DOT, 99);
 
             // Borrowing user tests (before borrow)
             assert_eq!(borrowing_user_debt.last_borrowing_block, 101);
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(50));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(50));
             assert_eq!(
-                (calculater_borrowing_interest.0 - borrowing_user_debt.borrowing_interest) <= delta,
-                true
+                borrowing_user_debt.borrowing_interest,
+                calculated_borrowing_interest.0
             );
+
             // 99 + 1 block
             assert_eq!(
                 borrowing_user_debt.borrowing_rewards,
-                calculater_borrowing_interest.1 + balance!(0.009512935)
+                calculated_borrowing_interest.1
             );
 
             assert_ok!(ApolloPlatform::borrow(
@@ -1045,13 +1048,14 @@ mod test {
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(100));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(100));
             assert_eq!(
-                (calculater_borrowing_interest.0 - borrowing_user_debt.borrowing_interest) <= delta,
-                true
+                calculated_borrowing_interest.0,
+                borrowing_user_debt.borrowing_interest
             );
+
             // 99 + 1 block
             assert_eq!(
                 borrowing_user_debt.borrowing_rewards,
-                calculater_borrowing_interest.1 + balance!(0.009512935)
+                calculated_borrowing_interest.1
             );
         });
     }
@@ -1144,7 +1148,7 @@ mod test {
     }
 
     #[test]
-    fn get_lending_rewards_lending_ok() {
+    fn get_lending_rewards_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             run_to_block(1);
@@ -1182,6 +1186,13 @@ mod test {
             ));
 
             run_to_block(101);
+
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+
+            let lending_earnings = calculate_lending_earnings(alice(), XOR, 100);
+            let lending_interest = lending_earnings.0 + lending_earnings.1;
+
+            assert_eq!(lending_user_info.lending_interest, lending_interest);
 
             assert_ok!(ApolloPlatform::get_rewards(
                 RuntimeOrigin::signed(alice()),
@@ -1602,12 +1613,12 @@ mod test {
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_pallet_account())
                     .unwrap(),
-                new_pallet_balance + balance!(0.000000000000000066)
+                new_pallet_balance
             );
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &alice()).unwrap(),
-                new_user_balance - balance!(0.000000000000000066)
+                new_user_balance
             );
         });
     }
@@ -2148,7 +2159,7 @@ mod test {
                 balance!(1),
                 balance!(1),
                 balance!(1),
-                balance!(1),
+                balance!(0.1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
@@ -2188,13 +2199,22 @@ mod test {
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
 
+            // Check Alice position values before repay
+            assert_eq!(borrowing_user_debt.borrowing_amount, balance!(200));
+
+            // Check borrowing asset pool values before repay
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+
+            assert_eq!(borrowing_asset_pool_info.rewards, balance!(0));
+            assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(200));
+            assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(800));
+
             let repayed_amount = borrowing_interest;
 
             // Check Alice interest rate before repay
             let calculated_borrowing_interests =
                 calculate_borrowing_interest(alice(), XOR, DOT, 99);
-            let calculated_borrowing_interest =
-                calculated_borrowing_interests.0 - balance!(0.000000000000000087);
+            let calculated_borrowing_interest = calculated_borrowing_interests.0;
 
             assert_eq!(borrowing_interest, calculated_borrowing_interest);
 
@@ -2237,14 +2257,33 @@ mod test {
                 repayed_amount
             ));
 
+            // Check borrowing asset pool values after repay
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+
+            let rewards_amount = FixedWrapper::from(repayed_amount)
+                * FixedWrapper::from(
+                    balance!(1) - borrowing_asset_pool_info.borrowing_rewards_rate,
+                );
+
+            // assert_eq!(
+            //     borrowing_asset_pool_info.rewards,
+            //     rewards_amount.try_into_balance().unwrap()
+            // );
+            // assert_eq!(borrowing_asset_pool_info.rewards, balance!(0));
+            assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(200));
+            assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(800));
+
+            // Check Alice interest rate after repay
             let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
 
             let new_alice_balance = balance!(200) - repayed_amount;
 
-            // Check Alice interest rate before repay
             assert_eq!(borrowing_interest, balance!(0));
+
+            // Check Alice position values before repay
+            assert_eq!(borrowing_user_debt.borrowing_amount, balance!(200));
 
             // Check balances after repay
             // Pool
@@ -2351,11 +2390,20 @@ mod test {
 
             let repayed_amount = borrowing_interest + balance!(1);
 
+            // Check Alice position values before repay
+            assert_eq!(borrowing_user_debt.borrowing_amount, balance!(200));
+
+            // Check borrowing asset pool values before repay
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+
+            assert_eq!(borrowing_asset_pool_info.rewards, balance!(0));
+            assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(200));
+            assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(800));
+
             // Check Alice interest rate before repay
             let calculated_borrowing_interests =
                 calculate_borrowing_interest(alice(), XOR, DOT, 99);
-            let calculated_borrowing_interest =
-                calculated_borrowing_interests.0 - balance!(0.000000000000000087);
+            let calculated_borrowing_interest = calculated_borrowing_interests.0;
 
             assert_eq!(borrowing_interest, calculated_borrowing_interest);
 
@@ -2404,7 +2452,17 @@ mod test {
 
             let new_alice_balance = balance!(200) - repayed_amount;
 
-            // Check Alice interest rate before repay
+            // Check Alice position values after repay
+            assert_eq!(borrowing_user_debt.borrowing_amount, balance!(199));
+
+            // Check borrowing asset pool values after repay
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+
+            assert_eq!(borrowing_asset_pool_info.rewards, balance!(0));
+            assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(199));
+            assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(801));
+
+            // Check Alice interest rate after repay
             assert_eq!(borrowing_interest, balance!(0));
 
             // Check balances after repay
@@ -2529,10 +2587,19 @@ mod test {
             // Check Alice interest rate before repay
             let calculated_borrowing_interests =
                 calculate_borrowing_interest(alice(), XOR, DOT, 99);
-            let calculated_borrowing_interest =
-                calculated_borrowing_interests.0 - balance!(0.000000000000000087);
+            let calculated_borrowing_interest = calculated_borrowing_interests.0;
 
             assert_eq!(borrowing_interest, calculated_borrowing_interest);
+
+            // Check Alice position values before repay
+            assert_eq!(borrowing_user_debt.borrowing_amount, balance!(200));
+
+            // Check borrowing asset pool values before repay
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+
+            assert_eq!(borrowing_asset_pool_info.rewards, balance!(0));
+            assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(200));
+            assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(800));
 
             // Check balances before repay
             // Pool
@@ -2573,6 +2640,22 @@ mod test {
                 repayed_amount
             ));
 
+            // Check Alice position values after repay
+            assert_eq!(borrowing_user_debt.borrowing_amount, balance!(200));
+
+            // Check borrowing asset pool values after repay
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+
+            // assert_eq!(borrowing_asset_pool_info.rewards, balance!(0));
+            // assert_eq!(
+            //     borrowing_asset_pool_info.total_borrowed,
+            //     balance!(300) - repayed_amount
+            // );
+            // assert_eq!(
+            //     borrowing_asset_pool_info.total_liquidity,
+            //     balance!(800) + repayed_amount
+            // );
+
             let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR);
 
             let new_alice_balance = balance!(300) - repayed_amount;
@@ -2600,13 +2683,13 @@ mod test {
                     &get_treasury_account()
                 )
                 .unwrap(),
-                treasury_reserve + balance!(120)
+                treasury_reserve
             );
             // Developer
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
                     .unwrap(),
-                developer_reserve + balance!(40)
+                developer_reserve
             );
         });
     }
@@ -2720,13 +2803,13 @@ mod test {
             // Check pool basic lending rates before change
             let new_basic_lending_rate =
                 (FixedWrapper::from(ApolloPlatform::lending_rewards_per_block())
-                    / FixedWrapper::from(3))
+                    / FixedWrapper::from(balance!(3)))
                 .try_into_balance()
                 .unwrap_or(0);
 
             let new_borrowing_rewards_rate =
                 (FixedWrapper::from(ApolloPlatform::borrowing_rewards_per_block())
-                    / FixedWrapper::from(3))
+                    / FixedWrapper::from(balance!(3)))
                 .try_into_balance()
                 .unwrap_or(0);
 
@@ -2756,13 +2839,13 @@ mod test {
             // Check pool basic lending rates after change
             let new_basic_lending_rate =
                 (FixedWrapper::from(ApolloPlatform::lending_rewards_per_block())
-                    / FixedWrapper::from(3))
+                    / FixedWrapper::from(balance!(3)))
                 .try_into_balance()
                 .unwrap_or(0);
 
             let new_borrowing_rewards_rate =
                 (FixedWrapper::from(ApolloPlatform::borrowing_rewards_per_block())
-                    / FixedWrapper::from(3))
+                    / FixedWrapper::from(balance!(3)))
                 .try_into_balance()
                 .unwrap_or(0);
 
@@ -2816,13 +2899,13 @@ mod test {
             // Check pool basic lending rates before change
             let new_basic_lending_rate =
                 (FixedWrapper::from(ApolloPlatform::lending_rewards_per_block())
-                    / FixedWrapper::from(3))
+                    / FixedWrapper::from(balance!(3)))
                 .try_into_balance()
                 .unwrap_or(0);
 
             let new_borrowing_rewards_rate =
                 (FixedWrapper::from(ApolloPlatform::borrowing_rewards_per_block())
-                    / FixedWrapper::from(3))
+                    / FixedWrapper::from(balance!(3)))
                 .try_into_balance()
                 .unwrap_or(0);
 
@@ -2852,13 +2935,13 @@ mod test {
             // Check pool basic lending rates after change
             let new_basic_lending_rate =
                 (FixedWrapper::from(ApolloPlatform::lending_rewards_per_block())
-                    / FixedWrapper::from(3))
+                    / FixedWrapper::from(balance!(3)))
                 .try_into_balance()
                 .unwrap_or(0);
 
             let new_borrowing_rewards_rate =
                 (FixedWrapper::from(ApolloPlatform::borrowing_rewards_per_block())
-                    / FixedWrapper::from(3))
+                    / FixedWrapper::from(balance!(3)))
                 .try_into_balance()
                 .unwrap_or(0);
 
