@@ -2965,4 +2965,327 @@ mod test {
             }
         });
     }
+
+    #[test]
+    fn get_price_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let xor_price = ApolloPlatform::get_price(XOR);
+            let dot_price = ApolloPlatform::get_price(DOT);
+            let dai_price = ApolloPlatform::get_price(DAI);
+            let ksm_price = ApolloPlatform::get_price(KSM);
+
+            assert_eq!(xor_price, balance!(1));
+            assert_eq!(dot_price, balance!(1));
+            assert_eq!(dai_price, balance!(1));
+            assert_eq!(ksm_price, balance!(1));
+        });
+    }
+
+    #[test]
+    fn calculate_lending_earnings_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            // Note: We do not use the run_to_block() function as it would then update the last_lending_block for each user and thus
+            // give is a 0 when we calculate the lending interest via the pallets' calculate_lending_earnings() function.
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &alice(),
+                balance!(300)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                XOR,
+                balance!(300),
+            ));
+
+            let lending_earnings = ApolloPlatform::calculate_lending_earnings(&alice(), XOR, 100);
+            let correct_lending_earnings = calculate_lending_earnings(alice(), XOR, 100);
+
+            assert_eq!(lending_earnings.0, correct_lending_earnings.0);
+            assert_eq!(lending_earnings.1, correct_lending_earnings.1);
+        });
+    }
+
+    #[test]
+    fn calculate_borrowing_interest_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            // Note: We do not use the run_to_block() function as it would then update the last_borrowing_block for each user and thus
+            // give is a 0 when we calculate the borrowing interest via the pallets' calculate_borrowing_interest_and_reward() function.
+
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &alice(),
+                balance!(200)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                DOT,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(100),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                balance!(100)
+            ));
+
+            let borrowing_interest =
+                ApolloPlatform::calculate_borrowing_interest_and_reward(&alice(), XOR, DOT, 100);
+            let correct_borrowing_interest = calculate_borrowing_interest(alice(), XOR, DOT, 100);
+
+            assert_eq!(borrowing_interest.0, correct_borrowing_interest.0);
+            assert_eq!(borrowing_interest.1, correct_borrowing_interest.1);
+        });
+    }
+
+    #[test]
+    fn distribute_protocol_interest_pool_does_not_exist() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                ApolloPlatform::distribute_protocol_interest(XOR, balance!(100)),
+                Error::<Runtime>::PoolDoesNotExist
+            );
+        });
+    }
+
+    #[test]
+    fn distribute_protocol_interest_can_not_transfer_amount_to_developers() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &alice(),
+                balance!(300)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &APOLLO_ASSET_ID,
+                &alice(),
+                &get_pallet_account(),
+                balance!(300)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_err!(
+                ApolloPlatform::distribute_protocol_interest(XOR, balance!(100)),
+                Error::<Runtime>::CanNotTransferAmountToDevelopers
+            );
+        });
+    }
+
+    #[test]
+    fn distribute_protocol_interest_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &alice(),
+                balance!(300)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &APOLLO_ASSET_ID,
+                &alice(),
+                &get_pallet_account(),
+                balance!(300)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &get_pallet_account(),
+                balance!(300)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            // Check balances before distribution of rewards
+            // Pallet
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(300)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(
+                    &APOLLO_ASSET_ID.into(),
+                    &get_pallet_account()
+                )
+                .unwrap(),
+                balance!(300)
+            );
+
+            // Authority
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                    .unwrap(),
+                balance!(0)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(
+                    &APOLLO_ASSET_ID.into(),
+                    &get_authority_account()
+                )
+                .unwrap(),
+                balance!(0)
+            );
+
+            assert_ok!(ApolloPlatform::distribute_protocol_interest(
+                XOR,
+                balance!(100)
+            ));
+
+            // Check balances after distribution of rewards
+            let (_, _, developer_amount) = calculate_reserve_amounts(XOR, balance!(100));
+
+            // Pallet
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(200)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(
+                    &APOLLO_ASSET_ID.into(),
+                    &get_pallet_account()
+                )
+                .unwrap(),
+                balance!(300) - developer_amount
+            );
+
+            // Authority
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                    .unwrap(),
+                developer_amount
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(
+                    &APOLLO_ASSET_ID.into(),
+                    &get_authority_account()
+                )
+                .unwrap(),
+                balance!(0)
+            );
+        });
+    }
+
+    #[test]
+    fn update_rates_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                DOT,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+        });
+    }
 }

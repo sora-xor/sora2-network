@@ -941,7 +941,7 @@ pub mod pallet {
             )
         }
 
-        fn calculate_borrowing_interest_and_reward(
+        pub fn calculate_borrowing_interest_and_reward(
             user: &AccountIdOf<T>,
             asset_id: AssetIdOf<T>,
             collateral_asset: AssetIdOf<T>,
@@ -976,7 +976,7 @@ pub mod pallet {
             )
         }
 
-        fn distribute_protocol_interest(
+        pub fn distribute_protocol_interest(
             asset_id: AssetIdOf<T>,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
