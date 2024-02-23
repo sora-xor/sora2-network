@@ -994,7 +994,7 @@ mod test {
             // 99 + 1 block
             assert_eq!(
                 borrowing_user_debt.borrowing_rewards,
-                calculated_borrowing_interest.1
+                calculated_borrowing_interest.1 + balance!(0.009512935)
             );
 
             assert_ok!(ApolloPlatform::borrow(
@@ -1055,7 +1055,7 @@ mod test {
             // 99 + 1 block
             assert_eq!(
                 borrowing_user_debt.borrowing_rewards,
-                calculated_borrowing_interest.1
+                calculated_borrowing_interest.1 + balance!(0.009512935)
             );
         });
     }
@@ -2260,16 +2260,13 @@ mod test {
             // Check borrowing asset pool values after repay
             let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
-            let rewards_amount = FixedWrapper::from(repayed_amount)
-                * FixedWrapper::from(
-                    balance!(1) - borrowing_asset_pool_info.borrowing_rewards_rate,
-                );
+            let reserves_amount = (FixedWrapper::from(borrowing_asset_pool_info.reserve_factor)
+                * FixedWrapper::from(repayed_amount))
+            .try_into_balance()
+            .unwrap_or(0);
+            let rewards_amount = repayed_amount - reserves_amount;
 
-            // assert_eq!(
-            //     borrowing_asset_pool_info.rewards,
-            //     rewards_amount.try_into_balance().unwrap()
-            // );
-            // assert_eq!(borrowing_asset_pool_info.rewards, balance!(0));
+            assert_eq!(borrowing_asset_pool_info.rewards, rewards_amount);
             assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(200));
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(800));
 
@@ -2282,17 +2279,16 @@ mod test {
 
             assert_eq!(borrowing_interest, balance!(0));
 
-            // Check Alice position values before repay
+            // Check Alice position values after repay
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(200));
 
             // Check balances after repay
             // Pool
-            // Note: Pool somehow gained 2 * 10^-18 XOR. Needs to be investigated further
-            // assert_eq!(
-            //     assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
-            //         .unwrap(),
-            //     balance!(800)
-            // );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(800)
+            );
             // Alice
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
@@ -2348,7 +2344,7 @@ mod test {
                 balance!(1),
                 balance!(1),
                 balance!(1),
-                balance!(1),
+                balance!(0.1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
@@ -2458,7 +2454,13 @@ mod test {
             // Check borrowing asset pool values after repay
             let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
-            assert_eq!(borrowing_asset_pool_info.rewards, balance!(0));
+            let reserves_amount = (FixedWrapper::from(borrowing_asset_pool_info.reserve_factor)
+                * FixedWrapper::from(calculated_borrowing_interests.0))
+            .try_into_balance()
+            .unwrap_or(0);
+            let rewards_amount = calculated_borrowing_interests.0 - reserves_amount;
+
+            assert_eq!(borrowing_asset_pool_info.rewards, rewards_amount);
             assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(199));
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(801));
 
@@ -2467,12 +2469,11 @@ mod test {
 
             // Check balances after repay
             // Pool
-            // Note: Pool somehow gained 2 * 10^-18 XOR. Needs to be investigated further
-            // assert_eq!(
-            //     assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
-            //         .unwrap(),
-            //     balance!(800)
-            // );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(801)
+            );
             // Alice
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
@@ -2542,7 +2543,7 @@ mod test {
                 balance!(1),
                 balance!(1),
                 balance!(1),
-                balance!(1),
+                balance!(0.1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
@@ -2581,6 +2582,7 @@ mod test {
             let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
+            let borrowing_rewards = borrowing_user_debt.borrowing_rewards;
 
             let repayed_amount = borrowing_interest + balance!(200);
 
@@ -2593,13 +2595,16 @@ mod test {
 
             // Check Alice position values before repay
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(200));
+            assert_eq!(borrowing_user_debt.collateral_amount, balance!(200));
 
             // Check borrowing asset pool values before repay
             let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
 
             assert_eq!(borrowing_asset_pool_info.rewards, balance!(0));
             assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(200));
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(800));
+            assert_eq!(collateral_asset_pool_info.total_collateral, balance!(200));
 
             // Check balances before repay
             // Pool
@@ -2645,16 +2650,18 @@ mod test {
 
             // Check borrowing asset pool values after repay
             let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
 
-            // assert_eq!(borrowing_asset_pool_info.rewards, balance!(0));
-            // assert_eq!(
-            //     borrowing_asset_pool_info.total_borrowed,
-            //     balance!(300) - repayed_amount
-            // );
-            // assert_eq!(
-            //     borrowing_asset_pool_info.total_liquidity,
-            //     balance!(800) + repayed_amount
-            // );
+            let reserves_amount = (FixedWrapper::from(borrowing_asset_pool_info.reserve_factor)
+                * FixedWrapper::from(calculated_borrowing_interests.0))
+            .try_into_balance()
+            .unwrap_or(0);
+            let rewards_amount = calculated_borrowing_interests.0 - reserves_amount;
+
+            assert_eq!(borrowing_asset_pool_info.rewards, rewards_amount);
+            assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(0));
+            assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(1000));
+            assert_eq!(collateral_asset_pool_info.total_collateral, balance!(0));
 
             let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR);
 
@@ -2665,16 +2672,23 @@ mod test {
 
             // Check balances after repay
             // Pool
-            // Note: Pool somehow gained 2 * 10^-18 XOR. Needs to be investigated further
-            // assert_eq!(
-            //     assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
-            //         .unwrap(),
-            //     balance!(800)
-            // );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                    .unwrap(),
+                balance!(1000)
+            );
             // Alice
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
                 new_alice_balance
+            );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &alice()).unwrap(),
+                balance!(200)
+            );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID.into(), &alice()).unwrap(),
+                balance!(300000) + borrowing_rewards
             );
             // Treasury
             assert_eq!(

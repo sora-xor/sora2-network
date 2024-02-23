@@ -468,14 +468,23 @@ pub mod pallet {
             let block_number = <frame_system::Pallet<T>>::block_number();
             let interests = Self::calculate_lending_earnings(&user, collateral_asset, block_number);
             user_lending_info.lending_interest += interests.0 + interests.1;
-            user_lending_info.lending_amount -= collateral_amount;
+            user_lending_info.lending_amount = user_lending_info
+                .lending_amount
+                .checked_sub(collateral_amount)
+                .unwrap_or(0);
             user_lending_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
             <UserLendingInfo<T>>::insert(user.clone(), collateral_asset, user_lending_info);
 
             // Update collateral and borrowing assets pools
-            borrow_pool_info.total_liquidity -= borrowing_amount;
+            borrow_pool_info.total_liquidity = borrow_pool_info
+                .total_liquidity
+                .checked_sub(borrowing_amount)
+                .unwrap_or(0);
             borrow_pool_info.total_borrowed += borrowing_amount;
-            collateral_pool_info.total_liquidity -= collateral_amount;
+            collateral_pool_info.total_liquidity = collateral_pool_info
+                .total_liquidity
+                .checked_sub(collateral_amount)
+                .unwrap_or(0);
             collateral_pool_info.total_collateral += collateral_amount;
 
             <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
@@ -620,7 +629,10 @@ pub mod pallet {
             let block_number = <frame_system::Pallet<T>>::block_number();
             let interests: (u128, u128) =
                 Self::calculate_lending_earnings(&user, withdrawn_asset, block_number);
-            user_info.lending_amount -= withdrawn_amount;
+            user_info.lending_amount = user_info
+                .lending_amount
+                .checked_sub(withdrawn_amount)
+                .unwrap_or(0);
             user_info.lending_interest += interests.0 + interests.1;
             user_info.last_lending_block = block_number;
 
@@ -639,7 +651,10 @@ pub mod pallet {
                 <UserLendingInfo<T>>::remove(user.clone(), withdrawn_asset);
             }
 
-            pool_info.total_liquidity -= withdrawn_amount;
+            pool_info.total_liquidity = pool_info
+                .total_liquidity
+                .checked_sub(withdrawn_amount)
+                .unwrap_or(0);
             <PoolData<T>>::insert(withdrawn_asset, pool_info);
 
             Self::deposit_event(Event::Withdrawn(user, withdrawn_asset, withdrawn_amount));
@@ -679,7 +694,10 @@ pub mod pallet {
 
             if amount_to_repay <= user_info.borrowing_interest {
                 // If user is repaying only part or whole interest
-                user_info.borrowing_interest -= amount_to_repay;
+                user_info.borrowing_interest = user_info
+                    .borrowing_interest
+                    .checked_sub(amount_to_repay)
+                    .unwrap_or(0);
                 borrow_user_info.insert(collateral_asset, user_info);
 
                 Assets::<T>::transfer_from(
@@ -699,9 +717,15 @@ pub mod pallet {
                 // If user is repaying whole interest plus part of the borrowed amount
                 let repaid_amount = user_info.borrowing_interest;
                 let remaining_amount = amount_to_repay - user_info.borrowing_interest;
-                user_info.borrowing_amount -= remaining_amount;
+                user_info.borrowing_amount = user_info
+                    .borrowing_amount
+                    .checked_sub(remaining_amount)
+                    .unwrap_or(0);
                 user_info.borrowing_interest = 0;
-                borrow_pool_info.total_borrowed -= remaining_amount;
+                borrow_pool_info.total_borrowed = borrow_pool_info
+                    .total_borrowed
+                    .checked_sub(remaining_amount)
+                    .unwrap_or(0);
                 borrow_pool_info.total_liquidity += remaining_amount;
                 <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
 
@@ -723,9 +747,15 @@ pub mod pallet {
                     user_info.borrowing_interest + user_info.borrowing_amount;
 
                 // Update pools
-                borrow_pool_info.total_borrowed -= user_info.borrowing_amount;
+                borrow_pool_info.total_borrowed = borrow_pool_info
+                    .total_borrowed
+                    .checked_sub(user_info.borrowing_amount)
+                    .unwrap_or(0);
                 borrow_pool_info.total_liquidity += user_info.borrowing_amount;
-                collateral_pool_info.total_collateral -= user_info.collateral_amount;
+                collateral_pool_info.total_collateral = collateral_pool_info
+                    .total_collateral
+                    .checked_sub(user_info.collateral_amount)
+                    .unwrap_or(0);
 
                 <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
                 <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
@@ -1200,11 +1230,18 @@ pub mod pallet {
                         );
                         let mut collateral_pool_info =
                             PoolData::<T>::get(*collateral_asset).unwrap();
-                        collateral_pool_info.total_collateral -= *collateral_amount;
+                        collateral_pool_info.total_collateral = collateral_pool_info
+                            .total_collateral
+                            .checked_sub(*collateral_amount)
+                            .unwrap_or(0);
                         <PoolData<T>>::insert(*collateral_asset, collateral_pool_info);
                         counter += 1;
                     }
-                    borrow_pool_info.total_borrowed -= total_borrowed;
+                    borrow_pool_info.total_borrowed = borrow_pool_info
+                        .total_borrowed
+                        .checked_sub(total_borrowed)
+                        .unwrap_or(0);
+
                     <PoolData<T>>::insert(asset_id, borrow_pool_info);
                     <UserBorrowingInfo<T>>::remove(user.clone(), asset_id);
                     counter += 2;
