@@ -11,7 +11,9 @@ allfeatures='private-net,wip,ready-to-test'
 
 # build func
 test() {
-    if [[ -n ${buildTag} && (${TAG_NAME} != "null" || ${TAG_NAME} != '') ]]; then
+    echo buildTag is ${buildTag}
+    echo TagName is ${TAG_NAME}
+    if [[ -n ${buildTag} ]] && [[ ${TAG_NAME} != "null" || ${TAG_NAME} != '' ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks"
     elif [[ ${prBranch} = 'master' ]]; then
@@ -36,7 +38,7 @@ build() {
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
         featureList='private-net include-real-files ready-to-test'
-    elif [[ ${TAG_NAME} =~ 'test'* || -n ${buildTag} ]]; then
+    elif [[ ${TAG_NAME} =~ 'test'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
         featureList='include-real-files'
