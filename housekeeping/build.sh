@@ -11,13 +11,11 @@ allfeatures='private-net,wip,ready-to-test'
 
 # build func
 test() {
-    if [[ ${buildTag} != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
-        printf "Tag is %s\n" ${TAG_NAME} ${buildTag}
-        printf "BuildTag is %s\n" ${buildTag}
+    if [[ -n ${buildTag} && (${TAG_NAME} != "null" || ${TAG_NAME} != '') ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks"
     elif [[ ${prBranch} = 'master' ]]; then
-        printf "⚡️ This is $prbranch Running tests and migrations %s\n"
+        printf "⚡️ This is "${prbranch}" Running tests and migrations %s\n"
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
     else
         printf "⚡️ Running Tests for code coverage only\n"
