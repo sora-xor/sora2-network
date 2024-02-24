@@ -13,7 +13,7 @@ allfeatures='private-net,wip,ready-to-test'
 test() {
     echo buildTag is $buildTag
     echo TagName is ${TAG_NAME}
-    [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
+    if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks"
     elif [[ $prBranch = 'master' ]]; then
