@@ -117,6 +117,8 @@ bumpalo = "=3.14.0"
 substrate-build-script-utils = "3"
 
 [dev-dependencies]
+# TODO remove after toolchain is updated
+# newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
 assert_cmd = "=2.0.13"
 tokio = { version = "1.10.1", features = ["macros"] }
 
