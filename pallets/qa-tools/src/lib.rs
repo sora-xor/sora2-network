@@ -100,7 +100,6 @@ pub mod pallet {
         type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
-        type QaToolsWhitelistCapacity: Get<u32>;
         type Symbol: From<<Self as band::Config>::Symbol>
             + From<<Self as xst::Config>::Symbol>
             + Into<<Self as xst::Config>::Symbol>
