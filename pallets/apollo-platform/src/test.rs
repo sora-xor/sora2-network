@@ -1,5 +1,5 @@
 mod test {
-    use crate::mock::*;
+    use crate::{mock::*, PoolInfo};
     use crate::{pallet, Error};
     use codec::Decode;
     use common::prelude::FixedWrapper;
@@ -130,6 +130,53 @@ mod test {
         .unwrap_or(0);
 
         (treasury_reserve, burn_reserve, developer_reserve)
+    }
+
+    fn calculate_rates(pool_info: &PoolInfo) -> (Balance, Balance) {
+        let utilization_rate = (FixedWrapper::from(pool_info.total_borrowed)
+            / FixedWrapper::from(pool_info.total_liquidity))
+        .try_into_balance()
+        .unwrap_or(0);
+
+        let mut profit_lending_rate: u128 = 0;
+        let mut borrowing_rate: u128 = 0;
+
+        if utilization_rate < pool_info.optimal_utilization_rate {
+            // Update lending rate
+            profit_lending_rate = (FixedWrapper::from(pool_info.rewards)
+                / FixedWrapper::from(balance!(5256000)))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            // Update borrowing_rate -> Rt = (R0 + (U / Uopt) * Rslope1) / one_year
+            borrowing_rate = ((FixedWrapper::from(pool_info.base_rate)
+                + (FixedWrapper::from(utilization_rate)
+                    / FixedWrapper::from(pool_info.optimal_utilization_rate))
+                    * FixedWrapper::from(pool_info.slope_rate_1))
+                / FixedWrapper::from(balance!(5256000)))
+            .try_into_balance()
+            .unwrap_or(0);
+        } else {
+            // Update lending rate
+            profit_lending_rate = ((FixedWrapper::from(pool_info.rewards)
+                / FixedWrapper::from(balance!(5256000)))
+                * (FixedWrapper::from(balance!(1)) + FixedWrapper::from(utilization_rate)))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            // Update borrowing_rate -> Rt = (R0 + Rslope1 + ((Ut - Uopt) / (1 - Uopt)) * Rslope2) / one_year
+            borrowing_rate = (FixedWrapper::from(pool_info.base_rate)
+                + FixedWrapper::from(pool_info.slope_rate_1)
+                + ((FixedWrapper::from(utilization_rate)
+                    - FixedWrapper::from(pool_info.optimal_utilization_rate))
+                    / (FixedWrapper::from(balance!(1))
+                        - FixedWrapper::from(pool_info.optimal_utilization_rate)))
+                    * FixedWrapper::from(pool_info.slope_rate_2))
+            .try_into_balance()
+            .unwrap_or(0);
+        }
+
+        return (profit_lending_rate, borrowing_rate);
     }
 
     fn static_set_dex() {
@@ -3263,6 +3310,25 @@ mod test {
     fn update_rates_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
+            static_set_dex();
+            init_exchange();
+
+            run_to_block(1);
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &alice(),
+                balance!(100)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(100)
+            ));
+
             assert_ok!(ApolloPlatform::add_pool(
                 RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
@@ -3280,12 +3346,126 @@ mod test {
                 DOT,
                 balance!(1),
                 balance!(1),
-                balance!(1),
+                balance!(0.4),
                 balance!(1),
                 balance!(1),
                 balance!(1),
                 balance!(1),
             ));
+
+            // Lend assets to collateral pools
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(100)
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(100)
+            ));
+
+            // Borrow assets
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                balance!(50)
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                DOT,
+                balance!(50)
+            ));
+
+            run_to_block(101);
+
+            // Check pool rates before repayment
+            // XOR pool
+            let xor_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            let xor_pool_profit_lending_rate = xor_pool_info.profit_lending_rate;
+            let xor_pool_borrowing_rate = xor_pool_info.borrowing_rate;
+
+            let (xor_pool_current_profit_lending_rate, xor_pool_current_borrowing_rate) =
+                calculate_rates(&xor_pool_info);
+
+            assert_eq!(
+                xor_pool_profit_lending_rate,
+                xor_pool_current_profit_lending_rate
+            );
+            assert_eq!(xor_pool_borrowing_rate, xor_pool_current_borrowing_rate);
+
+            // DOT pool
+            let dot_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
+            let dot_pool_profit_lending_rate = dot_pool_info.profit_lending_rate;
+            let dot_pool_borrowing_rate = xor_pool_info.borrowing_rate;
+
+            let (dot_pool_current_profit_lending_rate, dot_pool_current_borrowing_rate) =
+                calculate_rates(&dot_pool_info);
+
+            assert_eq!(
+                dot_pool_profit_lending_rate,
+                dot_pool_current_profit_lending_rate
+            );
+            assert_eq!(dot_pool_borrowing_rate, dot_pool_current_borrowing_rate);
+
+            // Calculate interest for Alice and Bob
+            let alice_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let alice_xor_borrowing_position = alice_user_info.get(&DOT).unwrap();
+            let alice_repay_amount = alice_xor_borrowing_position.borrowing_interest;
+
+            let bob_user_info = pallet::UserBorrowingInfo::<Runtime>::get(bob(), DOT).unwrap();
+            let bob_xor_borrowing_position = bob_user_info.get(&XOR).unwrap();
+            let bob_repay_amount = bob_xor_borrowing_position.borrowing_interest;
+
+            // Repay interest for Alice and Bob
+            assert_ok!(ApolloPlatform::repay(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                alice_repay_amount
+            ));
+
+            assert_ok!(ApolloPlatform::repay(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                DOT,
+                bob_repay_amount
+            ));
+
+            run_to_block(102);
+
+            // Check pool rates after repayment
+            // XOR pool
+            let xor_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            let xor_pool_profit_lending_rate = xor_pool_info.profit_lending_rate;
+            let xor_pool_borrowing_rate = xor_pool_info.borrowing_rate;
+
+            let (xor_pool_current_profit_lending_rate, xor_pool_current_borrowing_rate) =
+                calculate_rates(&xor_pool_info);
+
+            assert_eq!(
+                xor_pool_profit_lending_rate,
+                xor_pool_current_profit_lending_rate
+            );
+            assert_eq!(xor_pool_borrowing_rate, xor_pool_current_borrowing_rate);
+
+            // DOT pool
+            let dot_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
+            let dot_pool_profit_lending_rate = dot_pool_info.profit_lending_rate;
+            let dot_pool_borrowing_rate = xor_pool_info.borrowing_rate;
+
+            let (dot_pool_current_profit_lending_rate, dot_pool_current_borrowing_rate) =
+                calculate_rates(&dot_pool_info);
+
+            assert_eq!(
+                dot_pool_profit_lending_rate,
+                dot_pool_current_profit_lending_rate
+            );
+            assert_eq!(dot_pool_borrowing_rate, dot_pool_current_borrowing_rate);
         });
     }
 }
