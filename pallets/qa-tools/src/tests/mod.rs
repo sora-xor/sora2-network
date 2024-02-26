@@ -37,8 +37,12 @@ mod pool_xyk;
 mod price_tools;
 mod xst;
 
+use assets::AssetIdOf;
+use common::{AssetName, AssetSymbol, Balance};
+use frame_support::assert_ok;
+use frame_support::dispatch::RawOrigin;
 use framenode_runtime::qa_tools;
-use framenode_runtime::Runtime;
+use framenode_runtime::{Runtime, RuntimeEvent};
 
 pub(crate) type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
 pub(crate) type QaToolsPallet = qa_tools::Pallet<Runtime>;
@@ -57,4 +61,31 @@ pub(crate) fn charlie() -> <Runtime as frame_system::Config>::AccountId {
 
 pub(crate) fn dave() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([4u8; 32])
+}
+
+pub(crate) fn register_custom_asset() -> AssetIdOf<Runtime> {
+    assert!(
+        frame_system::Pallet::<Runtime>::block_number() >= 1,
+        "events are not dispatched at block 0"
+    );
+    frame_system::Pallet::<Runtime>::inc_providers(&alice());
+    assert_ok!(assets::Pallet::<Runtime>::register(
+        RawOrigin::Signed(alice()).into(),
+        AssetSymbol(b"BP".to_vec()),
+        AssetName(b"Black Pepper".to_vec()),
+        Balance::from(0u32),
+        true,
+        false,
+        None,
+        None
+    ));
+    let register_event = frame_system::Pallet::<Runtime>::events()
+        .last()
+        .expect("must've produced an event")
+        .event
+        .clone();
+    let RuntimeEvent::Assets(assets::Event::AssetRegistered(asset_id, _account)) = register_event else {
+        panic!("Expected asset register event")
+    };
+    asset_id
 }

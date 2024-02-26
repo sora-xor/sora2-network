@@ -28,8 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use super::alice;
-use super::QaToolsPallet;
+use super::{alice, register_custom_asset, QaToolsPallet};
 use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
 use common::{
@@ -65,7 +64,7 @@ fn should_init_mcbc() {
 }
 
 #[test]
-fn should_init_mcbc_xor() {
+fn should_init_mcbc_base_supply() {
     ext().execute_with(|| {
         use common::AssetInfoProvider;
 
@@ -161,77 +160,84 @@ fn set_and_verify_reference_prices(
 }
 
 fn test_init_single_collateral_reference_price(collateral_asset_id: AssetIdOf<Runtime>) {
-    ext().execute_with(|| {
-        let reference_asset = qa_tools::InputAssetId::<AssetIdOf<Runtime>>::McbcReference;
-        let reference_asset_id = reference_asset.clone().resolve::<Runtime>();
-        assert_err!(
-            initialize_mcbc_collateral::<Runtime>(mcbc_tools::OtherCollateralInput::<
-                AssetIdOf<Runtime>,
-            > {
-                asset: collateral_asset_id,
-                ref_prices: Some(AssetPrices {
-                    buy: balance!(1),
-                    sell: balance!(1),
-                }),
-                reserves: None,
+    let reference_asset = qa_tools::InputAssetId::<AssetIdOf<Runtime>>::McbcReference;
+    let reference_asset_id = reference_asset.clone().resolve::<Runtime>();
+    assert_err!(
+        initialize_mcbc_collateral::<Runtime>(mcbc_tools::OtherCollateralInput::<
+            AssetIdOf<Runtime>,
+        > {
+            asset: collateral_asset_id,
+            ref_prices: Some(AssetPrices {
+                buy: balance!(1),
+                sell: balance!(1),
             }),
-            qa_tools::Error::<Runtime>::ReferenceAssetPriceNotFound
-        );
-        assert_ok!(QaToolsPallet::price_tools_set_asset_price(
-            RuntimeOrigin::root(),
-            AssetPrices {
-                buy: balance!(1),
-                sell: balance!(1),
-            },
-            reference_asset.clone()
-        ));
-        set_and_verify_reference_prices(
-            &reference_asset_id,
-            &collateral_asset_id,
-            AssetPrices {
-                buy: balance!(1),
-                sell: balance!(1),
-            },
-        );
-        set_and_verify_reference_prices(
-            &reference_asset_id,
-            &collateral_asset_id,
-            AssetPrices {
-                buy: balance!(124),
-                sell: balance!(123),
-            },
-        );
-        set_and_verify_reference_prices(
-            &reference_asset_id,
-            &collateral_asset_id,
-            AssetPrices {
-                buy: balance!(0.1),
-                sell: balance!(0.01),
-            },
-        );
-    })
+            reserves: None,
+        }),
+        qa_tools::Error::<Runtime>::ReferenceAssetPriceNotFound
+    );
+    assert_ok!(QaToolsPallet::price_tools_set_asset_price(
+        RuntimeOrigin::root(),
+        AssetPrices {
+            buy: balance!(1),
+            sell: balance!(1),
+        },
+        reference_asset.clone()
+    ));
+    set_and_verify_reference_prices(
+        &reference_asset_id,
+        &collateral_asset_id,
+        AssetPrices {
+            buy: balance!(1),
+            sell: balance!(1),
+        },
+    );
+    set_and_verify_reference_prices(
+        &reference_asset_id,
+        &collateral_asset_id,
+        AssetPrices {
+            buy: balance!(124),
+            sell: balance!(123),
+        },
+    );
+    set_and_verify_reference_prices(
+        &reference_asset_id,
+        &collateral_asset_id,
+        AssetPrices {
+            buy: balance!(0.1),
+            sell: balance!(0.01),
+        },
+    );
 }
 
 #[test]
 fn should_init_val_reference_price() {
-    test_init_single_collateral_reference_price(VAL.into());
+    ext().execute_with(|| {
+        test_init_single_collateral_reference_price(VAL.into());
+    })
 }
 
 #[test]
 fn should_init_eth_reference_price() {
-    test_init_single_collateral_reference_price(ETH.into());
+    ext().execute_with(|| {
+        test_init_single_collateral_reference_price(ETH.into());
+    })
 }
 
 #[test]
 fn should_init_ceres_reference_price() {
-    test_init_single_collateral_reference_price(CERES_ASSET_ID.into());
+    ext().execute_with(|| {
+        test_init_single_collateral_reference_price(CERES_ASSET_ID.into());
+    })
 }
 
-// todo: test with newly created assets
-// #[test]
-// fn should_init_custom_asset_reference_price() {
-//     test_init_single_collateral_reference_price(custom_asset.into());
-// }
+#[test]
+fn should_init_custom_asset_reference_price() {
+    ext().execute_with(|| {
+        frame_system::Pallet::<Runtime>::set_block_number(1);
+        let custom_asset_id = register_custom_asset();
+        test_init_single_collateral_reference_price(custom_asset_id);
+    })
+}
 
 fn set_and_verify_tbcd_reference_prices(
     reference_asset_id: &AssetIdOf<Runtime>,
@@ -370,7 +376,11 @@ fn should_init_collateral_reserves() {
         test_init_single_collateral_reserves(VAL.into());
         test_init_single_collateral_reserves(ETH.into());
         test_init_single_collateral_reserves(CERES_ASSET_ID.into());
-        // todo: test with newly created assets
+
+        // new asset
+        frame_system::Pallet::<Runtime>::set_block_number(1);
+        let custom_asset_id = register_custom_asset();
+        test_init_single_collateral_reference_price(custom_asset_id);
     })
 }
 
