@@ -33,7 +33,7 @@ use crate::{pallet_tools, Error};
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::FixedWrapper;
-use common::{AssetInfoProvider, Balance, TBCD};
+use common::{AssetInfoProvider, Balance, DEXId, TradingPairSourceManager, TBCD};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::Get;
@@ -96,15 +96,21 @@ fn set_reserves<T: Config>(asset: &AssetIdOf<T>, target_reserves: Balance) -> Di
 fn initialize_single_collateral_unchecked<T: Config>(
     input: OtherCollateralInput<T::AssetId>,
 ) -> Result<Option<AssetPrices>, DispatchError> {
+    let base_asset = T::GetBaseAssetId::get();
     let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
 
     // todo: register TP if not exist
-    // TradingPair::register(
-    //     RuntimeOrigin::signed(alice()),
-    //     DEXId::Polkaswap.into(),
-    //     XOR,
-    //     VAL,
-    // )
+    if !<T as Config>::TradingPairSourceManager::is_trading_pair_enabled(
+        &DEXId::Polkaswap.into(),
+        &base_asset,
+        &input.asset,
+    )? {
+        <T as Config>::TradingPairSourceManager::register_pair(
+            DEXId::Polkaswap.into(),
+            base_asset,
+            input.asset,
+        )?;
+    }
     // .expect("Failed to register trading pair.");
     // TradingPair::register(
     //     RuntimeOrigin::signed(alice()),
@@ -114,16 +120,13 @@ fn initialize_single_collateral_unchecked<T: Config>(
     // )
     // .expect("Failed to register trading pair.");
 
-    // todo: initialize pool if not already
-    // MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
-
-    // todo: register account if not present???
-    // let bonding_curve_tech_account_id = TechAccountId::Pure(
-    //     DEXId::Polkaswap,
-    //     TechPurpose::Identifier(b"bonding_curve_tech_account_id".to_vec()),
-    // );
-    // Technical::register_tech_account_id(bonding_curve_tech_account_id.clone())?;
-    // MBCPool::set_reserves_account_id(bonding_curve_tech_account_id.clone())?;
+    if !multicollateral_bonding_curve_pool::EnabledTargets::<T>::get().contains(&input.asset) {
+        multicollateral_bonding_curve_pool::Pallet::<T>::initialize_pool_unchecked(
+            input.asset,
+            false,
+        )
+        .expect("Failed to initialize pool");
+    }
 
     let actual_ref_prices = if let Some(p) = input.ref_prices {
         Some(pallet_tools::price_tools::setup_reference_prices::<T>(
@@ -134,20 +137,6 @@ fn initialize_single_collateral_unchecked<T: Config>(
     } else {
         None
     };
-    // initialize reserves
-
-    // let pool_reference_amount = reserve_amount_expected * ratio;
-    // let pool_reference_amount = pool_reference_amount
-    //     .try_into_balance()
-    //     .map_err(|_| Error::<T>::ArithmeticError)?;
-    // let pool_val_amount = <T as Config>::LiquidityProxy::quote(
-    //     DEXId::Polkaswap.into(),
-    //     &reference_asset,
-    //     &input.asset,
-    //     QuoteAmount::with_desired_input(pool_reference_amount),
-    //     LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-    //     true,
-    // )?;
 
     if let Some(target_reserves) = input.reserves {
         set_reserves::<T>(&input.asset, target_reserves)?;
