@@ -33,10 +33,10 @@
 
 mod mcbc;
 mod order_book;
+mod permissions;
 mod pool_xyk;
 mod price_tools;
 mod xst;
-mod permissions;
 
 use assets::AssetIdOf;
 use common::{AssetName, AssetSymbol, Balance};
