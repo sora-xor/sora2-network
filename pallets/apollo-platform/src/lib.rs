@@ -1132,7 +1132,8 @@ pub mod pallet {
 
             for (asset_id, mut pool_info) in PoolData::<T>::iter() {
                 let utilization_rate = (FixedWrapper::from(pool_info.total_borrowed)
-                    / FixedWrapper::from(pool_info.total_liquidity))
+                    / (FixedWrapper::from(pool_info.total_borrowed)
+                        + FixedWrapper::from(pool_info.total_liquidity)))
                 .try_into_balance()
                 .unwrap_or(0);
 
@@ -1160,13 +1161,14 @@ pub mod pallet {
                     .unwrap_or(0);
 
                     // Update borrowing_rate -> Rt = (R0 + Rslope1 + ((Ut - Uopt) / (1 - Uopt)) * Rslope2) / one_year
-                    pool_info.borrowing_rate = (FixedWrapper::from(pool_info.base_rate)
+                    pool_info.borrowing_rate = ((FixedWrapper::from(pool_info.base_rate)
                         + FixedWrapper::from(pool_info.slope_rate_1)
                         + ((FixedWrapper::from(utilization_rate)
                             - FixedWrapper::from(pool_info.optimal_utilization_rate))
                             / (FixedWrapper::from(balance!(1))
                                 - FixedWrapper::from(pool_info.optimal_utilization_rate)))
                             * FixedWrapper::from(pool_info.slope_rate_2))
+                        / FixedWrapper::from(balance!(5256000)))
                     .try_into_balance()
                     .unwrap_or(0);
                 }

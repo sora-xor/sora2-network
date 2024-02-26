@@ -4,6 +4,7 @@ mod test {
     use codec::Decode;
     use common::prelude::FixedWrapper;
     use common::APOLLO_ASSET_ID;
+    use common::CERES_ASSET_ID;
     use common::{
         balance, AssetInfoProvider, Balance, DEXId, DEXId::Polkaswap, DAI, DOT, KSM, XOR,
     };
@@ -134,7 +135,8 @@ mod test {
 
     fn calculate_rates(pool_info: &PoolInfo) -> (Balance, Balance) {
         let utilization_rate = (FixedWrapper::from(pool_info.total_borrowed)
-            / FixedWrapper::from(pool_info.total_liquidity))
+            / (FixedWrapper::from(pool_info.total_borrowed)
+                + FixedWrapper::from(pool_info.total_liquidity)))
         .try_into_balance()
         .unwrap_or(0);
 
@@ -165,13 +167,14 @@ mod test {
             .unwrap_or(0);
 
             // Update borrowing_rate -> Rt = (R0 + Rslope1 + ((Ut - Uopt) / (1 - Uopt)) * Rslope2) / one_year
-            borrowing_rate = (FixedWrapper::from(pool_info.base_rate)
+            borrowing_rate = ((FixedWrapper::from(pool_info.base_rate)
                 + FixedWrapper::from(pool_info.slope_rate_1)
                 + ((FixedWrapper::from(utilization_rate)
                     - FixedWrapper::from(pool_info.optimal_utilization_rate))
                     / (FixedWrapper::from(balance!(1))
                         - FixedWrapper::from(pool_info.optimal_utilization_rate)))
                     * FixedWrapper::from(pool_info.slope_rate_2))
+                / FixedWrapper::from(balance!(5256000)))
             .try_into_balance()
             .unwrap_or(0);
         }
@@ -261,6 +264,13 @@ mod test {
             &alice(),
             &exchange_account(),
             balance!(100000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &CERES_ASSET_ID,
+            &alice(),
+            &exchange_account(),
+            balance!(1000)
         ));
     }
 
@@ -3161,18 +3171,13 @@ mod test {
     fn distribute_protocol_interest_can_not_transfer_amount_to_developers() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
+            init_exchange();
+
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
                 &alice(),
-                &alice(),
-                balance!(300)
-            ));
-
-            assert_ok!(assets::Pallet::<Runtime>::mint_to(
-                &APOLLO_ASSET_ID,
-                &alice(),
                 &get_pallet_account(),
-                balance!(300)
+                balance!(10)
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
@@ -3198,19 +3203,7 @@ mod test {
     fn distribute_protocol_interest_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert_ok!(assets::Pallet::<Runtime>::mint_to(
-                &XOR,
-                &alice(),
-                &alice(),
-                balance!(300)
-            ));
-
-            assert_ok!(assets::Pallet::<Runtime>::mint_to(
-                &APOLLO_ASSET_ID,
-                &alice(),
-                &get_pallet_account(),
-                balance!(300)
-            ));
+            init_exchange();
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &XOR,
@@ -3228,7 +3221,7 @@ mod test {
                 balance!(1),
                 balance!(1),
                 balance!(1),
-                balance!(1),
+                balance!(0.1),
             ));
 
             // Check balances before distribution of rewards
@@ -3245,22 +3238,6 @@ mod test {
                     &get_pallet_account()
                 )
                 .unwrap(),
-                balance!(300)
-            );
-
-            // Authority
-            assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
-                    .unwrap(),
-                balance!(0)
-            );
-
-            assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
-                    &get_authority_account()
-                )
-                .unwrap(),
                 balance!(0)
             );
 
@@ -3269,8 +3246,13 @@ mod test {
                 balance!(100)
             ));
 
+            // Check borrowing asset pool values before repay
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            assert_eq!(borrowing_asset_pool_info.rewards, balance!(90));
+
             // Check balances after distribution of rewards
-            let (_, _, developer_amount) = calculate_reserve_amounts(XOR, balance!(100));
+            let (treasury_reserve, _, developer_amount) =
+                calculate_reserve_amounts(XOR, balance!(100));
 
             // Pallet
             assert_eq!(
@@ -3285,23 +3267,43 @@ mod test {
                     &get_pallet_account()
                 )
                 .unwrap(),
-                balance!(300) - developer_amount
-            );
-
-            // Authority
-            assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
-                    .unwrap(),
-                developer_amount
+                balance!(90)
             );
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
-                    &get_authority_account()
+                    &CERES_ASSET_ID.into(),
+                    &get_pallet_account()
                 )
                 .unwrap(),
                 balance!(0)
+            );
+
+            // Exchange
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(
+                    &CERES_ASSET_ID.into(),
+                    &exchange_account()
+                )
+                .unwrap(),
+                balance!(998)
+            );
+
+            // Treasury
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(
+                    &APOLLO_ASSET_ID.into(),
+                    &get_treasury_account()
+                )
+                .unwrap(),
+                treasury_reserve
+            );
+
+            // Developer / Authority
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                    .unwrap(),
+                developer_amount
             );
         });
     }
@@ -3338,7 +3340,7 @@ mod test {
                 balance!(1),
                 balance!(1),
                 balance!(1),
-                balance!(1),
+                balance!(0.1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
@@ -3350,7 +3352,7 @@ mod test {
                 balance!(1),
                 balance!(1),
                 balance!(1),
-                balance!(1),
+                balance!(0.1),
             ));
 
             // Lend assets to collateral pools
@@ -3371,17 +3373,17 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(50)
+                balance!(40)
             ));
 
             assert_ok!(ApolloPlatform::borrow(
                 RuntimeOrigin::signed(bob()),
                 XOR,
                 DOT,
-                balance!(50)
+                balance!(40)
             ));
 
-            run_to_block(101);
+            run_to_block(3);
 
             // Check pool rates before repayment
             // XOR pool
@@ -3401,7 +3403,7 @@ mod test {
             // DOT pool
             let dot_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
             let dot_pool_profit_lending_rate = dot_pool_info.profit_lending_rate;
-            let dot_pool_borrowing_rate = xor_pool_info.borrowing_rate;
+            let dot_pool_borrowing_rate = dot_pool_info.borrowing_rate;
 
             let (dot_pool_current_profit_lending_rate, dot_pool_current_borrowing_rate) =
                 calculate_rates(&dot_pool_info);
@@ -3436,7 +3438,7 @@ mod test {
                 bob_repay_amount
             ));
 
-            run_to_block(102);
+            run_to_block(4);
 
             // Check pool rates after repayment
             // XOR pool
@@ -3456,7 +3458,7 @@ mod test {
             // DOT pool
             let dot_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
             let dot_pool_profit_lending_rate = dot_pool_info.profit_lending_rate;
-            let dot_pool_borrowing_rate = xor_pool_info.borrowing_rate;
+            let dot_pool_borrowing_rate = dot_pool_info.borrowing_rate;
 
             let (dot_pool_current_profit_lending_rate, dot_pool_current_borrowing_rate) =
                 calculate_rates(&dot_pool_info);

@@ -7,7 +7,7 @@ use {
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
         DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait, PriceToolsPallet,
-        PriceVariant, APOLLO_ASSET_ID, DAI, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+        PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
     },
     currencies::BasicCurrencyAdapter,
     frame_support::{
@@ -441,7 +441,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             amount.amount(),
         );
 
-        // Transfer to exchange account (output asset)
+        // Transfer from exchange account (output asset)
         let _ = Assets::transfer(
             RawOrigin::Signed(exchange_account().clone()).into(),
             *output_asset_id,
@@ -548,6 +548,17 @@ impl Default for ExtBuilder {
                     alice(),
                     AssetSymbol(b"KSM".to_vec()),
                     AssetName(b"Kusama".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    CERES_ASSET_ID,
+                    alice(),
+                    AssetSymbol(b"CERES".to_vec()),
+                    AssetName(b"Ceres".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
