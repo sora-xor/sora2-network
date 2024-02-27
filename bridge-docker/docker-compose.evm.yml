@@ -142,7 +142,7 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - DATABASE_URL=${DATABASE_URL_PGWEB}
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       - postgres
     networks:
@@ -168,7 +168,7 @@ services:
         ETHEREUM_JSONRPC_VARIANT: 'geth'
         BLOCK_TRANSFORMER: 'base'
         ETHEREUM_JSONRPC_HTTP_URL: http://bridge-geth:8545/
-        DATABASE_URL: ${DATABASE_URL_BLOCKSCOUT}
+        DATABASE_URL: ${DATABASE_URL}
         ECTO_USE_SSL: 'false'
         SECRET_KEY_BASE: ${SECRET_KEY_BASE}
     ports:
