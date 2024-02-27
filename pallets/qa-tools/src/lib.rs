@@ -391,7 +391,16 @@ pub mod pallet {
                 pallet_tools::mcbc::initialize_base_supply::<T>(base_supply)?;
             }
 
+            // handle tbcd collateral first as it may initialize reference asset xor prices
+            // (initialization of all collateral is likely dependant on these prices)
             let mut collateral_ref_prices = vec![];
+            if let Some(tbcd_collateral) = tbcd_collateral {
+                let actual_ref_prices =
+                    pallet_tools::mcbc::initialize_tbcd_collateral::<T>(tbcd_collateral)?;
+                if let Some(actual_ref_prices) = actual_ref_prices {
+                    collateral_ref_prices.push((common::TBCD.into(), actual_ref_prices));
+                }
+            }
             for collateral_input in other_collaterals {
                 let collateral_asset_id = collateral_input.asset.clone();
                 let actual_ref_prices =
@@ -399,13 +408,6 @@ pub mod pallet {
                 if let Some(actual_ref_prices) = actual_ref_prices {
                     Self::deposit_event(Event::<T>::OrderBooksFilled);
                     collateral_ref_prices.push((collateral_asset_id, actual_ref_prices))
-                }
-            }
-            if let Some(tbcd_collateral) = tbcd_collateral {
-                let actual_ref_prices =
-                    pallet_tools::mcbc::initialize_tbcd_collateral::<T>(tbcd_collateral)?;
-                if let Some(actual_ref_prices) = actual_ref_prices {
-                    collateral_ref_prices.push((common::TBCD.into(), actual_ref_prices));
                 }
             }
             Self::deposit_event(Event::<T>::McbcInitialized {

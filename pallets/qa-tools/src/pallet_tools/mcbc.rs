@@ -63,7 +63,7 @@ pub struct TbcdCollateralInput {
     pub reserves: Option<Balance>,
     /// Price of XOR in terms of reference asset.
     /// For TBCD, the buy function is `(XOR price in reference asset) + 1`
-    pub xor_ref_prices: Option<AssetPrices>,
+    pub ref_xor_prices: Option<AssetPrices>,
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
@@ -99,7 +99,6 @@ fn initialize_single_collateral_unchecked<T: Config>(
     let base_asset = T::GetBaseAssetId::get();
     let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
 
-    // todo: register TP if not exist
     if !<T as Config>::TradingPairSourceManager::is_trading_pair_enabled(
         &DEXId::Polkaswap.into(),
         &base_asset,
@@ -111,14 +110,6 @@ fn initialize_single_collateral_unchecked<T: Config>(
             input.asset,
         )?;
     }
-    // .expect("Failed to register trading pair.");
-    // TradingPair::register(
-    //     RuntimeOrigin::signed(alice()),
-    //     DEXId::Polkaswap.into(),
-    //     XOR,
-    //     XSTUSD,
-    // )
-    // .expect("Failed to register trading pair.");
 
     if !multicollateral_bonding_curve_pool::EnabledTargets::<T>::get().contains(&input.asset) {
         multicollateral_bonding_curve_pool::Pallet::<T>::initialize_pool_unchecked(
@@ -163,19 +154,31 @@ pub fn initialize_single_collateral<T: Config>(
     initialize_single_collateral_unchecked::<T>(input)
 }
 
+// todo: add test for case in `usage note`
 /// Initialize TBCD collateral asset - a special case in MCBC pallet.
 /// In addition, it sets up XOR reference price, since it also affects the results.
 ///
 /// For other parameters see [`initialize_single_collateral`].
+///
+/// ## Usage note
+/// TBCD should be initialized before other collaterals.
+///
+/// An added parameter for TBCD is `ref_xor_prices` (price tools price of reference asset in XOR).
+/// Values calculated for initialization of other collaterals are calculated based on this value.
+/// Thus, updating the reference asset price actually affects `quote`/`exchange` of other
+/// collaterals, and the price should be set before other initializations.
+///
+/// The extrinsic call does this in correct order, so this nuance has to be noted only when using
+/// the inner functions directly.
 ///
 /// ## Return
 /// See [`initialize_single_collateral`].
 pub fn initialize_tbcd_collateral<T: Config>(
     input: TbcdCollateralInput,
 ) -> Result<Option<AssetPrices>, DispatchError> {
-    if let Some(xor_ref_prices) = input.xor_ref_prices {
+    if let Some(ref_xor_prices) = input.ref_xor_prices {
         let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
-        pallet_tools::price_tools::set_xor_prices::<T>(&reference_asset, xor_ref_prices)?;
+        pallet_tools::price_tools::set_xor_prices::<T>(&reference_asset, ref_xor_prices)?;
     }
 
     initialize_single_collateral_unchecked::<T>(OtherCollateralInput {

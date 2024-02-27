@@ -232,14 +232,14 @@ fn set_and_verify_tbcd_reference_prices(
                 sell: balance!(1),
             }),
             reserves: None,
-            xor_ref_prices: None,
+            ref_xor_prices: None,
         }
     ));
     let actual_ref_prices =
         initialize_mcbc_tbcd_collateral::<Runtime>(mcbc_tools::TbcdCollateralInput {
             ref_prices: Some(reference_prices.clone()),
             reserves: None,
-            xor_ref_prices: None,
+            ref_xor_prices: None,
         })
         .unwrap()
         .expect("Provided `ref_prices`, should be `Some`");
@@ -276,7 +276,7 @@ fn should_init_tbcd_reference_price() {
                     sell: balance!(1),
                 }),
                 reserves: None,
-                xor_ref_prices: None,
+                ref_xor_prices: None,
             }),
             qa_tools::Error::<Runtime>::ReferenceAssetPriceNotFound
         );
@@ -368,7 +368,7 @@ fn set_and_verify_tbcd_reserves(target_reserves: Balance) {
     let input = mcbc_tools::TbcdCollateralInput {
         ref_prices: None,
         reserves: Some(target_reserves),
-        xor_ref_prices: None,
+        ref_xor_prices: None,
     };
 
     assert_ok!(initialize_mcbc_tbcd_collateral::<Runtime>(input));
@@ -401,11 +401,11 @@ fn should_init_tbcd_reserves() {
     })
 }
 
-fn set_and_verify_tbcd_xor_ref_prices(prices: AssetPrices) {
+fn set_and_verify_tbcd_ref_xor_prices(prices: AssetPrices) {
     let input = mcbc_tools::TbcdCollateralInput {
         ref_prices: None,
         reserves: None,
-        xor_ref_prices: Some(prices.clone()),
+        ref_xor_prices: Some(prices.clone()),
     };
     let reference_asset = qa_tools::InputAssetId::<AssetIdOf<Runtime>>::McbcReference;
     let reference_asset_id = reference_asset.clone().resolve::<Runtime>();
@@ -444,15 +444,15 @@ fn should_init_tbcd_ref_prices() {
             initialize_mcbc_collateral::<Runtime>(input),
             qa_tools::Error::<Runtime>::IncorrectCollateralAsset
         );
-        set_and_verify_tbcd_xor_ref_prices(AssetPrices {
+        set_and_verify_tbcd_ref_xor_prices(AssetPrices {
             buy: balance!(1),
             sell: balance!(1),
         });
-        set_and_verify_tbcd_xor_ref_prices(AssetPrices {
+        set_and_verify_tbcd_ref_xor_prices(AssetPrices {
             buy: balance!(124),
             sell: balance!(123),
         });
-        set_and_verify_tbcd_xor_ref_prices(AssetPrices {
+        set_and_verify_tbcd_ref_xor_prices(AssetPrices {
             buy: balance!(0.1),
             sell: balance!(0.01),
         });
@@ -488,19 +488,15 @@ fn test_quote(collateral_asset_id: AssetIdOf<Runtime>) {
         sell: balance!(1),
     };
     let tbcd_reserves = balance!(1000000);
-    let xor_reference_prices = AssetPrices {
+    let ref_xor_prices = AssetPrices {
         buy: balance!(1),
         sell: balance!(1),
     };
-    let reference_xor_prices = AssetPrices {
-        buy: balance!(1),
-        sell: balance!(1),
-    };
-    assert_ok!(QaToolsPallet::price_tools_set_asset_price(
-        RuntimeOrigin::root(),
-        reference_xor_prices.clone(),
-        reference_asset.clone()
-    ));
+    // assert_ok!(QaToolsPallet::price_tools_set_asset_price(
+    //     RuntimeOrigin::root(),
+    //     reference_xor_prices.clone(),
+    //     reference_asset.clone()
+    // ));
     assert_ok!(qa_tools::Pallet::<Runtime>::mcbc_initialize(
         RawOrigin::Root.into(),
         Some(mcbc_tools::BaseSupply {
@@ -545,7 +541,7 @@ fn test_quote(collateral_asset_id: AssetIdOf<Runtime>) {
                 &reference_asset_id,
                 PriceVariant::Buy
             ),
-            Ok(xor_reference_prices.buy)
+            Ok(ref_xor_prices.buy)
         );
         assert_eq!(
             price_tools::Pallet::<Runtime>::get_average_price(
@@ -553,7 +549,7 @@ fn test_quote(collateral_asset_id: AssetIdOf<Runtime>) {
                 &reference_asset_id,
                 PriceVariant::Sell
             ),
-            Ok(xor_reference_prices.sell)
+            Ok(ref_xor_prices.sell)
         );
     }
 
