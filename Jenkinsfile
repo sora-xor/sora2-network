@@ -1,4 +1,4 @@
-@Library('jenkins-library') _
+@Library('jenkins-library@feature/dops-2942-update_rust_lib') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
