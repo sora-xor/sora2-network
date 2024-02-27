@@ -492,11 +492,6 @@ fn test_quote(collateral_asset_id: AssetIdOf<Runtime>) {
         buy: balance!(1),
         sell: balance!(1),
     };
-    // assert_ok!(QaToolsPallet::price_tools_set_asset_price(
-    //     RuntimeOrigin::root(),
-    //     reference_xor_prices.clone(),
-    //     reference_asset.clone()
-    // ));
     assert_ok!(qa_tools::Pallet::<Runtime>::mcbc_initialize(
         RawOrigin::Root.into(),
         Some(mcbc_tools::BaseSupply {
@@ -579,5 +574,97 @@ fn should_init_correctly_custom() {
     ext().execute_with(|| {
         frame_system::Pallet::<Runtime>::set_block_number(1);
         test_quote(register_custom_asset());
+    })
+}
+
+#[test]
+fn ref_xor_price_update_changes_quote() {
+    ext().execute_with(|| {
+        let collateral_asset_id = VAL.into();
+        assert!(
+            multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
+                &DEXId::Polkaswap.into(),
+                &collateral_asset_id,
+                &XOR.into(),
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(1),
+                },
+                true,
+            )
+            .is_err()
+        );
+
+        let xor_holder = alice();
+        let current_base_supply = assets::Pallet::<Runtime>::total_issuance(&XOR.into()).unwrap();
+        let new_supply = current_base_supply + balance!(10000);
+        let collateral_reference_prices = AssetPrices {
+            buy: balance!(1),
+            sell: balance!(1),
+        };
+        let collateral_reserves = balance!(1000000);
+        let tbcd_reference_prices = AssetPrices {
+            buy: balance!(1),
+            sell: balance!(1),
+        };
+        let tbcd_reserves = balance!(1000000);
+        let ref_xor_prices = AssetPrices {
+            buy: balance!(1),
+            sell: balance!(1),
+        };
+        let ref_xor_prices_2 = AssetPrices {
+            buy: balance!(2),
+            sell: balance!(2),
+        };
+        assert_ok!(qa_tools::Pallet::<Runtime>::mcbc_initialize(
+            RawOrigin::Root.into(),
+            Some(mcbc_tools::BaseSupply {
+                base_supply_collector: xor_holder.clone(),
+                new_base_supply: new_supply,
+            }),
+            vec![mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
+                asset: collateral_asset_id.clone(),
+                ref_prices: Some(collateral_reference_prices.clone()),
+                reserves: Some(collateral_reserves),
+            }],
+            Some(mcbc_tools::TbcdCollateralInput {
+                ref_prices: Some(tbcd_reference_prices.clone()),
+                reserves: Some(tbcd_reserves),
+                ref_xor_prices: Some(ref_xor_prices.clone()),
+            }),
+        ));
+        let (quote_result, _) = multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
+            &DEXId::Polkaswap.into(),
+            &XOR.into(),
+            &collateral_asset_id.into(),
+            QuoteAmount::WithDesiredInput {
+                desired_amount_in: balance!(1),
+            },
+            true,
+        )
+        .unwrap();
+
+        assert_ok!(qa_tools::Pallet::<Runtime>::mcbc_initialize(
+            RawOrigin::Root.into(),
+            None,
+            vec![],
+            Some(mcbc_tools::TbcdCollateralInput {
+                ref_prices: None,
+                reserves: None,
+                ref_xor_prices: Some(ref_xor_prices_2.clone()),
+            }),
+        ));
+
+        let (quote_result_2, _) = multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
+            &DEXId::Polkaswap.into(),
+            &XOR.into(),
+            &collateral_asset_id.into(),
+            QuoteAmount::WithDesiredInput {
+                desired_amount_in: balance!(1),
+            },
+            true,
+        )
+        .unwrap();
+        // the prices differ
+        assert_ne!(quote_result, quote_result_2);
     })
 }
