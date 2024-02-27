@@ -39,7 +39,7 @@ use frame_support::dispatch::RawOrigin;
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
-use framenode_runtime::{Runtime, RuntimeOrigin};
+use framenode_runtime::{Runtime, RuntimeEvent, RuntimeOrigin};
 use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::{
     initialize_mcbc_base_supply, initialize_mcbc_collateral, initialize_mcbc_tbcd_collateral,
 };
@@ -456,6 +456,76 @@ fn should_init_tbcd_ref_prices() {
             buy: balance!(0.1),
             sell: balance!(0.01),
         });
+    })
+}
+
+fn get_all_mcbc_init_events() -> Vec<Vec<(AssetIdOf<Runtime>, AssetPrices)>> {
+    assert!(
+        frame_system::Pallet::<Runtime>::block_number() >= 1,
+        "events are not dispatched at block 0"
+    );
+    let events = frame_system::Pallet::<Runtime>::events()
+        .into_iter()
+        .map(|e| e.event);
+    let mut result = vec![];
+    for e in events {
+        let RuntimeEvent::QaTools(qa_tools_event) = e else {
+            continue
+        };
+        let qa_tools::Event::<Runtime>::McbcInitialized{ collateral_ref_prices } = qa_tools_event else {
+            continue
+        };
+        result.push(collateral_ref_prices)
+    }
+    result
+}
+
+#[test]
+fn should_extrinsic_produce_events() {
+    ext().execute_with(|| {
+        // events are omitted on block 0
+        frame_system::Pallet::<Runtime>::set_block_number(1);
+
+        let collateral_asset_id: AssetIdOf<Runtime> = VAL.into();
+        let xor_holder = alice();
+        let current_base_supply = assets::Pallet::<Runtime>::total_issuance(&XOR.into()).unwrap();
+        let new_supply = current_base_supply + balance!(10000);
+        let collateral_reference_prices = AssetPrices {
+            buy: balance!(1),
+            sell: balance!(1),
+        };
+        let collateral_reserves = balance!(1000000);
+        let tbcd_reference_prices = AssetPrices {
+            buy: balance!(1),
+            sell: balance!(1),
+        };
+        let tbcd_reserves = balance!(1000000);
+        let ref_xor_prices = AssetPrices {
+            buy: balance!(1),
+            sell: balance!(1),
+        };
+        assert_ok!(qa_tools::Pallet::<Runtime>::mcbc_initialize(
+            RawOrigin::Root.into(),
+            Some(mcbc_tools::BaseSupply {
+                base_supply_collector: xor_holder.clone(),
+                new_base_supply: new_supply,
+            }),
+            vec![mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
+                asset: collateral_asset_id.clone(),
+                ref_prices: Some(collateral_reference_prices.clone()),
+                reserves: Some(collateral_reserves),
+            }],
+            Some(mcbc_tools::TbcdCollateralInput {
+                ref_prices: Some(tbcd_reference_prices.clone()),
+                reserves: Some(tbcd_reserves),
+                ref_xor_prices: Some(ref_xor_prices.clone()),
+            }),
+        ));
+        let events = get_all_mcbc_init_events();
+        // one init call
+        assert_eq!(events.len(), 1);
+        // 2 collaterals initialized in the call
+        assert_eq!(events[0].len(), 2);
     })
 }
 

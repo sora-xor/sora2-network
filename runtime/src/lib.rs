@@ -2462,7 +2462,7 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
         #[cfg(feature = "private-net")]
-        QATools: qa_tools::{Pallet, Call, Event<T>} = 112,
+        QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
     }
 }
 
