@@ -33,7 +33,7 @@ build() {
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
         featureList='private-net include-real-files ready-to-test'
-    elif [[ ${TAG_NAME} =~ 'test'* || -n ${buildTag} ]]; then
+    elif [[ ${TAG_NAME} =~ 'test'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
         featureList='include-real-files'
