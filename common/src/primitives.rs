@@ -42,6 +42,7 @@ use sp_core::H256;
 use sp_runtime::traits::{Get, Zero};
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::marker::PhantomData;
+use sp_std::ops::Add;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
 
@@ -1171,6 +1172,34 @@ impl<AmountType> SwapChunk<AmountType> {
     }
 }
 
+impl Zero for SwapChunk<Balance> {
+    fn zero() -> Self {
+        Self::new(Balance::zero(), Balance::zero(), Balance::zero())
+    }
+
+    fn is_zero(&self) -> bool {
+        self.input.is_zero() && self.output.is_zero() && self.fee.is_zero()
+    }
+}
+
+impl Default for SwapChunk<Balance> {
+    fn default() -> Self {
+        Self::zero()
+    }
+}
+
+impl Add for SwapChunk<Balance> {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        Self::new(
+            self.input + other.input,
+            self.output + other.output,
+            self.fee + other.fee,
+        )
+    }
+}
+
 impl SwapChunk<Balance> {
     /// Calculates a price of the chunk
     pub fn price(&self) -> Option<Price> {
@@ -1241,6 +1270,14 @@ impl SwapChunk<Balance> {
             self.fee.saturating_add(rhs.fee),
         )
     }
+
+    pub fn saturating_sub(self, rhs: Self) -> Self {
+        Self::new(
+            self.input.saturating_sub(rhs.input),
+            self.output.saturating_sub(rhs.output),
+            self.fee.saturating_sub(rhs.fee),
+        )
+    }
 }
 
 /// Limitations that could have a liquidity source for the amount of swap
@@ -1279,20 +1316,6 @@ impl SwapLimits<Balance> {
                 return (max, amount.saturating_sub(max));
             }
         }
-        (amount, Balance::zero())
-    }
-
-    /// Aligns the `amount` regarding to the `amount_precision` limit.
-    /// Returns the aligned amount and the remainder
-    pub fn align_precision(&self, amount: Balance) -> (Balance, Balance) {
-        if let Some(precision) = self.amount_precision {
-            if amount % precision != Balance::zero() {
-                let count = amount.saturating_div(precision);
-                let aligned = count.saturating_mul(precision);
-                return (aligned, amount.saturating_sub(aligned));
-            }
-        }
-
         (amount, Balance::zero())
     }
 

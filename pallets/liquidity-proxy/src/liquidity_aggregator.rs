@@ -40,6 +40,7 @@ use {
     itertools::Itertools,
     sp_runtime::traits::Zero,
     sp_std::collections::btree_map::BTreeMap,
+    sp_std::collections::vec_deque::VecDeque,
 };
 
 /// Info with input & output amounts for liquidity source
@@ -134,6 +135,9 @@ where
 
             let discrete_quotation = self.liquidity_quotations.get_mut(source)?;
             let mut chunk = discrete_quotation.chunks.pop_front()?;
+            let origin_chunk = chunk.clone();
+
+            let total = Self::sum_chunks(selected.entry(source.clone()).or_default());
 
             // modify chunk if needed
             let remaining_delta = match self.variant {
@@ -142,16 +146,13 @@ where
                         chunk = chunk.rescale_by_input(remaining_amount)?;
                     }
 
-                    let (input, remainder) = discrete_quotation.limits.align_max(chunk.input);
+                    let (max_input, remainder) = discrete_quotation
+                        .limits
+                        .align_max(total.input.checked_add(chunk.input)?);
                     if !remainder.is_zero() {
                         // max amount exceeded
-                        chunk = chunk.rescale_by_input(input)?;
+                        chunk = chunk.rescale_by_input(max_input.checked_sub(total.input)?)?;
                         locked_sources.push(source.clone());
-                    }
-
-                    let (input, remainder) = discrete_quotation.limits.align_precision(chunk.input);
-                    if !remainder.is_zero() {
-                        chunk = chunk.rescale_by_input(input)?;
                     }
 
                     chunk.input
@@ -161,68 +162,109 @@ where
                         chunk = chunk.rescale_by_output(remaining_amount)?;
                     }
 
-                    let (output, remainder) = discrete_quotation.limits.align_max(chunk.output);
+                    let (max_output, remainder) = discrete_quotation
+                        .limits
+                        .align_max(total.output.checked_add(chunk.output)?);
                     if !remainder.is_zero() {
                         // max amount exceeded
-                        chunk = chunk.rescale_by_output(output)?;
+                        chunk = chunk.rescale_by_output(max_output.checked_sub(total.output)?)?;
                         locked_sources.push(source.clone());
-                    }
-
-                    let (output, remainder) =
-                        discrete_quotation.limits.align_precision(chunk.output);
-                    if !remainder.is_zero() {
-                        chunk = chunk.rescale_by_output(output)?;
                     }
 
                     chunk.output
                 }
             };
 
+            if origin_chunk != chunk {
+                // push remains of the chunk back
+                discrete_quotation
+                    .chunks
+                    .push_front(origin_chunk.saturating_sub(chunk));
+            }
+
             selected
                 .entry(source.clone())
-                .and_modify(|total: &mut SwapChunk<Balance>| {
-                    *total = total.saturating_add(chunk);
-                })
-                .or_insert(chunk);
+                .and_modify(|chunks: &mut VecDeque<SwapChunk<Balance>>| chunks.push_back(chunk))
+                .or_insert(vec![chunk].into());
             remaining_amount = remaining_amount.checked_sub(remaining_delta)?;
 
             if remaining_amount.is_zero() {
                 let mut to_delete = Vec::new();
-                for (source, total) in &mut selected {
+                for (source, chunks) in &mut selected {
+                    let total = Self::sum_chunks(chunks);
+                    let discrete_quotation = self.liquidity_quotations.get_mut(source)?;
                     match self.variant {
                         SwapVariant::WithDesiredInput => {
-                            let (input, remainder) = self
-                                .liquidity_quotations
-                                .get(source)?
-                                .limits
-                                .align(total.input);
+                            let (input, mut remainder) =
+                                discrete_quotation.limits.align(total.input);
                             if !remainder.is_zero() {
                                 remaining_amount = remaining_amount.checked_add(remainder)?;
+                                locked_sources.push(source.clone());
 
                                 if input.is_zero() {
                                     // liquidity is not enough even for the min amount
                                     to_delete.push(source.clone());
-                                    locked_sources.push(source.clone());
+
+                                    for chunk in chunks.iter().rev() {
+                                        discrete_quotation.chunks.push_front(*chunk);
+                                    }
                                 } else {
-                                    *total = total.rescale_by_input(input)?;
+                                    while remainder > Balance::zero() {
+                                        let Some(chunk) = chunks.pop_back() else {
+                                            to_delete.push(source.clone());
+                                            break;
+                                        };
+                                        if chunk.input <= remainder {
+                                            remainder = remainder.checked_sub(chunk.input)?;
+                                            discrete_quotation.chunks.push_front(chunk);
+                                        } else {
+                                            let rescaled_chunk = chunk.rescale_by_input(
+                                                chunk.input.checked_sub(remainder)?,
+                                            )?;
+                                            chunks.push_back(rescaled_chunk);
+                                            discrete_quotation
+                                                .chunks
+                                                .push_front(chunk.saturating_sub(rescaled_chunk));
+                                            remainder = Balance::zero();
+                                        }
+                                    }
                                 }
                             }
                         }
                         SwapVariant::WithDesiredOutput => {
-                            let (output, remainder) = self
-                                .liquidity_quotations
-                                .get(source)?
-                                .limits
-                                .align(total.output);
+                            let (output, mut remainder) =
+                                discrete_quotation.limits.align(total.output);
                             if !remainder.is_zero() {
                                 remaining_amount = remaining_amount.checked_add(remainder)?;
+                                locked_sources.push(source.clone());
 
                                 if output.is_zero() {
                                     // liquidity is not enough even for the min amount
                                     to_delete.push(source.clone());
-                                    locked_sources.push(source.clone());
+
+                                    for chunk in chunks.iter().rev() {
+                                        discrete_quotation.chunks.push_front(*chunk);
+                                    }
                                 } else {
-                                    *total = total.rescale_by_output(output)?;
+                                    while remainder > Balance::zero() {
+                                        let Some(chunk) = chunks.pop_back() else {
+                                            to_delete.push(source.clone());
+                                            break;
+                                        };
+                                        if chunk.output <= remainder {
+                                            remainder = remainder.checked_sub(chunk.output)?;
+                                            discrete_quotation.chunks.push_front(chunk);
+                                        } else {
+                                            let rescaled_chunk = chunk.rescale_by_output(
+                                                chunk.output.checked_sub(remainder)?,
+                                            )?;
+                                            chunks.push_back(rescaled_chunk);
+                                            discrete_quotation
+                                                .chunks
+                                                .push_front(chunk.saturating_sub(rescaled_chunk));
+                                            remainder = Balance::zero();
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -237,7 +279,9 @@ where
         let mut result_amount = Balance::zero();
         let mut fee = Balance::zero();
 
-        for (source, total) in &selected {
+        for (source, chunks) in &selected {
+            let total = Self::sum_chunks(chunks);
+
             swap_info.insert(source.clone(), (total.input, total.output));
 
             let (desired_part, result_part) = match self.variant {
@@ -293,6 +337,14 @@ where
             }
         }
         candidates
+    }
+
+    fn sum_chunks(chunks: &VecDeque<SwapChunk<Balance>>) -> SwapChunk<Balance> {
+        chunks
+            .iter()
+            .fold(SwapChunk::<Balance>::zero(), |acc, &next| {
+                acc.saturating_add(next)
+            })
     }
 }
 
@@ -499,6 +551,312 @@ mod tests {
                     Some(balance!(1)),
                     Some(balance!(1000)),
                     Some(balance!(0.00001)),
+                ),
+            },
+        );
+
+        aggregator
+    }
+
+    fn get_liquidity_aggregator_with_desired_input_and_max_amount_limits(
+    ) -> LiquidityAggregator<LiquiditySourceType> {
+        let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
+
+        aggregator.add_source(
+            LiquiditySourceType::XYKPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(10), balance!(90), balance!(0.9)),
+                    SwapChunk::new(balance!(10), balance!(80), balance!(0.8)),
+                    SwapChunk::new(balance!(10), balance!(70), balance!(0.7)),
+                    SwapChunk::new(balance!(10), balance!(60), balance!(0.6)),
+                ]),
+                limits: Default::default(),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::XSTPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                ]),
+                limits: SwapLimits::new(None, Some(balance!(15)), None),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::OrderBook,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(12), balance!(144), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(14), balance!(112), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(17)),
+                    Some(balance!(0.00001)),
+                ),
+            },
+        );
+
+        aggregator
+    }
+
+    fn get_liquidity_aggregator_with_desired_output_and_max_amount_limits(
+    ) -> LiquidityAggregator<LiquiditySourceType> {
+        let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
+
+        aggregator.add_source(
+            LiquiditySourceType::XYKPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(11), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(13), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(14), balance!(100), balance!(1)),
+                ]),
+                limits: Default::default(),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::XSTPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                ]),
+                limits: SwapLimits::new(None, Some(balance!(150)), None),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::OrderBook,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(8), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(9), balance!(90), balance!(0)),
+                    SwapChunk::new(balance!(13), balance!(100), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(170)),
+                    Some(balance!(0.00001)),
+                ),
+            },
+        );
+
+        aggregator
+    }
+
+    fn get_liquidity_aggregator_with_desired_input_and_min_amount_limits(
+    ) -> LiquidityAggregator<LiquiditySourceType> {
+        let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
+
+        aggregator.add_source(
+            LiquiditySourceType::XYKPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(10), balance!(90), balance!(0.9)),
+                    SwapChunk::new(balance!(10), balance!(80), balance!(0.8)),
+                    SwapChunk::new(balance!(10), balance!(70), balance!(0.7)),
+                    SwapChunk::new(balance!(10), balance!(60), balance!(0.6)),
+                ]),
+                limits: Default::default(),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::XSTPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                ]),
+                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::OrderBook,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(12), balance!(144), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(14), balance!(112), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(21)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.00001)),
+                ),
+            },
+        );
+
+        aggregator
+    }
+
+    fn get_liquidity_aggregator_with_desired_output_and_min_amount_limits(
+    ) -> LiquidityAggregator<LiquiditySourceType> {
+        let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
+
+        aggregator.add_source(
+            LiquiditySourceType::XYKPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(11), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(13), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(14), balance!(100), balance!(1)),
+                ]),
+                limits: Default::default(),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::XSTPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                ]),
+                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::OrderBook,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(8), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(9), balance!(90), balance!(0)),
+                    SwapChunk::new(balance!(10.5), balance!(100), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(200)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.00001)),
+                ),
+            },
+        );
+
+        aggregator
+    }
+
+    fn get_liquidity_aggregator_with_desired_input_and_precision_limits(
+    ) -> LiquidityAggregator<LiquiditySourceType> {
+        let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
+
+        aggregator.add_source(
+            LiquiditySourceType::XYKPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(10), balance!(90), balance!(0.9)),
+                    SwapChunk::new(balance!(10), balance!(80), balance!(0.8)),
+                    SwapChunk::new(balance!(10), balance!(70), balance!(0.7)),
+                    SwapChunk::new(balance!(10), balance!(60), balance!(0.6)),
+                ]),
+                limits: Default::default(),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::XSTPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                ]),
+                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::OrderBook,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(11), balance!(132), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(90), balance!(0)),
+                    SwapChunk::new(balance!(14), balance!(112), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(1000)),
+                    Some(balance!(0.1)),
+                ),
+            },
+        );
+
+        aggregator
+    }
+
+    fn get_liquidity_aggregator_with_desired_output_and_precision_limits(
+    ) -> LiquidityAggregator<LiquiditySourceType> {
+        let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
+
+        aggregator.add_source(
+            LiquiditySourceType::XYKPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(11), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(13), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(14), balance!(100), balance!(1)),
+                ]),
+                limits: Default::default(),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::XSTPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                ]),
+                limits: SwapLimits::new(None, Some(balance!(150)), None),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::OrderBook,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(120), balance!(0)),
+                    SwapChunk::new(balance!(9), balance!(90), balance!(0)),
+                    SwapChunk::new(balance!(13), balance!(100), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(balance!(1)),
+                    Some(balance!(170)),
+                    Some(balance!(0.01)),
                 ),
             },
         );
@@ -1548,6 +1906,604 @@ mod tests {
                     ],
                     balance!(53),
                     0
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_input_and_max_amount_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(10)).unwrap(),
+            (
+                SwapInfo::from([(
+                    LiquiditySourceType::OrderBook,
+                    (balance!(10), balance!(120))
+                )]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_input(balance!(10))
+                    )],
+                    balance!(120),
+                    0
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(20)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(3), balance!(30))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(17), balance!(194))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(3))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(17))
+                        )
+                    ],
+                    balance!(224),
+                    balance!(0.3)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(30)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(13), balance!(127))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(17), balance!(194))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(13))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(17))
+                        )
+                    ],
+                    balance!(321),
+                    balance!(1.27)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(40)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
+                    (LiquiditySourceType::XSTPool, (balance!(3), balance!(25.5))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(17), balance!(194))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_input(balance!(3))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(17))
+                        )
+                    ],
+                    balance!(409.5),
+                    balance!(2.155)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(50)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        (balance!(13), balance!(110.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(17), balance!(194))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_input(balance!(13))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(17))
+                        )
+                    ],
+                    balance!(494.5),
+                    balance!(3.005)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(60)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(28), balance!(254))),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        (balance!(15), balance!(127.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(17), balance!(194))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(28))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_input(balance!(15))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(17))
+                        )
+                    ],
+                    balance!(575.5),
+                    balance!(3.815)
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_output_and_max_amount_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(100)).unwrap(),
+            (
+                SwapInfo::from([(LiquiditySourceType::OrderBook, (balance!(8), balance!(100)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_output(balance!(100))
+                    )],
+                    balance!(8),
+                    0
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(200)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(3), balance!(30))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(30))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(18),
+                    balance!(0.3)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(300)).unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(13.3), balance!(130))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(130))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(28.3),
+                    balance!(1.3)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(400)).unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(24.6), balance!(230))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(230))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(39.6),
+                    balance!(2.3)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(500)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
+                    (LiquiditySourceType::XSTPool, (balance!(3.75), balance!(30))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(300))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_output(balance!(30))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(51.75),
+                    balance!(3.3)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(600)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        (balance!(16.25), balance!(130))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(300))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_output(balance!(130))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(64.25),
+                    balance!(4.3)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(700)).unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(43.4), balance!(380))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        (balance!(18.75), balance!(150))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(380))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_output(balance!(150))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(77.15),
+                    balance!(5.3)
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_input_and_min_amount_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(10)).unwrap(),
+            (
+                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(10), balance!(100)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::XYKPool,
+                        QuoteAmount::with_desired_input(balance!(10))
+                    )],
+                    balance!(100),
+                    balance!(1)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(20)).unwrap(),
+            (
+                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(20), balance!(190)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::XYKPool,
+                        QuoteAmount::with_desired_input(balance!(20))
+                    )],
+                    balance!(190),
+                    balance!(1.9)
+                )
+            )
+        );
+
+        // order-book appears only when it exceeds the min amount
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(30)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(22), balance!(244))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(8))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(22))
+                        )
+                    ],
+                    balance!(324),
+                    balance!(0.8)
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_output_and_min_amount_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(100)).unwrap(),
+            (
+                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(10), balance!(100)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::XYKPool,
+                        QuoteAmount::with_desired_output(balance!(100))
+                    )],
+                    balance!(10),
+                    balance!(1)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(200)).unwrap(),
+            (
+                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(21), balance!(200)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::XYKPool,
+                        QuoteAmount::with_desired_output(balance!(200))
+                    )],
+                    balance!(21),
+                    balance!(2)
+                )
+            )
+        );
+
+        // order-book appears only when it exceeds the min amount
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(300)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(18.05), balance!(200))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(100))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(200))
+                        )
+                    ],
+                    balance!(28.05),
+                    balance!(1)
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_input_and_precision_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_precision_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(10.65)).unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(0.05), balance!(0.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(10.6), balance!(127.2))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(0.05))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(10.6))
+                        )
+                    ],
+                    balance!(127.7),
+                    balance!(0.005)
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_output_and_precision_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_precision_limits();
+        assert_eq!(
+            aggregator
+                .aggregate_swap_outcome(balance!(101.585))
+                .unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(0.0005), balance!(0.005))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(8.465), balance!(101.58)) // todo fix order-book precision
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(0.005))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(101.58))
+                        )
+                    ],
+                    balance!(8.4655),
+                    balance!(0.00005)
                 )
             )
         );
