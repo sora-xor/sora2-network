@@ -7,27 +7,30 @@ wasmReportFile='subwasm_report.json'
 PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
-allfeatures='private-net,wip,ready-to-test,runtime-benchmarks'
+allfeatures='private-net,wip,ready-to-test'
 
 # build func
 test() {
     if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
-        printf "⚡️ Running Tests for code coverage features: $allfeatures %s\n"
+        printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
+        cargo test --release --features "private-net runtime-benchmarks"
+    elif [[ ${prBranch} = 'master' ]]; then
+        printf "⚡️ This is "${prbranch}" Running tests and migrations %s\n"
+        RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
+    else
+        printf "⚡️ Running Tests for code coverage only\n"
         export RUSTFLAGS="-Cinstrument-coverage"
         export SKIP_WASM_BUILD=1
         export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         rm -rf ~/.cargo/.package-cache
         cargo fmt -- --check > /dev/null
         cargo test --features $allfeatures
-    elif [[ ${prBranch} = 'master' ]]; then
-        printf "⚡️ This is "${prbranch}" Running tests and migrations %s\n"
-        RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
     fi
 }
 
 build() {
-    printf "Tag is \n" ${TAG_NAME}
-    printf "BuildTag is \n" ${buildTag}
+    printf "Tag is %s\n" ${TAG_NAME}
+    printf "BuildTag is %s\n" ${buildTag}
     sudoCheckStatus="0"
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
