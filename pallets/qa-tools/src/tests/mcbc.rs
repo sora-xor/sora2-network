@@ -515,6 +515,22 @@ fn test_quote(collateral_asset_id: AssetIdOf<Runtime>) {
             assets::Pallet::<Runtime>::total_issuance(&XOR.into()).unwrap(),
             new_supply
         );
+        assert_eq!(
+            price_tools::Pallet::<Runtime>::get_average_price(
+                &XOR.into(),
+                &reference_asset_id,
+                PriceVariant::Buy
+            ),
+            Ok(ref_xor_prices.buy)
+        );
+        assert_eq!(
+            price_tools::Pallet::<Runtime>::get_average_price(
+                &XOR.into(),
+                &reference_asset_id,
+                PriceVariant::Sell
+            ),
+            Ok(ref_xor_prices.sell)
+        );
         // todo: check other ref prices
 
         let reserves_tech_account_id =
