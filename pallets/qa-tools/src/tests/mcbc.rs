@@ -506,7 +506,7 @@ fn test_quote(collateral_asset_id: AssetIdOf<Runtime>) {
         Some(mcbc_tools::TbcdCollateralInput {
             ref_prices: Some(tbcd_reference_prices.clone()),
             reserves: Some(tbcd_reserves),
-            xor_ref_prices: Some(xor_reference_prices.clone()),
+            ref_xor_prices: Some(ref_xor_prices.clone()),
         }),
     ));
     // check the results of initialization

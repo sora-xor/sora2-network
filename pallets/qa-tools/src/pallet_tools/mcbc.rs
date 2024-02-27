@@ -171,6 +171,9 @@ pub fn initialize_single_collateral<T: Config>(
 /// The extrinsic call does this in correct order, so this nuance has to be noted only when using
 /// the inner functions directly.
 ///
+/// Example of such behaviour can be found in test
+/// [`ref_xor_price_update_changes_quote`](crate::tests::mcbc::ref_xor_price_update_changes_quote)
+///
 /// ## Return
 /// See [`initialize_single_collateral`].
 pub fn initialize_tbcd_collateral<T: Config>(

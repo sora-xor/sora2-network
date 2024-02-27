@@ -28,9 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Tests are not essential for this qa helper pallet,
-//! but they make modify-run iterations during development much quicker
-
 mod mcbc;
 mod order_book;
 mod permissions;
