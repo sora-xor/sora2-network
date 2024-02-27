@@ -53,7 +53,9 @@ pub fn set_xor_prices<T: Config>(
 }
 
 /// Set XOR prices of `asset_id` in `price_tools` given prices of `asset_id` in terms of
-/// `reference_asset_id`
+/// `reference_asset_id`.
+///
+/// Returns actual achieved prices of `asset_id` in terms of `reference_asset_id`.
 pub fn setup_reference_prices<T: Config>(
     asset_id: &AssetIdOf<T>,
     reference_asset_id: &AssetIdOf<T>,

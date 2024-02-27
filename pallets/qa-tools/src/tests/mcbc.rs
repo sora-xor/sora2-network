@@ -481,7 +481,7 @@ fn get_all_mcbc_init_events() -> Vec<Vec<(AssetIdOf<Runtime>, AssetPrices)>> {
 }
 
 #[test]
-fn should_extrinsic_produce_events() {
+fn should_extrinsic_produce_correct_events() {
     ext().execute_with(|| {
         // events are omitted on block 0
         frame_system::Pallet::<Runtime>::set_block_number(1);
@@ -491,18 +491,18 @@ fn should_extrinsic_produce_events() {
         let current_base_supply = assets::Pallet::<Runtime>::total_issuance(&XOR.into()).unwrap();
         let new_supply = current_base_supply + balance!(10000);
         let collateral_reference_prices = AssetPrices {
-            buy: balance!(1),
+            buy: balance!(2),
             sell: balance!(1),
         };
         let collateral_reserves = balance!(1000000);
         let tbcd_reference_prices = AssetPrices {
-            buy: balance!(1),
-            sell: balance!(1),
+            buy: balance!(4),
+            sell: balance!(3),
         };
         let tbcd_reserves = balance!(1000000);
         let ref_xor_prices = AssetPrices {
-            buy: balance!(1),
-            sell: balance!(1),
+            buy: balance!(6),
+            sell: balance!(5),
         };
         assert_ok!(qa_tools::Pallet::<Runtime>::mcbc_initialize(
             RawOrigin::Root.into(),
@@ -524,8 +524,45 @@ fn should_extrinsic_produce_events() {
         let events = get_all_mcbc_init_events();
         // one init call
         assert_eq!(events.len(), 1);
+        let init_collaterals = events.into_iter().next().unwrap();
         // 2 collaterals initialized in the call
-        assert_eq!(events[0].len(), 2);
+        assert_eq!(init_collaterals.len(), 2);
+
+        // check that the values are close enough to requested
+        let (actual_collateral_reference_prices, actual_tbcd_reference_prices) =
+            match (init_collaterals[0].clone(), init_collaterals[1].clone()) {
+                ((tbcd, tbcd_prices), (collateral, collateral_prices))
+                | ((collateral, collateral_prices), (tbcd, tbcd_prices))
+                    if tbcd == TBCD.into() && collateral == collateral_asset_id =>
+                {
+                    (collateral_prices, tbcd_prices)
+                }
+                _ => panic!("unexpected asset ids in events: {:?}", init_collaterals),
+            };
+        assert_approx_eq!(
+            collateral_reference_prices.buy,
+            actual_collateral_reference_prices.buy,
+            10,
+            0.0001f64
+        );
+        assert_approx_eq!(
+            collateral_reference_prices.sell,
+            actual_collateral_reference_prices.sell,
+            10,
+            0.0001f64
+        );
+        assert_approx_eq!(
+            tbcd_reference_prices.buy,
+            actual_tbcd_reference_prices.buy,
+            10,
+            0.0001f64
+        );
+        assert_approx_eq!(
+            tbcd_reference_prices.sell,
+            actual_tbcd_reference_prices.sell,
+            10,
+            0.0001f64
+        );
     })
 }
 
