@@ -768,7 +768,7 @@ fn init_mcbc_and_check_quote_exchange(
             quote_amount_in,
             collateral_asset_id,
             target_supply,
-            collateral_reference_prices,
+            actual_collateral_reference_prices,
             ref_xor_prices.clone(),
             false,
         )
@@ -777,7 +777,7 @@ fn init_mcbc_and_check_quote_exchange(
             quote_amount_in,
             TBCD.into(),
             target_supply,
-            tbcd_reference_prices,
+            actual_tbcd_reference_prices,
             ref_xor_prices,
             true,
         )
