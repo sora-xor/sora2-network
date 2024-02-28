@@ -114,8 +114,10 @@ fn set_and_verify_reference_prices(
             AssetIdOf<Runtime>,
         > {
             asset: *collateral_asset_id,
-            ref_prices: Some(reference_prices.clone()),
-            reserves: None,
+            parameters: mcbc_tools::CollateralCommonParameters {
+                ref_prices: Some(reference_prices.clone()),
+                reserves: None,
+            },
         })
         .unwrap()
         .expect("Provided `ref_prices`, should be `Some`");
@@ -148,11 +150,13 @@ fn test_init_single_collateral_reference_price(collateral_asset_id: AssetIdOf<Ru
             AssetIdOf<Runtime>,
         > {
             asset: collateral_asset_id,
-            ref_prices: Some(AssetPrices {
-                buy: balance!(1),
-                sell: balance!(1),
-            }),
-            reserves: None,
+            parameters: mcbc_tools::CollateralCommonParameters {
+                ref_prices: Some(AssetPrices {
+                    buy: balance!(1),
+                    sell: balance!(1),
+                }),
+                reserves: None,
+            }
         }),
         qa_tools::Error::<Runtime>::ReferenceAssetPriceNotFound
     );
@@ -228,18 +232,22 @@ fn set_and_verify_tbcd_reference_prices(
 
     assert_ok!(initialize_mcbc_tbcd_collateral::<Runtime>(
         mcbc_tools::TbcdCollateralInput {
-            ref_prices: Some(AssetPrices {
-                buy: balance!(1),
-                sell: balance!(1),
-            }),
-            reserves: None,
+            parameters: mcbc_tools::CollateralCommonParameters {
+                ref_prices: Some(AssetPrices {
+                    buy: balance!(1),
+                    sell: balance!(1),
+                }),
+                reserves: None,
+            },
             ref_xor_prices: None,
         }
     ));
     let actual_ref_prices =
         initialize_mcbc_tbcd_collateral::<Runtime>(mcbc_tools::TbcdCollateralInput {
-            ref_prices: Some(reference_prices.clone()),
-            reserves: None,
+            parameters: mcbc_tools::CollateralCommonParameters {
+                ref_prices: Some(reference_prices.clone()),
+                reserves: None,
+            },
             ref_xor_prices: None,
         })
         .unwrap()
@@ -272,11 +280,13 @@ fn should_init_tbcd_reference_price() {
         let reference_asset_id = reference_asset.clone().resolve::<Runtime>();
         assert_err!(
             initialize_mcbc_tbcd_collateral::<Runtime>(mcbc_tools::TbcdCollateralInput {
-                ref_prices: Some(AssetPrices {
-                    buy: balance!(1),
-                    sell: balance!(1),
-                }),
-                reserves: None,
+                parameters: mcbc_tools::CollateralCommonParameters {
+                    ref_prices: Some(AssetPrices {
+                        buy: balance!(1),
+                        sell: balance!(1),
+                    }),
+                    reserves: None,
+                },
                 ref_xor_prices: None,
             }),
             qa_tools::Error::<Runtime>::ReferenceAssetPriceNotFound
@@ -293,11 +303,13 @@ fn should_init_tbcd_reference_price() {
         assert_err!(
             initialize_mcbc_collateral::<Runtime>(mcbc_tools::OtherCollateralInput {
                 asset: TBCD,
-                ref_prices: Some(AssetPrices {
-                    buy: balance!(1),
-                    sell: balance!(1),
-                }),
-                reserves: None,
+                parameters: mcbc_tools::CollateralCommonParameters {
+                    ref_prices: Some(AssetPrices {
+                        buy: balance!(1),
+                        sell: balance!(1),
+                    }),
+                    reserves: None,
+                },
             }),
             qa_tools::Error::<Runtime>::IncorrectCollateralAsset
         );
@@ -329,8 +341,10 @@ fn should_init_tbcd_reference_price() {
 fn set_and_verify_reserves(collateral_asset_id: &AssetIdOf<Runtime>, target_reserves: Balance) {
     let input = mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
         asset: *collateral_asset_id,
-        ref_prices: None,
-        reserves: Some(target_reserves),
+        parameters: mcbc_tools::CollateralCommonParameters {
+            ref_prices: None,
+            reserves: Some(target_reserves),
+        },
     };
 
     assert_ok!(initialize_mcbc_collateral::<Runtime>(input));
@@ -367,8 +381,10 @@ fn should_init_collateral_reserves() {
 
 fn set_and_verify_tbcd_reserves(target_reserves: Balance) {
     let input = mcbc_tools::TbcdCollateralInput {
-        ref_prices: None,
-        reserves: Some(target_reserves),
+        parameters: mcbc_tools::CollateralCommonParameters {
+            ref_prices: None,
+            reserves: Some(target_reserves),
+        },
         ref_xor_prices: None,
     };
 
@@ -390,8 +406,10 @@ fn should_init_tbcd_reserves() {
     ext().execute_with(|| {
         let input = mcbc_tools::OtherCollateralInput {
             asset: TBCD,
-            ref_prices: None,
-            reserves: None,
+            parameters: mcbc_tools::CollateralCommonParameters {
+                ref_prices: None,
+                reserves: None,
+            },
         };
         assert_err!(
             initialize_mcbc_collateral::<Runtime>(input),
@@ -404,8 +422,10 @@ fn should_init_tbcd_reserves() {
 
 fn set_and_verify_tbcd_ref_xor_prices(prices: AssetPrices) {
     let input = mcbc_tools::TbcdCollateralInput {
-        ref_prices: None,
-        reserves: None,
+        parameters: mcbc_tools::CollateralCommonParameters {
+            ref_prices: None,
+            reserves: None,
+        },
         ref_xor_prices: Some(prices.clone()),
     };
     let reference_asset = qa_tools::InputAssetId::<AssetIdOf<Runtime>>::McbcReference;
@@ -435,11 +455,13 @@ fn should_init_tbcd_ref_prices() {
         let collateral_asset_id: AssetIdOf<Runtime> = TBCD;
         let input = mcbc_tools::OtherCollateralInput {
             asset: collateral_asset_id,
-            ref_prices: Some(AssetPrices {
-                buy: balance!(1),
-                sell: balance!(1),
-            }),
-            reserves: None,
+            parameters: mcbc_tools::CollateralCommonParameters {
+                ref_prices: Some(AssetPrices {
+                    buy: balance!(1),
+                    sell: balance!(1),
+                }),
+                reserves: None,
+            },
         };
         assert_err!(
             initialize_mcbc_collateral::<Runtime>(input),
@@ -514,12 +536,16 @@ fn should_extrinsic_produce_correct_events() {
             }),
             vec![mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
                 asset: collateral_asset_id,
-                ref_prices: Some(collateral_reference_prices.clone()),
-                reserves: Some(collateral_reserves),
+                parameters: mcbc_tools::CollateralCommonParameters {
+                    ref_prices: Some(collateral_reference_prices.clone()),
+                    reserves: Some(collateral_reserves),
+                },
             }],
             Some(mcbc_tools::TbcdCollateralInput {
-                ref_prices: Some(tbcd_reference_prices.clone()),
-                reserves: Some(tbcd_reserves),
+                parameters: mcbc_tools::CollateralCommonParameters {
+                    ref_prices: Some(tbcd_reference_prices.clone()),
+                    reserves: Some(tbcd_reserves),
+                },
                 ref_xor_prices: Some(ref_xor_prices),
             }),
         ));
@@ -656,12 +682,16 @@ fn init_mcbc_and_check_quote_exchange(
         }),
         vec![mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
             asset: collateral_asset_id,
-            ref_prices: Some(collateral_reference_prices.clone()),
-            reserves: Some(collateral_reserves),
+            parameters: mcbc_tools::CollateralCommonParameters {
+                ref_prices: Some(collateral_reference_prices.clone()),
+                reserves: Some(collateral_reserves),
+            },
         }],
         Some(mcbc_tools::TbcdCollateralInput {
-            ref_prices: Some(tbcd_reference_prices.clone()),
-            reserves: Some(tbcd_reserves),
+            parameters: mcbc_tools::CollateralCommonParameters {
+                ref_prices: Some(tbcd_reference_prices.clone()),
+                reserves: Some(tbcd_reserves),
+            },
             ref_xor_prices: Some(ref_xor_prices.clone()),
         }),
     ));
@@ -944,12 +974,16 @@ fn ref_xor_price_update_changes_quote() {
             }),
             vec![mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
                 asset: collateral_asset_id,
-                ref_prices: Some(collateral_reference_prices),
-                reserves: Some(collateral_reserves),
+                parameters: mcbc_tools::CollateralCommonParameters {
+                    ref_prices: Some(collateral_reference_prices),
+                    reserves: Some(collateral_reserves),
+                },
             }],
             Some(mcbc_tools::TbcdCollateralInput {
-                ref_prices: Some(tbcd_reference_prices),
-                reserves: Some(tbcd_reserves),
+                parameters: mcbc_tools::CollateralCommonParameters {
+                    ref_prices: Some(tbcd_reference_prices),
+                    reserves: Some(tbcd_reserves),
+                },
                 ref_xor_prices: Some(ref_xor_prices),
             }),
         ));
@@ -969,8 +1003,10 @@ fn ref_xor_price_update_changes_quote() {
             None,
             vec![],
             Some(mcbc_tools::TbcdCollateralInput {
-                ref_prices: None,
-                reserves: None,
+                parameters: mcbc_tools::CollateralCommonParameters {
+                    ref_prices: None,
+                    reserves: None,
+                },
                 ref_xor_prices: Some(ref_xor_prices_2),
             }),
         ));

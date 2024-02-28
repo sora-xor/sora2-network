@@ -39,11 +39,9 @@ use frame_support::ensure;
 use frame_support::traits::Get;
 use pallet_tools::price_tools::AssetPrices;
 
-/// Input for initializing collateral assets except TBCD.
+/// Parameters relevant for TBCD and other collaterals
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub struct OtherCollateralInput<AssetId> {
-    /// Collateral asset id
-    pub asset: AssetId,
+pub struct CollateralCommonParameters {
     /// Price of collateral in terms of reference asset. Linearly affects the exchange amounts.
     /// (if collateral costs 10x more sell output should be 10x smaller)
     pub ref_prices: Option<AssetPrices>,
@@ -52,15 +50,18 @@ pub struct OtherCollateralInput<AssetId> {
     pub reserves: Option<Balance>,
 }
 
+/// Input for initializing collateral assets except TBCD.
+#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+pub struct OtherCollateralInput<AssetId> {
+    /// Collateral asset id
+    pub asset: AssetId,
+    pub parameters: CollateralCommonParameters,
+}
+
 /// Input for initializing TBCD collateral.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
 pub struct TbcdCollateralInput {
-    /// Price of collateral in terms of reference asset. Linearly affects the exchange amounts.
-    /// (if collateral costs 10x more sell output should be 10x smaller)
-    pub ref_prices: Option<AssetPrices>,
-    /// Desired amount of collateral asset in the MCBC reserve account. Affects actual sell
-    /// price according to formulae.
-    pub reserves: Option<Balance>,
+    pub parameters: CollateralCommonParameters,
     /// Price of XOR in terms of reference asset.
     /// For TBCD, the buy function is `(XOR price in reference asset) + 1`
     pub ref_xor_prices: Option<AssetPrices>,
@@ -119,7 +120,7 @@ fn initialize_single_collateral_unchecked<T: Config>(
         .expect("Failed to initialize pool");
     }
 
-    let actual_ref_prices = if let Some(p) = input.ref_prices {
+    let actual_ref_prices = if let Some(p) = input.parameters.ref_prices {
         Some(pallet_tools::price_tools::setup_reference_prices::<T>(
             &input.asset,
             &reference_asset,
@@ -129,7 +130,7 @@ fn initialize_single_collateral_unchecked<T: Config>(
         None
     };
 
-    if let Some(target_reserves) = input.reserves {
+    if let Some(target_reserves) = input.parameters.reserves {
         set_reserves::<T>(&input.asset, target_reserves)?;
     }
 
@@ -185,8 +186,7 @@ pub fn initialize_tbcd_collateral<T: Config>(
 
     initialize_single_collateral_unchecked::<T>(OtherCollateralInput {
         asset: TBCD.into(),
-        ref_prices: input.ref_prices,
-        reserves: input.reserves,
+        parameters: input.parameters,
     })
 }
 
