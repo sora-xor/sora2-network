@@ -765,7 +765,7 @@ fn init_mcbc_and_check_quote_exchange(
         )
     };
 
-    let quote_amount_in = balance!(1);
+    let quote_amount_in = balance!(127);
     let (expected_collateral_quote_amount_out, expected_tbcd_quote_amount_out) = (
         expected_sell_quote_collateral_amount(
             quote_amount_in,
