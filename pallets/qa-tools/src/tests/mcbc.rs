@@ -575,7 +575,6 @@ fn expected_sell_quote_collateral_amount(
     target_supply: Balance,
     collateral_reference_prices: AssetPrices,
     ref_xor_prices: AssetPrices,
-    is_tbcd: bool,
 ) -> Result<Balance, DispatchError> {
     let target_supply = BalanceUnit::divisible(target_supply);
     let amount_in = BalanceUnit::divisible(amount_in);
@@ -591,7 +590,7 @@ fn expected_sell_quote_collateral_amount(
     // Get reference prices for base and collateral to understand token value.
     let main_price_per_reference_unit: BalanceUnit = {
         let buy_price = {
-            if is_tbcd {
+            if collateral_asset_id == TBCD.into() {
                 BalanceUnit::divisible(ref_xor_prices.sell) + BalanceUnit::one()
             } else {
                 // Everything other than TBCD
@@ -626,7 +625,11 @@ fn expected_sell_quote_collateral_amount(
         sell_price_coefficient * buy_price
     };
 
-    let collateral_price = BalanceUnit::divisible(collateral_reference_prices.sell);
+    let collateral_price = if collateral_asset_id == TBCD.into() {
+        BalanceUnit::one()
+    } else {
+        BalanceUnit::divisible(collateral_reference_prices.sell)
+    };
     let main_supply = collateral_supply.clone() * collateral_price / main_price_per_reference_unit;
     let amount_out = (amount_in * collateral_supply) / (main_supply + amount_in);
     Ok(*amount_out.balance())
@@ -770,7 +773,6 @@ fn init_mcbc_and_check_quote_exchange(
             target_supply,
             actual_collateral_reference_prices,
             ref_xor_prices.clone(),
-            false,
         )
         .unwrap(),
         expected_sell_quote_collateral_amount(
@@ -779,7 +781,6 @@ fn init_mcbc_and_check_quote_exchange(
             target_supply,
             actual_tbcd_reference_prices,
             ref_xor_prices,
-            true,
         )
         .unwrap(),
     );
