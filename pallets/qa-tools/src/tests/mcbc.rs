@@ -72,8 +72,8 @@ fn should_init_mcbc_base_supply() {
         let added_supply = balance!(1000000);
         assert_ok!(initialize_mcbc_base_supply::<Runtime>(
             mcbc_tools::BaseSupply {
-                base_supply_collector: xor_holder.clone(),
-                new_base_supply: current_base_supply + added_supply,
+                asset_collector: xor_holder.clone(),
+                target: current_base_supply + added_supply,
             }
         ));
         assert_eq!(
@@ -84,8 +84,8 @@ fn should_init_mcbc_base_supply() {
         // bring supply back to original
         assert_ok!(initialize_mcbc_base_supply::<Runtime>(
             mcbc_tools::BaseSupply {
-                base_supply_collector: xor_holder.clone(),
-                new_base_supply: current_base_supply,
+                asset_collector: xor_holder.clone(),
+                target: current_base_supply,
             }
         ));
         assert_eq!(
@@ -96,8 +96,8 @@ fn should_init_mcbc_base_supply() {
         // cannot burn assets not owned by the holder
         assert_err!(
             initialize_mcbc_base_supply::<Runtime>(mcbc_tools::BaseSupply {
-                base_supply_collector: xor_holder,
-                new_base_supply: 0,
+                asset_collector: xor_holder,
+                target: 0,
             }),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
@@ -531,8 +531,8 @@ fn should_extrinsic_produce_correct_events() {
         assert_ok!(qa_tools::Pallet::<Runtime>::mcbc_initialize(
             RawOrigin::Root.into(),
             Some(mcbc_tools::BaseSupply {
-                base_supply_collector: xor_holder,
-                new_base_supply: new_supply,
+                asset_collector: xor_holder,
+                target: new_supply,
             }),
             vec![mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
                 asset: collateral_asset_id,
@@ -677,8 +677,8 @@ fn init_mcbc_and_check_quote_exchange(
     assert_ok!(qa_tools::Pallet::<Runtime>::mcbc_initialize(
         RawOrigin::Root.into(),
         Some(mcbc_tools::BaseSupply {
-            base_supply_collector: xor_holder,
-            new_base_supply: target_supply,
+            asset_collector: xor_holder,
+            target: target_supply,
         }),
         vec![mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
             asset: collateral_asset_id,
@@ -969,8 +969,8 @@ fn ref_xor_price_update_changes_quote() {
         assert_ok!(qa_tools::Pallet::<Runtime>::mcbc_initialize(
             RawOrigin::Root.into(),
             Some(mcbc_tools::BaseSupply {
-                base_supply_collector: xor_holder,
-                new_base_supply: new_supply,
+                asset_collector: xor_holder,
+                target: new_supply,
             }),
             vec![mcbc_tools::OtherCollateralInput::<AssetIdOf<Runtime>> {
                 asset: collateral_asset_id,

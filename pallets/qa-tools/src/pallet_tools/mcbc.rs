@@ -69,8 +69,10 @@ pub struct TbcdCollateralInput {
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
 pub struct BaseSupply<AccountId> {
-    pub base_supply_collector: AccountId,
-    pub new_base_supply: Balance,
+    /// Target account for mint/burn for achieving `target` supply
+    pub asset_collector: AccountId,
+    /// Target total supply of base asset
+    pub target: Balance,
 }
 
 fn set_reserves<T: Config>(asset: &AssetIdOf<T>, target_reserves: Balance) -> DispatchResult {
@@ -197,14 +199,14 @@ pub fn initialize_base_supply<T: Config>(input: BaseSupply<T::AccountId>) -> Dis
     let base_asset_id = &T::GetBaseAssetId::get();
     let current_base_supply: FixedWrapper =
         assets::Pallet::<T>::total_issuance(base_asset_id)?.into();
-    let supply_delta = input.new_base_supply - current_base_supply;
+    let supply_delta = input.target - current_base_supply;
     let supply_delta = supply_delta
         .get()
         .map_err(|_| Error::<T>::ArithmeticError)?
         .into_bits();
 
     pallet_tools::assets::change_balance_by::<T>(
-        &input.base_supply_collector,
+        &input.asset_collector,
         base_asset_id,
         supply_delta,
     )
