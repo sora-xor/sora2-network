@@ -329,21 +329,17 @@ pub(crate) fn initialize_base_assets<T: Config>(input: BaseInput) -> DispatchRes
 
     let xor_prices =
         calculate_xor_prices::<T>(input, &synthetic_base_asset_id, &reference_asset_id)?;
+    // check user input correctness as well as calculation sanity
     ensure!(
         xor_prices.synthetic_base.buy >= xor_prices.synthetic_base.sell
             && xor_prices.reference.buy >= xor_prices.reference.sell,
         Error::<T>::BuyLessThanSell
     );
-    pallet_tools::price_tools::set_price_unchecked::<T>(
+    pallet_tools::price_tools::set_xor_prices::<T>(
         &synthetic_base_asset_id,
-        xor_prices.synthetic_base.buy,
-        PriceVariant::Buy,
+        xor_prices.synthetic_base,
     )?;
-    pallet_tools::price_tools::set_price_unchecked::<T>(
-        &synthetic_base_asset_id,
-        xor_prices.synthetic_base.sell,
-        PriceVariant::Sell,
-    )?;
+    // reference asset prices are expected to be set via `price_tools` tools separately
     Ok(())
 }
 

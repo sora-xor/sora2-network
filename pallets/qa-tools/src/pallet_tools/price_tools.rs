@@ -132,7 +132,7 @@ pub fn relative_prices<T: Config>(
     })
 }
 /// Calculate prices of XOR in the assets A and B given the expected relative price A in terms of B.
-/// The resulting prices can be directly used for [`set_price_unchecked`]/`price_tools::incoming_spot_price`,
+/// The resulting prices can be directly used for [`set_xor_prices`]/`price_tools::incoming_spot_price`,
 /// as they require prices of XOR in terms of an asset.
 ///
 /// Note that if both A and B != XOR, then B must already have some price in the `price_tools`.
