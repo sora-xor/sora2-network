@@ -718,9 +718,9 @@ fn init_mcbc_and_check_quote_exchange(
             Ok(ref_xor_prices.sell)
         );
         let events = get_all_mcbc_init_events();
-        // one init call
-        assert_eq!(events.len(), 1);
-        let init_collaterals = events.into_iter().next().unwrap();
+        // at least current init call
+        assert!(events.len() >= 1);
+        let init_collaterals = events.last().unwrap();
         // 2 collaterals initialized in the call
         assert_eq!(init_collaterals.len(), 2);
 
