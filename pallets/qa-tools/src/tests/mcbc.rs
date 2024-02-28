@@ -829,18 +829,18 @@ fn test_quote(collateral_asset_id: AssetIdOf<Runtime>) {
     let current_base_supply = assets::Pallet::<Runtime>::total_issuance(&XOR.into()).unwrap();
     let new_supply = current_base_supply + balance!(10000);
     let collateral_reference_prices = AssetPrices {
-        buy: balance!(1),
-        sell: balance!(1),
+        buy: balance!(3),
+        sell: balance!(2),
     };
     let collateral_reserves = balance!(1000000);
     let tbcd_reference_prices = AssetPrices {
-        buy: balance!(1),
-        sell: balance!(1),
+        buy: balance!(7),
+        sell: balance!(5),
     };
     let tbcd_reserves = balance!(1000000);
     let ref_xor_prices = AssetPrices {
-        buy: balance!(1),
-        sell: balance!(1),
+        buy: balance!(13),
+        sell: balance!(11),
     };
     init_mcbc_and_check_quote_exchange(
         collateral_asset_id,
