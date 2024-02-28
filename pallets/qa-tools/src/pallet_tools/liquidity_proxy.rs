@@ -148,7 +148,7 @@ pub mod liquidity_sources {
     ///
     /// For TBCD use [`initialize_mcbc_tbcd_collateral`]
     ///
-    /// For details see [`pallet_tools::mcbc::initialize_base_supply`]
+    /// For details see [`pallet_tools::mcbc::initialize_single_collateral`]
     pub fn initialize_mcbc_collateral<T: Config>(
         input: pallet_tools::mcbc::OtherCollateralInput<T::AssetId>,
     ) -> Result<Option<AssetPrices>, DispatchError> {
@@ -157,7 +157,7 @@ pub mod liquidity_sources {
 
     /// Initialize TBCD-specific variables.
     ///
-    /// See [`pallet_tools::mcbc::initialize_base_supply`]
+    /// See [`pallet_tools::mcbc::initialize_tbcd_collateral`]
     pub fn initialize_mcbc_tbcd_collateral<T: Config>(
         input: TbcdCollateralInput,
     ) -> Result<Option<AssetPrices>, DispatchError> {
