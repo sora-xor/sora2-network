@@ -178,7 +178,7 @@ pub mod pallet {
 
         // assets errors
         /// Cannot initialize MCBC for unknown asset.
-        UnknownMCBCAsset,
+        UnknownMcbcAsset,
         /// TBCD must be initialized using different field/function (see `tbcd_collateral` and `TbcdCollateralInput`).
         IncorrectCollateralAsset,
     }

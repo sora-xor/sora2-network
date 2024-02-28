@@ -44,7 +44,6 @@ pub mod liquidity_sources {
     use pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};
     use sp_std::vec::Vec;
 
-    // todo: rename 'CAPS' to 'Caps'
     pub fn initialize_xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
         pairs: Vec<AssetPairInput<DexIdOf<T>, AssetIdOf<T>>>,

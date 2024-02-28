@@ -87,7 +87,7 @@ fn set_reserves<T: Config>(asset: &AssetIdOf<T>, target_reserves: Balance) -> Di
     pallet_tools::assets::change_balance_by::<T>(&reserves_account_id, asset, reserves_delta)
         .map_err(|e| match e {
             // realistically the error should never be triggered
-            pallet_tools::assets::Error::UnknownAsset => Error::<T>::UnknownMCBCAsset.into(),
+            pallet_tools::assets::Error::UnknownAsset => Error::<T>::UnknownMcbcAsset.into(),
             pallet_tools::assets::Error::Other(e) => e,
         })?;
     Ok(())
@@ -154,7 +154,6 @@ pub fn initialize_single_collateral<T: Config>(
     initialize_single_collateral_unchecked::<T>(input)
 }
 
-// todo: add test for case in `usage note`
 /// Initialize TBCD collateral asset - a special case in MCBC pallet.
 /// In addition, it sets up XOR reference price, since it also affects the results.
 ///
@@ -211,7 +210,7 @@ pub fn initialize_base_supply<T: Config>(input: BaseSupply<T::AccountId>) -> Dis
     )
     .map_err(|e| match e {
         // realistically the error should never be triggered
-        pallet_tools::assets::Error::UnknownAsset => Error::<T>::UnknownMCBCAsset.into(),
+        pallet_tools::assets::Error::UnknownAsset => Error::<T>::UnknownMcbcAsset.into(),
         pallet_tools::assets::Error::Other(e) => e,
     })
 }
