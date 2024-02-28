@@ -46,7 +46,6 @@ build() {
     fi
     printf "⚡️ Building with features: %s\n" "$featureList"
     printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
-    rm -rf target
     cargo build --release --features "$featureList"
     mv ./target/release/framenode .
     mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
