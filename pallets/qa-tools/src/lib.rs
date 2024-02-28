@@ -59,8 +59,8 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider, LiquidityProxyTrait, PriceVariant,
-        SyntheticInfoProvider, TradingPairSourceManager,
+        DEXInfo, Description, DexIdOf, DexInfoProvider, PriceVariant, SyntheticInfoProvider,
+        TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
@@ -98,7 +98,6 @@ pub mod pallet {
         >;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type Symbol: From<<Self as band::Config>::Symbol>
             + From<<Self as xst::Config>::Symbol>
@@ -171,16 +170,16 @@ pub mod pallet {
         /// Could not find already existing synthetic.
         UnknownSynthetic,
 
-        // price-tools errors
-        /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
-        /// You can use `price_tools_set_asset_price` extrinsic to set its price.
-        ReferenceAssetPriceNotFound,
-
-        // assets errors
+        // mcbc errors
         /// Cannot initialize MCBC for unknown asset.
         UnknownMcbcAsset,
         /// TBCD must be initialized using different field/function (see `tbcd_collateral` and `TbcdCollateralInput`).
         IncorrectCollateralAsset,
+
+        // price-tools errors
+        /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
+        /// You can use `price_tools_set_asset_price` extrinsic to set its price.
+        ReferenceAssetPriceNotFound,
     }
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
@@ -392,7 +391,7 @@ pub mod pallet {
             }
 
             // handle tbcd collateral first as it may initialize reference asset xor prices
-            // (initialization of all collateral is likely dependant on these prices)
+            // (initialization of all collateral is dependant on these prices)
             let mut collateral_ref_prices = vec![];
             if let Some(tbcd_collateral) = tbcd_collateral {
                 let actual_ref_prices =
