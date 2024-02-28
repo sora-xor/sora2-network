@@ -851,8 +851,35 @@ fn test_quote(collateral_asset_id: AssetIdOf<Runtime>) {
         collateral_reference_prices,
         tbcd_reference_prices,
         ref_xor_prices,
+        xor_holder.clone(),
+    );
+
+    // should update parameters as well
+    let new_supply = current_base_supply + balance!(1000);
+    let collateral_reference_prices = AssetPrices {
+        buy: balance!(97),
+        sell: balance!(89),
+    };
+    let collateral_reserves = balance!(123456);
+    let tbcd_reference_prices = AssetPrices {
+        buy: balance!(83),
+        sell: balance!(79),
+    };
+    let tbcd_reserves = balance!(987654);
+    let ref_xor_prices = AssetPrices {
+        buy: balance!(73),
+        sell: balance!(71),
+    };
+    init_mcbc_and_check_quote_exchange(
+        collateral_asset_id,
+        new_supply,
+        collateral_reserves,
+        tbcd_reserves,
+        collateral_reference_prices,
+        tbcd_reference_prices,
+        ref_xor_prices,
         xor_holder,
-    )
+    );
 }
 
 #[test]
