@@ -11,13 +11,13 @@ allfeatures='private-net,wip,ready-to-test'
 
 # build func
 test() {
-    if  [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
+    if  [[ -n ${TAG_NAME} ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks"
     elif [[ $prBranch = 'master' ]]; then
         printf "⚡️ This is "${prbranch}" Running tests and migrations %s\n"
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
-    elif [[ -n $buildTag ]] || [[ $pr = true ]]; then
+    elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
         export RUSTFLAGS="-Cinstrument-coverage"
         export SKIP_WASM_BUILD=1
