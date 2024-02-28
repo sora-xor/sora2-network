@@ -24,7 +24,7 @@ test() {
         export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         rm -rf ~/.cargo/.package-cache
         cargo fmt -- --check > /dev/null
-        cargo test --features $allfeatures
+        cargo test --features $allfeatures -- --test-threads=2
     fi
 }
 
