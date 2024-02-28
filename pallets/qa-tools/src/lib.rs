@@ -59,7 +59,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider, PriceVariant, SyntheticInfoProvider,
+        DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
         TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
@@ -431,20 +431,7 @@ pub mod pallet {
             ensure_root(origin)?;
 
             let asset_id = asset_id.resolve::<T>();
-            ensure!(
-                asset_per_xor.sell <= asset_per_xor.buy,
-                Error::<T>::BuyLessThanSell
-            );
-            pallet_tools::price_tools::set_price_unchecked::<T>(
-                &asset_id,
-                asset_per_xor.buy,
-                PriceVariant::Buy,
-            )?;
-            pallet_tools::price_tools::set_price_unchecked::<T>(
-                &asset_id,
-                asset_per_xor.sell,
-                PriceVariant::Sell,
-            )?;
+            pallet_tools::price_tools::set_xor_prices::<T>(&asset_id, asset_per_xor)?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
