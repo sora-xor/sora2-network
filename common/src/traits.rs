@@ -42,7 +42,8 @@ use frame_support::Parameter;
 use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
-use crate::primitives::{Balance, DiscreteQuotation};
+use crate::alt::DiscreteQuotation;
+use crate::primitives::Balance;
 use codec::{Decode, Encode, MaxEncodedLen};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;

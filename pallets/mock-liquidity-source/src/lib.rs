@@ -32,11 +32,11 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+use common::alt::{DiscreteQuotation, SwapChunk};
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, Balance, DexInfoProvider, DiscreteQuotation, Fixed, GetPoolReserves,
-    LiquiditySource, RewardReason, SwapChunk,
+    balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource, RewardReason,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::DispatchError;

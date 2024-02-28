@@ -34,6 +34,7 @@
 #![feature(int_roundings)]
 
 use assets::AssetIdOf;
+use common::alt::{DiscreteQuotation, SwapChunk};
 use common::prelude::{
     BalanceUnit, EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
     TradingPair,
@@ -41,9 +42,8 @@ use common::prelude::{
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, DiscreteQuotation, LiquiditySource, PriceVariant, RewardReason,
-    SwapChunk, SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair,
-    TradingPairSourceManager,
+    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
+    SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 use core::fmt::Debug;
 use frame_support::dispatch::{DispatchResultWithPostInfo, PostDispatchInfo};

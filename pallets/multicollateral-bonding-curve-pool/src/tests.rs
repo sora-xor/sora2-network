@@ -33,16 +33,16 @@ mod tests {
         mock::*, DistributionAccount, DistributionAccountData, DistributionAccounts, Error, Pallet,
         RETRY_DISTRIBUTION_FREQUENCY,
     };
+    use common::alt::{DiscreteQuotation, SwapChunk, SwapLimits};
     use common::assert_approx_eq;
     use common::{
         self, balance, fixed, fixed_wrapper,
         fixnum::ops::One as _,
         fixnum::ops::Zero as _,
         prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome},
-        AssetInfoProvider, AssetName, AssetSymbol, DEXId, DiscreteQuotation, Fixed,
-        LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, PriceVariant, SwapChunk,
-        SwapLimits, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR,
-        XSTUSD,
+        AssetInfoProvider, AssetName, AssetSymbol, DEXId, Fixed, LiquidityProxyTrait,
+        LiquiditySource, LiquiditySourceFilter, PriceVariant, TechPurpose, DAI,
+        DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XSTUSD,
     };
     use frame_support::assert_err;
     use frame_support::assert_noop;

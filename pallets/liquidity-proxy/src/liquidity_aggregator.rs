@@ -35,12 +35,14 @@ use sp_std::vec::Vec;
 
 #[cfg(feature = "wip")] // ALT
 use {
-    common::prelude::{SwapChunk, SwapVariant},
-    common::{fixed, Balance, DiscreteQuotation},
+    common::alt::{DiscreteQuotation, SwapChunk},
+    common::prelude::SwapVariant,
+    common::{fixed, Balance},
     itertools::Itertools,
     sp_runtime::traits::Zero,
     sp_std::collections::btree_map::BTreeMap,
     sp_std::collections::vec_deque::VecDeque,
+    sp_std::vec,
 };
 
 /// Info with input & output amounts for liquidity source
@@ -352,8 +354,9 @@ where
 #[cfg(test)]
 mod tests {
     use crate::liquidity_aggregator::*;
+    use common::alt::{DiscreteQuotation, SwapChunk, SwapLimits};
     use common::prelude::{QuoteAmount, SwapVariant};
-    use common::{balance, DiscreteQuotation, LiquiditySourceType, SwapChunk, SwapLimits};
+    use common::{balance, LiquiditySourceType};
     use sp_std::collections::vec_deque::VecDeque;
 
     fn get_liquidity_aggregator_with_desired_input_and_equal_chunks(

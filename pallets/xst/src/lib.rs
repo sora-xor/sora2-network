@@ -49,6 +49,7 @@ use core::convert::TryInto;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
+use common::alt::{DiscreteQuotation, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, Fixed, FixedWrapper, PriceToolsProvider, QuoteAmount, SwapAmount,
@@ -56,9 +57,8 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, DiscreteQuotation, GetMarketInfo, LiquiditySource, LiquiditySourceType,
-    OnSymbolDisabled, PriceVariant, Rate, RewardReason, SwapChunk, SyntheticInfoProvider,
-    TradingPairSourceManager, XSTUSD,
+    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
+    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;

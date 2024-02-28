@@ -30,11 +30,11 @@
 
 use core::str::FromStr;
 
+use common::alt::{DiscreteQuotation, SwapChunk};
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, DiscreteQuotation,
-    LiquiditySource, LiquiditySourceType, Oracle, SwapChunk, ToFeeAccount,
-    TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
+    balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
+    LiquiditySourceType, Oracle, ToFeeAccount, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::assert_noop;
 use frame_support::assert_ok;

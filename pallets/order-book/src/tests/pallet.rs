@@ -32,10 +32,10 @@ use core::cmp::min;
 
 use crate::test_utils::*;
 use assets::AssetIdOf;
+use common::alt::{DiscreteQuotation, SwapChunk, SwapLimits};
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, DiscreteQuotation, LiquiditySource, PriceVariant,
-    SwapChunk, SwapLimits, VAL, XOR, XSTUSD,
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};

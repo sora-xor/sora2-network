@@ -40,14 +40,15 @@ use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
+use common::alt::{DiscreteQuotation, SwapChunk};
 use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, DiscreteQuotation,
-    EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
-    OnPoolReservesChanged, RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount,
-    TradingPair, TradingPairSourceManager, XykPool,
+    fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
+    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
+    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
+    XykPool,
 };
 
 mod aliases;

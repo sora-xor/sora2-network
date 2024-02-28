@@ -32,10 +32,11 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+use common::alt::DiscreteQuotation;
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    DEXInfo, DexInfoProvider, DiscreteQuotation, LiquidityRegistry, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason,
+    DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType, RewardReason,
 };
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;

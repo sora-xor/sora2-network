@@ -46,17 +46,17 @@ use core::convert::TryInto;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
+use common::alt::{DiscreteQuotation, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsProvider,
     QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
-use common::BuyBackHandler;
 use common::{
-    balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, DiscreteQuotation,
+    balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, DEXId, DexIdOf,
     GetMarketInfo, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceType, ManagementMode, PriceVariant, RewardReason, SwapChunk,
-    TradingPairSourceManager, Vesting, PSWAP, TBCD, VAL, XOR, XST,
+    LiquiditySourceType, ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager,
+    Vesting, PSWAP, TBCD, VAL, XOR, XST,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
