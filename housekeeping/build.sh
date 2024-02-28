@@ -50,7 +50,6 @@ else
     fi
     printf "⚡️ only tests run %s\n"
     rm -rf ~/.cargo/.package-cache
-    rm Cargo.lock
     cargo fmt -- --check > /dev/null
     cargo test
     cargo test --features "private-net wip ready-to-test runtime-benchmarks"
