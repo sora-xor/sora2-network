@@ -11,13 +11,13 @@ allfeatures='private-net,wip,ready-to-test'
 
 # build func
 test() {
-    if [[ $buildTag != null ]] && [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
+    if  [[ ${TAG_NAME} != null || ${TAG_NAME} != '' ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks"
-    elif [[ ${prBranch} = 'master' ]]; then
+    elif [[ $prBranch = 'master' ]]; then
         printf "⚡️ This is "${prbranch}" Running tests and migrations %s\n"
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
-    else
+    elif [[ -n $buildTag ]] || [[ $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
         export RUSTFLAGS="-Cinstrument-coverage"
         export SKIP_WASM_BUILD=1
@@ -36,12 +36,12 @@ build() {
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
         featureList='private-net include-real-files ready-to-test'
-    elif [[ ${TAG_NAME} =~ 'test'* || -n ${buildTag} ]]; then
+    elif [[ ${TAG_NAME} =~ 'test'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
         featureList='include-real-files'
         sudoCheckStatus="101"
-    elif [[ -n ${buildTag} ]]; then
+    elif [[ -n $buildTag ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
     fi
     printf "⚡️ Building with features: %s\n" "$featureList"
