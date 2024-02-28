@@ -205,7 +205,7 @@ pub fn initialize_base_supply<T: Config>(input: BaseSupply<T::AccountId>) -> Dis
 
     pallet_tools::assets::change_balance_by::<T>(
         &input.base_supply_collector,
-        &base_asset_id,
+        base_asset_id,
         supply_delta,
     )
     .map_err(|e| match e {

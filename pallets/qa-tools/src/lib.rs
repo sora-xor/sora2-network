@@ -402,7 +402,7 @@ pub mod pallet {
                 }
             }
             for collateral_input in other_collaterals {
-                let collateral_asset_id = collateral_input.asset.clone();
+                let collateral_asset_id = collateral_input.asset;
                 let actual_ref_prices =
                     pallet_tools::mcbc::initialize_single_collateral::<T>(collateral_input)?;
                 if let Some(actual_ref_prices) = actual_ref_prices {
