@@ -32,7 +32,7 @@ use crate::Config;
 use assets::AssetIdOf;
 use common::{AccountIdOf, FixedInner};
 use frame_support::dispatch::DispatchError;
-use std::cmp::Ordering;
+use sp_std::cmp::Ordering;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
