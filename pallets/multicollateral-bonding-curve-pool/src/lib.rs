@@ -46,7 +46,7 @@ use core::convert::TryInto;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
-use common::alt::{DiscreteQuotation, SwapChunk};
+use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsProvider,
@@ -1669,17 +1669,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     let main_supply = collateral_supply * collateral_price_per_reference_unit
                         / main_price_per_reference_unit;
 
-                    Some(
+                    Some(SideAmount::Input(
                         main_supply
                             .try_into_balance()
                             .map_err(|_| Error::<T>::PriceCalculationFailed)?,
-                    )
+                    ))
                 }
-                SwapVariant::WithDesiredOutput => Some(
+                SwapVariant::WithDesiredOutput => Some(SideAmount::Output(
                     collateral_supply
                         .try_into_balance()
                         .map_err(|_| Error::<T>::PriceCalculationFailed)?,
-                ),
+                )),
             };
         }
 

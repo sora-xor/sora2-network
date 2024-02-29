@@ -31,10 +31,47 @@
 // This file contains ALT types
 
 use crate::fixed_wrapper::FixedWrapper;
+use crate::swap_amount::SwapVariant;
 use crate::{Balance, Fixed, Price};
 use sp_runtime::traits::Zero;
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::ops::Add;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum SideAmount<AmountType> {
+    Input(AmountType),
+    Output(AmountType),
+}
+
+impl<AmountType> SideAmount<AmountType> {
+    pub fn new(amount: AmountType, swap_variant: SwapVariant) -> Self {
+        match swap_variant {
+            SwapVariant::WithDesiredInput => Self::Input(amount),
+            SwapVariant::WithDesiredOutput => Self::Output(amount),
+        }
+    }
+
+    pub fn amount(&self) -> &AmountType {
+        match self {
+            Self::Input(amount) => amount,
+            Self::Output(amount) => amount,
+        }
+    }
+
+    pub fn set_amount(&mut self, amount: AmountType) {
+        match self {
+            Self::Input(..) => *self = Self::Input(amount),
+            Self::Output(..) => *self = Self::Output(amount),
+        }
+    }
+
+    pub fn is_same(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Input(..), Self::Input(..)) | (Self::Output(..), Self::Output(..))
+        )
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SwapChunk<AmountType> {
@@ -43,9 +80,37 @@ pub struct SwapChunk<AmountType> {
     pub fee: AmountType,
 }
 
-impl<AmountType> SwapChunk<AmountType> {
+impl<AmountType: Copy> SwapChunk<AmountType> {
     pub fn new(input: AmountType, output: AmountType, fee: AmountType) -> Self {
         Self { input, output, fee }
+    }
+
+    pub fn get_associated_field(&self, swap_variant: SwapVariant) -> SideAmount<AmountType> {
+        match swap_variant {
+            SwapVariant::WithDesiredInput => SideAmount::Input(self.input),
+            SwapVariant::WithDesiredOutput => SideAmount::Output(self.output),
+        }
+    }
+}
+
+impl<AmountType: PartialEq> PartialEq<SideAmount<AmountType>> for SwapChunk<AmountType> {
+    fn eq(&self, other: &SideAmount<AmountType>) -> bool {
+        match other {
+            SideAmount::Input(input) => self.input.eq(input),
+            SideAmount::Output(output) => self.output.eq(output),
+        }
+    }
+}
+
+impl<AmountType: PartialOrd> PartialOrd<SideAmount<AmountType>> for SwapChunk<AmountType> {
+    fn partial_cmp(
+        &self,
+        other: &SideAmount<AmountType>,
+    ) -> Option<scale_info::prelude::cmp::Ordering> {
+        match other {
+            SideAmount::Input(input) => self.input.partial_cmp(input),
+            SideAmount::Output(output) => self.output.partial_cmp(output),
+        }
     }
 }
 
@@ -140,6 +205,13 @@ impl SwapChunk<Balance> {
         Some(Self::new(input, output, fee))
     }
 
+    pub fn rescale_by_side_amount(self, amount: SideAmount<Balance>) -> Option<Self> {
+        match amount {
+            SideAmount::Input(input) => self.rescale_by_input(input),
+            SideAmount::Output(output) => self.rescale_by_output(output),
+        }
+    }
+
     pub fn saturating_add(self, rhs: Self) -> Self {
         Self::new(
             self.input.saturating_add(rhs.input),
@@ -161,20 +233,20 @@ impl SwapChunk<Balance> {
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SwapLimits<AmountType> {
     /// The amount of swap cannot be less than `min_amount` if it's defined
-    pub min_amount: Option<AmountType>,
+    pub min_amount: Option<SideAmount<AmountType>>,
 
     /// The amount of swap cannot be more than `max_amount` if it's defined
-    pub max_amount: Option<AmountType>,
+    pub max_amount: Option<SideAmount<AmountType>>,
 
     /// The amount of swap must be a multiplier of `amount_precision` if it's defined
-    pub amount_precision: Option<AmountType>,
+    pub amount_precision: Option<SideAmount<AmountType>>,
 }
 
 impl<AmountType> SwapLimits<AmountType> {
     pub fn new(
-        min_amount: Option<AmountType>,
-        max_amount: Option<AmountType>,
-        amount_precision: Option<AmountType>,
+        min_amount: Option<SideAmount<AmountType>>,
+        max_amount: Option<SideAmount<AmountType>>,
+        amount_precision: Option<SideAmount<AmountType>>,
     ) -> Self {
         Self {
             min_amount,
@@ -185,41 +257,109 @@ impl<AmountType> SwapLimits<AmountType> {
 }
 
 impl SwapLimits<Balance> {
-    /// Aligns the `amount` regarding to the `max_amount` limit.
-    /// Returns the aligned amount and the remainder
-    pub fn align_max(&self, amount: Balance) -> (Balance, Balance) {
-        if let Some(max) = self.max_amount {
-            if amount > max {
-                return (max, amount.saturating_sub(max));
+    /// Aligns the `chunk` regarding to the `min_amount` limit.
+    /// Returns the aligned chunk and the remainder
+    pub fn align_chunk_min(
+        &self,
+        chunk: SwapChunk<Balance>,
+    ) -> Option<(SwapChunk<Balance>, SwapChunk<Balance>)> {
+        if let Some(min) = self.min_amount {
+            match min {
+                SideAmount::Input(min_amount) => {
+                    if chunk.input < min_amount {
+                        return Some((Zero::zero(), chunk));
+                    }
+                }
+                SideAmount::Output(min_amount) => {
+                    if chunk.output < min_amount {
+                        return Some((Zero::zero(), chunk));
+                    }
+                }
             }
         }
-        (amount, Balance::zero())
+        Some((chunk, Zero::zero()))
     }
 
-    /// Aligns the `amount` regarding to limits.
-    /// Returns the aligned amount and the remainder
-    pub fn align(&self, amount: Balance) -> (Balance, Balance) {
-        if let Some(min) = self.min_amount {
-            if amount < min {
-                return (Balance::zero(), amount);
-            }
-        }
-
+    /// Aligns the `chunk` regarding to the `max_amount` limit.
+    /// Returns the aligned chunk and the remainder
+    pub fn align_chunk_max(
+        &self,
+        chunk: SwapChunk<Balance>,
+    ) -> Option<(SwapChunk<Balance>, SwapChunk<Balance>)> {
         if let Some(max) = self.max_amount {
-            if amount > max {
-                return (max, amount.saturating_sub(max));
+            match max {
+                SideAmount::Input(max_amount) => {
+                    if chunk.input > max_amount {
+                        let rescaled = chunk.rescale_by_input(max_amount)?;
+                        let remainder = chunk.saturating_sub(rescaled);
+                        return Some((rescaled, remainder));
+                    }
+                }
+                SideAmount::Output(max_amount) => {
+                    if chunk.output > max_amount {
+                        let rescaled = chunk.rescale_by_output(max_amount)?;
+                        let remainder = chunk.saturating_sub(rescaled);
+                        return Some((rescaled, remainder));
+                    }
+                }
             }
         }
+        Some((chunk, Zero::zero()))
+    }
 
+    /// Aligns the `chunk` regarding to the `amount_precision` limit.
+    /// Returns the aligned chunk and the remainder
+    pub fn align_chunk_precision(
+        &self,
+        chunk: SwapChunk<Balance>,
+    ) -> Option<(SwapChunk<Balance>, SwapChunk<Balance>)> {
         if let Some(precision) = self.amount_precision {
-            if amount % precision != Balance::zero() {
-                let count = amount.saturating_div(precision);
-                let aligned = count.saturating_mul(precision);
-                return (aligned, amount.saturating_sub(aligned));
+            match precision {
+                SideAmount::Input(precision) => {
+                    if chunk.input % precision != Balance::zero() {
+                        let count = chunk.input.saturating_div(precision);
+                        let aligned = count.saturating_mul(precision);
+                        let rescaled = chunk.rescale_by_input(aligned)?;
+                        let remainder = chunk.saturating_sub(rescaled);
+                        return Some((rescaled, remainder));
+                    }
+                }
+                SideAmount::Output(precision) => {
+                    if chunk.output % precision != Balance::zero() {
+                        let count = chunk.output.saturating_div(precision);
+                        let aligned = count.saturating_mul(precision);
+                        let rescaled = chunk.rescale_by_output(aligned)?;
+                        let remainder = chunk.saturating_sub(rescaled);
+                        return Some((rescaled, remainder));
+                    }
+                }
             }
         }
+        Some((chunk, Zero::zero()))
+    }
 
-        (amount, Balance::zero())
+    /// Aligns the `chunk` regarding to the limits.
+    /// Returns the aligned chunk and the remainder
+    pub fn align_chunk(
+        &self,
+        chunk: SwapChunk<Balance>,
+    ) -> Option<(SwapChunk<Balance>, SwapChunk<Balance>)> {
+        let (chunk, remainder) = self.align_chunk_min(chunk)?;
+        if !remainder.is_zero() {
+            return Some((chunk, remainder));
+        }
+
+        let (chunk, remainder) = self.align_chunk_max(chunk)?;
+        if !remainder.is_zero() {
+            return Some((chunk, remainder));
+        }
+
+        let (chunk, remainder) = self.align_chunk_precision(chunk)?;
+        if !remainder.is_zero() {
+            return Some((chunk, remainder));
+        }
+
+        Some((chunk, Zero::zero()))
     }
 }
 

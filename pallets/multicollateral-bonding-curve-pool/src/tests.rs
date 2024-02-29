@@ -33,7 +33,7 @@ mod tests {
         mock::*, DistributionAccount, DistributionAccountData, DistributionAccounts, Error, Pallet,
         RETRY_DISTRIBUTION_FREQUENCY,
     };
-    use common::alt::{DiscreteQuotation, SwapChunk, SwapLimits};
+    use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
     use common::assert_approx_eq;
     use common::{
         self, balance, fixed, fixed_wrapper,
@@ -4088,7 +4088,11 @@ mod tests {
                         balance!(410.104539406891639983),
                         0
                     )]),
-                    limits: SwapLimits::new(None, Some(balance!(1265.505489917016577573)), None)
+                    limits: SwapLimits::new(
+                        None,
+                        Some(SideAmount::Input(balance!(1265.505489917016577573))),
+                        None
+                    )
                 }
             );
 
@@ -4109,7 +4113,7 @@ mod tests {
                         balance!(100),
                         0
                     )]),
-                    limits: SwapLimits::new(None, Some(balance!(5600)), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(5600))), None)
                 }
             );
         });
@@ -4263,7 +4267,11 @@ mod tests {
                         SwapChunk::new(balance!(10), balance!(38.856645535262398030), 0),
                         SwapChunk::new(balance!(10), balance!(38.287528152400410951), 0),
                     ]),
-                    limits: SwapLimits::new(None, Some(balance!(1265.505489917016577573)), None)
+                    limits: SwapLimits::new(
+                        None,
+                        Some(SideAmount::Input(balance!(1265.505489917016577573))),
+                        None
+                    )
                 }
             );
 
@@ -4291,7 +4299,7 @@ mod tests {
                         SwapChunk::new(balance!(2.330029308876907873), balance!(10), 0),
                         SwapChunk::new(balance!(2.338502142727369357), balance!(10), 0),
                     ]),
-                    limits: SwapLimits::new(None, Some(balance!(5600)), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(5600))), None)
                 }
             );
         });
@@ -4565,7 +4573,11 @@ mod tests {
                             balance!(0.93)
                         ),
                     ]),
-                    limits: SwapLimits::new(None, Some(balance!(1265.505489917016577573)), None)
+                    limits: SwapLimits::new(
+                        None,
+                        Some(SideAmount::Input(balance!(1265.505489917016577573))),
+                        None
+                    )
                 }
             );
 
@@ -4633,7 +4645,7 @@ mod tests {
                             balance!(0.239780263807767751)
                         ),
                     ]),
-                    limits: SwapLimits::new(None, Some(balance!(5600)), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(5600))), None)
                 }
             );
         });

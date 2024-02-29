@@ -35,7 +35,7 @@ use sp_std::vec::Vec;
 
 #[cfg(feature = "wip")] // ALT
 use {
-    common::alt::{DiscreteQuotation, SwapChunk},
+    common::alt::{DiscreteQuotation, SideAmount, SwapChunk},
     common::prelude::SwapVariant,
     common::{fixed, Balance},
     itertools::Itertools,
@@ -137,51 +137,43 @@ where
 
             let discrete_quotation = self.liquidity_quotations.get_mut(source)?;
             let mut chunk = discrete_quotation.chunks.pop_front()?;
-            let origin_chunk = chunk.clone();
+            let mut payback = SwapChunk::zero();
 
             let total = Self::sum_chunks(selected.entry(source.clone()).or_default());
-
-            // modify chunk if needed
-            let remaining_delta = match self.variant {
-                SwapVariant::WithDesiredInput => {
-                    if remaining_amount < chunk.input {
-                        chunk = chunk.rescale_by_input(remaining_amount)?;
-                    }
-
-                    let (max_input, remainder) = discrete_quotation
-                        .limits
-                        .align_max(total.input.checked_add(chunk.input)?);
-                    if !remainder.is_zero() {
-                        // max amount exceeded
-                        chunk = chunk.rescale_by_input(max_input.checked_sub(total.input)?)?;
-                        locked_sources.push(source.clone());
-                    }
-
-                    chunk.input
+            let (max_chunk, remainder) = discrete_quotation
+                .limits
+                .align_chunk_max(total.saturating_add(chunk))?;
+            if !remainder.is_zero() {
+                // max amount exceeded
+                let diff = max_chunk.saturating_sub(total);
+                if diff.is_zero() {
+                    // it means the total volume of the source is already equal with max amount
+                    payback = chunk;
+                    chunk.set_zero();
+                } else {
+                    chunk =
+                        chunk.rescale_by_side_amount(diff.get_associated_field(self.variant))?;
+                    payback = remainder;
                 }
-                SwapVariant::WithDesiredOutput => {
-                    if remaining_amount < chunk.output {
-                        chunk = chunk.rescale_by_output(remaining_amount)?;
-                    }
+                locked_sources.push(source.clone());
+            }
 
-                    let (max_output, remainder) = discrete_quotation
-                        .limits
-                        .align_max(total.output.checked_add(chunk.output)?);
-                    if !remainder.is_zero() {
-                        // max amount exceeded
-                        chunk = chunk.rescale_by_output(max_output.checked_sub(total.output)?)?;
-                        locked_sources.push(source.clone());
-                    }
+            let remaining_side_amount = SideAmount::new(remaining_amount, self.variant);
+            if chunk > remaining_side_amount {
+                let rescaled = chunk.rescale_by_side_amount(remaining_side_amount)?;
+                payback = payback.saturating_add(chunk.saturating_sub(rescaled));
+                chunk = rescaled;
+            }
 
-                    chunk.output
-                }
-            };
+            let remaining_delta = *chunk.get_associated_field(self.variant).amount();
 
-            if origin_chunk != chunk {
+            if !payback.is_zero() {
                 // push remains of the chunk back
-                discrete_quotation
-                    .chunks
-                    .push_front(origin_chunk.saturating_sub(chunk));
+                discrete_quotation.chunks.push_front(payback);
+            }
+
+            if chunk.is_zero() {
+                continue;
             }
 
             selected
@@ -195,78 +187,40 @@ where
                 for (source, chunks) in &mut selected {
                     let total = Self::sum_chunks(chunks);
                     let discrete_quotation = self.liquidity_quotations.get_mut(source)?;
-                    match self.variant {
-                        SwapVariant::WithDesiredInput => {
-                            let (input, mut remainder) =
-                                discrete_quotation.limits.align(total.input);
-                            if !remainder.is_zero() {
-                                remaining_amount = remaining_amount.checked_add(remainder)?;
-                                locked_sources.push(source.clone());
 
-                                if input.is_zero() {
-                                    // liquidity is not enough even for the min amount
-                                    to_delete.push(source.clone());
+                    let (aligned, remainder) = discrete_quotation.limits.align_chunk(total)?;
+                    if !remainder.is_zero() {
+                        remaining_amount = remaining_amount
+                            .checked_add(*remainder.get_associated_field(self.variant).amount())?;
+                        locked_sources.push(source.clone());
 
-                                    for chunk in chunks.iter().rev() {
-                                        discrete_quotation.chunks.push_front(*chunk);
-                                    }
-                                } else {
-                                    while remainder > Balance::zero() {
-                                        let Some(chunk) = chunks.pop_back() else {
-                                            to_delete.push(source.clone());
-                                            break;
-                                        };
-                                        if chunk.input <= remainder {
-                                            remainder = remainder.checked_sub(chunk.input)?;
-                                            discrete_quotation.chunks.push_front(chunk);
-                                        } else {
-                                            let rescaled_chunk = chunk.rescale_by_input(
-                                                chunk.input.checked_sub(remainder)?,
-                                            )?;
-                                            chunks.push_back(rescaled_chunk);
-                                            discrete_quotation
-                                                .chunks
-                                                .push_front(chunk.saturating_sub(rescaled_chunk));
-                                            remainder = Balance::zero();
-                                        }
-                                    }
-                                }
+                        if aligned.is_zero() {
+                            // liquidity is not enough even for the min amount
+                            to_delete.push(source.clone());
+
+                            for chunk in chunks.iter().rev() {
+                                discrete_quotation.chunks.push_front(*chunk);
                             }
-                        }
-                        SwapVariant::WithDesiredOutput => {
-                            let (output, mut remainder) =
-                                discrete_quotation.limits.align(total.output);
-                            if !remainder.is_zero() {
-                                remaining_amount = remaining_amount.checked_add(remainder)?;
-                                locked_sources.push(source.clone());
-
-                                if output.is_zero() {
-                                    // liquidity is not enough even for the min amount
+                        } else {
+                            let mut remainder = remainder.get_associated_field(self.variant);
+                            while *remainder.amount() > Balance::zero() {
+                                let Some(chunk) = chunks.pop_back() else {
                                     to_delete.push(source.clone());
-
-                                    for chunk in chunks.iter().rev() {
-                                        discrete_quotation.chunks.push_front(*chunk);
-                                    }
+                                    break;
+                                };
+                                if chunk <= remainder {
+                                    let value = remainder.amount().checked_sub(
+                                        *chunk.get_associated_field(self.variant).amount(),
+                                    )?;
+                                    remainder.set_amount(value);
+                                    discrete_quotation.chunks.push_front(chunk);
                                 } else {
-                                    while remainder > Balance::zero() {
-                                        let Some(chunk) = chunks.pop_back() else {
-                                            to_delete.push(source.clone());
-                                            break;
-                                        };
-                                        if chunk.output <= remainder {
-                                            remainder = remainder.checked_sub(chunk.output)?;
-                                            discrete_quotation.chunks.push_front(chunk);
-                                        } else {
-                                            let rescaled_chunk = chunk.rescale_by_output(
-                                                chunk.output.checked_sub(remainder)?,
-                                            )?;
-                                            chunks.push_back(rescaled_chunk);
-                                            discrete_quotation
-                                                .chunks
-                                                .push_front(chunk.saturating_sub(rescaled_chunk));
-                                            remainder = Balance::zero();
-                                        }
-                                    }
+                                    let remainder_chunk =
+                                        chunk.rescale_by_side_amount(remainder)?;
+                                    let chunk = chunk.saturating_sub(remainder_chunk);
+                                    chunks.push_back(chunk);
+                                    discrete_quotation.chunks.push_front(remainder_chunk);
+                                    remainder.set_amount(Balance::zero());
                                 }
                             }
                         }
@@ -354,7 +308,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::liquidity_aggregator::*;
-    use common::alt::{DiscreteQuotation, SwapChunk, SwapLimits};
+    use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
     use common::prelude::{QuoteAmount, SwapVariant};
     use common::{balance, LiquiditySourceType};
     use sp_std::collections::vec_deque::VecDeque;
@@ -386,7 +340,7 @@ mod tests {
                     SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
                     SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
                 ]),
-                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(1000000))), None),
             },
         );
 
@@ -399,9 +353,9 @@ mod tests {
                     SwapChunk::new(balance!(10), balance!(80), balance!(0)),
                 ]),
                 limits: SwapLimits::new(
-                    Some(balance!(1)),
-                    Some(balance!(1000)),
-                    Some(balance!(0.00001)),
+                    Some(SideAmount::Input(balance!(1))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.00001))),
                 ),
             },
         );
@@ -437,7 +391,7 @@ mod tests {
                     SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
                     SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
                 ]),
-                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1000000))), None),
             },
         );
 
@@ -450,9 +404,9 @@ mod tests {
                     SwapChunk::new(balance!(13), balance!(100), balance!(0)),
                 ]),
                 limits: SwapLimits::new(
-                    Some(balance!(1)),
-                    Some(balance!(1000)),
-                    Some(balance!(0.00001)),
+                    Some(SideAmount::Input(balance!(1))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.00001))),
                 ),
             },
         );
@@ -487,7 +441,7 @@ mod tests {
                     SwapChunk::new(balance!(13), balance!(110.5), balance!(1.105)),
                     SwapChunk::new(balance!(14), balance!(119), balance!(1.19)),
                 ]),
-                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(1000000))), None),
             },
         );
 
@@ -500,9 +454,9 @@ mod tests {
                     SwapChunk::new(balance!(14), balance!(112), balance!(0)),
                 ]),
                 limits: SwapLimits::new(
-                    Some(balance!(1)),
-                    Some(balance!(1000)),
-                    Some(balance!(0.00001)),
+                    Some(SideAmount::Input(balance!(1))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.00001))),
                 ),
             },
         );
@@ -538,7 +492,7 @@ mod tests {
                     SwapChunk::new(balance!(8), balance!(64), balance!(0)),
                     SwapChunk::new(balance!(7), balance!(56), balance!(0)),
                 ]),
-                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1000000))), None),
             },
         );
 
@@ -551,9 +505,9 @@ mod tests {
                     SwapChunk::new(balance!(13), balance!(100), balance!(0)),
                 ]),
                 limits: SwapLimits::new(
-                    Some(balance!(1)),
-                    Some(balance!(1000)),
-                    Some(balance!(0.00001)),
+                    Some(SideAmount::Input(balance!(1))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.00001))),
                 ),
             },
         );
@@ -589,7 +543,7 @@ mod tests {
                     SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
                     SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
                 ]),
-                limits: SwapLimits::new(None, Some(balance!(15)), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(15))), None),
             },
         );
 
@@ -602,9 +556,9 @@ mod tests {
                     SwapChunk::new(balance!(14), balance!(112), balance!(0)),
                 ]),
                 limits: SwapLimits::new(
-                    Some(balance!(1)),
-                    Some(balance!(17)),
-                    Some(balance!(0.00001)),
+                    Some(SideAmount::Input(balance!(1))),
+                    Some(SideAmount::Input(balance!(17))),
+                    Some(SideAmount::Input(balance!(0.00001))),
                 ),
             },
         );
@@ -640,7 +594,7 @@ mod tests {
                     SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
                     SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
                 ]),
-                limits: SwapLimits::new(None, Some(balance!(150)), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(150))), None),
             },
         );
 
@@ -653,9 +607,9 @@ mod tests {
                     SwapChunk::new(balance!(13), balance!(100), balance!(0)),
                 ]),
                 limits: SwapLimits::new(
-                    Some(balance!(1)),
-                    Some(balance!(170)),
-                    Some(balance!(0.00001)),
+                    Some(SideAmount::Output(balance!(1))),
+                    Some(SideAmount::Output(balance!(170))),
+                    Some(SideAmount::Input(balance!(0.00001))),
                 ),
             },
         );
@@ -691,7 +645,7 @@ mod tests {
                     SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
                     SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
                 ]),
-                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(1000000))), None),
             },
         );
 
@@ -704,9 +658,9 @@ mod tests {
                     SwapChunk::new(balance!(14), balance!(112), balance!(0)),
                 ]),
                 limits: SwapLimits::new(
-                    Some(balance!(21)),
-                    Some(balance!(1000)),
-                    Some(balance!(0.00001)),
+                    Some(SideAmount::Input(balance!(21))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.00001))),
                 ),
             },
         );
@@ -742,7 +696,7 @@ mod tests {
                     SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
                     SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
                 ]),
-                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1000000))), None),
             },
         );
 
@@ -755,9 +709,9 @@ mod tests {
                     SwapChunk::new(balance!(10.5), balance!(100), balance!(0)),
                 ]),
                 limits: SwapLimits::new(
-                    Some(balance!(200)),
-                    Some(balance!(1000)),
-                    Some(balance!(0.00001)),
+                    Some(SideAmount::Output(balance!(200))),
+                    Some(SideAmount::Output(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.00001))),
                 ),
             },
         );
@@ -793,7 +747,7 @@ mod tests {
                     SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
                     SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
                 ]),
-                limits: SwapLimits::new(None, Some(balance!(1000000)), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(1000000))), None),
             },
         );
 
@@ -806,9 +760,9 @@ mod tests {
                     SwapChunk::new(balance!(14), balance!(112), balance!(0)),
                 ]),
                 limits: SwapLimits::new(
-                    Some(balance!(1)),
-                    Some(balance!(1000)),
-                    Some(balance!(0.1)),
+                    Some(SideAmount::Input(balance!(1))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.1))),
                 ),
             },
         );
@@ -816,7 +770,7 @@ mod tests {
         aggregator
     }
 
-    fn get_liquidity_aggregator_with_desired_output_and_precision_limits(
+    fn get_liquidity_aggregator_with_desired_output_and_precision_limits_for_input(
     ) -> LiquidityAggregator<LiquiditySourceType> {
         let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
 
@@ -844,7 +798,7 @@ mod tests {
                     SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
                     SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
                 ]),
-                limits: SwapLimits::new(None, Some(balance!(150)), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(150))), None),
             },
         );
 
@@ -857,9 +811,60 @@ mod tests {
                     SwapChunk::new(balance!(13), balance!(100), balance!(0)),
                 ]),
                 limits: SwapLimits::new(
-                    Some(balance!(1)),
-                    Some(balance!(170)),
-                    Some(balance!(0.01)),
+                    Some(SideAmount::Input(balance!(1))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.01))),
+                ),
+            },
+        );
+
+        aggregator
+    }
+
+    fn get_liquidity_aggregator_with_desired_output_and_precision_limits_for_output(
+    ) -> LiquidityAggregator<LiquiditySourceType> {
+        let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
+
+        aggregator.add_source(
+            LiquiditySourceType::XYKPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(11), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(13), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(14), balance!(100), balance!(1)),
+                ]),
+                limits: Default::default(),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::XSTPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                ]),
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(150))), None),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::OrderBook,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(120), balance!(0)),
+                    SwapChunk::new(balance!(9), balance!(90), balance!(0)),
+                    SwapChunk::new(balance!(13), balance!(100), balance!(0)),
+                ]),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Input(balance!(1))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Output(balance!(0.01))),
                 ),
             },
         );
@@ -2478,7 +2483,8 @@ mod tests {
 
     #[test]
     fn check_aggregate_swap_outcome_with_desired_output_and_precision_limits() {
-        let aggregator = get_liquidity_aggregator_with_desired_output_and_precision_limits();
+        let aggregator =
+            get_liquidity_aggregator_with_desired_output_and_precision_limits_for_output();
         assert_eq!(
             aggregator
                 .aggregate_swap_outcome(balance!(101.585))
@@ -2491,7 +2497,7 @@ mod tests {
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        (balance!(8.465), balance!(101.58)) // todo fix order-book precision
+                        (balance!(8.465), balance!(101.58))
                     )
                 ]),
                 AggregatedSwapOutcome::new(
@@ -2507,6 +2513,40 @@ mod tests {
                     ],
                     balance!(8.4655),
                     balance!(0.00005)
+                )
+            )
+        );
+
+        let aggregator =
+            get_liquidity_aggregator_with_desired_output_and_precision_limits_for_input();
+        assert_eq!(
+            aggregator
+                .aggregate_swap_outcome(balance!(101.585))
+                .unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(0.0065), balance!(0.065))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(8.46), balance!(101.52))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(0.065))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(101.52))
+                        )
+                    ],
+                    balance!(8.4665),
+                    balance!(0.00065)
                 )
             )
         );

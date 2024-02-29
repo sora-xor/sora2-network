@@ -34,7 +34,7 @@
 #![feature(int_roundings)]
 
 use assets::AssetIdOf;
-use common::alt::{DiscreteQuotation, SwapChunk};
+use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
     BalanceUnit, EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
     TradingPair,
@@ -1298,29 +1298,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let direction = order_book.get_direction(input_asset_id, output_asset_id)?;
 
-        let target = match amount {
-            QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
-                PriceVariant::Buy => {
-                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_in))
-                }
-                PriceVariant::Sell => OrderAmount::Base(
-                    order_book
-                        .step_lot_size
-                        .copy_divisibility(desired_amount_in),
-                ),
-            },
-            QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
-                PriceVariant::Buy => OrderAmount::Base(
-                    order_book
-                        .step_lot_size
-                        .copy_divisibility(desired_amount_out),
-                ),
-                PriceVariant::Sell => {
-                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_out))
-                }
-            },
-        };
-
         let market_depth = order_book.market_depth(
             direction.switched(),
             Some(OrderAmount::Base(order_book.max_lot_size)),
@@ -1351,9 +1328,64 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             false,
         )?;
 
-        let mut target_sum = BalanceUnit::zero();
-
         let mut quotation = DiscreteQuotation::new();
+
+        let target = match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
+                PriceVariant::Buy => {
+                    quotation.limits.min_amount =
+                        Some(SideAmount::Input(*quote_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        Some(SideAmount::Input(*quote_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        Some(SideAmount::Output(*order_book.step_lot_size.balance()));
+
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_in))
+                }
+                PriceVariant::Sell => {
+                    quotation.limits.min_amount =
+                        Some(SideAmount::Input(*base_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        Some(SideAmount::Input(*base_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        Some(SideAmount::Input(*order_book.step_lot_size.balance()));
+
+                    OrderAmount::Base(
+                        order_book
+                            .step_lot_size
+                            .copy_divisibility(desired_amount_in),
+                    )
+                }
+            },
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
+                PriceVariant::Buy => {
+                    quotation.limits.min_amount =
+                        Some(SideAmount::Output(*base_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        Some(SideAmount::Output(*base_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        Some(SideAmount::Output(*order_book.step_lot_size.balance()));
+
+                    OrderAmount::Base(
+                        order_book
+                            .step_lot_size
+                            .copy_divisibility(desired_amount_out),
+                    )
+                }
+                PriceVariant::Sell => {
+                    quotation.limits.min_amount =
+                        Some(SideAmount::Output(*quote_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        Some(SideAmount::Output(*quote_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        Some(SideAmount::Input(*order_book.step_lot_size.balance()));
+
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_out))
+                }
+            },
+        };
+
+        let mut target_sum = BalanceUnit::zero();
         for (price, base_volume) in market_depth.iter() {
             let quote_volume = price
                 .checked_mul(base_volume)
@@ -1382,25 +1414,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             };
             if target_sum >= *target.value() {
                 break;
-            }
-        }
-
-        match target {
-            OrderAmount::Base(..) => {
-                quotation.limits.min_amount = Some(*base_min_amount.value().balance());
-                quotation.limits.max_amount = Some(*base_max_amount.value().balance());
-                quotation.limits.amount_precision = Some(*order_book.step_lot_size.balance());
-            }
-            OrderAmount::Quote(..) => {
-                quotation.limits.min_amount = Some(*quote_min_amount.value().balance());
-                quotation.limits.max_amount = Some(*quote_max_amount.value().balance());
-                quotation.limits.amount_precision = Some(
-                    *order_book
-                        .step_lot_size
-                        .checked_mul(&order_book.tick_size)
-                        .ok_or(Error::<T>::AmountCalculationFailed)?
-                        .balance(),
-                );
             }
         }
 
