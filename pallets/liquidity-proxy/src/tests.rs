@@ -45,6 +45,7 @@ use common::{
 use core::convert::TryInto;
 use frame_support::weights::Weight;
 use frame_support::{assert_noop, assert_ok};
+use sp_core::bounded::BoundedVec;
 use sp_runtime::DispatchError;
 use test_utils::mcbc_excluding_filter;
 
@@ -3651,6 +3652,7 @@ fn test_batch_swap_desired_input_successful() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -3682,6 +3684,7 @@ fn test_batch_swap_emits_event() {
         let adar_fee = (FixedWrapper::from(amount_in) * fixed_wrapper!(0.0025)).into_balance();
 
         let max_input_amount = amount_in + adar_fee;
+        let additional_data = BoundedVec::try_from(vec![1, 2, 3, 32, 2, 13, 37]).unwrap();
 
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             RuntimeOrigin::signed(alice()),
@@ -3690,10 +3693,11 @@ fn test_batch_swap_emits_event() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            Some(additional_data.clone()),
         ));
 
         frame_system::Pallet::<Runtime>::assert_last_event(
-            crate::Event::BatchSwapExecuted(adar_fee, amount_in).into(),
+            crate::Event::BatchSwapExecuted(adar_fee, amount_in, Some(additional_data)).into(),
         );
     });
 }
@@ -3740,6 +3744,7 @@ fn test_batch_swap_duplicate_receivers_successful() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -3786,6 +3791,7 @@ fn test_batch_swap_desired_input_too_low() {
                 max_input_amount,
                 sources,
                 FilterMode::AllowSelected,
+                None,
             ),
             Error::<Runtime>::SlippageNotTolerated
         );
@@ -3832,6 +3838,7 @@ fn test_batch_swap_fail_with_duplicate_asset_ids() {
                 balance!(100),
                 [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::AllowSelected,
+                None,
             ),
             Error::<Runtime>::AggregationError
         );
@@ -4023,6 +4030,7 @@ fn test_batch_swap_asset_reuse_works() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -4084,6 +4092,7 @@ fn test_batch_swap_asset_reuse_fails() {
                 max_input_amount,
                 sources.clone(),
                 filter_mode,
+                None,
             ),
             Error::<Runtime>::InsufficientBalance
         );
