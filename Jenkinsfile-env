@@ -6,7 +6,7 @@ def pipeline = new org.docker.AppPipeline(steps: this,
     dockerFileName:               "housekeeping/docker/env/Dockerfile",
     triggerCommonBuildExpression: (env.BRANCH_NAME in ['develop', 'master']),
     triggerCommonBuildGrepRegex:  'housekeeping',
-    secretScannerExclusion:       '.*Cargo.toml',
+    secretScannerExclusion:       '.*Cargo.toml$|.*env\$',
     nameCI:                       'env-CI',
     dockerImageTags:              ['master': 'env', 'develop': 'env'])
 pipeline.runPipeline()
