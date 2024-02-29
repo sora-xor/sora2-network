@@ -170,7 +170,7 @@ services:
         ETHEREUM_JSONRPC_HTTP_URL: http://bridge-geth:8545/
         DATABASE_URL: ${DATABASE_URL}
         ECTO_USE_SSL: 'false'
-        SECRET_KEY_BASE: '${SECRET_KEY_BASE}'
+        SECRET_KEY_BASE: ${SECRET_KEY_BASE}
     ports:
       - 4000:4000
     networks:
