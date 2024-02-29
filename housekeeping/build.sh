@@ -15,7 +15,7 @@ test() {
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks"
     elif [[ $prBranch = 'master' ]]; then
-        printf "⚡️ This is "${prbranch}" Running tests and migrations %s\n"
+        printf "⚡️ This is "$prbranch" Running tests and migrations %s\n"
         RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
@@ -24,7 +24,7 @@ test() {
         export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         rm -rf ~/.cargo/.package-cache
         cargo fmt -- --check > /dev/null
-        cargo test --features $allfeatures -- --test-threads=2
+        cargo test --features $allfeatures -- --test-threads=1
     fi
 }
 
