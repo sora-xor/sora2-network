@@ -16,7 +16,8 @@ test() {
         cargo test --release --features "private-net runtime-benchmarks"
     elif [[ $prBranch = 'master' ]]; then
         printf "⚡️ This is "$prbranch" Running tests and migrations %s\n"
-        RUST_LOG="debug cargo test --features try-runtime -- run_migrations"
+        RUST_LOG="debug" 
+        cargo test --features try-runtime -- run_migrations"
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
         export RUSTFLAGS="-Cinstrument-coverage"
