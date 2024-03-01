@@ -28,6 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// Seems to be the only way to suppress the `deprecated` warnings in derives.
+// Moving structs into a module & doing `pub use` or `pub type` breaks `relayer` due to strange
+// substrate codegen
+#![allow(deprecated)]
+
 use crate::fixed_wrapper::FixedWrapper;
 use crate::traits::{IsRepresentation, PureOrWrapped};
 use crate::{Fixed, IsValid, Price};
@@ -128,60 +133,50 @@ impl<T> TradingPair<T> {
     }
 }
 
-pub use _allow_deprecated::*;
-// Seems to be the only way to suppress the `deprecated` warnings in derives
-mod _allow_deprecated {
-    #![allow(deprecated)]
-
-    use codec::{Decode, Encode, MaxEncodedLen};
-    use frame_support::RuntimeDebug;
-    use serde::{Deserialize, Serialize};
-
-    /// Asset identifier.
-    ///
-    /// Note: actual asset ids used for `DOT` and `KSM` are different from predefined ones.
-    /// Therefore,
-    #[derive(
-        Encode,
-        Decode,
-        Eq,
-        PartialEq,
-        Copy,
-        Clone,
-        PartialOrd,
-        Ord,
-        RuntimeDebug,
-        scale_info::TypeInfo,
-        MaxEncodedLen,
-    )]
-    #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
-    #[repr(u8)]
-    pub enum PredefinedAssetId {
-        XOR = 0,
-        #[deprecated(
-            note = "asset id for this variant is either absent or different in all environments; \
+/// Asset identifier.
+///
+/// Note: actual asset ids used for `DOT` and `KSM` are different from predefined ones.
+/// Therefore,
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+#[repr(u8)]
+pub enum PredefinedAssetId {
+    XOR = 0,
+    #[deprecated(
+        note = "asset id for this variant is either absent or different in all environments; \
                 refrain from using the predefined version."
-        )]
-        DOT = 1,
-        #[deprecated(
-            note = "asset id for this variant is either absent or different in all environments; \
+    )]
+    DOT = 1,
+    #[deprecated(
+        note = "asset id for this variant is either absent or different in all environments; \
                     refrain from using the predefined version."
-        )]
-        KSM = 2,
-        #[deprecated(
-            note = "asset id for this variant is different in production; refrain from using \
+    )]
+    KSM = 2,
+    #[deprecated(
+        note = "asset id for this variant is different in production; refrain from using \
                     the predefined version."
-        )]
-        USDT = 3,
-        VAL = 4,
-        PSWAP = 5,
-        DAI = 6,
-        ETH = 7,
-        XSTUSD = 8,
-        XST = 9,
-        TBCD = 10,
-        KUSD = 11,
-    }
+    )]
+    USDT = 3,
+    VAL = 4,
+    PSWAP = 5,
+    DAI = 6,
+    ETH = 7,
+    XSTUSD = 8,
+    XST = 9,
+    TBCD = 10,
+    KUSD = 11,
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
