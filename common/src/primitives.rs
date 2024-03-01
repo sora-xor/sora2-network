@@ -135,8 +135,8 @@ impl<T> TradingPair<T> {
 
 /// Asset identifier.
 ///
-/// Note: actual asset ids used for `DOT` and `KSM` are different from predefined ones.
-/// Therefore,
+/// Note: actual asset ids used for `DOT`, `KSM`, and `USDT` are different from predefined ones,
+/// so they shouldn't be used.
 #[derive(
     Encode,
     Decode,
