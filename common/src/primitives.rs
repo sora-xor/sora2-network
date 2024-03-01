@@ -128,38 +128,60 @@ impl<T> TradingPair<T> {
     }
 }
 
-/// Asset identifier.
-///
-/// Note: actual asset ids used for `DOT` and `KSM` are different from predefined ones.
-/// Therefore,
-#[derive(
-    Encode,
-    Decode,
-    Eq,
-    PartialEq,
-    Copy,
-    Clone,
-    PartialOrd,
-    Ord,
-    RuntimeDebug,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
-#[repr(u8)]
-pub enum PredefinedAssetId {
-    XOR = 0,
-    DOT = 1,
-    KSM = 2,
-    USDT = 3,
-    VAL = 4,
-    PSWAP = 5,
-    DAI = 6,
-    ETH = 7,
-    XSTUSD = 8,
-    XST = 9,
-    TBCD = 10,
-    KUSD = 11,
+pub use _allow_deprecated::*;
+// Seems to be the only way to suppress the `deprecated` warnings in derives
+mod _allow_deprecated {
+    #![allow(deprecated)]
+
+    use codec::{Decode, Encode, MaxEncodedLen};
+    use frame_support::RuntimeDebug;
+    use serde::{Deserialize, Serialize};
+
+    /// Asset identifier.
+    ///
+    /// Note: actual asset ids used for `DOT` and `KSM` are different from predefined ones.
+    /// Therefore,
+    #[derive(
+        Encode,
+        Decode,
+        Eq,
+        PartialEq,
+        Copy,
+        Clone,
+        PartialOrd,
+        Ord,
+        RuntimeDebug,
+        scale_info::TypeInfo,
+        MaxEncodedLen,
+    )]
+    #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+    #[repr(u8)]
+    pub enum PredefinedAssetId {
+        XOR = 0,
+        #[deprecated(
+            note = "asset id for this variant is either absent or different in all environments; \
+                refrain from using the predefined version."
+        )]
+        DOT = 1,
+        #[deprecated(
+            note = "asset id for this variant is either absent or different in all environments; \
+                    refrain from using the predefined version."
+        )]
+        KSM = 2,
+        #[deprecated(
+            note = "asset id for this variant is different in production; refrain from using \
+                    the predefined version."
+        )]
+        USDT = 3,
+        VAL = 4,
+        PSWAP = 5,
+        DAI = 6,
+        ETH = 7,
+        XSTUSD = 8,
+        XST = 9,
+        TBCD = 10,
+        KUSD = 11,
+    }
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
@@ -193,6 +215,8 @@ pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
 pub const ROC: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "0x00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
 ));
+// `private-net` is not used in prod
+#[allow(deprecated)]
 #[cfg(any(feature = "private-net", test))]
 pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::USDT);
 #[cfg(not(any(feature = "private-net", test)))]
