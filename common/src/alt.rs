@@ -74,17 +74,108 @@ impl<AmountType> SideAmount<AmountType> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Fee<AmountType> {
+    pub xor: AmountType,
+    pub xst: AmountType,
+    pub xstusd: AmountType,
+}
+
+impl<AmountType> Fee<AmountType> {
+    pub fn new(xor: AmountType, xst: AmountType, xstusd: AmountType) -> Self {
+        Self { xor, xst, xstusd }
+    }
+}
+
+impl<AmountType: Zero> Fee<AmountType> {
+    pub fn xor(xor: AmountType) -> Self {
+        Self::new(xor, Zero::zero(), Zero::zero())
+    }
+
+    pub fn xst(xst: AmountType) -> Self {
+        Self::new(Zero::zero(), xst, Zero::zero())
+    }
+
+    pub fn xstusd(xstusd: AmountType) -> Self {
+        Self::new(Zero::zero(), Zero::zero(), xstusd)
+    }
+}
+
+impl<AmountType: Zero> Zero for Fee<AmountType> {
+    fn zero() -> Self {
+        Self::new(Zero::zero(), Zero::zero(), Zero::zero())
+    }
+
+    fn is_zero(&self) -> bool {
+        self.xor.is_zero() && self.xst.is_zero() && self.xstusd.is_zero()
+    }
+}
+
+impl<AmountType: Zero> Default for Fee<AmountType> {
+    fn default() -> Self {
+        Self::zero()
+    }
+}
+
+impl<AmountType> Add for Fee<AmountType>
+where
+    AmountType: Add<Output = AmountType>,
+{
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        Self::Output::new(
+            self.xor.add(other.xor),
+            self.xst.add(other.xst),
+            self.xstusd.add(other.xstusd),
+        )
+    }
+}
+
+impl Fee<Balance> {
+    pub fn saturating_add(self, rhs: Self) -> Self {
+        Self::new(
+            self.xor.saturating_add(rhs.xor),
+            self.xst.saturating_add(rhs.xst),
+            self.xstusd.saturating_add(rhs.xstusd),
+        )
+    }
+
+    pub fn saturating_sub(self, rhs: Self) -> Self {
+        Self::new(
+            self.xor.saturating_sub(rhs.xor),
+            self.xst.saturating_sub(rhs.xst),
+            self.xstusd.saturating_sub(rhs.xstusd),
+        )
+    }
+
+    pub fn rescale_by_ratio(self, ratio: FixedWrapper) -> Option<Self> {
+        let xor = (FixedWrapper::from(self.xor) * ratio.clone())
+            .try_into_balance()
+            .ok()?;
+        let xst = (FixedWrapper::from(self.xst) * ratio.clone())
+            .try_into_balance()
+            .ok()?;
+        let xstusd = (FixedWrapper::from(self.xstusd) * ratio)
+            .try_into_balance()
+            .ok()?;
+        Some(Self::new(xor, xst, xstusd))
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SwapChunk<AmountType> {
     pub input: AmountType,
     pub output: AmountType,
     pub fee: AmountType,
 }
 
-impl<AmountType: Copy> SwapChunk<AmountType> {
+impl<AmountType> SwapChunk<AmountType> {
     pub fn new(input: AmountType, output: AmountType, fee: AmountType) -> Self {
         Self { input, output, fee }
     }
+}
 
+impl<AmountType: Copy> SwapChunk<AmountType> {
     pub fn get_associated_field(&self, swap_variant: SwapVariant) -> SideAmount<AmountType> {
         match swap_variant {
             SwapVariant::WithDesiredInput => SideAmount::Input(self.input),
@@ -114,9 +205,9 @@ impl<AmountType: PartialOrd> PartialOrd<SideAmount<AmountType>> for SwapChunk<Am
     }
 }
 
-impl Zero for SwapChunk<Balance> {
+impl<AmountType: Zero> Zero for SwapChunk<AmountType> {
     fn zero() -> Self {
-        Self::new(Balance::zero(), Balance::zero(), Balance::zero())
+        Self::new(Zero::zero(), Zero::zero(), Zero::zero())
     }
 
     fn is_zero(&self) -> bool {
@@ -124,20 +215,23 @@ impl Zero for SwapChunk<Balance> {
     }
 }
 
-impl Default for SwapChunk<Balance> {
+impl<AmountType: Zero> Default for SwapChunk<AmountType> {
     fn default() -> Self {
         Self::zero()
     }
 }
 
-impl Add for SwapChunk<Balance> {
+impl<AmountType> Add for SwapChunk<AmountType>
+where
+    AmountType: Add<Output = AmountType>,
+{
     type Output = Self;
 
     fn add(self, other: Self) -> Self::Output {
         Self::new(
-            self.input + other.input,
-            self.output + other.output,
-            self.fee + other.fee,
+            self.input.add(other.input),
+            self.output.add(other.output),
+            self.fee.add(other.fee),
         )
     }
 }
