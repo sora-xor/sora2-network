@@ -94,7 +94,8 @@ impl From<PredefinedAssetId> for ComicAssetId {
         use ComicAssetId::*;
         match asset_id {
             PredefinedAssetId::XOR => GoldenTicket,
-            #[cfg(any(feature = "private-net", test))]
+            PredefinedAssetId::DOT => AppleTree,
+            PredefinedAssetId::KSM => Apple,
             PredefinedAssetId::USDT => Teapot,
             PredefinedAssetId::VAL => Flower,
             PredefinedAssetId::PSWAP => RedPepper,

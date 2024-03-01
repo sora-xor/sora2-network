@@ -129,6 +129,9 @@ impl<T> TradingPair<T> {
 }
 
 /// Asset identifier.
+///
+/// Note: actual asset ids used for `DOT` and `KSM` are different from predefined ones.
+/// Therefore,
 #[derive(
     Encode,
     Decode,
@@ -146,7 +149,8 @@ impl<T> TradingPair<T> {
 #[repr(u8)]
 pub enum PredefinedAssetId {
     XOR = 0,
-    #[cfg(any(feature = "private-net", test))]
+    DOT = 1,
+    KSM = 2,
     USDT = 3,
     VAL = 4,
     PSWAP = 5,
