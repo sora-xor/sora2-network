@@ -1395,12 +1395,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 PriceVariant::Buy => quotation.chunks.push_back(SwapChunk::new(
                     *quote_volume.balance(),
                     *base_volume.balance(),
-                    Balance::zero(),
+                    Zero::zero(),
                 )),
                 PriceVariant::Sell => quotation.chunks.push_back(SwapChunk::new(
                     *base_volume.balance(),
                     *quote_volume.balance(),
-                    Balance::zero(),
+                    Zero::zero(),
                 )),
             }
 

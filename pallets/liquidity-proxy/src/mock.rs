@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as liquidity_proxy, Config, LiquidityProxyBuyBackHandler};
-use common::alt::{DiscreteQuotation, SwapChunk};
+use common::alt::{DiscreteQuotation, Fee, SwapChunk};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
@@ -51,7 +51,7 @@ use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{AccountId32, DispatchError, Perbill, Percent};
 use sp_std::str::FromStr;
 use std::collections::{BTreeSet, HashMap};
@@ -764,7 +764,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
 
         let mut sub_in = 0;
         let mut sub_out = 0;
-        let mut sub_fee = 0;
+        let mut sub_fee = Zero::zero();
 
         for i in 1..=recommended_samples_count {
             let volume = amount.copy_direction(step * i as Balance);
@@ -781,9 +781,11 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 }
             };
 
+            let fee = Fee::xor(fee);
+
             let input_chunk = input - sub_in;
             let output_chunk = output - sub_out;
-            let fee_chunk = fee - sub_fee;
+            let fee_chunk = fee.saturating_sub(sub_fee);
 
             sub_in = input;
             sub_out = output;
@@ -1199,7 +1201,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         let chunk = SwapChunk::new(
             input / recommended_samples_count as Balance,
             output / recommended_samples_count as Balance,
-            fee / recommended_samples_count as Balance,
+            Fee::xor(fee / recommended_samples_count as Balance),
         );
 
         quotation.chunks = vec![chunk; recommended_samples_count].into();

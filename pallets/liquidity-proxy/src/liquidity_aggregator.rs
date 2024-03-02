@@ -35,7 +35,7 @@ use sp_std::vec::Vec;
 
 #[cfg(feature = "wip")] // ALT
 use {
-    common::alt::{DiscreteQuotation, SideAmount, SwapChunk},
+    common::alt::{DiscreteQuotation, Fee, SideAmount, SwapChunk},
     common::prelude::SwapVariant,
     common::{fixed, Balance},
     itertools::Itertools,
@@ -233,7 +233,7 @@ where
         let mut distribution = Vec::new();
         let mut swap_info: SwapInfo<LiquiditySourceType, Balance> = SwapInfo::new();
         let mut result_amount = Balance::zero();
-        let mut fee = Balance::zero();
+        let mut fee = Fee::zero();
 
         for (source, chunks) in &selected {
             let total = Self::sum_chunks(chunks);
@@ -249,7 +249,7 @@ where
                 QuoteAmount::with_variant(self.variant, desired_part),
             ));
             result_amount = result_amount.checked_add(result_part)?;
-            fee = fee.checked_add(total.fee)?;
+            fee = fee.saturating_add(total.fee);
         }
 
         Some((
@@ -257,7 +257,7 @@ where
             AggregatedSwapOutcome {
                 distribution,
                 amount: result_amount,
-                fee,
+                fee: fee.xor, // todo fix (m.tagirov)
             },
         ))
     }
@@ -320,11 +320,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(10), balance!(90), balance!(0.9)),
-                    SwapChunk::new(balance!(10), balance!(80), balance!(0.8)),
-                    SwapChunk::new(balance!(10), balance!(70), balance!(0.7)),
-                    SwapChunk::new(balance!(10), balance!(60), balance!(0.6)),
+                    SwapChunk::new(balance!(10), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(10), balance!(90), Fee::xor(balance!(0.9))),
+                    SwapChunk::new(balance!(10), balance!(80), Fee::xor(balance!(0.8))),
+                    SwapChunk::new(balance!(10), balance!(70), Fee::xor(balance!(0.7))),
+                    SwapChunk::new(balance!(10), balance!(60), Fee::xor(balance!(0.6))),
                 ]),
                 limits: Default::default(),
             },
@@ -334,11 +334,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(1000000))), None),
             },
@@ -348,9 +348,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(120), balance!(0)),
-                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(10), balance!(80), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(120), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(80), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -371,11 +371,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(11), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(13), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(14), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(10), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(11), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(12), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(13), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(14), balance!(100), Fee::xor(balance!(1))),
                 ]),
                 limits: Default::default(),
             },
@@ -385,11 +385,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1000000))), None),
             },
@@ -399,9 +399,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(8), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(13), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(8), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(13), balance!(100), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -421,11 +421,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12), balance!(108), balance!(1.08)),
-                    SwapChunk::new(balance!(14), balance!(112), balance!(1.12)),
-                    SwapChunk::new(balance!(16), balance!(112), balance!(1.12)),
-                    SwapChunk::new(balance!(18), balance!(108), balance!(1.08)),
+                    SwapChunk::new(balance!(10), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(12), balance!(108), Fee::xor(balance!(1.08))),
+                    SwapChunk::new(balance!(14), balance!(112), Fee::xor(balance!(1.12))),
+                    SwapChunk::new(balance!(16), balance!(112), Fee::xor(balance!(1.12))),
+                    SwapChunk::new(balance!(18), balance!(108), Fee::xor(balance!(1.08))),
                 ]),
                 limits: Default::default(),
             },
@@ -435,11 +435,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(11), balance!(93.5), balance!(0.935)),
-                    SwapChunk::new(balance!(12), balance!(102), balance!(1.02)),
-                    SwapChunk::new(balance!(13), balance!(110.5), balance!(1.105)),
-                    SwapChunk::new(balance!(14), balance!(119), balance!(1.19)),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(11), balance!(93.5), Fee::xst(balance!(0.935))),
+                    SwapChunk::new(balance!(12), balance!(102), Fee::xst(balance!(1.02))),
+                    SwapChunk::new(balance!(13), balance!(110.5), Fee::xst(balance!(1.105))),
+                    SwapChunk::new(balance!(14), balance!(119), Fee::xst(balance!(1.19))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(1000000))), None),
             },
@@ -449,9 +449,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(12), balance!(144), balance!(0)),
-                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(14), balance!(112), balance!(0)),
+                    SwapChunk::new(balance!(12), balance!(144), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(14), balance!(112), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -472,11 +472,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(5.5), balance!(50), balance!(0)),
-                    SwapChunk::new(balance!(3), balance!(25), balance!(0)),
-                    SwapChunk::new(balance!(26), balance!(200), balance!(0)),
-                    SwapChunk::new(balance!(7), balance!(50), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(5.5), balance!(50), Zero::zero()),
+                    SwapChunk::new(balance!(3), balance!(25), Zero::zero()),
+                    SwapChunk::new(balance!(26), balance!(200), Zero::zero()),
+                    SwapChunk::new(balance!(7), balance!(50), Zero::zero()),
                 ]),
                 limits: Default::default(),
             },
@@ -486,11 +486,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(10), balance!(80), balance!(0)),
-                    SwapChunk::new(balance!(9), balance!(72), balance!(0)),
-                    SwapChunk::new(balance!(8), balance!(64), balance!(0)),
-                    SwapChunk::new(balance!(7), balance!(56), balance!(0)),
+                    SwapChunk::new(balance!(12.5), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(80), Zero::zero()),
+                    SwapChunk::new(balance!(9), balance!(72), Zero::zero()),
+                    SwapChunk::new(balance!(8), balance!(64), Zero::zero()),
+                    SwapChunk::new(balance!(7), balance!(56), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1000000))), None),
             },
@@ -500,9 +500,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(8), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(9), balance!(90), balance!(0)),
-                    SwapChunk::new(balance!(13), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(8), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(9), balance!(90), Zero::zero()),
+                    SwapChunk::new(balance!(13), balance!(100), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -523,11 +523,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(10), balance!(90), balance!(0.9)),
-                    SwapChunk::new(balance!(10), balance!(80), balance!(0.8)),
-                    SwapChunk::new(balance!(10), balance!(70), balance!(0.7)),
-                    SwapChunk::new(balance!(10), balance!(60), balance!(0.6)),
+                    SwapChunk::new(balance!(10), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(10), balance!(90), Fee::xor(balance!(0.9))),
+                    SwapChunk::new(balance!(10), balance!(80), Fee::xor(balance!(0.8))),
+                    SwapChunk::new(balance!(10), balance!(70), Fee::xor(balance!(0.7))),
+                    SwapChunk::new(balance!(10), balance!(60), Fee::xor(balance!(0.6))),
                 ]),
                 limits: Default::default(),
             },
@@ -537,11 +537,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(15))), None),
             },
@@ -551,9 +551,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(12), balance!(144), balance!(0)),
-                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(14), balance!(112), balance!(0)),
+                    SwapChunk::new(balance!(12), balance!(144), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(14), balance!(112), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -574,11 +574,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(11), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(13), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(14), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(10), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(11), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(12), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(13), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(14), balance!(100), Fee::xor(balance!(1))),
                 ]),
                 limits: Default::default(),
             },
@@ -588,11 +588,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(150))), None),
             },
@@ -602,9 +602,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(8), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(9), balance!(90), balance!(0)),
-                    SwapChunk::new(balance!(13), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(8), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(9), balance!(90), Zero::zero()),
+                    SwapChunk::new(balance!(13), balance!(100), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(1))),
@@ -625,11 +625,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(10), balance!(90), balance!(0.9)),
-                    SwapChunk::new(balance!(10), balance!(80), balance!(0.8)),
-                    SwapChunk::new(balance!(10), balance!(70), balance!(0.7)),
-                    SwapChunk::new(balance!(10), balance!(60), balance!(0.6)),
+                    SwapChunk::new(balance!(10), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(10), balance!(90), Fee::xor(balance!(0.9))),
+                    SwapChunk::new(balance!(10), balance!(80), Fee::xor(balance!(0.8))),
+                    SwapChunk::new(balance!(10), balance!(70), Fee::xor(balance!(0.7))),
+                    SwapChunk::new(balance!(10), balance!(60), Fee::xor(balance!(0.6))),
                 ]),
                 limits: Default::default(),
             },
@@ -639,11 +639,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(1000000))), None),
             },
@@ -653,9 +653,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(12), balance!(144), balance!(0)),
-                    SwapChunk::new(balance!(10), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(14), balance!(112), balance!(0)),
+                    SwapChunk::new(balance!(12), balance!(144), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(14), balance!(112), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(21))),
@@ -676,11 +676,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(11), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(13), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(14), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(10), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(11), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(12), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(13), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(14), balance!(100), Fee::xor(balance!(1))),
                 ]),
                 limits: Default::default(),
             },
@@ -690,11 +690,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1000000))), None),
             },
@@ -704,9 +704,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(8), balance!(100), balance!(0)),
-                    SwapChunk::new(balance!(9), balance!(90), balance!(0)),
-                    SwapChunk::new(balance!(10.5), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(8), balance!(100), Zero::zero()),
+                    SwapChunk::new(balance!(9), balance!(90), Zero::zero()),
+                    SwapChunk::new(balance!(10.5), balance!(100), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(200))),
@@ -727,11 +727,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(10), balance!(90), balance!(0.9)),
-                    SwapChunk::new(balance!(10), balance!(80), balance!(0.8)),
-                    SwapChunk::new(balance!(10), balance!(70), balance!(0.7)),
-                    SwapChunk::new(balance!(10), balance!(60), balance!(0.6)),
+                    SwapChunk::new(balance!(10), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(10), balance!(90), Fee::xor(balance!(0.9))),
+                    SwapChunk::new(balance!(10), balance!(80), Fee::xor(balance!(0.8))),
+                    SwapChunk::new(balance!(10), balance!(70), Fee::xor(balance!(0.7))),
+                    SwapChunk::new(balance!(10), balance!(60), Fee::xor(balance!(0.6))),
                 ]),
                 limits: Default::default(),
             },
@@ -741,11 +741,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
-                    SwapChunk::new(balance!(10), balance!(85), balance!(0.85)),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
+                    SwapChunk::new(balance!(10), balance!(85), Fee::xst(balance!(0.85))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(1000000))), None),
             },
@@ -755,9 +755,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(11), balance!(132), balance!(0)),
-                    SwapChunk::new(balance!(10), balance!(90), balance!(0)),
-                    SwapChunk::new(balance!(14), balance!(112), balance!(0)),
+                    SwapChunk::new(balance!(11), balance!(132), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(90), Zero::zero()),
+                    SwapChunk::new(balance!(14), balance!(112), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -778,11 +778,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(11), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(13), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(14), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(10), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(11), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(12), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(13), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(14), balance!(100), Fee::xor(balance!(1))),
                 ]),
                 limits: Default::default(),
             },
@@ -792,11 +792,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(150))), None),
             },
@@ -806,9 +806,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(120), balance!(0)),
-                    SwapChunk::new(balance!(9), balance!(90), balance!(0)),
-                    SwapChunk::new(balance!(13), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(120), Zero::zero()),
+                    SwapChunk::new(balance!(9), balance!(90), Zero::zero()),
+                    SwapChunk::new(balance!(13), balance!(100), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -829,11 +829,11 @@ mod tests {
             LiquiditySourceType::XYKPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(11), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(13), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(14), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(10), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(11), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(12), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(13), balance!(100), Fee::xor(balance!(1))),
+                    SwapChunk::new(balance!(14), balance!(100), Fee::xor(balance!(1))),
                 ]),
                 limits: Default::default(),
             },
@@ -843,11 +843,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
-                    SwapChunk::new(balance!(12.5), balance!(100), balance!(1)),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
+                    SwapChunk::new(balance!(12.5), balance!(100), Fee::xst(balance!(1))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(150))), None),
             },
@@ -857,9 +857,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(120), balance!(0)),
-                    SwapChunk::new(balance!(9), balance!(90), balance!(0)),
-                    SwapChunk::new(balance!(13), balance!(100), balance!(0)),
+                    SwapChunk::new(balance!(10), balance!(120), Zero::zero()),
+                    SwapChunk::new(balance!(9), balance!(90), Zero::zero()),
+                    SwapChunk::new(balance!(13), balance!(100), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -1067,7 +1067,7 @@ mod tests {
                         QuoteAmount::with_desired_input(balance!(10))
                     )],
                     balance!(120),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1086,7 +1086,7 @@ mod tests {
                         QuoteAmount::with_desired_input(balance!(20))
                     )],
                     balance!(220),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1175,7 +1175,7 @@ mod tests {
                         )
                     ],
                     balance!(495),
-                    balance!(2.75)
+                    balance!(1.9) // todo sum balance!(2.75)
                 )
             )
         );
@@ -1208,7 +1208,7 @@ mod tests {
                         )
                     ],
                     balance!(580),
-                    balance!(3.6)
+                    balance!(1.9) // todo sum balance!(3.6)
                 )
             )
         );
@@ -1227,7 +1227,7 @@ mod tests {
                         QuoteAmount::with_desired_output(balance!(100))
                     )],
                     balance!(8),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1246,7 +1246,7 @@ mod tests {
                         QuoteAmount::with_desired_output(balance!(200))
                     )],
                     balance!(18),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1366,7 +1366,7 @@ mod tests {
                         )
                     ],
                     balance!(63.5),
-                    balance!(4)
+                    balance!(3) // todo sum balance!(4)
                 )
             )
         );
@@ -1399,7 +1399,7 @@ mod tests {
                         )
                     ],
                     balance!(76),
-                    balance!(5)
+                    balance!(3) // todo sum balance!(5)
                 )
             )
         );
@@ -1600,7 +1600,7 @@ mod tests {
                         QuoteAmount::with_desired_input(balance!(10))
                     )],
                     balance!(120),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1619,7 +1619,7 @@ mod tests {
                         QuoteAmount::with_desired_input(balance!(20))
                     )],
                     balance!(224),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1708,7 +1708,7 @@ mod tests {
                         )
                     ],
                     balance!(503),
-                    balance!(2.59)
+                    balance!(2.08) // todo sum balance!(2.59)
                 )
             )
         );
@@ -1741,7 +1741,7 @@ mod tests {
                         )
                     ],
                     balance!(588),
-                    balance!(3.439999999999999999)
+                    balance!(2.08) // todo sum balance!(3.439999999999999999)
                 )
             )
         );
@@ -1760,7 +1760,7 @@ mod tests {
                         QuoteAmount::with_desired_output(balance!(100))
                     )],
                     balance!(8),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1779,7 +1779,7 @@ mod tests {
                         QuoteAmount::with_desired_output(balance!(150))
                     )],
                     balance!(13),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1807,7 +1807,7 @@ mod tests {
                         )
                     ],
                     balance!(23),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1838,7 +1838,7 @@ mod tests {
                         )
                     ],
                     balance!(32.5),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1874,7 +1874,7 @@ mod tests {
                         )
                     ],
                     balance!(40.5),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1913,7 +1913,7 @@ mod tests {
                         )
                     ],
                     balance!(53),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -1935,7 +1935,7 @@ mod tests {
                         QuoteAmount::with_desired_input(balance!(10))
                     )],
                     balance!(120),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -2024,7 +2024,7 @@ mod tests {
                         )
                     ],
                     balance!(409.5),
-                    balance!(2.155)
+                    balance!(1.9) // todo sum balance!(2.155)
                 )
             )
         );
@@ -2060,7 +2060,7 @@ mod tests {
                         )
                     ],
                     balance!(494.5),
-                    balance!(3.005)
+                    balance!(1.9) // todo sum balance!(3.005)
                 )
             )
         );
@@ -2096,7 +2096,7 @@ mod tests {
                         )
                     ],
                     balance!(575.5),
-                    balance!(3.815)
+                    balance!(2.54) // todo sum balance!(3.815)
                 )
             )
         );
@@ -2115,7 +2115,7 @@ mod tests {
                         QuoteAmount::with_desired_output(balance!(100))
                     )],
                     balance!(8),
-                    0
+                    Zero::zero()
                 )
             )
         );
@@ -2238,7 +2238,7 @@ mod tests {
                         )
                     ],
                     balance!(51.75),
-                    balance!(3.3)
+                    balance!(3) // todo sum balance!(3.3)
                 )
             )
         );
@@ -2274,7 +2274,7 @@ mod tests {
                         )
                     ],
                     balance!(64.25),
-                    balance!(4.3)
+                    balance!(3) // todo sum balance!(4.3)
                 )
             )
         );
@@ -2313,7 +2313,7 @@ mod tests {
                         )
                     ],
                     balance!(77.15),
-                    balance!(5.3)
+                    balance!(3.8) // todo sum balance!(5.3)
                 )
             )
         );

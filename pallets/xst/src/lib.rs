@@ -49,7 +49,7 @@ use core::convert::TryInto;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
-use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
+use common::alt::{DiscreteQuotation, Fee, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, Fixed, FixedWrapper, PriceToolsProvider, QuoteAmount, SwapAmount,
@@ -1127,7 +1127,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             fee_amount
         };
 
-        let mut monolith = SwapChunk::new(input_amount, output_amount, fee_amount);
+        let mut monolith = SwapChunk::new(input_amount, output_amount, Fee::xst(fee_amount));
 
         // Get max amount for the limit
         let limit = T::GetSyntheticBaseBuySellLimit::get();
@@ -1197,7 +1197,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             monolith.fee.saturating_sub(
                 chunk
                     .fee
-                    .checked_mul(samples_count as Balance - 1)
+                    .mul_n(samples_count - 1)
                     .ok_or(Error::<T>::PriceCalculationFailed)?,
             ),
         ));

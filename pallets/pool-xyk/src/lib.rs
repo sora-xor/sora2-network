@@ -40,7 +40,7 @@ use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-use common::alt::{DiscreteQuotation, SwapChunk};
+use common::alt::{DiscreteQuotation, Fee, SwapChunk};
 use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
@@ -501,7 +501,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         volumes.push((amount.amount(), remaining));
 
         let mut sub_sum = Balance::zero();
-        let mut sub_fee = Balance::zero();
+        let mut sub_fee = Fee::zero();
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => {
@@ -514,6 +514,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         &volume,
                         deduce_fee,
                     )?;
+
+                    let fee = if *dex_id == common::DEXId::PolkaswapXSTUSD.into() {
+                        Fee::xstusd(fee)
+                    } else {
+                        Fee::xor(fee)
+                    };
 
                     let output = calculated.saturating_sub(sub_sum);
                     let fee_chunk = fee.saturating_sub(sub_fee);
@@ -534,6 +540,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         &volume,
                         deduce_fee,
                     )?;
+
+                    let fee = if *dex_id == common::DEXId::PolkaswapXSTUSD.into() {
+                        Fee::xstusd(fee)
+                    } else {
+                        Fee::xor(fee)
+                    };
 
                     let input = calculated.saturating_sub(sub_sum);
                     let fee_chunk = fee.saturating_sub(sub_fee);

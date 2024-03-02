@@ -46,7 +46,7 @@ use framenode_runtime::order_book::{
     OrderBook, OrderBookId, OrderBookStatus, OrderPrice, OrderVolume, WeightInfo,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::vec_deque::VecDeque;
 
@@ -1648,7 +1648,11 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(11))),
                     Some(SideAmount::Input(balance!(6881.32))),
@@ -1670,8 +1674,8 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), Zero::zero()),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), Zero::zero())
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(11))),
@@ -1694,9 +1698,9 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
-                    SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), Zero::zero()),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), Zero::zero()),
+                    SwapChunk::new(balance!(2941.7), balance!(255.8), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(11))),
@@ -1719,9 +1723,9 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
-                    SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), Zero::zero()),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), Zero::zero()),
+                    SwapChunk::new(balance!(2941.7), balance!(255.8), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(11))),
@@ -1759,7 +1763,11 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(1))),
                     Some(SideAmount::Output(balance!(610.7))),
@@ -1781,8 +1789,8 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), Zero::zero()),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), Zero::zero())
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(1))),
@@ -1805,9 +1813,9 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
-                    SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), Zero::zero()),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), Zero::zero()),
+                    SwapChunk::new(balance!(2941.7), balance!(255.8), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(1))),
@@ -1830,9 +1838,9 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
-                    SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
-                    SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+                    SwapChunk::new(balance!(1939.3), balance!(176.3), Zero::zero()),
+                    SwapChunk::new(balance!(2000.32), balance!(178.6), Zero::zero()),
+                    SwapChunk::new(balance!(2941.7), balance!(255.8), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(1))),
@@ -1870,7 +1878,11 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
                     Some(SideAmount::Input(balance!(569.7))),
@@ -1892,8 +1904,8 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
+                    SwapChunk::new(balance!(168.5), balance!(1685), Zero::zero()),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), Zero::zero())
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -1916,9 +1928,9 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
-                    SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+                    SwapChunk::new(balance!(168.5), balance!(1685), Zero::zero()),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), Zero::zero()),
+                    SwapChunk::new(balance!(261.3), balance!(2482.35), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -1941,9 +1953,9 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
-                    SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+                    SwapChunk::new(balance!(168.5), balance!(1685), Zero::zero()),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), Zero::zero()),
+                    SwapChunk::new(balance!(261.3), balance!(2482.35), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -1981,7 +1993,11 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(10))),
                     Some(SideAmount::Output(balance!(5538.37))),
@@ -2003,8 +2019,8 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
+                    SwapChunk::new(balance!(168.5), balance!(1685), Zero::zero()),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), Zero::zero())
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(10))),
@@ -2027,9 +2043,9 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
-                    SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+                    SwapChunk::new(balance!(168.5), balance!(1685), Zero::zero()),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), Zero::zero()),
+                    SwapChunk::new(balance!(261.3), balance!(2482.35), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(10))),
@@ -2052,9 +2068,9 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(168.5), balance!(1685), 0),
-                    SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
-                    SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+                    SwapChunk::new(balance!(168.5), balance!(1685), Zero::zero()),
+                    SwapChunk::new(balance!(139.9), balance!(1371.02), Zero::zero()),
+                    SwapChunk::new(balance!(261.3), balance!(2482.35), Zero::zero()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(10))),
@@ -2116,7 +2132,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(11))),
                     Some(SideAmount::Input(balance!(1100))),
@@ -2137,7 +2157,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(11))),
                     Some(SideAmount::Input(balance!(1100))),
@@ -2158,7 +2182,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(11))),
                     Some(SideAmount::Input(balance!(1100))),
@@ -2179,7 +2207,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(11))),
                     Some(SideAmount::Input(balance!(1100))),
@@ -2216,7 +2248,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(1))),
                     Some(SideAmount::Output(balance!(100))),
@@ -2237,7 +2273,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(1))),
                     Some(SideAmount::Output(balance!(100))),
@@ -2258,7 +2298,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(1))),
                     Some(SideAmount::Output(balance!(100))),
@@ -2279,7 +2323,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(1))),
                     Some(SideAmount::Output(balance!(100))),
@@ -2316,7 +2364,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
                     Some(SideAmount::Input(balance!(100))),
@@ -2337,7 +2389,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
                     Some(SideAmount::Input(balance!(100))),
@@ -2358,7 +2414,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
                     Some(SideAmount::Input(balance!(100))),
@@ -2379,7 +2439,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
                     Some(SideAmount::Input(balance!(100))),
@@ -2416,7 +2480,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(10))),
                     Some(SideAmount::Output(balance!(1000))),
@@ -2437,7 +2505,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(10))),
                     Some(SideAmount::Output(balance!(1000))),
@@ -2458,7 +2530,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(10))),
                     Some(SideAmount::Output(balance!(1000))),
@@ -2479,7 +2555,11 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
             .unwrap()
             .0,
             DiscreteQuotation {
-                chunks: VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)]),
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Zero::zero()
+                )]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(10))),
                     Some(SideAmount::Output(balance!(1000))),

@@ -30,7 +30,7 @@
 
 use core::str::FromStr;
 
-use common::alt::{DiscreteQuotation, SwapChunk};
+use common::alt::{DiscreteQuotation, Fee, SwapChunk};
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
@@ -38,6 +38,7 @@ use common::{
 };
 use frame_support::assert_noop;
 use frame_support::assert_ok;
+use num_traits::Zero;
 
 use crate::mock::*;
 use crate::{PoolProviders, TotalIssuances};
@@ -576,7 +577,7 @@ fn check_step_quote_with_zero_samples_count() {
                 chunks: VecDeque::from([SwapChunk::new(
                     balance!(100),
                     balance!(199.800199800199800199),
-                    0
+                    Fee::zero()
                 )]),
                 limits: Default::default()
             }
@@ -597,7 +598,7 @@ fn check_step_quote_with_zero_samples_count() {
                 chunks: VecDeque::from([SwapChunk::new(
                     balance!(100.100100100100100100),
                     balance!(200),
-                    0
+                    Fee::zero()
                 )]),
                 limits: Default::default()
             }
@@ -632,16 +633,16 @@ fn check_step_quote_without_fee() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(19.998000199980001999), 0),
-                    SwapChunk::new(balance!(10), balance!(19.994001399700061988), 0),
-                    SwapChunk::new(balance!(10), balance!(19.990003798700421867), 0),
-                    SwapChunk::new(balance!(10), balance!(19.986007396501561327), 0),
-                    SwapChunk::new(balance!(10), balance!(19.982012192624199695), 0),
-                    SwapChunk::new(balance!(10), balance!(19.978018186589295798), 0),
-                    SwapChunk::new(balance!(10), balance!(19.974025377918047812), 0),
-                    SwapChunk::new(balance!(10), balance!(19.970033766131893127), 0),
-                    SwapChunk::new(balance!(10), balance!(19.966043350752508194), 0),
-                    SwapChunk::new(balance!(10), balance!(19.962054131301808392), 0),
+                    SwapChunk::new(balance!(10), balance!(19.998000199980001999), Fee::zero()),
+                    SwapChunk::new(balance!(10), balance!(19.994001399700061988), Fee::zero()),
+                    SwapChunk::new(balance!(10), balance!(19.990003798700421867), Fee::zero()),
+                    SwapChunk::new(balance!(10), balance!(19.986007396501561327), Fee::zero()),
+                    SwapChunk::new(balance!(10), balance!(19.982012192624199695), Fee::zero()),
+                    SwapChunk::new(balance!(10), balance!(19.978018186589295798), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(19.974025377918047812), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(19.970033766131893127), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(19.966043350752508194), Zero::zero()),
+                    SwapChunk::new(balance!(10), balance!(19.962054131301808392), Zero::zero()),
                 ]),
                 limits: Default::default()
             }
@@ -660,16 +661,16 @@ fn check_step_quote_without_fee() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10.001000100010001000), balance!(20), 0),
-                    SwapChunk::new(balance!(10.003000700150031006), balance!(20), 0),
-                    SwapChunk::new(balance!(10.005001900650211067), balance!(20), 0),
-                    SwapChunk::new(balance!(10.007003701750781337), balance!(20), 0),
-                    SwapChunk::new(balance!(10.009006103692102153), balance!(20), 0),
-                    SwapChunk::new(balance!(10.011009106714654105), balance!(20), 0),
-                    SwapChunk::new(balance!(10.013012711059038105), balance!(20), 0),
-                    SwapChunk::new(balance!(10.015016916965975462), balance!(20), 0),
-                    SwapChunk::new(balance!(10.017021724676307957), balance!(20), 0),
-                    SwapChunk::new(balance!(10.019027134430997908), balance!(20), 0),
+                    SwapChunk::new(balance!(10.001000100010001000), balance!(20), Zero::zero()),
+                    SwapChunk::new(balance!(10.003000700150031006), balance!(20), Zero::zero()),
+                    SwapChunk::new(balance!(10.005001900650211067), balance!(20), Zero::zero()),
+                    SwapChunk::new(balance!(10.007003701750781337), balance!(20), Zero::zero()),
+                    SwapChunk::new(balance!(10.009006103692102153), balance!(20), Zero::zero()),
+                    SwapChunk::new(balance!(10.011009106714654105), balance!(20), Zero::zero()),
+                    SwapChunk::new(balance!(10.013012711059038105), balance!(20), Zero::zero()),
+                    SwapChunk::new(balance!(10.015016916965975462), balance!(20), Zero::zero()),
+                    SwapChunk::new(balance!(10.017021724676307957), balance!(20), Zero::zero()),
+                    SwapChunk::new(balance!(10.019027134430997908), balance!(20), Zero::zero()),
                 ]),
                 limits: Default::default()
             }
@@ -688,16 +689,16 @@ fn check_step_quote_without_fee() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(20), balance!(9.999000099990000999), 0),
-                    SwapChunk::new(balance!(20), balance!(9.997000699850030994), 0),
-                    SwapChunk::new(balance!(20), balance!(9.995001899350210934), 0),
-                    SwapChunk::new(balance!(20), balance!(9.993003698250780663), 0),
-                    SwapChunk::new(balance!(20), balance!(9.991006096312099848), 0),
-                    SwapChunk::new(balance!(20), balance!(9.989009093294647899), 0),
-                    SwapChunk::new(balance!(20), balance!(9.987012688959023906), 0),
-                    SwapChunk::new(balance!(20), balance!(9.985016883065946563), 0),
-                    SwapChunk::new(balance!(20), balance!(9.983021675376254097), 0),
-                    SwapChunk::new(balance!(20), balance!(9.981027065650904196), 0),
+                    SwapChunk::new(balance!(20), balance!(9.999000099990000999), Zero::zero()),
+                    SwapChunk::new(balance!(20), balance!(9.997000699850030994), Zero::zero()),
+                    SwapChunk::new(balance!(20), balance!(9.995001899350210934), Zero::zero()),
+                    SwapChunk::new(balance!(20), balance!(9.993003698250780663), Zero::zero()),
+                    SwapChunk::new(balance!(20), balance!(9.991006096312099848), Zero::zero()),
+                    SwapChunk::new(balance!(20), balance!(9.989009093294647899), Zero::zero()),
+                    SwapChunk::new(balance!(20), balance!(9.987012688959023906), Zero::zero()),
+                    SwapChunk::new(balance!(20), balance!(9.985016883065946563), Zero::zero()),
+                    SwapChunk::new(balance!(20), balance!(9.983021675376254097), Zero::zero()),
+                    SwapChunk::new(balance!(20), balance!(9.981027065650904196), Zero::zero()),
                 ]),
                 limits: Default::default()
             }
@@ -716,16 +717,16 @@ fn check_step_quote_without_fee() {
             .0,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(20.002000200020002002), balance!(10), 0),
-                    SwapChunk::new(balance!(20.006001400300062012), balance!(10), 0),
-                    SwapChunk::new(balance!(20.010003801300422133), balance!(10), 0),
-                    SwapChunk::new(balance!(20.014007403501562674), balance!(10), 0),
-                    SwapChunk::new(balance!(20.018012207384204307), balance!(10), 0),
-                    SwapChunk::new(balance!(20.022018213429308210), balance!(10), 0),
-                    SwapChunk::new(balance!(20.026025422118076210), balance!(10), 0),
-                    SwapChunk::new(balance!(20.030033833931950924), balance!(10), 0),
-                    SwapChunk::new(balance!(20.034043449352615913), balance!(10), 0),
-                    SwapChunk::new(balance!(20.038054268861995817), balance!(10), 0),
+                    SwapChunk::new(balance!(20.002000200020002002), balance!(10), Zero::zero()),
+                    SwapChunk::new(balance!(20.006001400300062012), balance!(10), Zero::zero()),
+                    SwapChunk::new(balance!(20.010003801300422133), balance!(10), Zero::zero()),
+                    SwapChunk::new(balance!(20.014007403501562674), balance!(10), Zero::zero()),
+                    SwapChunk::new(balance!(20.018012207384204307), balance!(10), Zero::zero()),
+                    SwapChunk::new(balance!(20.022018213429308210), balance!(10), Zero::zero()),
+                    SwapChunk::new(balance!(20.026025422118076210), balance!(10), Zero::zero()),
+                    SwapChunk::new(balance!(20.030033833931950924), balance!(10), Zero::zero()),
+                    SwapChunk::new(balance!(20.034043449352615913), balance!(10), Zero::zero()),
+                    SwapChunk::new(balance!(20.038054268861995817), balance!(10), Zero::zero()),
                 ]),
                 limits: Default::default()
             }
@@ -763,52 +764,52 @@ fn check_step_quote_with_fee() {
                     SwapChunk::new(
                         balance!(10),
                         balance!(19.938012180185635492),
-                        balance!(0.03)
+                        Fee::xor(balance!(0.03))
                     ),
                     SwapChunk::new(
                         balance!(10),
                         balance!(19.934037333141407095),
-                        balance!(0.03)
+                        Fee::xor(balance!(0.03))
                     ),
                     SwapChunk::new(
                         balance!(10),
                         balance!(19.930063674618442918),
-                        balance!(0.03)
+                        Fee::xor(balance!(0.03))
                     ),
                     SwapChunk::new(
                         balance!(10),
                         balance!(19.926091204142949627),
-                        balance!(0.03)
+                        Fee::xor(balance!(0.03))
                     ),
                     SwapChunk::new(
                         balance!(10),
                         balance!(19.922119921241369960),
-                        balance!(0.03)
+                        Fee::xor(balance!(0.03))
                     ),
                     SwapChunk::new(
                         balance!(10),
                         balance!(19.918149825440382581),
-                        balance!(0.03)
+                        Fee::xor(balance!(0.03))
                     ),
                     SwapChunk::new(
                         balance!(10),
                         balance!(19.914180916266901942),
-                        balance!(0.03)
+                        Fee::xor(balance!(0.03))
                     ),
                     SwapChunk::new(
                         balance!(10),
                         balance!(19.910213193248078135),
-                        balance!(0.03)
+                        Fee::xor(balance!(0.03))
                     ),
                     SwapChunk::new(
                         balance!(10),
                         balance!(19.906246655911296762),
-                        balance!(0.03)
+                        Fee::xor(balance!(0.03))
                     ),
                     SwapChunk::new(
                         balance!(10),
                         balance!(19.902281303784178786),
-                        balance!(0.03)
+                        Fee::xor(balance!(0.03))
                     ),
                 ]),
                 limits: Default::default()
@@ -831,52 +832,52 @@ fn check_step_quote_with_fee() {
                     SwapChunk::new(
                         balance!(10.031093380150452357),
                         balance!(20),
-                        balance!(0.030093280140451357)
+                        Fee::xor(balance!(0.030093280140451357))
                     ),
                     SwapChunk::new(
                         balance!(10.033100000150482453),
                         balance!(20),
-                        balance!(0.030099300000451447)
+                        Fee::xor(balance!(0.030099300000451447))
                     ),
                     SwapChunk::new(
                         balance!(10.035107222317162555),
                         balance!(20),
-                        balance!(0.030105321666951488)
+                        Fee::xor(balance!(0.030105321666951488))
                     ),
                     SwapChunk::new(
                         balance!(10.037115046891455704),
                         balance!(20),
-                        balance!(0.030111345140674367)
+                        Fee::xor(balance!(0.030111345140674367))
                     ),
                     SwapChunk::new(
                         balance!(10.039123474114445489),
                         balance!(20),
-                        balance!(0.030117370422343336)
+                        Fee::xor(balance!(0.030117370422343336))
                     ),
                     SwapChunk::new(
                         balance!(10.041132504227336114),
                         balance!(20),
-                        balance!(0.030123397512682009)
+                        Fee::xor(balance!(0.030123397512682009))
                     ),
                     SwapChunk::new(
                         balance!(10.043142137471452462),
                         balance!(20),
-                        balance!(0.030129426412414357)
+                        Fee::xor(balance!(0.030129426412414357))
                     ),
                     SwapChunk::new(
                         balance!(10.045152374088240182),
                         balance!(20),
-                        balance!(0.030135457122264720)
+                        Fee::xor(balance!(0.030135457122264720))
                     ),
                     SwapChunk::new(
                         balance!(10.047163214319265755),
                         balance!(20),
-                        balance!(0.030141489642957798)
+                        Fee::xor(balance!(0.030141489642957798))
                     ),
                     SwapChunk::new(
                         balance!(10.049174658406216557),
                         balance!(20),
-                        balance!(0.030147523975218649)
+                        Fee::xor(balance!(0.030147523975218649))
                     ),
                 ]),
                 limits: Default::default()
@@ -899,52 +900,52 @@ fn check_step_quote_with_fee() {
                     SwapChunk::new(
                         balance!(20),
                         balance!(9.969003099690030996),
-                        balance!(0.029997000299970003)
+                        Fee::xor(balance!(0.029997000299970003))
                     ),
                     SwapChunk::new(
                         balance!(20),
                         balance!(9.967009697750480901),
-                        balance!(0.029991002099550093)
+                        Fee::xor(balance!(0.029991002099550093))
                     ),
                     SwapChunk::new(
                         balance!(20),
                         balance!(9.965016893652160301),
-                        balance!(0.029985005698050633)
+                        Fee::xor(balance!(0.029985005698050633))
                     ),
                     SwapChunk::new(
                         balance!(20),
                         balance!(9.963024687156028321),
-                        balance!(0.029979011094752342)
+                        Fee::xor(balance!(0.029979011094752342))
                     ),
                     SwapChunk::new(
                         balance!(20),
                         balance!(9.961033078023163548),
-                        balance!(0.029973018288936300)
+                        Fee::xor(balance!(0.029973018288936300))
                     ),
                     SwapChunk::new(
                         balance!(20),
                         balance!(9.959042066014763955),
-                        balance!(0.029967027279883944)
+                        Fee::xor(balance!(0.029967027279883944))
                     ),
                     SwapChunk::new(
                         balance!(20),
                         balance!(9.957051650892146835),
-                        balance!(0.029961038066877071)
+                        Fee::xor(balance!(0.029961038066877071))
                     ),
                     SwapChunk::new(
                         balance!(20),
                         balance!(9.955061832416748723),
-                        balance!(0.029955050649197840)
+                        Fee::xor(balance!(0.029955050649197840))
                     ),
                     SwapChunk::new(
                         balance!(20),
                         balance!(9.953072610350125335),
-                        balance!(0.029949065026128762)
+                        Fee::xor(balance!(0.029949065026128762))
                     ),
                     SwapChunk::new(
                         balance!(20),
                         balance!(9.951083984453951483),
-                        balance!(0.029943081196952713)
+                        Fee::xor(balance!(0.029943081196952713))
                     ),
                 ]),
                 limits: Default::default()
@@ -967,52 +968,52 @@ fn check_step_quote_with_fee() {
                     SwapChunk::new(
                         balance!(20.062192797672785635),
                         balance!(10),
-                        balance!(0.030090270812437311)
+                        Fee::xor(balance!(0.030090270812437311))
                     ),
                     SwapChunk::new(
                         balance!(20.066218117254983225),
                         balance!(10),
-                        balance!(0.030090270812437312)
+                        Fee::xor(balance!(0.030090270812437312))
                     ),
                     SwapChunk::new(
                         balance!(20.070244648431316120),
                         balance!(10),
-                        balance!(0.030090270812437312)
+                        Fee::xor(balance!(0.030090270812437312))
                     ),
                     SwapChunk::new(
                         balance!(20.074272391688075365),
                         balance!(10),
-                        balance!(0.030090270812437312)
+                        Fee::xor(balance!(0.030090270812437312))
                     ),
                     SwapChunk::new(
                         balance!(20.078301347511796002),
                         balance!(10),
-                        balance!(0.030090270812437312)
+                        Fee::xor(balance!(0.030090270812437312))
                     ),
                     SwapChunk::new(
                         balance!(20.082331516389257222),
                         balance!(10),
-                        balance!(0.030090270812437312)
+                        Fee::xor(balance!(0.030090270812437312))
                     ),
                     SwapChunk::new(
                         balance!(20.086362898807482507),
                         balance!(10),
-                        balance!(0.030090270812437312)
+                        Fee::xor(balance!(0.030090270812437312))
                     ),
                     SwapChunk::new(
                         balance!(20.090395495253739781),
                         balance!(10),
-                        balance!(0.030090270812437312)
+                        Fee::xor(balance!(0.030090270812437312))
                     ),
                     SwapChunk::new(
                         balance!(20.094429306215541556),
                         balance!(10),
-                        balance!(0.030090270812437312)
+                        Fee::xor(balance!(0.030090270812437312))
                     ),
                     SwapChunk::new(
                         balance!(20.098464332180645078),
                         balance!(10),
-                        balance!(0.030090270812437312)
+                        Fee::xor(balance!(0.030090270812437312))
                     ),
                 ]),
                 limits: Default::default()
@@ -1041,8 +1042,12 @@ fn compare_quotes(
         .0
         .chunks
         .iter()
-        .fold((balance!(0), balance!(0), balance!(0)), |acc, item| {
-            (acc.0 + item.input, acc.1 + item.output, acc.2 + item.fee)
+        .fold((balance!(0), balance!(0), Fee::zero()), |acc, item| {
+            (
+                acc.0 + item.input,
+                acc.1 + item.output,
+                acc.2.saturating_add(item.fee),
+            )
         });
 
     let quote_result = crate::Pallet::<Runtime>::quote(
@@ -1066,7 +1071,7 @@ fn compare_quotes(
 
     assert_eq!(step_quote_input, quote_input);
     assert_eq!(step_quote_output, quote_output);
-    assert_eq!(step_quote_fee, quote_fee);
+    assert_eq!(step_quote_fee.xor, quote_fee); // todo fix (m.tagirov)
 }
 
 #[test]

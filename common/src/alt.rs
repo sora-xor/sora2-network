@@ -160,17 +160,25 @@ impl Fee<Balance> {
             .ok()?;
         Some(Self::new(xor, xst, xstusd))
     }
+
+    // Multiply all values by `n`
+    pub fn mul_n(self, n: usize) -> Option<Self> {
+        let xor = self.xor.checked_mul(n as Balance)?;
+        let xst = self.xst.checked_mul(n as Balance)?;
+        let xstusd = self.xstusd.checked_mul(n as Balance)?;
+        Some(Self::new(xor, xst, xstusd))
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SwapChunk<AmountType> {
     pub input: AmountType,
     pub output: AmountType,
-    pub fee: AmountType,
+    pub fee: Fee<AmountType>,
 }
 
 impl<AmountType> SwapChunk<AmountType> {
-    pub fn new(input: AmountType, output: AmountType, fee: AmountType) -> Self {
+    pub fn new(input: AmountType, output: AmountType, fee: Fee<AmountType>) -> Self {
         Self { input, output, fee }
     }
 }
@@ -271,18 +279,14 @@ impl SwapChunk<Balance> {
     pub fn rescale_by_input(self, input: Balance) -> Option<Self> {
         let output = self.proportional_output(input)?;
         let ratio = FixedWrapper::from(input) / FixedWrapper::from(self.input);
-        let fee = (FixedWrapper::from(self.fee) * ratio)
-            .try_into_balance()
-            .ok()?;
+        let fee = self.fee.rescale_by_ratio(ratio)?;
         Some(Self::new(input, output, fee))
     }
 
     pub fn rescale_by_output(self, output: Balance) -> Option<Self> {
         let input = self.proportional_input(output)?;
         let ratio = FixedWrapper::from(output) / FixedWrapper::from(self.output);
-        let fee = (FixedWrapper::from(self.fee) * ratio)
-            .try_into_balance()
-            .ok()?;
+        let fee = self.fee.rescale_by_ratio(ratio)?;
         Some(Self::new(input, output, fee))
     }
 
@@ -293,9 +297,7 @@ impl SwapChunk<Balance> {
         let output = (FixedWrapper::from(self.output) * ratio)
             .try_into_balance()
             .ok()?;
-        let fee = (FixedWrapper::from(self.fee) * ratio)
-            .try_into_balance()
-            .ok()?;
+        let fee = self.fee.rescale_by_ratio(ratio.into())?;
         Some(Self::new(input, output, fee))
     }
 
