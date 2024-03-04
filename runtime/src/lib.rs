@@ -65,7 +65,7 @@ use bridge_types::{evm::AdditionalEVMInboundData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId};
-use common::{XOR, XSTUSD};
+use common::{DOT, XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::traits::EitherOf;
@@ -358,7 +358,7 @@ parameter_types! {
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
     pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![
         GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(),
-        GetXstAssetId::get(), GetTbcdAssetId::get(), GetDotAssetId::get()
+        GetXstAssetId::get(), GetTbcdAssetId::get(), DOT
     ];
     pub const MaxAuthorities: u32 = 100_000;
     pub const NoPreimagePostponement: Option<u32> = Some(10);
@@ -898,9 +898,6 @@ impl tokens::Config for Runtime {
 parameter_types! {
     // This is common::PredefinedAssetId with 0 index, 2 is size, 0 and 0 is code.
     pub const GetXorAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XOR);
-    pub const GetDotAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DOT);
-    pub const GetKsmAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KSM);
-    pub const GetUsdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::USDT);
     pub const GetValAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::VAL);
     pub const GetPswapAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
     pub const GetDaiAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DAI);
