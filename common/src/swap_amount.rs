@@ -606,7 +606,16 @@ where
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Default,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutcomeFee<AssetId: Ord, AmountType>(
