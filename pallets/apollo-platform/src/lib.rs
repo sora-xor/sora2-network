@@ -55,9 +55,11 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{balance, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID, DAI, XOR};
     use common::{LiquidityProxyTrait, PriceToolsPallet, APOLLO_ASSET_ID};
+    use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::PalletId;
+    use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use hex_literal::hex;
@@ -68,7 +70,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + assets::Config + price_tools::Config + liquidity_proxy::Config
+        frame_system::Config
+        + assets::Config
+        + price_tools::Config
+        + liquidity_proxy::Config
+        + SendTransactionTypes<Call<Self>>
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type PriceTools: PriceToolsPallet<Self::AssetId>;
@@ -203,6 +209,8 @@ pub mod pallet {
         ChangedRewardsAmount(AccountIdOf<T>, bool, Balance),
         //// ChangedRewardsAmountPerBlock [who, is_lending, amount]
         ChangedRewardsAmountPerBlock(AccountIdOf<T>, bool, Balance),
+        /// Liquidated [who, asset_id]
+        Liquidated(AccountIdOf<T>, AssetIdOf<T>),
     }
 
     #[pallet::error]
@@ -263,6 +271,8 @@ pub mod pallet {
         CanNotTransferAmountToRepay,
         /// Can not transfer amount to developers
         CanNotTransferAmountToDevelopers,
+        /// User should not be liquidated
+        InvalidLiquidation,
     }
 
     #[pallet::call]
@@ -863,6 +873,74 @@ pub mod pallet {
             ));
             Ok(().into())
         }
+
+        #[pallet::call_index(8)]
+        #[pallet::weight(10_000)]
+        pub fn liquidate(
+            _origin: OriginFor<T>,
+            user: AccountIdOf<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResult {
+            let user_infos = UserBorrowingInfo::<T>::get(user.clone(), asset_id).unwrap();
+            let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap();
+            let mut sum_of_thresholds: Balance = 0;
+            let mut total_borrowed: Balance = 0;
+            let mut collaterals: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
+
+            for (collateral_asset, user_info) in user_infos.iter() {
+                let collateral_pool_info = PoolData::<T>::get(collateral_asset).unwrap();
+                let collateral_asset_price = Self::get_price(*collateral_asset);
+
+                // Multiply collateral value and liquidation threshold and then add it to the sum
+                let collateral_in_dollars = FixedWrapper::from(user_info.collateral_amount)
+                    * FixedWrapper::from(collateral_asset_price);
+
+                sum_of_thresholds += (collateral_in_dollars
+                    * FixedWrapper::from(collateral_pool_info.liquidation_threshold))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                // Add borrowing amount to total borrowed
+                total_borrowed += user_info.borrowing_amount;
+
+                collaterals.insert(*collateral_asset, user_info.collateral_amount);
+            }
+
+            let borrowing_asset_price = Self::get_price(asset_id);
+            let total_borrowed_in_dollars: u128 = (FixedWrapper::from(total_borrowed)
+                * FixedWrapper::from(borrowing_asset_price))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            let health_factor = (FixedWrapper::from(sum_of_thresholds)
+                / FixedWrapper::from(total_borrowed_in_dollars))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            ensure!(health_factor < balance!(1), Error::<T>::InvalidLiquidation);
+
+            // Distribute liquidated collaterals to users and reserves
+            for (collateral_asset, collateral_amount) in collaterals.iter() {
+                let _ = Self::distribute_protocol_interest(*collateral_asset, *collateral_amount);
+                let mut collateral_pool_info = PoolData::<T>::get(*collateral_asset).unwrap();
+                collateral_pool_info.total_collateral = collateral_pool_info
+                    .total_collateral
+                    .checked_sub(*collateral_amount)
+                    .unwrap_or(0);
+                <PoolData<T>>::insert(*collateral_asset, collateral_pool_info);
+            }
+            borrow_pool_info.total_borrowed = borrow_pool_info
+                .total_borrowed
+                .checked_sub(total_borrowed)
+                .unwrap_or(0);
+
+            <PoolData<T>>::insert(asset_id, borrow_pool_info);
+            <UserBorrowingInfo<T>>::remove(user.clone(), asset_id);
+
+            Self::deposit_event(Event::Liquidated(user, asset_id));
+
+            Ok(())
+        }
     }
 
     #[pallet::hooks]
@@ -870,11 +948,71 @@ pub mod pallet {
         fn on_initialize(now: T::BlockNumber) -> Weight {
             let distribution_rewards = Self::update_interests(now);
             let rates = Self::update_rates(now);
-            let liquidation = Self::check_liquidations(now);
 
-            distribution_rewards
-                .saturating_add(rates)
-                .saturating_add(liquidation)
+            distribution_rewards.saturating_add(rates)
+        }
+
+        /// Off-chain worker procedure - calls liquidations
+        fn offchain_worker(block_number: T::BlockNumber) {
+            debug!(
+                "Entering off-chain worker, block number is {:?}",
+                block_number
+            );
+
+            for (user, asset_id, user_infos) in UserBorrowingInfo::<T>::iter() {
+                // Calculate health factor -> HF = SUM(collateral_in_dollars * liquidation_threshold) / total_borrowed_in_dollars
+                let mut sum_of_thresholds: Balance = 0;
+                let mut total_borrowed: Balance = 0;
+                let mut collaterals: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
+
+                for (collateral_asset, user_info) in user_infos.iter() {
+                    let collateral_pool_info = PoolData::<T>::get(collateral_asset).unwrap();
+                    let collateral_asset_price = Self::get_price(*collateral_asset);
+
+                    // Multiply collateral value and liquidation threshold and then add it to the sum
+                    let collateral_in_dollars = FixedWrapper::from(user_info.collateral_amount)
+                        * FixedWrapper::from(collateral_asset_price);
+
+                    sum_of_thresholds += (collateral_in_dollars
+                        * FixedWrapper::from(collateral_pool_info.liquidation_threshold))
+                    .try_into_balance()
+                    .unwrap_or(0);
+
+                    // Add borrowing amount to total borrowed
+                    total_borrowed += user_info.borrowing_amount;
+
+                    collaterals.insert(*collateral_asset, user_info.collateral_amount);
+                }
+
+                let borrowing_asset_price = Self::get_price(asset_id);
+                let total_borrowed_in_dollars: u128 = (FixedWrapper::from(total_borrowed)
+                    * FixedWrapper::from(borrowing_asset_price))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                let health_factor = (FixedWrapper::from(sum_of_thresholds)
+                    / FixedWrapper::from(total_borrowed_in_dollars))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                // Check liquidation
+                if health_factor < balance!(1) {
+                    // Liquidate
+                    debug!("Liquidation of user {:?}", user);
+                    let call = Call::<T>::liquidate {
+                        user: user.clone(),
+                        asset_id,
+                    };
+                    if let Err(err) =
+                        SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
+                    {
+                        warn!(
+                            "Failed in offchain_worker send liquidate(user: {:?}): {:?}",
+                            user, err
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -1179,79 +1317,6 @@ pub mod pallet {
 
             T::DbWeight::get()
                 .reads(counter)
-                .saturating_add(T::DbWeight::get().writes(counter))
-        }
-
-        fn check_liquidations(_current_block: T::BlockNumber) -> Weight {
-            let mut counter: u64 = 0;
-
-            for (user, asset_id, user_infos) in UserBorrowingInfo::<T>::iter() {
-                // Calculate health factor -> HF = SUM(collateral_in_dollars * liquidation_threshold) / total_borrowed_in_dollars
-                let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap();
-                let mut sum_of_thresholds: Balance = 0;
-                let mut total_borrowed: Balance = 0;
-                let mut collaterals: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
-
-                for (collateral_asset, user_info) in user_infos.iter() {
-                    let collateral_pool_info = PoolData::<T>::get(collateral_asset).unwrap();
-                    let collateral_asset_price = Self::get_price(*collateral_asset);
-
-                    // Multiply collateral value and liquidation threshold and then add it to the sum
-                    let collateral_in_dollars = FixedWrapper::from(user_info.collateral_amount)
-                        * FixedWrapper::from(collateral_asset_price);
-
-                    sum_of_thresholds += (collateral_in_dollars
-                        * FixedWrapper::from(collateral_pool_info.liquidation_threshold))
-                    .try_into_balance()
-                    .unwrap_or(0);
-
-                    // Add borrowing amount to total borrowed
-                    total_borrowed += user_info.borrowing_amount;
-
-                    collaterals.insert(*collateral_asset, user_info.collateral_amount);
-                }
-
-                let borrowing_asset_price = Self::get_price(asset_id);
-                let total_borrowed_in_dollars: u128 = (FixedWrapper::from(total_borrowed)
-                    * FixedWrapper::from(borrowing_asset_price))
-                .try_into_balance()
-                .unwrap_or(0);
-
-                let health_factor = (FixedWrapper::from(sum_of_thresholds)
-                    / FixedWrapper::from(total_borrowed_in_dollars))
-                .try_into_balance()
-                .unwrap_or(0);
-
-                // Check liquidation
-                if health_factor < balance!(1) {
-                    // Distribute liquidated collaterals to users and reserves
-                    for (collateral_asset, collateral_amount) in collaterals.iter() {
-                        let _ = Self::distribute_protocol_interest(
-                            *collateral_asset,
-                            *collateral_amount,
-                        );
-                        let mut collateral_pool_info =
-                            PoolData::<T>::get(*collateral_asset).unwrap();
-                        collateral_pool_info.total_collateral = collateral_pool_info
-                            .total_collateral
-                            .checked_sub(*collateral_amount)
-                            .unwrap_or(0);
-                        <PoolData<T>>::insert(*collateral_asset, collateral_pool_info);
-                        counter += 1;
-                    }
-                    borrow_pool_info.total_borrowed = borrow_pool_info
-                        .total_borrowed
-                        .checked_sub(total_borrowed)
-                        .unwrap_or(0);
-
-                    <PoolData<T>>::insert(asset_id, borrow_pool_info);
-                    <UserBorrowingInfo<T>>::remove(user.clone(), asset_id);
-                    counter += 2;
-                }
-            }
-
-            T::DbWeight::get()
-                .reads(counter + 2)
                 .saturating_add(T::DbWeight::get().writes(counter))
         }
     }
