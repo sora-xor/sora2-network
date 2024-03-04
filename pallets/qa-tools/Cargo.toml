@@ -41,16 +41,18 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 [features]
 default = ["std"]
 std = [
+    "assets/std",
+    "band/std",
     "codec/std",
     "common/std",
     "frame-support/std",
     "frame-system/std",
-    "scale-info/std",
-    "sp-std/std",
-    "assets/std",
+    "oracle-proxy/std",
     "order-book/std",
     "pool-xyk/std",
     "price-tools/std",
+    "scale-info/std",
+    "sp-std/std",
     "xst/std",
 ]
 private-net = [
