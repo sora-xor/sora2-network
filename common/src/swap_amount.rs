@@ -34,12 +34,12 @@ use core::result::Result;
 
 use alloc::collections::BTreeMap;
 use codec::{Decode, Encode, MaxEncodedLen};
-use fixnum::ops::RoundMode::*;
 use fixnum::ops::RoundingMul;
+use fixnum::ops::{RoundMode::*, Zero as _};
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::{CheckedAdd, CheckedSub, UniqueSaturatedFrom, UniqueSaturatedInto};
+use sp_runtime::traits::{CheckedAdd, CheckedSub, UniqueSaturatedFrom, UniqueSaturatedInto, Zero};
 use sp_std::mem;
 use sp_std::ops::{Add, Sub};
 
@@ -632,20 +632,67 @@ impl<AssetId: Ord, AmountType> OutcomeFee<AssetId, AmountType> {
 impl<AssetId, AmountType> OutcomeFee<AssetId, AmountType>
 where
     AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
-    AmountType: Default + Copy,
+    AmountType: Default + Copy + Zero,
 {
     pub fn xor(amount: AmountType) -> Self {
-        Self(BTreeMap::from([(crate::XOR.into(), amount)]))
+        if amount.is_zero() {
+            Self::new()
+        } else {
+            Self(BTreeMap::from([(crate::XOR.into(), amount)]))
+        }
     }
 
     pub fn xst(amount: AmountType) -> Self {
-        Self(BTreeMap::from([(crate::XST.into(), amount)]))
+        if amount.is_zero() {
+            Self::new()
+        } else {
+            Self(BTreeMap::from([(crate::XST.into(), amount)]))
+        }
     }
 
     pub fn xstusd(amount: AmountType) -> Self {
-        Self(BTreeMap::from([(crate::XSTUSD.into(), amount)]))
+        if amount.is_zero() {
+            Self::new()
+        } else {
+            Self(BTreeMap::from([(crate::XSTUSD.into(), amount)]))
+        }
+    }
+}
+
+impl<AssetId> OutcomeFee<AssetId, Fixed>
+where
+    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
+{
+    pub fn xor_fixed(amount: Fixed) -> Self {
+        if amount == Fixed::ZERO {
+            Self::new()
+        } else {
+            Self(BTreeMap::from([(crate::XOR.into(), amount)]))
+        }
     }
 
+    pub fn xst_fixed(amount: Fixed) -> Self {
+        if amount == Fixed::ZERO {
+            Self::new()
+        } else {
+            Self(BTreeMap::from([(crate::XST.into(), amount)]))
+        }
+    }
+
+    pub fn xstusd_fixed(amount: Fixed) -> Self {
+        if amount == Fixed::ZERO {
+            Self::new()
+        } else {
+            Self(BTreeMap::from([(crate::XSTUSD.into(), amount)]))
+        }
+    }
+}
+
+impl<AssetId, AmountType> OutcomeFee<AssetId, AmountType>
+where
+    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
+    AmountType: Default + Copy,
+{
     pub fn get_xor(&self) -> AmountType {
         self.0.get(&crate::XOR.into()).copied().unwrap_or_default()
     }

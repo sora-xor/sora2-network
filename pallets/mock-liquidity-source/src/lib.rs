@@ -104,7 +104,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
             .get()
             .map_err(|_| Error::<T, I>::CalculationError)?;
 
-        Ok(SwapOutcome::new(amount, OutcomeFee::xor(fee_amount)))
+        Ok(SwapOutcome::new(amount, OutcomeFee::xor_fixed(fee_amount)))
     }
 
     fn get_target_amount_out(
@@ -139,7 +139,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
             .get()
             .map_err(|_| Error::<T, I>::CalculationError)?;
 
-        Ok(SwapOutcome::new(amount_out, OutcomeFee::xor(fee_amount)))
+        Ok(SwapOutcome::new(
+            amount_out,
+            OutcomeFee::xor_fixed(fee_amount),
+        ))
     }
 
     fn get_base_amount_in(
@@ -192,7 +195,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
             amount_in
                 .get()
                 .map_err(|_| Error::<T, I>::CalculationError)?,
-            OutcomeFee::xor(
+            OutcomeFee::xor_fixed(
                 (base_amount_in_with_fee - base_amount_in_without_fee)
                     .get()
                     .map_err(|_| Error::<T, I>::CalculationError)?,
@@ -242,7 +245,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         let fee = (base_amount_out_with_fee - base_amount_out)
             .get()
             .map_err(|_| Error::<T, I>::CalculationError)?;
-        Ok(SwapOutcome::new(amount_in, OutcomeFee::xor(fee)))
+        Ok(SwapOutcome::new(amount_in, OutcomeFee::xor_fixed(fee)))
     }
 }
 
