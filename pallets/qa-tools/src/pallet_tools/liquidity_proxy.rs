@@ -119,12 +119,16 @@ pub mod liquidity_sources {
 
     /// Initialize xst liquidity source. Can both update prices of base assets and synthetics.
     ///
+    /// ## Parameters
+    ///
+    /// - `base`: Synthetic base asset price update. Usually buy price > sell.
+    /// - `synthetics`: Synthetic initialization; registration of an asset + setting up prices for target quotes.
+    /// - `relayer`: Account which will be the author of prices fed to `band` pallet;
+    ///
     /// ## Return
     ///
     /// Due to limited precision of fixed-point numbers, the requested price might not be precisely
     /// obtainable. Therefore, actual resulting price of synthetics is returned.
-    ///
-    /// `quote` in `xst` pallet requires swap to involve synthetic base asset, as well as
     pub fn initialize_xst<T: Config>(
         base: Option<BaseInput>,
         synthetics: Vec<SyntheticInput<T::AssetId, <T as Config>::Symbol>>,

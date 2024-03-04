@@ -328,9 +328,13 @@ pub mod pallet {
         ///
         /// Parameters:
         /// - `origin`: Root
-        /// - `base_prices`: Optionally update price of synthetic base asset. Usually buy price > sell.
-        /// - `synthetics_prices`: Prices to set for synthetics;
-        /// can only set either buy or sell price because the other one is determined by synthetic base asset price
+        /// - `base_prices`: Synthetic base asset price update. Usually buy price > sell.
+        /// - `synthetics_prices`: Synthetic initialization;
+        /// registration of an asset + setting up prices for target quotes.
+        /// - `relayer`: Account which will be the author of prices fed to `band` pallet;
+        ///
+        /// Emits events with actual quotes achieved after initialization;
+        /// more details in [`liquidity_sources::initialize_xst`]
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::xst_initialize())]
         pub fn xst_initialize(
