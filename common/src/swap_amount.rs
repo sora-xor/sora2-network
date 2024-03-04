@@ -32,6 +32,7 @@ use core::convert::{TryFrom, TryInto};
 use core::ops::{Mul, MulAssign};
 use core::result::Result;
 
+use alloc::collections::BTreeMap;
 use codec::{Decode, Encode, MaxEncodedLen};
 use fixnum::ops::RoundMode::*;
 use fixnum::ops::RoundingMul;
@@ -97,7 +98,7 @@ impl<T> QuoteAmount<T> {
     }
 
     /// Position desired amount with outcome such that input and output values are aligned.
-    pub fn place_input_and_output(self, outcome: SwapOutcome<T>) -> (T, T) {
+    pub fn place_input_and_output<AssetId: Ord>(self, outcome: SwapOutcome<T, AssetId>) -> (T, T) {
         match self {
             Self::WithDesiredInput { .. } => (self.amount(), outcome.amount),
             Self::WithDesiredOutput { .. } => (outcome.amount, self.amount()),
@@ -376,7 +377,7 @@ impl<T> SwapAmount<T> {
     }
 
     // Position desired amount with outcome such that input and output values are aligned.
-    pub fn place_input_and_output(self, outcome: SwapOutcome<T>) -> (T, T) {
+    pub fn place_input_and_output<AssetId: Ord>(self, outcome: SwapOutcome<T, AssetId>) -> (T, T) {
         match self {
             Self::WithDesiredInput { .. } => (self.amount(), outcome.amount),
             Self::WithDesiredOutput { .. } => (outcome.amount, self.amount()),
@@ -604,20 +605,105 @@ where
     }
 }
 
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct OutcomeFee<AssetId: Ord, AmountType>(
+    pub sp_std::collections::btree_map::BTreeMap<AssetId, AmountType>,
+);
+
+impl<AssetId: Ord, AmountType> OutcomeFee<AssetId, AmountType> {
+    pub fn new() -> Self {
+        Self(BTreeMap::new())
+    }
+}
+
+// Most used fee assets
+impl<AssetId, AmountType> OutcomeFee<AssetId, AmountType>
+where
+    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
+    AmountType: Default + Copy,
+{
+    pub fn xor(amount: AmountType) -> Self {
+        Self(BTreeMap::from([(crate::XOR.into(), amount)]))
+    }
+
+    pub fn xst(amount: AmountType) -> Self {
+        Self(BTreeMap::from([(crate::XST.into(), amount)]))
+    }
+
+    pub fn xstusd(amount: AmountType) -> Self {
+        Self(BTreeMap::from([(crate::XSTUSD.into(), amount)]))
+    }
+
+    pub fn get_xor(&self) -> AmountType {
+        self.0.get(&crate::XOR.into()).copied().unwrap_or_default()
+    }
+
+    pub fn get_xst(&self) -> AmountType {
+        self.0.get(&crate::XST.into()).copied().unwrap_or_default()
+    }
+
+    pub fn get_xstusd(&self) -> AmountType {
+        self.0
+            .get(&crate::XSTUSD.into())
+            .copied()
+            .unwrap_or_default()
+    }
+}
+
+impl<AssetId, AmountType> OutcomeFee<AssetId, AmountType>
+where
+    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
+    AmountType: Copy + sp_runtime::traits::Saturating,
+{
+    pub fn add_xor(&mut self, amount: AmountType) {
+        self.0
+            .entry(crate::XOR.into())
+            .and_modify(|xor_amount| *xor_amount = xor_amount.saturating_add(amount))
+            .or_insert(amount);
+    }
+
+    pub fn add_xst(&mut self, amount: AmountType) {
+        self.0
+            .entry(crate::XST.into())
+            .and_modify(|xst_amount| *xst_amount = xst_amount.saturating_add(amount))
+            .or_insert(amount);
+    }
+
+    pub fn add_xstusd(&mut self, amount: AmountType) {
+        self.0
+            .entry(crate::XSTUSD.into())
+            .and_modify(|xstusd_amount| *xstusd_amount = xstusd_amount.saturating_add(amount))
+            .or_insert(amount);
+    }
+
+    pub fn merge(mut self, other: Self) -> Self {
+        for (asset, other_amount) in other.0 {
+            self.0
+                .entry(asset)
+                .and_modify(|amount| *amount = amount.saturating_add(other_amount))
+                .or_insert(other_amount);
+        }
+        self
+    }
+}
+
 /// Amount of output tokens from either price request or actual exchange.
 #[derive(
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct SwapOutcome<AmountType> {
+pub struct SwapOutcome<AmountType, AssetId: Ord> {
     /// Actual swap output/input amount including deduced fee.
     pub amount: AmountType,
-    /// Accumulated fee amount, assumed to be in XOR.
-    pub fee: AmountType,
+    /// Accumulated fee amount.
+    pub fee: OutcomeFee<AssetId, AmountType>,
 }
 
-impl<AmountType> SwapOutcome<AmountType> {
-    pub fn new(amount: AmountType, fee: AmountType) -> Self {
+impl<AmountType, AssetId: Ord> SwapOutcome<AmountType, AssetId> {
+    pub fn new(amount: AmountType, fee: OutcomeFee<AssetId, AmountType>) -> Self {
         Self { amount, fee }
     }
 }
@@ -626,35 +712,47 @@ impl<AmountType> SwapOutcome<AmountType> {
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct TryFromSwapOutcomeError;
 
-impl TryFrom<SwapOutcome<Balance>> for SwapOutcome<Fixed> {
+impl<AssetId: Ord> TryFrom<SwapOutcome<Balance, AssetId>> for SwapOutcome<Fixed, AssetId> {
     type Error = TryFromSwapOutcomeError;
 
-    fn try_from(value: SwapOutcome<Balance>) -> Result<Self, Self::Error> {
+    fn try_from(value: SwapOutcome<Balance, AssetId>) -> Result<Self, Self::Error> {
         let amount = Fixed::from_bits(
             value
                 .amount
                 .try_into()
                 .map_err(|_| TryFromSwapOutcomeError)?,
         );
-        let fee = Fixed::from_bits(value.fee.try_into().map_err(|_| TryFromSwapOutcomeError)?);
+
+        let mut fee = OutcomeFee::new();
+        for (asset, fee_amount) in value.fee.0 {
+            let fee_fixed =
+                Fixed::from_bits(fee_amount.try_into().map_err(|_| TryFromSwapOutcomeError)?);
+            fee.0.insert(asset, fee_fixed);
+        }
+
         Ok(Self { amount, fee })
     }
 }
 
-impl TryFrom<SwapOutcome<Fixed>> for SwapOutcome<Balance> {
+impl<AssetId: Ord> TryFrom<SwapOutcome<Fixed, AssetId>> for SwapOutcome<Balance, AssetId> {
     type Error = TryFromSwapOutcomeError;
 
-    fn try_from(value: SwapOutcome<Fixed>) -> Result<Self, Self::Error> {
+    fn try_from(value: SwapOutcome<Fixed, AssetId>) -> Result<Self, Self::Error> {
         let amount = value
             .amount
             .into_bits()
             .try_into()
             .map_err(|_| TryFromSwapOutcomeError)?;
-        let fee = value
-            .fee
-            .into_bits()
-            .try_into()
-            .map_err(|_| TryFromSwapOutcomeError)?;
+
+        let mut fee = OutcomeFee::new();
+        for (asset, fee_amount) in value.fee.0 {
+            let fee_balance = fee_amount
+                .into_bits()
+                .try_into()
+                .map_err(|_| TryFromSwapOutcomeError)?;
+            fee.0.insert(asset, fee_balance);
+        }
+
         Ok(Self { amount, fee })
     }
 }
