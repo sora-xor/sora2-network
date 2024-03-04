@@ -194,12 +194,12 @@ benchmarks! {
     create_cdp {
         kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
             .expect("Must set risk manager");
+        initialize_liquidity_sources::<T>();
+        set_xor_as_collateral_type::<T>();
         kensetsu::Pallet::<T>::update_hard_cap_total_supply(
             RawOrigin::Signed(risk_manager::<T>()).into(),
             Balance::MAX,
         ).expect("Shall update hard cap");
-        initialize_liquidity_sources::<T>();
-        set_xor_as_collateral_type::<T>();
         let collateral = balance!(10);
         let debt = balance!(1);
         assets::Pallet::<T>::update_balance(
@@ -262,14 +262,14 @@ benchmarks! {
             .expect("Must set risk manager");
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
-        let cdp_id = create_cdp_with_xor::<T>();
-        let amount = balance!(10);
-        deposit_xor_collateral::<T>(cdp_id, amount);
-        let debt = balance!(1);
         kensetsu::Pallet::<T>::update_hard_cap_total_supply(
             RawOrigin::Signed(risk_manager::<T>()).into(),
             Balance::MAX,
         ).expect("Shall update hard cap");
+        let cdp_id = create_cdp_with_xor::<T>();
+        let amount = balance!(10);
+        deposit_xor_collateral::<T>(cdp_id, amount);
+        let debt = balance!(1);
     }: {
         kensetsu::Pallet::<T>::borrow(
             RawOrigin::Signed(caller::<T>()).into(),
@@ -366,6 +366,16 @@ benchmarks! {
         kensetsu::Pallet::<T>::update_hard_cap_total_supply(
             RawOrigin::Signed(risk_manager::<T>()).into(),
             balance!(1000)
+        ).unwrap();
+    }
+
+    update_borrow_tax {
+        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
+            .expect("Must set risk manager");
+    }:{
+        kensetsu::Pallet::<T>::update_borrow_tax(
+            RawOrigin::Signed(risk_manager::<T>()).into(),
+            Percent::from_percent(1)
         ).unwrap();
     }
 

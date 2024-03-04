@@ -112,11 +112,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<common::Balance>, DispatchError> {
-        if *output_asset_id != KUSD {
-            Err(DispatchError::Other(
-                "Wrong asset id for MockLiquidityProxy, KUSD only supported",
-            ))
-        } else {
+        if *output_asset_id == KUSD {
             let amount =
                 assets::Pallet::<TestRuntime>::free_balance(&KUSD, &Self::EXCHANGE_TECH_ACCOUNT)
                     .expect("must succeed");
@@ -124,6 +120,18 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
                 amount,
                 fee: balance!(0),
             })
+        } else if *output_asset_id == KEN {
+            let amount =
+                assets::Pallet::<TestRuntime>::free_balance(&KEN, &Self::EXCHANGE_TECH_ACCOUNT)
+                    .expect("must succeed");
+            Ok(SwapOutcome {
+                amount,
+                fee: balance!(0),
+            })
+        } else {
+            Err(DispatchError::Other(
+                "Wrong asset id for MockLiquidityProxy, KUSD and KEN only supported",
+            ))
         }
     }
 
@@ -141,11 +149,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         amount: SwapAmount<common::Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<common::Balance>, DispatchError> {
-        if *output_asset_id != KUSD {
-            Err(DispatchError::Other(
-                "Wrong asset id for MockLiquidityProxy, KUSD only supported",
-            ))
-        } else {
+        if *output_asset_id == KUSD || *output_asset_id == KEN {
             match amount {
                 SwapAmount::WithDesiredInput { .. } => unimplemented!(),
                 SwapAmount::WithDesiredOutput {
@@ -159,7 +163,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
                         max_amount_in,
                     )?;
                     let out_amount = assets::Pallet::<TestRuntime>::free_balance(
-                        &KUSD,
+                        output_asset_id,
                         &Self::EXCHANGE_TECH_ACCOUNT,
                     )?;
                     ensure!(
@@ -175,6 +179,10 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
                     Ok(SwapOutcome::new(out_amount, 0))
                 }
             }
+        } else {
+            Err(DispatchError::Other(
+                "Wrong asset id for MockLiquidityProxy, KUSD and KEN only supported",
+            ))
         }
     }
 }
