@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode};
-use common::prelude::QuoteAmount;
+use common::prelude::{OutcomeFee, QuoteAmount};
 use frame_support::RuntimeDebug;
 use sp_std::vec::Vec;
 
@@ -52,20 +52,22 @@ type SwapInfo<LiquiditySourceType, AmountType> =
 #[derive(
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
 )]
-pub struct AggregatedSwapOutcome<LiquiditySourceType, AmountType> {
+pub struct AggregatedSwapOutcome<AssetId: Ord, LiquiditySourceType, AmountType> {
     /// A distribution of amounts each liquidity sources gets to swap in the entire trade
     pub distribution: Vec<(LiquiditySourceType, QuoteAmount<AmountType>)>,
     /// The best possible output/input amount for a given trade and a set of liquidity sources
     pub amount: AmountType,
     /// Total fee amount, nominated in XOR
-    pub fee: AmountType,
+    pub fee: OutcomeFee<AssetId, AmountType>,
 }
 
-impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdType, AmountType> {
+impl<AssetId: Ord, LiquiditySourceIdType, AmountType>
+    AggregatedSwapOutcome<AssetId, LiquiditySourceIdType, AmountType>
+{
     pub fn new(
         distribution: Vec<(LiquiditySourceIdType, QuoteAmount<AmountType>)>,
         amount: AmountType,
-        fee: AmountType,
+        fee: OutcomeFee<AssetId, AmountType>,
     ) -> Self {
         Self {
             distribution,
@@ -104,13 +106,16 @@ where
         self.liquidity_chunks.insert(source, sorted_chunks);
     }
 
-    pub fn aggregate_swap_outcome(
+    pub fn aggregate_swap_outcome<AssetId>(
         mut self,
         amount: Balance,
     ) -> Option<(
         SwapInfo<LiquiditySourceType, Balance>,
-        AggregatedSwapOutcome<LiquiditySourceType, Balance>,
-    )> {
+        AggregatedSwapOutcome<AssetId, LiquiditySourceType, Balance>,
+    )>
+    where
+        AssetId: Ord + From<common::AssetId32<common::PredefinedAssetId>>,
+    {
         if self.liquidity_chunks.is_empty() {
             return None;
         }
@@ -180,7 +185,7 @@ where
                     })
                     .collect(),
                 amount: result_amount,
-                fee,
+                fee: OutcomeFee::xor(fee), // todo fix (m.tagirov)
             },
         ))
     }

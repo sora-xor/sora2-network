@@ -46,7 +46,9 @@ pub mod weights;
 use assets::AssetIdOf;
 use assets::WeightInfo as _;
 use codec::{Decode, Encode};
-use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
+use common::prelude::{
+    Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
+};
 use common::{
     balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
@@ -205,8 +207,8 @@ impl<T: Config> ExchangePath<T> {
 }
 
 #[derive(Eq, PartialEq, Encode, Decode)]
-pub struct QuoteInfo<AssetId, LiquiditySource> {
-    pub outcome: SwapOutcome<Balance>,
+pub struct QuoteInfo<AssetId: Ord, LiquiditySource> {
+    pub outcome: SwapOutcome<Balance, AssetId>,
     pub amount_without_impact: Option<Balance>,
     pub rewards: Rewards<AssetId>,
     pub liquidity_sources: Vec<LiquiditySource>,
@@ -300,7 +302,7 @@ impl<T: Config> Pallet<T> {
         )?;
         total_weight = total_weight.saturating_add(weight);
 
-        let (input_amount, output_amount, fee_amount) = match swap_amount {
+        let (input_amount, output_amount, fee) = match swap_amount {
             SwapAmount::WithDesiredInput {
                 desired_amount_in, ..
             } => (desired_amount_in, outcome.amount, outcome.fee),
@@ -315,7 +317,7 @@ impl<T: Config> Pallet<T> {
             output_asset_id,
             input_amount,
             output_amount,
-            fee_amount,
+            fee,
             sources,
         ));
 
@@ -334,7 +336,14 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
+    ) -> Result<
+        (
+            SwapOutcome<Balance, T::AssetId>,
+            Vec<LiquiditySourceIdOf<T>>,
+            Weight,
+        ),
+        DispatchError,
+    > {
         ensure!(
             input_asset_id != output_asset_id,
             Error::<T>::UnavailableExchangePath
@@ -364,7 +373,14 @@ impl<T: Config> Pallet<T> {
         asset_paths: Vec<ExchangePath<T>>,
         amount: SwapAmount<Balance>,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
+    ) -> Result<
+        (
+            SwapOutcome<Balance, T::AssetId>,
+            Vec<LiquiditySourceIdOf<T>>,
+            Weight,
+        ),
+        DispatchError,
+    > {
         match amount {
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
@@ -444,7 +460,14 @@ impl<T: Config> Pallet<T> {
         assets: &[T::AssetId],
         input_amount: Balance,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
+    ) -> Result<
+        (
+            SwapOutcome<Balance, T::AssetId>,
+            Vec<LiquiditySourceIdOf<T>>,
+            Weight,
+        ),
+        DispatchError,
+    > {
         use itertools::EitherOrBoth::*;
 
         let transit_account = T::GetTechnicalAccountId::get();
@@ -497,17 +520,14 @@ impl<T: Config> Pallet<T> {
         // Exchange aggregation
         .fold(
             (
-                SwapOutcome::new(balance!(0), balance!(0)),
+                SwapOutcome::new(balance!(0), OutcomeFee::new()),
                 Vec::new(),
                 Weight::zero(),
             ),
             |(mut outcome, mut sources, mut total_weight),
              (swap_outcome, swap_sources, swap_weight)| {
                 outcome.amount = swap_outcome.amount;
-                outcome.fee = swap_outcome
-                    .fee
-                    .checked_add(swap_outcome.fee)
-                    .ok_or(Error::<T>::CalculationError)?;
+                outcome.fee = outcome.fee.merge(swap_outcome.fee);
                 merge_two_vectors_unique(&mut sources, swap_sources);
                 total_weight = total_weight.saturating_add(swap_weight);
                 Ok((outcome, sources, total_weight))
@@ -557,7 +577,14 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
+    ) -> Result<
+        (
+            SwapOutcome<Balance, T::AssetId>,
+            Vec<LiquiditySourceIdOf<T>>,
+            Weight,
+        ),
+        DispatchError,
+    > {
         common::with_transaction(|| {
             let mut total_weight = Weight::zero();
             let (outcome, _, sources, weight) = Self::quote_single(
@@ -594,24 +621,20 @@ impl<T: Config> Pallet<T> {
                         outcome
                     })
                 })
-                .collect::<Result<Vec<SwapOutcome<Balance>>, DispatchError>>()?;
+                .collect::<Result<Vec<SwapOutcome<Balance, T::AssetId>>, DispatchError>>()?;
 
-            let (amount, fee): (FixedWrapper, FixedWrapper) = res.into_iter().fold(
-                (fixed_wrapper!(0), fixed_wrapper!(0)),
+            let (amount, fee) = res.into_iter().fold(
+                (fixed_wrapper!(0), OutcomeFee::new()),
                 |(amount_acc, fee_acc), x| {
                     (
                         amount_acc + FixedWrapper::from(x.amount),
-                        fee_acc + FixedWrapper::from(x.fee),
+                        fee_acc.merge(x.fee),
                     )
                 },
             );
             let amount = amount
                 .try_into_balance()
                 .map_err(|_| Error::CalculationError::<T>)?;
-            let fee = fee
-                .try_into_balance()
-                .map_err(|_| Error::CalculationError::<T>)?;
-
             Ok((SwapOutcome::new(amount, fee), sources, total_weight))
         })
     }
@@ -762,7 +785,7 @@ impl<T: Config> Pallet<T> {
         deduce_fee: bool,
     ) -> Result<
         (
-            SwapOutcome<Balance>,
+            SwapOutcome<Balance, T::AssetId>,
             Option<Balance>,
             Rewards<T::AssetId>,
             Vec<LiquiditySourceIdOf<T>>,
@@ -793,7 +816,7 @@ impl<T: Config> Pallet<T> {
         }))
         .fold(
             (
-                SwapOutcome::new(balance!(0), balance!(0)),
+                SwapOutcome::new(balance!(0), OutcomeFee::new()),
                 init_outcome_without_impact,
                 Rewards::new(),
                 Vec::new(),
@@ -826,10 +849,7 @@ impl<T: Config> Pallet<T> {
                     })
                     .transpose()?;
                 outcome.amount = quote.amount;
-                outcome.fee = outcome
-                    .fee
-                    .checked_add(quote.fee)
-                    .ok_or(Error::<T>::CalculationError)?;
+                outcome.fee = outcome.fee.merge(quote.fee);
                 rewards.append(&mut quote_rewards);
                 weight = weight.saturating_add(quote_weight);
                 merge_two_vectors_unique(&mut liquidity_sources, quote_liquidity_sources);
@@ -962,7 +982,7 @@ impl<T: Config> Pallet<T> {
         deduce_fee: bool,
     ) -> Result<
         (
-            AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
+            AggregatedSwapOutcome<T::AssetId, LiquiditySourceIdOf<T>, Balance>,
             Rewards<T::AssetId>,
             Vec<LiquiditySourceIdOf<T>>,
             Weight,
@@ -1473,7 +1493,7 @@ impl<T: Config> Pallet<T> {
         deduce_fee: bool,
     ) -> Result<
         (
-            AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
+            AggregatedSwapOutcome<T::AssetId, LiquiditySourceIdOf<T>, Balance>,
             Rewards<T::AssetId>,
             Weight,
         ),
@@ -1556,7 +1576,7 @@ impl<T: Config> Pallet<T> {
         deduce_fee: bool,
     ) -> Result<
         (
-            AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
+            AggregatedSwapOutcome<T::AssetId, LiquiditySourceIdOf<T>, Balance>,
             Rewards<T::AssetId>,
             Weight,
         ),
@@ -1627,7 +1647,7 @@ impl<T: Config> Pallet<T> {
         };
 
         let mut best: Balance = extremum;
-        let mut total_fee: Balance = 0;
+        let mut total_fee = OutcomeFee::new();
         let mut rewards = Vec::new();
         let mut distr = Vec::new();
         let mut maybe_error: Option<DispatchError> = None;
@@ -1682,7 +1702,7 @@ impl<T: Config> Pallet<T> {
                             }
                         };
                         best = outcome_primary.amount + outcome_secondary.amount;
-                        total_fee = outcome_primary.fee + outcome_secondary.fee;
+                        total_fee = outcome_primary.fee.merge(outcome_secondary.fee);
                         distr = vec![
                             (primary_source_id.clone(), amount_primary),
                             (secondary_source_id.clone(), amount_secondary),
@@ -1714,7 +1734,7 @@ impl<T: Config> Pallet<T> {
             total_weight = total_weight.saturating_add(weight);
             if is_better(outcome.amount, best) {
                 best = outcome.amount;
-                total_fee = outcome.fee;
+                total_fee = outcome.fee.clone();
                 distr = vec![(secondary_source_id.clone(), amount.clone())];
                 if !skip_info {
                     let (input_amount, output_amount) =
@@ -1989,7 +2009,7 @@ impl<T: Config> Pallet<T> {
         let (
             SwapOutcome {
                 amount: executed_input_amount,
-                fee: fee_amount,
+                fee,
             },
             sources,
             weights,
@@ -2014,7 +2034,7 @@ impl<T: Config> Pallet<T> {
             output_asset_id.clone(),
             executed_input_amount,
             out_amount,
-            fee_amount,
+            fee,
             sources,
         ));
 
@@ -2213,7 +2233,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
         Pallet::<T>::inner_quote(
             dex_id,
             input_asset_id,
@@ -2238,7 +2258,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
         let (outcome, _, _) = Pallet::<T>::inner_exchange(
             dex_id,
             sender,
@@ -2361,6 +2381,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<T::AssetId>>
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::prelude::OutcomeFee;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::EnsureOrigin;
     use frame_support::{traits::StorageVersion, transactional};
@@ -2682,7 +2703,7 @@ pub mod pallet {
             AssetIdOf<T>,
             Balance,
             Balance,
-            Balance,
+            OutcomeFee<AssetIdOf<T>, Balance>,
             Vec<LiquiditySourceIdOf<T>>,
         ),
         /// Liquidity source was enabled
