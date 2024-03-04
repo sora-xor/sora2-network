@@ -42,6 +42,12 @@ pub mod liquidity_sources {
     use pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};
     use sp_std::vec::Vec;
 
+    /// Initialize xyk pool liquidity source.
+    ///
+    /// Parameters:
+    /// - `caller`: Some account to use during the initialization; assets are minted and extrinsics
+    /// are called with it.
+    /// - `pairs`: Asset pairs to initialize.
     pub fn initialize_xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
         pairs: Vec<AssetPairInput<DexIdOf<T>, AssetIdOf<T>>>,
