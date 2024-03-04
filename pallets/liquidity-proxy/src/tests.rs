@@ -3661,8 +3661,12 @@ fn test_batch_swap_desired_input_successful() {
     });
 }
 
-#[test]
-fn test_batch_swap_emits_event() {
+fn test_batch_swap_event(
+    event_data: BoundedVec<
+        u8,
+        <Runtime as crate::Config>::MaxAdditionalDataLengthSwapTransferBatch,
+    >,
+) {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         frame_system::Pallet::<Runtime>::set_block_number(1);
@@ -3685,7 +3689,6 @@ fn test_batch_swap_emits_event() {
         let adar_fee = (FixedWrapper::from(amount_in) * fixed_wrapper!(0.0025)).into_balance();
 
         let max_input_amount = amount_in + adar_fee;
-        let additional_data = BoundedVec::try_from(vec![1, 2, 3, 32, 2, 13, 37]).unwrap();
 
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             RuntimeOrigin::signed(alice()),
@@ -3694,13 +3697,27 @@ fn test_batch_swap_emits_event() {
             max_input_amount,
             sources.clone(),
             filter_mode,
-            Some(additional_data.clone()),
+            Some(event_data.clone()),
         ));
 
         frame_system::Pallet::<Runtime>::assert_last_event(
-            crate::Event::BatchSwapExecuted(adar_fee, amount_in, Some(additional_data)).into(),
+            crate::Event::BatchSwapExecuted(adar_fee, amount_in, Some(event_data)).into(),
         );
     });
+}
+
+#[test]
+fn test_batch_swap_emits_event() {
+    test_batch_swap_event(BoundedVec::try_from(vec![1, 2, 3, 32, 2, 13, 37]).unwrap());
+}
+
+#[test]
+fn test_batch_swap_max_additional_data() {
+    let max_data_len: u32 =
+        <Runtime as crate::Config>::MaxAdditionalDataLengthSwapTransferBatch::get();
+    let max_additional_data =
+        BoundedVec::try_from(vec![255; max_data_len.try_into().unwrap()]).unwrap();
+    test_batch_swap_event(max_additional_data)
 }
 
 #[test]
@@ -3795,51 +3812,6 @@ fn test_batch_swap_desired_input_too_low() {
                 None,
             ),
             Error::<Runtime>::SlippageNotTolerated
-        );
-    });
-}
-
-#[test]
-fn test_batch_swap_max_additional_data() {
-    let mut ext = ExtBuilder::default().with_xyk_pool().build();
-    ext.execute_with(|| {
-        frame_system::Pallet::<Runtime>::set_block_number(1);
-        assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
-
-        let swap_batches = Vec::from([SwapBatchInfo {
-            outcome_asset_id: XOR,
-            dex_id: DEX_C_ID,
-            receivers: vec![
-                BatchReceiverInfo::new(charlie(), balance!(10)),
-                BatchReceiverInfo::new(dave(), balance!(10)),
-            ],
-            outcome_asset_reuse: 0,
-        }]);
-
-        let filter_mode = FilterMode::AllowSelected;
-        let sources = [LiquiditySourceType::XYKPool].to_vec();
-
-        let amount_in = balance!(20);
-        let adar_fee = (FixedWrapper::from(amount_in) * fixed_wrapper!(0.0025)).into_balance();
-
-        let max_input_amount = amount_in + adar_fee;
-        let max_data_len: u32 =
-            <Runtime as crate::Config>::MaxAdditionalDataLengthSwapTransferBatch::get();
-        let max_additional_data =
-            BoundedVec::try_from(vec![255; max_data_len.try_into().unwrap()]).unwrap();
-
-        assert_ok!(LiquidityProxy::swap_transfer_batch(
-            RuntimeOrigin::signed(alice()),
-            swap_batches.clone(),
-            XOR,
-            max_input_amount,
-            sources.clone(),
-            filter_mode,
-            Some(max_additional_data.clone()),
-        ));
-
-        frame_system::Pallet::<Runtime>::assert_last_event(
-            crate::Event::BatchSwapExecuted(adar_fee, amount_in, Some(max_additional_data)).into(),
         );
     });
 }
