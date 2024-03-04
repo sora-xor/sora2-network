@@ -365,6 +365,13 @@ pub mod pallet {
             })
         }
 
+        /// Set prices of an asset in `price_tools` pallet.
+        /// Ignores pallet restrictions on price speed change.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        /// - `asset_per_xor`: Prices (1 XOR in terms of the corresponding asset).
+        /// - `asset_id`: Asset identifier; can be some common constant for easier input.
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::price_tools_set_reference_asset_price())]
         pub fn price_tools_set_asset_price(
