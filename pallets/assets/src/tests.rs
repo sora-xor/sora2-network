@@ -33,7 +33,6 @@ use crate::Error;
 use crate::Event;
 use common::balance;
 use common::prelude::{AssetName, AssetSymbol, Balance};
-use common::test_utils::assert_last_event;
 use common::DAI;
 use common::PSWAP;
 use common::XST;
@@ -822,7 +821,7 @@ fn test_update_asset_info() {
             Some(val_symbol.clone()),
             Some(val_name.clone())
         ));
-        assert_last_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_last_event(
             Event::AssetUpdated(XOR, Some(val_symbol.clone()), Some(val_name.clone())).into(),
         );
         assert_eq!(
@@ -845,7 +844,7 @@ fn test_update_asset_info() {
             None,
             Some(pswap_name.clone())
         ));
-        assert_last_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_last_event(
             Event::AssetUpdated(XOR, None, Some(pswap_name.clone())).into(),
         );
         assert_eq!(
@@ -866,7 +865,7 @@ fn test_update_asset_info() {
             Some(pswap_symbol.clone()),
             None
         ));
-        assert_last_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_last_event(
             Event::AssetUpdated(XOR, Some(pswap_symbol.clone()), None).into(),
         );
         assert_eq!(

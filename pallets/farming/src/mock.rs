@@ -116,7 +116,7 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
-    pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
+    pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into(), DOT.into()];
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([13; 32]);
@@ -287,6 +287,10 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = ();
@@ -320,6 +324,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = ();
     type VestedRewardsPallet = VestedRewards;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = ();
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type WeightInfo = ();
@@ -391,6 +396,7 @@ impl Config for Runtime {
     type SchedulerOriginCaller = OriginCaller;
     type Scheduler = Scheduler;
     type RewardDoublingAssets = RewardDoublingAssets;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
 }
 

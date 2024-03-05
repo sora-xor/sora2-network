@@ -88,6 +88,14 @@ impl<T> QuoteAmount<T> {
         }
     }
 
+    /// Returns desired input/output variant of the value
+    pub fn variant(&self) -> SwapVariant {
+        match self {
+            QuoteAmount::WithDesiredInput { .. } => SwapVariant::WithDesiredInput,
+            QuoteAmount::WithDesiredOutput { .. } => SwapVariant::WithDesiredOutput,
+        }
+    }
+
     /// Position desired amount with outcome such that input and output values are aligned.
     pub fn place_input_and_output(self, outcome: SwapOutcome<T>) -> (T, T) {
         match self {
@@ -173,7 +181,7 @@ impl<T: CheckedAdd> CheckedAdd for QuoteAmount<T> {
                 Self::WithDesiredInput {
                     desired_amount_in: in_b,
                 },
-            ) => Some(Self::with_desired_input(in_a.checked_add(&in_b)?)),
+            ) => Some(Self::with_desired_input(in_a.checked_add(in_b)?)),
             (
                 Self::WithDesiredOutput {
                     desired_amount_out: out_a,
@@ -181,7 +189,7 @@ impl<T: CheckedAdd> CheckedAdd for QuoteAmount<T> {
                 Self::WithDesiredOutput {
                     desired_amount_out: out_b,
                 },
-            ) => Some(Self::with_desired_output(out_a.checked_add(&out_b)?)),
+            ) => Some(Self::with_desired_output(out_a.checked_add(out_b)?)),
             (_, _) => None,
         }
     }
@@ -545,7 +553,7 @@ where
     T: Copy + Into<Fixed> + From<Fixed>,
 {
     fn mul_assign(&mut self, rhs: Fixed) {
-        match self.clone() {
+        match *self {
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
                 min_amount_out,

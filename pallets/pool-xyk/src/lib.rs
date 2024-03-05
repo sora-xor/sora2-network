@@ -38,15 +38,17 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
-    LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
-    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
+    fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
+    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
+    RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    TradingPairSourceManager, XykPool,
 };
 
 mod aliases;
@@ -86,7 +88,7 @@ const MIN_LIQUIDITY: u128 = 1000;
 
 pub use weights::WeightInfo;
 
-impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
+impl<T: Config> XykPool<T::AccountId, T::AssetId> for Pallet<T> {
     type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;
     type PoolPropertiesOutput =
         PrefixIterator<(AssetIdOf<T>, AssetIdOf<T>, (AccountIdOf<T>, AccountIdOf<T>))>;
@@ -180,8 +182,7 @@ impl<T: Config> Pallet<T> {
             (asset_a_pair.0, asset_b_pair.0)
         };
 
-        // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
-        trading_pair::Pallet::<T>::enable_source_for_trading_pair(
+        T::TradingPairSourceManager::enable_source_for_trading_pair(
             dex_id,
             sorted_asset_a,
             sorted_asset_b,
@@ -242,7 +243,7 @@ impl<T: Config> Pallet<T> {
         // can be done, check every condition for `PoolIsAlreadyInitialized`.
         if technical::Pallet::<T>::ensure_tech_account_registered(&tech_acc_id).is_ok() {
             if technical::Pallet::<T>::ensure_tech_account_registered(&fee_acc_id).is_ok()
-                && trading_pair::Pallet::<T>::ensure_trading_pair_exists(
+                && T::EnsureTradingPairExists::ensure_trading_pair_exists(
                     &dex_id,
                     &trading_pair.base_asset_id.into(),
                     &trading_pair.target_asset_id.into(),
@@ -434,6 +435,115 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
     }
 
+    fn step_quote(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+        if amount.amount().is_zero() {
+            return Ok((VecDeque::new(), Weight::zero()));
+        }
+
+        let samples_count = if recommended_samples_count < 1 {
+            1
+        } else {
+            recommended_samples_count
+        };
+
+        let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
+        // Get pool account.
+        let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
+            *dex_id,
+            *input_asset_id,
+            *output_asset_id,
+        )?;
+        let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+
+        // Get actual pool reserves.
+        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+
+        // Check reserves validity.
+        if reserve_input == 0 && reserve_output == 0 {
+            fail!(Error::<T>::PoolIsEmpty);
+        } else if reserve_input <= 0 || reserve_output <= 0 {
+            fail!(Error::<T>::PoolIsInvalid);
+        }
+
+        // Decide which side should be used for fee.
+        let get_fee_from_destination = Pallet::<T>::decide_is_fee_from_destination(
+            &dex_info.base_asset_id,
+            input_asset_id,
+            output_asset_id,
+        )?;
+
+        let common_step = amount
+            .amount()
+            .checked_div(samples_count as Balance)
+            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+
+        // volume & step
+        let mut volumes = Vec::new();
+
+        let mut remaining = amount.amount();
+        for i in 1..=samples_count - 1 {
+            let volume = common_step
+                .checked_mul(i as Balance)
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+            volumes.push((volume, common_step));
+            remaining = remaining.saturating_sub(common_step);
+        }
+        volumes.push((amount.amount(), remaining));
+
+        let mut chunks = VecDeque::new();
+        let mut sub_sum = Balance::zero();
+        let mut sub_fee = Balance::zero();
+
+        match amount {
+            QuoteAmount::WithDesiredInput { .. } => {
+                for (volume, step) in volumes {
+                    let (calculated, fee) = Pallet::<T>::calc_output_for_exact_input(
+                        T::GetFee::get(),
+                        get_fee_from_destination,
+                        &reserve_input,
+                        &reserve_output,
+                        &volume,
+                        deduce_fee,
+                    )?;
+
+                    let output = calculated.saturating_sub(sub_sum);
+                    let fee_chunk = fee.saturating_sub(sub_fee);
+                    sub_sum = calculated;
+                    sub_fee = fee;
+                    chunks.push_back(SwapChunk::new(step, output, fee_chunk));
+                }
+            }
+            QuoteAmount::WithDesiredOutput { .. } => {
+                for (volume, step) in volumes {
+                    let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
+                        T::GetFee::get(),
+                        get_fee_from_destination,
+                        &reserve_input,
+                        &reserve_output,
+                        &volume,
+                        deduce_fee,
+                    )?;
+
+                    let input = calculated.saturating_sub(sub_sum);
+                    let fee_chunk = fee.saturating_sub(sub_fee);
+                    sub_sum = calculated;
+                    sub_fee = fee;
+                    chunks.push_back(SwapChunk::new(input, step, fee_chunk));
+                }
+            }
+        }
+
+        Ok((chunks, Self::step_quote_weight(samples_count)))
+    }
+
     fn exchange(
         sender: &T::AccountId,
         receiver: &T::AccountId,
@@ -621,6 +731,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         <T as Config>::WeightInfo::quote()
     }
 
+    fn step_quote_weight(samples_count: usize) -> Weight {
+        <T as Config>::WeightInfo::step_quote(samples_count as u32)
+    }
+
     fn exchange_weight() -> Weight {
         <T as Config>::WeightInfo::swap_pair()
     }
@@ -642,19 +756,17 @@ use sp_runtime::traits::Zero;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, Fixed, GetMarketInfo, OnPoolCreated};
+    use common::{AccountIdOf, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use orml_traits::GetByKey;
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
-    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
         + technical::Config
-        + trading_pair::Config
         + ceres_liquidity_locker::Config
         + demeter_farming_platform::Config
     {
@@ -676,6 +788,14 @@ pub mod pallet {
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type EnabledSourcesManager: EnabledSourcesManager<Self::DEXId, Self::AssetId>;
+        type EnsureTradingPairExists: EnsureTradingPairExists<
+            Self::DEXId,
+            Self::AssetId,
+            DispatchError,
+        >;
         type XSTMarketInfo: GetMarketInfo<Self::AssetId>;
         type GetFee: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;

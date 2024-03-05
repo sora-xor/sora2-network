@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "3.0.0"
+version = "3.2.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -108,12 +108,18 @@ leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git" }
 sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 enum-as-inner = "=0.5.1"
+# TODO remove after toolchain is updated
+# newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
+ahash = "=0.8.5"
+bumpalo = "=3.14.0"
 
 [build-dependencies]
 substrate-build-script-utils = "3"
 
 [dev-dependencies]
-assert_cmd = "2.0.4"
+# TODO remove after toolchain is updated
+# newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
+assert_cmd = "=2.0.13"
 tokio = { version = "1.10.1", features = ["macros"] }
 
 # Substrate dependencies
@@ -141,9 +147,6 @@ wip = [
 ready-to-test = [
     "framenode-chain-spec/ready-to-test",
     "framenode-runtime/ready-to-test",
-    "common/ready-to-test",
-    "dex-api-rpc/ready-to-test",
-    "liquidity-proxy-rpc/ready-to-test",
 ]
 
 runtime-benchmarks = [

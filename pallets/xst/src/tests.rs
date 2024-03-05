@@ -30,13 +30,25 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{Error, Pallet, mock::*, test_utils::{relay_new_symbol, relay_symbol}};
+    use crate::{
+        mock::*,
+        test_utils::{relay_new_symbol, relay_symbol},
+        Error, Pallet,
+    };
     use band::FeeCalculationParameters;
-    use common::{self, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, AssetId32};
-    use frame_support::{assert_ok, assert_noop};
-    use sp_arithmetic::traits::Zero;
+    use common::{
+        balance, fixed,
+        AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, GetMarketInfo,
+        LiquiditySource, PredefinedAssetId, PriceVariant, SwapChunk, DAI, USDT, VAL, XOR, XST,
+        XSTUSD,
+    };
+    use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount};
     use frame_support::traits::Hooks;
+    use frame_support::{assert_noop, assert_ok};
     use frame_system::pallet_prelude::BlockNumberFor;
+    use sp_arithmetic::traits::Zero;
+    use sp_arithmetic::FixedU128;
+    use sp_std::collections::vec_deque::VecDeque;
 
     type XSTPool = Pallet<Runtime>;
     type PriceTools = price_tools::Pallet<Runtime>;
@@ -359,9 +371,9 @@ mod tests {
             // amount out = (A_in * S) / X = (100 * 1) / 220 = 0.(45) XST (A_out)
             // deduced fee = A_out * F = 0.(45) * 0.00666 = 0.0030(27) XST (F_xst)
             // deduced fee in XOR = F_xst / X_b = 0.0030(27) / 0.6 = 0.0060(54) XOR (since we are buying XOR with XST)
-            assert_approx_eq!(price_a.fee, balance!(0.006054545454545454), 2);
+            assert_eq!(price_a.fee, balance!(0.006054545454545454));
             // amount out with deduced fee = A_out - F_xst = 0.(45) - 0.0030(27) = 0.4515(18) XST
-            assert_approx_eq!(price_a.amount, balance!(0.451518181818181818), 2);
+            assert_eq!(price_a.amount, balance!(0.451518181818181818));
 
             let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -374,7 +386,7 @@ mod tests {
             assert_eq!(price_b.fee, balance!(0));
             // we need to convert XOR fee back to XST 
             let xst_fee = (FixedWrapper::from(price_a.fee)*balance!(0.5)).into_balance();
-            assert_approx_eq!(price_b.amount, xst_fee + price_a.amount, 2);
+            assert_eq!(price_b.amount, xst_fee + price_a.amount);
 
             let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -393,11 +405,11 @@ mod tests {
             // 1 XSTUSD = 1 DAI (S)
             // fee ratio for XSTUSD = 0.00666 (F_r)
             // amount out = 100 XST (A_in)
-            // deduced fee = A_out / (1 - F_r) - A_out = 100 / (1 - 0.00666) - 100 = 0.670465298890611 XST (F_xst)
-            // amount in = ((A_out + F_xst) * X) / S = ((100 + 0.670465298890611) * 220) / 1 = 22147.5023657559344 XSTUSD (A_in)
-            // deduced fee in XOR = F_xst / X_b = 0.670465298890611 / 0.5 = 1.340930597781222944 XOR (since we are buying XOR with XST)
-            assert_approx_eq!(price_a.fee, balance!(1.340930597781222944), 1000);
-            assert_approx_eq!(price_a.amount, balance!(22147.5023657559344), 1000_000);
+            // deduced fee = A_out / (1 - F_r) - A_out = 100 / (1 - 0.00666) - 100 = 0.670465298890611472 XST (F_xst)
+            // amount in = ((A_out + F_xst) * X) / S = ((100 + 0.670465298890611472) * 220) / 1 = 22147.502365755934523840 XSTUSD (A_in)
+            // deduced fee in XOR = F_xst / X_b = 0.670465298890611472 / 0.5 = 1.340930597781222944 XOR (since we are buying XOR with XST)
+            assert_eq!(price_a.fee, balance!(1.340930597781222944));
+            assert_eq!(price_a.amount, balance!(22147.502365755934523840));
 
             let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -468,7 +480,7 @@ mod tests {
             // amount out = (A_in * S) / X = (100 * 1) / 220 = 0.(45) XST (A_out)
             // deduced fee = A_out * F = 0.(45) * 0.00666 = 0.0030(27) XST (F_xst)
             // deduced fee in XOR = F_xst / X_b = 0.0030(27) / 0.5 = 0.0060(54) XOR (since we are buying XOR with XST)
-            assert_approx_eq!(price_a.fee, balance!(0.006054545454545454), 2);
+            assert_eq!(price_a.fee, balance!(0.006054545454545454));
 
             // Sell
             let (price_c, _) = XSTPool::quote(
@@ -498,10 +510,10 @@ mod tests {
             // fee ratio for XSTUSD = 0.00666 (F_r)
             // amount out = 100 XSTUSD (A_out)
             // amount in = (A_out * S) / X = (100 * 1) / 150 = 0.(6) XST (A_in)
-            // deduced fee = A_in / (1 - F) - A_in = 0.(6) / (1 - 0.00666) - A_in ~ 0.004469768659270743 XST (F_xst)
-            // deduced fee in XOR = F_xst / X_b = 0.004469768659270743 / 0.5 ~ 0.008939537319 XOR
+            // deduced fee = A_in / (1 - F) - A_in = 0.(6) / (1 - 0.00666) - A_in = 0.004469768659270743 XST (F_xst)
+            // deduced fee in XOR = F_xst / X_b = 0.004469768659270743 / 0.5 = 0.008939537318541486 XOR
             // (since we are buying XOR with XST)
-            assert_approx_eq!(price_c.fee, balance!(0.008939537318541485), 2);
+            assert_eq!(price_c.fee, balance!(0.008939537318541486));
         });
     }
 
@@ -716,11 +728,20 @@ mod tests {
             // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
             // 1 XOR = 90 DAI in sell case (D_s)
             // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
+            let xst_sell_price = FixedU128::from_inner(
+                PriceTools::get_average_price(
+                    &XST.into(),
+                    &DAI.into(),
+                    PriceVariant::Sell,
+                ).expect("Expected to calculate price XST->DAI")
+            );
             // 1 XSTEURO = 2 DAI (S)
             // fee ratio for XSTUSD = 0. (F_r)
             // amount in = 100 XST (A_in)
+            let a_in = FixedU128::from(100);
             // amount out = (A_in * X) / S = (100 * 150) / 2 = 7500 XSTEURO (A_out)
-            assert_approx_eq!(swap_outcome_before.amount, balance!(7500), 10000);
+            let expected_amount_out = a_in * xst_sell_price / FixedU128::from(2);
+            assert_eq!(swap_outcome_before.amount, expected_amount_out.into_inner());
             assert_eq!(swap_outcome_before.fee, 0);
 
 
@@ -872,19 +893,28 @@ mod tests {
                 true
             )
             .expect("Failed to quote XST -> XSTEURO ");
-            
+
             // 1 XOR = 0.5 XST in sell case (X_s)
             // 1 XOR = 0.6 XST in buy case (X_b)
             // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
             // 1 XOR = 90 DAI in sell case (D_s)
             // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
+            let xst_sell_price = FixedU128::from_inner(
+                PriceTools::get_average_price(
+                    &XST.into(),
+                    &DAI.into(),
+                    PriceVariant::Sell,
+                ).expect("Expected to calculate price XST->DAI")
+            );
             // 1 XSTEURO = 3 DAI (S)
             // fee ratio for XSTEURO = 0.3 (F_r)
             // amount in = 100 XST (A_in)
+            let a_in = FixedU128::from(100);
             // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.7) / 3 = 3500 XSTEURO (A_out)
+            let expected_amount_out = a_in * xst_sell_price * (FixedU128::from_float(0.7)) / FixedU128::from(3);
+            assert_eq!(swap_outcome_before.amount, expected_amount_out.into_inner());
             // fee = F_xst / X_b = 0.3 * 100 / 0.5 = 60 XOR
-            assert_approx_eq!(swap_outcome_before.amount, balance!(3500), 10000);
-            assert_approx_eq!(swap_outcome_before.fee, balance!(60), 10000);
+            assert_eq!(swap_outcome_before.fee, balance!(60));
 
             assert_ok!(XSTPool::set_synthetic_asset_fee(
                 RuntimeOrigin::root(),
@@ -910,9 +940,10 @@ mod tests {
             // fee ratio for XSTEURO = 0.6 (F_r) <- dynamic fee + synthetic fee
             // amount in = 100 XST (A_in)
             // amount out = (A_in * X * (1 - F_r)) / S = (100 * 150 * 0.4) / 3 = 2000 XSTEURO (A_out)
+            let expected_amount_out = a_in * xst_sell_price * (FixedU128::from_float(0.4)) / FixedU128::from(3);
+            assert_eq!(swap_outcome_after.amount, expected_amount_out.into_inner());
             // fee = F_xst / X_b = 0.6 * 100 / 0.5 = 120 XOR
-            assert_approx_eq!(swap_outcome_after.amount, balance!(2000), 10000);
-            assert_approx_eq!(swap_outcome_after.fee, balance!(120), 10000);
+            assert_eq!(swap_outcome_after.fee, balance!(120));
         });
     }
 
@@ -1351,6 +1382,583 @@ mod tests {
             assert_eq!(
                 XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
                 euro
+            );
+        });
+    }
+
+    #[test]
+    fn check_empty_step_quote() {
+        let mut ext = ExtBuilder::new(
+            vec![
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
+        .build();
+    ext.execute_with(|| {
+        assert_eq!(
+            XSTPool::step_quote(
+                &DEXId::Polkaswap.into(),
+                &XST,
+                &XSTUSD,
+                QuoteAmount::with_desired_input(balance!(0)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::new()
+        );
+
+        assert_eq!(
+            XSTPool::step_quote(
+                &DEXId::Polkaswap.into(),
+                &XST,
+                &XSTUSD,
+                QuoteAmount::with_desired_output(balance!(0)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::new()
+        );
+
+        assert_eq!(
+            XSTPool::step_quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XST,
+                QuoteAmount::with_desired_input(balance!(0)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::new()
+        );
+
+        assert_eq!(
+            XSTPool::step_quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XST,
+                QuoteAmount::with_desired_output(balance!(0)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::new()
+        );
+    });
+    }
+
+    #[test]
+    fn check_step_quote_with_zero_samples_count() {
+        let mut ext = ExtBuilder::new(
+            vec![
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
+        .build();
+        ext.execute_with(|| {
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_input(balance!(100)),
+                    0,
+                    false
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([SwapChunk::new(balance!(100), balance!(0.454545454545454545), 0)])
+            );
+            
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_output(balance!(100)),
+                    0,
+                    false
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([SwapChunk::new(balance!(22000), balance!(100), 0)])
+            );
+            
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_input(balance!(100)),
+                    0,
+                    false
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([SwapChunk::new(balance!(100), balance!(14999.999999999999994), 0)])
+            );
+
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_output(balance!(100)),
+                    0,
+                    false
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([SwapChunk::new(balance!(0.666666666666666666), balance!(100), 0)])
+            );
+        });
+    }
+
+    #[test]
+    fn check_step_quote_without_fee() {
+        let mut ext = ExtBuilder::new(
+            vec![
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
+        .build();
+        ext.execute_with(|| {
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_input(balance!(100)),
+                    10,
+                    false
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                    SwapChunk::new(balance!(10), balance!(0.045454545454545454), 0),
+                    SwapChunk::new(balance!(10), balance!(0.045454545454545459), 0),
+                ])
+            );
+            
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_output(balance!(100)),
+                    10,
+                    false
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(2200), balance!(10), 0),
+                    SwapChunk::new(balance!(2200), balance!(10), 0),
+                    SwapChunk::new(balance!(2200), balance!(10), 0),
+                    SwapChunk::new(balance!(2200), balance!(10), 0),
+                    SwapChunk::new(balance!(2200), balance!(10), 0),
+                    SwapChunk::new(balance!(2200), balance!(10), 0),
+                    SwapChunk::new(balance!(2200), balance!(10), 0),
+                    SwapChunk::new(balance!(2200), balance!(10), 0),
+                    SwapChunk::new(balance!(2200), balance!(10), 0),
+                    SwapChunk::new(balance!(2200), balance!(10), 0),
+                ])
+            );
+            
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_input(balance!(100)),
+                    10,
+                    false
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                    SwapChunk::new(balance!(10), balance!(1499.9999999999999994), 0),
+                ])
+            );
+
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_output(balance!(100)),
+                    10,
+                    false
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                    SwapChunk::new(balance!(0.066666666666666666), balance!(10), 0),
+                    SwapChunk::new(balance!(0.066666666666666672), balance!(10), 0),
+                ])
+            );
+        });
+    }
+
+    #[test]
+    fn check_step_quote_with_fee() {
+        let mut ext = ExtBuilder::new(
+            vec![
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
+        .build();
+        ext.execute_with(|| {
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_input(balance!(100)),
+                    10,
+                    true
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818181), balance!(0.000605454545454545)),
+                    SwapChunk::new(balance!(10), balance!(0.045151818181818189), balance!(0.000605454545454549)),
+                ])
+            );
+            
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_output(balance!(100)),
+                    10,
+                    true
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122294)),
+                    SwapChunk::new(balance!(2214.750236575593452384), balance!(10), balance!(0.134093059778122298)),
+                ])
+            );
+            
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_input(balance!(100)),
+                    10,
+                    true
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999403), balance!(0.1332)),
+                    SwapChunk::new(balance!(10), balance!(1490.009999999999999412), balance!(0.1332)),
+                ])
+            );
+
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_output(balance!(100)),
+                    10,
+                    true
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.06711364353259374), balance!(10), balance!(0.000893953731854148)),
+                    SwapChunk::new(balance!(0.067113643532593749), balance!(10), balance!(0.000893953731854154)),
+                ])
+            );
+        });
+    }
+
+    fn compare_quotes(
+        dex_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
+    ) {
+        let (step_quote_input, step_quote_output, step_quote_fee) = XSTPool::step_quote(
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            10,
+            deduce_fee,
+        )
+        .unwrap()
+        .0
+        .iter()
+        .fold((balance!(0), balance!(0), balance!(0)), |acc, item| {
+            (acc.0 + item.input, acc.1 + item.output, acc.2 + item.fee)
+        });
+
+        let quote_result =
+            XSTPool::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
+                .unwrap()
+                .0;
+
+        let (quote_input, quote_output, quote_fee) = match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                (desired_amount_in, quote_result.amount, quote_result.fee)
+            }
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                (quote_result.amount, desired_amount_out, quote_result.fee)
+            }
+        };
+
+        assert_eq!(step_quote_input, quote_input);
+        assert_eq!(step_quote_output, quote_output);
+        assert_eq!(step_quote_fee, quote_fee);
+    }
+
+    #[test]
+    fn check_step_quote_equal_with_qoute() {
+        let mut ext = ExtBuilder::new(
+            vec![
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
+        .build();
+        ext.execute_with(|| {
+            compare_quotes(&DEXId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_input(balance!(100)), false);
+            compare_quotes(&DEXId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_output(balance!(100)), false);
+            
+            compare_quotes(&DEXId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_input(balance!(100)), false);
+            compare_quotes(&DEXId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100)), false);
+
+            compare_quotes(&DEXId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_input(balance!(100)), true);
+            compare_quotes(&DEXId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_output(balance!(100)), true);
+
+            compare_quotes(&DEXId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_input(balance!(100)), true);
+            compare_quotes(&DEXId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100)), true);
+        });
+    }
+
+    #[test]
+    fn check_step_quote_exceeds_limit_without_fee() {
+        let mut ext = ExtBuilder::new(
+            vec![
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
+        .build();
+        ext.execute_with(|| {
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_output(balance!(123456789123456789)),
+                    10,
+                    false
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                    SwapChunk::new(balance!(220000000.000000022), balance!(1000000), 0),
+                ])
+            );
+
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_output(balance!(123456789123456789)),
+                    10,
+                    false
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                    SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), 0),
+                ])
+            );
+        });
+    }
+
+    #[test]
+    fn check_step_quote_exceeds_limit_with_fee() {
+        let mut ext = ExtBuilder::new(
+            vec![
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
+        .build();
+        ext.execute_with(|| {
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XST,
+                    QuoteAmount::with_desired_output(balance!(123456789123456789)),
+                    10,
+                    true
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691169), balance!(1000000), balance!(13409.305869196850905820)),
+                    SwapChunk::new(balance!(221475023.657559354157691173), balance!(1000000), balance!(13409.305869196850905827)),
+                ])
+            );
+
+            assert_eq!(
+                XSTPool::step_quote(
+                    &DEXId::Polkaswap.into(),
+                    &XST,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_output(balance!(123456789123456789)),
+                    10,
+                    true
+                )
+                .unwrap()
+                .0,
+                VecDeque::from([
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522971)),
+                    SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), balance!(13319.999999161717522976)),
+                ])
             );
         });
     }

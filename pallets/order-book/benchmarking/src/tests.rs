@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "ready-to-test")] // order-book
-
 use super::*;
 
 use common::balance;
@@ -92,11 +90,11 @@ fn test_benchmark_cancel() {
     })
 }
 
-#[test]
-fn test_benchmark_execute_market_order() {
+fn test_benchmark_execute_market_order(executed_orders_limit: u32) {
     ext().execute_with(|| {
-        let settings = FillSettings::<Runtime>::max();
-        let context = periphery::execute_market_order::init(settings.clone());
+        let mut settings = FillSettings::<Runtime>::max();
+        settings.executed_orders_limit = executed_orders_limit;
+        let context = periphery::execute_market_order::init(settings);
 
         OrderBookPallet::<Runtime>::execute_market_order(
             RawOrigin::Signed(context.caller.clone()).into(),
@@ -106,7 +104,39 @@ fn test_benchmark_execute_market_order() {
         )
         .unwrap();
 
-        periphery::execute_market_order::verify(settings, context);
+        periphery::execute_market_order::verify(context);
+    })
+}
+
+#[test]
+fn test_benchmark_execute_market_order_max_orders() {
+    test_benchmark_execute_market_order(
+        <Runtime as order_book_imported::Config>::HARD_MIN_MAX_RATIO
+            .try_into()
+            .unwrap(),
+    );
+}
+
+#[test]
+fn test_benchmark_execute_market_order_one_order() {
+    test_benchmark_execute_market_order(1);
+}
+
+#[test]
+fn test_benchmark_execute_market_order_scattered() {
+    ext().execute_with(|| {
+        let settings = FillSettings::<Runtime>::max();
+        let context = periphery::execute_market_order_scattered::init(settings);
+
+        OrderBookPallet::<Runtime>::execute_market_order(
+            RawOrigin::Signed(context.caller.clone()).into(),
+            context.order_book_id,
+            context.side,
+            *context.amount.balance(),
+        )
+        .unwrap();
+
+        periphery::execute_market_order_scattered::verify(context);
     })
 }
 
@@ -129,13 +159,13 @@ fn test_benchmark_quote() {
     })
 }
 
-#[test]
-fn test_benchmark_exchange_single_order() {
+fn test_benchmark_exchange_dense(executed_orders_limit: u32) {
     ext().execute_with(|| {
         use common::LiquiditySource;
 
-        let settings = FillSettings::<Runtime>::max();
-        let context = periphery::exchange_single_order::init(settings.clone());
+        let mut settings = FillSettings::<Runtime>::max();
+        settings.executed_orders_limit = executed_orders_limit;
+        let context = periphery::exchange::init(settings);
 
         let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
             &context.caller,
@@ -150,8 +180,60 @@ fn test_benchmark_exchange_single_order() {
         )
         .unwrap();
 
-        periphery::exchange_single_order::verify(settings, context);
+        periphery::exchange::verify(context);
     })
+}
+
+#[test]
+fn test_benchmark_exchange_dense_max_orders() {
+    test_benchmark_exchange_dense(
+        <Runtime as order_book_imported::Config>::HARD_MIN_MAX_RATIO
+            .try_into()
+            .unwrap(),
+    );
+}
+
+#[test]
+fn test_benchmark_exchange_dense_one_order() {
+    test_benchmark_exchange_dense(1);
+}
+
+fn test_benchmark_exchange(executed_orders_limit: u32) {
+    ext().execute_with(|| {
+        use common::LiquiditySource;
+
+        let mut settings = FillSettings::<Runtime>::max();
+        settings.executed_orders_limit = executed_orders_limit;
+        let context = periphery::exchange_scattered::init(settings);
+
+        let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
+            &context.caller,
+            &context.caller,
+            &context.order_book_id.dex_id,
+            &context.order_book_id.base,
+            &context.order_book_id.quote,
+            SwapAmount::with_desired_output(
+                context.expected_out,
+                context.expected_in + balance!(5),
+            ),
+        )
+        .unwrap();
+
+        periphery::exchange_scattered::verify(context);
+    })
+}
+
+#[test]
+fn test_benchmark_exchange_max_orders() {
+    test_benchmark_exchange(
+        <Runtime as order_book_imported::Config>::HARD_MIN_MAX_RATIO
+            .try_into()
+            .unwrap(),
+    );
+}
+#[test]
+fn test_benchmark_exchange_scattered_one_order() {
+    test_benchmark_exchange(1);
 }
 
 #[test]

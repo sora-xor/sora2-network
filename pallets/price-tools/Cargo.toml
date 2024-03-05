@@ -35,7 +35,6 @@ common = { path = "../../common", default-features = false }
 dex-api = { path = "../dex-api", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
-trading-pair = { path = "../trading-pair", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 technical = { path = "../technical", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -48,7 +47,6 @@ pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = 
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
-trading-pair = { path = "../trading-pair" }
 
 [features]
 default = ['std']
