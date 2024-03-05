@@ -140,15 +140,10 @@ mod _allowed_deprecated {
     #![allow(deprecated)]
 
     use codec::{Decode, Encode, MaxEncodedLen};
-    use core::{fmt::Debug, str::FromStr};
     use frame_support::RuntimeDebug;
 
     #[cfg(feature = "std")]
-    use {
-        serde::{Deserialize, Serialize},
-        sp_std::convert::TryInto,
-        sp_std::fmt::Display,
-    };
+    use serde::{Deserialize, Serialize};
 
     /// Asset identifier.
     ///
