@@ -40,7 +40,7 @@ use band::Pallet as Band;
 use codec::{Decode as _, Encode as _};
 use common::prelude::{QuoteAmount, SwapAmount};
 use common::{
-    balance, fixed, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle, PriceToolsPallet,
+    balance, fixed, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle, PriceToolsProvider,
     PriceVariant, DAI, XST, XSTUSD,
 };
 use frame_benchmarking::benchmarks;
@@ -264,6 +264,20 @@ benchmarks! {
             &XST.into(),
             &asset_id,
             QuoteAmount::with_desired_input(balance!(1)),
+            true,
+        ).unwrap();
+    }
+
+    step_quote {
+        utils::setup_exchange_benchmark::<T>();
+        let asset_id = utils::enable_synthetic_asset::<T>()?;
+    }: {
+        let _ = XSTPool::<T>::step_quote(
+            &DEXId::Polkaswap.into(),
+            &XST.into(),
+            &asset_id,
+            QuoteAmount::with_desired_input(balance!(1000)),
+            1000,
             true,
         ).unwrap();
     }

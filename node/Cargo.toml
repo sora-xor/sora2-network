@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "3.2.0"
+version = "3.2.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -110,13 +110,16 @@ frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git"
 enum-as-inner = "=0.5.1"
 # TODO remove after toolchain is updated
 # newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
-ahash="=0.8.5"
+ahash = "=0.8.5"
+bumpalo = "=3.14.0"
 
 [build-dependencies]
 substrate-build-script-utils = "3"
 
 [dev-dependencies]
-assert_cmd = "2.0.4"
+# TODO remove after toolchain is updated
+# newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
+assert_cmd = "=2.0.13"
 tokio = { version = "1.10.1", features = ["macros"] }
 
 # Substrate dependencies
