@@ -2027,6 +2027,7 @@ dependencies = [
  "sp-std",
  "static_assertions",
  "strum 0.25.0",
+ "thiserror",
 ]
 
 [[package]]

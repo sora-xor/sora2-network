@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::{assert_approx_eq, assert_noop_msg, balance, AssetInfoProvider, PSWAP, VAL};
+use common::{assert_approx_eq_abs, assert_noop_msg, balance, AssetInfoProvider, PSWAP, VAL};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use hex_literal::hex;
@@ -183,7 +183,7 @@ fn val_strategic_bonus_vesting_works() {
         run_to_block(2 * blocks_per_day - 1);
         // By now vesting of total 20.9 VAL on a pro rata basis should have been taken place
         // There can be some loss of precision though due to pro rata distribution
-        assert_approx_eq!(TotalClaimableVal::get(), balance!(3020.2729999999999), balance!(0.000000001));
+        assert_approx_eq_abs!(TotalClaimableVal::get(), balance!(3020.2729999999999), balance!(0.000000001));
         assert_eq!(
             ValOwners::get(EthAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
             RewardInfo::new(balance!(111.965376355350688000), balance!(1000))
