@@ -100,14 +100,14 @@ impl<C, Block, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant>
         Balance,
         LiquiditySourceType,
         SwapVariant,
-        Option<SwapOutcomeInfo<Balance>>,
+        Option<SwapOutcomeInfo<Balance, AssetId>>,
     > for DEX<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: DEXRuntimeAPI<Block, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant>,
-    AssetId: Codec,
+    AssetId: Codec + Ord,
     DEXId: Codec,
     Balance: Codec + MaybeFromStr + MaybeDisplay,
     SwapVariant: Codec,
@@ -122,7 +122,7 @@ where
         amount: BalanceWrapper,
         swap_variant: SwapVariant,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<SwapOutcomeInfo<Balance>>> {
+    ) -> Result<Option<SwapOutcomeInfo<Balance, AssetId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.

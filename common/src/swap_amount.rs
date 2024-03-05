@@ -632,7 +632,7 @@ impl<AssetId: Ord, AmountType> OutcomeFee<AssetId, AmountType> {
 impl<AssetId, AmountType> OutcomeFee<AssetId, AmountType>
 where
     AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
-    AmountType: Default + Copy + Zero,
+    AmountType: Copy + Zero,
 {
     pub fn xor(amount: AmountType) -> Self {
         if amount.is_zero() {

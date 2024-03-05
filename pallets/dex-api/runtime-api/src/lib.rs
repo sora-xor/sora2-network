@@ -33,6 +33,7 @@
 #![allow(clippy::unnecessary_mut_passed)]
 
 use codec::{Codec, Decode, Encode};
+use common::prelude::OutcomeFee;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
 use common::BalanceWrapper;
@@ -43,7 +44,7 @@ use sp_std::prelude::*;
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct SwapOutcomeInfo<Balance> {
+pub struct SwapOutcomeInfo<Balance, AssetId: Ord> {
     #[cfg_attr(
         feature = "std",
         serde(
@@ -55,22 +56,12 @@ pub struct SwapOutcomeInfo<Balance> {
         )
     )]
     pub amount: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub fee: Balance,
+    pub fee: OutcomeFee<AssetId, Balance>,
 }
 
 sp_api::decl_runtime_apis! {
     pub trait DEXAPI<AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant> where
-        AssetId: Codec,
+        AssetId: Codec + Ord,
         DEXId: Codec,
         LiquiditySourceType: Codec,
         Balance: Codec + MaybeFromStr + MaybeDisplay,
@@ -83,7 +74,7 @@ sp_api::decl_runtime_apis! {
             output_asset_id: AssetId,
             amount: BalanceWrapper,
             swap_variant: SwapVariant,
-        ) -> Option<SwapOutcomeInfo<Balance>>;
+        ) -> Option<SwapOutcomeInfo<Balance, AssetId>>;
 
         fn can_exchange(
             dex_id: DEXId,

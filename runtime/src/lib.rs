@@ -2633,7 +2633,7 @@ impl_runtime_apis! {
             output_asset_id: AssetId,
             desired_input_amount: BalanceWrapper,
             swap_variant: SwapVariant,
-        ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
+        ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
             #[cfg(feature = "private-net")]
             {
                 DEXAPI::quote(
@@ -2642,7 +2642,7 @@ impl_runtime_apis! {
                     &output_asset_id,
                     QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
                     true,
-                ).ok().map(|(sa, _)| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+                ).ok().map(|(sa, _)| dex_runtime_api::SwapOutcomeInfo::<Balance, AssetId> { amount: sa.amount, fee: sa.fee})
             }
             #[cfg(not(feature = "private-net"))]
             {
