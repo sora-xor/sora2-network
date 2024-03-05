@@ -879,27 +879,6 @@ impl<T: Config> Pallet<T> {
         return Ok(resulting_fee_ratio);
     }
 
-    /// Used for converting XST fee to XOR
-    fn convert_fee(
-        fee: OutcomeFee<T::AssetId, Balance>,
-    ) -> Result<OutcomeFee<T::AssetId, Balance>, DispatchError> {
-        let output_to_base: FixedWrapper = <T as Config>::PriceToolsPallet::get_average_price(
-            &T::GetSyntheticBaseAssetId::get(),
-            &T::GetBaseAssetId::get(),
-            // Since `Buy` is more expensive in case if we are buying XOR
-            // (x XST -> y XOR; y XOR -> x' XST, x' < x),
-            // it seems logical to show this amount in order
-            // to not accidentally lie about the price.
-            PriceVariant::Buy,
-        )?
-        .into();
-        Ok(OutcomeFee::xor(
-            (fee.get_xst() * output_to_base)
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?,
-        ))
-    }
-
     fn ensure_base_asset_amount_within_limit(
         amount: Balance,
         check_limits: bool,
@@ -1024,11 +1003,6 @@ impl<T: Config> Pallet<T> {
             )?
         };
         let fee = OutcomeFee::xst(fee_amount);
-        let fee = if deduce_fee {
-            Self::convert_fee(fee)?
-        } else {
-            fee
-        };
         match amount {
             QuoteAmount::WithDesiredInput { .. } => {
                 Ok((SwapOutcome::new(output_amount, fee), Self::quote_weight()))
@@ -1122,15 +1096,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee, false)?
         };
 
-        let fee = OutcomeFee::xst(fee_amount);
-        let fee = if deduce_fee {
-            Self::convert_fee(fee)?
-        } else {
-            fee
-        };
+        let fee = OutcomeFee::<T::AssetId, Balance>::xst(fee_amount);
 
         // todo fix (m.tagirov)
-        let mut monolith = SwapChunk::new(input_amount, output_amount, fee.get_xor());
+        let mut monolith = SwapChunk::new(input_amount, output_amount, fee.get_xst());
 
         let limit = T::GetSyntheticBaseBuySellLimit::get();
 
@@ -1203,12 +1172,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             desired_amount,
             sender,
             receiver,
-        );
-        outcome.and_then(|mut res| {
-            let fee = Self::convert_fee(res.fee)?;
-            res.fee = fee;
-            Ok((res, Self::exchange_weight()))
-        })
+        )?;
+        Ok((outcome, Self::exchange_weight()))
     }
 
     fn check_rewards(
