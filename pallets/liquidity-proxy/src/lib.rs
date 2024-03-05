@@ -2498,6 +2498,7 @@ pub mod pallet {
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is
         ///                            determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        /// - `additional_data`: data to include in swap success event.
         #[transactional]
         #[pallet::call_index(2)]
         #[pallet::weight(Pallet::<T>::swap_transfer_batch_weight(swap_batches, input_asset_id, selected_source_types, filter_mode))]
