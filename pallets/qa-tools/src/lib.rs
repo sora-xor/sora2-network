@@ -377,6 +377,13 @@ pub mod pallet {
             })
         }
 
+        /// Initialize mcbc liquidity source.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        /// - `base_supply`: Control supply of XOR,
+        /// - `other_collaterals`: Variables related to arbitrary collateral-specific pricing,
+        /// - `tbcd_collateral`: TBCD-specific pricing variables.
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::price_tools_set_reference_asset_price())]
         pub fn mcbc_initialize(
@@ -386,31 +393,22 @@ pub mod pallet {
             tbcd_collateral: Option<pallet_tools::mcbc::TbcdCollateralInput>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            if let Some(base_supply) = base_supply {
-                pallet_tools::mcbc::initialize_base_supply::<T>(base_supply)?;
-            }
 
-            // handle tbcd collateral first as it may initialize reference asset xor prices
-            // (initialization of all collateral is dependant on these prices)
-            let mut collateral_ref_prices = vec![];
-            if let Some(tbcd_collateral) = tbcd_collateral {
-                let actual_ref_prices =
-                    pallet_tools::mcbc::initialize_tbcd_collateral::<T>(tbcd_collateral)?;
-                if let Some(actual_ref_prices) = actual_ref_prices {
-                    collateral_ref_prices.push((common::TBCD.into(), actual_ref_prices));
-                }
-            }
-            for collateral_input in other_collaterals {
-                let collateral_asset_id = collateral_input.asset;
-                let actual_ref_prices =
-                    pallet_tools::mcbc::initialize_single_collateral::<T>(collateral_input)?;
-                if let Some(actual_ref_prices) = actual_ref_prices {
-                    Self::deposit_event(Event::<T>::OrderBooksFilled);
-                    collateral_ref_prices.push((collateral_asset_id, actual_ref_prices))
-                }
-            }
+            let ref_prices = liquidity_sources::initialize_mcbc::<T>(
+                base_supply,
+                other_collaterals,
+                tbcd_collateral,
+            )
+            .map_err(|e| DispatchErrorWithPostInfo {
+                post_info: PostDispatchInfo {
+                    actual_weight: None,
+                    pays_fee: Pays::No,
+                },
+                error: e,
+            })?;
+
             Self::deposit_event(Event::<T>::McbcInitialized {
-                collateral_ref_prices,
+                collateral_ref_prices: ref_prices.into_iter().collect(),
             });
 
             // Extrinsic is only for testing, so we return all fees

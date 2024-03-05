@@ -40,9 +40,11 @@ pub mod liquidity_sources {
     use frame_support::ensure;
     use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};
+    use pallet_tools::mcbc::{BaseSupply, OtherCollateralInput};
     use pallet_tools::pool_xyk::AssetPairInput;
     use pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};
     use sp_std::vec::Vec;
+    use std::collections::BTreeMap;
 
     pub fn initialize_xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
@@ -136,10 +138,46 @@ pub mod liquidity_sources {
         pallet_tools::xst::initialize_synthetics::<T>(synthetics, relayer)
     }
 
+    /// Initialize mcbc liquidity source.
+    ///
+    /// Parameters:
+    /// - `base_supply`: Control supply of XOR,
+    /// - `other_collaterals`: Variables related to arbitrary collateral-specific pricing,
+    /// - `tbcd_collateral`: TBCD-specific pricing variables.
+    pub fn initialize_mcbc<T: Config>(
+        base_supply: Option<BaseSupply<T::AccountId>>,
+        other_collaterals: Vec<OtherCollateralInput<T::AssetId>>,
+        tbcd_collateral: Option<TbcdCollateralInput>,
+    ) -> Result<BTreeMap<T::AssetId, AssetPrices>, DispatchError> {
+        if let Some(base_supply) = base_supply {
+            pallet_tools::mcbc::initialize_base_supply::<T>(base_supply)?;
+        }
+
+        // handle tbcd collateral first as it may initialize reference asset xor prices
+        // (initialization of all collateral is dependant on these prices)
+        let mut collateral_ref_prices = BTreeMap::new();
+        if let Some(tbcd_collateral) = tbcd_collateral {
+            let actual_ref_prices =
+                pallet_tools::mcbc::initialize_tbcd_collateral::<T>(tbcd_collateral)?;
+            if let Some(actual_ref_prices) = actual_ref_prices {
+                collateral_ref_prices.insert(common::TBCD.into(), actual_ref_prices);
+            }
+        }
+        for collateral_input in other_collaterals {
+            let collateral_asset_id = collateral_input.asset;
+            let actual_ref_prices =
+                pallet_tools::mcbc::initialize_single_collateral::<T>(collateral_input)?;
+            if let Some(actual_ref_prices) = actual_ref_prices {
+                collateral_ref_prices.insert(collateral_asset_id, actual_ref_prices);
+            }
+        }
+        Ok(collateral_ref_prices)
+    }
+
     /// Set base token supply for mcbc.
     /// For details see [`pallet_tools::mcbc::initialize_base_supply`]
     pub fn initialize_mcbc_base_supply<T: Config>(
-        input: pallet_tools::mcbc::BaseSupply<T::AccountId>,
+        input: BaseSupply<T::AccountId>,
     ) -> DispatchResult {
         pallet_tools::mcbc::initialize_base_supply::<T>(input)
     }
@@ -150,7 +188,7 @@ pub mod liquidity_sources {
     ///
     /// For details see [`pallet_tools::mcbc::initialize_single_collateral`]
     pub fn initialize_mcbc_collateral<T: Config>(
-        input: pallet_tools::mcbc::OtherCollateralInput<T::AssetId>,
+        input: OtherCollateralInput<T::AssetId>,
     ) -> Result<Option<AssetPrices>, DispatchError> {
         pallet_tools::mcbc::initialize_single_collateral::<T>(input)
     }
