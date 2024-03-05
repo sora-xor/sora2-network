@@ -28,10 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Seems to be the only way to suppress the `deprecated` warnings in derives.
-// Moving structs into a module & doing `pub use` or `pub type` breaks `relayer` due to strange
-// substrate codegen
-
 use crate::fixed_wrapper::FixedWrapper;
 use crate::traits::{IsRepresentation, PureOrWrapped};
 use crate::{Fixed, IsValid, Price};
